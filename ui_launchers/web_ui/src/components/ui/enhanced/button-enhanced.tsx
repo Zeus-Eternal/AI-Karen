@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
@@ -143,7 +143,7 @@ const ButtonEnhanced = React.forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {loading && (
           <Loader2 
-            className="h-4 w-4 animate-spin sm:w-auto md:w-full" 
+            className="h-4 w-4 animate-spin " 
             aria-hidden="true"
           />
         )}

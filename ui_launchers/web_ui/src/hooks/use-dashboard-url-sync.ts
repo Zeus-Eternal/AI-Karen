@@ -169,7 +169,7 @@ export const useDashboardUrlSync = () => {
           clearGlobalFilters();
           filters.forEach(filter => {
             addGlobalFilter(filter);
-          });
+
         }
       } catch (error) {
       }
@@ -261,12 +261,12 @@ export const useDashboardUrlSync = () => {
         end: timeRange.end.toISOString(),
         preset: timeRange.preset
       }
-    });
+
   }, [updateUrl]);
   const setFiltersInUrl = useCallback((filters: DashboardFilter[]) => {
     updateUrl({
       filters: filters.length > 0 ? encodeURIComponent(JSON.stringify(filters)) : undefined
-    });
+
   }, [updateUrl]);
   const setLayoutInUrl = useCallback((layout: 'grid' | 'masonry' | 'flex') => {
     updateUrl({ layout });

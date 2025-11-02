@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       headers,
       body: formData,
       signal: AbortSignal.timeout(120000), // 2 minute timeout for file uploads
-    });
+
     const data = await response.json();
     // Return the backend response with appropriate status
     return NextResponse.json(data, { 
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         'Pragma': 'no-cache',
         'Expires': '0'
       }
-    });
+
   } catch (error) {
     // Return structured error response
     return NextResponse.json(
@@ -54,5 +54,5 @@ export async function OPTIONS() {
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
-  });
+
 }

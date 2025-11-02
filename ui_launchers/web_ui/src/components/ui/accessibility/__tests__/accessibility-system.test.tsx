@@ -27,7 +27,6 @@ vi.mock('../screen-reader-api', () => ({
 describe('Accessibility System', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('FocusTrap', () => {
     it('should trap focus within the container', async () => {
@@ -65,7 +64,6 @@ describe('Accessibility System', () => {
       // Shift+Tab should go backwards
       await user.keyboard('{Shift>}{Tab}{/Shift}');
       expect(thirdButton).toHaveFocus();
-    });
 
     it('should restore focus when deactivated', async () => {
       const user = userEvent.setup();
@@ -76,10 +74,9 @@ describe('Accessibility System', () => {
         return (
           <div>
             <button 
-              onClick={() = aria-label="Button"> setActive(true)}
+              onClick={() => setActive(true)}
               data-testid="trigger"
             >
-              Open Trap
             </button>
             <FocusTrap 
               active={active} 
@@ -105,7 +102,6 @@ describe('Accessibility System', () => {
       // Escape should restore focus
       await user.keyboard('{Escape}');
       expect(trigger).toHaveFocus();
-    });
 
     it('should handle empty trap gracefully', () => {
       render(
@@ -116,7 +112,6 @@ describe('Accessibility System', () => {
 
       const trap = screen.getByTestId('empty-trap');
       expect(trap).toBeInTheDocument();
-    });
 
     it('should be accessible', async () => {
       const { container } = render(
@@ -127,8 +122,7 @@ describe('Accessibility System', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('SkipLinks', () => {
     it('should render skip links for main content areas', () => {
@@ -145,7 +139,6 @@ describe('Accessibility System', () => {
       expect(screen.getByText('Skip to main content')).toBeInTheDocument();
       expect(screen.getByText('Skip to navigation')).toBeInTheDocument();
       expect(screen.getByText('Skip to footer')).toBeInTheDocument();
-    });
 
     it('should be visually hidden until focused', async () => {
       const user = userEvent.setup();
@@ -167,7 +160,6 @@ describe('Accessibility System', () => {
       await user.tab();
       expect(skipLink).toHaveFocus();
       expect(skipLink).toHaveClass('not-sr-only');
-    });
 
     it('should navigate to target elements', async () => {
       const user = userEvent.setup();
@@ -192,7 +184,6 @@ describe('Accessibility System', () => {
       
       // Focus should move to main content
       expect(mainContent).toHaveFocus();
-    });
 
     it('should be accessible', async () => {
       const { container } = render(
@@ -205,8 +196,7 @@ describe('Accessibility System', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('AriaLiveRegion', () => {
     it('should announce messages to screen readers', async () => {
@@ -221,7 +211,6 @@ describe('Accessibility System', () => {
       const liveRegion = screen.getByTestId('live-region');
       expect(liveRegion).toHaveAttribute('aria-live', 'polite');
       expect(liveRegion).toHaveTextContent('Form submitted successfully');
-    });
 
     it('should support different politeness levels', () => {
       const { rerender } = render(
@@ -245,7 +234,6 @@ describe('Accessibility System', () => {
 
       liveRegion = screen.getByTestId('live-region');
       expect(liveRegion).toHaveAttribute('aria-live', 'assertive');
-    });
 
     it('should clear messages after timeout', async () => {
       vi.useFakeTimers();
@@ -265,10 +253,8 @@ describe('Accessibility System', () => {
 
       await waitFor(() => {
         expect(liveRegion).toHaveTextContent('');
-      });
 
       vi.useRealTimers();
-    });
 
     it('should be accessible', async () => {
       const { container } = render(
@@ -277,8 +263,7 @@ describe('Accessibility System', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('AriaEnhancedButton', () => {
     it('should have proper ARIA attributes', () => {
@@ -295,19 +280,16 @@ describe('Accessibility System', () => {
       const button = screen.getByTestId('aria-button');
       expect(button).toHaveAttribute('aria-label', 'Close dialog');
       expect(button).toHaveAttribute('aria-describedby', 'close-help');
-    });
 
     it('should handle loading state with ARIA', () => {
       render(
         <AriaEnhancedButton loading data-testid="loading-button">
-          Submit
         </AriaEnhancedButton>
       );
 
       const button = screen.getByTestId('loading-button');
       expect(button).toHaveAttribute('aria-busy', 'true');
       expect(button).toBeDisabled();
-    });
 
     it('should support pressed state for toggle buttons', async () => {
       const user = userEvent.setup();
@@ -321,7 +303,6 @@ describe('Accessibility System', () => {
             onClick={() => setPressed(!pressed)}
             data-testid="toggle-button"
           >
-            Toggle
           </AriaEnhancedButton>
         );
       };
@@ -333,7 +314,6 @@ describe('Accessibility System', () => {
 
       await user.click(button);
       expect(button).toHaveAttribute('aria-pressed', 'true');
-    });
 
     it('should be accessible', async () => {
       const { container } = render(
@@ -342,8 +322,7 @@ describe('Accessibility System', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('AriaEnhancedForm', () => {
     it('should provide form context with ARIA attributes', () => {
@@ -358,7 +337,6 @@ describe('Accessibility System', () => {
             data-testid="name-input"
           />
           <AriaEnhancedButton type="submit">
-            Submit
           </AriaEnhancedButton>
         </AriaEnhancedForm>
       );
@@ -369,7 +347,6 @@ describe('Accessibility System', () => {
       const input = screen.getByTestId('name-input');
       expect(input).toHaveAttribute('required');
       expect(input).toHaveAttribute('aria-required', 'true');
-    });
 
     it('should handle form validation errors', async () => {
       const user = userEvent.setup();
@@ -384,7 +361,6 @@ describe('Accessibility System', () => {
             data-testid="email-input"
           />
           <AriaEnhancedButton type="submit">
-            Submit
           </AriaEnhancedButton>
         </AriaEnhancedForm>
       );
@@ -395,7 +371,6 @@ describe('Accessibility System', () => {
       
       const errorMessage = screen.getByText('Please enter a valid email');
       expect(errorMessage).toBeInTheDocument();
-    });
 
     it('should be accessible', async () => {
       const { container } = render(
@@ -407,8 +382,7 @@ describe('Accessibility System', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('AriaEnhancedInput', () => {
     it('should have proper label association', () => {
@@ -425,7 +399,6 @@ describe('Accessibility System', () => {
       expect(input).toHaveAttribute('aria-labelledby');
       expect(label).toHaveAttribute('id');
       expect(input.getAttribute('aria-labelledby')).toBe(label.getAttribute('id'));
-    });
 
     it('should show validation errors with ARIA', () => {
       render(
@@ -442,7 +415,6 @@ describe('Accessibility System', () => {
       
       const errorMessage = screen.getByText('Password must be at least 8 characters');
       expect(errorMessage).toHaveAttribute('role', 'alert');
-    });
 
     it('should support help text', () => {
       render(
@@ -458,7 +430,6 @@ describe('Accessibility System', () => {
       
       expect(input).toHaveAttribute('aria-describedby');
       expect(helpText).toHaveAttribute('id');
-    });
 
     it('should be accessible', async () => {
       const { container } = render(
@@ -467,8 +438,7 @@ describe('Accessibility System', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('ScreenReader', () => {
     it('should announce messages to screen readers', () => {
@@ -483,7 +453,6 @@ describe('Accessibility System', () => {
         'Page loaded successfully',
         'polite'
       );
-    });
 
     it('should handle different priority levels', () => {
       const { rerender } = render(
@@ -509,14 +478,12 @@ describe('Accessibility System', () => {
         'High priority message',
         'assertive'
       );
-    });
 
     it('should not announce empty messages', () => {
       render(<ScreenReader message="" />);
       
       expect(mockScreenReader.announce).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('Keyboard Navigation', () => {
     it('should support arrow key navigation in lists', async () => {
@@ -545,7 +512,6 @@ describe('Accessibility System', () => {
 
       await user.keyboard('{ArrowUp}');
       expect(option2).toHaveFocus();
-    });
 
     it('should handle escape key for modal dismissal', async () => {
       const onEscape = vi.fn();
@@ -562,7 +528,6 @@ describe('Accessibility System', () => {
           tabIndex={0}
           data-testid="modal"
         >
-          Modal Content
         </div>
       );
 
@@ -571,8 +536,7 @@ describe('Accessibility System', () => {
 
       await user.keyboard('{Escape}');
       expect(onEscape).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('High Contrast Mode', () => {
     it('should work in high contrast mode', () => {
@@ -589,18 +553,15 @@ describe('Accessibility System', () => {
           removeEventListener: vi.fn(),
           dispatchEvent: vi.fn(),
         })),
-      });
 
       render(
         <AriaEnhancedButton data-testid="high-contrast-btn">
-          High Contrast Button
         </AriaEnhancedButton>
       );
 
       const button = screen.getByTestId('high-contrast-btn');
       expect(button).toHaveClass('contrast-more:border-2');
-    });
-  });
+
 
   describe('Reduced Motion', () => {
     it('should respect reduced motion preferences', () => {
@@ -617,16 +578,13 @@ describe('Accessibility System', () => {
           removeEventListener: vi.fn(),
           dispatchEvent: vi.fn(),
         })),
-      });
 
       render(
         <AriaEnhancedButton data-testid="reduced-motion-btn">
-          Reduced Motion Button
         </AriaEnhancedButton>
       );
 
       const button = screen.getByTestId('reduced-motion-btn');
       expect(button).toHaveClass('motion-reduce:transform-none');
-    });
-  });
-});
+
+

@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import CopilotActions, { type ChatContext } from '../CopilotActions';
@@ -33,7 +34,6 @@ describe('CopilotActions', () => {
 
   beforeEach(() => {
     mockOnActionTriggered.mockClear();
-  });
 
   it('renders copilot actions dropdown', () => {
     render(
@@ -44,7 +44,6 @@ describe('CopilotActions', () => {
     );
 
     expect(screen.getByText('Copilot Actions')).toBeInTheDocument();
-  });
 
   it('renders with context information', async () => {
     render(
@@ -59,7 +58,6 @@ describe('CopilotActions', () => {
     
     // Should have the brain icon
     expect(screen.getByRole('button')).toBeInTheDocument();
-  });
 
   it('triggers action when clicked', async () => {
     // For now, just test that the component renders without errors
@@ -72,7 +70,6 @@ describe('CopilotActions', () => {
     );
 
     expect(screen.getByText('Copilot Actions')).toBeInTheDocument();
-  });
 
   it('disables actions when disabled prop is true', () => {
     render(
@@ -85,5 +82,4 @@ describe('CopilotActions', () => {
 
     const button = screen.getByText('Copilot Actions');
     expect(button).toBeDisabled();
-  });
-});
+

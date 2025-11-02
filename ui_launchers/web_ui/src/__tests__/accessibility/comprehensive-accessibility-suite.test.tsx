@@ -181,7 +181,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       );
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     test('should be keyboard accessible', async () => {
       const handleClick = jest.fn();
@@ -197,13 +196,11 @@ describe('Comprehensive Accessibility Test Suite', () => {
       // Test Space key
       fireEvent.keyDown(button, { key: ' ' });
       expect(handleClick).toHaveBeenCalledTimes(2);
-    });
 
     test('should handle disabled state correctly', async () => {
       const handleClick = jest.fn();
       const { container } = render(
         <MockButton disabled onClick={handleClick}>
-          Disabled button
         </MockButton>
       );
       
@@ -216,7 +213,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     test('should have proper ARIA attributes', () => {
       render(
@@ -224,15 +220,13 @@ describe('Comprehensive Accessibility Test Suite', () => {
           aria-label="Custom button label"
           aria-describedby="button-description"
         >
-          Button
         </MockButton>
       );
       
       const button = screen.getByRole('button');
       expect(button).toHaveAttribute('aria-label', 'Custom button label');
       expect(button).toHaveAttribute('aria-describedby', 'button-description');
-    });
-  });
+
 
   describe('Form Interactions', () => {
     test('should have no accessibility violations', async () => {
@@ -245,7 +239,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       );
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     test('should associate labels with inputs', () => {
       render(
@@ -261,7 +254,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       expect(input).toBeInTheDocument();
       expect(input).toHaveAttribute('type', 'email');
       expect(input).toBeRequired();
-    });
 
     test('should handle error states correctly', async () => {
       const { container } = render(
@@ -280,7 +272,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     test('should indicate required fields', () => {
       render(
@@ -296,8 +287,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       const input = screen.getByLabelText(/required field/i);
       expect(input).toBeRequired();
-    });
-  });
+
 
   describe('Modal Dialog Interactions', () => {
     test('should have no accessibility violations', async () => {
@@ -312,7 +302,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       );
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     test('should trap focus within modal', async () => {
       const handleClose = jest.fn();
@@ -348,7 +337,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       // Should cycle back to first element
       userEvent.tab();
       expect(firstButton).toHaveFocus();
-    });
 
     test('should close on Escape key', () => {
       const handleClose = jest.fn();
@@ -364,7 +352,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       fireEvent.keyDown(document, { key: 'Escape' });
       expect(handleClose).toHaveBeenCalled();
-    });
 
     test('should have proper ARIA attributes', () => {
       render(
@@ -383,8 +370,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       const title = screen.getByText('ARIA Modal');
       expect(title).toHaveAttribute('id', 'modal-title');
-    });
-  });
+
 
   describe('Navigation Interactions', () => {
     const navItems = [
@@ -397,7 +383,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       const { container } = render(<MockNavigation items={navItems} />);
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     test('should have proper navigation structure', () => {
       render(<MockNavigation items={navItems} />);
@@ -410,7 +395,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       const listItems = screen.getAllByRole('listitem');
       expect(listItems).toHaveLength(3);
-    });
 
     test('should indicate current page', () => {
       render(<MockNavigation items={navItems} />);
@@ -422,7 +406,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
         link.getAttribute('aria-current') !== 'page'
       );
       expect(otherLinks).toHaveLength(2);
-    });
 
     test('should be keyboard navigable', () => {
       render(<MockNavigation items={navItems} />);
@@ -433,9 +416,8 @@ describe('Comprehensive Accessibility Test Suite', () => {
       links.forEach(link => {
         link.focus();
         expect(link).toHaveFocus();
-      });
-    });
-  });
+
+
 
   describe('Table Interactions', () => {
     const tableData = [
@@ -450,7 +432,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       );
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     test('should have proper table structure', () => {
       render(<MockTable data={tableData} headers={headers} />);
@@ -466,8 +447,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       columnHeaders.forEach(header => {
         expect(header).toHaveAttribute('scope', 'col');
-      });
-    });
+
 
     test('should have accessible table content', () => {
       render(<MockTable data={tableData} headers={headers} />);
@@ -477,8 +457,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
       expect(screen.getByText('Jane Smith')).toBeInTheDocument();
       expect(screen.getByText('30')).toBeInTheDocument();
       expect(screen.getByText('25')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Accordion Interactions', () => {
     const accordionItems = [
@@ -490,7 +469,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       const { container } = render(<MockAccordion items={accordionItems} />);
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     test('should have proper ARIA attributes', () => {
       render(<MockAccordion items={accordionItems} />);
@@ -501,8 +479,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
       buttons.forEach((button, index) => {
         expect(button).toHaveAttribute('aria-expanded', 'false');
         expect(button).toHaveAttribute('aria-controls', `panel-${index}`);
-      });
-    });
+
 
     test('should expand and collapse sections', async () => {
       render(<MockAccordion items={accordionItems} />);
@@ -520,16 +497,14 @@ describe('Comprehensive Accessibility Test Suite', () => {
       await waitFor(() => {
         expect(firstButton).toHaveAttribute('aria-expanded', 'true');
         expect(firstPanel).toBeVisible();
-      });
-      
+
       // Click to collapse
       fireEvent.click(firstButton);
       
       await waitFor(() => {
         expect(firstButton).toHaveAttribute('aria-expanded', 'false');
         expect(firstPanel).not.toBeVisible();
-      });
-    });
+
 
     test('should be keyboard accessible', () => {
       render(<MockAccordion items={accordionItems} />);
@@ -547,8 +522,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
       // Should activate with Space
       fireEvent.keyDown(firstButton, { key: ' ' });
       expect(firstButton).toHaveAttribute('aria-expanded', 'false');
-    });
-  });
+
 
   describe('Live Regions and Dynamic Content', () => {
     const LiveRegionComponent = () => {
@@ -558,10 +532,8 @@ describe('Comprehensive Accessibility Test Suite', () => {
       return (
         <div>
           <button onClick={() => setMessage('Content updated!')}>
-            Update Content
           </button>
           <button onClick={() => setStatus('Operation completed')}>
-            Update Status
           </button>
           <div aria-live="polite" id="live-region">
             {message}
@@ -577,7 +549,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
       const { container } = render(<LiveRegionComponent />);
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     test('should announce dynamic content changes', async () => {
       render(<LiveRegionComponent />);
@@ -589,8 +560,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       await waitFor(() => {
         expect(liveRegion).toHaveTextContent('Content updated!');
-      });
-    });
+
 
     test('should have proper live region attributes', () => {
       render(<LiveRegionComponent />);
@@ -600,8 +570,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       const statusRegion = screen.getByRole('status');
       expect(statusRegion).toHaveAttribute('aria-live', 'polite');
-    });
-  });
+
 
   describe('Color and Contrast', () => {
     test('should not rely on color alone for information', () => {
@@ -621,8 +590,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
       // Information should be conveyed through text and icons, not just color
       expect(screen.getByLabelText('Error')).toHaveTextContent('❌ Error message');
       expect(screen.getByLabelText('Success')).toHaveTextContent('✅ Success message');
-    });
-  });
+
 
   describe('Focus Management', () => {
     const FocusManagementComponent = () => {
@@ -663,26 +631,22 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Dynamic Content')).toBeInTheDocument();
-      });
-      
+
       // Hide content
       const closeButton = screen.getByText('Close');
       fireEvent.click(closeButton);
       
       await waitFor(() => {
         expect(screen.queryByText('Dynamic Content')).not.toBeInTheDocument();
-      });
-      
+
       // Focus should return to original trigger
       expect(toggleButton).toHaveFocus();
-    });
-  });
+
 
   describe('Skip Links', () => {
     const SkipLinksComponent = () => (
       <div>
         <a href="#main-content" className="skip-link">
-          Skip to main content
         </a>
         <nav>
           <a href="/">Home</a>
@@ -703,8 +667,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       const mainContent = screen.getByRole('main');
       expect(mainContent).toHaveAttribute('id', 'main-content');
-    });
-  });
+
 
   describe('Responsive and Zoom Support', () => {
     test('should handle zoom and responsive behavior', () => {
@@ -712,7 +675,6 @@ describe('Comprehensive Accessibility Test Suite', () => {
         <div style={{ fontSize: '16px', lineHeight: '1.5' }}>
           <p>This text should be readable at 200% zoom</p>
           <button style={{ minHeight: '44px', minWidth: '44px' }}>
-            Touch target
           </button>
         </div>
       );
@@ -726,8 +688,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
       // These would be actual pixel values in a real browser
       expect(button).toHaveStyle('min-height: 44px');
       expect(button).toHaveStyle('min-width: 44px');
-    });
-  });
+
 
   describe('Error Handling and Recovery', () => {
     const ErrorBoundaryComponent = ({ hasError }: { hasError: boolean }) => {
@@ -760,9 +721,8 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
-});
+
+
 
 // Helper function to test component accessibility
 export const testComponentAccessibility = async (component: React.ReactElement) => {
@@ -782,8 +742,7 @@ export const testKeyboardNavigation = (
   
   expectedKeys.forEach(key => {
     fireEvent.keyDown(element, { key });
-  });
-  
+
   expect(handleKeyDown).toHaveBeenCalledTimes(expectedKeys.length);
   
   element.removeEventListener('keydown', handleKeyDown);

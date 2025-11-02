@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { 
 import { useToast } from '@/hooks/use-toast';
 /**
  * Fallback Configuration Interface
@@ -30,35 +29,9 @@ import { useToast } from '@/hooks/use-toast';
 
 
 
-  Shield, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle,
-  Plus,
-  Edit,
-  Trash2,
-  Play,
-  Pause,
-  RefreshCw,
-  Activity,
-  Clock,
-  Target,
-  Settings,
-  ArrowDown,
-  ArrowUp,
-  TestTube,
-  BarChart3,
-  Zap
-} from 'lucide-react';
+import { } from 'lucide-react';
 
-  FallbackConfig, 
-  FallbackChain, 
-  FallbackProvider, 
-  HealthCheck, 
-  FailoverRule,
-  FallbackEvent,
-  FallbackAnalytics
-} from '@/types/providers';
+import { } from '@/types/providers';
 
 interface FallbackConfigInterfaceProps {
   className?: string;
@@ -101,7 +74,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
         title: 'Error',
         description: 'Failed to load fallback configurations',
         variant: 'destructive'
-      });
+
     } finally {
       setLoading(false);
     }
@@ -130,7 +103,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
         method: config.id ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
-      });
+
       if (!response.ok) throw new Error('Failed to save config');
       const savedConfig = await response.json();
       if (config.id) {
@@ -143,13 +116,13 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
       toast({
         title: 'Configuration Saved',
         description: `Fallback configuration "${config.name}" has been saved`
-      });
+
     } catch (error) {
       toast({
         title: 'Save Error',
         description: 'Failed to save fallback configuration',
         variant: 'destructive'
-      });
+
     }
   };
   const deleteConfig = async (configId: string) => {
@@ -157,7 +130,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
     try {
       const response = await fetch(`/api/fallback/configs/${configId}`, {
         method: 'DELETE'
-      });
+
       if (!response.ok) throw new Error('Failed to delete config');
       setConfigs(prev => prev.filter(c => c.id !== configId));
       if (selectedConfig?.id === configId) {
@@ -166,13 +139,13 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
       toast({
         title: 'Configuration Deleted',
         description: 'Fallback configuration has been deleted'
-      });
+
     } catch (error) {
       toast({
         title: 'Delete Error',
         description: 'Failed to delete configuration',
         variant: 'destructive'
-      });
+
     }
   };
   const testFallback = async (chainId: string) => {
@@ -182,7 +155,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chainId })
-      });
+
       if (!response.ok) throw new Error('Failed to test fallback');
       const result = await response.json();
       setTestResults(prev => [...prev.filter(r => r.chainId !== chainId), result]);
@@ -190,19 +163,19 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
         title: 'Test Complete',
         description: result.success ? 'Fallback test successful' : 'Fallback test failed',
         variant: result.success ? 'default' : 'destructive'
-      });
+
     } catch (error) {
       toast({
         title: 'Test Error',
         description: 'Failed to test fallback configuration',
         variant: 'destructive'
-      });
+
     } finally {
       setTesting(prev => {
         const newSet = new Set(prev);
         newSet.delete(chainId);
         return newSet;
-      });
+
     }
   };
   const toggleConfig = async (configId: string, enabled: boolean) => {
@@ -211,7 +184,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled })
-      });
+
       if (!response.ok) throw new Error('Failed to toggle config');
       setConfigs(prev => prev.map(c => 
         c.id === configId ? { ...c, enabled } : c
@@ -222,25 +195,25 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
       toast({
         title: enabled ? 'Configuration Enabled' : 'Configuration Disabled',
         description: `Fallback configuration has been ${enabled ? 'enabled' : 'disabled'}`
-      });
+
     } catch (error) {
       toast({
         title: 'Toggle Error',
         description: 'Failed to toggle configuration',
         variant: 'destructive'
-      });
+
     }
   };
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'failover':
-        return <AlertTriangle className="w-4 h-4 text-yellow-600 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="w-4 h-4 text-yellow-600 " />;
       case 'recovery':
-        return <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle className="w-4 h-4 text-green-600 " />;
       case 'health_check':
-        return <Activity className="w-4 h-4 text-blue-600 sm:w-auto md:w-full" />;
+        return <Activity className="w-4 h-4 text-blue-600 " />;
       default:
-        return <Settings className="w-4 h-4 text-gray-600 sm:w-auto md:w-full" />;
+        return <Settings className="w-4 h-4 text-gray-600 " />;
     }
   };
   const getHealthStatus = (chain: FallbackChain) => {
@@ -291,11 +264,10 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
     };
     return (
     <ErrorBoundary fallback={<div>Something went wrong in FallbackConfigInterface</div>}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto sm:w-auto md:w-full">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto ">
         <DialogHeader>
           <DialogTitle>{chain ? 'Edit Fallback Chain' : 'Create Fallback Chain'}</DialogTitle>
           <DialogDescription>
-            Configure provider fallback order and conditions
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-6">
@@ -305,7 +277,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
               <input
                 id="name"
                 value={formData.name}
-                onChange={(e) = aria-label="Input"> setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                  Generation"
               />
             </div>
@@ -315,7 +287,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                 id="priority"
                 type="number"
                 value={formData.priority}
-                onChange={(e) = aria-label="Input"> setFormData(prev => ({ ...prev, priority: Number(e.target.value) }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, priority: Number(e.target.value) }))}
                 min="1"
                 max="10"
               />
@@ -325,8 +297,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
             <div className="flex items-center justify-between mb-3">
               <Label>Providers (in fallback order)</Label>
               <button size="sm" onClick={addProvider} aria-label="Button">
-                <Plus className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                Add Provider
+                <Plus className="w-4 h-4 mr-2 " />
               </Button>
             </div>
             <div className="space-y-3">
@@ -339,37 +310,37 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                     </div>
                     <div className="flex items-center gap-2">
                       {index > 0 && (
-                        <button
+                        <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() = aria-label="Button"> {
+                          onClick={() => {
                             const newProviders = [...formData.providers];
                             [newProviders[index], newProviders[index - 1]] = [newProviders[index - 1], newProviders[index]];
                             setFormData(prev => ({ ...prev, providers: newProviders }));
                           }}
                         >
-                          <ArrowUp className="w-3 h-3 sm:w-auto md:w-full" />
+                          <ArrowUp className="w-3 h-3 " />
                         </Button>
                       )}
                       {index < formData.providers.length - 1 && (
-                        <button
+                        <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() = aria-label="Button"> {
+                          onClick={() => {
                             const newProviders = [...formData.providers];
                             [newProviders[index], newProviders[index + 1]] = [newProviders[index + 1], newProviders[index]];
                             setFormData(prev => ({ ...prev, providers: newProviders }));
                           }}
                         >
-                          <ArrowDown className="w-3 h-3 sm:w-auto md:w-full" />
+                          <ArrowDown className="w-3 h-3 " />
                         </Button>
                       )}
-                      <button
+                      <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() = aria-label="Button"> removeProvider(index)}
+                        onClick={() => removeProvider(index)}
                       >
-                        <Trash2 className="w-3 h-3 sm:w-auto md:w-full" />
+                        <Trash2 className="w-3 h-3 " />
                       </Button>
                     </div>
                   </div>
@@ -378,7 +349,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                       <Label className="text-xs sm:text-sm md:text-base">Provider ID</Label>
                       <input
                         value={provider.providerId}
-                        onChange={(e) = aria-label="Input"> updateProvider(index, { providerId: e.target.value })}
+                        onChange={(e) => updateProvider(index, { providerId: e.target.value })}
                         placeholder="openai-1"
                         className="text-sm md:text-base lg:text-lg"
                       />
@@ -387,7 +358,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                       <Label className="text-xs sm:text-sm md:text-base">Model ID (optional)</Label>
                       <input
                         value={provider.modelId || ''}
-                        onChange={(e) = aria-label="Input"> updateProvider(index, { modelId: e.target.value })}
+                        onChange={(e) => updateProvider(index, { modelId: e.target.value })}
                         placeholder="gpt-4"
                         className="text-sm md:text-base lg:text-lg"
                       />
@@ -397,7 +368,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                       <input
                         type="number"
                         value={provider.weight}
-                        onChange={(e) = aria-label="Input"> updateProvider(index, { weight: Number(e.target.value) })}
+                        onChange={(e) => updateProvider(index, { weight: Number(e.target.value) })}
                         min="0"
                         max="1"
                         step="0.1"
@@ -409,7 +380,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                       <input
                         type="number"
                         value={provider.maxRetries}
-                        onChange={(e) = aria-label="Input"> updateProvider(index, { maxRetries: Number(e.target.value) })}
+                        onChange={(e) => updateProvider(index, { maxRetries: Number(e.target.value) })}
                         min="0"
                         max="10"
                         className="text-sm md:text-base lg:text-lg"
@@ -420,7 +391,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                       <input
                         type="number"
                         value={provider.timeout}
-                        onChange={(e) = aria-label="Input"> updateProvider(index, { timeout: Number(e.target.value) })}
+                        onChange={(e) => updateProvider(index, { timeout: Number(e.target.value) })}
                         min="1000"
                         max="300000"
                         step="1000"
@@ -432,7 +403,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                       <input
                         type="number"
                         value={provider.healthThreshold}
-                        onChange={(e) = aria-label="Input"> updateProvider(index, { healthThreshold: Number(e.target.value) })}
+                        onChange={(e) => updateProvider(index, { healthThreshold: Number(e.target.value) })}
                         min="0"
                         max="1"
                         step="0.1"
@@ -444,7 +415,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
               ))}
               {formData.providers.length === 0 && (
                 <div className="text-center py-6 text-gray-500 border-2 border-dashed rounded-lg">
-                  <Shield className="w-8 h-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                  <Shield className="w-8 h-8 mx-auto mb-2 opacity-50 " />
                   <div>No providers configured</div>
                   <div className="text-xs sm:text-sm md:text-base">Add providers to create a fallback chain</div>
                 </div>
@@ -452,14 +423,12 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <button variant="outline" onClick={() = aria-label="Button"> setShowConfigDialog(false)}>
-              Cancel
+            <Button variant="outline" onClick={() => setShowConfigDialog(false)}>
             </Button>
-            <button 
-              onClick={() = aria-label="Button"> onSave(formData)}
+            <Button 
+              onClick={() => onSave(formData)}
               disabled={!formData.name || formData.providers.length === 0}
             >
-              Save Chain
             </Button>
           </div>
         </div>
@@ -471,7 +440,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
       <Card className={className}>
         <CardContent className="flex items-center justify-center p-8 sm:p-4 md:p-6">
           <div className="text-center space-y-2">
-            <Shield className="w-8 h-8 animate-pulse mx-auto text-blue-500 sm:w-auto md:w-full" />
+            <Shield className="w-8 h-8 animate-pulse mx-auto text-blue-500 " />
             <div>Loading fallback configurations...</div>
           </div>
         </CardContent>
@@ -486,19 +455,17 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5 sm:w-auto md:w-full" />
+                <Shield className="w-5 h-5 " />
                 Fallback & Failover Management
               </CardTitle>
               <CardDescription>
-                Configure automatic failover chains and monitor fallback performance
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
                 <DialogTrigger asChild>
                   <button aria-label="Button">
-                    <Plus className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                    Add Configuration
+                    <Plus className="w-4 h-4 mr-2 " />
                   </Button>
                 </DialogTrigger>
                 <ChainConfigDialog onSave={(chain) => {
@@ -528,7 +495,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                   <p className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Total Failovers</p>
                   <p className="text-2xl font-bold">{analytics.totalFailovers}</p>
                 </div>
-                <AlertTriangle className="w-8 h-8 text-yellow-500 sm:w-auto md:w-full" />
+                <AlertTriangle className="w-8 h-8 text-yellow-500 " />
               </div>
             </CardContent>
           </Card>
@@ -539,7 +506,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                   <p className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Success Rate</p>
                   <p className="text-2xl font-bold">{(analytics.successRate * 100).toFixed(1)}%</p>
                 </div>
-                <CheckCircle className="w-8 h-8 text-green-500 sm:w-auto md:w-full" />
+                <CheckCircle className="w-8 h-8 text-green-500 " />
               </div>
             </CardContent>
           </Card>
@@ -550,7 +517,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                   <p className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Avg Recovery</p>
                   <p className="text-2xl font-bold">{analytics.averageRecoveryTime.toFixed(0)}ms</p>
                 </div>
-                <Clock className="w-8 h-8 text-blue-500 sm:w-auto md:w-full" />
+                <Clock className="w-8 h-8 text-blue-500 " />
               </div>
             </CardContent>
           </Card>
@@ -561,7 +528,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                   <p className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Requests Saved</p>
                   <p className="text-2xl font-bold">{analytics.impactMetrics.requestsAffected}</p>
                 </div>
-                <Shield className="w-8 h-8 text-purple-500 sm:w-auto md:w-full" />
+                <Shield className="w-8 h-8 text-purple-500 " />
               </div>
             </CardContent>
           </Card>
@@ -594,15 +561,15 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                         onCheckedChange={(enabled) => toggleConfig(config.id, enabled)}
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <button
+                      <Button
                         size="sm"
                         variant="ghost"
-                        onClick={(e) = aria-label="Button"> {
+                        onClick={(e) = > {
                           e.stopPropagation();
                           deleteConfig(config.id);
                         }}
                       >
-                        <Trash2 className="w-3 h-3 sm:w-auto md:w-full" />
+                        <Trash2 className="w-3 h-3 " />
                       </Button>
                     </div>
                   </div>
@@ -614,7 +581,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
               ))}
               {configs.length === 0 && (
                 <div className="text-center py-6 text-gray-500">
-                  <Shield className="w-8 h-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                  <Shield className="w-8 h-8 mx-auto mb-2 opacity-50 " />
                   <div>No configurations</div>
                   <div className="text-xs sm:text-sm md:text-base">Create a configuration to get started</div>
                 </div>
@@ -652,13 +619,12 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                       <h4 className="font-medium">Fallback Chains</h4>
                       <button
                         size="sm"
-                        onClick={() = aria-label="Button"> {
+                        onClick={() => {
                           setEditingChain(null);
                           setShowConfigDialog(true);
                         }}
                       >
-                        <Plus className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                        Add Chain
+                        <Plus className="w-4 h-4 mr-2 " />
                       </Button>
                     </div>
                     <div className="space-y-3">
@@ -683,28 +649,27 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-2">
-                                <button
+                                <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() = aria-label="Button"> testFallback(chain.id)}
+                                  onClick={() => testFallback(chain.id)}
                                   disabled={isTestingChain}
                                 >
                                   {isTestingChain ? (
-                                    <RefreshCw className="w-3 h-3 mr-1 animate-spin sm:w-auto md:w-full" />
+                                    <RefreshCw className="w-3 h-3 mr-1 animate-spin " />
                                   ) : (
-                                    <TestTube className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
+                                    <TestTube className="w-3 h-3 mr-1 " />
                                   )}
-                                  Test
                                 </Button>
-                                <button
+                                <Button
                                   size="sm"
                                   variant="ghost"
-                                  onClick={() = aria-label="Button"> {
+                                  onClick={() => {
                                     setEditingChain(chain);
                                     setShowConfigDialog(true);
                                   }}
                                 >
-                                  <Edit className="w-3 h-3 sm:w-auto md:w-full" />
+                                  <Edit className="w-3 h-3 " />
                                 </Button>
                               </div>
                             </div>
@@ -720,7 +685,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                                       )}
                                     </div>
                                     {idx < chain.providers.length - 1 && (
-                                      <ArrowDown className="w-3 h-3 text-gray-400 sm:w-auto md:w-full" />
+                                      <ArrowDown className="w-3 h-3 text-gray-400 " />
                                     )}
                                   </React.Fragment>
                                 ))}
@@ -730,9 +695,9 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                               <Alert className={`mt-3 ${testResult.success ? 'border-green-500' : 'border-red-500'}`}>
                                 <div className="flex items-center gap-2">
                                   {testResult.success ? (
-                                    <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
+                                    <CheckCircle className="w-4 h-4 text-green-600 " />
                                   ) : (
-                                    <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />
+                                    <XCircle className="w-4 h-4 text-red-600 " />
                                   )}
                                   <AlertDescription>
                                     <div className="font-medium">
@@ -753,7 +718,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                       })}
                       {selectedConfig.chains.length === 0 && (
                         <div className="text-center py-8 text-gray-500 border-2 border-dashed rounded-lg">
-                          <Target className="w-8 h-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                          <Target className="w-8 h-8 mx-auto mb-2 opacity-50 " />
                           <div>No fallback chains configured</div>
                           <div className="text-xs sm:text-sm md:text-base">Add a chain to enable automatic failover</div>
                         </div>
@@ -779,7 +744,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                       ))}
                       {selectedConfig.healthChecks.length === 0 && (
                         <div className="text-center py-6 text-gray-500">
-                          <Activity className="w-8 h-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                          <Activity className="w-8 h-8 mx-auto mb-2 opacity-50 " />
                           <div>No health checks configured</div>
                         </div>
                       )}
@@ -804,7 +769,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                       ))}
                       {selectedConfig.failoverRules.length === 0 && (
                         <div className="text-center py-6 text-gray-500">
-                          <Settings className="w-8 h-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                          <Settings className="w-8 h-8 mx-auto mb-2 opacity-50 " />
                           <div>No failover rules configured</div>
                         </div>
                       )}
@@ -839,7 +804,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                       ))}
                       {recentEvents.length === 0 && (
                         <div className="text-center py-6 text-gray-500">
-                          <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                          <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-50 " />
                           <div>No recent events</div>
                         </div>
                       )}
@@ -851,10 +816,9 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
           ) : (
             <Card>
               <CardContent className="text-center py-12">
-                <Shield className="w-12 h-12 mx-auto mb-4 text-gray-400 sm:w-auto md:w-full" />
+                <Shield className="w-12 h-12 mx-auto mb-4 text-gray-400 " />
                 <h3 className="text-lg font-medium mb-2">Select a Configuration</h3>
                 <p className="text-gray-600 mb-4">
-                  Choose a fallback configuration to view and manage its settings
                 </p>
               </CardContent>
             </Card>

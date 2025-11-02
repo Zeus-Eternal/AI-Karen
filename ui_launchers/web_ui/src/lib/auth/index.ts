@@ -20,22 +20,15 @@ import { ExtensionAuthErrorHandler, extensionAuthErrorHandler, ExtensionAuthErro
 import { getExtensionAuthManager } from './extension-auth-manager';
 // Error types and factories
 export {
-  ExtensionAuthErrorCategory,
-  ExtensionAuthErrorSeverity,
-  ExtensionAuthRecoveryStrategy,
-  ExtensionAuthErrorFactory,
-  ExtensionAuthErrorHandler,
   extensionAuthErrorHandler,
   handleExtensionAuthError,
   createExtensionAuthError,
   getExtensionAuthRecoveryStrategy,
   isExtensionAuthErrorRetryable,
   type ExtensionAuthError
-} from './extension-auth-errors';
+import { } from './extension-auth-errors';
 // Graceful degradation
 export {
-  ExtensionFeatureLevel,
-  ExtensionAuthDegradationManager,
   extensionAuthDegradationManager,
   applyExtensionAuthDegradation,
   restoreExtensionAuthFunctionality,
@@ -45,10 +38,9 @@ export {
   type ExtensionDegradationState,
   type ExtensionFeatureConfig,
   type CachedExtensionData
-} from './extension-auth-degradation';
+import { } from './extension-auth-degradation';
 // Error recovery
 export {
-  ExtensionAuthRecoveryManager,
   extensionAuthRecoveryManager,
   attemptExtensionAuthRecovery,
   getExtensionAuthRecoveryStats,
@@ -56,28 +48,25 @@ export {
   type RecoveryAttemptResult,
   type RecoveryContext,
   type RecoveryStatistics
-} from './extension-auth-recovery';
+import { } from './extension-auth-recovery';
 // Authentication manager
 export {
-  ExtensionAuthManager,
   getExtensionAuthManager,
   initializeExtensionAuthManager
-} from './extension-auth-manager';
+import { } from './extension-auth-manager';
 // Development authentication
 export {
-  DevelopmentAuthManager,
   getDevelopmentAuthManager,
   initializeDevelopmentAuthManager,
   resetDevelopmentAuthManager,
   isDevelopmentFeaturesEnabled
-} from './development-auth';
+import { } from './development-auth';
 // Hot reload authentication
 export {
-  HotReloadAuthManager,
   getHotReloadAuthManager,
   initializeHotReloadAuthManager,
   resetHotReloadAuthManager
-} from './hot-reload-auth';
+import { } from './hot-reload-auth';
 /**
  * Convenience function to handle extension authentication errors with full recovery
  */

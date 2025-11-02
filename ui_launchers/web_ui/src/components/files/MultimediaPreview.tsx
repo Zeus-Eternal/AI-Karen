@@ -1,29 +1,10 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { AgCharts } from 'ag-charts-react';
 import { AgChartOptions } from 'ag-charts-community';
-import { 
-  Image, 
-  Video, 
-  Music, 
-  FileText, 
-  Download, 
-  Maximize2, 
-  Play, 
-  Pause,
-  Volume2,
-  VolumeX,
-  RotateCw,
-  ZoomIn,
-  ZoomOut,
-  Eye,
-  Info,
-  Tag,
-  Clock,
-  HardDrive,
-  Shield
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -112,7 +93,7 @@ const formatDate = (dateString: string): string => {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    });
+
   } catch {
     return dateString;
   }
@@ -167,31 +148,30 @@ const ImagePreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Image className="h-5 w-5 sm:w-auto md:w-full" />
-              Image Preview
+              <Image className="h-5 w-5 " />
             </CardTitle>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setZoom(Math.max(0.5, zoom - 0.25))}
+                onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}
               >
-                <ZoomOut className="h-4 w-4 sm:w-auto md:w-full" />
+                <ZoomOut className="h-4 w-4 " />
               </Button>
               <span className="text-sm font-mono md:text-base lg:text-lg">{Math.round(zoom * 100)}%</span>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setZoom(Math.min(3, zoom + 0.25))}
+                onClick={() => setZoom(Math.min(3, zoom + 0.25))}
               >
-                <ZoomIn className="h-4 w-4 sm:w-auto md:w-full" />
+                <ZoomIn className="h-4 w-4 " />
               </Button>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setRotation((rotation + 90) % 360)}
+                onClick={() => setRotation((rotation + 90) % 360)}
               >
-                <RotateCw className="h-4 w-4 sm:w-auto md:w-full" />
+                <RotateCw className="h-4 w-4 " />
               </Button>
             </div>
           </div>
@@ -330,26 +310,25 @@ const AudioPreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Music className="h-5 w-5 sm:w-auto md:w-full" />
-            Audio Player
+            <Music className="h-5 w-5 " />
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setIsPlaying(!isPlaying)}
+                onClick={() => setIsPlaying(!isPlaying)}
               >
-                {isPlaying ? <Pause className="h-4 w-4 sm:w-auto md:w-full" /> : <Play className="h-4 w-4 sm:w-auto md:w-full" />}
+                {isPlaying ? <Pause className="h-4 w-4 " /> : <Play className="h-4 w-4 " />}
               </Button>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setIsMuted(!isMuted)}
+                onClick={() => setIsMuted(!isMuted)}
               >
-                {isMuted ? <VolumeX className="h-4 w-4 sm:w-auto md:w-full" /> : <Volume2 className="h-4 w-4 sm:w-auto md:w-full" />}
+                {isMuted ? <VolumeX className="h-4 w-4 " /> : <Volume2 className="h-4 w-4 " />}
               </Button>
               <div className="flex-1">
                 <Progress value={progress} className="h-2" />
@@ -480,8 +459,7 @@ const VideoPreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Video className="h-5 w-5 sm:w-auto md:w-full" />
-            Video Player
+            <Video className="h-5 w-5 " />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -515,7 +493,7 @@ const VideoPreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
                     {analysis.frame_analysis.map((frame, index) => (
                       <div key={index} className="space-y-2">
                         <div className="aspect-video bg-muted rounded flex items-center justify-center">
-                          <Video className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
+                          <Video className="h-8 w-8 text-muted-foreground " />
                         </div>
                         <div className="text-sm md:text-base lg:text-lg">
                           <p className="font-medium">Frame {index + 1}</p>
@@ -576,9 +554,8 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
         return (
           <Card>
             <CardContent className="p-8 text-center sm:p-4 md:p-6">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
               <p className="text-muted-foreground">
-                Preview not available for this file type
               </p>
             </CardContent>
           </Card>
@@ -594,21 +571,21 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2">
-                <Eye className="h-5 w-5 sm:w-auto md:w-full" />
+                <Eye className="h-5 w-5 " />
                 {file.filename}
               </CardTitle>
               <div className="flex items-center gap-4 text-sm text-muted-foreground md:text-base lg:text-lg">
                 <span className="flex items-center gap-1">
-                  <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />
+                  <HardDrive className="h-4 w-4 " />
                   {formatFileSize(file.file_size)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Clock className="h-4 w-4 sm:w-auto md:w-full" />
+                  <Clock className="h-4 w-4 " />
                   {formatDate(file.upload_timestamp)}
                 </span>
                 {file.security_scan_result && (
                   <span className="flex items-center gap-1">
-                    <Shield className="h-4 w-4 sm:w-auto md:w-full" />
+                    <Shield className="h-4 w-4 " />
                     <Badge 
                       variant="secondary"
                       className={cn(
@@ -626,13 +603,13 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
             
             <div className="flex items-center gap-2">
               {onFullscreen && (
-                <button variant="outline" size="sm" onClick={() = aria-label="Button"> onFullscreen(file.file_id)}>
-                  <Maximize2 className="h-4 w-4 sm:w-auto md:w-full" />
+                <Button variant="outline" size="sm" onClick={() => onFullscreen(file.file_id)}>
+                  <Maximize2 className="h-4 w-4 " />
                 </Button>
               )}
               {onDownload && (
-                <button variant="outline" size="sm" onClick={() = aria-label="Button"> onDownload(file.file_id)}>
-                  <Download className="h-4 w-4 sm:w-auto md:w-full" />
+                <Button variant="outline" size="sm" onClick={() => onDownload(file.file_id)}>
+                  <Download className="h-4 w-4 " />
                 </Button>
               )}
             </div>
@@ -645,7 +622,7 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Tag className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Tag className="h-4 w-4 text-muted-foreground " />
               <span className="text-sm font-medium md:text-base lg:text-lg">Tags:</span>
               <div className="flex flex-wrap gap-1">
                 {file.tags.map((tag, index) => (
@@ -664,7 +641,7 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
         <Card className="border-yellow-200 bg-yellow-50">
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2 text-yellow-800">
-              <Shield className="h-4 w-4 sm:w-auto md:w-full" />
+              <Shield className="h-4 w-4 " />
               <span className="font-medium">Content Warning</span>
             </div>
             <p className="text-sm text-yellow-700 mt-1 md:text-base lg:text-lg">
@@ -692,8 +669,7 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Info className="h-5 w-5 sm:w-auto md:w-full" />
-            File Information
+            <Info className="h-5 w-5 " />
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -5,10 +5,7 @@
 import { safeError, safeLog } from "@/lib/safe-console";
 import { MemoryCache, CacheKeyGenerator } from "./utils/cache-utils";
 import { formatMemorySize } from "./utils/resource-utils";
-import {
-  ModelSelectionError,
-  ErrorUtils,
-} from "./errors/model-selection-errors";
+import { ModelSelectionError, ErrorUtils } from "./errors/model-selection-errors";
 
 export abstract class BaseModelService {
   // Cache duration constants
@@ -196,7 +193,6 @@ export abstract class BaseModelService {
           )
         );
       }, timeoutMs);
-    });
 
     return Promise.race([operation, timeoutPromise]);
   }
@@ -288,7 +284,6 @@ export abstract class BaseModelService {
         this.cache.delete(key);
         invalidated++;
       }
-    });
 
     return invalidated;
   }
@@ -399,7 +394,6 @@ export abstract class BaseModelService {
     for (const item of items) {
       const promise = operation(item).then((result) => {
         results.push(result);
-      });
 
       executing.push(promise);
 
@@ -434,7 +428,7 @@ export abstract class BaseModelService {
     return operation().catch((error) => {
       this.handleError(error, operationName || "Safe async operation");
       return fallback;
-    });
+
   }
 
   /**
@@ -508,7 +502,7 @@ export abstract class BaseModelService {
         }
 
         throw error;
-      });
+
     }) as T;
   }
 
@@ -538,11 +532,11 @@ export abstract class BaseModelService {
         const results = await batchOperation(items);
         batch.forEach((entry, index) => {
           entry.resolve(results[index]);
-        });
+
       } catch (error) {
         batch.forEach((entry) => {
           entry.reject(error);
-        });
+
       }
     };
 
@@ -564,7 +558,7 @@ export abstract class BaseModelService {
             processBatch();
           }, maxWaitMs);
         }
-      });
+
     };
   }
 
@@ -595,7 +589,6 @@ export abstract class BaseModelService {
         })
         .catch(() => {
           // Don't cache errors
-        });
 
       return promise;
     }) as T;

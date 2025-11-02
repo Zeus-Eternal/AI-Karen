@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ChartWidget from '../ChartWidget';
@@ -8,7 +9,6 @@ import type { WidgetConfig, ChartData } from '@/types/dashboard';
 vi.mock('ag-charts-react', () => ({
   AgCharts: ({ options }: any) => (
     <div data-testid="ag-charts" data-options={JSON.stringify(options)}>
-      Mock Chart
     </div>
   ),
 }));
@@ -90,14 +90,12 @@ describe('ChartWidget', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders chart widget with data', () => {
     render(<ChartWidget {...mockProps} />);
     
     expect(screen.getByTestId('ag-charts')).toBeInTheDocument();
     expect(screen.getByText('Mock Chart')).toBeInTheDocument();
-  });
 
   it('displays chart controls', () => {
     render(<ChartWidget {...mockProps} />);
@@ -110,14 +108,12 @@ describe('ChartWidget', () => {
     expect(zoomInButton).toBeInTheDocument();
     expect(zoomOutButton).toBeInTheDocument();
     expect(resetZoomButton).toBeInTheDocument();
-  });
 
   it('displays chart summary information', () => {
     render(<ChartWidget {...mockProps} />);
     
     expect(screen.getByText('2 series, 3 points')).toBeInTheDocument();
     expect(screen.getByText('Time Series')).toBeInTheDocument();
-  });
 
   it('handles zoom controls', () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -138,7 +134,6 @@ describe('ChartWidget', () => {
     expect(consoleSpy).toHaveBeenCalledWith('Reset zoom');
     
     consoleSpy.mockRestore();
-  });
 
   it('configures AG Charts options correctly', () => {
     render(<ChartWidget {...mockProps} />);
@@ -151,7 +146,6 @@ describe('ChartWidget', () => {
     expect(optionsData.axes).toHaveLength(2); // x and y axes
     expect(optionsData.legend.enabled).toBe(true);
     expect(optionsData.zoom.enabled).toBe(true);
-  });
 
   it('handles different chart types', () => {
     const barChartData = {
@@ -173,7 +167,6 @@ describe('ChartWidget', () => {
     const optionsData = JSON.parse(chartElement.getAttribute('data-options') || '{}');
     
     expect(optionsData.series[0].type).toBe('bar');
-  });
 
   it('handles area chart type', () => {
     const areaChartData = {
@@ -196,7 +189,6 @@ describe('ChartWidget', () => {
     
     expect(optionsData.series[0].type).toBe('area');
     expect(optionsData.series[0].fillOpacity).toBe(0.3);
-  });
 
   it('configures time axis correctly', () => {
     render(<ChartWidget {...mockProps} />);
@@ -207,7 +199,6 @@ describe('ChartWidget', () => {
     const xAxis = optionsData.axes.find((axis: any) => axis.position === 'bottom');
     expect(xAxis.type).toBe('time');
     expect(xAxis.title.text).toBe('Time');
-  });
 
   it('configures y-axis with min/max values', () => {
     render(<ChartWidget {...mockProps} />);
@@ -220,7 +211,6 @@ describe('ChartWidget', () => {
     expect(yAxis.title.text).toBe('Usage (%)');
     expect(yAxis.min).toBe(0);
     expect(yAxis.max).toBe(100);
-  });
 
   it('shows legend when multiple series', () => {
     render(<ChartWidget {...mockProps} />);
@@ -229,7 +219,6 @@ describe('ChartWidget', () => {
     const optionsData = JSON.parse(chartElement.getAttribute('data-options') || '{}');
     
     expect(optionsData.legend.enabled).toBe(true);
-  });
 
   it('hides legend for single series', () => {
     const singleSeriesData = {
@@ -246,13 +235,11 @@ describe('ChartWidget', () => {
     const optionsData = JSON.parse(chartElement.getAttribute('data-options') || '{}');
     
     expect(optionsData.legend.enabled).toBe(false);
-  });
 
   it('shows no data message when data is not available', () => {
     render(<ChartWidget {...mockProps} data={undefined} />);
     
     expect(screen.getByText('No chart data available')).toBeInTheDocument();
-  });
 
   it('handles empty data gracefully', () => {
     const emptyData = {
@@ -271,7 +258,6 @@ describe('ChartWidget', () => {
     
     expect(optionsData.data).toEqual([]);
     expect(optionsData.series).toEqual([]);
-  });
 
   it('displays correct summary for non-time series', () => {
     const categoryData = {
@@ -288,12 +274,10 @@ describe('ChartWidget', () => {
     render(<ChartWidget {...mockProps} data={categoryData} />);
     
     expect(screen.getByText('Data Series')).toBeInTheDocument();
-  });
 
   it('passes props correctly to WidgetBase', () => {
     render(<ChartWidget {...mockProps} />);
     
     const widgetBase = screen.getByTestId('widget-base');
     expect(widgetBase).toBeInTheDocument();
-  });
-});
+

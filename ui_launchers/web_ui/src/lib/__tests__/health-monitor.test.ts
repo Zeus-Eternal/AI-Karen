@@ -11,7 +11,6 @@ describe('HealthMonitor', () => {
     expect(metrics.failedRequests).toBe(1);
     expect(metrics.successfulRequests).toBe(0);
     expect(metrics.errorRate).toBe(1);
-  });
 
   it('aborts request on timeout', async () => {
     const monitor = new HealthMonitor();
@@ -22,14 +21,13 @@ describe('HealthMonitor', () => {
       new Promise(() => {
         signal.addEventListener('abort', () => {
           aborted = true;
-        });
+
       })
     );
     const metrics = monitor.getMetrics();
     expect(aborted).toBe(true);
     expect(metrics.failedRequests).toBe(1);
     webUIConfig.healthCheckTimeout = originalTimeout;
-  });
 
   it('summarizes large payloads', async () => {
     const monitor = new HealthMonitor();
@@ -37,7 +35,6 @@ describe('HealthMonitor', () => {
     await (monitor as any).checkEndpoint('/big', async (_signal: AbortSignal) => largeArray);
     const details = (monitor.getMetrics().endpoints['/big'] as any).details;
     expect(details).toEqual({ length: 1000 });
-  });
 
   it('generates unique alert ids', () => {
     const monitor = new HealthMonitor();
@@ -46,5 +43,4 @@ describe('HealthMonitor', () => {
     (monitor as any).triggerAlert(rule);
     const [first, second] = monitor.getAlerts(2);
     expect(first.id).not.toBe(second.id);
-  });
-});
+

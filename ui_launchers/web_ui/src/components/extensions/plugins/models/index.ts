@@ -1,2 +1,2 @@
 // Plugin model components
-export { default as LLMModelConfigPanel } from '../LLMModelConfigPanel';
+import { export { default as LLMModelConfigPanel } from '../LLMModelConfigPanel';

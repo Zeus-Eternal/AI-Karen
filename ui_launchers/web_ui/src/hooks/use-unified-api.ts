@@ -12,15 +12,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  getUnifiedApiClient,
-  type CopilotAssistRequest,
-  type CopilotAssistResponse,
-  type MemorySearchRequest,
-  type MemorySearchResponse,
-  type MemoryCommitRequest,
-  type MemoryCommitResponse
-} from '@/lib/unified-api-client';
+import {  getUnifiedApiClient, type CopilotAssistRequest, type CopilotAssistResponse, type MemorySearchRequest, type MemorySearchResponse, type MemoryCommitRequest, type MemoryCommitResponse } from '@/lib/unified-api-client';
 
 interface UseUnifiedApiOptions {
   autoToast?: boolean;
@@ -113,7 +105,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       data,
       timestamp: Date.now(),
       key
-    });
+
   }, [enableCaching]);
 
   // Handle API request with caching and deduplication
@@ -165,7 +157,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
           title: 'API Error',
           description: error.message,
           duration: 5000
-        });
+
       }
       
       if (onError) {
@@ -387,6 +379,4 @@ export function useMemoryApi(options?: UseUnifiedApiOptions) {
 
 // Export types
 export type {
-  UseUnifiedApiOptions,
-  UseUnifiedApiReturn
 };

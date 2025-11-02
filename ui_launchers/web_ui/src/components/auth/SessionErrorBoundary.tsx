@@ -6,7 +6,8 @@
  * 
  * Requirements: 5.2, 5.3, 5.5
  */
-'use client';
+"use client";
+
 import React, { Component, ReactNode } from 'react';
 import { AlertCircle, RefreshCw, LogIn } from 'lucide-react';
 import { clearSession } from '@/lib/auth/session';
@@ -20,8 +21,6 @@ interface SessionErrorBoundaryState {
   error: Error | null;
 }
 export class SessionErrorBoundary extends Component<
-  SessionErrorBoundaryProps,
-  SessionErrorBoundaryState
 > {
   constructor(props: SessionErrorBoundaryProps) {
     super(props);
@@ -61,7 +60,7 @@ export class SessionErrorBoundary extends Component<
     this.setState({
       hasError: false,
       error: null,
-    });
+
   };
   private handleLogin = () => {
     if (typeof window !== 'undefined') {
@@ -83,7 +82,7 @@ export class SessionErrorBoundary extends Component<
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-6 max-w-md mx-auto p-6 sm:p-4 md:p-6">
-          <AlertCircle className="h-16 w-16 mx-auto text-red-500 sm:w-auto md:w-full" />
+          <AlertCircle className="h-16 w-16 mx-auto text-red-500 " />
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">
               {isAuthError ? 'Authentication Error' : 'Something went wrong'}
@@ -96,7 +95,6 @@ export class SessionErrorBoundary extends Component<
             </p>
             <details className="text-left">
               <summary className="text-sm text-muted-foreground cursor-pointer hover:text-foreground md:text-base lg:text-lg">
-                Technical details
               </summary>
               <pre className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded overflow-auto sm:text-sm md:text-base">
                 {this.state.error!.message}
@@ -109,16 +107,14 @@ export class SessionErrorBoundary extends Component<
                 onClick={this.handleLogin}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                aria-label="Button">
-                <LogIn className="h-4 w-4 sm:w-auto md:w-full" />
-                Go to Login
+                <LogIn className="h-4 w-4 " />
               </button>
             ) : (
               <button
                 onClick={this.handleRetry}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                aria-label="Button">
-                <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
-                Try Again
+                <RefreshCw className="h-4 w-4 " />
               </button>
             )}
           </div>

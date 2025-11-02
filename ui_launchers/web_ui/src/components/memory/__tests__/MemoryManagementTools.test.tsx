@@ -105,7 +105,7 @@ vi.mock('@/components/ui/checkbox', () => ({
       data-testid="checkbox"
       type="checkbox"
       checked={checked}
-      onChange={(e) = aria-label="Input"> onCheckedChange(e.target.checked)}
+      onChange={(e) => onCheckedChange(e.target.checked)}
     />
   )
 }));
@@ -133,7 +133,7 @@ vi.mock('@/components/ui/tabs', () => ({
     <button 
       data-testid="tab-trigger" 
       data-value={value}
-      onClick={() = aria-label="Button"> onValueChange?.(value)}
+      onClick={() => onValueChange?.(value)}
     >
       {children}
     </button>
@@ -200,16 +200,13 @@ describe('MemoryManagementTools', () => {
       memories: mockMemories,
       totalFound: mockMemories.length,
       searchTime: 50
-    });
 
     // Mock window.prompt and window.confirm
     vi.spyOn(window, 'prompt').mockImplementation(() => 'Test Name');
     vi.spyOn(window, 'confirm').mockImplementation(() => true);
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('Component Rendering', () => {
     it('renders when isOpen is true', () => {
@@ -221,19 +218,16 @@ describe('MemoryManagementTools', () => {
       expect(screen.getByText('Validation')).toBeInTheDocument();
       expect(screen.getByText('Backup & Restore')).toBeInTheDocument();
       expect(screen.getByText('Settings')).toBeInTheDocument();
-    });
 
     it('does not render when isOpen is false', () => {
       render(<MemoryManagementTools {...defaultProps} isOpen={false} />);
       
       expect(screen.queryByText('Edit Memory')).not.toBeInTheDocument();
-    });
 
     it('renders with correct title for new memory', () => {
       render(<MemoryManagementTools {...defaultProps} memory={undefined} />);
       
       expect(screen.getByText('Memory Management Tools')).toBeInTheDocument();
-    });
 
     it('displays error message when present', () => {
       mockMemoryService.searchMemories.mockRejectedValue(new Error('Test error'));
@@ -243,9 +237,8 @@ describe('MemoryManagementTools', () => {
       waitFor(() => {
         expect(screen.getByText('Test error')).toBeInTheDocument();
         expect(screen.getByTestId('alert-icon')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Editor Tab', () => {
     it('initializes form with memory data', () => {
@@ -256,7 +249,6 @@ describe('MemoryManagementTools', () => {
       
       const typeSelect = screen.getByDisplayValue('Fact');
       expect(typeSelect).toBeInTheDocument();
-    });
 
     it('updates form fields correctly', async () => {
       const user = userEvent.setup();
@@ -267,7 +259,6 @@ describe('MemoryManagementTools', () => {
       await user.type(contentTextarea, 'Updated content');
       
       expect(contentTextarea).toHaveValue('Updated content');
-    });
 
     it('updates confidence slider', async () => {
       const user = userEvent.setup();
@@ -277,7 +268,6 @@ describe('MemoryManagementTools', () => {
       fireEvent.change(confidenceSlider, { target: { value: '0.5' } });
       
       expect(confidenceSlider).toHaveValue('0.5');
-    });
 
     it('updates tags input', async () => {
       const user = userEvent.setup();
@@ -288,7 +278,6 @@ describe('MemoryManagementTools', () => {
       await user.type(tagsInput, 'new, tags, here');
       
       expect(tagsInput).toHaveValue('new, tags, here');
-    });
 
     it('calls onSave when save button is clicked', async () => {
       const user = userEvent.setup();
@@ -304,7 +293,6 @@ describe('MemoryManagementTools', () => {
           confidence: 0.9
         })
       );
-    });
 
     it('calls onDelete when delete button is clicked', async () => {
       const user = userEvent.setup();
@@ -314,7 +302,6 @@ describe('MemoryManagementTools', () => {
       await user.click(deleteButton);
       
       expect(defaultProps.onDelete).toHaveBeenCalledWith('1');
-    });
 
     it('calls onCancel when cancel button is clicked', async () => {
       const user = userEvent.setup();
@@ -324,8 +311,7 @@ describe('MemoryManagementTools', () => {
       await user.click(cancelButton);
       
       expect(defaultProps.onCancel).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Batch Operations Tab', () => {
     it('loads memories on tab open', async () => {
@@ -337,8 +323,7 @@ describe('MemoryManagementTools', () => {
       
       await waitFor(() => {
         expect(mockMemoryService.searchMemories).toHaveBeenCalled();
-      });
-    });
+
 
     it('displays memory list for batch operations', async () => {
       const user = userEvent.setup();
@@ -350,8 +335,7 @@ describe('MemoryManagementTools', () => {
       await waitFor(() => {
         expect(screen.getByText('Test memory content 1')).toBeInTheDocument();
         expect(screen.getByText('Test memory content 2')).toBeInTheDocument();
-      });
-    });
+
 
     it('selects and deselects memories', async () => {
       const user = userEvent.setup();
@@ -363,13 +347,11 @@ describe('MemoryManagementTools', () => {
       await waitFor(() => {
         const checkboxes = screen.getAllByTestId('checkbox');
         expect(checkboxes.length).toBeGreaterThan(0);
-      });
 
       const firstCheckbox = screen.getAllByTestId('checkbox')[1]; // Skip select all checkbox
       await user.click(firstCheckbox);
       
       expect(firstCheckbox).toBeChecked();
-    });
 
     it('selects all memories with select all checkbox', async () => {
       const user = userEvent.setup();
@@ -385,9 +367,8 @@ describe('MemoryManagementTools', () => {
         const checkboxes = screen.getAllByTestId('checkbox');
         checkboxes.forEach(checkbox => {
           expect(checkbox).toBeChecked();
-        });
-      });
-    });
+
+
 
     it('filters memories based on search query', async () => {
       const user = userEvent.setup();
@@ -399,14 +380,12 @@ describe('MemoryManagementTools', () => {
       await waitFor(() => {
         const searchInput = screen.getByPlaceholderText('Search memories...');
         expect(searchInput).toBeInTheDocument();
-      });
 
       const searchInput = screen.getByPlaceholderText('Search memories...');
       await user.type(searchInput, 'content 1');
       
       // Should filter the displayed memories
       expect(searchInput).toHaveValue('content 1');
-    });
 
     it('enables batch operation buttons when memories are selected', async () => {
       const user = userEvent.setup();
@@ -426,9 +405,8 @@ describe('MemoryManagementTools', () => {
         expect(addTagsButton).not.toBeDisabled();
         expect(changeClusterButton).not.toBeDisabled();
         expect(deleteButton).not.toBeDisabled();
-      });
-    });
-  });
+
+
 
   describe('Validation Tab', () => {
     it('displays validation settings', async () => {
@@ -442,7 +420,6 @@ describe('MemoryManagementTools', () => {
       expect(screen.getByText('Validation Settings')).toBeInTheDocument();
       expect(screen.getByText('Check for duplicates')).toBeInTheDocument();
       expect(screen.getByText('Check for inconsistencies')).toBeInTheDocument();
-    });
 
     it('runs validation when button is clicked', async () => {
       const user = userEvent.setup();
@@ -456,8 +433,7 @@ describe('MemoryManagementTools', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Validating...')).toBeInTheDocument();
-      });
-    });
+
 
     it('updates validation settings', async () => {
       const user = userEvent.setup();
@@ -471,7 +447,6 @@ describe('MemoryManagementTools', () => {
       
       // Checkbox state should toggle
       expect(duplicatesCheckbox).not.toBeChecked();
-    });
 
     it('displays validation results', async () => {
       const user = userEvent.setup();
@@ -485,9 +460,8 @@ describe('MemoryManagementTools', () => {
       
       await waitFor(() => {
         expect(screen.getByText(/Validation Results/)).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Backup & Restore Tab', () => {
     it('displays backup list', async () => {
@@ -500,8 +474,7 @@ describe('MemoryManagementTools', () => {
       await waitFor(() => {
         expect(screen.getByText('Daily Backup - 2024-01-15')).toBeInTheDocument();
         expect(screen.getByText('Manual Backup - Before Cleanup')).toBeInTheDocument();
-      });
-    });
+
 
     it('creates backup when button is clicked', async () => {
       const user = userEvent.setup();
@@ -514,7 +487,6 @@ describe('MemoryManagementTools', () => {
       await user.click(createBackupButton);
       
       expect(window.prompt).toHaveBeenCalledWith('Enter backup name:');
-    });
 
     it('restores backup when restore button is clicked', async () => {
       const user = userEvent.setup();
@@ -526,14 +498,12 @@ describe('MemoryManagementTools', () => {
       await waitFor(() => {
         const restoreButtons = screen.getAllByText('Restore');
         expect(restoreButtons.length).toBeGreaterThan(0);
-      });
 
       const restoreButton = screen.getAllByText('Restore')[0];
       await user.click(restoreButton);
       
       expect(window.confirm).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Settings Tab', () => {
     it('displays management settings', async () => {
@@ -546,7 +516,6 @@ describe('MemoryManagementTools', () => {
       expect(screen.getByText('Management Settings')).toBeInTheDocument();
       expect(screen.getByText('Validation Thresholds')).toBeInTheDocument();
       expect(screen.getByText('Batch Operation Settings')).toBeInTheDocument();
-    });
 
     it('updates confidence threshold', async () => {
       const user = userEvent.setup();
@@ -559,7 +528,6 @@ describe('MemoryManagementTools', () => {
       fireEvent.change(confidenceSlider, { target: { value: '0.5' } });
       
       expect(confidenceSlider).toHaveValue('0.5');
-    });
 
     it('updates max content length', async () => {
       const user = userEvent.setup();
@@ -573,8 +541,7 @@ describe('MemoryManagementTools', () => {
       await user.type(maxLengthInput, '5000');
       
       expect(maxLengthInput).toHaveValue('5000');
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('displays error when memory loading fails', async () => {
@@ -584,8 +551,7 @@ describe('MemoryManagementTools', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Loading failed')).toBeInTheDocument();
-      });
-    });
+
 
     it('handles save errors gracefully', async () => {
       const onSave = vi.fn().mockRejectedValue(new Error('Save failed'));
@@ -598,8 +564,7 @@ describe('MemoryManagementTools', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Save failed')).toBeInTheDocument();
-      });
-    });
+
 
     it('handles validation errors', async () => {
       const user = userEvent.setup();
@@ -614,8 +579,7 @@ describe('MemoryManagementTools', () => {
       
       // Should handle validation process
       expect(runValidationButton).toBeInTheDocument();
-    });
-  });
+
 
   describe('Loading States', () => {
     it('shows loading state during save', async () => {
@@ -628,7 +592,6 @@ describe('MemoryManagementTools', () => {
       await user.click(saveButton);
       
       expect(screen.getByText('Saving...')).toBeInTheDocument();
-    });
 
     it('shows loading state during validation', async () => {
       const user = userEvent.setup();
@@ -641,7 +604,6 @@ describe('MemoryManagementTools', () => {
       await user.click(runValidationButton);
       
       expect(screen.getByText('Validating...')).toBeInTheDocument();
-    });
 
     it('shows loading state during batch operations', async () => {
       const user = userEvent.setup();
@@ -659,9 +621,8 @@ describe('MemoryManagementTools', () => {
         
         // Should show confirmation dialog
         expect(screen.getByText('Confirm Batch Operation')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Accessibility', () => {
     it('supports keyboard navigation', async () => {
@@ -672,14 +633,12 @@ describe('MemoryManagementTools', () => {
       await user.tab();
       const firstFocusable = document.activeElement;
       expect(firstFocusable).toBeInTheDocument();
-    });
 
     it('has proper ARIA labels', () => {
       render(<MemoryManagementTools {...defaultProps} />);
       
       const dialog = screen.getByRole('dialog', { hidden: true });
       expect(dialog).toBeInTheDocument();
-    });
 
     it('supports screen readers', () => {
       render(<MemoryManagementTools {...defaultProps} />);
@@ -690,8 +649,7 @@ describe('MemoryManagementTools', () => {
       
       const typeLabel = screen.getByText('Type');
       expect(typeLabel).toBeInTheDocument();
-    });
-  });
+
 
   describe('Data Validation', () => {
     it('prevents saving empty content', async () => {
@@ -700,7 +658,6 @@ describe('MemoryManagementTools', () => {
       
       const saveButton = screen.getByText('Save Memory');
       expect(saveButton).toBeDisabled();
-    });
 
     it('validates form inputs', async () => {
       const user = userEvent.setup();
@@ -711,7 +668,6 @@ describe('MemoryManagementTools', () => {
       
       const saveButton = screen.getByText('Save Memory');
       expect(saveButton).toBeDisabled();
-    });
 
     it('handles invalid confidence values', async () => {
       const user = userEvent.setup();
@@ -722,6 +678,5 @@ describe('MemoryManagementTools', () => {
       
       // Should clamp to valid range
       expect(parseFloat(confidenceSlider.value)).toBeLessThanOrEqual(1);
-    });
-  });
-});
+
+

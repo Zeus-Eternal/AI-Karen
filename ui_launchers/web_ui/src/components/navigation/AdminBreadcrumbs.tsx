@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React from 'react';
 import Link from 'next/link';
@@ -53,7 +53,7 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
         label: 'Home',
         href: '/',
         icon: Home,
-      });
+
     }
 
     // Build breadcrumbs from path segments
@@ -69,7 +69,7 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
           href: isLast ? undefined : currentPath,
           icon: routeInfo.icon,
           isActive: isLast,
-        });
+
       } else {
         // Fallback for unmapped routes
         const label = segment
@@ -81,9 +81,8 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
           label,
           href: isLast ? undefined : currentPath,
           isActive: isLast,
-        });
+
       }
-    });
 
     return breadcrumbs;
   };
@@ -108,7 +107,7 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
           return (
             <li key={index} className="flex items-center">
               {index > 0 && (
-                <ChevronRight className="h-4 w-4 mx-1 text-muted-foreground/50 sm:w-auto md:w-full" />
+                <ChevronRight className="h-4 w-4 mx-1 text-muted-foreground/50 " />
               )}
               
               {item.href ? (
@@ -116,7 +115,7 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
                   href={item.href}
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
                 >
-                  {Icon && <Icon className="h-4 w-4 sm:w-auto md:w-full" />}
+                  {Icon && <Icon className="h-4 w-4 " />}
                   <span>{item.label}</span>
                 </Link>
               ) : (
@@ -127,7 +126,7 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
                   )}
                   aria-current={item.isActive ? 'page' : undefined}
                 >
-                  {Icon && <Icon className="h-4 w-4 sm:w-auto md:w-full" />}
+                  {Icon && <Icon className="h-4 w-4 " />}
                   <span>{item.label}</span>
                 </span>
               )}

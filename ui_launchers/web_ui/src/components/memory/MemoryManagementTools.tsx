@@ -9,36 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Edit3, 
-  Trash2, 
-  Copy, 
-  Download, 
-  Upload, 
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-  Search,
-  Filter,
-  Archive,
-  FileText,
-  Settings,
-  Database,
-  Shield,
-  Zap
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getMemoryService } from '@/services/memoryService';
-import type { 
-  MemoryEntry,
-  MemoryValidationResult,
-  ValidationIssue,
-  MemoryBatchOperation,
-  MemoryBatchResult,
-  MemoryBackup,
-  MemoryRestoreOptions,
-  MemoryEditorProps
-} from '@/types/memory';
+import type {  MemoryEntry, MemoryValidationResult, ValidationIssue, MemoryBatchOperation, MemoryBatchResult, MemoryBackup, MemoryRestoreOptions, MemoryEditorProps } from '@/types/memory';
 interface BatchOperationConfig {
   type: 'delete' | 'update' | 'merge' | 'tag' | 'cluster';
   parameters: Record<string, any>;
@@ -80,14 +54,14 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
     checkOrphaned: true,
     minConfidenceThreshold: 0.3,
     maxContentLength: 10000
-  });
+
   const [editForm, setEditForm] = useState({
     content: '',
     type: 'context' as 'fact' | 'preference' | 'context',
     confidence: 0.8,
     tags: [] as string[],
     cluster: 'general'
-  });
+
   const memoryService = useMemo(() => getMemoryService(), []);
   // Initialize form when memory changes
   useEffect(() => {
@@ -98,7 +72,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
         confidence: memory.confidence || 0.8,
         tags: memory.tags || [],
         cluster: memory.metadata?.cluster || 'general'
-      });
+
     } else {
       setEditForm({
         content: '',
@@ -106,7 +80,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
         confidence: 0.8,
         tags: [],
         cluster: 'general'
-      });
+
     }
   }, [memory]);
   // Load memories for batch operations
@@ -117,7 +91,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
       const result = await memoryService.searchMemories('', {
         userId,
         maxResults: 100
-      });
+
       setMemories(result.memories);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load memories';
@@ -184,7 +158,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
             contentMap.set(normalizedContent, []);
           }
           contentMap.get(normalizedContent)!.push(memory.id);
-        });
+
         contentMap.forEach((ids, content) => {
           if (ids.length > 1) {
             issues.push({
@@ -193,9 +167,9 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
               description: `Found ${ids.length} memories with identical content`,
               affectedMemories: ids,
               suggestedAction: 'Merge duplicate memories or remove redundant ones'
-            });
+
           }
-        });
+
       }
       // Check for low quality memories
       if (validationConfig.checkLowQuality) {
@@ -207,7 +181,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
               description: `Memory has low confidence score: ${((memory.confidence || 0) * 100).toFixed(0)}%`,
               affectedMemories: [memory.id],
               suggestedAction: 'Review and improve memory content or remove if not useful'
-            });
+
           }
           if (memory.content.length > validationConfig.maxContentLength) {
             issues.push({
@@ -216,9 +190,9 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
               description: `Memory content is too long: ${memory.content.length} characters`,
               affectedMemories: [memory.id],
               suggestedAction: 'Split into smaller memories or summarize content'
-            });
+
           }
-        });
+
       }
       // Check for inconsistencies
       if (validationConfig.checkInconsistencies) {
@@ -230,7 +204,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
               description: 'Memory has no tags',
               affectedMemories: [memory.id],
               suggestedAction: 'Add relevant tags to improve searchability'
-            });
+
           }
           if (!memory.type) {
             issues.push({
@@ -239,9 +213,9 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
               description: 'Memory has no type classification',
               affectedMemories: [memory.id],
               suggestedAction: 'Classify memory as fact, preference, or context'
-            });
+
           }
-        });
+
       }
       // Check for orphaned memories
       if (validationConfig.checkOrphaned) {
@@ -253,9 +227,9 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
               description: 'Memory has no relationships to other memories',
               affectedMemories: [memory.id],
               suggestedAction: 'Consider linking to related memories or removing if isolated'
-            });
+
           }
-        });
+
       }
       const validationResult: MemoryValidationResult = {
         isValid: issues.length === 0,
@@ -411,19 +385,19 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden sm:w-auto md:w-full">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden ">
         <div className="flex items-center justify-between p-6 border-b sm:p-4 md:p-6">
           <h2 className="text-xl font-semibold">
             {memory ? 'Edit Memory' : 'Memory Management Tools'}
           </h2>
-          <button variant="ghost" onClick={onCancel} aria-label="Button">
-            <XCircle className="w-5 h-5 sm:w-auto md:w-full" />
+          <Button variant="ghost" onClick={onCancel} >
+            <XCircle className="w-5 h-5 " />
           </Button>
         </div>
         {error && (
           <div className="p-4 bg-red-50 border-b border-red-200 sm:p-4 md:p-6">
             <div className="flex items-center space-x-2 text-red-700">
-              <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
+              <AlertTriangle className="w-4 h-4 " />
               <span>{error}</span>
             </div>
           </div>
@@ -444,7 +418,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                     <label className="block text-sm font-medium mb-2 md:text-base lg:text-lg">Content</label>
                     <textarea
                       value={editForm.content}
-                      onChange={(e) = aria-label="Textarea"> setEditForm(prev => ({ ...prev, content: e.target.value }))}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, content: e.target.value }))}
                       placeholder="Enter memory content..."
                       className="w-full h-32 p-3 border rounded-md resize-vertical sm:p-4 md:p-6"
                     />
@@ -454,7 +428,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                       <label className="block text-sm font-medium mb-2 md:text-base lg:text-lg">Type</label>
                       <select
                         value={editForm.type}
-                        onChange={(e) = aria-label="Select option"> setEditForm(prev => ({ 
+                        onChange={(e) => setEditForm(prev => ({ 
                           ...prev, 
                           type: e.target.value as any 
                         }))}
@@ -469,7 +443,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                       <label className="block text-sm font-medium mb-2 md:text-base lg:text-lg">Cluster</label>
                       <select
                         value={editForm.cluster}
-                        onChange={(e) = aria-label="Select option"> setEditForm(prev => ({ ...prev, cluster: e.target.value }))}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, cluster: e.target.value }))}
                         className="w-full p-2 border rounded-md sm:p-4 md:p-6"
                       >
                         <option value="technical">Technical</option>
@@ -489,7 +463,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                       max="1"
                       step="0.1"
                       value={editForm.confidence}
-                      onChange={(e) = aria-label="Input"> setEditForm(prev => ({ 
+                      onChange={(e) => setEditForm(prev => ({ 
                         ...prev, 
                         confidence: parseFloat(e.target.value) 
                       }))}
@@ -502,7 +476,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                       type="text"
                       placeholder="Enter tags separated by commas"
                       value={editForm.tags.join(', ')}
-                      onChange={(e) = aria-label="Input"> setEditForm(prev => ({ 
+                      onChange={(e) => setEditForm(prev => ({ 
                         ...prev, 
                         tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
                       }))}
@@ -530,24 +504,22 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                   <Card className="p-4 sm:p-4 md:p-6">
                     <h3 className="font-medium mb-3">Actions</h3>
                     <div className="space-y-2">
-                      <button 
+                      <Button 
                         onClick={handleSave} 
                         disabled={loading || !editForm.content.trim()}
                         className="w-full"
-                       aria-label="Button">
+                       >
                         {loading ? 'Saving...' : 'Save Memory'}
                       </Button>
                       {memory && onDelete && (
-                        <button 
+                        <Button 
                           variant="destructive" 
-                          onClick={() = aria-label="Button"> onDelete(memory.id)}
+                          onClick={() => onDelete(memory.id)}
                           className="w-full"
                         >
-                          Delete Memory
                         </Button>
                       )}
-                      <button variant="outline" onClick={onCancel} className="w-full" aria-label="Button">
-                        Cancel
+                      <Button variant="outline" onClick={onCancel} className="w-full" >
                       </Button>
                     </div>
                   </Card>
@@ -562,11 +534,11 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                     type="text"
                     placeholder="Search memories..."
                     value={searchQuery}
-                    onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
-                    className="w-64 sm:w-auto md:w-full"
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-64 "
                   />
-                  <button onClick={loadMemories} variant="outline" size="sm" aria-label="Button">
-                    <RefreshCw className="w-4 h-4 sm:w-auto md:w-full" />
+                  <Button onClick={loadMemories} variant="outline" size="sm" >
+                    <RefreshCw className="w-4 h-4 " />
                   </Button>
                 </div>
               </div>
@@ -587,44 +559,41 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                   </span>
                 </div>
                 <div className="flex space-x-2">
-                  <button
+                  <Button
                     size="sm"
                     variant="outline"
                     disabled={selectedMemories.size === 0}
-                    onClick={() = aria-label="Button"> setBatchOperation({
+                    onClick={() => setBatchOperation({
                       type: 'tag',
                       parameters: { tags: ['batch-tagged'] },
                       confirmationRequired: false
                     })}
                   >
-                    Add Tags
                   </Button>
-                  <button
+                  <Button
                     size="sm"
                     variant="outline"
                     disabled={selectedMemories.size === 0}
-                    onClick={() = aria-label="Button"> setBatchOperation({
+                    onClick={() => setBatchOperation({
                       type: 'cluster',
                       parameters: { cluster: 'general' },
                       confirmationRequired: false
                     })}
                   >
-                    Change Cluster
                   </Button>
-                  <button
+                  <Button
                     size="sm"
                     variant="destructive"
                     disabled={selectedMemories.size === 0}
-                    onClick={() = aria-label="Button"> {
+                    onClick={() => {
                       setBatchOperation({
                         type: 'delete',
                         parameters: {},
                         confirmationRequired: true
-                      });
+
                       setShowConfirmation(true);
                     }}
                   >
-                    Delete Selected
                   </Button>
                 </div>
               </div>
@@ -644,7 +613,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                           setSelectedMemories(newSelected);
                         }}
                       />
-                      <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                      <div className="flex-1 min-w-0 ">
                         <div className="flex items-center space-x-2 mb-1">
                           <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                             {memory.type || 'unknown'}
@@ -680,13 +649,12 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                 <button onClick={validateMemories} disabled={loading} aria-label="Button">
                   {loading ? (
                     <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin " />
                       Validating...
                     </>
                   ) : (
                     <>
-                      <Shield className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                      Run Validation
+                      <Shield className="w-4 h-4 mr-2 " />
                     </>
                   )}
                 </Button>
@@ -754,9 +722,9 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                 <Card className="p-4 sm:p-4 md:p-6">
                   <div className="flex items-center space-x-2 mb-3">
                     {validationResults.isValid ? (
-                      <CheckCircle className="w-5 h-5 text-green-500 sm:w-auto md:w-full" />
+                      <CheckCircle className="w-5 h-5 text-green-500 " />
                     ) : (
-                      <AlertTriangle className="w-5 h-5 text-yellow-500 sm:w-auto md:w-full" />
+                      <AlertTriangle className="w-5 h-5 text-yellow-500 " />
                     )}
                     <h4 className="font-medium">
                       Validation Results ({validationResults.issues.length} issues found)
@@ -799,7 +767,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium">Backup & Restore</h3>
                 <button
-                  onClick={() = aria-label="Button"> {
+                  onClick={() => {
                     const name = prompt('Enter backup name:');
                     if (name) {
                       const description = prompt('Enter backup description (optional):');
@@ -807,8 +775,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                     }
                   }}
                 >
-                  <Archive className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                  Create Backup
+                  <Archive className="w-4 h-4 mr-2 " />
                 </Button>
               </div>
               <div className="space-y-3">
@@ -827,25 +794,23 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                         </div>
                       </div>
                       <div className="flex space-x-2">
-                        <button
+                        <Button
                           size="sm"
                           variant="outline"
-                          onClick={() = aria-label="Button"> {
+                          onClick={() => {
                             if (confirm(`Restore backup "${backup.name}"? This will overwrite current memories.`)) {
                               restoreBackup(backup, {
                                 backupId: backup.id,
                                 overwriteExisting: true,
                                 preserveIds: false
-                              });
+
                             }
                           }}
                         >
-                          <Upload className="w-4 h-4 mr-1 sm:w-auto md:w-full" />
-                          Restore
+                          <Upload className="w-4 h-4 mr-1 " />
                         </Button>
-                        <button size="sm" variant="outline" aria-label="Button">
-                          <Download className="w-4 h-4 mr-1 sm:w-auto md:w-full" />
-                          Download
+                        <Button size="sm" variant="outline" >
+                          <Download className="w-4 h-4 mr-1 " />
                         </Button>
                       </div>
                     </div>
@@ -868,7 +833,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                       max="1"
                       step="0.1"
                       value={validationConfig.minConfidenceThreshold}
-                      onChange={(e) = aria-label="Input"> setValidationConfig(prev => ({
+                      onChange={(e) => setValidationConfig(prev => ({
                         ...prev,
                         minConfidenceThreshold: parseFloat(e.target.value)
                       }))}
@@ -877,12 +842,11 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2 md:text-base lg:text-lg">
-                      Maximum Content Length
                     </label>
                     <input
                       type="number"
                       value={validationConfig.maxContentLength}
-                      onChange={(e) = aria-label="Input"> setValidationConfig(prev => ({
+                      onChange={(e) => setValidationConfig(prev => ({
                         ...prev,
                         maxContentLength: parseInt(e.target.value) || 10000
                       }))}
@@ -920,21 +884,20 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
                 This action cannot be undone.
               </p>
               <div className="flex space-x-2">
-                <button
+                <Button
                   variant="destructive"
-                  onClick={() = aria-label="Button"> executeBatchOperation(batchOperation)}
+                  onClick={() => executeBatchOperation(batchOperation)}
                   disabled={loading}
                 >
                   {loading ? 'Processing...' : 'Confirm'}
                 </Button>
-                <button
+                <Button
                   variant="outline"
-                  onClick={() = aria-label="Button"> {
+                  onClick={() => {
                     setShowConfirmation(false);
                     setBatchOperation(null);
                   }}
                 >
-                  Cancel
                 </Button>
               </div>
             </Card>

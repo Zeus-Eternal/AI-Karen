@@ -1,5 +1,6 @@
+
+"use client";
 import React, { useState, useEffect, useMemo } from "react";
-import { 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,28 +10,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-"use client";
 
-
-
-  FileText, 
-  Eye, 
-  EyeOff, 
-  Download, 
-  Upload, 
-  Check, 
-  X, 
-  RotateCcw,
-  Copy,
-  ExternalLink,
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  Filter,
-  GitBranch,
-  Plus,
-  Minus
-} from "lucide-react";
+import { } from "lucide-react";
 
 
 
@@ -39,12 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 
 
 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
+import { } from "@/components/ui/select";
 
 
 
@@ -159,11 +135,11 @@ export default function DiffViewer({
 
   const getChangeTypeIcon = (type: ChangeType) => {
     switch (type) {
-      case "added": return <Plus className="h-3 w-3 sm:w-auto md:w-full" />;
-      case "removed": return <Minus className="h-3 w-3 sm:w-auto md:w-full" />;
-      case "modified": return <FileText className="h-3 w-3 sm:w-auto md:w-full" />;
-      case "renamed": return <GitBranch className="h-3 w-3 sm:w-auto md:w-full" />;
-      case "unchanged": return <Check className="h-3 w-3 sm:w-auto md:w-full" />;
+      case "added": return <Plus className="h-3 w-3 " />;
+      case "removed": return <Minus className="h-3 w-3 " />;
+      case "modified": return <FileText className="h-3 w-3 " />;
+      case "renamed": return <GitBranch className="h-3 w-3 " />;
+      case "unchanged": return <Check className="h-3 w-3 " />;
     }
   };
 
@@ -181,13 +157,13 @@ export default function DiffViewer({
       toast({
         title: "Changes Applied",
         description: "File changes have been applied successfully",
-      });
+
     } catch (error) {
       toast({
         title: "Apply Failed",
         description: `Failed to apply changes: ${error}`,
         variant: "destructive",
-      });
+
     }
   };
 
@@ -199,13 +175,13 @@ export default function DiffViewer({
       toast({
         title: "Changes Reverted",
         description: "File changes have been reverted",
-      });
+
     } catch (error) {
       toast({
         title: "Revert Failed",
         description: `Failed to revert changes: ${error}`,
         variant: "destructive",
-      });
+
     }
   };
 
@@ -217,13 +193,13 @@ export default function DiffViewer({
       toast({
         title: "Selected Changes Applied",
         description: `Applied changes to ${selectedDiffs.length} files`,
-      });
+
     } catch (error) {
       toast({
         title: "Apply Failed",
         description: `Failed to apply selected changes: ${error}`,
         variant: "destructive",
-      });
+
     }
   };
 
@@ -232,7 +208,7 @@ export default function DiffViewer({
     toast({
       title: "Copied",
       description: "Content copied to clipboard",
-    });
+
   };
 
   const toggleFileExpansion = (fileId: string) => {
@@ -258,7 +234,7 @@ export default function DiffViewer({
       <div key={`${line.lineNumber}-${isOld}`} className={lineClass}>
         <div className="flex">
           {showLineNumbers && (
-            <span className="w-12 text-right text-gray-400 mr-3 select-none sm:w-auto md:w-full">
+            <span className="w-12 text-right text-gray-400 mr-3 select-none ">
               {lineNumber || ""}
             </span>
           )}
@@ -324,7 +300,7 @@ export default function DiffViewer({
     return (
       <Card className="h-full flex items-center justify-center">
         <CardContent className="text-center">
-          <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+          <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
           <h3 className="text-lg font-semibold mb-2">No Changes</h3>
           <p className="text-muted-foreground">
             No file differences to display. All files are up to date.
@@ -339,8 +315,7 @@ export default function DiffViewer({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <GitBranch className="h-5 w-5 sm:w-auto md:w-full" />
-            File Changes
+            <GitBranch className="h-5 w-5 " />
           </CardTitle>
           
           <div className="flex items-center gap-2">
@@ -359,17 +334,17 @@ export default function DiffViewer({
         {/* Controls */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Search className="h-4 w-4 text-muted-foreground " />
             <input
               placeholder="Search files..."
               value={searchQuery}
-              onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
-              className="w-48 sm:w-auto md:w-full"
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-48 "
             />
           </div>
           
           <select value={filterType} onValueChange={(value: ChangeType | "all") = aria-label="Select option"> setFilterType(value)}>
-            <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+            <selectTrigger className="w-32 " aria-label="Select option">
               <selectValue />
             </SelectTrigger>
             <selectContent aria-label="Select option">
@@ -382,7 +357,7 @@ export default function DiffViewer({
           </Select>
           
           <select value={diffMode} onValueChange={(value: DiffMode) = aria-label="Select option"> setDiffMode(value)}>
-            <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+            <selectTrigger className="w-32 " aria-label="Select option">
               <selectValue />
             </SelectTrigger>
             <selectContent aria-label="Select option">
@@ -402,17 +377,16 @@ export default function DiffViewer({
                 size="sm"
                 className="bg-green-600 hover:bg-green-700"
                aria-label="Button">
-                <Check className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
+                <Check className="h-4 w-4 mr-1 " />
                 Apply Selected ({selectedDiffs.length})
               </Button>
               
-              <button
+              <Button
                 onClick={onRevertAll}
                 variant="outline"
                 size="sm"
-               aria-label="Button">
-                <RotateCcw className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                Revert All
+               >
+                <RotateCcw className="h-4 w-4 mr-1 " />
               </Button>
             </>
           )}
@@ -422,7 +396,7 @@ export default function DiffViewer({
       <CardContent className="flex-1 overflow-hidden p-0 sm:p-4 md:p-6">
         <div className="flex h-full">
           {/* File List */}
-          <div className="w-80 border-r bg-muted/30 sm:w-auto md:w-full">
+          <div className="w-80 border-r bg-muted/30 ">
             <div className="p-3 border-b bg-background sm:p-4 md:p-6">
               <h4 className="font-medium text-sm md:text-base lg:text-lg">Files ({filteredDiffs.length})</h4>
             </div>
@@ -448,14 +422,14 @@ export default function DiffViewer({
                           />
                         )}
                         
-                        <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                        <div className="flex-1 min-w-0 ">
                           <div className="flex items-center gap-1">
                             {getChangeTypeIcon(diff.changeType)}
                             <span className="text-sm font-medium truncate md:text-base lg:text-lg">
                               {diff.filePath.split('/').pop()}
                             </span>
                             {diff.applied && (
-                              <Check className="h-3 w-3 text-green-500 sm:w-auto md:w-full" />
+                              <Check className="h-3 w-3 text-green-500 " />
                             )}
                           </div>
                           
@@ -485,7 +459,7 @@ export default function DiffViewer({
                           <div className="flex flex-col gap-1">
                             {!diff.applied && (
                               <button
-                                onClick={(e) = aria-label="Button"> {
+                                onClick={() => {
                                   e.stopPropagation();
                                   handleFileApply(diff.id);
                                 }}
@@ -493,13 +467,13 @@ export default function DiffViewer({
                                 variant="outline"
                                 className="h-6 px-2"
                               >
-                                <Check className="h-3 w-3 sm:w-auto md:w-full" />
+                                <Check className="h-3 w-3 " />
                               </Button>
                             )}
                             
                             {diff.applied && (
                               <button
-                                onClick={(e) = aria-label="Button"> {
+                                onClick={() => {
                                   e.stopPropagation();
                                   handleFileRevert(diff.id);
                                 }}
@@ -507,12 +481,12 @@ export default function DiffViewer({
                                 variant="outline"
                                 className="h-6 px-2"
                               >
-                                <RotateCcw className="h-3 w-3 sm:w-auto md:w-full" />
+                                <RotateCcw className="h-3 w-3 " />
                               </Button>
                             )}
                             
                             <button
-                              onClick={(e) = aria-label="Button"> {
+                              onClick={() => {
                                 e.stopPropagation();
                                 onFileOpen?.(diff.filePath);
                               }}
@@ -520,7 +494,7 @@ export default function DiffViewer({
                               variant="ghost"
                               className="h-6 px-2"
                             >
-                              <ExternalLink className="h-3 w-3 sm:w-auto md:w-full" />
+                              <ExternalLink className="h-3 w-3 " />
                             </Button>
                           </div>
                         )}
@@ -552,22 +526,20 @@ export default function DiffViewer({
                         
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() = aria-label="Button"> copyToClipboard(selectedDiff.newContent)}
+                            onClick={() => copyToClipboard(selectedDiff.newContent)}
                             size="sm"
                             variant="outline"
                           >
-                            <Copy className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                            Copy
+                            <Copy className="h-4 w-4 mr-1 " />
                           </Button>
                           
                           {!readonly && !selectedDiff.applied && (
                             <button
-                              onClick={() = aria-label="Button"> handleFileApply(selectedDiff.id)}
+                              onClick={() => handleFileApply(selectedDiff.id)}
                               size="sm"
                               className="bg-green-600 hover:bg-green-700"
                             >
-                              <Check className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                              Apply
+                              <Check className="h-4 w-4 mr-1 " />
                             </Button>
                           )}
                         </div>
@@ -578,7 +550,7 @@ export default function DiffViewer({
                       {selectedDiff.binary ? (
                         <div className="flex items-center justify-center h-full">
                           <div className="text-center">
-                            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                             <p className="text-muted-foreground">Binary file - cannot show diff</p>
                           </div>
                         </div>
@@ -596,7 +568,7 @@ export default function DiffViewer({
             ) : (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                   <h3 className="text-lg font-semibold mb-2">Select a File</h3>
                   <p className="text-muted-foreground">
                     Choose a file from the list to view its changes.

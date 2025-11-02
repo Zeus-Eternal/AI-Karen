@@ -86,8 +86,7 @@ describe('KarenBackendService Authentication Enhancements', () => {
         removeItem: vi.fn(),
       },
       writable: true,
-    });
-  });
+
 
   describe('Extension authentication integration', () => {
     test('should use extension auth manager for extension API calls', async () => {
@@ -112,7 +111,6 @@ describe('KarenBackendService Authentication Enhancements', () => {
           }),
         })
       );
-    });
 
     test('should handle extension auth failures with retry', async () => {
       // First call fails with 403
@@ -127,7 +125,7 @@ describe('KarenBackendService Authentication Enhancements', () => {
 
       mockExtensionAuthManager.getAuthHeaders.mockResolvedValue({
         'Authorization': 'Bearer extension-token',
-      });
+
       mockExtensionAuthManager.forceRefresh.mockResolvedValue('new-token');
 
       // Should succeed after retry
@@ -136,8 +134,7 @@ describe('KarenBackendService Authentication Enhancements', () => {
       expect(result).toEqual([]);
       expect(mockExtensionAuthManager.forceRefresh).toHaveBeenCalled();
       expect(global.fetch).toHaveBeenCalledTimes(2);
-    });
-  });
+
 
   describe('Extension API methods', () => {
     beforeEach(() => {
@@ -147,12 +144,10 @@ describe('KarenBackendService Authentication Enhancements', () => {
           headers: { 'content-type': 'application/json' },
         })
       );
-    });
 
     test('should call getExtensions with proper authentication', async () => {
       mockExtensionAuthManager.getAuthHeaders.mockResolvedValue({
         'Authorization': 'Bearer test-token',
-      });
 
       await service.getExtensions();
 
@@ -164,7 +159,6 @@ describe('KarenBackendService Authentication Enhancements', () => {
           }),
         })
       );
-    });
 
     test('should handle 403 errors gracefully in extension methods', async () => {
       vi.mocked(global.fetch).mockResolvedValue(
@@ -172,7 +166,6 @@ describe('KarenBackendService Authentication Enhancements', () => {
       );
 
       await expect(service.getExtensions()).rejects.toThrow();
-    });
 
     test('should register background tasks with proper payload', async () => {
       vi.mocked(global.fetch).mockResolvedValue(
@@ -199,8 +192,7 @@ describe('KarenBackendService Authentication Enhancements', () => {
           body: JSON.stringify(taskData),
         })
       );
-    });
-  });
+
 
   describe('Service unavailable handling', () => {
     test('should retry with exponential backoff for 503 errors', async () => {
@@ -217,14 +209,12 @@ describe('KarenBackendService Authentication Enhancements', () => {
 
       mockExtensionAuthManager.getAuthHeaders.mockResolvedValue({
         'Authorization': 'Bearer extension-token',
-      });
 
       const result = await service.getExtensions();
       
       expect(result).toEqual([]);
       expect(global.fetch).toHaveBeenCalledTimes(3);
-    });
-  });
+
 
   describe('Extension authentication status', () => {
     test('should check extension auth status', async () => {
@@ -234,12 +224,10 @@ describe('KarenBackendService Authentication Enhancements', () => {
       
       expect(isAuthenticated).toBe(true);
       expect(mockExtensionAuthManager.isAuthenticated).toHaveBeenCalled();
-    });
 
     test('should clear extension auth', () => {
       service.clearExtensionAuth();
       
       expect(mockExtensionAuthManager.clearAuth).toHaveBeenCalled();
-    });
-  });
-});
+
+

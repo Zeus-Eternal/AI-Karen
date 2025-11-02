@@ -1,87 +1,98 @@
-import React, { useState, useCallback } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
-import { Button } from '../../../components/ui/button';
-import { 
-import Link from 'next/link';
+"use client";
+import React, { useState, useCallback } from "react";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../../components/ui/tabs";
+import { Button } from "../../../components/ui/button";
+
+import Link from "next/link";
 /**
  * Extension Management Page
- * 
+ *
  * Comprehensive extension management interface that integrates all
  * extension management components including marketplace, configuration,
  * debugging, and performance monitoring.
  */
-'use client';
 
+import { ExtensionMarketplace } from "../../../components/extensions/marketplace/ExtensionMarketplace";
+import { ExtensionManager } from "../../../components/extensions/management/ExtensionManager";
+import { ExtensionConfigurationPanel } from "../../../components/extensions/settings/ExtensionConfigurationPanel";
+import { ExtensionDebugger } from "../../../components/extensions/debugging/ExtensionDebugger";
+import { ExtensionPerformanceMonitor } from "../../../components/extensions/monitoring/ExtensionPerformanceMonitor";
 
-
-
-  ExtensionMarketplace,
-  ExtensionManager,
-  ExtensionConfigurationPanel,
-  ExtensionDebugger,
-  ExtensionPerformanceMonitor
-} from '../../../components/extensions';
-
-  Store, 
-  Settings, 
-  Bug, 
-  Activity, 
-  Cog,
-  ArrowLeft
-} from 'lucide-react';
+import { ArrowLeft, Store, Cog, Settings, Bug, Activity } from "lucide-react";
 
 export default function ExtensionManagementPage() {
-  const [activeTab, setActiveTab] = useState('marketplace');
-  const [selectedExtension, setSelectedExtension] = useState<string | null>(null);
-  const [selectedExtensionName, setSelectedExtensionName] = useState<string>('');
+  const [activeTab, setActiveTab] = useState("marketplace");
+  const [selectedExtension, setSelectedExtension] = useState<string | null>(
+    null
+  );
+  const [selectedExtensionName, setSelectedExtensionName] =
+    useState<string>("");
   // Extension management handlers
   const handleInstallExtension = useCallback(async (extensionId: string) => {
     // Simulate installation
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log("Installing extension:", extensionId);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }, []);
   const handleUninstallExtension = useCallback(async (extensionId: string) => {
     // Simulate uninstallation
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log("Uninstalling extension:", extensionId);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }, []);
   const handleEnableExtension = useCallback(async (extensionId: string) => {
     // Simulate enabling
-    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log("Enabling extension:", extensionId);
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }, []);
   const handleDisableExtension = useCallback(async (extensionId: string) => {
     // Simulate disabling
-    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log("Disabling extension:", extensionId);
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }, []);
   const handleConfigureExtension = useCallback((extensionId: string) => {
     setSelectedExtension(extensionId);
     setSelectedExtensionName(extensionId); // In real app, would fetch extension name
-    setActiveTab('configuration');
+    setActiveTab("configuration");
   }, []);
   const handleViewLogs = useCallback((extensionId: string) => {
     setSelectedExtension(extensionId);
     setSelectedExtensionName(extensionId); // In real app, would fetch extension name
-    setActiveTab('debugging');
+    setActiveTab("debugging");
   }, []);
   const handleViewMetrics = useCallback((extensionId: string) => {
     setSelectedExtension(extensionId);
     setSelectedExtensionName(extensionId); // In real app, would fetch extension name
-    setActiveTab('monitoring');
+    setActiveTab("monitoring");
   }, []);
   const handleInstallFromFile = useCallback(async (file: File) => {
     // Simulate file installation
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    console.log("Installing extension from file:", file.name);
+    await new Promise((resolve) => setTimeout(resolve, 3000));
   }, []);
-  const handleSaveConfiguration = useCallback(async (settings: Record<string, any>) => {
-    // Simulate saving configuration
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  }, []);
+  const handleSaveConfiguration = useCallback(
+    async (settings: Record<string, any>) => {
+      // Simulate saving configuration
+      console.log("Saving configuration:", settings);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    },
+    []
+  );
   const handleResetConfiguration = useCallback(async () => {
     // Simulate resetting configuration
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }, []);
-  const handlePermissionChange = useCallback(async (permission: string, granted: boolean) => {
-    // Simulate permission change
-    await new Promise(resolve => setTimeout(resolve, 300));
-  }, []);
+  const handlePermissionChange = useCallback(
+    async (permission: string, granted: boolean) => {
+      // Simulate permission change
+      console.log("Permission change:", permission, granted);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    },
+    []
+  );
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -89,23 +100,35 @@ export default function ExtensionManagementPage() {
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
             <Link href="/extensions">
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
                 <ArrowLeft className="h-4 w-4" />
-                Back to Extensions
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Extension Management</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Extension Management
+              </h1>
               <p className="text-gray-600 mt-1">
-                Discover, install, configure, and monitor your extensions
+                Manage, configure, and monitor your extensions
               </p>
             </div>
           </div>
         </div>
         {/* Management Interface */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
           <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="marketplace" className="flex items-center gap-2">
+            <TabsTrigger
+              value="marketplace"
+              className="flex items-center gap-2"
+            >
               <Store className="h-4 w-4" />
               Marketplace
             </TabsTrigger>
@@ -113,7 +136,10 @@ export default function ExtensionManagementPage() {
               <Cog className="h-4 w-4" />
               Manager
             </TabsTrigger>
-            <TabsTrigger value="configuration" className="flex items-center gap-2">
+            <TabsTrigger
+              value="configuration"
+              className="flex items-center gap-2"
+            >
               <Settings className="h-4 w-4" />
               Configuration
             </TabsTrigger>
@@ -155,11 +181,14 @@ export default function ExtensionManagementPage() {
             ) : (
               <div className="text-center py-12">
                 <Settings className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Extension Selected</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Extension Selected
+                </h3>
                 <p className="text-gray-600 mb-4">
-                  Select an extension from the Manager tab to configure its settings
+                  Select an extension from the manager to configure its
+                  settings.
                 </p>
-                <Button onClick={() => setActiveTab('manager')}>
+                <Button onClick={() => setActiveTab("manager")}>
                   Go to Manager
                 </Button>
               </div>
@@ -174,11 +203,14 @@ export default function ExtensionManagementPage() {
             ) : (
               <div className="text-center py-12">
                 <Bug className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Extension Selected</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Extension Selected
+                </h3>
                 <p className="text-gray-600 mb-4">
-                  Select an extension from the Manager tab to access debugging tools
+                  Select an extension from the manager to view its debug
+                  information and logs.
                 </p>
-                <Button onClick={() => setActiveTab('manager')}>
+                <Button onClick={() => setActiveTab("manager")}>
                   Go to Manager
                 </Button>
               </div>

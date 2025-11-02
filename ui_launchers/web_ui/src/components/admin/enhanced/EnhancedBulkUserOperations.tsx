@@ -6,7 +6,8 @@
  * 
  * Requirements: 7.2, 7.5, 7.7
  */
-'use client';
+"use client";
+
 import React, { useState, useRef, useCallback } from 'react';
 import { useRole } from '@/hooks/useRole';
 import ErrorDisplay from '@/components/ui/error-display';
@@ -45,7 +46,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'activate',
     label: 'Activate Users',
     description: 'Enable login access for selected users',
-    icon: <UserCheck className="h-5 w-5 sm:w-auto md:w-full" />,
+    icon: <UserCheck className="h-5 w-5 " />,
     confirmationRequired: true,
     destructive: false,
     estimatedTimePerItem: 500
@@ -54,7 +55,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'deactivate',
     label: 'Deactivate Users',
     description: 'Disable login access for selected users',
-    icon: <UserX className="h-5 w-5 sm:w-auto md:w-full" />,
+    icon: <UserX className="h-5 w-5 " />,
     confirmationRequired: true,
     destructive: true,
     estimatedTimePerItem: 500
@@ -63,7 +64,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'delete',
     label: 'Delete Users',
     description: 'Permanently remove selected user accounts',
-    icon: <Trash2 className="h-5 w-5 sm:w-auto md:w-full" />,
+    icon: <Trash2 className="h-5 w-5 " />,
     confirmationRequired: true,
     destructive: true,
     requiresSuperAdmin: true,
@@ -73,7 +74,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'export',
     label: 'Export Users',
     description: 'Download user data as CSV file',
-    icon: <Download className="h-5 w-5 sm:w-auto md:w-full" />,
+    icon: <Download className="h-5 w-5 " />,
     confirmationRequired: false,
     destructive: false,
     estimatedTimePerItem: 100
@@ -82,7 +83,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'send_welcome_email',
     label: 'Send Welcome Emails',
     description: 'Send welcome emails to selected users',
-    icon: <Mail className="h-5 w-5 sm:w-auto md:w-full" />,
+    icon: <Mail className="h-5 w-5 " />,
     confirmationRequired: true,
     destructive: false,
     estimatedTimePerItem: 2000
@@ -91,7 +92,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'reset_password',
     label: 'Reset Passwords',
     description: 'Send password reset emails to selected users',
-    icon: <FileText className="h-5 w-5 sm:w-auto md:w-full" />,
+    icon: <FileText className="h-5 w-5 " />,
     confirmationRequired: true,
     destructive: false,
     estimatedTimePerItem: 1500
@@ -100,7 +101,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'verify_email',
     label: 'Mark as Verified',
     description: 'Mark selected users as email verified',
-    icon: <UserCheck className="h-5 w-5 sm:w-auto md:w-full" />,
+    icon: <UserCheck className="h-5 w-5 " />,
     confirmationRequired: true,
     destructive: false,
     estimatedTimePerItem: 300
@@ -133,14 +134,14 @@ export function EnhancedBulkUserOperations({
         onCancel();
       }
     }
-  });
+
   const getAvailableOperations = () => {
     return bulkOperations.filter(op => {
       if (op.requiresSuperAdmin && !hasRole('super_admin')) {
         return false;
       }
       return true;
-    });
+
   };
   const estimateOperationTime = (operation: BulkOperationConfig) => {
     const timePerItem = operation.estimatedTimePerItem || 1000;
@@ -205,7 +206,7 @@ export function EnhancedBulkUserOperations({
           user_ids: selectedUserIds
         }),
         signal: controller.signal
-      });
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw AdminErrorHandler.fromHttpError(response.status, errorData);
@@ -241,7 +242,7 @@ export function EnhancedBulkUserOperations({
                     );
                   }
                   return updatedProgress;
-                });
+
               } catch (parseError) {
               }
             }
@@ -280,7 +281,7 @@ export function EnhancedBulkUserOperations({
         operation: `bulk_${operationId}`,
         resource: `${selectedUserIds.length}_users`,
         timestamp: new Date()
-      });
+
       setError(adminError);
       setProgress(prev => prev ? {
         ...prev,
@@ -308,7 +309,7 @@ export function EnhancedBulkUserOperations({
     return (
       <button
         key={operation.id}
-        onClick={() = aria-label="Button"> handleOperationSelect(operation.id)}
+        onClick={() => handleOperationSelect(operation.id)}
         disabled={isDisabled}
         className={`flex items-center p-4 border rounded-lg text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
           operation.destructive
@@ -346,7 +347,6 @@ export function EnhancedBulkUserOperations({
             onClick={onCancel}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 md:text-base lg:text-lg"
            aria-label="Button">
-            Back to User List
           </button>
         </div>
       </div>
@@ -359,7 +359,6 @@ export function EnhancedBulkUserOperations({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-medium text-gray-900">
-              Bulk Operations
             </h2>
             <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">
               {selectedUserIds.length} user{selectedUserIds.length === 1 ? '' : 's'} selected
@@ -410,7 +409,6 @@ export function EnhancedBulkUserOperations({
               onClick={onCancel}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 md:text-base lg:text-lg"
              aria-label="Button">
-              Cancel
             </button>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import React from 'react';
 import TextSelectionTest from '@/components/debug/TextSelectionTest';
 
 export default function TextSelectionDebugPage() {

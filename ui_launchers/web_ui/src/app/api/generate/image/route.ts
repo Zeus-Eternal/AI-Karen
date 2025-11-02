@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       guidanceScale: guidance_scale,
       batchSize: batch_size,
       hasInitImage: !!init_image
-    });
+
     const { modelSelectionService } = await import('@/lib/model-selection-service');
     const startTime = Date.now();
     try {
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
           'X-Model-Provider': selectedModel.provider,
           'X-Images-Generated': generatedImages.length.toString()
         }
-      });
+
     } catch (generationError) {
       return NextResponse.json(
         {
@@ -182,7 +182,7 @@ async function simulateImageGeneration(
       seed: params.seed + i,
       width: params.width,
       height: params.height
-    });
+
   }
   return images;
 }

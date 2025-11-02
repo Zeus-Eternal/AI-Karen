@@ -60,7 +60,7 @@ class PerformanceAlertService {
       description,
       variant,
       duration,
-    });
+
   }
 
   /**
@@ -150,7 +150,7 @@ class PerformanceAlertService {
     this.alertHistory.push({
       timestamp: Date.now(),
       type: alert.type,
-    });
+
   }
 
   /**

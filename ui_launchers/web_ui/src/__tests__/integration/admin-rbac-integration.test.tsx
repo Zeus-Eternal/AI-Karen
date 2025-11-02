@@ -7,6 +7,7 @@
  */
 
 
+import React from 'react';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { mockRouter, resetRouterMocks } from '@/test-utils/router-mocks';
@@ -39,7 +40,6 @@ const mockLocation = {
 Object.defineProperty(window, 'location', {
   value: mockLocation,
   writable: true,
-});
 
 // Test users with different roles
 const testUsers = {
@@ -83,13 +83,13 @@ function mockSessionValidation(user: typeof testUsers[keyof typeof testUsers] | 
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ user }),
-    });
+
   } else {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 401,
       json: async () => ({ error: 'Not authenticated' }),
-    });
+
   }
 }
 
@@ -99,7 +99,7 @@ function mockApiResponse(data: any, status = 200) {
     ok: status >= 200 && status < 300,
     status,
     json: async () => data,
-  });
+
 }
 
 describe('Role-Based Access Control Integration Tests', () => {
@@ -107,11 +107,9 @@ describe('Role-Based Access Control Integration Tests', () => {
     resetRouterMocks();
     mockLocation.pathname = '/';
     mockLocation.href = 'http://localhost:3000';
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('Super Admin Access Control', () => {
     it('should allow super admin access to all admin features', async () => {
@@ -128,14 +126,12 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/super admin dashboard/i)).toBeInTheDocument();
-      });
 
       // Verify super admin can see all sections
       expect(screen.getByText(/admin management/i)).toBeInTheDocument();
       expect(screen.getByText(/system configuration/i)).toBeInTheDocument();
       expect(screen.getByText(/audit logs/i)).toBeInTheDocument();
       expect(screen.getByText(/security settings/i)).toBeInTheDocument();
-    });
 
     it('should allow super admin to promote and demote users', async () => {
       const user = userEvent.setup();
@@ -154,7 +150,6 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/admin management/i)).toBeInTheDocument();
-      });
 
       // Find and click promote button
       const promoteButton = screen.getByRole('button', { name: /promote/i });
@@ -173,8 +168,7 @@ describe('Role-Based Access Control Integration Tests', () => {
             credentials: 'include',
           })
         );
-      });
-    });
+
 
     it('should allow super admin to access system configuration', async () => {
       const user = userEvent.setup();
@@ -186,7 +180,6 @@ describe('Role-Based Access Control Integration Tests', () => {
           sessionTimeout: 30,
           mfaRequired: false,
         },
-      });
 
       render(
         <AuthProvider>
@@ -198,7 +191,6 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/system configuration/i)).toBeInTheDocument();
-      });
 
       // Verify configuration fields are editable
       const passwordLengthInput = screen.getByLabelText(/password length/i);
@@ -224,8 +216,7 @@ describe('Role-Based Access Control Integration Tests', () => {
             credentials: 'include',
           })
         );
-      });
-    });
+
 
     it('should allow super admin to view audit logs', async () => {
       mockSessionValidation(testUsers.superAdmin);
@@ -244,7 +235,6 @@ describe('Role-Based Access Control Integration Tests', () => {
           },
         ],
         total: 1,
-      });
 
       render(
         <AuthProvider>
@@ -256,12 +246,10 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/audit logs/i)).toBeInTheDocument();
-      });
 
       // Verify audit log is displayed
       expect(screen.getByText(/user_created/i)).toBeInTheDocument();
       expect(screen.getByText(/test@test.com/i)).toBeInTheDocument();
-    });
 
     it('should prevent non-super-admin from accessing super admin routes', async () => {
       mockSessionValidation(testUsers.admin);
@@ -276,9 +264,8 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(mockLocation.replace).toHaveBeenCalledWith('/unauthorized');
-      });
-    });
-  });
+
+
 
   describe('Admin Access Control', () => {
     it('should allow admin access to user management features', async () => {
@@ -295,12 +282,10 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/user management/i)).toBeInTheDocument();
-      });
 
       // Verify admin can see user management features
       expect(screen.getByText(/create user/i)).toBeInTheDocument();
       expect(screen.getByRole('table')).toBeInTheDocument();
-    });
 
     it('should allow admin to create and manage users', async () => {
       const user = userEvent.setup();
@@ -315,7 +300,6 @@ describe('Role-Based Access Control Integration Tests', () => {
           username: 'newuser', 
           role: 'user' 
         } 
-      });
 
       render(
         <AuthProvider>
@@ -327,7 +311,6 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/create user/i)).toBeInTheDocument();
-      });
 
       // Click create user button
       const createButton = screen.getByRole('button', { name: /create user/i });
@@ -353,8 +336,7 @@ describe('Role-Based Access Control Integration Tests', () => {
             credentials: 'include',
           })
         );
-      });
-    });
+
 
     it('should prevent admin from accessing super admin features', async () => {
       mockSessionValidation(testUsers.admin);
@@ -369,20 +351,17 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/user management/i)).toBeInTheDocument();
-      });
 
       // Verify super admin features are not visible
       expect(screen.queryByText(/admin management/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/system configuration/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/promote.*admin/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/demote.*admin/i)).not.toBeInTheDocument();
-    });
 
     it('should prevent admin from modifying other admins', async () => {
       mockSessionValidation(testUsers.admin);
       mockApiResponse({ 
         users: [testUsers.admin, testUsers.user] 
-      });
 
       render(
         <AuthProvider>
@@ -394,7 +373,6 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('table')).toBeInTheDocument();
-      });
 
       // Find admin row in table
       const adminRow = screen.getByText(testUsers.admin.email).closest('tr');
@@ -406,11 +384,10 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       editButtons.forEach(button => {
         expect(button).toBeDisabled();
-      });
+
       deleteButtons.forEach(button => {
         expect(button).toBeDisabled();
-      });
-    });
+
 
     it('should prevent non-admin from accessing admin routes', async () => {
       mockSessionValidation(testUsers.user);
@@ -425,9 +402,8 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(mockLocation.replace).toHaveBeenCalledWith('/unauthorized');
-      });
-    });
-  });
+
+
 
   describe('User Access Control', () => {
     it('should prevent regular users from accessing admin features', async () => {
@@ -443,13 +419,11 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/regular user content/i)).toBeInTheDocument();
-      });
 
       // Verify no admin navigation is visible
       expect(screen.queryByText(/admin dashboard/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/user management/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/system configuration/i)).not.toBeInTheDocument();
-    });
 
     it('should redirect unauthenticated users to login', async () => {
       mockSessionValidation(null);
@@ -464,8 +438,7 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(mockLocation.replace).toHaveBeenCalledWith('/login');
-      });
-    });
+
 
     it('should prevent users from accessing admin API endpoints', async () => {
       mockSessionValidation(testUsers.user);
@@ -475,15 +448,13 @@ describe('Role-Based Access Control Integration Tests', () => {
       const response = await fetch('/api/admin/users', {
         method: 'GET',
         credentials: 'include',
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(403);
       expect(data.error).toBe('Insufficient permissions');
-    });
-  });
+
 
   describe('Inactive User Access Control', () => {
     it('should prevent inactive admin from accessing admin features', async () => {
@@ -499,8 +470,7 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(mockLocation.replace).toHaveBeenCalledWith('/unauthorized');
-      });
-    });
+
 
     it('should show appropriate message for inactive users', async () => {
       mockSessionValidation(testUsers.inactiveAdmin);
@@ -515,9 +485,8 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/account is inactive/i)).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Role Transition Scenarios', () => {
     it('should handle role changes during active session', async () => {
@@ -535,7 +504,6 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/super admin dashboard/i)).toBeInTheDocument();
-      });
 
       // Simulate role change to admin
       mockSessionValidation({ ...testUsers.superAdmin, role: 'admin' });
@@ -550,11 +518,9 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/user management/i)).toBeInTheDocument();
-      });
 
       // Verify super admin features are no longer accessible
       expect(screen.queryByText(/system configuration/i)).not.toBeInTheDocument();
-    });
 
     it('should handle user promotion during active session', async () => {
       const { rerender } = render(
@@ -570,7 +536,6 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/regular user content/i)).toBeInTheDocument();
-      });
 
       // Simulate promotion to admin
       mockSessionValidation({ ...testUsers.user, role: 'admin' });
@@ -585,8 +550,7 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/user management/i)).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle user demotion during active session', async () => {
       const { rerender } = render(
@@ -603,7 +567,6 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/user management/i)).toBeInTheDocument();
-      });
 
       // Simulate demotion to user
       mockSessionValidation({ ...testUsers.admin, role: 'user' });
@@ -618,9 +581,8 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       await waitFor(() => {
         expect(mockLocation.replace).toHaveBeenCalledWith('/unauthorized');
-      });
-    });
-  });
+
+
 
   describe('API Permission Validation', () => {
     it('should validate permissions for each API endpoint', async () => {
@@ -664,7 +626,6 @@ describe('Role-Based Access Control Integration Tests', () => {
             method: testCase.method,
             credentials: 'include',
             headers: { 'X-User-Role': role },
-          });
 
           expect(response.ok).toBe(true);
         }
@@ -677,12 +638,10 @@ describe('Role-Based Access Control Integration Tests', () => {
             method: testCase.method,
             credentials: 'include',
             headers: { 'X-User-Role': role },
-          });
 
           expect(response.status).toBe(403);
         }
       }
-    });
 
     it('should handle permission escalation attempts', async () => {
       // Simulate user trying to access admin endpoint by manipulating headers
@@ -695,10 +654,8 @@ describe('Role-Based Access Control Integration Tests', () => {
           'X-User-Role': 'admin', // Fake header
           'X-Requested-Role': 'super_admin', // Escalation attempt
         },
-      });
 
       expect(response.status).toBe(403);
-    });
 
     it('should validate session integrity for role-based access', async () => {
       // Test session tampering detection
@@ -710,11 +667,9 @@ describe('Role-Based Access Control Integration Tests', () => {
         headers: {
           'X-Session-Signature': 'tampered-signature',
         },
-      });
 
       expect(response.status).toBe(401);
-    });
-  });
+
 
   describe('Edge Cases and Security Scenarios', () => {
     it('should handle concurrent role changes', async () => {
@@ -740,7 +695,6 @@ describe('Role-Based Access Control Integration Tests', () => {
 
       expect(responses[0].ok).toBe(true);
       expect(responses[1].status).toBe(409);
-    });
 
     it('should prevent privilege escalation through race conditions', async () => {
       // Simulate rapid role promotion and immediate admin action
@@ -750,10 +704,8 @@ describe('Role-Based Access Control Integration Tests', () => {
         method: 'POST',
         credentials: 'include',
         headers: { 'X-Immediate-Action': 'true' },
-      });
 
       expect(response.status).toBe(423); // Locked due to race condition
-    });
 
     it('should handle session hijacking attempts', async () => {
       // Simulate session with mismatched IP/User-Agent
@@ -766,10 +718,8 @@ describe('Role-Based Access Control Integration Tests', () => {
           'X-Forwarded-For': '192.168.1.100', // Different IP
           'User-Agent': 'Different-Agent/1.0',
         },
-      });
 
       expect(response.status).toBe(401);
-    });
 
     it('should enforce MFA requirements for admin actions', async () => {
       // Simulate admin action requiring MFA
@@ -779,10 +729,8 @@ describe('Role-Based Access Control Integration Tests', () => {
         method: 'POST',
         credentials: 'include',
         headers: { 'X-MFA-Token': 'missing' },
-      });
 
       expect(response.status).toBe(428); // Precondition Required
-    });
 
     it('should handle expired admin sessions appropriately', async () => {
       // Simulate expired admin session
@@ -792,9 +740,7 @@ describe('Role-Based Access Control Integration Tests', () => {
         method: 'GET',
         credentials: 'include',
         headers: { 'X-Session-Expired': 'true' },
-      });
 
       expect(response.status).toBe(401);
-    });
-  });
-});
+
+

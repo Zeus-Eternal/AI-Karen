@@ -4,9 +4,9 @@
  * Main page for extension management and dashboard
  */
 
-'use client';
+"use client";
 
-
+import React from 'react';
 import ExtensionDashboard from '@/components/extensions/ExtensionDashboard';
 import { DynamicExtensionRouter } from '@/lib/extensions/dynamic-router';
 

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { MotionConfig } from 'framer-motion';
@@ -107,7 +107,7 @@ export function useAnimationVariants() {
           ...variants[key],
           transition: { duration: 0 },
         };
-      });
+
       return staticVariants;
     }
     return variants;

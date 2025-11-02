@@ -5,7 +5,7 @@
  * Based on requirements: 2.1, 2.2, 2.3, 2.4, 11.1, 11.2
  */
 
-'use client';
+"use client";
 
 import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -245,7 +245,7 @@ export const BreadcrumbNavigation = React.forwardRef<HTMLElement, BreadcrumbNavi
                   className="mx-[var(--space-xs)] text-[var(--color-neutral-400)] dark:text-[var(--color-neutral-600)]"
                   aria-hidden="true"
                 >
-                  {separator || <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />}
+                  {separator || <ChevronRight className="h-4 w-4 " />}
                 </span>
               )}
 
@@ -286,7 +286,7 @@ const BreadcrumbItem: React.FC<BreadcrumbItemProps> = ({ item, onClick }) => {
   const content = (
     <>
       {Icon && (
-        <Icon className="h-4 w-4 mr-[var(--space-xs)] flex-shrink-0 sm:w-auto md:w-full" />
+        <Icon className="h-4 w-4 mr-[var(--space-xs)] flex-shrink-0 " />
       )}
       <span className="truncate max-w-[200px]">{item.label}</span>
     </>
@@ -361,7 +361,7 @@ function generateBreadcrumbsFromRoute(
         href: isLast ? undefined : path,
         icon: config.icon,
         current: isLast,
-      });
+
     } else {
       // Fallback for unconfigured routes
       const segment = path.split('/').pop() || 'Home';
@@ -371,7 +371,7 @@ function generateBreadcrumbsFromRoute(
         label,
         href: isLast ? undefined : path,
         current: isLast,
-      });
+
     }
   }
   

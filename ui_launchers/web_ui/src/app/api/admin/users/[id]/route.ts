@@ -82,7 +82,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});
+
 /**
  * PUT /api/admin/users/[id] - Update user
  */
@@ -205,7 +205,6 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
     if (updateFields.length > 1) { // More than just updated_at
       updateValues.push(userId); // For WHERE clause
       const query = `
-        UPDATE auth_users 
         SET ${updateFields.join(', ')}
         WHERE user_id = $${paramIndex}
       `;
@@ -236,7 +235,7 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
       },
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
-    });
+
     // Get updated user for response
     const updatedUser = await adminUtils.getUserWithRole(userId);
     if (!updatedUser) {
@@ -275,7 +274,7 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});
+
 /**
  * DELETE /api/admin/users/[id] - Delete user
  */
@@ -343,7 +342,6 @@ export const DELETE = requireAdmin(async (request: NextRequest, context) => {
     }
     // Soft delete by setting is_active to false
     const query = `
-      UPDATE auth_users 
       SET is_active = false, updated_at = NOW()
       WHERE user_id = $1
     `;
@@ -363,7 +361,7 @@ export const DELETE = requireAdmin(async (request: NextRequest, context) => {
       },
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
-    });
+
     const response: AdminApiResponse<{ deleted_user_id: string }> = {
       success: true,
       data: { deleted_user_id: userId },
@@ -384,4 +382,3 @@ export const DELETE = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});

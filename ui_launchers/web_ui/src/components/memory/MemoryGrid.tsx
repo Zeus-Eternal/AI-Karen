@@ -110,7 +110,7 @@ const ContentCellRenderer = (params: any) => {
     <div>
       <span>{expanded ? content : `${content.substring(0, 100)}...`}</span>
       <button
-        onClick={() = aria-label="Button"> setExpanded(!expanded)}
+        onClick={() => setExpanded(!expanded)}
         style={{
           marginLeft: '8px',
           padding: '2px 6px',
@@ -222,7 +222,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
           tenant_id: tenantId,
           filters: filters || {}
         })
-      });
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -290,7 +290,6 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
             cursor: 'pointer'
           }}
          aria-label="Button">
-          Retry
         </button>
       </div>
     );

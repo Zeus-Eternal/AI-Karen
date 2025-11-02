@@ -68,7 +68,6 @@ export async function GET(request: NextRequest) {
     requestId,
     method: request.method,
     searchParams: Object.fromEntries(request.nextUrl.searchParams.entries()),
-  });
 
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -86,8 +85,7 @@ export async function GET(request: NextRequest) {
         modelType,
         provider,
         forceRefresh,
-      });
-      
+
       try {
         // Import the ModelSelectionService dynamically to avoid circular dependencies
         const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -124,7 +122,7 @@ export async function GET(request: NextRequest) {
                 logger.warn(`Failed to get health status for model ${model.id}`, {
                   requestId,
                   error: healthError instanceof Error ? healthError.message : String(healthError),
-                });
+
                 enhancedModel.health = {
                   is_healthy: false,
                   last_check: new Date().toISOString(),
@@ -167,16 +165,14 @@ export async function GET(request: NextRequest) {
           localModels: response.local_count,
           healthyModels: response.healthy_count,
           scanDuration: stats.scanStats?.scanDuration,
-        });
-        
+
         return NextResponse.json(response, {
           headers: {
             'Cache-Control': forceRefresh ? 'no-cache' : 'public, max-age=300',
             'X-Scan-Timestamp': new Date().toISOString(),
             'X-Models-Count': enhancedModels.length.toString()
           }
-        });
-        
+
       } catch (scanError) {
         logger.error('Models library dynamic scan failed', scanError instanceof Error ? scanError : { message: String(scanError) });
         
@@ -199,8 +195,7 @@ export async function GET(request: NextRequest) {
       requestId,
       baseUrl: base,
       hasQuery: Boolean(queryString),
-    });
-    
+
     // Get Authorization header from the request
     const authHeader = request.headers.get('authorization');
     const headers: Record<string, string> = {
@@ -212,11 +207,11 @@ export async function GET(request: NextRequest) {
       headers['Authorization'] = authHeader;
       logger.debug('Models library forwarding authorization header', {
         requestId,
-      });
+
     } else {
       logger.debug('Models library request without authorization header', {
         requestId,
-      });
+
     }
 
     const controller = new AbortController();
@@ -234,8 +229,7 @@ export async function GET(request: NextRequest) {
         signal: controller.signal,
         // Remove deprecated options that might cause issues
         cache: 'no-store',
-      });
-      
+
       clearTimeout(timeout);
       
       logger.info('Models library backend response received', {
@@ -243,8 +237,7 @@ export async function GET(request: NextRequest) {
         status: response.status,
         ok: response.ok,
         url: response.url,
-      });
-      
+
       const contentType = response.headers.get('content-type') || '';
       let data: any = {};
       
@@ -255,7 +248,7 @@ export async function GET(request: NextRequest) {
             requestId,
             keys: Object.keys(data),
             modelCount: Array.isArray(data.models) ? data.models.length : undefined,
-          });
+
         } catch (parseError) {
           logger.error('Models library JSON parse error', parseError instanceof Error ? parseError : { message: String(parseError) });
           data = { models: [] };
@@ -267,7 +260,7 @@ export async function GET(request: NextRequest) {
             requestId,
             contentType,
             length: text.length,
-          });
+
           data = { models: [], message: text };
         } catch (textError) {
           logger.error('Models library text read error', textError instanceof Error ? textError : { message: String(textError) });
@@ -279,7 +272,6 @@ export async function GET(request: NextRequest) {
         requestId,
         status: response.status,
         modelCount: Array.isArray((data as any).models) ? (data as any).models.length : undefined,
-      });
 
       return NextResponse.json(data, { status: response.status });
       
@@ -295,8 +287,7 @@ export async function GET(request: NextRequest) {
         const models = await modelSelectionService.scanLocalDirectories({
           forceRefresh: true,
           includeHealth: false
-        });
-        
+
         const fallbackResponse = {
           models,
           total_count: models.length,
@@ -309,8 +300,7 @@ export async function GET(request: NextRequest) {
         logger.warn('Models library fallback scan succeeded', {
           requestId,
           modelsFound: models.length,
-        });
-        
+
         return NextResponse.json(fallbackResponse, { status: 200 });
         
       } catch (fallbackError) {
@@ -328,7 +318,7 @@ export async function GET(request: NextRequest) {
 
         logger.error('Models library returning minimal fallback response', {
           requestId,
-        });
+
         return NextResponse.json(minimalFallback, { status: 200 });
       }
     }
@@ -346,7 +336,7 @@ export async function GET(request: NextRequest) {
 
     logger.error('Models library returning error fallback', {
       requestId,
-    });
+
     return NextResponse.json(fallbackResponse, { status: 200 });
   }
 }

@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,48 +11,12 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-'use client';
 
 
+import { } from 'lucide-react';
 
 
-
-
-
-
-
-
-
-
-
-  Calendar, 
-  Clock, 
-  Play, 
-  Pause, 
-  Trash2, 
-  Plus, 
-  Settings, 
-  Zap, 
-  FileText, 
-  Globe, 
-  AlertCircle,
-  CheckCircle,
-  TrendingUp,
-  Activity,
-  Timer,
-  BarChart3
-} from 'lucide-react';
-
-
-  WorkflowTrigger, 
-  CronSchedule, 
-  WorkflowQueue, 
-  QueuedWorkflow,
-  WorkflowAutomationAnalytics,
-  TimeSeriesData,
-  OptimizationSuggestion
-} from '@/types/workflows';
+import { } from '@/types/workflows';
 
 interface WorkflowSchedulerProps {
   triggers: WorkflowTrigger[];
@@ -145,17 +111,15 @@ export function WorkflowScheduler({
         
         <div className="flex items-center gap-2">
           <button
-            onClick={() = aria-label="Button"> setShowCreateQueue(true)}
+            onClick={() => setShowCreateQueue(true)}
             variant="outline"
           >
-            <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            New Queue
+            <Plus className="h-4 w-4 mr-2 " />
           </Button>
           <button
-            onClick={() = aria-label="Button"> setShowCreateTrigger(true)}
+            onClick={() => setShowCreateTrigger(true)}
           >
-            <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            New Trigger
+            <Plus className="h-4 w-4 mr-2 " />
           </Button>
         </div>
       </div>
@@ -172,7 +136,7 @@ export function WorkflowScheduler({
                   of {schedulerStats.totalTriggers} total
                 </p>
               </div>
-              <Timer className="h-8 w-8 text-blue-600 sm:w-auto md:w-full" />
+              <Timer className="h-8 w-8 text-blue-600 " />
             </div>
           </CardContent>
         </Card>
@@ -187,7 +151,7 @@ export function WorkflowScheduler({
                   {schedulerStats.totalProcessing} processing
                 </p>
               </div>
-              <Activity className="h-8 w-8 text-orange-600 sm:w-auto md:w-full" />
+              <Activity className="h-8 w-8 text-orange-600 " />
             </div>
           </CardContent>
         </Card>
@@ -201,7 +165,7 @@ export function WorkflowScheduler({
                   {(schedulerStats.successRate * 100).toFixed(1)}%
                 </p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-600 sm:w-auto md:w-full" />
+              <TrendingUp className="h-8 w-8 text-green-600 " />
             </div>
           </CardContent>
         </Card>
@@ -218,7 +182,7 @@ export function WorkflowScheduler({
                   }
                 </p>
               </div>
-              <Clock className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
+              <Clock className="h-8 w-8 text-muted-foreground " />
             </div>
           </CardContent>
         </Card>
@@ -249,18 +213,16 @@ export function WorkflowScheduler({
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                              <IconComponent className="h-5 w-5 sm:w-auto md:w-full" />
+                              <IconComponent className="h-5 w-5 " />
                               <h3 className="font-semibold">{trigger.name}</h3>
                               <Badge className={triggerTypeColors[trigger.type]}>
                                 {trigger.type}
                               </Badge>
                               {trigger.enabled ? (
                                 <Badge className="bg-green-100 text-green-700">
-                                  Active
                                 </Badge>
                               ) : (
                                 <Badge variant="secondary">
-                                  Inactive
                                 </Badge>
                               )}
                             </div>
@@ -322,19 +284,19 @@ export function WorkflowScheduler({
                                 onToggleTrigger?.(trigger.id, enabled)
                               }
                             />
-                            <button
+                            <Button
                               size="sm"
                               variant="outline"
-                              onClick={() = aria-label="Button"> setEditingTrigger(trigger)}
+                              onClick={() => setEditingTrigger(trigger)}
                             >
-                              <Settings className="h-4 w-4 sm:w-auto md:w-full" />
+                              <Settings className="h-4 w-4 " />
                             </Button>
-                            <button
+                            <Button
                               size="sm"
                               variant="outline"
-                              onClick={() = aria-label="Button"> onDeleteTrigger?.(trigger.id)}
+                              onClick={() => onDeleteTrigger?.(trigger.id)}
                             >
-                              <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
+                              <Trash2 className="h-4 w-4 " />
                             </Button>
                           </div>
                         </div>
@@ -344,13 +306,12 @@ export function WorkflowScheduler({
                   
                   {triggers.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                      <Timer className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                      <Timer className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                       <p>No triggers configured.</p>
-                      <button 
+                      <Button 
                         className="mt-2" 
-                        onClick={() = aria-label="Button"> setShowCreateTrigger(true)}
+                        onClick={() => setShowCreateTrigger(true)}
                       >
-                        Create your first trigger
                       </Button>
                     </div>
                   )}
@@ -367,7 +328,7 @@ export function WorkflowScheduler({
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 sm:w-auto md:w-full" />
+                      <Activity className="h-5 w-5 " />
                       {queue.name}
                     </CardTitle>
                     <Badge variant="outline">
@@ -463,13 +424,12 @@ export function WorkflowScheduler({
               <Card className="col-span-full">
                 <CardContent className="flex items-center justify-center h-[300px] text-muted-foreground">
                   <div className="text-center">
-                    <Activity className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                    <Activity className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                     <p>No queues configured.</p>
-                    <button 
+                    <Button 
                       className="mt-2" 
-                      onClick={() = aria-label="Button"> setShowCreateQueue(true)}
+                      onClick={() => setShowCreateQueue(true)}
                     >
-                      Create your first queue
                     </Button>
                   </div>
                 </CardContent>
@@ -512,7 +472,7 @@ export function WorkflowScheduler({
                   
                   {/* Placeholder for chart */}
                   <div className="h-[200px] bg-muted rounded flex items-center justify-center">
-                    <BarChart3 className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
+                    <BarChart3 className="h-8 w-8 text-muted-foreground " />
                     <span className="ml-2 text-muted-foreground">Execution Trends Chart</span>
                   </div>
                 </div>
@@ -604,7 +564,7 @@ export function WorkflowScheduler({
                         bottleneck.impact === 'medium' ? 'border-yellow-200 bg-yellow-50' :
                         'border-blue-200 bg-blue-50'
                       }>
-                        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                        <AlertCircle className="h-4 w-4 " />
                         <AlertDescription>
                           <div className="font-medium">{bottleneck.nodeName}</div>
                           <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -626,7 +586,7 @@ export function WorkflowScheduler({
                     
                     {analytics.bottlenecks.length === 0 && (
                       <div className="text-center py-8 text-muted-foreground">
-                        <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                        <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                         <p>No performance bottlenecks detected.</p>
                       </div>
                     )}
@@ -648,7 +608,7 @@ export function WorkflowScheduler({
                         suggestion.priority === 'medium' ? 'border-yellow-200 bg-yellow-50' :
                         'border-green-200 bg-green-50'
                       }>
-                        <TrendingUp className="h-4 w-4 sm:w-auto md:w-full" />
+                        <TrendingUp className="h-4 w-4 " />
                         <AlertDescription>
                           <div className="font-medium">{suggestion.title}</div>
                           <div className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
@@ -676,7 +636,7 @@ export function WorkflowScheduler({
                     
                     {analytics.optimizationSuggestions.length === 0 && (
                       <div className="text-center py-8 text-muted-foreground">
-                        <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                        <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                         <p>No optimization suggestions available.</p>
                       </div>
                     )}

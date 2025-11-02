@@ -17,7 +17,6 @@ describe('EnhancedButton', () => {
     const button = screen.getByRole('button', { name: 'Click me' });
     expect(button).toBeInTheDocument();
     expect(button).toHaveClass('inline-flex', 'items-center', 'justify-center');
-  });
 
   it('should apply variant classes correctly', () => {
     const { rerender } = render(<EnhancedButton variant="destructive">Delete</EnhancedButton>);
@@ -32,7 +31,6 @@ describe('EnhancedButton', () => {
     rerender(<EnhancedButton variant="ghost">Ghost</EnhancedButton>);
     button = screen.getByRole('button');
     expect(button).toHaveClass('bg-transparent');
-  });
 
   it('should apply size classes correctly', () => {
     const { rerender } = render(<EnhancedButton size="sm">Small</EnhancedButton>);
@@ -47,7 +45,6 @@ describe('EnhancedButton', () => {
     rerender(<EnhancedButton size="icon">Icon</EnhancedButton>);
     button = screen.getByRole('button');
     expect(button).toHaveClass('h-10', 'w-10', 'p-0');
-  });
 
   it('should handle loading state', () => {
     render(<EnhancedButton loading>Loading</EnhancedButton>);
@@ -61,18 +58,15 @@ describe('EnhancedButton', () => {
     const spinner = button.querySelector('svg');
     expect(spinner).toBeInTheDocument();
     expect(spinner).toHaveClass('animate-spin');
-  });
 
   it('should show loading text when provided', () => {
     render(
       <EnhancedButton loading loadingText="Saving...">
-        Save
       </EnhancedButton>
     );
     
     expect(screen.getByText('Saving...')).toBeInTheDocument();
     expect(screen.queryByText('Save')).not.toBeInTheDocument();
-  });
 
   it('should render left and right icons', () => {
     const LeftIcon = () => <span data-testid="left-icon">←</span>;
@@ -83,13 +77,11 @@ describe('EnhancedButton', () => {
         leftIcon={<LeftIcon />} 
         rightIcon={<RightIcon />}
       >
-        Button with icons
       </EnhancedButton>
     );
     
     expect(screen.getByTestId('left-icon')).toBeInTheDocument();
     expect(screen.getByTestId('right-icon')).toBeInTheDocument();
-  });
 
   it('should hide icons when loading', () => {
     const LeftIcon = () => <span data-testid="left-icon">←</span>;
@@ -101,13 +93,11 @@ describe('EnhancedButton', () => {
         leftIcon={<LeftIcon />} 
         rightIcon={<RightIcon />}
       >
-        Loading button
       </EnhancedButton>
     );
     
     expect(screen.queryByTestId('left-icon')).not.toBeInTheDocument();
     expect(screen.queryByTestId('right-icon')).not.toBeInTheDocument();
-  });
 
   it('should handle disabled state', () => {
     render(<EnhancedButton disabled>Disabled</EnhancedButton>);
@@ -116,7 +106,6 @@ describe('EnhancedButton', () => {
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('aria-disabled', 'true');
     expect(button).toHaveClass('disabled:opacity-60');
-  });
 
   it('should handle click events', () => {
     const handleClick = vi.fn();
@@ -124,45 +113,38 @@ describe('EnhancedButton', () => {
     
     fireEvent.click(screen.getByRole('button'));
     expect(handleClick).toHaveBeenCalledTimes(1);
-  });
 
   it('should not handle click events when disabled', () => {
     const handleClick = vi.fn();
     render(
       <EnhancedButton disabled onClick={handleClick}>
-        Disabled
       </EnhancedButton>
     );
     
     fireEvent.click(screen.getByRole('button'));
     expect(handleClick).not.toHaveBeenCalled();
-  });
 
   it('should not handle click events when loading', () => {
     const handleClick = vi.fn();
     render(
       <EnhancedButton loading onClick={handleClick}>
-        Loading
       </EnhancedButton>
     );
     
     fireEvent.click(screen.getByRole('button'));
     expect(handleClick).not.toHaveBeenCalled();
-  });
 
   it('should apply custom className', () => {
     render(<EnhancedButton className="custom-class">Custom</EnhancedButton>);
     
     const button = screen.getByRole('button');
     expect(button).toHaveClass('custom-class');
-  });
 
   it('should forward ref correctly', () => {
     const ref = React.createRef<HTMLButtonElement>();
     render(<EnhancedButton ref={ref}>Ref button</EnhancedButton>);
     
     expect(ref.current).toBeInstanceOf(HTMLButtonElement);
-  });
 
   it('should render as child component when asChild is true', () => {
     render(
@@ -175,7 +157,6 @@ describe('EnhancedButton', () => {
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/test');
     expect(link).toHaveClass('inline-flex', 'items-center');
-  });
 
   it('should have proper accessibility attributes', () => {
     render(<EnhancedButton>Accessible button</EnhancedButton>);
@@ -184,7 +165,6 @@ describe('EnhancedButton', () => {
     expect(button).toHaveClass('focus-visible:outline-none');
     expect(button).toHaveClass('focus-visible:ring-2');
     expect(button).toHaveClass('focus-visible:ring-[var(--focus-ring-color)]');
-  });
 
   it('should apply design token classes', () => {
     render(<EnhancedButton>Token button</EnhancedButton>);
@@ -194,5 +174,4 @@ describe('EnhancedButton', () => {
     expect(button).toHaveClass('[transition-duration:var(--duration-fast)]');
     expect(button).toHaveClass('[transition-timing-function:var(--ease-standard)]');
     expect(button).toHaveClass('bg-[var(--color-primary-500)]');
-  });
-});
+

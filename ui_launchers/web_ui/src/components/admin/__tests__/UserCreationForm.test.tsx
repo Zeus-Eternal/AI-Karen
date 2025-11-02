@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { jest } from '@jest/globals';
 import { UserCreationForm } from '../UserCreationForm';
@@ -39,7 +40,6 @@ describe('UserCreationForm', () => {
         role: 'admin'
       } as any,
       loading: false
-    });
 
     mockFetch.mockResolvedValue({
       ok: true,
@@ -55,7 +55,6 @@ describe('UserCreationForm', () => {
         }
       })
     } as any);
-  });
 
   it('renders user creation form', () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -65,7 +64,6 @@ describe('UserCreationForm', () => {
     expect(screen.getByLabelText('Full Name *')).toBeInTheDocument();
     expect(screen.getByLabelText('Role *')).toBeInTheDocument();
     expect(screen.getByLabelText('Send invitation email')).toBeInTheDocument();
-  });
 
   it('validates required fields', async () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -76,8 +74,7 @@ describe('UserCreationForm', () => {
     await waitFor(() => {
       expect(screen.getByText('Email is required')).toBeInTheDocument();
       expect(screen.getByText('Full name is required')).toBeInTheDocument();
-    });
-  });
+
 
   it('validates email format', async () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -85,17 +82,15 @@ describe('UserCreationForm', () => {
     // Enter invalid email
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 'invalid-email' }
-    });
+
     fireEvent.change(screen.getByLabelText('Full Name *'), {
       target: { value: 'Test User' }
-    });
-    
+
     fireEvent.click(screen.getByText('Create User'));
     
     await waitFor(() => {
       expect(screen.getByText('Please enter a valid email address')).toBeInTheDocument();
-    });
-  });
+
 
   it('shows password fields when invitation is disabled', () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -105,7 +100,6 @@ describe('UserCreationForm', () => {
     
     expect(screen.getByLabelText('Password *')).toBeInTheDocument();
     expect(screen.getByLabelText('Confirm Password *')).toBeInTheDocument();
-  });
 
   it('validates password when invitation is disabled', async () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -116,20 +110,18 @@ describe('UserCreationForm', () => {
     // Fill form with weak password
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 'test@example.com' }
-    });
+
     fireEvent.change(screen.getByLabelText('Full Name *'), {
       target: { value: 'Test User' }
-    });
+
     fireEvent.change(screen.getByLabelText('Password *'), {
       target: { value: 'weak' }
-    });
-    
+
     fireEvent.click(screen.getByText('Create User'));
     
     await waitFor(() => {
       expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument();
-    });
-  });
+
 
   it('validates password confirmation', async () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -140,23 +132,21 @@ describe('UserCreationForm', () => {
     // Fill form with mismatched passwords
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 'test@example.com' }
-    });
+
     fireEvent.change(screen.getByLabelText('Full Name *'), {
       target: { value: 'Test User' }
-    });
+
     fireEvent.change(screen.getByLabelText('Password *'), {
       target: { value: 'StrongPass123' }
-    });
+
     fireEvent.change(screen.getByLabelText('Confirm Password *'), {
       target: { value: 'DifferentPass123' }
-    });
-    
+
     fireEvent.click(screen.getByText('Create User'));
     
     await waitFor(() => {
       expect(screen.getByText('Passwords do not match')).toBeInTheDocument();
-    });
-  });
+
 
   it('shows admin role option for super admins only', () => {
     // Test as regular admin
@@ -172,12 +162,10 @@ describe('UserCreationForm', () => {
       hasPermission: jest.fn(() => true),
       user: { user_id: 'super1', email: 'super@test.com', role: 'super_admin' } as any,
       loading: false
-    });
-    
+
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
     
     expect(screen.getByText('Admin')).toBeInTheDocument();
-  });
 
   it('prevents admin role creation by regular admins', async () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -197,17 +185,15 @@ describe('UserCreationForm', () => {
     // Fill other required fields
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 'test@example.com' }
-    });
+
     fireEvent.change(screen.getByLabelText('Full Name *'), {
       target: { value: 'Test User' }
-    });
-    
+
     fireEvent.click(screen.getByText('Create User'));
     
     await waitFor(() => {
       expect(screen.getByText('Only super admins can create admin users')).toBeInTheDocument();
-    });
-  });
+
 
   it('successfully creates user with invitation', async () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -215,11 +201,10 @@ describe('UserCreationForm', () => {
     // Fill form
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 'newuser@test.com' }
-    });
+
     fireEvent.change(screen.getByLabelText('Full Name *'), {
       target: { value: 'New User' }
-    });
-    
+
     fireEvent.click(screen.getByText('Create User'));
     
     await waitFor(() => {
@@ -233,18 +218,15 @@ describe('UserCreationForm', () => {
           send_invitation: true,
           tenant_id: 'default'
         })
-      });
-    });
-    
+
+
     await waitFor(() => {
       expect(screen.getByText(/User created successfully! An invitation email has been sent/)).toBeInTheDocument();
-    });
-    
+
     // Should call callback after delay
     await waitFor(() => {
       expect(mockOnUserCreated).toHaveBeenCalled();
     }, { timeout: 3000 });
-  });
 
   it('successfully creates user with password', async () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -255,17 +237,16 @@ describe('UserCreationForm', () => {
     // Fill form
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 'newuser@test.com' }
-    });
+
     fireEvent.change(screen.getByLabelText('Full Name *'), {
       target: { value: 'New User' }
-    });
+
     fireEvent.change(screen.getByLabelText('Password *'), {
       target: { value: 'StrongPass123' }
-    });
+
     fireEvent.change(screen.getByLabelText('Confirm Password *'), {
       target: { value: 'StrongPass123' }
-    });
-    
+
     fireEvent.click(screen.getByText('Create User'));
     
     await waitFor(() => {
@@ -280,9 +261,8 @@ describe('UserCreationForm', () => {
           tenant_id: 'default',
           password: 'StrongPass123'
         })
-      });
-    });
-  });
+
+
 
   it('handles API errors', async () => {
     mockFetch.mockResolvedValue({
@@ -298,17 +278,15 @@ describe('UserCreationForm', () => {
     // Fill and submit form
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 'existing@test.com' }
-    });
+
     fireEvent.change(screen.getByLabelText('Full Name *'), {
       target: { value: 'Test User' }
-    });
-    
+
     fireEvent.click(screen.getByText('Create User'));
     
     await waitFor(() => {
       expect(screen.getByText('Email already exists')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles specific error types', async () => {
     mockFetch.mockResolvedValue({
@@ -324,17 +302,15 @@ describe('UserCreationForm', () => {
     // Fill and submit form
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 'existing@test.com' }
-    });
+
     fireEvent.change(screen.getByLabelText('Full Name *'), {
       target: { value: 'Test User' }
-    });
-    
+
     fireEvent.click(screen.getByText('Create User'));
     
     await waitFor(() => {
       expect(screen.getByText('A user with this email address already exists')).toBeInTheDocument();
-    });
-  });
+
 
   it('resets form after successful creation', async () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -342,17 +318,15 @@ describe('UserCreationForm', () => {
     // Fill form
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 'newuser@test.com' }
-    });
+
     fireEvent.change(screen.getByLabelText('Full Name *'), {
       target: { value: 'New User' }
-    });
-    
+
     fireEvent.click(screen.getByText('Create User'));
     
     await waitFor(() => {
       expect(screen.getByDisplayValue('')).toBeInTheDocument(); // Email field should be empty
-    });
-  });
+
 
   it('shows loading state during submission', async () => {
     // Mock slow API response
@@ -370,16 +344,14 @@ describe('UserCreationForm', () => {
     // Fill and submit form
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 'newuser@test.com' }
-    });
+
     fireEvent.change(screen.getByLabelText('Full Name *'), {
       target: { value: 'New User' }
-    });
-    
+
     fireEvent.click(screen.getByText('Create User'));
     
     expect(screen.getByText('Creating...')).toBeInTheDocument();
     expect(screen.getByText('Creating...')).toBeDisabled();
-  });
 
   it('resets form when reset button is clicked', () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -387,17 +359,15 @@ describe('UserCreationForm', () => {
     // Fill form
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 'test@example.com' }
-    });
+
     fireEvent.change(screen.getByLabelText('Full Name *'), {
       target: { value: 'Test User' }
-    });
-    
+
     // Click reset
     fireEvent.click(screen.getByText('Reset'));
     
     expect(screen.getByLabelText('Email Address *')).toHaveValue('');
     expect(screen.getByLabelText('Full Name *')).toHaveValue('');
-  });
 
   it('clears field errors when user starts typing', async () => {
     render(<UserCreationForm onUserCreated={mockOnUserCreated} />);
@@ -407,13 +377,10 @@ describe('UserCreationForm', () => {
     
     await waitFor(() => {
       expect(screen.getByText('Email is required')).toBeInTheDocument();
-    });
-    
+
     // Start typing in email field
     fireEvent.change(screen.getByLabelText('Email Address *'), {
       target: { value: 't' }
-    });
-    
+
     expect(screen.queryByText('Email is required')).not.toBeInTheDocument();
-  });
-});
+

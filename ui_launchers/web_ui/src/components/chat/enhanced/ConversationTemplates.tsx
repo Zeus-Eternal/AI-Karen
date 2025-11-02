@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState } from 'react';
 import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,56 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
 import { useToast } from '@/hooks/use-toast';
-'use client';
 
+import { } from '@/components/ui/dialog';
+import { } from '@/components/ui/select';
 
+import { } from '@/components/ui/dropdown-menu';
 
-
-
-
-
-
-
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-
-  FileText as Template,
-  Plus,
-  Search,
-  Code,
-  HelpCircle,
-  BookOpen,
-  Lightbulb,
-  Zap,
-  MessageSquare,
-  Star,
-  Edit,
-  Trash2,
-  Copy,
-  MoreHorizontal,
-  Play
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 
 interface ConversationTemplate {
@@ -220,7 +180,6 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
     category: 'general' as ConversationTemplate['category'],
     prompts: [{ text: '', order: 1 }],
     tags: [] as string[]
-  });
 
   // Filter templates
   const filteredTemplates = React.useMemo(() => {
@@ -233,7 +192,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
       const matchesCategory = categoryFilter === 'all' || template.category === categoryFilter;
       
       return matchesSearch && matchesCategory;
-    });
+
   }, [templates, searchQuery, categoryFilter]);
 
   // Filter quick actions
@@ -246,7 +205,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
       const matchesCategory = categoryFilter === 'all' || action.category === categoryFilter;
       
       return matchesSearch && matchesCategory;
-    });
+
   }, [quickActions, searchQuery, categoryFilter]);
 
   // Handle template creation
@@ -256,7 +215,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
         variant: 'destructive',
         title: 'Validation Error',
         description: 'Template name is required'
-      });
+
       return;
     }
 
@@ -280,12 +239,11 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
       category: 'general',
       prompts: [{ text: '', order: 1 }],
       tags: []
-    });
 
     toast({
       title: 'Template Created',
       description: 'Your conversation template has been created successfully'
-    });
+
   };
 
   // Handle template selection
@@ -297,7 +255,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
       onTemplateUpdate(template.id, {
         usageCount: template.usageCount + 1,
         updatedAt: new Date()
-      });
+
     }
   };
 
@@ -360,8 +318,8 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
         <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-start gap-3 flex-1">
-              <CategoryIcon className="h-5 w-5 text-muted-foreground mt-0.5 sm:w-auto md:w-full" />
-              <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+              <CategoryIcon className="h-5 w-5 text-muted-foreground mt-0.5 " />
+              <div className="flex-1 min-w-0 ">
                 <h3 className="font-medium text-sm md:text-base lg:text-lg">{template.name}</h3>
                 <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                   {template.description}
@@ -371,22 +329,19 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button variant="ghost" size="sm" className="h-6 w-6 p-0 sm:w-auto md:w-full" aria-label="Button">
-                  <MoreHorizontal className="h-3 w-3 sm:w-auto md:w-full" />
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 " >
+                  <MoreHorizontal className="h-3 w-3 " />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handleTemplateSelect(template)}>
-                  <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Use Template
+                  <Play className="h-4 w-4 mr-2 " />
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setEditingTemplate(template)}>
-                  <Edit className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Edit
+                  <Edit className="h-4 w-4 mr-2 " />
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Copy className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Duplicate
+                  <Copy className="h-4 w-4 mr-2 " />
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {!template.isBuiltIn && (
@@ -394,8 +349,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                     onClick={() => onTemplateDelete?.(template.id)}
                     className="text-destructive"
                   >
-                    <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    Delete
+                    <Trash2 className="h-4 w-4 mr-2 " />
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -408,7 +362,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             </Badge>
             
             <div className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm md:text-base">
-              <Star className="h-3 w-3 fill-current text-yellow-500 sm:w-auto md:w-full" />
+              <Star className="h-3 w-3 fill-current text-yellow-500 " />
               <span>{template.rating.toFixed(1)}</span>
             </div>
             
@@ -440,12 +394,11 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
           </div>
 
           <button
-            onClick={() = aria-label="Button"> handleTemplateSelect(template)}
+            onClick={() => handleTemplateSelect(template)}
             className="w-full mt-3"
             size="sm"
           >
-            <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Use Template
+            <Play className="h-4 w-4 mr-2 " />
           </Button>
         </CardContent>
       </Card>
@@ -464,7 +417,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
       >
         <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center gap-3 mb-2">
-            <Icon className="h-5 w-5 text-primary sm:w-auto md:w-full" />
+            <Icon className="h-5 w-5 text-primary " />
             <div className="flex-1">
               <h3 className="font-medium text-sm md:text-base lg:text-lg">{action.name}</h3>
               {action.shortcut && (
@@ -492,7 +445,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Template className="h-5 w-5 sm:w-auto md:w-full" />
+            <Template className="h-5 w-5 " />
             Templates & Quick Actions
           </CardTitle>
           
@@ -500,15 +453,13 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
                 <button size="sm" aria-label="Button">
-                  <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Create
+                  <Plus className="h-4 w-4 mr-2 " />
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Create Template</DialogTitle>
                   <DialogDescription>
-                    Create a new conversation template for reuse
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -517,7 +468,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                     <label className="text-sm font-medium md:text-base lg:text-lg">Name</label>
                     <input
                       value={newTemplate.name}
-                      onChange={(e) = aria-label="Input"> setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
                       placeholder="Template name"
                     />
                   </div>
@@ -526,7 +477,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                     <label className="text-sm font-medium md:text-base lg:text-lg">Description</label>
                     <textarea
                       value={newTemplate.description}
-                      onChange={(e) = aria-label="Textarea"> setNewTemplate(prev => ({ ...prev, description: e.target.value }))}
+                      onChange={(e) => setNewTemplate(prev => ({ ...prev, description: e.target.value }))}
                       placeholder="Template description"
                       rows={2}
                     />
@@ -553,14 +504,12 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                   </div>
                   
                   <div className="flex gap-2">
-                    <button onClick={handleCreateTemplate} className="flex-1" aria-label="Button">
-                      Create Template
+                    <Button onClick={handleCreateTemplate} className="flex-1" >
                     </Button>
-                    <button 
+                    <Button 
                       variant="outline" 
-                      onClick={() = aria-label="Button"> setShowCreateDialog(false)}
+                      onClick={() => setShowCreateDialog(false)}
                     >
-                      Cancel
                     </Button>
                   </div>
                 </div>
@@ -572,11 +521,11 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
         {/* Search and Filters */}
         <div className="space-y-3">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground " />
             <input
               placeholder="Search templates and actions..."
               value={searchQuery}
-              onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 h-9"
             />
           </div>
@@ -624,7 +573,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             {/* Empty State */}
             {filteredTemplates.length === 0 && filteredQuickActions.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                <Template className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                <Template className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                 <p className="text-sm md:text-base lg:text-lg">
                   {searchQuery || categoryFilter !== 'all'
                     ? 'No templates or actions match your search'

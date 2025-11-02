@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { AdminRoute } from '../AdminRoute';
 
@@ -31,7 +32,6 @@ describe('Enhanced AdminRoute', () => {
     const protectedRoute = screen.getByTestId('protected-route');
     expect(protectedRoute).toHaveAttribute('data-required-role', 'admin');
     expect(screen.getByText('Admin Content')).toBeInTheDocument();
-  });
 
   it('wraps content with NavigationLayout by default', () => {
     render(
@@ -42,7 +42,6 @@ describe('Enhanced AdminRoute', () => {
 
     expect(screen.getByTestId('navigation-layout')).toBeInTheDocument();
     expect(screen.getByText('Admin Content')).toBeInTheDocument();
-  });
 
   it('can disable navigation layout', () => {
     render(
@@ -53,7 +52,6 @@ describe('Enhanced AdminRoute', () => {
 
     expect(screen.queryByTestId('navigation-layout')).not.toBeInTheDocument();
     expect(screen.getByText('Admin Content')).toBeInTheDocument();
-  });
 
   it('passes through breadcrumbs setting', () => {
     render(
@@ -64,7 +62,6 @@ describe('Enhanced AdminRoute', () => {
 
     const navigationLayout = screen.getByTestId('navigation-layout');
     expect(navigationLayout).toHaveAttribute('data-show-breadcrumbs', 'false');
-  });
 
   it('uses custom loading message', () => {
     render(
@@ -75,7 +72,6 @@ describe('Enhanced AdminRoute', () => {
 
     const protectedRoute = screen.getByTestId('protected-route');
     expect(protectedRoute).toHaveAttribute('data-loading-message', 'Loading admin panel...');
-  });
 
   it('accepts super_admin role requirement', () => {
     render(
@@ -86,7 +82,6 @@ describe('Enhanced AdminRoute', () => {
 
     const protectedRoute = screen.getByTestId('protected-route');
     expect(protectedRoute).toHaveAttribute('data-required-role', 'super_admin');
-  });
 
   it('passes through all ProtectedRoute props', () => {
     const fallback = <div>Access Denied</div>;
@@ -103,7 +98,6 @@ describe('Enhanced AdminRoute', () => {
 
     // The ProtectedRoute should receive these props
     expect(screen.getByTestId('protected-route')).toBeInTheDocument();
-  });
 
   it('shows breadcrumbs by default', () => {
     render(
@@ -114,7 +108,6 @@ describe('Enhanced AdminRoute', () => {
 
     const navigationLayout = screen.getByTestId('navigation-layout');
     expect(navigationLayout).toHaveAttribute('data-show-breadcrumbs', 'true');
-  });
 
   it('uses default admin loading message', () => {
     render(
@@ -125,5 +118,4 @@ describe('Enhanced AdminRoute', () => {
 
     const protectedRoute = screen.getByTestId('protected-route');
     expect(protectedRoute).toHaveAttribute('data-loading-message', 'Loading admin interface...');
-  });
-});
+

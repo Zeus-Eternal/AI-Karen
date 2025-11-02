@@ -3,6 +3,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import { SkipLinks } from '../SkipLinks';
@@ -15,8 +16,7 @@ describe('SkipLinks', () => {
         return document.createElement('div');
       }
       return null;
-    });
-  });
+
 
   it('renders default skip links', () => {
     render(<SkipLinks />);
@@ -24,7 +24,6 @@ describe('SkipLinks', () => {
     expect(screen.getByText('Skip to main content')).toBeInTheDocument();
     expect(screen.getByText('Skip to navigation')).toBeInTheDocument();
     expect(screen.getByText('Skip to search')).toBeInTheDocument();
-  });
 
   it('renders custom skip links', () => {
     const customLinks = [
@@ -37,7 +36,6 @@ describe('SkipLinks', () => {
     expect(screen.getByText('Skip to custom main')).toBeInTheDocument();
     expect(screen.getByText('Skip to custom navigation')).toBeInTheDocument();
     expect(screen.queryByText('Skip to main content')).not.toBeInTheDocument();
-  });
 
   it('has correct href attributes', () => {
     render(<SkipLinks />);
@@ -49,7 +47,6 @@ describe('SkipLinks', () => {
     expect(mainLink).toHaveAttribute('href', '#main-content');
     expect(navLink).toHaveAttribute('href', '#navigation');
     expect(searchLink).toHaveAttribute('href', '#search');
-  });
 
   it('applies correct CSS classes', () => {
     render(<SkipLinks />);
@@ -60,15 +57,13 @@ describe('SkipLinks', () => {
       expect(link).toHaveClass('absolute', 'left-4', 'top-4', 'z-[9999]');
       expect(link).toHaveClass('-translate-y-full', 'opacity-0');
       expect(link).toHaveClass('focus:translate-y-0', 'focus:opacity-100');
-    });
-  });
+
 
   it('applies custom className', () => {
     render(<SkipLinks className="custom-class" />);
 
     const container = screen.getAllByRole('link')[0].parentElement;
     expect(container).toHaveClass('custom-class');
-  });
 
   it('sets tabindex on target elements when focused', () => {
     const mockElement = document.createElement('div');
@@ -82,7 +77,6 @@ describe('SkipLinks', () => {
     fireEvent.focus(mainLink);
 
     expect(mockElement.setAttribute).toHaveBeenCalledWith('tabindex', '-1');
-  });
 
   it('handles missing target elements gracefully', () => {
     document.querySelector = vi.fn(() => null);
@@ -95,7 +89,6 @@ describe('SkipLinks', () => {
     expect(() => {
       fireEvent.focus(mainLink);
     }).not.toThrow();
-  });
 
   it('is keyboard accessible', () => {
     render(<SkipLinks />);
@@ -106,8 +99,7 @@ describe('SkipLinks', () => {
       // Links are keyboard accessible by default, no need for explicit tabIndex
       expect(link.tagName).toBe('A');
       expect(link).toHaveAttribute('href');
-    });
-  });
+
 
   it('has proper focus management', () => {
     render(<SkipLinks />);
@@ -119,7 +111,6 @@ describe('SkipLinks', () => {
     
     // Should become visible on focus (handled by CSS)
     expect(mainLink).toHaveClass('focus:translate-y-0', 'focus:opacity-100');
-  });
 
   it('supports high contrast mode', () => {
     render(<SkipLinks />);
@@ -128,6 +119,5 @@ describe('SkipLinks', () => {
     
     links.forEach(link => {
       expect(link).toHaveClass('high-contrast:bg-black', 'high-contrast:text-white', 'high-contrast:border-white');
-    });
-  });
-});
+
+

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
             // @ts-ignore keepalive supported in runtime
             keepalive: true,
             cache: 'no-store',
-          });
+
           clearTimeout(timeout);
           lastErr = null;
           break;

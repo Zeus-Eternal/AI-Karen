@@ -90,7 +90,7 @@ export class EndpointFallbackService {
           consecutiveFailures: 0,
           totalRequests: 0,
           successfulRequests: 0,
-        });
+
       }
     }
   }
@@ -125,7 +125,6 @@ export class EndpointFallbackService {
     const activeEndpoints = allEndpoints.filter(endpoint => {
       const stats = this.endpointStats.get(endpoint);
       return stats?.isActive !== false;
-    });
 
     if (activeEndpoints.length === 0) {
       // All endpoints are marked as inactive, try primary anyway
@@ -320,7 +319,7 @@ export class EndpointFallbackService {
     this.endpointCache.set(cacheKey, {
       endpoint,
       timestamp: Date.now(),
-    });
+
   }
 
   /**
@@ -377,7 +376,6 @@ export class EndpointFallbackService {
           this.endpointStats.set(endpoint, stats);
         }
       }
-    });
 
     await Promise.allSettled(healthCheckPromises);
   }
@@ -513,7 +511,4 @@ export function initializeEndpointFallbackService(config?: Partial<FallbackConfi
 
 // Export types
 export type {
-  FallbackConfig as FallbackConfigType,
-  EndpointStatus as EndpointStatusType,
-  FallbackResult as FallbackResultType,
 };

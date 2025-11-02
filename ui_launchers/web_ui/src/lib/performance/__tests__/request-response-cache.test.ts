@@ -16,12 +16,10 @@ describe('RequestResponseCache', () => {
       defaultTtl: 60000,
       enableCompression: false, // Disable for testing
       enablePersistence: false,
-    });
-  });
+
 
   afterEach(() => {
     cache.shutdown();
-  });
 
   describe('Basic Cache Operations', () => {
     it('should store and retrieve cache entries', async () => {
@@ -37,12 +35,10 @@ describe('RequestResponseCache', () => {
       expect(result).toBeTruthy();
       expect(result!.data).toEqual(testData);
       expect(result!.status).toBe(200);
-    });
 
     it('should return null for non-existent keys', async () => {
       const result = await cache.get('non-existent-key');
       expect(result).toBeNull();
-    });
 
     it('should handle cache expiration', async () => {
       const testData = { message: 'Expires soon' };
@@ -61,7 +57,6 @@ describe('RequestResponseCache', () => {
       // Should be expired
       result = await cache.get(key);
       expect(result).toBeNull();
-    });
 
     it('should delete cache entries', async () => {
       const testData = { message: 'To be deleted' };
@@ -80,8 +75,7 @@ describe('RequestResponseCache', () => {
       // Verify it's gone
       result = await cache.get(key);
       expect(result).toBeNull();
-    });
-  });
+
 
   describe('Cache Headers and TTL', () => {
     it('should extract TTL from Cache-Control headers', async () => {
@@ -94,7 +88,6 @@ describe('RequestResponseCache', () => {
       const result = await cache.get(key);
       expect(result).toBeTruthy();
       expect(result!.ttl).toBe(300000); // 5 minutes in milliseconds
-    });
 
     it('should extract TTL from Expires headers', async () => {
       const testData = { message: 'Expires header' };
@@ -107,7 +100,6 @@ describe('RequestResponseCache', () => {
       const result = await cache.get(key);
       expect(result).toBeTruthy();
       expect(result!.ttl).toBeGreaterThan(500000); // Should be close to 10 minutes
-    });
 
     it('should use default TTL when no headers provided', async () => {
       const testData = { message: 'Default TTL' };
@@ -118,8 +110,7 @@ describe('RequestResponseCache', () => {
       const result = await cache.get(key);
       expect(result).toBeTruthy();
       expect(result!.ttl).toBe(60000); // Default TTL
-    });
-  });
+
 
   describe('Cache Tags and Invalidation', () => {
     it('should support cache tags', async () => {
@@ -140,7 +131,6 @@ describe('RequestResponseCache', () => {
       // Both should be gone
       expect(await cache.get('user-1')).toBeNull();
       expect(await cache.get('post-1')).toBeNull();
-    });
 
     it('should clear all cache entries', async () => {
       // Add multiple entries
@@ -160,8 +150,7 @@ describe('RequestResponseCache', () => {
       expect(await cache.get('key1')).toBeNull();
       expect(await cache.get('key2')).toBeNull();
       expect(await cache.get('key3')).toBeNull();
-    });
-  });
+
 
   describe('Cache Size Management', () => {
     it('should respect maximum cache size', async () => {
@@ -174,7 +163,6 @@ describe('RequestResponseCache', () => {
 
       const metrics = cache.getMetrics();
       expect(metrics.totalEntries).toBeLessThanOrEqual(maxSize);
-    });
 
     it('should evict least recently used entries', async () => {
       // Fill cache to max size
@@ -205,8 +193,7 @@ describe('RequestResponseCache', () => {
 
       const nullCount = oldEntries.filter(entry => entry === null).length;
       expect(nullCount).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('Cache Metrics', () => {
     it('should track cache hit and miss rates', async () => {
@@ -229,7 +216,6 @@ describe('RequestResponseCache', () => {
       expect(metrics.cacheMisses).toBe(2);
       expect(metrics.hitRate).toBeCloseTo(0.6); // 3/5
       expect(metrics.missRate).toBeCloseTo(0.4); // 2/5
-    });
 
     it('should track memory usage', async () => {
       const largeData = { message: 'x'.repeat(1000) };
@@ -239,8 +225,7 @@ describe('RequestResponseCache', () => {
       const metrics = cache.getMetrics();
       expect(metrics.memoryUsage).toBeGreaterThan(0);
       expect(metrics.totalEntries).toBe(1);
-    });
-  });
+
 
   describe('Skip Cache Options', () => {
     it('should skip cache when requested', async () => {
@@ -253,7 +238,6 @@ describe('RequestResponseCache', () => {
       // Should not be in cache
       const result = await cache.get(key);
       expect(result).toBeNull();
-    });
 
     it('should skip cache retrieval when requested', async () => {
       const testData = { message: 'Skip retrieval test' };
@@ -269,8 +253,7 @@ describe('RequestResponseCache', () => {
       // Normal get should still work
       const normalResult = await cache.get(key);
       expect(normalResult).toBeTruthy();
-    });
-  });
+
 
   describe('Compression', () => {
     it('should handle compression when available', async () => {
@@ -282,7 +265,6 @@ describe('RequestResponseCache', () => {
       const compressionCache = new RequestResponseCache({
         enableCompression: true,
         maxSize: 10,
-      });
 
       const largeData = { message: 'x'.repeat(1000) };
       const key = 'compression-key';
@@ -294,8 +276,7 @@ describe('RequestResponseCache', () => {
       expect(result!.data).toEqual(largeData);
 
       compressionCache.shutdown();
-    });
-  });
+
 
   describe('Cleanup and Maintenance', () => {
     it('should cleanup expired entries automatically', async () => {
@@ -303,7 +284,6 @@ describe('RequestResponseCache', () => {
       const shortCleanupCache = new RequestResponseCache({
         maxSize: 10,
         defaultTtl: 100, // Very short TTL
-      });
 
       // Add entries that will expire
       await shortCleanupCache.set('expire-1', { data: 1 }, {}, 200);
@@ -323,6 +303,5 @@ describe('RequestResponseCache', () => {
       expect(await shortCleanupCache.get('new-entry')).toBeTruthy();
 
       shortCleanupCache.shutdown();
-    });
-  });
-});
+
+

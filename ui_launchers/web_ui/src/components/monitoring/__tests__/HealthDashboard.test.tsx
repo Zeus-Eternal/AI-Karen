@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import HealthDashboard from '../HealthDashboard';
@@ -117,12 +118,10 @@ describe('HealthDashboard', () => {
     (global.fetch as Mock).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockHealthData),
-    });
-  });
+
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('Rendering', () => {
     it('should render health dashboard with title', async () => {
@@ -131,13 +130,11 @@ describe('HealthDashboard', () => {
       expect(screen.getByText('Health Dashboard')).toBeInTheDocument();
       expect(screen.getByText('Start Monitoring')).toBeInTheDocument();
       expect(screen.getByText('Refresh')).toBeInTheDocument();
-    });
 
     it('should show loading state initially', () => {
       render(<HealthDashboard />);
       
       expect(screen.getByText('Loading health data...')).toBeInTheDocument();
-    });
 
     it('should display health data after loading', async () => {
       render(<HealthDashboard />);
@@ -145,8 +142,7 @@ describe('HealthDashboard', () => {
       await waitFor(() => {
         expect(screen.getByText('Healthy')).toBeInTheDocument();
         expect(screen.getByText('150ms')).toBeInTheDocument();
-      });
-    });
+
 
     it('should display service details', async () => {
       render(<HealthDashboard />);
@@ -156,8 +152,7 @@ describe('HealthDashboard', () => {
         expect(screen.getByText('Redis')).toBeInTheDocument();
         expect(screen.getByText('Ai Providers')).toBeInTheDocument();
         expect(screen.getByText('System Resources')).toBeInTheDocument();
-      });
-    });
+
 
     it('should display endpoint information', async () => {
       render(<HealthDashboard />);
@@ -167,9 +162,8 @@ describe('HealthDashboard', () => {
         expect(screen.getByText('http://localhost:8000')).toBeInTheDocument();
         expect(screen.getByText('http://localhost:8001')).toBeInTheDocument();
         expect(screen.getByText('Active')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Health Status Display', () => {
     it('should display correct status colors and icons', async () => {
@@ -181,8 +175,7 @@ describe('HealthDashboard', () => {
         
         // Should show degraded status with alert icon for AI providers
         expect(screen.getByTestId('alert-icon')).toBeInTheDocument();
-      });
-    });
+
 
     it('should display service summary correctly', async () => {
       render(<HealthDashboard />);
@@ -192,8 +185,7 @@ describe('HealthDashboard', () => {
         expect(screen.getByText('1')).toBeInTheDocument(); // Degraded services
         expect(screen.getByText('0')).toBeInTheDocument(); // Unhealthy services
         expect(screen.getByText('4')).toBeInTheDocument(); // Total services
-      });
-    });
+
 
     it('should format response times correctly', async () => {
       render(<HealthDashboard />);
@@ -201,9 +193,8 @@ describe('HealthDashboard', () => {
       await waitFor(() => {
         expect(screen.getByText('Response Time: 150ms')).toBeInTheDocument();
         expect(screen.getByText('Response Time: 50ms')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Error Handling', () => {
     it('should display error message when fetch fails', async () => {
@@ -213,8 +204,7 @@ describe('HealthDashboard', () => {
       
       await waitFor(() => {
         expect(screen.getByText(/Error: Network error/)).toBeInTheDocument();
-      });
-    });
+
 
     it('should display error when no active endpoint', async () => {
       mockHealthMonitor.getActiveEndpoint.mockReturnValue(null);
@@ -223,23 +213,20 @@ describe('HealthDashboard', () => {
       
       await waitFor(() => {
         expect(screen.getByText(/Error: No active endpoint available/)).toBeInTheDocument();
-      });
-    });
+
 
     it('should display error when API returns error status', async () => {
       (global.fetch as Mock).mockResolvedValue({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-      });
-      
+
       render(<HealthDashboard />);
       
       await waitFor(() => {
         expect(screen.getByText(/Error: Health check failed: 500 Internal Server Error/)).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('User Interactions', () => {
     it('should start monitoring when button is clicked', async () => {
@@ -249,7 +236,6 @@ describe('HealthDashboard', () => {
       fireEvent.click(startButton);
       
       expect(mockHealthMonitor.startMonitoring).toHaveBeenCalled();
-    });
 
     it('should stop monitoring when button is clicked', async () => {
       mockHealthMonitor.isMonitoringActive.mockReturnValue(true);
@@ -261,8 +247,7 @@ describe('HealthDashboard', () => {
         fireEvent.click(stopButton);
         
         expect(mockHealthMonitor.stopMonitoring).toHaveBeenCalled();
-      });
-    });
+
 
     it('should refresh data when refresh button is clicked', async () => {
       render(<HealthDashboard />);
@@ -272,8 +257,7 @@ describe('HealthDashboard', () => {
         fireEvent.click(refreshButton);
         
         expect(global.fetch).toHaveBeenCalledTimes(2); // Initial + manual refresh
-      });
-    });
+
 
     it('should force failover when switch button is clicked', async () => {
       render(<HealthDashboard />);
@@ -283,9 +267,8 @@ describe('HealthDashboard', () => {
         fireEvent.click(switchButton);
         
         expect(mockHealthMonitor.forceFailover).toHaveBeenCalledWith('http://localhost:8001');
-      });
-    });
-  });
+
+
 
   describe('Event Handling', () => {
     it('should register event listeners on mount', () => {
@@ -300,7 +283,6 @@ describe('HealthDashboard', () => {
         'endpoint_failover',
         expect.any(Function)
       );
-    });
 
     it('should remove event listeners on unmount', () => {
       const { unmount } = render(<HealthDashboard />);
@@ -308,7 +290,6 @@ describe('HealthDashboard', () => {
       unmount();
       
       expect(mockHealthMonitor.removeEventListener).toHaveBeenCalledTimes(6);
-    });
 
     it('should handle failover events', async () => {
       let eventHandler: Function;
@@ -316,8 +297,7 @@ describe('HealthDashboard', () => {
         if (eventType === 'endpoint_failover') {
           eventHandler = handler;
         }
-      });
-      
+
       render(<HealthDashboard />);
       
       // Simulate failover event
@@ -327,23 +307,19 @@ describe('HealthDashboard', () => {
           timestamp: new Date(),
           endpoint: 'http://localhost:8001',
           data: { from: 'http://localhost:8000', to: 'http://localhost:8001' },
-        });
-      });
-      
+
+
       await waitFor(() => {
         expect(mockHealthMonitor.getAllEndpoints).toHaveBeenCalledTimes(2); // Initial + after event
-      });
-    });
-  });
+
+
 
   describe('Auto Refresh', () => {
     beforeEach(() => {
       vi.useFakeTimers();
-    });
 
     afterEach(() => {
       vi.useRealTimers();
-    });
 
     it('should auto-refresh data at specified interval', async () => {
       render(<HealthDashboard autoRefresh={true} refreshInterval={5000} />);
@@ -354,12 +330,10 @@ describe('HealthDashboard', () => {
       // Fast-forward time
       act(() => {
         vi.advanceTimersByTime(5000);
-      });
-      
+
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledTimes(2);
-      });
-    });
+
 
     it('should not auto-refresh when disabled', async () => {
       render(<HealthDashboard autoRefresh={false} />);
@@ -370,12 +344,10 @@ describe('HealthDashboard', () => {
       // Fast-forward time
       act(() => {
         vi.advanceTimersByTime(30000);
-      });
-      
+
       // Should not have additional fetches
       expect(global.fetch).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('Recent Events Display', () => {
     it('should display recent events when available', async () => {
@@ -384,8 +356,7 @@ describe('HealthDashboard', () => {
         if (eventType === 'health_check_success') {
           eventHandler = handler;
         }
-      });
-      
+
       render(<HealthDashboard />);
       
       // Simulate health check success event
@@ -394,14 +365,12 @@ describe('HealthDashboard', () => {
           type: 'health_check_success',
           timestamp: new Date(),
           endpoint: 'http://localhost:8000',
-        });
-      });
-      
+
+
       await waitFor(() => {
         expect(screen.getByText('Recent Events')).toBeInTheDocument();
         expect(screen.getByText('health check success')).toBeInTheDocument();
-      });
-    });
+
 
     it('should limit events to last 10', async () => {
       let eventHandler: Function;
@@ -409,8 +378,7 @@ describe('HealthDashboard', () => {
         if (eventType === 'health_check_success') {
           eventHandler = handler;
         }
-      });
-      
+
       render(<HealthDashboard />);
       
       // Simulate 15 events
@@ -420,14 +388,13 @@ describe('HealthDashboard', () => {
             type: 'health_check_success',
             timestamp: new Date(),
             endpoint: 'http://localhost:8000',
-          });
-        });
+
+
       }
       
       await waitFor(() => {
         const eventElements = screen.getAllByText('health check success');
         expect(eventElements).toHaveLength(10); // Should be limited to 10
-      });
-    });
-  });
-});
+
+
+

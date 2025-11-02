@@ -80,7 +80,6 @@ describe('KeyboardNavigationProvider', () => {
       disconnect: jest.fn(),
       takeRecords: jest.fn(),
     }));
-  });
 
   it('provides keyboard navigation context', () => {
     render(
@@ -92,7 +91,6 @@ describe('KeyboardNavigationProvider', () => {
     expect(screen.getByTestId('focus-index')).toHaveTextContent('-1');
     expect(screen.getByTestId('total-items')).toHaveTextContent('0');
     expect(screen.getByTestId('enabled')).toHaveTextContent('true');
-  });
 
   it('handles navigation controls', () => {
     render(
@@ -110,7 +108,6 @@ describe('KeyboardNavigationProvider', () => {
     expect(previousButton).toBeInTheDocument();
     expect(firstButton).toBeInTheDocument();
     expect(lastButton).toBeInTheDocument();
-  });
 
   it('can be enabled and disabled', () => {
     render(
@@ -126,7 +123,6 @@ describe('KeyboardNavigationProvider', () => {
     fireEvent.click(toggleButton);
     
     expect(screen.getByTestId('enabled')).toHaveTextContent('false');
-  });
 
   it('supports custom orientation', () => {
     render(
@@ -137,7 +133,6 @@ describe('KeyboardNavigationProvider', () => {
 
     // Component should render without errors
     expect(screen.getByTestId('enabled')).toHaveTextContent('true');
-  });
 
   it('supports loop navigation', () => {
     render(
@@ -148,7 +143,6 @@ describe('KeyboardNavigationProvider', () => {
 
     // Component should render without errors
     expect(screen.getByTestId('enabled')).toHaveTextContent('true');
-  });
 
   it('can be initially disabled', () => {
     render(
@@ -158,7 +152,6 @@ describe('KeyboardNavigationProvider', () => {
     );
 
     expect(screen.getByTestId('enabled')).toHaveTextContent('false');
-  });
 
   it('renders navigation items correctly', () => {
     render(
@@ -170,7 +163,6 @@ describe('KeyboardNavigationProvider', () => {
     expect(screen.getByText('Item 1')).toBeInTheDocument();
     expect(screen.getByText('Item 2')).toBeInTheDocument();
     expect(screen.getByText('Item 3')).toBeInTheDocument();
-  });
 
   it('sets correct ARIA attributes on items', () => {
     render(
@@ -185,8 +177,7 @@ describe('KeyboardNavigationProvider', () => {
       expect(item).toHaveAttribute('data-keyboard-nav-item', 'true');
       expect(item).toHaveAttribute('data-nav-index', index.toString());
       expect(item).toHaveAttribute('role', 'option');
-    });
-  });
+
 
   it('manages tabindex correctly', () => {
     render(
@@ -200,8 +191,7 @@ describe('KeyboardNavigationProvider', () => {
     // Initially, all items should have tabindex -1 (no active item)
     items.forEach(item => {
       expect(item).toHaveAttribute('tabindex', '-1');
-    });
-  });
+
 
   it('throws error when used outside provider', () => {
     // Suppress console.error for this test
@@ -212,8 +202,7 @@ describe('KeyboardNavigationProvider', () => {
     }).toThrow('useKeyboardNavigationContext must be used within a KeyboardNavigationProvider');
 
     consoleSpy.mockRestore();
-  });
-});
+
 
 describe('useNavigationContainer', () => {
   function ContainerTestComponent() {
@@ -236,7 +225,6 @@ describe('useNavigationContainer', () => {
 
     const container = screen.getByTestId('container');
     expect(container).toBeInTheDocument();
-  });
 
   it('registers container with navigation context', () => {
     render(
@@ -249,8 +237,7 @@ describe('useNavigationContainer', () => {
     // Should detect the items in the container
     // Note: In a real implementation, this would update the total items count
     expect(screen.getByTestId('total-items')).toBeInTheDocument();
-  });
-});
+
 
 describe('useNavigationItem', () => {
   function ItemTestComponent({ index }: { index: number }) {
@@ -278,7 +265,6 @@ describe('useNavigationItem', () => {
     expect(item0).toHaveAttribute('data-nav-index', '0');
     expect(item1).toHaveAttribute('data-keyboard-nav-item', 'true');
     expect(item1).toHaveAttribute('data-nav-index', '1');
-  });
 
   it('handles click events', () => {
     render(
@@ -294,7 +280,6 @@ describe('useNavigationItem', () => {
     expect(() => {
       fireEvent.click(item1);
     }).not.toThrow();
-  });
 
   it('handles focus events', () => {
     render(
@@ -310,8 +295,7 @@ describe('useNavigationItem', () => {
     expect(() => {
       fireEvent.focus(item1);
     }).not.toThrow();
-  });
-});
+
 
 describe('Keyboard Navigation Integration', () => {
   it('handles arrow key navigation', async () => {
@@ -336,7 +320,6 @@ describe('Keyboard Navigation Integration', () => {
     
     // Should not throw errors
     expect(list).toBeInTheDocument();
-  });
 
   it('announces navigation changes', () => {
     // Mock document.body.appendChild and removeChild
@@ -357,5 +340,4 @@ describe('Keyboard Navigation Integration', () => {
 
     mockAppendChild.mockRestore();
     mockRemoveChild.mockRestore();
-  });
-});
+

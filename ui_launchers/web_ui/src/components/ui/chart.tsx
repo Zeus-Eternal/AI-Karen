@@ -1,11 +1,10 @@
 "use client"
 
-import * as React from "react"
+import * as React from "react";
 // Temporarily commented out recharts import due to lodash dependency issues
 // import * as RechartsPrimitive from "recharts"
 
-import { cn } from "@/lib/utils"
-
+import { cn } from "@/lib/utils";
 // Temporary fallback types and components for recharts
 const RechartsPrimitive = {
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -43,7 +42,6 @@ function useChart() {
 }
 
 const ChartContainer = React.forwardRef<
-  HTMLDivElement,
   React.ComponentProps<"div"> & {
     config: ChartConfig
     children: React.ReactNode
@@ -109,7 +107,6 @@ ${colorConfig
 const ChartTooltip = RechartsPrimitive.Tooltip
 
 const ChartTooltipContent = React.forwardRef<
-  HTMLDivElement,
   React.ComponentProps<"div"> & {
     active?: boolean
     payload?: any[]
@@ -271,7 +268,6 @@ ChartTooltipContent.displayName = "ChartTooltip"
 const ChartLegend = RechartsPrimitive.Legend
 
 const ChartLegendContent = React.forwardRef<
-  HTMLDivElement,
   React.ComponentProps<"div"> & {
     payload?: any[]
     verticalAlign?: "top" | "middle" | "bottom"
@@ -313,7 +309,7 @@ const ChartLegendContent = React.forwardRef<
                 <itemConfig.icon />
               ) : (
                 <div
-                  className="h-2 w-2 shrink-0 rounded-[2px] sm:w-auto md:w-full"
+                  className="h-2 w-2 shrink-0 rounded-[2px] "
                   style={{
                     backgroundColor: item.color,
                   }}
@@ -369,10 +365,4 @@ function getPayloadConfigFromPayload(
 }
 
 export {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-  ChartStyle,
 }

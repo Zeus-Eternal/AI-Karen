@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  makeBackendRequest, 
-  getTimeoutConfig, 
-  getRetryPolicy,
-  checkBackendHealth,
-  getConnectionStatus 
-} from '@/app/api/_utils/backend';
+import {  makeBackendRequest, getTimeoutConfig, getRetryPolicy, checkBackendHealth, getConnectionStatus } from '@/app/api/_utils/backend';
 import { ConnectionError } from '@/lib/connection/connection-manager';
 interface DatabaseConnectivityResult {
   isConnected: boolean;
@@ -55,7 +49,7 @@ function logSessionValidationAttempt(attempt: SessionValidationAttempt): void {
     responseTime: attempt.responseTime,
     retryCount: attempt.retryCount,
     timestamp: attempt.timestamp.toISOString(),
-  });
+
 }
 /**
  * Get error type from exception
@@ -242,7 +236,7 @@ export async function GET(request: NextRequest) {
       ...data,
       databaseConnectivity,
       responseTime: totalResponseTime,
-    });
+
   } catch (error) {
     const totalResponseTime = Date.now() - startTime;
     // Test database connectivity even in error cases

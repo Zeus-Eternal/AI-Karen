@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { Component, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
       (window as any).gtag('event', 'exception', {
         description: error.toString(),
         fatal: true,
-      });
+
     }
   }
   handleReset = () => {
@@ -44,10 +45,9 @@ export class ErrorBoundary extends Component<Props, State> {
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
-                <AlertTriangle className="h-12 w-12 text-destructive sm:w-auto md:w-full" />
+                <AlertTriangle className="h-12 w-12 text-destructive " />
               </div>
               <CardTitle className="text-xl font-semibold">
-                Something went wrong
               </CardTitle>
               <CardDescription>
                 An unexpected error occurred. Please try refreshing the page.
@@ -57,7 +57,6 @@ export class ErrorBoundary extends Component<Props, State> {
               {process.env.NODE_ENV === 'development' && this.state.error && (
                 <details className="bg-muted p-3 rounded text-xs font-mono sm:text-sm md:text-base">
                   <summary className="cursor-pointer font-sans font-medium">
-                    Error Details
                   </summary>
                   <pre className="mt-2 whitespace-pre-wrap break-all">
                     {this.state.error.toString()}
@@ -76,16 +75,14 @@ export class ErrorBoundary extends Component<Props, State> {
                   className="flex-1"
                   aria-label="Try again"
                 >
-                  <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Try Again
+                  <RefreshCw className="h-4 w-4 mr-2 " />
                 </Button>
-                <button 
+                <Button 
                   variant="outline" 
-                  onClick={() = aria-label="Button"> window.location.reload()}
+                  onClick={() => window.location.reload()}
                   className="flex-1"
                   aria-label="Refresh page"
                 >
-                  Refresh Page
                 </Button>
               </div>
             </CardContent>

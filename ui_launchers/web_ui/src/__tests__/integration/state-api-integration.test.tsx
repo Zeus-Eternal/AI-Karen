@@ -70,7 +70,6 @@ const localStorageMock = {
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
-});
 
 // Test wrapper with QueryClient
 const createWrapper = () => {
@@ -79,7 +78,6 @@ const createWrapper = () => {
       queries: { retry: false },
       mutations: { retry: false },
     },
-  });
 
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
@@ -94,12 +92,10 @@ describe('State Management and API Integration', () => {
     useAppStore.getState().resetAppState();
     vi.clearAllMocks();
     localStorageMock.getItem.mockReturnValue('test-token');
-  });
 
   afterEach(() => {
     enhancedWebSocketService.disconnect();
     vi.clearAllTimers();
-  });
 
   describe('Authentication Flow Integration', () => {
     it('should handle login flow with API and state updates', async () => {
@@ -135,25 +131,21 @@ describe('State Management and API Integration', () => {
           status: 'success',
         }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       // Perform login
       const response = await enhancedApiClient.post('/auth/login', {
         email: 'test@example.com',
         password: 'password',
-      });
 
       // Update store with login response
       act(() => {
         useAppStore.getState().login(response.data.user);
-      });
 
       // Verify state updates
       const state = useAppStore.getState();
       expect(state.isAuthenticated).toBe(true);
       expect(state.user).toEqual(mockUser);
       expect(state.authError).toBeNull();
-    });
 
     it('should handle login failure with error state', async () => {
       // Mock failed login API response
@@ -165,19 +157,18 @@ describe('State Management and API Integration', () => {
           status: 'error',
         }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       // Attempt login
       try {
         await enhancedApiClient.post('/auth/login', {
           email: 'test@example.com',
           password: 'wrong-password',
-        });
+
       } catch (error: any) {
         // Update store with error
         act(() => {
           useAppStore.getState().setAuthError(error.message);
-        });
+
       }
 
       // Verify error state
@@ -185,7 +176,6 @@ describe('State Management and API Integration', () => {
       expect(state.isAuthenticated).toBe(false);
       expect(state.user).toBeNull();
       expect(state.authError).toBe('Invalid credentials');
-    });
 
     it('should handle logout with state cleanup', async () => {
       // First login
@@ -214,7 +204,6 @@ describe('State Management and API Integration', () => {
 
       act(() => {
         useAppStore.getState().login(mockUser);
-      });
 
       expect(useAppStore.getState().isAuthenticated).toBe(true);
 
@@ -224,14 +213,12 @@ describe('State Management and API Integration', () => {
         status: 200,
         json: async () => ({ status: 'success' }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       // Perform logout
       await enhancedApiClient.post('/auth/logout');
 
       act(() => {
         useAppStore.getState().logout();
-      });
 
       // Verify state cleanup
       const state = useAppStore.getState();
@@ -239,8 +226,7 @@ describe('State Management and API Integration', () => {
       expect(state.user).toBeNull();
       expect(state.notifications).toEqual([]);
       expect(state.errors).toEqual({});
-    });
-  });
+
 
   describe('Loading State Integration', () => {
     it('should manage loading states during API calls', async () => {
@@ -252,7 +238,7 @@ describe('State Management and API Integration', () => {
               status: 200,
               json: async () => ({ data: 'test', status: 'success' }),
               headers: new Headers({ 'content-type': 'application/json' }),
-            });
+
           }, 100);
         })
       );
@@ -268,7 +254,6 @@ describe('State Management and API Integration', () => {
 
       // Check loading state is cleared
       expect(useAppStore.getState().loadingStates['test-api']).toBeUndefined();
-    });
 
     it('should clear loading states on API errors', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
@@ -281,8 +266,7 @@ describe('State Management and API Integration', () => {
 
       // Check loading state is cleared even on error
       expect(useAppStore.getState().loadingStates['test-api']).toBeUndefined();
-    });
-  });
+
 
   describe('WebSocket and State Integration', () => {
     it('should update state based on WebSocket messages', async () => {
@@ -293,7 +277,6 @@ describe('State Management and API Integration', () => {
       // Connect WebSocket
       await act(async () => {
         await result.current.connect();
-      });
 
       expect(result.current.isConnected).toBe(true);
 
@@ -310,14 +293,12 @@ describe('State Management and API Integration', () => {
           },
           timestamp: new Date().toISOString(),
           id: 'msg-1',
-        });
-      });
+
 
       // Check that notification was added to state
       const state = useAppStore.getState();
       expect(state.notifications).toHaveLength(1);
       expect(state.notifications[0].title).toBe('Test Notification');
-    });
 
     it('should handle connection quality updates', async () => {
       const wrapper = createWrapper();
@@ -327,7 +308,6 @@ describe('State Management and API Integration', () => {
       // Connect WebSocket
       await act(async () => {
         await result.current.connect();
-      });
 
       // Check connection quality is good
       expect(useAppStore.getState().connectionQuality).toBe('good');
@@ -338,11 +318,9 @@ describe('State Management and API Integration', () => {
         if (mockWs.onerror) {
           mockWs.onerror(new Event('error'));
         }
-      });
 
       // Check connection quality is updated
       expect(useAppStore.getState().connectionQuality).toBe('poor');
-    });
 
     it('should send authentication on WebSocket connection', async () => {
       const mockUser = {
@@ -371,7 +349,6 @@ describe('State Management and API Integration', () => {
       // Login user first
       act(() => {
         useAppStore.getState().login(mockUser);
-      });
 
       const wrapper = createWrapper();
       const { result } = renderHook(() => useEnhancedWebSocket(), { wrapper });
@@ -382,16 +359,14 @@ describe('State Management and API Integration', () => {
       // Connect WebSocket
       await act(async () => {
         await result.current.connect();
-      });
 
       // Verify auth message was sent
       expect(sendSpy).toHaveBeenCalledWith('auth', {
         token: 'test-token',
         userId: '1',
         timestamp: expect.any(String),
-      });
-    });
-  });
+
+
 
   describe('Error Handling Integration', () => {
     it('should handle API errors with notifications', async () => {
@@ -403,7 +378,6 @@ describe('State Management and API Integration', () => {
           status: 'error',
         }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       try {
         await enhancedApiClient.get('/test');
@@ -414,7 +388,6 @@ describe('State Management and API Integration', () => {
       // Check that error notification was added
       const state = useAppStore.getState();
       expect(state.notifications.some(n => n.type === 'error')).toBe(true);
-    });
 
     it('should handle network errors with connection quality updates', async () => {
       mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
@@ -427,7 +400,6 @@ describe('State Management and API Integration', () => {
 
       // Check that connection quality was updated
       expect(useAppStore.getState().connectionQuality).toBe('offline');
-    });
 
     it('should handle 401 errors with automatic logout', async () => {
       // Login user first
@@ -456,7 +428,6 @@ describe('State Management and API Integration', () => {
 
       act(() => {
         useAppStore.getState().login(mockUser);
-      });
 
       expect(useAppStore.getState().isAuthenticated).toBe(true);
 
@@ -469,7 +440,6 @@ describe('State Management and API Integration', () => {
           status: 'error',
         }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       try {
         await enhancedApiClient.get('/protected');
@@ -480,8 +450,7 @@ describe('State Management and API Integration', () => {
       // Check that user was logged out
       expect(useAppStore.getState().isAuthenticated).toBe(false);
       expect(useAppStore.getState().user).toBeNull();
-    });
-  });
+
 
   describe('Feature Flag Integration', () => {
     it('should manage feature flags through API and state', async () => {
@@ -499,7 +468,6 @@ describe('State Management and API Integration', () => {
           status: 'success',
         }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       // Fetch feature flags
       const response = await enhancedApiClient.get('/features');
@@ -508,16 +476,14 @@ describe('State Management and API Integration', () => {
       act(() => {
         Object.entries(response.data).forEach(([feature, enabled]) => {
           useAppStore.getState().setFeature(feature, enabled as boolean);
-        });
-      });
+
 
       // Verify feature flags in state
       const state = useAppStore.getState();
       expect(state.features.newDashboard).toBe(true);
       expect(state.features.betaFeatures).toBe(false);
       expect(state.features.advancedSettings).toBe(true);
-    });
-  });
+
 
   describe('Real-time Updates Integration', () => {
     it('should handle real-time system health updates', async () => {
@@ -526,7 +492,6 @@ describe('State Management and API Integration', () => {
 
       await act(async () => {
         await result.current.connect();
-      });
 
       // Mock system health update
       const mockWs = (enhancedWebSocketService as any).ws as MockWebSocket;
@@ -544,12 +509,10 @@ describe('State Management and API Integration', () => {
           },
           timestamp: new Date().toISOString(),
           id: 'health-1',
-        });
-      });
+
 
       // Verify that system queries would be invalidated
       // (This would be tested by checking queryClient.invalidateQueries calls)
-    });
 
     it('should handle real-time chat messages', async () => {
       const wrapper = createWrapper();
@@ -557,13 +520,11 @@ describe('State Management and API Integration', () => {
 
       await act(async () => {
         await result.current.connect();
-      });
 
       // Subscribe to chat messages
       const messageCallback = vi.fn();
       act(() => {
         result.current.subscribe('chat.message', messageCallback);
-      });
 
       // Simulate chat message
       const mockWs = (enhancedWebSocketService as any).ws as MockWebSocket;
@@ -579,8 +540,7 @@ describe('State Management and API Integration', () => {
           },
           timestamp: new Date().toISOString(),
           id: 'chat-msg-1',
-        });
-      });
+
 
       // Verify callback was called
       expect(messageCallback).toHaveBeenCalledWith({
@@ -588,9 +548,8 @@ describe('State Management and API Integration', () => {
         text: 'Hello, world!',
         user: 'test-user',
         timestamp: expect.any(String),
-      });
-    });
-  });
+
+
 
   describe('Performance and Monitoring Integration', () => {
     it('should track API request metrics', async () => {
@@ -599,7 +558,6 @@ describe('State Management and API Integration', () => {
         status: 200,
         json: async () => ({ data: 'test', status: 'success' }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       await enhancedApiClient.get('/test');
 
@@ -609,7 +567,6 @@ describe('State Management and API Integration', () => {
       expect(logs[0].method).toBe('GET');
       expect(logs[0].status).toBe(200);
       expect(logs[0].duration).toBeGreaterThan(0);
-    });
 
     it('should track WebSocket connection metrics', async () => {
       const wrapper = createWrapper();
@@ -617,16 +574,13 @@ describe('State Management and API Integration', () => {
 
       await act(async () => {
         await result.current.connect();
-      });
 
       // Send a message
       act(() => {
         result.current.send('test', { message: 'hello' });
-      });
 
       // Check metrics
       expect(result.current.metrics.messagesSent).toBe(1);
       expect(result.current.metrics.lastConnected).toBeInstanceOf(Date);
-    });
-  });
-});
+
+

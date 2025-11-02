@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,16 +48,16 @@ export default function SystemExtensionsList() {
           <CardContent className="space-y-2 text-sm md:text-base lg:text-lg">
             <div className="flex items-center justify-between">
               <span>CPU</span>
-              <Progress value={ext.cpu} className="w-40 sm:w-auto md:w-full" />
+              <Progress value={ext.cpu} className="w-40 " />
             </div>
             <div className="flex items-center justify-between">
               <span>Memory</span>
-              <Progress value={ext.memory / 500 * 100} className="w-40 sm:w-auto md:w-full" />
+              <Progress value={ext.memory / 500 * 100} className="w-40 " />
             </div>
           </CardContent>
           <CardFooter className="flex items-center justify-between">
             <Switch checked={ext.enabled} onCheckedChange={(val) => toggleExtension(ext.id, val)} />
-            <button size="sm" variant="outline" aria-label="Button">Configure</Button>
+            <Button size="sm" variant="outline" >Configure</Button>
           </CardFooter>
         </Card>
       ))}

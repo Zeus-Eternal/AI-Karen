@@ -29,8 +29,7 @@ describe('ErrorRecoveryManager', () => {
         clear: vi.fn(),
       },
       writable: true,
-    });
-  });
+
 
   describe('Network Error Recovery', () => {
     it('should attempt network connectivity check', async () => {
@@ -48,8 +47,7 @@ describe('ErrorRecoveryManager', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/health', {
         method: 'HEAD',
         signal: expect.any(AbortSignal)
-      });
-    });
+
 
     it('should try fallback backend when connectivity check fails', async () => {
       const mockFetch = fetch as any;
@@ -60,7 +58,6 @@ describe('ErrorRecoveryManager', () => {
 
       expect(result.success).toBe(true);
       expect(result.actionTaken).toBe('USE_FALLBACK_BACKEND');
-    });
 
     it('should try fallback backend when connectivity check fails', async () => {
       const mockFetch = fetch as any;
@@ -71,8 +68,7 @@ describe('ErrorRecoveryManager', () => {
 
       expect(result.success).toBe(true);
       expect(result.actionTaken).toBe('USE_FALLBACK_BACKEND');
-    });
-  });
+
 
   describe('Authentication Error Recovery', () => {
     it('should attempt session refresh for expired sessions', async () => {
@@ -89,8 +85,7 @@ describe('ErrorRecoveryManager', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/auth/refresh', {
         method: 'POST',
         credentials: 'include'
-      });
-    });
+
 
     it('should clear auth cache when session refresh fails', async () => {
       const mockFetch = fetch as any;
@@ -104,8 +99,7 @@ describe('ErrorRecoveryManager', () => {
       expect(result.success).toBe(true);
       expect(result.actionTaken).toBe('CLEAR_AUTH_CACHE');
       expect(window.localStorage.removeItem).toHaveBeenCalledWith('auth_token');
-    });
-  });
+
 
   describe('Database Error Recovery', () => {
     it('should retry database connection', async () => {
@@ -122,8 +116,7 @@ describe('ErrorRecoveryManager', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/health/database', {
         method: 'GET',
         signal: expect.any(AbortSignal)
-      });
-    });
+
 
     it('should enable degraded mode when database retry fails', async () => {
       const mockFetch = fetch as any;
@@ -137,8 +130,7 @@ describe('ErrorRecoveryManager', () => {
       expect(result.success).toBe(true);
       expect(result.actionTaken).toBe('ENABLE_DEGRADED_MODE');
       expect(window.localStorage.setItem).toHaveBeenCalledWith('degraded_mode', 'true');
-    });
-  });
+
 
   describe('Timeout Error Recovery', () => {
     it('should increase timeout for next attempt', async () => {
@@ -147,7 +139,6 @@ describe('ErrorRecoveryManager', () => {
 
       expect(result.success).toBe(true);
       expect(result.actionTaken).toBe('INCREASE_TIMEOUT');
-    });
 
     it('should attempt to split request when timeout increase fails', async () => {
       // Mock the increase timeout to fail
@@ -165,8 +156,7 @@ describe('ErrorRecoveryManager', () => {
       expect(result.actionTaken).toBe('SPLIT_REQUEST');
       
       console.log = originalConsoleLog;
-    });
-  });
+
 
   describe('Recovery Attempt Tracking', () => {
     it('should track recovery attempts', async () => {
@@ -176,7 +166,6 @@ describe('ErrorRecoveryManager', () => {
       
       await recoveryManager.attemptRecovery(error);
       expect(recoveryManager.getRecoveryAttemptCount(error)).toBe(0); // Reset on success
-    });
 
     it('should respect cooldown period', async () => {
       const error = categorizer.categorizeError(new Error('ECONNREFUSED'));
@@ -198,7 +187,6 @@ describe('ErrorRecoveryManager', () => {
       expect(result2.actionTaken).toBe('COOLDOWN_WAIT');
       expect(result2.shouldRetry).toBe(true);
       expect(result2.nextRetryDelay).toBeGreaterThan(0);
-    });
 
     it('should respect maximum attempts', async () => {
       const mockFetch = fetch as any;
@@ -217,7 +205,6 @@ describe('ErrorRecoveryManager', () => {
       const result = await recoveryManager.attemptRecovery(error);
       expect(result.actionTaken).toBe('MAX_ATTEMPTS_REACHED');
       expect(result.shouldRetry).toBe(false);
-    });
 
     it('should reset recovery attempts on successful recovery', async () => {
       const error = categorizer.categorizeError(new Error('ECONNREFUSED'));
@@ -227,8 +214,7 @@ describe('ErrorRecoveryManager', () => {
       
       // Attempts should be reset
       expect(recoveryManager.getRecoveryAttemptCount(error)).toBe(0);
-    });
-  });
+
 
   describe('Recovery Strategy Selection', () => {
     it('should use appropriate strategy for each error category', async () => {
@@ -250,8 +236,7 @@ describe('ErrorRecoveryManager', () => {
       expect(dbResult.actionTaken).toBe('RETRY_CONNECTION');
       expect(timeoutResult.actionTaken).toBe('INCREASE_TIMEOUT');
       expect(unknownResult.actionTaken).toBe('GENERIC_RETRY');
-    });
-  });
+
 
   describe('Manual Recovery Control', () => {
     it('should allow manual reset of recovery attempts', () => {
@@ -262,6 +247,5 @@ describe('ErrorRecoveryManager', () => {
       
       recoveryManager.resetRecoveryAttempts(error);
       expect(recoveryManager.getRecoveryAttemptCount(error)).toBe(0);
-    });
-  });
-});
+
+

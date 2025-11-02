@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,40 +8,11 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-'use client';
 
 
+import { } from 'lucide-react';
 
-
-
-
-
-
-
-  Play, 
-  Square, 
-  Pause, 
-  RotateCcw, 
-  Clock, 
-  CheckCircle, 
-  AlertCircle, 
-  Activity, 
-  TrendingUp,
-  Download,
-  Filter,
-  Search,
-  Eye,
-  Bug,
-  Zap,
-  BarChart3
-} from 'lucide-react';
-
-  WorkflowExecution, 
-  ExecutionLog, 
-  WorkflowDefinition,
-  BottleneckAnalysis 
-} from '@/types/workflows';
+import { } from '@/types/workflows';
 interface WorkflowMonitorProps {
   executions: WorkflowExecution[];
   workflows: WorkflowDefinition[];
@@ -86,7 +59,7 @@ export function WorkflowMonitor({
                            execution.id.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || execution.status === statusFilter;
       return matchesSearch && matchesStatus;
-    });
+
   }, [executions, workflows, searchTerm, statusFilter]);
   const executionStats = useMemo(() => {
     const stats = {
@@ -107,7 +80,7 @@ export function WorkflowMonitor({
         totalDuration += execution.duration;
         completedCount++;
       }
-    });
+
     stats.averageDuration = completedCount > 0 ? totalDuration / completedCount : 0;
     stats.successRate = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
     return stats;
@@ -145,17 +118,17 @@ export function WorkflowMonitor({
   const getExecutionIcon = (status: string) => {
     switch (status) {
       case 'running':
-        return <Activity className="h-4 w-4 animate-pulse sm:w-auto md:w-full" />;
+        return <Activity className="h-4 w-4 animate-pulse " />;
       case 'completed':
-        return <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <CheckCircle className="h-4 w-4 " />;
       case 'failed':
-        return <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-4 w-4 " />;
       case 'pending':
-        return <Clock className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Clock className="h-4 w-4 " />;
       case 'cancelled':
-        return <Square className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Square className="h-4 w-4 " />;
       default:
-        return <Clock className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Clock className="h-4 w-4 " />;
     }
   };
   const filteredLogs = useMemo(() => {
@@ -174,18 +147,18 @@ export function WorkflowMonitor({
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Search className="h-4 w-4 text-muted-foreground " />
             <input
               type="text"
               placeholder="Search executions..."
               value={searchTerm}
-              onChange={(e) = aria-label="Input"> setSearchTerm(e.target.value)}
-              className="px-3 py-2 border border-input rounded-md text-sm w-64 sm:w-auto md:w-full"
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-3 py-2 border border-input rounded-md text-sm w-64 "
             />
           </div>
           <select
             value={statusFilter}
-            onChange={(e) = aria-label="Select option"> setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 border border-input rounded-md text-sm md:text-base lg:text-lg"
           >
             <option value="all">All Status</option>
@@ -206,7 +179,7 @@ export function WorkflowMonitor({
                 <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Total Executions</p>
                 <p className="text-2xl font-bold">{executionStats.total}</p>
               </div>
-              <Activity className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
+              <Activity className="h-8 w-8 text-muted-foreground " />
             </div>
           </CardContent>
         </Card>
@@ -219,7 +192,7 @@ export function WorkflowMonitor({
                   {executionStats.successRate.toFixed(1)}%
                 </p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-600 sm:w-auto md:w-full" />
+              <TrendingUp className="h-8 w-8 text-green-600 " />
             </div>
           </CardContent>
         </Card>
@@ -230,7 +203,7 @@ export function WorkflowMonitor({
                 <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Running</p>
                 <p className="text-2xl font-bold text-blue-600">{executionStats.running}</p>
               </div>
-              <Play className="h-8 w-8 text-blue-600 sm:w-auto md:w-full" />
+              <Play className="h-8 w-8 text-blue-600 " />
             </div>
           </CardContent>
         </Card>
@@ -243,7 +216,7 @@ export function WorkflowMonitor({
                   {formatDuration(executionStats.averageDuration)}
                 </p>
               </div>
-              <Clock className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
+              <Clock className="h-8 w-8 text-muted-foreground " />
             </div>
           </CardContent>
         </Card>
@@ -315,7 +288,7 @@ export function WorkflowMonitor({
                               {/* Error Message */}
                               {execution.error && (
                                 <Alert variant="destructive" className="mt-2">
-                                  <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                                  <AlertCircle className="h-4 w-4 " />
                                   <AlertDescription className="text-sm md:text-base lg:text-lg">
                                     {execution.error}
                                   </AlertDescription>
@@ -326,55 +299,51 @@ export function WorkflowMonitor({
                             <div className="flex flex-col gap-2 ml-4">
                               {execution.status === 'running' && (
                                 <>
-                                  <button
+                                  <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={(e) = aria-label="Button"> {
+                                    onClick={(e) = > {
                                       e.stopPropagation();
                                       handleExecutionAction('pause', execution.id);
                                     }}
                                     disabled={isLoading[execution.id]}
                                   >
-                                    <Pause className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                                    Pause
+                                    <Pause className="h-4 w-4 mr-1 " />
                                   </Button>
-                                  <button
+                                  <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={(e) = aria-label="Button"> {
+                                    onClick={(e) = > {
                                       e.stopPropagation();
                                       handleExecutionAction('cancel', execution.id);
                                     }}
                                     disabled={isLoading[execution.id]}
                                   >
-                                    <Square className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                                    Cancel
+                                    <Square className="h-4 w-4 mr-1 " />
                                   </Button>
                                 </>
                               )}
                               {execution.status === 'failed' && (
                                 <button
                                   size="sm"
-                                  onClick={(e) = aria-label="Button"> {
+                                  onClick={() => {
                                     e.stopPropagation();
                                     handleExecutionAction('retry', execution.id);
                                   }}
                                   disabled={isLoading[execution.id]}
                                 >
-                                  <RotateCcw className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                                  Retry
+                                  <RotateCcw className="h-4 w-4 mr-1 " />
                                 </Button>
                               )}
-                              <button
+                              <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={(e) = aria-label="Button"> {
+                                onClick={(e) = > {
                                   e.stopPropagation();
                                   onExportLogs?.(execution.id);
                                 }}
                               >
-                                <Download className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                                Export
+                                <Download className="h-4 w-4 mr-1 " />
                               </Button>
                             </div>
                           </div>
@@ -384,7 +353,7 @@ export function WorkflowMonitor({
                   })}
                   {filteredExecutions.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                      <Activity className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                      <Activity className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                       <p>No executions found matching your criteria.</p>
                     </div>
                   )}
@@ -407,7 +376,7 @@ export function WorkflowMonitor({
             <Card>
               <CardContent className="flex items-center justify-center h-[600px] text-muted-foreground">
                 <div className="text-center">
-                  <Eye className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                  <Eye className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                   <p>Select an execution to view details</p>
                 </div>
               </CardContent>
@@ -447,7 +416,7 @@ function ExecutionDetailsPanel({
               {execution.status}
             </Badge>
           </CardTitle>
-          <button variant="ghost" size="sm" onClick={onClose} aria-label="Button">
+          <Button variant="ghost" size="sm" onClick={onClose} >
             ×
           </Button>
         </div>
@@ -462,10 +431,10 @@ function ExecutionDetailsPanel({
           <TabsContent value="logs" className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                <Filter className="h-4 w-4 text-muted-foreground " />
                 <select
                   value={logLevelFilter}
-                  onChange={(e) = aria-label="Select option"> onLogLevelFilterChange(e.target.value)}
+                  onChange={(e) => onLogLevelFilterChange(e.target.value)}
                   className="px-2 py-1 border border-input rounded text-sm md:text-base lg:text-lg"
                 >
                   <option value="all">All Levels</option>
@@ -503,7 +472,6 @@ function ExecutionDetailsPanel({
                     {log.data && (
                       <details className="mt-2">
                         <summary className="text-xs cursor-pointer opacity-75 sm:text-sm md:text-base">
-                          View Data
                         </summary>
                         <pre className="text-xs mt-1 p-2 bg-black/5 rounded overflow-auto sm:text-sm md:text-base">
                           {JSON.stringify(log.data, null, 2)}
@@ -514,7 +482,7 @@ function ExecutionDetailsPanel({
                 ))}
                 {filteredLogs.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    <Bug className="h-6 w-6 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                    <Bug className="h-6 w-6 mx-auto mb-2 opacity-50 " />
                     <p className="text-sm md:text-base lg:text-lg">No logs found for selected level</p>
                   </div>
                 )}
@@ -546,7 +514,7 @@ function ExecutionDetailsPanel({
                 })}
                 {Object.keys(execution.results).length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    <BarChart3 className="h-6 w-6 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                    <BarChart3 className="h-6 w-6 mx-auto mb-2 opacity-50 " />
                     <p className="text-sm md:text-base lg:text-lg">No results available</p>
                   </div>
                 )}

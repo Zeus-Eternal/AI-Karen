@@ -17,7 +17,6 @@ const mockUseAuth = useAuth as any;
 describe('useRole Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('useRole', () => {
     it('should return correct role information for super admin', () => {
@@ -37,7 +36,6 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useRole());
 
@@ -48,7 +46,6 @@ describe('useRole Hook', () => {
       expect(result.current.canManageUsers).toBe(true);
       expect(result.current.canManageAdmins).toBe(true);
       expect(result.current.canManageSystem).toBe(true);
-    });
 
     it('should return correct role information for admin', () => {
       mockUseAuth.mockReturnValue({
@@ -67,7 +64,6 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useRole());
 
@@ -77,7 +73,6 @@ describe('useRole Hook', () => {
       expect(result.current.canManageUsers).toBe(true);
       expect(result.current.canManageAdmins).toBe(false);
       expect(result.current.canManageSystem).toBe(false);
-    });
 
     it('should return correct role information for regular user', () => {
       mockUseAuth.mockReturnValue({
@@ -96,7 +91,6 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useRole());
 
@@ -107,7 +101,6 @@ describe('useRole Hook', () => {
       expect(result.current.canManageUsers).toBe(false);
       expect(result.current.canManageAdmins).toBe(false);
       expect(result.current.canManageSystem).toBe(false);
-    });
 
     it('should return null role when user is not authenticated', () => {
       mockUseAuth.mockReturnValue({
@@ -120,7 +113,6 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useRole());
 
@@ -128,8 +120,7 @@ describe('useRole Hook', () => {
       expect(result.current.isAdmin).toBe(false);
       expect(result.current.isSuperAdmin).toBe(false);
       expect(result.current.isUser).toBe(false);
-    });
-  });
+
 
   describe('useHasRole', () => {
     it('should return true when user has required role', () => {
@@ -143,11 +134,9 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useHasRole('admin'));
       expect(result.current).toBe(true);
-    });
 
     it('should return false when user does not have required role', () => {
       mockUseAuth.mockReturnValue({
@@ -160,12 +149,10 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useHasRole('admin'));
       expect(result.current).toBe(false);
-    });
-  });
+
 
   describe('useHasPermission', () => {
     it('should return true when user has required permission', () => {
@@ -179,11 +166,9 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useHasPermission('user_management'));
       expect(result.current).toBe(true);
-    });
 
     it('should return false when user does not have required permission', () => {
       mockUseAuth.mockReturnValue({
@@ -196,12 +181,10 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useHasPermission('admin_management'));
       expect(result.current).toBe(false);
-    });
-  });
+
 
   describe('useIsAdmin', () => {
     it('should return true for admin users', () => {
@@ -215,11 +198,9 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useIsAdmin());
       expect(result.current).toBe(true);
-    });
 
     it('should return false for regular users', () => {
       mockUseAuth.mockReturnValue({
@@ -232,12 +213,10 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useIsAdmin());
       expect(result.current).toBe(false);
-    });
-  });
+
 
   describe('useIsSuperAdmin', () => {
     it('should return true for super admin users', () => {
@@ -251,11 +230,9 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useIsSuperAdmin());
       expect(result.current).toBe(true);
-    });
 
     it('should return false for non-super admin users', () => {
       mockUseAuth.mockReturnValue({
@@ -268,10 +245,8 @@ describe('useRole Hook', () => {
         login: vi.fn(),
         logout: vi.fn(),
         checkAuth: vi.fn()
-      });
 
       const { result } = renderHook(() => useIsSuperAdmin());
       expect(result.current).toBe(false);
-    });
-  });
-});
+
+

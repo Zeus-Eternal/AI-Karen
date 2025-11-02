@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,60 +9,19 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+
 /**
  * Resource Monitoring Dashboard
  * Displays resource utilization, alerts, and scaling recommendations
  */
 
-'use client';
 
+import { } from 'recharts';
 
-
-
-
-
-
-
-
-
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
-
-  Cpu, 
-  MemoryStick, 
-  Network, 
-  HardDrive, 
-  AlertTriangle, 
-  TrendingUp, 
-  TrendingDown, 
-  Activity, 
-  Clock, 
-  DollarSign,
-  Zap,
-  CheckCircle,
-  X
-} from 'lucide-react';
+import { } from 'lucide-react';
 
   resourceMonitor, 
-  ResourceMetrics, 
-  ResourceAlert, 
-  ScalingRecommendation, 
-  CapacityPlan 
-} from '@/services/resource-monitor';
+import { } from '@/services/resource-monitor';
 
 interface ResourceMonitoringDashboardProps {
   refreshInterval?: number;
@@ -99,7 +60,6 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     // Subscribe to alerts
     const unsubscribe = resourceMonitor.onAlert((alert) => {
       setAlerts(prev => [alert, ...prev.slice(0, 19)]);
-    });
 
     return () => {
       clearInterval(interval);
@@ -148,30 +108,30 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'critical': return <AlertTriangle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
-      case 'high': return <AlertTriangle className="h-4 w-4 text-orange-500 sm:w-auto md:w-full" />;
-      case 'medium': return <Activity className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
-      case 'low': return <Activity className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />;
-      default: return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'critical': return <AlertTriangle className="h-4 w-4 text-red-500 " />;
+      case 'high': return <AlertTriangle className="h-4 w-4 text-orange-500 " />;
+      case 'medium': return <Activity className="h-4 w-4 text-yellow-500 " />;
+      case 'low': return <Activity className="h-4 w-4 text-blue-500 " />;
+      default: return <Activity className="h-4 w-4 " />;
     }
   };
 
   const getResourceIcon = (resource: string) => {
     switch (resource) {
-      case 'cpu': return <Cpu className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'memory': return <MemoryStick className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'network': return <Network className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'storage': return <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />;
-      default: return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'cpu': return <Cpu className="h-4 w-4 " />;
+      case 'memory': return <MemoryStick className="h-4 w-4 " />;
+      case 'network': return <Network className="h-4 w-4 " />;
+      case 'storage': return <HardDrive className="h-4 w-4 " />;
+      default: return <Activity className="h-4 w-4 " />;
     }
   };
 
   const getRecommendationIcon = (type: string) => {
     switch (type) {
-      case 'scale-up': return <TrendingUp className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
-      case 'scale-down': return <TrendingDown className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />;
-      case 'optimize': return <Zap className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
-      default: return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'scale-up': return <TrendingUp className="h-4 w-4 text-green-500 " />;
+      case 'scale-down': return <TrendingDown className="h-4 w-4 text-blue-500 " />;
+      case 'optimize': return <Zap className="h-4 w-4 text-yellow-500 " />;
+      default: return <Activity className="h-4 w-4 " />;
     }
   };
 
@@ -198,7 +158,6 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Resource Monitoring</h2>
           <p className="text-muted-foreground">
-            Monitor resource utilization and scaling recommendations
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -219,7 +178,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium md:text-base lg:text-lg">CPU Usage</CardTitle>
-              <Cpu className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Cpu className="h-4 w-4 text-muted-foreground " />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{currentMetrics.cpu.usage.toFixed(1)}%</div>
@@ -233,7 +192,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Memory Usage</CardTitle>
-              <MemoryStick className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <MemoryStick className="h-4 w-4 text-muted-foreground " />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{currentMetrics.memory.percentage.toFixed(1)}%</div>
@@ -247,7 +206,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Network Latency</CardTitle>
-              <Network className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Network className="h-4 w-4 text-muted-foreground " />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{currentMetrics.network.latency.toFixed(0)}ms</div>
@@ -263,7 +222,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Storage Usage</CardTitle>
-              <HardDrive className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <HardDrive className="h-4 w-4 text-muted-foreground " />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{currentMetrics.storage.percentage.toFixed(1)}%</div>
@@ -281,7 +240,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />
+              <AlertTriangle className="h-5 w-5 text-red-500 " />
               <span>Active Alerts</span>
               <Badge variant="destructive">
                 {alerts.filter(a => !a.resolved).length}
@@ -313,12 +272,12 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
                           </AlertDescription>
                         </div>
                       </div>
-                      <button
+                      <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() = aria-label="Button"> handleResolveAlert(alert.id)}
+                        onClick={() => handleResolveAlert(alert.id)}
                       >
-                        <X className="h-4 w-4 sm:w-auto md:w-full" />
+                        <X className="h-4 w-4 " />
                       </Button>
                     </div>
                   </Alert>
@@ -419,13 +378,12 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
             <CardHeader>
               <CardTitle>Scaling Recommendations</CardTitle>
               <CardDescription>
-                Automated recommendations for resource optimization
               </CardDescription>
             </CardHeader>
             <CardContent>
               {recommendations.length === 0 ? (
                 <div className="text-center py-8">
-                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 " />
                   <h3 className="text-lg font-medium">Resources Optimized</h3>
                   <p className="text-muted-foreground">
                     No scaling recommendations at this time.
@@ -489,7 +447,6 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
               <CardHeader>
                 <CardTitle>Capacity Planning</CardTitle>
                 <CardDescription>
-                  Resource projections and growth forecasts
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -536,7 +493,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
 
                       {plan.projectedUsage > 80 && (
                         <Alert className="mt-4">
-                          <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                          <AlertTriangle className="h-4 w-4 " />
                           <AlertTitle>Capacity Warning</AlertTitle>
                           <AlertDescription>
                             Projected {plan.resource} usage will exceed 80% in {plan.timeframe}. 

@@ -3,6 +3,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { RealTimeMonitoringDashboard } from '../RealTimeMonitoringDashboard';
 import { SystemHealth } from '../types';
@@ -109,11 +110,9 @@ describe('RealTimeMonitoringDashboard', () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2024-01-01T12:05:00Z'));
-  });
 
   afterEach(() => {
     jest.useRealTimers();
-  });
 
   describe('Initial Loading', () => {
     it('should show loading state initially', () => {
@@ -121,20 +120,17 @@ describe('RealTimeMonitoringDashboard', () => {
       
       expect(screen.getByText('Loading system health...')).toBeInTheDocument();
       expect(screen.getByRole('status', { hidden: true })).toBeInTheDocument(); // Loading spinner
-    });
 
     it('should render dashboard after loading', async () => {
       render(<RealTimeMonitoringDashboard />);
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       expect(screen.getByText('Backend API')).toBeInTheDocument();
       expect(screen.getByText('Database')).toBeInTheDocument();
       expect(screen.getByText('Authentication')).toBeInTheDocument();
-    });
-  });
+
 
   describe('System Status Display', () => {
     it('should display overall system status', async () => {
@@ -142,20 +138,17 @@ describe('RealTimeMonitoringDashboard', () => {
       
       await waitFor(() => {
         expect(screen.getByText(/System is/)).toBeInTheDocument();
-      });
-    });
+
 
     it('should show correct status badge colors', async () => {
       const { rerender } = render(<RealTimeMonitoringDashboard />);
       
       await waitFor(() => {
         expect(screen.getByText('HEALTHY')).toBeInTheDocument();
-      });
 
       // Test different status colors by mocking different health states
       // This would require more complex mocking of the health generation
-    });
-  });
+
 
   describe('Component Status Grid', () => {
     it('should render all component status indicators', async () => {
@@ -165,8 +158,7 @@ describe('RealTimeMonitoringDashboard', () => {
         expect(screen.getByText('Backend API')).toBeInTheDocument();
         expect(screen.getByText('Database')).toBeInTheDocument();
         expect(screen.getByText('Authentication')).toBeInTheDocument();
-      });
-    });
+
 
     it('should show component details when configured', async () => {
       render(
@@ -178,9 +170,8 @@ describe('RealTimeMonitoringDashboard', () => {
       await waitFor(() => {
         expect(screen.getAllByText('Success Rate:')).toHaveLength(3);
         expect(screen.getAllByText('Endpoint:')).toHaveLength(3);
-      });
-    });
-  });
+
+
 
   describe('Performance Metrics', () => {
     it('should display performance metrics', async () => {
@@ -191,8 +182,7 @@ describe('RealTimeMonitoringDashboard', () => {
         expect(screen.getByText('Average')).toBeInTheDocument();
         expect(screen.getByText('95th %ile')).toBeInTheDocument();
         expect(screen.getByText('99th %ile')).toBeInTheDocument();
-      });
-    });
+
 
     it('should show error rate metrics', async () => {
       render(<RealTimeMonitoringDashboard />);
@@ -200,9 +190,8 @@ describe('RealTimeMonitoringDashboard', () => {
       await waitFor(() => {
         expect(screen.getByText('Error Metrics')).toBeInTheDocument();
         expect(screen.getByText('Error Rate')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Authentication Metrics', () => {
     it('should display authentication metrics', async () => {
@@ -213,9 +202,8 @@ describe('RealTimeMonitoringDashboard', () => {
         expect(screen.getByText('Success Rate')).toBeInTheDocument();
         expect(screen.getByText('Successful')).toBeInTheDocument();
         expect(screen.getByText('Failed')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Refresh Functionality', () => {
     it('should have refresh button', async () => {
@@ -223,35 +211,30 @@ describe('RealTimeMonitoringDashboard', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Refresh')).toBeInTheDocument();
-      });
-    });
+
 
     it('should refresh data when refresh button is clicked', async () => {
       render(<RealTimeMonitoringDashboard />);
       
       await waitFor(() => {
         expect(screen.getByText('Refresh')).toBeInTheDocument();
-      });
-      
+
       const refreshButton = screen.getByText('Refresh');
       fireEvent.click(refreshButton);
       
       expect(screen.getByText('Refreshing...')).toBeInTheDocument();
-    });
 
     it('should toggle auto-refresh', async () => {
       render(<RealTimeMonitoringDashboard />);
       
       await waitFor(() => {
         expect(screen.getByText('Auto-refresh ON')).toBeInTheDocument();
-      });
-      
+
       const autoRefreshButton = screen.getByText('Auto-refresh ON');
       fireEvent.click(autoRefreshButton);
       
       expect(screen.getByText('Auto-refresh OFF')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Real-time Updates', () => {
     it('should auto-refresh at configured intervals', async () => {
@@ -266,15 +249,13 @@ describe('RealTimeMonitoringDashboard', () => {
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       // Fast-forward time to trigger auto-refresh
       jest.advanceTimersByTime(1000);
       
       await waitFor(() => {
         expect(onHealthChange).toHaveBeenCalled();
-      });
-    });
+
 
     it('should not auto-refresh when disabled', async () => {
       const onHealthChange = jest.fn();
@@ -288,8 +269,7 @@ describe('RealTimeMonitoringDashboard', () => {
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       // Clear initial call
       onHealthChange.mockClear();
       
@@ -298,8 +278,7 @@ describe('RealTimeMonitoringDashboard', () => {
       
       // Should not have been called again
       expect(onHealthChange).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('Configuration Options', () => {
     it('should apply custom refresh interval', async () => {
@@ -312,11 +291,9 @@ describe('RealTimeMonitoringDashboard', () => {
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       // The component should use the custom interval
       // This is tested indirectly through the auto-refresh functionality
-    });
 
     it('should hide detailed metrics when configured', async () => {
       render(
@@ -327,12 +304,10 @@ describe('RealTimeMonitoringDashboard', () => {
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       // Should not show detailed metrics
       expect(screen.queryByText('Success Rate:')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle health check failures gracefully', async () => {
@@ -346,14 +321,12 @@ describe('RealTimeMonitoringDashboard', () => {
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       // Should still render the dashboard with mock data
       expect(loggingModule.connectivityLogger.logError).toHaveBeenCalled();
       
       consoleSpy.mockRestore();
-    });
-  });
+
 
   describe('Callback Functions', () => {
     it('should call onHealthChange when health updates', async () => {
@@ -363,14 +336,12 @@ describe('RealTimeMonitoringDashboard', () => {
       
       await waitFor(() => {
         expect(onHealthChange).toHaveBeenCalled();
-      });
-      
+
       const healthData = onHealthChange.mock.calls[0][0];
       expect(healthData).toHaveProperty('overall');
       expect(healthData).toHaveProperty('components');
       expect(healthData).toHaveProperty('performance');
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('should have proper heading structure', async () => {
@@ -378,8 +349,7 @@ describe('RealTimeMonitoringDashboard', () => {
       
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /System Health Dashboard/i })).toBeInTheDocument();
-      });
-    });
+
 
     it('should have accessible buttons', async () => {
       render(<RealTimeMonitoringDashboard />);
@@ -387,7 +357,6 @@ describe('RealTimeMonitoringDashboard', () => {
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /Refresh/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Auto-refresh/i })).toBeInTheDocument();
-      });
-    });
-  });
-});
+
+
+

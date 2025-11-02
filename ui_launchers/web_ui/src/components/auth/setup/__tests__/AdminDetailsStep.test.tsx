@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AdminDetailsStep } from '../steps/AdminDetailsStep';
 import type { SetupStepProps } from '../SetupWizard';
@@ -39,14 +40,12 @@ describe('AdminDetailsStep', () => {
     mockValidateSuperAdminCreation.mockResolvedValue({
       isValid: true,
       errors: {},
-    });
-    
+
     mockCalculatePasswordStrength.mockReturnValue({
       score: 6,
       level: 'strong',
       feedback: [],
-    });
-  });
+
 
   describe('Form Rendering', () => {
     it('renders all form fields', () => {
@@ -56,13 +55,11 @@ describe('AdminDetailsStep', () => {
       expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
-    });
 
     it('renders submit button', () => {
       render(<AdminDetailsStep {...defaultProps} />);
 
       expect(screen.getByText('Create Super Admin Account')).toBeInTheDocument();
-    });
 
     it('renders password requirements', () => {
       render(<AdminDetailsStep {...defaultProps} />);
@@ -73,8 +70,7 @@ describe('AdminDetailsStep', () => {
       expect(screen.getByText('Contains uppercase letters')).toBeInTheDocument();
       expect(screen.getByText('Contains numbers')).toBeInTheDocument();
       expect(screen.getByText('Contains special characters')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Form Interaction', () => {
     it('calls onFormDataChange when input values change', () => {
@@ -85,7 +81,6 @@ describe('AdminDetailsStep', () => {
       fireEvent.change(nameInput, { target: { value: 'John Doe' } });
 
       expect(mockOnFormDataChange).toHaveBeenCalledWith({ full_name: 'John Doe' });
-    });
 
     it('calls onClearError when input values change', () => {
       const mockOnClearError = vi.fn();
@@ -95,7 +90,6 @@ describe('AdminDetailsStep', () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
 
       expect(mockOnClearError).toHaveBeenCalled();
-    });
 
     it('toggles password visibility', () => {
       render(<AdminDetailsStep {...defaultProps} />);
@@ -112,7 +106,6 @@ describe('AdminDetailsStep', () => {
         fireEvent.click(toggleButton);
         expect(passwordInput).toHaveAttribute('type', 'password');
       }
-    });
 
     it('toggles confirm password visibility', () => {
       render(<AdminDetailsStep {...defaultProps} />);
@@ -126,8 +119,7 @@ describe('AdminDetailsStep', () => {
         fireEvent.click(toggleButton);
         expect(confirmPasswordInput).toHaveAttribute('type', 'text');
       }
-    });
-  });
+
 
   describe('Password Strength Indicator', () => {
     it('shows password strength when password is entered', async () => {
@@ -141,15 +133,13 @@ describe('AdminDetailsStep', () => {
       await waitFor(() => {
         expect(screen.getByText('Password Strength:')).toBeInTheDocument();
         expect(screen.getByText('Strong')).toBeInTheDocument();
-      });
-    });
+
 
     it('shows password strength feedback', async () => {
       mockCalculatePasswordStrength.mockReturnValue({
         score: 3,
         level: 'medium',
         feedback: ['Add more special characters', 'Make it longer'],
-      });
 
       const propsWithPassword = {
         ...defaultProps,
@@ -162,8 +152,7 @@ describe('AdminDetailsStep', () => {
         expect(screen.getByText('Suggestions:')).toBeInTheDocument();
         expect(screen.getByText('Add more special characters')).toBeInTheDocument();
         expect(screen.getByText('Make it longer')).toBeInTheDocument();
-      });
-    });
+
 
     it('shows different colors for different strength levels', async () => {
       const strengthLevels = [
@@ -179,7 +168,6 @@ describe('AdminDetailsStep', () => {
           score: 4,
           level,
           feedback: [],
-        });
 
         const propsWithPassword = {
           ...defaultProps,
@@ -191,12 +179,10 @@ describe('AdminDetailsStep', () => {
         await waitFor(() => {
           const strengthBar = document.querySelector(`.${color}`);
           expect(strengthBar).toBeInTheDocument();
-        });
 
         rerender(<div />); // Clear for next iteration
       }
-    });
-  });
+
 
   describe('Password Match Indicator', () => {
     it('shows passwords match when they are identical', async () => {
@@ -213,8 +199,7 @@ describe('AdminDetailsStep', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Passwords match')).toBeInTheDocument();
-      });
-    });
+
 
     it('shows passwords do not match when they are different', async () => {
       const propsWithNonMatchingPasswords = {
@@ -230,9 +215,8 @@ describe('AdminDetailsStep', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Passwords do not match')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Password Requirements Validation', () => {
     it('shows green checkmarks for met requirements', () => {
@@ -253,7 +237,6 @@ describe('AdminDetailsStep', () => {
       
       // Should have multiple green checkmarks
       expect(greenIcons.length).toBeGreaterThan(0);
-    });
 
     it('shows red X marks for unmet requirements', () => {
       const propsWithWeakPassword = {
@@ -273,8 +256,7 @@ describe('AdminDetailsStep', () => {
       
       // Should have multiple red X marks
       expect(redIcons.length).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('Form Validation', () => {
     it('shows validation errors', async () => {
@@ -284,7 +266,6 @@ describe('AdminDetailsStep', () => {
           email: 'Please enter a valid email address',
           password: 'Password is too weak',
         },
-      });
 
       const propsWithInvalidData = {
         ...defaultProps,
@@ -301,28 +282,24 @@ describe('AdminDetailsStep', () => {
       await waitFor(() => {
         expect(screen.getByText('Please enter a valid email address')).toBeInTheDocument();
         expect(screen.getByText('Password is too weak')).toBeInTheDocument();
-      });
-    });
+
 
     it('disables submit button when form is invalid', async () => {
       mockValidateSuperAdminCreation.mockResolvedValue({
         isValid: false,
         errors: { email: 'Invalid email' },
-      });
 
       render(<AdminDetailsStep {...defaultProps} />);
 
       await waitFor(() => {
         const submitButton = screen.getByText('Create Super Admin Account');
         expect(submitButton).toBeDisabled();
-      });
-    });
+
 
     it('enables submit button when form is valid', async () => {
       mockValidateSuperAdminCreation.mockResolvedValue({
         isValid: true,
         errors: {},
-      });
 
       const propsWithValidData = {
         ...defaultProps,
@@ -339,9 +316,8 @@ describe('AdminDetailsStep', () => {
       await waitFor(() => {
         const submitButton = screen.getByText('Create Super Admin Account');
         expect(submitButton).not.toBeDisabled();
-      });
-    });
-  });
+
+
 
   describe('Form Submission', () => {
     it('calls onNext when form is submitted with valid data', async () => {
@@ -350,7 +326,6 @@ describe('AdminDetailsStep', () => {
       mockValidateSuperAdminCreation.mockResolvedValue({
         isValid: true,
         errors: {},
-      });
 
       const propsWithValidData = {
         ...defaultProps,
@@ -375,8 +350,7 @@ describe('AdminDetailsStep', () => {
 
       await waitFor(() => {
         expect(mockOnNext).toHaveBeenCalled();
-      });
-    });
+
 
     it('does not call onNext when form is submitted with invalid data', async () => {
       const mockOnNext = vi.fn();
@@ -384,7 +358,6 @@ describe('AdminDetailsStep', () => {
       mockValidateSuperAdminCreation.mockResolvedValue({
         isValid: false,
         errors: { email: 'Invalid email' },
-      });
 
       const propsWithInvalidData = {
         ...defaultProps,
@@ -407,9 +380,8 @@ describe('AdminDetailsStep', () => {
 
       await waitFor(() => {
         expect(mockOnNext).not.toHaveBeenCalled();
-      });
-    });
-  });
+
+
 
   describe('Loading State', () => {
     it('shows loading state when isLoading is true', () => {
@@ -421,7 +393,6 @@ describe('AdminDetailsStep', () => {
       render(<AdminDetailsStep {...propsWithLoading} />);
 
       expect(screen.getByText('Creating Admin Account...')).toBeInTheDocument();
-    });
 
     it('disables form inputs when loading', () => {
       const propsWithLoading = {
@@ -435,8 +406,7 @@ describe('AdminDetailsStep', () => {
       expect(screen.getByLabelText(/email address/i)).toBeDisabled();
       expect(screen.getByLabelText(/^password$/i)).toBeDisabled();
       expect(screen.getByLabelText(/confirm password/i)).toBeDisabled();
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('has proper labels for all form fields', () => {
@@ -446,7 +416,6 @@ describe('AdminDetailsStep', () => {
       expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
-    });
 
     it('has proper ARIA attributes for password fields', () => {
       render(<AdminDetailsStep {...defaultProps} />);
@@ -456,7 +425,6 @@ describe('AdminDetailsStep', () => {
 
       expect(passwordInput).toHaveAttribute('autoComplete', 'new-password');
       expect(confirmPasswordInput).toHaveAttribute('autoComplete', 'new-password');
-    });
 
     it('shows validation errors with proper ARIA attributes', async () => {
       mockValidateSuperAdminCreation.mockResolvedValue({
@@ -464,7 +432,6 @@ describe('AdminDetailsStep', () => {
         errors: {
           email: 'Please enter a valid email address',
         },
-      });
 
       const propsWithInvalidData = {
         ...defaultProps,
@@ -479,7 +446,6 @@ describe('AdminDetailsStep', () => {
       await waitFor(() => {
         const emailInput = screen.getByLabelText(/email address/i);
         expect(emailInput).toHaveClass('border-red-500');
-      });
-    });
-  });
-});
+
+
+

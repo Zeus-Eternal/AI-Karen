@@ -182,20 +182,19 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <button
+      <Button
         type="button"
         variant={isRecording ? "destructive" : "outline"}
         size="sm"
         onClick={isRecording ? handleStop : handleStart}
         disabled={!isSupported || isProcessing}
-        className="h-8 w-8 p-0 sm:w-auto md:w-full"
-       aria-label="Button">
+        className="h-8 w-8 p-0">
         {isProcessing ? (
-          <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+          <Loader2 className="h-4 w-4 animate-spin" />
         ) : isRecording ? (
-          <Square className="h-4 w-4 sm:w-auto md:w-full" />
+          <Square className="h-4 w-4" />
         ) : (
-          <Mic className="h-4 w-4 sm:w-auto md:w-full" />
+          <Mic className="h-4 w-4" />
         )}
       </Button>
       {showConfidenceBadge && transcript && (

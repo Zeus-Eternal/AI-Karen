@@ -85,7 +85,6 @@ export class ApiClient {
       };
 
       return config;
-    });
 
     // Response interceptor for error handling
     this.addResponseInterceptor(async (response) => {
@@ -97,11 +96,10 @@ export class ApiClient {
           type: 'warning',
           title: 'Session Expired',
           message: 'Please log in again to continue.',
-        });
+
       }
 
       return response;
-    });
 
     // Error interceptor for global error handling
     this.addErrorInterceptor(async (error) => {
@@ -114,12 +112,12 @@ export class ApiClient {
             type: 'error',
             title: 'Network Error',
             message: 'Please check your internet connection and try again.',
-          });
+
         }
       }
 
       return error;
-    });
+
   }
 
   // Add request interceptor
@@ -169,7 +167,6 @@ export class ApiClient {
         const response = await fetch(url, {
           ...finalConfig,
           signal: controller.signal,
-        });
 
         clearTimeout(timeoutId);
 
@@ -270,7 +267,7 @@ export class ApiClient {
       ...config,
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
-    });
+
   }
 
   public async put<T = any>(endpoint: string, data?: any, config?: RequestConfig): Promise<ApiResponse<T>> {
@@ -278,7 +275,7 @@ export class ApiClient {
       ...config,
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
-    });
+
   }
 
   public async patch<T = any>(endpoint: string, data?: any, config?: RequestConfig): Promise<ApiResponse<T>> {
@@ -286,7 +283,7 @@ export class ApiClient {
       ...config,
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
-    });
+
   }
 
   public async delete<T = any>(endpoint: string, config?: RequestConfig): Promise<ApiResponse<T>> {
@@ -310,7 +307,7 @@ export class ApiClient {
         // Don't set Content-Type for FormData, let browser set it
         ...config?.headers,
       },
-    });
+
   }
 
   // Parse response

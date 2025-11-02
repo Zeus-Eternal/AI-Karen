@@ -17,7 +17,6 @@ describe('/api/models/library', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (global.fetch as any).mockClear();
-  });
 
   describe('Enhanced scanning functionality', () => {
     it('should perform dynamic scanning when scan=true', async () => {
@@ -56,7 +55,6 @@ describe('/api/models/library', () => {
         selectedModel: { id: 'test-model-1' },
         lastLoadTime: 2000,
         averageResponseTime: 500
-      });
 
       const request = new NextRequest('http://localhost:3000/api/models/library?scan=true&includeHealth=true');
       const response = await GET(request);
@@ -74,7 +72,6 @@ describe('/api/models/library', () => {
       expect(data.scan_metadata.include_health).toBe(true);
       expect(data.models[0].health).toBeDefined();
       expect(data.models[0].last_scanned).toBeDefined();
-    });
 
     it('should handle scan errors gracefully', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -92,8 +89,7 @@ describe('/api/models/library', () => {
       expect(data.message).toBe('Dynamic model scanning encountered an error');
       expect(data.details).toBe('Scan failed');
       expect(data.fallback_available).toBe(true);
-    });
-  });
+
 
   describe('Backend fallback functionality', () => {
     it('should fall back to backend when scan is not requested', async () => {
@@ -105,7 +101,6 @@ describe('/api/models/library', () => {
           models: [{ id: 'backend-model', name: 'Backend Model' }],
           total_count: 1
         })
-      });
 
       const request = new NextRequest('http://localhost:3000/api/models/library');
       const response = await GET(request);
@@ -115,6 +110,5 @@ describe('/api/models/library', () => {
       expect(global.fetch).toHaveBeenCalled();
       expect(data.models).toHaveLength(1);
       expect(data.models[0].id).toBe('backend-model');
-    });
-  });
-});
+
+

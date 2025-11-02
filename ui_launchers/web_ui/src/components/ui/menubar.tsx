@@ -1,11 +1,9 @@
 "use client"
 
-import * as React from "react"
-import * as MenubarPrimitive from "@radix-ui/react-menubar"
-import { Check, ChevronRight, Circle } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
+import * as React from "react";
+import * as MenubarPrimitive from "@radix-ui/react-menubar";
+import { Check, ChevronRight, Circle } from "lucide-react";
+import { cn } from "@/lib/utils";
 function MenubarMenu({
   ...props
 }: React.ComponentProps<typeof MenubarPrimitive.Menu>) {
@@ -82,7 +80,7 @@ const MenubarSubTrigger = React.forwardRef<
     {...props}
   >
     {children}
-    <ChevronRight className="ml-auto h-4 w-4 sm:w-auto md:w-full" />
+    <ChevronRight className="ml-auto h-4 w-4 " />
   </MenubarPrimitive.SubTrigger>
 ))
 MenubarSubTrigger.displayName = MenubarPrimitive.SubTrigger.displayName
@@ -158,9 +156,9 @@ const MenubarCheckboxItem = React.forwardRef<
     checked={checked}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center sm:w-auto md:w-full">
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center ">
       <MenubarPrimitive.ItemIndicator>
-        <Check className="h-4 w-4 sm:w-auto md:w-full" />
+        <Check className="h-4 w-4 " />
       </MenubarPrimitive.ItemIndicator>
     </span>
     {children}
@@ -180,9 +178,9 @@ const MenubarRadioItem = React.forwardRef<
     )}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center sm:w-auto md:w-full">
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center ">
       <MenubarPrimitive.ItemIndicator>
-        <Circle className="h-2 w-2 fill-current sm:w-auto md:w-full" />
+        <Circle className="h-2 w-2 fill-current " />
       </MenubarPrimitive.ItemIndicator>
     </span>
     {children}
@@ -237,20 +235,4 @@ const MenubarShortcut = ({
 MenubarShortcut.displayname = "MenubarShortcut"
 
 export {
-  Menubar,
-  MenubarMenu,
-  MenubarTrigger,
-  MenubarContent,
-  MenubarItem,
-  MenubarSeparator,
-  MenubarLabel,
-  MenubarCheckboxItem,
-  MenubarRadioGroup,
-  MenubarRadioItem,
-  MenubarPortal,
-  MenubarSubContent,
-  MenubarSubTrigger,
-  MenubarGroup,
-  MenubarSub,
-  MenubarShortcut,
 }

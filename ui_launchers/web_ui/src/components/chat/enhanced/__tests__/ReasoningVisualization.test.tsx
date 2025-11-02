@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ReasoningVisualization from '../ReasoningVisualization';
@@ -73,7 +74,6 @@ describe('ReasoningVisualization', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders reasoning chain with correct information', () => {
     render(
@@ -87,7 +87,6 @@ describe('ReasoningVisualization', () => {
     expect(screen.getByText('High (87%)')).toBeInTheDocument();
     expect(screen.getByText('Multi-step reasoning with evidence-based analysis')).toBeInTheDocument();
     expect(screen.getByText('3 steps completed')).toBeInTheDocument();
-  });
 
   it('displays all reasoning steps', () => {
     render(
@@ -100,7 +99,6 @@ describe('ReasoningVisualization', () => {
     expect(screen.getByText('Analyzed user query for intent and context')).toBeInTheDocument();
     expect(screen.getByText('Retrieved relevant information from knowledge base')).toBeInTheDocument();
     expect(screen.getByText('Synthesized response based on analysis')).toBeInTheDocument();
-  });
 
   it('shows step types and confidence levels', () => {
     render(
@@ -117,7 +115,6 @@ describe('ReasoningVisualization', () => {
     expect(screen.getByText('Very High (90%)')).toBeInTheDocument();
     expect(screen.getByText('High (85%)')).toBeInTheDocument();
     expect(screen.getByText('High (87%)')).toBeInTheDocument();
-  });
 
   it('handles step expansion and collapse', async () => {
     render(
@@ -139,15 +136,13 @@ describe('ReasoningVisualization', () => {
       expect(screen.getByText('Evidence')).toBeInTheDocument();
       expect(screen.getByText('User message content')).toBeInTheDocument();
       expect(screen.getByText('Conversation history')).toBeInTheDocument();
-    });
 
     // Click again to collapse
     fireEvent.click(firstStep);
 
     await waitFor(() => {
       expect(screen.queryByText('User message content')).not.toBeInTheDocument();
-    });
-  });
+
 
   it('displays sources when toggled', async () => {
     render(
@@ -168,11 +163,9 @@ describe('ReasoningVisualization', () => {
     await waitFor(() => {
       expect(screen.getByText('AI Reasoning Documentation')).toBeInTheDocument();
       expect(screen.getByText('Previous User Interactions')).toBeInTheDocument();
-    });
 
     // Button text should change
     expect(screen.getByText('Hide Sources (2)')).toBeInTheDocument();
-  });
 
   it('handles export functionality', async () => {
     render(
@@ -186,7 +179,6 @@ describe('ReasoningVisualization', () => {
     fireEvent.click(exportButton);
 
     expect(mockOnExport).toHaveBeenCalledWith(mockReasoningChain);
-  });
 
   it('handles copy reasoning summary', async () => {
     // Mock clipboard API
@@ -195,7 +187,6 @@ describe('ReasoningVisualization', () => {
       clipboard: {
         writeText: mockWriteText,
       },
-    });
 
     const mockToast = vi.fn();
     vi.mocked(require('@/hooks/use-toast').useToast).mockReturnValue({ toast: mockToast });
@@ -217,9 +208,8 @@ describe('ReasoningVisualization', () => {
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Copied',
         description: 'Reasoning summary copied to clipboard'
-      });
-    });
-  });
+
+
 
   it('renders compact version correctly', () => {
     render(
@@ -235,7 +225,6 @@ describe('ReasoningVisualization', () => {
     
     // Full interface should not be visible in compact mode
     expect(screen.queryByText('AI Reasoning Chain')).not.toBeInTheDocument();
-  });
 
   it('shows confidence analysis for expanded steps', async () => {
     render(
@@ -253,8 +242,7 @@ describe('ReasoningVisualization', () => {
       expect(screen.getByText('Confidence Analysis')).toBeInTheDocument();
       expect(screen.getByText('Step Confidence')).toBeInTheDocument();
       expect(screen.getByText('90%')).toBeInTheDocument();
-    });
-  });
+
 
   it('displays step timestamps', async () => {
     render(
@@ -270,8 +258,7 @@ describe('ReasoningVisualization', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Processed at/)).toBeInTheDocument();
-    });
-  });
+
 
   it('handles reasoning chain with no sources', () => {
     const reasoningWithoutSources: ReasoningChain = {
@@ -288,7 +275,6 @@ describe('ReasoningVisualization', () => {
 
     // Sources button should not be present
     expect(screen.queryByText(/Show Sources/)).not.toBeInTheDocument();
-  });
 
   it('handles default export when no onExport provided', async () => {
     // Mock URL.createObjectURL and related APIs
@@ -325,7 +311,6 @@ describe('ReasoningVisualization', () => {
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Exported',
         description: 'Reasoning chain exported successfully'
-      });
-    });
-  });
-});
+
+
+

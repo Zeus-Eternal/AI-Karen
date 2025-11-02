@@ -75,11 +75,9 @@ describe('Providers Integration', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'log').mockImplementation(() => {});
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('Provider Availability', () => {
     it('should provide all context providers', async () => {
@@ -94,8 +92,7 @@ describe('Providers Integration', () => {
         expect(screen.getByTestId('error-context')).toHaveTextContent('ErrorProvider Available');
         expect(screen.getByTestId('auth-context')).toHaveTextContent('AuthProvider Available');
         expect(screen.getByTestId('hook-context')).toHaveTextContent('HookProvider Available');
-      });
-    });
+
 
     it('should initialize providers in the correct order', async () => {
       render(
@@ -109,8 +106,7 @@ describe('Providers Integration', () => {
       expect(screen.getByTestId('error-context')).toHaveTextContent('ErrorProvider Available');
       expect(screen.getByTestId('auth-context')).toHaveTextContent('AuthProvider Available');
       expect(screen.getByTestId('hook-context')).toHaveTextContent('HookProvider Available');
-    });
-  });
+
 
   describe('Provider State Management', () => {
     it('should manage session state independently from auth state', async () => {
@@ -127,8 +123,7 @@ describe('Providers Integration', () => {
         
         // Auth provider should have its own loading state
         expect(screen.getByTestId('auth-loading')).toBeInTheDocument();
-      });
-    });
+
 
     it('should manage error state globally', async () => {
       render(
@@ -139,9 +134,8 @@ describe('Providers Integration', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('error-analyzing')).toHaveTextContent('Not Analyzing');
-      });
-    });
-  });
+
+
 
   describe('Global Error Boundary Integration', () => {
     it('should catch and handle component errors', async () => {
@@ -161,10 +155,8 @@ describe('Providers Integration', () => {
         
         // Should show error boundary content
         expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
-      });
 
       console.error = originalError;
-    });
 
     it('should not interfere with normal component rendering', async () => {
       render(
@@ -175,8 +167,7 @@ describe('Providers Integration', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('no-error')).toBeInTheDocument();
-      });
-    });
+
 
     it('should provide intelligent error analysis for caught errors', async () => {
       // Suppress React error boundary warnings for this test
@@ -195,11 +186,9 @@ describe('Providers Integration', () => {
         
         // Should have retry button
         expect(screen.getByText(/Try Again/i)).toBeInTheDocument();
-      });
 
       console.error = originalError;
-    });
-  });
+
 
   describe('Provider Configuration', () => {
     it('should configure SessionProvider with correct options', async () => {
@@ -212,8 +201,7 @@ describe('Providers Integration', () => {
       // SessionProvider should be configured with autoRehydrate: true
       await waitFor(() => {
         expect(screen.getByTestId('session-context')).toHaveTextContent('SessionProvider Available');
-      });
-    });
+
 
     it('should configure ErrorProvider with correct options', async () => {
       render(
@@ -225,8 +213,7 @@ describe('Providers Integration', () => {
       // ErrorProvider should be configured with intelligent analysis enabled
       await waitFor(() => {
         expect(screen.getByTestId('error-context')).toHaveTextContent('ErrorProvider Available');
-      });
-    });
+
 
     it('should configure GlobalErrorBoundary with correct options', async () => {
       // Suppress React error boundary warnings for this test
@@ -245,11 +232,9 @@ describe('Providers Integration', () => {
         
         // Should have session recovery enabled (configured with enableSessionRecovery: true)
         expect(screen.getByText(/Try Again/i)).toBeInTheDocument();
-      });
 
       console.error = originalError;
-    });
-  });
+
 
   describe('Provider Interaction', () => {
     it('should allow providers to work together without conflicts', async () => {
@@ -265,8 +250,7 @@ describe('Providers Integration', () => {
         expect(screen.getByTestId('error-context')).toHaveTextContent('ErrorProvider Available');
         expect(screen.getByTestId('auth-context')).toHaveTextContent('AuthProvider Available');
         expect(screen.getByTestId('hook-context')).toHaveTextContent('HookProvider Available');
-      });
-    });
+
 
     it('should handle provider initialization errors gracefully', async () => {
       // Mock session initialization to fail
@@ -282,9 +266,8 @@ describe('Providers Integration', () => {
       await waitFor(() => {
         // Should still render the component even if session initialization fails
         expect(screen.getByTestId('session-context')).toHaveTextContent('SessionProvider Available');
-      });
-    });
-  });
+
+
 
   describe('CopilotKit Integration', () => {
     it('should maintain CopilotKit provider in the provider chain', async () => {
@@ -297,9 +280,8 @@ describe('Providers Integration', () => {
       // Should render without errors, indicating CopilotKit is properly integrated
       await waitFor(() => {
         expect(screen.getByTestId('session-context')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Provider Nesting Order', () => {
     it('should nest providers in the correct order for proper functionality', async () => {
@@ -318,7 +300,6 @@ describe('Providers Integration', () => {
         expect(screen.getByTestId('error-context')).toHaveTextContent('ErrorProvider Available');
         expect(screen.getByTestId('auth-context')).toHaveTextContent('AuthProvider Available');
         expect(screen.getByTestId('hook-context')).toHaveTextContent('HookProvider Available');
-      });
-    });
-  });
-});
+
+
+

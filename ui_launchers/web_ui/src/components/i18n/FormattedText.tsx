@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-
+import React from 'react';
 import { useFormatting, useLocale } from '../../providers/i18n-provider';
 import type { FormatOptions } from '../../lib/i18n';
 
@@ -214,8 +214,7 @@ export function FormattedFileSize({
   const formatter = new Intl.NumberFormat(locale, {
     minimumFractionDigits: 0,
     maximumFractionDigits: exponent === 0 ? 0 : 1,
-  });
-  
+
   return (
     <span className={className}>
       {formatter.format(value)} {unit}

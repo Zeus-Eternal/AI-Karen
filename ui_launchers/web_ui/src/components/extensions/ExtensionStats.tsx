@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { getPluginService, getExtensionService } from "@/services";
+import { getPluginService } from "@/services/pluginService";
+import { getExtensionService } from "@/services/extensionService";
 export default function ExtensionStats() {
   const [pluginCount, setPluginCount] = useState(0);
   const [extensionCount, setExtensionCount] = useState(0);

@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,24 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Settings,
-  Cpu,
-  HardDrive,
-  Activity,
-  RefreshCw,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Info,
-  Loader2,
-  RotateCcw,
-  Lightbulb,
-  BarChart3,
-  Zap,
-  Server,
-  Gauge
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 interface TransformerConfig {
   // Precision settings
@@ -179,7 +165,7 @@ export default function TransformerModelConfig({
     toast({
       title: "Recommendations Applied",
       description: "Hardware-optimized settings have been applied",
-    });
+
   };
   const getDynamicBatchSize = (scenario: string): number => {
     if (!recommendations?.dynamic_batch_sizes) return configuration.batch_size;
@@ -192,7 +178,7 @@ export default function TransformerModelConfig({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg sm:p-4 md:p-6">
-                <HardDrive className="h-5 w-5 text-primary sm:w-auto md:w-full" />
+                <HardDrive className="h-5 w-5 text-primary " />
               </div>
               <div>
                 <CardTitle>Transformer Configuration</CardTitle>
@@ -202,14 +188,13 @@ export default function TransformerModelConfig({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={applyRecommendations}
                 disabled={!recommendations}
-               aria-label="Button">
-                <Lightbulb className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Apply Recommendations
+               >
+                <Lightbulb className="h-4 w-4 mr-2 " />
               </Button>
             </div>
           </div>
@@ -219,8 +204,7 @@ export default function TransformerModelConfig({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5 sm:w-auto md:w-full" />
-              Hardware Information
+              <Info className="h-5 w-5 " />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -287,14 +271,14 @@ export default function TransformerModelConfig({
       </Tabs>
       {validationResult && !validationResult.valid && (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+          <AlertTriangle className="h-4 w-4 " />
           <AlertTitle>Configuration Error</AlertTitle>
           <AlertDescription>{validationResult.error}</AlertDescription>
         </Alert>
       )}
       {validationResult?.warnings && validationResult.warnings.length > 0 && (
         <Alert>
-          <Info className="h-4 w-4 sm:w-auto md:w-full" />
+          <Info className="h-4 w-4 " />
           <AlertTitle>Configuration Warnings</AlertTitle>
           <AlertDescription>
             <ul className="list-disc list-inside space-y-1">
@@ -306,9 +290,8 @@ export default function TransformerModelConfig({
         </Alert>
       )}
       <div className="flex justify-end gap-2">
-        <button variant="outline" onClick={onReset} aria-label="Button">
-          <RotateCcw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-          Reset to Defaults
+        <Button variant="outline" onClick={onReset} >
+          <RotateCcw className="h-4 w-4 mr-2 " />
         </Button>
         <button
           onClick={onSave}
@@ -316,7 +299,7 @@ export default function TransformerModelConfig({
          aria-label="Button">
           {saving ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin " />
               Saving...
             </>
           ) : (
@@ -331,11 +314,9 @@ export default function TransformerModelConfig({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Gauge className="h-5 w-5 sm:w-auto md:w-full" />
-            Precision Settings
+            <Gauge className="h-5 w-5 " />
           </CardTitle>
           <CardDescription>
-            Configure model precision and quantization with hardware validation
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -450,11 +431,10 @@ export default function TransformerModelConfig({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Cpu className="h-5 w-5 sm:w-auto md:w-full" />
+            <Cpu className="h-5 w-5 " />
             Device & Memory Settings
           </CardTitle>
           <CardDescription>
-            Configure device allocation and memory management
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -567,11 +547,9 @@ export default function TransformerModelConfig({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 sm:w-auto md:w-full" />
-            Performance Optimizations
+            <Zap className="h-5 w-5 " />
           </CardTitle>
           <CardDescription>
-            Configure attention mechanisms and performance optimizations
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -661,7 +639,7 @@ export default function TransformerModelConfig({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Server className="h-5 w-5 sm:w-auto md:w-full" />
+              <Server className="h-5 w-5 " />
               Multi-GPU Configuration
             </CardTitle>
             <CardDescription>
@@ -720,7 +698,6 @@ export default function TransformerModelConfig({
             <CardHeader>
               <CardTitle>GPU Information</CardTitle>
               <CardDescription>
-                Available GPUs and recommended configuration
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -759,7 +736,6 @@ export default function TransformerModelConfig({
                     Recommended Strategy: {multiGpuConfig.recommended_strategy}
                   </div>
                   <div className="text-xs text-blue-700 dark:text-blue-300 mt-1 sm:text-sm md:text-base">
-                    Based on your GPU configuration and memory distribution
                   </div>
                 </div>
               </div>
@@ -774,11 +750,9 @@ export default function TransformerModelConfig({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5 sm:w-auto md:w-full" />
-            Advanced Optimization Flags
+            <Settings className="h-5 w-5 " />
           </CardTitle>
           <CardDescription>
-            Advanced optimization settings for expert users
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -801,7 +775,7 @@ export default function TransformerModelConfig({
             </div>
             <div className="space-y-4">
               <Alert>
-                <Info className="h-4 w-4 sm:w-auto md:w-full" />
+                <Info className="h-4 w-4 " />
                 <AlertTitle>Advanced Settings</AlertTitle>
                 <AlertDescription>
                   These settings require additional dependencies and may affect stability.

@@ -19,7 +19,6 @@ function createWrapper() {
       queries: { retry: false },
       mutations: { retry: false },
     },
-  });
 
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
@@ -65,13 +64,11 @@ describe('EvilModeToggle', () => {
     vi.clearAllMocks();
     mockUseRBAC.mockReturnValue(mockRBACContext);
     mockAuditLogger.logAuthz = vi.fn().mockResolvedValue(undefined);
-  });
 
   it('renders permission denied when user cannot enable evil mode', () => {
     mockUseRBAC.mockReturnValue({
       ...mockRBACContext,
       canEnableEvilMode: false
-    });
 
     const Wrapper = createWrapper();
     render(
@@ -81,7 +78,6 @@ describe('EvilModeToggle', () => {
     );
 
     expect(screen.getByText('You do not have permission to access Evil Mode')).toBeInTheDocument();
-  });
 
   it('renders enable button when evil mode is disabled', () => {
     const Wrapper = createWrapper();
@@ -93,7 +89,6 @@ describe('EvilModeToggle', () => {
 
     expect(screen.getByText('Enable Evil Mode')).toBeInTheDocument();
     expect(screen.getByText('Elevated privileges system')).toBeInTheDocument();
-  });
 
   it('renders disable button when evil mode is enabled', () => {
     mockUseRBAC.mockReturnValue({
@@ -106,7 +101,6 @@ describe('EvilModeToggle', () => {
         actions: [],
         justification: 'Test justification'
       }
-    });
 
     const Wrapper = createWrapper();
     render(
@@ -117,7 +111,6 @@ describe('EvilModeToggle', () => {
 
     expect(screen.getByText('Disable')).toBeInTheDocument();
     expect(screen.getByText('Currently active')).toBeInTheDocument();
-  });
 
   it('opens enable dialog when enable button is clicked', async () => {
     const Wrapper = createWrapper();
@@ -133,8 +126,7 @@ describe('EvilModeToggle', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       expect(screen.getByText(mockRBACContext.evilModeConfig.warningMessage)).toBeInTheDocument();
-    });
-  });
+
 
   it('shows security warnings in enable dialog', async () => {
     const Wrapper = createWrapper();
@@ -152,8 +144,7 @@ describe('EvilModeToggle', () => {
       expect(screen.getByText('Enhanced Monitoring')).toBeInTheDocument();
       expect(screen.getByText('Compliance Impact')).toBeInTheDocument();
       expect(screen.getByText('Responsibility')).toBeInTheDocument();
-    });
-  });
+
 
   it('requires justification to enable evil mode', async () => {
     const Wrapper = createWrapper();
@@ -168,7 +159,6 @@ describe('EvilModeToggle', () => {
     await waitFor(() => {
       const enableButton = screen.getByRole('button', { name: 'Enable Evil Mode' });
       expect(enableButton).toBeDisabled();
-    });
 
     const justificationInput = screen.getByPlaceholderText('Provide a detailed justification for enabling Evil Mode...');
     fireEvent.change(justificationInput, { target: { value: 'Emergency maintenance required' } });
@@ -177,8 +167,7 @@ describe('EvilModeToggle', () => {
     await waitFor(() => {
       const enableButton = screen.getByRole('button', { name: 'Enable Evil Mode' });
       expect(enableButton).toBeDisabled();
-    });
-  });
+
 
   it('requires additional authentication when configured', async () => {
     const Wrapper = createWrapper();
@@ -193,8 +182,7 @@ describe('EvilModeToggle', () => {
     await waitFor(() => {
       expect(screen.getByText('Additional Authentication')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Enter your password to confirm')).toBeInTheDocument();
-    });
-  });
+
 
   it('requires acknowledgment checkbox to be checked', async () => {
     const Wrapper = createWrapper();
@@ -212,15 +200,13 @@ describe('EvilModeToggle', () => {
       
       const enableButton = screen.getByRole('button', { name: 'Enable Evil Mode' });
       expect(enableButton).toBeDisabled();
-    });
-  });
+
 
   it('enables evil mode when all requirements are met', async () => {
     const mockEnableEvilMode = vi.fn().mockResolvedValue(undefined);
     mockUseRBAC.mockReturnValue({
       ...mockRBACContext,
       enableEvilMode: mockEnableEvilMode
-    });
 
     const Wrapper = createWrapper();
     render(
@@ -243,14 +229,12 @@ describe('EvilModeToggle', () => {
       // Check acknowledgment
       const checkbox = screen.getByRole('checkbox');
       fireEvent.click(checkbox);
-    });
 
     await waitFor(() => {
       const enableButton = screen.getByRole('button', { name: 'Enable Evil Mode' });
       expect(enableButton).not.toBeDisabled();
       
       fireEvent.click(enableButton);
-    });
 
     await waitFor(() => {
       expect(mockEnableEvilMode).toHaveBeenCalledWith('Emergency maintenance required');
@@ -264,8 +248,7 @@ describe('EvilModeToggle', () => {
           timeLimit: 60
         })
       );
-    });
-  });
+
 
   it('opens disable dialog when disable button is clicked', async () => {
     mockUseRBAC.mockReturnValue({
@@ -278,7 +261,6 @@ describe('EvilModeToggle', () => {
         actions: [],
         justification: 'Test justification'
       }
-    });
 
     const Wrapper = createWrapper();
     render(
@@ -292,8 +274,7 @@ describe('EvilModeToggle', () => {
     await waitFor(() => {
       expect(screen.getByText('Disable Evil Mode?')).toBeInTheDocument();
       expect(screen.getByText(/This will immediately revoke all elevated privileges/)).toBeInTheDocument();
-    });
-  });
+
 
   it('disables evil mode when confirmed', async () => {
     const mockDisableEvilMode = vi.fn().mockResolvedValue(undefined);
@@ -308,7 +289,6 @@ describe('EvilModeToggle', () => {
         actions: [],
         justification: 'Test justification'
       }
-    });
 
     const Wrapper = createWrapper();
     render(
@@ -322,7 +302,6 @@ describe('EvilModeToggle', () => {
     await waitFor(() => {
       const disableButton = screen.getByText('Disable Evil Mode');
       fireEvent.click(disableButton);
-    });
 
     await waitFor(() => {
       expect(mockDisableEvilMode).toHaveBeenCalled();
@@ -334,8 +313,7 @@ describe('EvilModeToggle', () => {
           sessionDuration: expect.any(Number)
         })
       );
-    });
-  });
+
 
   it('shows time limit warning when configured', async () => {
     const Wrapper = createWrapper();
@@ -349,8 +327,7 @@ describe('EvilModeToggle', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Evil Mode will automatically expire after 60 minutes/)).toBeInTheDocument();
-    });
-  });
+
 
   it('displays remaining time when evil mode is active', () => {
     const startTime = new Date(Date.now() - 30 * 60 * 1000); // 30 minutes ago
@@ -364,7 +341,6 @@ describe('EvilModeToggle', () => {
         actions: [],
         justification: 'Test justification'
       }
-    });
 
     const Wrapper = createWrapper();
     render(
@@ -374,5 +350,4 @@ describe('EvilModeToggle', () => {
     );
 
     expect(screen.getByText('30m left')).toBeInTheDocument();
-  });
-});
+

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       headers,
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15000), // 15 second timeout
-    });
+
     const data = await response.json();
     // Return the backend response with appropriate status
     return NextResponse.json(data, { 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         'Pragma': 'no-cache',
         'Expires': '0'
       }
-    });
+
   } catch (error) {
     // Return structured error response
     return NextResponse.json(

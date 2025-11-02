@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,62 +9,19 @@ import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { 
+
 /**
  * Performance Optimization Dashboard
  * Interface for managing automatic performance optimizations
  */
-'use client';
 
+import { } from '@/components/ui/dialog';
+import { } from 'recharts';
 
-
-
-
-
-
-
-
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line
-} from 'recharts';
-
-  Zap, 
-  Image, 
-  Package, 
-  Database, 
-  MemoryStick, 
-  TrendingUp, 
-  Settings, 
-  Play, 
-  CheckCircle, 
-  AlertTriangle,
-  Info,
-  Lightbulb
-} from 'lucide-react';
+import { } from 'lucide-react';
 
   performanceOptimizer, 
-  OptimizationConfig, 
-  OptimizationMetrics, 
-  OptimizationRecommendation 
-} from '@/services/performance-optimizer';
+import { } from '@/services/performance-optimizer';
 interface PerformanceOptimizationDashboardProps {
   autoApply?: boolean;
   showAdvancedSettings?: boolean;
@@ -125,20 +84,20 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
   };
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case 'critical': return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'high': return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'medium': return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'low': return <Lightbulb className="h-4 w-4 sm:w-auto md:w-full" />;
-      default: return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'critical': return <AlertTriangle className="h-4 w-4 " />;
+      case 'high': return <AlertTriangle className="h-4 w-4 " />;
+      case 'medium': return <Info className="h-4 w-4 " />;
+      case 'low': return <Lightbulb className="h-4 w-4 " />;
+      default: return <Info className="h-4 w-4 " />;
     }
   };
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'bundle': return <Package className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'image': return <Image className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'cache': return <Database className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'memory': return <MemoryStick className="h-4 w-4 sm:w-auto md:w-full" />;
-      default: return <Zap className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'bundle': return <Package className="h-4 w-4 " />;
+      case 'image': return <Image className="h-4 w-4 " />;
+      case 'cache': return <Database className="h-4 w-4 " />;
+      case 'memory': return <MemoryStick className="h-4 w-4 " />;
+      default: return <Zap className="h-4 w-4 " />;
     }
   };
   // Prepare chart data
@@ -161,7 +120,6 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Performance Optimization</h2>
           <p className="text-muted-foreground">
-            Automatic performance optimizations and recommendations
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -170,22 +128,20 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
             disabled={isOptimizing || recommendations.length === 0}
             className="flex items-center space-x-2"
            aria-label="Button">
-            <Play className="h-4 w-4 sm:w-auto md:w-full" />
+            <Play className="h-4 w-4 " />
             <span>{isOptimizing ? 'Optimizing...' : 'Apply Optimizations'}</span>
           </Button>
           {showAdvancedSettings && (
             <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
               <DialogTrigger asChild>
-                <button variant="outline" aria-label="Button">
-                  <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Settings
+                <Button variant="outline" >
+                  <Settings className="h-4 w-4 mr-2 " />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl sm:w-auto md:w-full">
+              <DialogContent className="max-w-2xl ">
                 <DialogHeader>
                   <DialogTitle>Optimization Settings</DialogTitle>
                   <DialogDescription>
-                    Configure automatic performance optimization settings
                   </DialogDescription>
                 </DialogHeader>
                 <OptimizationSettings onConfigUpdate={handleConfigUpdate} />
@@ -197,7 +153,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
       {/* Optimization Status */}
       {isOptimizing && (
         <Alert>
-          <Zap className="h-4 w-4 sm:w-auto md:w-full" />
+          <Zap className="h-4 w-4 " />
           <AlertTitle>Optimization in Progress</AlertTitle>
           <AlertDescription>
             Applying performance optimizations. This may take a few moments.
@@ -210,7 +166,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Bundle Size</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Package className="h-4 w-4 text-muted-foreground " />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -227,7 +183,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Images Optimized</CardTitle>
-              <Image className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Image className="h-4 w-4 text-muted-foreground " />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metrics.imageOptimization.imagesOptimized}</div>
@@ -239,7 +195,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Cache Hit Rate</CardTitle>
-              <Database className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Database className="h-4 w-4 text-muted-foreground " />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -256,7 +212,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Memory Usage</CardTitle>
-              <MemoryStick className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <MemoryStick className="h-4 w-4 text-muted-foreground " />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -279,7 +235,6 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
             <div>
               <CardTitle>Optimization Recommendations</CardTitle>
               <CardDescription>
-                Automated suggestions to improve performance
               </CardDescription>
             </div>
             <Badge variant="secondary">
@@ -290,7 +245,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
         <CardContent>
           {recommendations.length === 0 ? (
             <div className="text-center py-8">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 sm:w-auto md:w-full" />
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 " />
               <h3 className="text-lg font-medium">All Optimized!</h3>
               <p className="text-muted-foreground">
                 No performance optimizations needed at this time.
@@ -335,7 +290,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
               ))}
               {recommendations.length > 5 && (
                 <div className="text-center">
-                  <button variant="outline" aria-label="Button">
+                  <Button variant="outline" >
                     View {recommendations.length - 5} more recommendations
                   </Button>
                 </div>
@@ -356,7 +311,6 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
             <CardHeader>
               <CardTitle>Potential Performance Gains</CardTitle>
               <CardDescription>
-                Estimated performance improvements from recommendations
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -405,7 +359,6 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
             <CardHeader>
               <CardTitle>Optimization Trends</CardTitle>
               <CardDescription>
-                Performance improvements over time
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -460,7 +413,7 @@ const OptimizationSettings: React.FC<OptimizationSettingsProps> = ({ onConfigUpd
       componentCleanup: true,
       eventListenerCleanup: true,
     },
-  });
+
   const handleConfigChange = (section: keyof OptimizationConfig, key: string, value: any) => {
     const newConfig = {
       ...config,

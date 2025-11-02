@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
           'X-Model-Type': targetModel.type || 'unknown',
           'X-Model-Provider': targetModel.provider
         }
-      });
+
     } catch (capabilityError) {
       return NextResponse.json(
         {
@@ -111,14 +111,14 @@ function buildModelCapabilities(model: any): ModelCapability[] {
             name: 'chat',
             description: 'Interactive conversational AI',
             supported_parameters: ['temperature', 'top_p', 'max_tokens', 'stop_sequences']
-          });
+
           break;
         case 'text-generation':
           capabilities.push({
             name: 'text-generation',
             description: 'Generate text based on prompts',
             supported_parameters: ['temperature', 'top_p', 'top_k', 'max_tokens', 'repeat_penalty']
-          });
+
           break;
         case 'text2img':
           capabilities.push({
@@ -130,7 +130,7 @@ function buildModelCapabilities(model: any): ModelCapability[] {
               gpu_required: true,
               dependencies: ['diffusers', 'torch']
             }
-          });
+
           break;
         case 'img2img':
           capabilities.push({
@@ -142,30 +142,30 @@ function buildModelCapabilities(model: any): ModelCapability[] {
               gpu_required: true,
               dependencies: ['diffusers', 'torch', 'PIL']
             }
-          });
+
           break;
         case 'embedding':
           capabilities.push({
             name: 'embedding',
             description: 'Generate vector embeddings for text',
             supported_parameters: ['normalize', 'batch_size']
-          });
+
           break;
         case 'code':
           capabilities.push({
             name: 'code',
             description: 'Code generation and analysis',
             supported_parameters: ['language', 'max_tokens', 'temperature']
-          });
+
           break;
         default:
           capabilities.push({
             name: cap,
             description: `${cap} capability`,
             supported_parameters: []
-          });
+
       }
-    });
+
   }
   return capabilities;
 }

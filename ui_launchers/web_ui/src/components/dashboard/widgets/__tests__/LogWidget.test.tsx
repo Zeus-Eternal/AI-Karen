@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -100,7 +101,6 @@ describe('LogWidget', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders log widget with entries', () => {
     render(<LogWidget {...mockProps} />);
@@ -108,7 +108,6 @@ describe('LogWidget', () => {
     expect(screen.getByText('Application started successfully')).toBeInTheDocument();
     expect(screen.getByText('High memory usage detected')).toBeInTheDocument();
     expect(screen.getByText('Database connection failed')).toBeInTheDocument();
-  });
 
   it('displays log entry details correctly', () => {
     render(<LogWidget {...mockProps} />);
@@ -126,7 +125,6 @@ describe('LogWidget', () => {
     expect(screen.getByText('[app]')).toBeInTheDocument();
     expect(screen.getByText('[monitor]')).toBeInTheDocument();
     expect(screen.getByText('[db]')).toBeInTheDocument();
-  });
 
   it('displays metadata when available', () => {
     render(<LogWidget {...mockProps} />);
@@ -134,7 +132,6 @@ describe('LogWidget', () => {
     expect(screen.getByText(/version: 1\.0\.0/)).toBeInTheDocument();
     expect(screen.getByText(/port: 3000/)).toBeInTheDocument();
     expect(screen.getByText(/usage: 85%/)).toBeInTheDocument();
-  });
 
   it('filters logs by search term', async () => {
     const user = userEvent.setup();
@@ -146,7 +143,6 @@ describe('LogWidget', () => {
     // Should show only the database-related log
     expect(screen.getByText('Database connection failed')).toBeInTheDocument();
     expect(screen.queryByText('Application started successfully')).not.toBeInTheDocument();
-  });
 
   it('filters logs by level', async () => {
     const user = userEvent.setup();
@@ -164,14 +160,12 @@ describe('LogWidget', () => {
     expect(screen.queryByText('Application started successfully')).not.toBeInTheDocument();
     expect(screen.getByText('High memory usage detected')).toBeInTheDocument();
     expect(screen.getByText('Database connection failed')).toBeInTheDocument();
-  });
 
   it('displays log statistics correctly', () => {
     render(<LogWidget {...mockProps} />);
     
     expect(screen.getByText('4 of 4 entries')).toBeInTheDocument();
     expect(screen.getByText(/Last: 10:03:00 AM/)).toBeInTheDocument();
-  });
 
   it('shows "more available" indicator when hasMore is true', () => {
     const moreLogsData = {
@@ -186,7 +180,6 @@ describe('LogWidget', () => {
     
     expect(screen.getByText('4 of 4 entries (more available)')).toBeInTheDocument();
     expect(screen.getByText('Load More Entries')).toBeInTheDocument();
-  });
 
   it('handles pause/play functionality', async () => {
     const user = userEvent.setup();
@@ -201,7 +194,6 @@ describe('LogWidget', () => {
     await user.click(playButton);
     
     expect(screen.queryByText('PAUSED')).not.toBeInTheDocument();
-  });
 
   it('handles log export', async () => {
     const user = userEvent.setup();
@@ -216,8 +208,7 @@ describe('LogWidget', () => {
         createObjectURL: mockCreateObjectURL,
         revokeObjectURL: mockRevokeObjectURL,
       },
-    });
-    
+
     const mockAppendChild = vi.fn();
     const mockRemoveChild = vi.fn();
     const mockCreateElement = vi.fn(() => ({
@@ -228,8 +219,7 @@ describe('LogWidget', () => {
     
     Object.defineProperty(document, 'createElement', {
       value: mockCreateElement,
-    });
-    
+
     render(<LogWidget {...mockProps} />);
     
     // Open export dropdown
@@ -246,7 +236,6 @@ describe('LogWidget', () => {
       expect(mockCreateObjectURL).toHaveBeenCalled();
       expect(mockClick).toHaveBeenCalled();
     }
-  });
 
   it('highlights search terms in log messages', async () => {
     const user = userEvent.setup();
@@ -258,7 +247,6 @@ describe('LogWidget', () => {
     // Should highlight the search term
     const highlightedText = screen.getByText('started');
     expect(highlightedText.tagName).toBe('MARK');
-  });
 
   it('shows no logs message when filtered results are empty', async () => {
     const user = userEvent.setup();
@@ -268,13 +256,11 @@ describe('LogWidget', () => {
     await user.type(searchInput, 'nonexistent');
     
     expect(screen.getByText('No logs match the current filters')).toBeInTheDocument();
-  });
 
   it('shows no data message when data is not available', () => {
     render(<LogWidget {...mockProps} data={undefined} />);
     
     expect(screen.getByText('No log data available')).toBeInTheDocument();
-  });
 
   it('handles empty log entries', () => {
     const emptyData = {
@@ -289,7 +275,6 @@ describe('LogWidget', () => {
     render(<LogWidget {...mockProps} data={emptyData} />);
     
     expect(screen.getByText('No log entries available')).toBeInTheDocument();
-  });
 
   it('displays correct level badges with colors', () => {
     render(<LogWidget {...mockProps} />);
@@ -301,7 +286,6 @@ describe('LogWidget', () => {
     expect(infoBadge).toBeInTheDocument();
     expect(warnBadge).toBeInTheDocument();
     expect(errorBadge).toBeInTheDocument();
-  });
 
   it('limits metadata display to 3 items', () => {
     const manyMetadataData = {
@@ -330,12 +314,10 @@ describe('LogWidget', () => {
     expect(screen.getByText(/port: 3000/)).toBeInTheDocument();
     expect(screen.getByText(/env: production/)).toBeInTheDocument();
     expect(screen.queryByText(/region: us-east-1/)).not.toBeInTheDocument();
-  });
 
   it('passes props correctly to WidgetBase', () => {
     render(<LogWidget {...mockProps} />);
     
     const widgetBase = screen.getByTestId('widget-base');
     expect(widgetBase).toBeInTheDocument();
-  });
-});
+

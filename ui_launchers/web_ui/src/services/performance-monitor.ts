@@ -80,23 +80,23 @@ export class PerformanceMonitor {
     getCLS((metric) => {
       this.recordMetric('cls', metric.value, { id: metric.id });
       this.checkThreshold('cls', metric.value);
-    });
+
     getFCP((metric) => {
       this.recordMetric('fcp', metric.value, { id: metric.id });
       this.checkThreshold('fcp', metric.value);
-    });
+
     getFID((metric) => {
       this.recordMetric('fid', metric.value, { id: metric.id });
       this.checkThreshold('fid', metric.value);
-    });
+
     getLCP((metric) => {
       this.recordMetric('lcp', metric.value, { id: metric.id });
       this.checkThreshold('lcp', metric.value);
-    });
+
     getTTFB((metric) => {
       this.recordMetric('ttfb', metric.value, { id: metric.id });
       this.checkThreshold('ttfb', metric.value);
-    });
+
   }
   /**
    * Initialize resource monitoring
@@ -114,7 +114,7 @@ export class PerformanceMonitor {
         this.recordMetric('memory-usage', memoryUsage.percentage, {
           used: memoryUsage.used,
           total: memoryUsage.total,
-        });
+
         this.checkThreshold('memoryUsage', memoryUsage.percentage);
       }, 5000);
     }
@@ -124,7 +124,7 @@ export class PerformanceMonitor {
       this.recordMetric('network-downlink', connection.downlink, {
         effectiveType: connection.effectiveType,
         rtt: connection.rtt,
-      });
+
     }
   }
   /**
@@ -138,7 +138,7 @@ export class PerformanceMonitor {
           this.recordMetric('long-task', entry.duration, {
             startTime: entry.startTime,
             name: entry.name,
-          });
+
           if (entry.duration > this.thresholds.interaction.warning) {
             this.createAlert(
               'warning',
@@ -149,7 +149,7 @@ export class PerformanceMonitor {
             );
           }
         }
-      });
+
       try {
         longTaskObserver.observe({ entryTypes: ['longtask'] });
         this.observers.push(longTaskObserver);
@@ -166,10 +166,10 @@ export class PerformanceMonitor {
             domContentLoaded: navEntry.domContentLoadedEventEnd - navEntry.navigationStart,
             firstByte: navEntry.responseStart - navEntry.navigationStart,
             domComplete: navEntry.domComplete - navEntry.navigationStart,
-          });
+
           this.checkThreshold('pageLoad', pageLoadTime);
         }
-      });
+
       try {
         navigationObserver.observe({ entryTypes: ['navigation'] });
         this.observers.push(navigationObserver);
@@ -201,7 +201,7 @@ export class PerformanceMonitor {
       status,
       success: status >= 200 && status < 300,
       ...metadata,
-    });
+
     // Alert on slow API calls
     if (duration > 2000) {
       this.createAlert(
@@ -244,7 +244,7 @@ export class PerformanceMonitor {
     const latestMetrics = this.getLatestMetrics(['cls', 'fcp', 'fid', 'lcp', 'ttfb']);
     latestMetrics.forEach((metric) => {
       (vitals as any)[metric.name] = metric.value;
-    });
+
     return vitals;
   }
   /**
@@ -323,7 +323,7 @@ export class PerformanceMonitor {
       value,
       timestamp: Date.now(),
       metadata,
-    });
+
     // Prevent memory leaks by limiting metrics
     if (this.metrics.length >= 5000) {
       this.metrics = this.metrics.slice(-2500);

@@ -7,13 +7,7 @@
 import React from 'react';
 import { getKarenBackend, APIError } from '../karen-backend';
 import { safeError, safeLog } from '../safe-console';
-import type { 
-  ExtensionBase, 
-  ExtensionPlugin,
-  SystemExtension,
-  HealthStatus,
-  ResourceUsage 
-} from '../../extensions/types';
+import type {  ExtensionBase, ExtensionPlugin, SystemExtension, HealthStatus, ResourceUsage } from '../../extensions/types';
 export interface ExtensionUIComponent {
   id: string;
   extensionId: string;
@@ -121,7 +115,7 @@ export class ExtensionIntegrationService {
         extensionId: component.extensionId,
         permissions: component.permissions,
         exact: true
-      });
+
     }
     this.emit('componentRegistered', component);
     safeLog(`ExtensionIntegrationService: Registered component ${component.id} for extension ${component.extensionId}`);
@@ -361,7 +355,7 @@ export class ExtensionIntegrationService {
         resources: resourceUsage,
         backgroundTasks,
         lastUpdate: new Date().toISOString()
-      });
+
       // Register UI components if extension provides them
       if (extensionData.capabilities?.provides_ui) {
         await this.registerExtensionUIComponents(extensionId, extensionData);
@@ -389,7 +383,7 @@ export class ExtensionIntegrationService {
           storage: 0
         },
         lastUpdate: new Date().toISOString()
-      });
+
     }
   }
   /**
@@ -411,7 +405,7 @@ export class ExtensionIntegrationService {
       enabled: true,
       category: 'management',
       order: 100
-    });
+
     // Register navigation item
     this.registerNavItem({
       id: `${extensionId}-nav`,
@@ -421,7 +415,7 @@ export class ExtensionIntegrationService {
       icon: this.getExtensionIcon(extensionData),
       permissions: ['user'],
       order: 100
-    });
+
     // Register status widget
     this.registerComponent({
       id: `${extensionId}-status-widget`,
@@ -433,7 +427,7 @@ export class ExtensionIntegrationService {
       enabled: true,
       category: 'monitoring',
       order: 50
-    });
+
     // Register dashboard widget if extension provides dashboard capabilities
     if (extensionData.capabilities?.provides_ui) {
       this.registerComponent({
@@ -446,7 +440,7 @@ export class ExtensionIntegrationService {
         enabled: true,
         category: 'dashboard',
         order: 75
-      });
+
     }
     // Register settings panel
     this.registerComponent({
@@ -461,7 +455,7 @@ export class ExtensionIntegrationService {
       enabled: true,
       category: 'settings',
       order: 200
-    });
+
   }
   /**
    * Register background task monitoring for an extension
@@ -830,7 +824,7 @@ export class ExtensionIntegrationService {
         } catch (error) {
           safeError(`ExtensionIntegrationService: Error in event listener for ${event}:`, error);
         }
-      });
+
     }
   }
   /**
@@ -849,7 +843,7 @@ export class ExtensionIntegrationService {
         headers: {
           'Content-Type': 'application/json'
         }
-      });
+
       return response;
     } catch (error) {
       safeError(`ExtensionIntegrationService: Failed to execute task ${taskName} for extension ${extensionId}:`, error);

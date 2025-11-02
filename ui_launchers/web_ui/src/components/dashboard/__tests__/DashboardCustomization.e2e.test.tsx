@@ -2,7 +2,8 @@
  * Dashboard Customization E2E Tests
  * 
  * Tests dashboard customization workflows including persistence, templates, 
- * filtering, and export/import functionality.
+ * filtering, and export/import React from 'react';
+import functionality.
  * Implements requirement: 3.3, 3.5 - Dashboard customization and persistence
  */
 
@@ -156,14 +157,12 @@ describe('Dashboard Customization E2E', () => {
         return selector(mockDashboardStore);
       }
       return mockDashboardStore;
-    });
 
     mockUseAppStore.mockImplementation((selector: any) => {
       if (typeof selector === 'function') {
         return selector({ user: mockUser });
       }
       return mockUser;
-    });
 
     // Mock localStorage
     Object.defineProperty(window, 'localStorage', {
@@ -174,7 +173,6 @@ describe('Dashboard Customization E2E', () => {
         clear: jest.fn(),
       },
       writable: true,
-    });
 
     // Mock clipboard API
     Object.assign(navigator, {
@@ -182,8 +180,7 @@ describe('Dashboard Customization E2E', () => {
         writeText: jest.fn().mockResolvedValue(undefined),
         readText: jest.fn().mockResolvedValue(''),
       },
-    });
-  });
+
 
   describe('Dashboard Persistence', () => {
     it('should persist dashboard layout changes', async () => {
@@ -209,7 +206,6 @@ describe('Dashboard Customization E2E', () => {
         mockDashboard.id,
         { layout: 'masonry' }
       );
-    });
 
     it('should persist widget additions', async () => {
       const user = userEvent.setup();
@@ -239,7 +235,6 @@ describe('Dashboard Customization E2E', () => {
           type: 'status'
         })
       );
-    });
 
     it('should persist time range changes', async () => {
       const user = userEvent.setup();
@@ -265,8 +260,7 @@ describe('Dashboard Customization E2E', () => {
           preset: 'last-week'
         })
       );
-    });
-  });
+
 
   describe('Dashboard Templates', () => {
     it('should display available templates', async () => {
@@ -287,8 +281,7 @@ describe('Dashboard Customization E2E', () => {
       await waitFor(() => {
         expect(screen.getByText('System Overview')).toBeInTheDocument();
         expect(screen.getByText('System monitoring template')).toBeInTheDocument();
-      });
-    });
+
 
     it('should apply template to dashboard', async () => {
       const user = userEvent.setup();
@@ -308,14 +301,12 @@ describe('Dashboard Customization E2E', () => {
       await waitFor(() => {
         const useTemplateButton = screen.getByRole('button', { name: /use template/i });
         return user.click(useTemplateButton);
-      });
 
       // Verify store action was called
       expect(mockDashboardStore.applyTemplate).toHaveBeenCalledWith(
         'system-overview',
         mockDashboard.id
       );
-    });
 
     it('should filter templates by category', async () => {
       const user = userEvent.setup();
@@ -341,9 +332,8 @@ describe('Dashboard Customization E2E', () => {
       // Verify system template is still visible
       await waitFor(() => {
         expect(screen.getByText('System Overview')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Dashboard Filters', () => {
     it('should add dashboard filters', async () => {
@@ -387,7 +377,6 @@ describe('Dashboard Customization E2E', () => {
           value: 'healthy'
         })
       );
-    });
 
     it('should remove dashboard filters', async () => {
       const user = userEvent.setup();
@@ -431,8 +420,7 @@ describe('Dashboard Customization E2E', () => {
           'filter-1'
         );
       }
-    });
-  });
+
 
   describe('Dashboard Export/Import', () => {
     it('should export dashboard configuration', async () => {
@@ -441,7 +429,6 @@ describe('Dashboard Customization E2E', () => {
         version: '1.0',
         type: 'dashboard',
         data: mockDashboard
-      });
 
       mockDashboardStore.exportDashboard.mockResolvedValue(mockExportData);
       
@@ -463,14 +450,12 @@ describe('Dashboard Customization E2E', () => {
       // Verify export was called
       await waitFor(() => {
         expect(mockDashboardStore.exportDashboard).toHaveBeenCalledWith(mockDashboard.id);
-      });
 
       // Verify export data is displayed
       await waitFor(() => {
         const exportTextarea = screen.getByDisplayValue(mockExportData);
         expect(exportTextarea).toBeInTheDocument();
-      });
-    });
+
 
     it('should import dashboard configuration', async () => {
       const user = userEvent.setup();
@@ -481,7 +466,6 @@ describe('Dashboard Customization E2E', () => {
           ...mockDashboard,
           name: 'Imported Dashboard'
         }
-      });
 
       mockDashboardStore.importDashboard.mockResolvedValue('imported-dashboard-id');
       
@@ -511,8 +495,7 @@ describe('Dashboard Customization E2E', () => {
       // Verify import was called
       await waitFor(() => {
         expect(mockDashboardStore.importDashboard).toHaveBeenCalledWith(importData);
-      });
-    });
+
 
     it('should validate import data format', async () => {
       const user = userEvent.setup();
@@ -540,13 +523,11 @@ describe('Dashboard Customization E2E', () => {
       // Verify validation error is shown
       await waitFor(() => {
         expect(screen.getByText(/invalid export format/i)).toBeInTheDocument();
-      });
 
       // Verify import button is disabled
       const importButton = screen.getByRole('button', { name: /import dashboard/i });
       expect(importButton).toBeDisabled();
-    });
-  });
+
 
   describe('Widget Management', () => {
     it('should reorder widgets via drag and drop', async () => {
@@ -569,7 +550,6 @@ describe('Dashboard Customization E2E', () => {
       // In a real test, we would simulate actual drag and drop events
       // For now, we'll test that the reorder function is available
       expect(mockDashboardStore.reorderWidgets).toBeDefined();
-    });
 
     it('should remove widgets', async () => {
       const user = userEvent.setup();
@@ -587,8 +567,7 @@ describe('Dashboard Customization E2E', () => {
       // Find widget remove button (would be in widget header in edit mode)
       // This is a simplified test - actual implementation would have remove buttons
       expect(mockDashboardStore.removeWidget).toBeDefined();
-    });
-  });
+
 
   describe('URL State Synchronization', () => {
     it('should update URL when dashboard state changes', async () => {
@@ -611,14 +590,12 @@ describe('Dashboard Customization E2E', () => {
       // Verify URL would be updated (mocked router)
       // In a real implementation, this would check URL parameters
       expect(mockDashboardStore.setGlobalTimeRange).toHaveBeenCalled();
-    });
 
     it('should restore state from URL parameters', () => {
       // This would test URL parameter parsing and state restoration
       // Implementation depends on the URL sync hook
       expect(true).toBe(true); // Placeholder
-    });
-  });
+
 
   describe('Auto-save Functionality', () => {
     it('should auto-save dashboard changes', async () => {
@@ -643,14 +620,12 @@ describe('Dashboard Customization E2E', () => {
       // Fast-forward time to trigger auto-save
       act(() => {
         jest.advanceTimersByTime(30000); // 30 seconds
-      });
 
       // Verify save was triggered
       expect(mockDashboardStore.updateDashboard).toHaveBeenCalled();
 
       jest.useRealTimers();
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle export errors gracefully', async () => {
@@ -676,8 +651,7 @@ describe('Dashboard Customization E2E', () => {
       // Verify error handling (would show error message in real implementation)
       await waitFor(() => {
         expect(mockDashboardStore.exportDashboard).toHaveBeenCalled();
-      });
-    });
+
 
     it('should handle import errors gracefully', async () => {
       const user = userEvent.setup();
@@ -704,8 +678,7 @@ describe('Dashboard Customization E2E', () => {
         version: '1.0',
         type: 'dashboard',
         data: mockDashboard
-      });
-      
+
       const importTextarea = screen.getByLabelText(/import data/i);
       await user.type(importTextarea, importData);
 
@@ -716,7 +689,6 @@ describe('Dashboard Customization E2E', () => {
       // Verify error is handled
       await waitFor(() => {
         expect(screen.getByText(/import failed/i)).toBeInTheDocument();
-      });
-    });
-  });
-});
+
+
+

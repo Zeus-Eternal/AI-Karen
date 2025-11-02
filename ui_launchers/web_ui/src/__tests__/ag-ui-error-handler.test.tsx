@@ -2,6 +2,7 @@
  * Tests for AG-UI Error Handler with Fallback Strategies
  */
 
+import React from 'react';
 import { vi } from 'vitest';
 import { agUIErrorHandler, AGUIErrorType, FallbackStrategy } from '../lib/ag-ui-error-handler';
 
@@ -26,7 +27,6 @@ describe('AGUIErrorHandler', () => {
     
     // Clear all mocks
     vi.clearAllMocks();
-  });
 
   describe('Grid Error Handling', () => {
     it('should handle grid load error with cached data', async () => {
@@ -49,7 +49,6 @@ describe('AGUIErrorHandler', () => {
       expect(result.data).toEqual(testData);
       expect(result.message).toContain('cached data');
       expect(result.retryAvailable).toBe(true);
-    });
 
     it('should handle grid render error with simplified columns', async () => {
       const error = new Error('Grid rendering failed');
@@ -82,7 +81,6 @@ describe('AGUIErrorHandler', () => {
       expect(result.columns[0].cellRenderer).toBeUndefined();
       expect(result.columns[0].filter).toBe(false);
       expect(result.degradedFeatures).toContain('advanced-filtering');
-    });
 
     it('should fallback to simple table after max retries', async () => {
       const error = new Error('Persistent grid error');
@@ -109,8 +107,7 @@ describe('AGUIErrorHandler', () => {
       expect(result.strategy).toBe(FallbackStrategy.SIMPLE_TABLE);
       expect(result.degradedFeatures).toContain('sorting');
       expect(result.degradedFeatures).toContain('filtering');
-    });
-  });
+
 
   describe('Chart Error Handling', () => {
     it('should handle chart render error with simplified data', async () => {
@@ -130,7 +127,6 @@ describe('AGUIErrorHandler', () => {
       expect(result.data.length).toBeLessThanOrEqual(100); // Data should be limited
       expect(result.degradedFeatures).toContain('animations');
       expect(result.degradedFeatures).toContain('interactive-features');
-    });
 
     it('should fallback to simple chart after retries', async () => {
       const error = new Error('Persistent chart error');
@@ -146,8 +142,7 @@ describe('AGUIErrorHandler', () => {
       expect(result.strategy).toBe(FallbackStrategy.SIMPLE_TABLE);
       expect(result.message).toContain('showing data as table');
       expect(result.degradedFeatures).toContain('visualization');
-    });
-  });
+
 
   describe('Circuit Breaker Functionality', () => {
     it('should open circuit breaker after threshold failures', async () => {
@@ -165,7 +160,6 @@ describe('AGUIErrorHandler', () => {
       // Next call should be handled by circuit breaker
       const result = await agUIErrorHandler.handleComponentError(error, 'grid', []);
       expect(result.strategy).toBe(FallbackStrategy.ERROR_MESSAGE);
-    });
 
     it('should reset circuit breaker on successful operation', async () => {
       const error = new Error('Temporary failure');
@@ -182,8 +176,7 @@ describe('AGUIErrorHandler', () => {
       expect(health.circuitBreakerOpen).toBe(false);
       expect(health.failureCount).toBe(0);
       expect(health.isHealthy).toBe(true);
-    });
-  });
+
 
   describe('Error Classification', () => {
     it('should classify grid errors correctly', async () => {
@@ -202,7 +195,6 @@ describe('AGUIErrorHandler', () => {
       expect(renderResult.strategy).toBeDefined();
       expect(memoryResult.strategy).toBeDefined();
       expect(timeoutResult.strategy).toBeDefined();
-    });
 
     it('should classify chart errors correctly', async () => {
       const renderError = new Error('Chart draw failed');
@@ -213,8 +205,7 @@ describe('AGUIErrorHandler', () => {
       
       expect(renderResult.strategy).toBeDefined();
       expect(dataResult.strategy).toBeDefined();
-    });
-  });
+
 
   describe('Caching Functionality', () => {
     it('should cache and retrieve data correctly', () => {
@@ -227,7 +218,6 @@ describe('AGUIErrorHandler', () => {
       // The cache should be used in error scenarios
       // This is tested indirectly through other tests
       expect(true).toBe(true); // Placeholder assertion
-    });
 
     it('should respect cache timeout', async () => {
       // This would require mocking Date.now() to test cache expiration
@@ -237,8 +227,7 @@ describe('AGUIErrorHandler', () => {
       
       // In a real scenario, we'd advance time and verify cache expiration
       expect(true).toBe(true); // Placeholder assertion
-    });
-  });
+
 
   describe('Health Monitoring', () => {
     it('should track component health accurately', async () => {
@@ -260,7 +249,6 @@ describe('AGUIErrorHandler', () => {
       
       // Health score should decrease with failures
       expect(health.isHealthy).toBe(true); // Still healthy with only 2 failures
-    });
 
     it('should calculate health score correctly', () => {
       const component = 'score-test';
@@ -272,8 +260,7 @@ describe('AGUIErrorHandler', () => {
       // Test with circuit breaker open
       // This would require triggering enough failures to open the circuit breaker
       // and then checking the health score
-    });
-  });
+
 
   describe('Fallback Response Generation', () => {
     it('should generate appropriate simple table fallback', async () => {
@@ -292,7 +279,6 @@ describe('AGUIErrorHandler', () => {
         expect(result.columns[1].field).toBe('name');
         expect(result.columns[2].field).toBe('age');
       }
-    });
 
     it('should handle empty data gracefully', async () => {
       const error = new Error('No data available');
@@ -302,8 +288,7 @@ describe('AGUIErrorHandler', () => {
       expect(result.data).toBeDefined();
       expect(result.columns).toBeDefined();
       expect(result.message).toBeTruthy();
-    });
-  });
+
 
   describe('Integration Scenarios', () => {
     it('should handle multiple concurrent errors', async () => {
@@ -326,8 +311,7 @@ describe('AGUIErrorHandler', () => {
       results.forEach(result => {
         expect(result.strategy).toBeDefined();
         expect(result.message).toBeTruthy();
-      });
-    });
+
 
     it('should maintain component isolation', async () => {
       const error = new Error('Isolated failure');
@@ -344,9 +328,8 @@ describe('AGUIErrorHandler', () => {
       // Chart should still be healthy
       const chartHealth = agUIErrorHandler.getComponentHealth('chart');
       expect(chartHealth.isHealthy).toBe(true);
-    });
-  });
-});
+
+
 
 describe('Error Handler Performance', () => {
   it('should handle errors efficiently under load', async () => {
@@ -367,8 +350,7 @@ describe('Error Handler Performance', () => {
     // All should have valid responses
     results.forEach(result => {
       expect(result.strategy).toBeDefined();
-    });
-  });
+
 
   it('should not leak memory with repeated errors', async () => {
     // This is a basic test - in a real scenario you'd use memory profiling tools
@@ -395,5 +377,4 @@ describe('Error Handler Performance', () => {
       const memoryGrowth = finalMemory - initialMemory;
       expect(memoryGrowth).toBeLessThan(50 * 1024 * 1024); // Less than 50MB growth
     }
-  });
-});
+

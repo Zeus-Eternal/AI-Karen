@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -116,7 +116,7 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
       reason: 'feature_disabled', 
       featureFlag,
       userId: user?.userId 
-    });
+
     onAccessDenied?.('Feature is currently disabled');
     return <>{fallback}</>;
   }
@@ -128,7 +128,7 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
       requiredRole,
       requiredPermission,
       userId: null
-    });
+
     onAccessDenied?.('Authentication required');
     return <>{fallback}</>;
   }
@@ -146,7 +146,7 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
         userRole,
         requiredRole,
         userId: user.userId
-      });
+
       onAccessDenied?.(`Role '${requiredRole}' required, but user has '${userRole}'`);
       return <>{fallback}</>;
     }
@@ -163,7 +163,7 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
         requiredPermission,
         userPermissions,
         userId: user.userId
-      });
+
       onAccessDenied?.(`Permission '${requiredPermission}' required`);
       return <>{fallback}</>;
     }
@@ -176,7 +176,6 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
     requiredPermission,
     featureFlag,
     userId: user.userId
-  });
 
   return (
     <div className={className} data-rbac-protected="true">

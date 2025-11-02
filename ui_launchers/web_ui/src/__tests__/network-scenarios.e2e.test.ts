@@ -27,14 +27,12 @@ describe('Network Scenarios End-to-End Tests', () => {
 
     // Reset fetch mock
     mockFetch.mockReset();
-  });
 
   afterEach(() => {
     // Restore original globals
     global.process = originalProcess;
     global.window = originalWindow;
     vi.clearAllMocks();
-  });
 
   describe('Localhost Development Environment', () => {
     beforeEach(() => {
@@ -56,7 +54,6 @@ describe('Network Scenarios End-to-End Tests', () => {
           origin: 'http://localhost:8010',
         },
       } as any;
-    });
 
     it('should configure endpoints correctly for localhost development', () => {
       const configManager = new ConfigManager();
@@ -72,7 +69,6 @@ describe('Network Scenarios End-to-End Tests', () => {
       expect(configManager.getAuthEndpoint()).toBe('http://localhost:8000/api/auth');
       expect(configManager.getChatEndpoint()).toBe('http://localhost:8000/api/chat');
       expect(configManager.getHealthEndpoint()).toBe('http://localhost:8000/health');
-    });
 
     it('should successfully validate localhost endpoints', async () => {
       // Mock successful responses for localhost endpoints
@@ -84,7 +80,6 @@ describe('Network Scenarios End-to-End Tests', () => {
           ['content-type', 'application/json'],
           ['access-control-allow-origin', 'http://localhost:8010'],
         ]),
-      });
 
       const configManager = new ConfigManager();
       const results = await configManager.validateEndpoints();
@@ -109,7 +104,6 @@ describe('Network Scenarios End-to-End Tests', () => {
           headers: { 'Accept': 'application/json' },
         })
       );
-    });
 
     it('should handle localhost development with backend unavailable', async () => {
       // Mock backend unavailable
@@ -120,7 +114,6 @@ describe('Network Scenarios End-to-End Tests', () => {
 
       expect(results.every(result => !result.isValid)).toBe(true);
       expect(results.every(result => result.error === 'ECONNREFUSED')).toBe(true);
-    });
 
     it('should run comprehensive test in localhost environment', async () => {
       // Mock successful responses for all endpoints
@@ -143,8 +136,7 @@ describe('Network Scenarios End-to-End Tests', () => {
       expect(report.summary.passedTests).toBe(report.summary.totalTests);
       expect(report.systemInfo.host).toBe('localhost');
       expect(report.systemInfo.protocol).toBe('http');
-    });
-  });
+
 
   describe('Docker Container Environment', () => {
     beforeEach(() => {
@@ -169,7 +161,6 @@ describe('Network Scenarios End-to-End Tests', () => {
           origin: 'http://web-ui-container:8020',
         },
       } as any;
-    });
 
     it('should configure endpoints correctly for Docker environment', () => {
       const configManager = new ConfigManager();
@@ -185,7 +176,6 @@ describe('Network Scenarios End-to-End Tests', () => {
       expect(configManager.getAuthEndpoint()).toBe('http://backend-service:8000/api/auth');
       expect(configManager.getChatEndpoint()).toBe('http://backend-service:8000/api/chat');
       expect(configManager.getHealthEndpoint()).toBe('http://backend-service:8000/health');
-    });
 
     it('should successfully validate Docker container endpoints', async () => {
       // Mock successful responses for container endpoints
@@ -197,7 +187,6 @@ describe('Network Scenarios End-to-End Tests', () => {
           ['content-type', 'application/json'],
           ['access-control-allow-origin', '*'],
         ]),
-      });
 
       const configManager = new ConfigManager();
       const results = await configManager.validateEndpoints();
@@ -213,7 +202,6 @@ describe('Network Scenarios End-to-End Tests', () => {
           headers: { 'Accept': 'application/json' },
         })
       );
-    });
 
     it('should handle Docker networking issues', async () => {
       // Mock Docker networking issues (service not found)
@@ -224,7 +212,6 @@ describe('Network Scenarios End-to-End Tests', () => {
 
       expect(results[0].isValid).toBe(false);
       expect(results[0].error).toBe('getaddrinfo ENOTFOUND backend-service');
-    });
 
     it('should test authentication flow in Docker environment', async () => {
       // Mock successful auth responses
@@ -243,8 +230,7 @@ describe('Network Scenarios End-to-End Tests', () => {
             ['content-type', 'application/json'],
             ['access-control-allow-origin', '*'],
           ]),
-        });
-      });
+
 
       const networkDiagnostics = getNetworkDiagnostics();
       const results = [];
@@ -257,8 +243,7 @@ describe('Network Scenarios End-to-End Tests', () => {
       expect(results.every(result => result.status === 'success')).toBe(true);
       // Note: NetworkDiagnostics uses the original config, not the updated one
       // This is expected behavior as it uses the webUIConfig mock
-    });
-  });
+
 
   describe('External IP Environment (10.105.235.209 case)', () => {
     beforeEach(() => {
@@ -282,7 +267,6 @@ describe('Network Scenarios End-to-End Tests', () => {
           origin: 'http://10.105.235.209:8020',
         },
       } as any;
-    });
 
     it('should configure endpoints correctly for external IP environment', () => {
       const configManager = new ConfigManager();
@@ -297,7 +281,6 @@ describe('Network Scenarios End-to-End Tests', () => {
       expect(configManager.getAuthEndpoint()).toBe('http://10.105.235.209:8000/api/auth');
       expect(configManager.getChatEndpoint()).toBe('http://10.105.235.209:8000/api/chat');
       expect(configManager.getHealthEndpoint()).toBe('http://10.105.235.209:8000/health');
-    });
 
     it('should successfully validate external IP endpoints', async () => {
       // Mock successful responses for external endpoints
@@ -309,7 +292,6 @@ describe('Network Scenarios End-to-End Tests', () => {
           ['content-type', 'application/json'],
           ['access-control-allow-origin', 'http://10.105.235.209:8020'],
         ]),
-      });
 
       const configManager = new ConfigManager();
       const results = await configManager.validateEndpoints();
@@ -325,7 +307,6 @@ describe('Network Scenarios End-to-End Tests', () => {
           headers: { 'Accept': 'application/json' },
         })
       );
-    });
 
     it('should handle external IP CORS configuration', async () => {
       // Mock CORS preflight success but main request CORS failure
@@ -342,7 +323,6 @@ describe('Network Scenarios End-to-End Tests', () => {
             ['access-control-allow-origin', 'http://localhost:8010'], // Wrong origin
             ['access-control-allow-methods', 'GET, POST'],
           ]),
-        });
 
       const networkDiagnostics = getNetworkDiagnostics();
       const result = await networkDiagnostics.testEndpointConnectivity('/api/auth/login', 'POST');
@@ -350,7 +330,6 @@ describe('Network Scenarios End-to-End Tests', () => {
       expect(result.status).toBe('cors');
       expect(result.corsInfo?.origin).toBe('http://10.105.235.209:9002');
       expect(result.corsInfo?.preflightRequired).toBe(true);
-    });
 
     it('should handle external IP network connectivity issues', async () => {
       // Mock network unreachable (common with external IPs)
@@ -361,7 +340,6 @@ describe('Network Scenarios End-to-End Tests', () => {
 
       expect(results[0].isValid).toBe(false);
       expect(results[0].error).toBe('Network is unreachable');
-    });
 
     it('should test fallback to alternative external endpoints', async () => {
       // Mock primary external endpoint failure, fallback success
@@ -372,7 +350,6 @@ describe('Network Scenarios End-to-End Tests', () => {
           status: 200,
           statusText: 'OK',
           headers: new Map(),
-        });
 
       const configManager = new ConfigManager();
       const results = await configManager.validateEndpoints();
@@ -381,8 +358,7 @@ describe('Network Scenarios End-to-End Tests', () => {
       expect(results[0].error).toBe('Connection timeout');
       expect(results[1].isValid).toBe(true);  // Fallback succeeded
       expect(results[1].endpoint).toBe('http://10.105.235.209:8000');
-    });
-  });
+
 
   describe('Mixed Environment Scenarios', () => {
     it('should handle transition from localhost to Docker', async () => {
@@ -413,7 +389,6 @@ describe('Network Scenarios End-to-End Tests', () => {
       // Create new config manager to pick up changes
       configManager = new ConfigManager();
       expect(configManager.getBackendUrl()).toBe('http://backend:8000');
-    });
 
     it('should handle dynamic configuration updates', async () => {
       // Start with localhost
@@ -438,12 +413,10 @@ describe('Network Scenarios End-to-End Tests', () => {
       configManager.updateConfiguration({
         backendUrl: 'http://external-server:8000',
         networkMode: 'external',
-      });
 
       expect(configManager.getBackendUrl()).toBe('http://external-server:8000');
       // Note: networkMode doesn't change because environment detection overrides it
       // This is expected behavior based on the current implementation
-    });
 
     it('should handle network mode detection edge cases', () => {
       // Test various hostname patterns
@@ -490,9 +463,8 @@ describe('Network Scenarios End-to-End Tests', () => {
         const envInfo = configManager.getEnvironmentInfo();
 
         expect(envInfo.networkMode).toBe(expected);
-      });
-    });
-  });
+
+
 
   describe('Performance and Reliability Scenarios', () => {
     it('should handle slow network responses', async () => {
@@ -520,7 +492,6 @@ describe('Network Scenarios End-to-End Tests', () => {
 
       expect(results[0].isValid).toBe(true);
       expect(results[0].responseTime).toBe(3000);
-    });
 
     it('should handle intermittent connectivity', async () => {
       global.process = { env: { KAREN_BACKEND_URL: 'http://unreliable-server:8000' } } as any;
@@ -542,11 +513,9 @@ describe('Network Scenarios End-to-End Tests', () => {
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       results = await configManager.validateEndpoints();
       expect(results[0].isValid).toBe(true);
-    });
 
     it('should handle concurrent validation requests', async () => {
       global.process = { env: { KAREN_BACKEND_URL: 'http://concurrent-test:8000' } } as any;
@@ -559,7 +528,7 @@ describe('Network Scenarios End-to-End Tests', () => {
           status: 200,
           statusText: 'OK',
           headers: new Map(),
-        });
+
       }
 
       const configManager = new ConfigManager();
@@ -576,9 +545,8 @@ describe('Network Scenarios End-to-End Tests', () => {
       // All should succeed
       results.forEach(result => {
         expect(result[0].isValid).toBe(true);
-      });
-    });
-  });
+
+
 
   describe('Error Recovery Scenarios', () => {
     it('should demonstrate complete service recovery workflow', async () => {
@@ -623,11 +591,9 @@ describe('Network Scenarios End-to-End Tests', () => {
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       results = await configManager.validateEndpoints();
       expect(results.every(result => result.isValid)).toBe(true);
-    });
 
     it('should handle graceful degradation', async () => {
       global.process = {
@@ -650,7 +616,6 @@ describe('Network Scenarios End-to-End Tests', () => {
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       const healthResult = await networkDiagnostics.testEndpointConnectivity('/health');
       expect(healthResult.status).toBe('success');
@@ -664,6 +629,5 @@ describe('Network Scenarios End-to-End Tests', () => {
       // System should still be partially functional
       expect(healthResult.status).toBe('success');
       expect(authResult.status).toBe('error');
-    });
-  });
-});
+
+

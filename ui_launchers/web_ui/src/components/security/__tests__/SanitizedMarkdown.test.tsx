@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SanitizedMarkdown, sanitizeText, sanitizeUrl } from '../SanitizedMarkdown';
@@ -18,7 +19,6 @@ describe('SanitizedMarkdown', () => {
     
     const element = screen.getByText('Hello World');
     expect(element).toBeInTheDocument();
-  });
 
   it('sanitizes dangerous HTML', () => {
     const content = '<script>alert("xss")</script><p>Safe content</p>';
@@ -28,7 +28,6 @@ describe('SanitizedMarkdown', () => {
     // Should render safe content but not the script
     expect(screen.getByText('Safe content')).toBeInTheDocument();
     expect(screen.queryByText('alert("xss")')).not.toBeInTheDocument();
-  });
 
   it('adds security attributes to external links', () => {
     const content = '[External Link](https://example.com)';
@@ -39,12 +38,10 @@ describe('SanitizedMarkdown', () => {
     const link = container.querySelector('a');
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href');
-  });
 
   it('handles empty content gracefully', () => {
     const { container } = render(<SanitizedMarkdown content="" />);
     expect(container.firstChild).toBeNull();
-  });
 
   it('truncates content when maxLength is exceeded', () => {
     const longContent = 'a'.repeat(100);
@@ -54,8 +51,7 @@ describe('SanitizedMarkdown', () => {
     // Should be truncated with ellipsis (either ... or …)
     const element = container.querySelector('[data-sanitized="true"]');
     expect(element?.textContent?.trim()).toMatch(/(\.\.\.|…)$/);
-  });
-});
+
 
 describe('sanitizeText', () => {
   it('removes HTML tags from text', () => {
@@ -63,7 +59,6 @@ describe('sanitizeText', () => {
     const result = sanitizeText(text);
     
     expect(result).toBe('Hello World');
-  });
 
   it('truncates text when maxLength is exceeded', () => {
     const longText = 'a'.repeat(100);
@@ -71,8 +66,7 @@ describe('sanitizeText', () => {
     
     expect(result).toHaveLength(53); // 50 + '...'
     expect(result).toMatch(/\.\.\.$/);
-  });
-});
+
 
 describe('sanitizeUrl', () => {
   it('allows safe URLs', () => {
@@ -80,16 +74,13 @@ describe('sanitizeUrl', () => {
     expect(sanitizeUrl('http://example.com')).toBe('http://example.com/');
     expect(sanitizeUrl('mailto:test@example.com')).toBe('mailto:test@example.com');
     expect(sanitizeUrl('tel:+1234567890')).toBe('tel:+1234567890');
-  });
 
   it('blocks dangerous URLs', () => {
     expect(sanitizeUrl('javascript:alert("xss")')).toBe('');
     expect(sanitizeUrl('data:text/html,<script>alert("xss")</script>')).toBe('');
     expect(sanitizeUrl('vbscript:msgbox("xss")')).toBe('');
-  });
 
   it('handles invalid URLs', () => {
     expect(sanitizeUrl('not-a-url')).toBe('');
     expect(sanitizeUrl('')).toBe('');
-  });
-});
+

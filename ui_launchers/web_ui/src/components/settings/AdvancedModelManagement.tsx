@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,23 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Upload,
-  Settings,
-  Briefcase,
-  Database,
-  HardDrive,
-  Cloud,
-  Zap,
-  BarChart3,
-  AlertCircle,
-  CheckCircle2,
-  Info,
-  Loader2,
-  RefreshCw,
-  Trash2,
-  Plus
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
 import ModelUploadInterface from './ModelUploadInterface';
@@ -79,7 +66,7 @@ export default function AdvancedModelManagement() {
         variant: 'destructive',
         title: info.title,
         description: info.message,
-      });
+
     } finally {
       setLoading(false);
     }
@@ -91,7 +78,7 @@ export default function AdvancedModelManagement() {
       toast({
         title: 'System Info Refreshed',
         description: 'Storage and system health information has been updated.',
-      });
+
     } catch (error) {
     } finally {
       setRefreshing(false);
@@ -101,11 +88,11 @@ export default function AdvancedModelManagement() {
     try {
       const response = await backend.makeRequestPublic('/api/models/cleanup', {
         method: 'POST'
-      });
+
       toast({
         title: 'Cleanup Started',
         description: 'Storage cleanup job has been queued. Check the job center for progress.',
-      });
+
       // Refresh storage info after cleanup
       setTimeout(() => {
         loadSystemInfo();
@@ -116,7 +103,7 @@ export default function AdvancedModelManagement() {
         variant: 'destructive',
         title: info.title,
         description: info.message,
-      });
+
     }
   };
   const handleJobCreated = (jobId: string) => {
@@ -125,7 +112,7 @@ export default function AdvancedModelManagement() {
     toast({
       title: 'Job Created',
       description: 'New job has been queued. You can monitor its progress in the Job Center.',
-    });
+
   };
   const handleModelUploaded = (modelId: string) => {
     // Refresh system info and optionally switch to configuration
@@ -134,7 +121,7 @@ export default function AdvancedModelManagement() {
     toast({
       title: 'Model Uploaded',
       description: 'Model has been uploaded successfully and is now available for configuration.',
-    });
+
   };
   const formatFileSize = (gb: number) => {
     if (gb < 1) return `${(gb * 1024).toFixed(1)} MB`;
@@ -157,16 +144,14 @@ export default function AdvancedModelManagement() {
         <div>
           <h1 className="text-3xl font-bold">Advanced Model Management</h1>
           <p className="text-muted-foreground">
-            Upload, convert, configure, and manage your AI models with advanced tools
           </p>
         </div>
-        <button
+        <Button
           variant="outline"
           onClick={refreshSystemInfo}
           disabled={refreshing}
-         aria-label="Button">
+         >
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
         </Button>
       </div>
       {/* System Overview */}
@@ -175,7 +160,7 @@ export default function AdvancedModelManagement() {
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2 mb-2">
-              <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />
+              <HardDrive className="h-4 w-4 " />
               <span className="font-medium">Storage</span>
             </div>
             {storageInfo ? (
@@ -199,24 +184,24 @@ export default function AdvancedModelManagement() {
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2 mb-2">
-              <Zap className="h-4 w-4 sm:w-auto md:w-full" />
+              <Zap className="h-4 w-4 " />
               <span className="font-medium">System</span>
             </div>
             {systemHealth ? (
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   {systemHealth.llama_cpp_available ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 " />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
+                    <AlertCircle className="h-4 w-4 text-red-600 " />
                   )}
                   <span className="text-sm md:text-base lg:text-lg">llama.cpp</span>
                 </div>
                 <div className="flex items-center gap-2 mb-1">
                   {systemHealth.gpu_available ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 " />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
+                    <AlertCircle className="h-4 w-4 text-yellow-600 " />
                   )}
                   <span className="text-sm md:text-base lg:text-lg">
                     GPU {systemHealth.gpu_memory_gb ? `(${systemHealth.gpu_memory_gb}GB)` : ''}
@@ -235,27 +220,25 @@ export default function AdvancedModelManagement() {
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2 mb-2">
-              <Plus className="h-4 w-4 sm:w-auto md:w-full" />
+              <Plus className="h-4 w-4 " />
               <span className="font-medium">Quick Actions</span>
             </div>
             <div className="space-y-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 className="w-full justify-start"
-                onClick={() = aria-label="Button"> setActiveTab('upload')}
+                onClick={() => setActiveTab('upload')}
               >
-                <Upload className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Upload Model
+                <Upload className="h-4 w-4 mr-2 " />
               </Button>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 className="w-full justify-start"
-                onClick={() = aria-label="Button"> setActiveTab('jobs')}
+                onClick={() => setActiveTab('jobs')}
               >
-                <Briefcase className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                View Jobs
+                <Briefcase className="h-4 w-4 mr-2 " />
               </Button>
             </div>
           </CardContent>
@@ -264,7 +247,7 @@ export default function AdvancedModelManagement() {
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2 mb-2">
-              <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
+              <Trash2 className="h-4 w-4 " />
               <span className="font-medium">Cleanup</span>
             </div>
             {storageInfo?.cleanup_recommendations && storageInfo.cleanup_recommendations.length > 0 ? (
@@ -277,21 +260,18 @@ export default function AdvancedModelManagement() {
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
-                  Potential savings
                 </div>
-                <button
+                <Button
                   variant="outline"
                   size="sm"
                   className="w-full"
                   onClick={runStorageCleanup}
-                 aria-label="Button">
-                  <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Run Cleanup
+                 >
+                  <Trash2 className="h-4 w-4 mr-2 " />
                 </Button>
               </div>
             ) : (
               <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                No cleanup needed
               </div>
             )}
           </CardContent>
@@ -300,7 +280,7 @@ export default function AdvancedModelManagement() {
       {/* System Alerts */}
       {systemHealth && !systemHealth.llama_cpp_available && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+          <AlertCircle className="h-4 w-4 " />
           <AlertDescription>
             llama.cpp tools are not available. Model conversion and quantization features will be limited.
             Please install llama.cpp to enable full functionality.
@@ -309,7 +289,7 @@ export default function AdvancedModelManagement() {
       )}
       {storageInfo && getStorageUsagePercentage() > 90 && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+          <AlertCircle className="h-4 w-4 " />
           <AlertDescription>
             Storage is nearly full ({getStorageUsagePercentage().toFixed(1)}% used). 
             Consider running cleanup or removing unused models to free up space.
@@ -318,7 +298,7 @@ export default function AdvancedModelManagement() {
       )}
       {systemHealth && !systemHealth.gpu_available && (
         <Alert>
-          <Info className="h-4 w-4 sm:w-auto md:w-full" />
+          <Info className="h-4 w-4 " />
           <AlertDescription>
             No GPU detected. Models will run on CPU only, which may be slower.
             Consider using quantized models for better performance.
@@ -329,20 +309,17 @@ export default function AdvancedModelManagement() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="upload" className="flex items-center gap-2">
-            <Upload className="h-4 w-4 sm:w-auto md:w-full" />
+            <Upload className="h-4 w-4 " />
             Upload & Convert
           </TabsTrigger>
           <TabsTrigger value="jobs" className="flex items-center gap-2">
-            <Briefcase className="h-4 w-4 sm:w-auto md:w-full" />
-            Job Center
+            <Briefcase className="h-4 w-4 " />
           </TabsTrigger>
           <TabsTrigger value="configure" className="flex items-center gap-2">
-            <Settings className="h-4 w-4 sm:w-auto md:w-full" />
-            Configuration
+            <Settings className="h-4 w-4 " />
           </TabsTrigger>
           <TabsTrigger value="storage" className="flex items-center gap-2">
-            <Database className="h-4 w-4 sm:w-auto md:w-full" />
-            Storage Management
+            <Database className="h-4 w-4 " />
           </TabsTrigger>
         </TabsList>
         {/* Upload & Convert Tab */}
@@ -375,7 +352,6 @@ export default function AdvancedModelManagement() {
               <CardHeader>
                 <CardTitle>Storage Overview</CardTitle>
                 <CardDescription>
-                  Detailed breakdown of model storage usage
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -437,8 +413,7 @@ export default function AdvancedModelManagement() {
                         </div>
                         <div className="mt-4 flex justify-center">
                           <button onClick={runStorageCleanup} aria-label="Button">
-                            <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                            Run All Cleanup Tasks
+                            <Trash2 className="h-4 w-4 mr-2 " />
                           </Button>
                         </div>
                       </div>
@@ -446,7 +421,7 @@ export default function AdvancedModelManagement() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary sm:w-auto md:w-full" />
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary " />
                     <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading storage information...</p>
                   </div>
                 )}
@@ -457,7 +432,6 @@ export default function AdvancedModelManagement() {
               <CardHeader>
                 <CardTitle>System Dependencies</CardTitle>
                 <CardDescription>
-                  Status of required tools and libraries
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -468,13 +442,11 @@ export default function AdvancedModelManagement() {
                         <span className="font-medium">llama.cpp Tools</span>
                         {systemHealth.llama_cpp_available ? (
                           <Badge variant="default" className="bg-green-100 text-green-800">
-                            <CheckCircle2 className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                            Available
+                            <CheckCircle2 className="h-3 w-3 mr-1 " />
                           </Badge>
                         ) : (
                           <Badge variant="destructive">
-                            <AlertCircle className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                            Missing
+                            <AlertCircle className="h-3 w-3 mr-1 " />
                           </Badge>
                         )}
                       </div>
@@ -482,13 +454,11 @@ export default function AdvancedModelManagement() {
                         <span className="font-medium">GPU Support</span>
                         {systemHealth.gpu_available ? (
                           <Badge variant="default" className="bg-green-100 text-green-800">
-                            <CheckCircle2 className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                            Available
+                            <CheckCircle2 className="h-3 w-3 mr-1 " />
                           </Badge>
                         ) : (
                           <Badge variant="secondary">
-                            <Info className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                            CPU Only
+                            <Info className="h-3 w-3 mr-1 " />
                           </Badge>
                         )}
                       </div>
@@ -506,9 +476,9 @@ export default function AdvancedModelManagement() {
                                   <span className="text-xs text-muted-foreground sm:text-sm md:text-base">{info.version}</span>
                                 )}
                                 {info.available ? (
-                                  <CheckCircle2 className="h-3 w-3 text-green-600 sm:w-auto md:w-full" />
+                                  <CheckCircle2 className="h-3 w-3 text-green-600 " />
                                 ) : (
-                                  <AlertCircle className="h-3 w-3 text-red-600 sm:w-auto md:w-full" />
+                                  <AlertCircle className="h-3 w-3 text-red-600 " />
                                 )}
                               </div>
                             </div>
@@ -541,7 +511,7 @@ export default function AdvancedModelManagement() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary sm:w-auto md:w-full" />
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary " />
                     <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading system information...</p>
                   </div>
                 )}

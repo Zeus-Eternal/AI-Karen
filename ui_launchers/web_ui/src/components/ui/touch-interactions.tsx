@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Touch-Friendly Mobile Interactions
@@ -240,7 +240,7 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
           >
             <motion.div
               animate={{ rotate: refreshProgress * 360 }}
-              className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full sm:w-auto md:w-full"
+              className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full "
             />
             <span className="ml-2 text-sm text-blue-600 dark:text-blue-400 md:text-base lg:text-lg">
               {refreshProgress >= 1 ? 'Release to refresh' : 'Pull to refresh'}
@@ -504,10 +504,4 @@ const TouchMenu: React.FC<TouchMenuProps> = ({
 
 // Export all components
 export {
-  TouchButton,
-  SwipeableCard,
-  PullToRefresh,
-  FloatingActionButton,
-  TouchSlider,
-  TouchMenu
 };

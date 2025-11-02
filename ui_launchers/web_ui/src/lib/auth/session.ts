@@ -65,7 +65,7 @@ export async function validateSession(): Promise<boolean> {
         "Accept": "application/json",
       },
       credentials: "include", // Include cookies for authentication
-    });
+
     if (response.ok) {
       const data = await response.json();
       if (data.valid && (data.user || data.user_data)) {
@@ -200,7 +200,7 @@ export async function login(
       },
       body: JSON.stringify(credentials),
       credentials: "include", // Include cookies for session management
-    });
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.error || errorData.detail || errorData.message || `Login failed: ${response.status}`;
@@ -238,7 +238,7 @@ export async function logout(): Promise<void> {
     await fetch("/api/auth/logout", {
       method: "POST",
       credentials: "include",
-    });
+
   } catch (error) {
     // Logout should not throw errors, just log them
   }

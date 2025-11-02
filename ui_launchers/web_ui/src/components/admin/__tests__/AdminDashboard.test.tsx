@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { jest } from '@jest/globals';
 import { AdminDashboard } from '../AdminDashboard';
@@ -19,8 +20,7 @@ const mockUseRole = useRole as jest.MockedFunction<typeof useRole>;
 jest.mock('../UserManagementTable', () => ({
   UserManagementTable: ({ onSelectionChange, onUserUpdated }: any) => (
     <div data-testid="user-management-table">
-      <button onClick={() = aria-label="Button"> onSelectionChange(['user1', 'user2'])}>
-        Select Users
+      <button onClick={() => onSelectionChange(['user1', 'user2'])}>
       </button>
       <button onClick={onUserUpdated} aria-label="Button">Update User</button>
     </div>
@@ -66,7 +66,6 @@ describe('AdminDashboard', () => {
         role: 'admin'
       } as any,
       loading: false
-    });
 
     // Mock successful API responses
     mockFetch.mockImplementation((url: string) => {
@@ -88,7 +87,7 @@ describe('AdminDashboard', () => {
               two_factor_enabled: 30
             }
           })
-        });
+
       }
       
       if (url.includes('/api/admin/system/activity-summary')) {
@@ -112,15 +111,14 @@ describe('AdminDashboard', () => {
               ]
             }
           })
-        });
+
       }
       
       return Promise.resolve({
         ok: false,
         json: () => Promise.resolve({ success: false, error: { message: 'Not found' } })
-      });
-    });
-  });
+
+
 
   it('renders admin dashboard for admin users', async () => {
     render(<AdminDashboard />);
@@ -128,8 +126,7 @@ describe('AdminDashboard', () => {
     await waitFor(() => {
       expect(screen.getByText('Admin Dashboard')).toBeInTheDocument();
       expect(screen.getByText('Manage users and monitor system activity')).toBeInTheDocument();
-    });
-  });
+
 
   it('denies access for non-admin users', () => {
     mockUseRole.mockReturnValue({
@@ -137,13 +134,11 @@ describe('AdminDashboard', () => {
       hasPermission: jest.fn(() => false),
       user: { user_id: 'user1', email: 'user@test.com', role: 'user' } as any,
       loading: false
-    });
 
     render(<AdminDashboard />);
     
     expect(screen.getByText('Access Denied')).toBeInTheDocument();
     expect(screen.getByText('You need admin privileges to access this dashboard.')).toBeInTheDocument();
-  });
 
   it('loads and displays user statistics', async () => {
     render(<AdminDashboard />);
@@ -153,8 +148,7 @@ describe('AdminDashboard', () => {
       expect(screen.getByText('85')).toBeInTheDocument(); // Active users
       expect(screen.getByText('90')).toBeInTheDocument(); // Verified users
       expect(screen.getByText('30')).toBeInTheDocument(); // 2FA enabled
-    });
-  });
+
 
   it('loads and displays activity summary', async () => {
     render(<AdminDashboard />);
@@ -164,15 +158,13 @@ describe('AdminDashboard', () => {
       expect(screen.getByText('45')).toBeInTheDocument(); // Admin actions
       expect(screen.getByText('234')).toBeInTheDocument(); // Successful logins
       expect(screen.getByText('12')).toBeInTheDocument(); // Failed logins
-    });
-  });
+
 
   it('navigates between different views', async () => {
     render(<AdminDashboard />);
     
     await waitFor(() => {
       expect(screen.getByText('Overview')).toBeInTheDocument();
-    });
 
     // Navigate to User Management
     fireEvent.click(screen.getByText('User Management'));
@@ -185,34 +177,29 @@ describe('AdminDashboard', () => {
     // Navigate to Activity Monitor
     fireEvent.click(screen.getByText('Activity Monitor'));
     expect(screen.getByTestId('user-activity-monitor')).toBeInTheDocument();
-  });
 
   it('handles user selection and shows bulk operations', async () => {
     render(<AdminDashboard />);
     
     await waitFor(() => {
       fireEvent.click(screen.getByText('User Management'));
-    });
 
     // Select users
     fireEvent.click(screen.getByText('Select Users'));
     
     await waitFor(() => {
       expect(screen.getByText('Bulk Operations (2)')).toBeInTheDocument();
-    });
 
     // Navigate to bulk operations
     fireEvent.click(screen.getByText('Bulk Operations (2)'));
     expect(screen.getByTestId('bulk-user-operations')).toBeInTheDocument();
     expect(screen.getByText('Selected: 2')).toBeInTheDocument();
-  });
 
   it('handles user creation callback', async () => {
     render(<AdminDashboard />);
     
     await waitFor(() => {
       fireEvent.click(screen.getByText('Create User'));
-    });
 
     // Trigger user creation
     fireEvent.click(screen.getByText('Create User'));
@@ -220,15 +207,13 @@ describe('AdminDashboard', () => {
     await waitFor(() => {
       // Should navigate back to users view
       expect(screen.getByTestId('user-management-table')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles bulk operation completion', async () => {
     render(<AdminDashboard />);
     
     await waitFor(() => {
       fireEvent.click(screen.getByText('User Management'));
-    });
 
     // Select users and navigate to bulk operations
     fireEvent.click(screen.getByText('Select Users'));
@@ -240,8 +225,7 @@ describe('AdminDashboard', () => {
     await waitFor(() => {
       // Should refresh data (fetch called again)
       expect(mockFetch).toHaveBeenCalledWith('/api/admin/users/stats');
-    });
-  });
+
 
   it('handles API errors gracefully', async () => {
     mockFetch.mockImplementation(() => 
@@ -256,8 +240,7 @@ describe('AdminDashboard', () => {
     await waitFor(() => {
       expect(screen.getByText('API Error')).toBeInTheDocument();
       expect(screen.getByText('Try again')).toBeInTheDocument();
-    });
-  });
+
 
   it('retries data loading on error', async () => {
     mockFetch
@@ -275,30 +258,26 @@ describe('AdminDashboard', () => {
               success: true,
               data: { total_users: 100, active_users: 85, verified_users: 90 }
             })
-          });
+
         }
         return Promise.resolve({ ok: false });
-      });
 
     render(<AdminDashboard />);
     
     await waitFor(() => {
       expect(screen.getByText('Try again')).toBeInTheDocument();
-    });
 
     // Click retry
     fireEvent.click(screen.getByText('Try again'));
     
     await waitFor(() => {
       expect(screen.getByText('100')).toBeInTheDocument();
-    });
-  });
+
 
   it('displays loading state initially', () => {
     render(<AdminDashboard />);
     
     expect(screen.getByRole('status')).toBeInTheDocument(); // Loading spinner
-  });
 
   it('renders quick action buttons', async () => {
     render(<AdminDashboard />);
@@ -307,8 +286,7 @@ describe('AdminDashboard', () => {
       expect(screen.getByText('Create New User')).toBeInTheDocument();
       expect(screen.getByText('Manage Users')).toBeInTheDocument();
       expect(screen.getByText('View Activity')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles quick action navigation', async () => {
     render(<AdminDashboard />);
@@ -316,8 +294,6 @@ describe('AdminDashboard', () => {
     await waitFor(() => {
       // Click quick action for create user
       fireEvent.click(screen.getByText('Create New User'));
-    });
-    
+
     expect(screen.getByTestId('user-creation-form')).toBeInTheDocument();
-  });
-});
+

@@ -1,8 +1,7 @@
-import * as React from "react"
-import { render, screen } from "@testing-library/react"
-import { describe, it, expect } from "vitest"
-import { Card } from "../card"
-
+import * as React from "react";
+import { render, screen } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+import { Card } from "../card";
 describe("Card Compound Component", () => {
   it("should render card with all compound parts", () => {
     render(

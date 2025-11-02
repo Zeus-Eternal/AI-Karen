@@ -47,7 +47,6 @@ export class MfaManager {
       name: `${this.APP_NAME} (${user.email})`,
       issuer: this.ISSUER,
       length: 32
-    });
 
     // Generate QR code URL
     const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url!);
@@ -78,7 +77,6 @@ export class MfaManager {
     await this.adminUtils.updateUser(userId, {
       two_factor_enabled: true,
       two_factor_secret: secret
-    });
 
     // Store backup codes securely (in production, encrypt these)
     await this.storeBackupCodes(userId, backupCodes);
@@ -94,7 +92,6 @@ export class MfaManager {
         backup_codes_generated: backupCodes.length,
         enabled_at: new Date().toISOString()
       }
-    });
 
     return true;
   }
@@ -106,7 +103,6 @@ export class MfaManager {
     await this.adminUtils.updateUser(userId, {
       two_factor_enabled: false,
       two_factor_secret: undefined
-    });
 
     // Remove backup codes
     await this.removeBackupCodes(userId);
@@ -122,7 +118,7 @@ export class MfaManager {
         disabled_at: new Date().toISOString(),
         reason: 'admin_action'
       }
-    });
+
   }
 
   /**
@@ -149,7 +145,6 @@ export class MfaManager {
           method: 'totp',
           verified_at: new Date().toISOString()
         }
-      });
 
       return { valid: true };
     }
@@ -169,7 +164,6 @@ export class MfaManager {
           remaining_codes: backupResult.remainingBackupCodes,
           used_at: new Date().toISOString()
         }
-      });
 
       return {
         valid: true,
@@ -188,7 +182,6 @@ export class MfaManager {
         failed_at: new Date().toISOString(),
         code_length: code.length
       }
-    });
 
     return { valid: false };
   }
@@ -239,7 +232,6 @@ export class MfaManager {
         new_codes_count: newBackupCodes.length,
         regenerated_at: new Date().toISOString()
       }
-    });
 
     return newBackupCodes;
   }
@@ -288,7 +280,7 @@ export class MfaManager {
       encoding: 'base32',
       token: code,
       window: 2 // Allow 2 time steps (60 seconds) of drift
-    });
+
   }
 
   /**

@@ -42,13 +42,11 @@ describe('KarenToast', () => {
       expect(screen.getByText('Test Alert')).toBeInTheDocument();
       expect(screen.getByText('This is a test message')).toBeInTheDocument();
       expect(screen.getByText('💡')).toBeInTheDocument();
-    });
 
     test('should render without alert data', () => {
       renderWithProvider(<KarenToast>Fallback content</KarenToast>);
       
       expect(screen.getByText('Fallback content')).toBeInTheDocument();
-    });
 
     test('should apply correct variant classes', () => {
       const { container } = renderWithProvider(
@@ -59,8 +57,7 @@ describe('KarenToast', () => {
       expect(toastElement).toHaveClass('border-green-200');
       expect(toastElement?.className).toContain('bg-green-50');
       expect(toastElement).toHaveClass('text-green-900');
-    });
-  });
+
 
   describe('Alert Variants', () => {
     test.each([
@@ -78,8 +75,7 @@ describe('KarenToast', () => {
       expect(toastElement).toHaveClass(borderClass);
       expect(toastElement?.className).toContain(bgClass);
       expect(toastElement).toHaveClass(textClass);
-    });
-  });
+
 
   describe('Expandable Content', () => {
     test('should show expandable content when provided', () => {
@@ -92,7 +88,6 @@ describe('KarenToast', () => {
       
       expect(screen.getByText('Show more')).toBeInTheDocument();
       expect(screen.queryByText('Detailed information here')).not.toBeInTheDocument();
-    });
 
     test('should expand and collapse content when clicked', async () => {
       const alertWithExpandable: KarenAlert = {
@@ -109,16 +104,14 @@ describe('KarenToast', () => {
       await waitFor(() => {
         expect(screen.getByText('Show less')).toBeInTheDocument();
         expect(screen.getByText('Detailed information here')).toBeInTheDocument();
-      });
-      
+
       // Collapse
       fireEvent.click(screen.getByText('Show less'));
       await waitFor(() => {
         expect(screen.getByText('Show more')).toBeInTheDocument();
         expect(screen.queryByText('Detailed information here')).not.toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Action Buttons', () => {
     test('should render action buttons when provided', () => {
@@ -142,7 +135,6 @@ describe('KarenToast', () => {
       
       expect(screen.getByText('Retry')).toBeInTheDocument();
       expect(screen.getByText('Cancel')).toBeInTheDocument();
-    });
 
     test('should call action function when button is clicked', () => {
       const mockAction = vi.fn();
@@ -168,7 +160,6 @@ describe('KarenToast', () => {
       
       expect(mockAction).toHaveBeenCalledTimes(1);
       expect(mockOnActionClick).toHaveBeenCalledWith(alertWithActions.actions![0]);
-    });
 
     test('should render action with icon', () => {
       const alertWithIconAction: KarenAlert = {
@@ -186,8 +177,7 @@ describe('KarenToast', () => {
       
       expect(screen.getByTestId('refresh-icon')).toBeInTheDocument();
       expect(screen.getByText('Refresh')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Progress Indicator', () => {
     test('should show progress indicator when showProgress is true and duration is set', () => {
@@ -203,7 +193,6 @@ describe('KarenToast', () => {
       // Look for progress indicator element
       const progressElement = container.querySelector('.absolute.bottom-0.left-0.h-1');
       expect(progressElement).toBeInTheDocument();
-    });
 
     test('should not show progress indicator when showProgress is false', () => {
       const alertWithDuration: KarenAlert = {
@@ -217,8 +206,7 @@ describe('KarenToast', () => {
       
       const progressElement = container.querySelector('.absolute.bottom-0.left-0.h-1');
       expect(progressElement).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Close Button', () => {
     test('should render close button', () => {
@@ -226,15 +214,13 @@ describe('KarenToast', () => {
       
       const closeButton = screen.getByRole('button', { name: /close/i });
       expect(closeButton).toBeInTheDocument();
-    });
 
     test('should have proper accessibility attributes', () => {
       renderWithProvider(<KarenToast alert={mockAlert} />);
       
       const closeButton = screen.getByRole('button', { name: /close/i });
       expect(closeButton).toHaveAttribute('toast-close', '');
-    });
-  });
+
 
   describe('Accessibility', () => {
     test('should have proper ARIA attributes', () => {
@@ -243,7 +229,6 @@ describe('KarenToast', () => {
       // Check for emoji accessibility
       const emojiElement = screen.getByRole('img', { name: /alert indicator/i });
       expect(emojiElement).toBeInTheDocument();
-    });
 
     test('should have proper expandable content accessibility', () => {
       const alertWithExpandable: KarenAlert = {
@@ -256,7 +241,6 @@ describe('KarenToast', () => {
       const expandButton = screen.getByRole('button', { name: /show more/i });
       expect(expandButton).toHaveAttribute('aria-expanded', 'false');
       expect(expandButton).toHaveAttribute('aria-controls', 'expandable-content');
-    });
 
     test('should update aria-expanded when content is expanded', async () => {
       const alertWithExpandable: KarenAlert = {
@@ -272,9 +256,8 @@ describe('KarenToast', () => {
       
       await waitFor(() => {
         expect(expandButton).toHaveAttribute('aria-expanded', 'true');
-      });
-    });
-  });
+
+
 
   describe('Viewport Positioning', () => {
     test('should apply correct positioning classes', () => {
@@ -293,7 +276,6 @@ describe('KarenToast', () => {
       if (viewport) {
         expect(viewport).toHaveClass('bottom-0', 'left-0', 'flex-col-reverse');
       }
-    });
 
     test.each([
       ['top-left', ['top-0', 'left-0', 'flex-col']],
@@ -316,8 +298,7 @@ describe('KarenToast', () => {
       if (viewport) {
         expectedClasses.forEach(className => {
           expect(viewport).toHaveClass(className);
-        });
+
       }
-    });
-  });
-});
+
+

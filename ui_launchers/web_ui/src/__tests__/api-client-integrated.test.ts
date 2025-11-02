@@ -61,14 +61,12 @@ describe('IntegratedApiClient', () => {
     // Mock session functions
     mockSession.isAuthenticated.mockReturnValue(false);
     mockSession.clearSession.mockImplementation(() => {});
-  });
 
   describe('Constructor and Initialization', () => {
     it('should create instance with default options', () => {
       const client = new IntegratedApiClient();
       expect(client).toBeInstanceOf(IntegratedApiClient);
       expect(mockApiClient.getApiClient).toHaveBeenCalled();
-    });
 
     it('should create instance with custom options', () => {
       const options = {
@@ -79,27 +77,23 @@ describe('IntegratedApiClient', () => {
 
       const client = new IntegratedApiClient(options);
       expect(client.getOptions()).toEqual(expect.objectContaining(options));
-    });
 
     it('should get singleton instance', () => {
       const client1 = getIntegratedApiClient();
       const client2 = getIntegratedApiClient();
       expect(client1).toBe(client2);
-    });
 
     it('should initialize new instance', () => {
       const client1 = getIntegratedApiClient();
       const client2 = initializeIntegratedApiClient();
       expect(client1).not.toBe(client2);
-    });
-  });
+
 
   describe('Protected Endpoint Detection', () => {
     let client: IntegratedApiClient;
 
     beforeEach(() => {
       client = new IntegratedApiClient();
-    });
 
     it('should identify public endpoints correctly', async () => {
       const publicEndpoints = [
@@ -118,7 +112,6 @@ describe('IntegratedApiClient', () => {
         expect(mockRegularClient.request).toHaveBeenCalled();
         mockRegularClient.request.mockClear();
       }
-    });
 
     it('should identify protected endpoints correctly', async () => {
       const protectedEndpoints = [
@@ -134,8 +127,7 @@ describe('IntegratedApiClient', () => {
         expect(mockEnhancedClientInstance.request).toHaveBeenCalled();
         mockEnhancedClientInstance.request.mockClear();
       }
-    });
-  });
+
 
   describe('HTTP Methods', () => {
     let client: IntegratedApiClient;
@@ -147,15 +139,13 @@ describe('IntegratedApiClient', () => {
       mockEnhancedClientInstance.put.mockResolvedValue({ data: 'success' });
       mockEnhancedClientInstance.delete.mockResolvedValue({ data: 'success' });
       mockEnhancedClientInstance.patch.mockResolvedValue({ data: 'success' });
-    });
 
     it('should handle GET requests', async () => {
       await client.get('/api/protected/data');
       expect(mockEnhancedClientInstance.request).toHaveBeenCalledWith({
         endpoint: '/api/protected/data',
         method: 'GET',
-      });
-    });
+
 
     it('should handle POST requests', async () => {
       const body = { test: 'data' };
@@ -164,8 +154,7 @@ describe('IntegratedApiClient', () => {
         endpoint: '/api/protected/data',
         method: 'POST',
         body,
-      });
-    });
+
 
     it('should handle PUT requests', async () => {
       const body = { test: 'data' };
@@ -174,16 +163,14 @@ describe('IntegratedApiClient', () => {
         endpoint: '/api/protected/data',
         method: 'PUT',
         body,
-      });
-    });
+
 
     it('should handle DELETE requests', async () => {
       await client.delete('/api/protected/data');
       expect(mockEnhancedClientInstance.request).toHaveBeenCalledWith({
         endpoint: '/api/protected/data',
         method: 'DELETE',
-      });
-    });
+
 
     it('should handle PATCH requests', async () => {
       const body = { test: 'data' };
@@ -192,9 +179,8 @@ describe('IntegratedApiClient', () => {
         endpoint: '/api/protected/data',
         method: 'PATCH',
         body,
-      });
-    });
-  });
+
+
 
   describe('File Upload', () => {
     let client: IntegratedApiClient;
@@ -203,7 +189,6 @@ describe('IntegratedApiClient', () => {
       client = new IntegratedApiClient();
       mockEnhancedClientInstance.uploadFile.mockResolvedValue({ data: 'success' });
       mockRegularClient.uploadFile.mockResolvedValue({ data: 'success' });
-    });
 
     it('should use enhanced client for protected upload endpoints', async () => {
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
@@ -216,7 +201,6 @@ describe('IntegratedApiClient', () => {
         undefined,
         undefined
       );
-    });
 
     it('should use regular client for public upload endpoints', async () => {
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
@@ -229,7 +213,6 @@ describe('IntegratedApiClient', () => {
         undefined,
         undefined
       );
-    });
 
     it('should pass additional fields and options', async () => {
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
@@ -245,15 +228,13 @@ describe('IntegratedApiClient', () => {
         additionalFields,
         options
       );
-    });
-  });
+
 
   describe('Authentication Integration', () => {
     let client: IntegratedApiClient;
 
     beforeEach(() => {
       client = new IntegratedApiClient();
-    });
 
     it('should add auth headers for authenticated users with regular client', async () => {
       // Use a public endpoint that still gets auth headers when user is authenticated
@@ -272,8 +253,7 @@ describe('IntegratedApiClient', () => {
         headers: {
           'Authorization': 'Bearer token123',
         },
-      });
-    });
+
 
     it('should handle token refresh failures gracefully', async () => {
       mockSession.isAuthenticated.mockReturnValue(true);
@@ -286,9 +266,8 @@ describe('IntegratedApiClient', () => {
       expect(mockRegularClient.request).toHaveBeenCalledWith({
         endpoint: '/api/public/data',
         method: 'GET',
-      });
-    });
-  });
+
+
 
   describe('Enhanced Auth Configuration', () => {
     it('should use enhanced client when useEnhancedAuth is true', async () => {
@@ -297,7 +276,6 @@ describe('IntegratedApiClient', () => {
 
       await client.get('/api/protected/data');
       expect(mockEnhancedClientInstance.request).toHaveBeenCalled();
-    });
 
     it('should use regular client when useEnhancedAuth is false', async () => {
       const client = new IntegratedApiClient({ useEnhancedAuth: false });
@@ -305,15 +283,13 @@ describe('IntegratedApiClient', () => {
 
       await client.get('/api/protected/data');
       expect(mockRegularClient.request).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Utility Methods', () => {
     let client: IntegratedApiClient;
 
     beforeEach(() => {
       client = new IntegratedApiClient();
-    });
 
     it('should delegate health check to regular client', async () => {
       mockRegularClient.healthCheck.mockResolvedValue({ data: 'healthy' });
@@ -321,49 +297,41 @@ describe('IntegratedApiClient', () => {
       const result = await client.healthCheck();
       expect(mockRegularClient.healthCheck).toHaveBeenCalled();
       expect(result).toEqual({ data: 'healthy' });
-    });
 
     it('should delegate getBackendUrl to regular client', () => {
       const result = client.getBackendUrl();
       expect(mockRegularClient.getBackendUrl).toHaveBeenCalled();
       expect(result).toBe('http://localhost:8000');
-    });
 
     it('should delegate getEndpoints to regular client', () => {
       const result = client.getEndpoints();
       expect(mockRegularClient.getEndpoints).toHaveBeenCalled();
       expect(result).toEqual({});
-    });
 
     it('should delegate getEndpointStats to regular client', () => {
       const result = client.getEndpointStats();
       expect(mockRegularClient.getEndpointStats).toHaveBeenCalled();
       expect(result).toEqual([]);
-    });
 
     it('should delegate resetEndpointStats to regular client', () => {
       client.resetEndpointStats('/api/test');
       expect(mockRegularClient.resetEndpointStats).toHaveBeenCalledWith('/api/test');
-    });
 
     it('should delegate clearCaches to regular client', () => {
       client.clearCaches();
       expect(mockRegularClient.clearCaches).toHaveBeenCalled();
-    });
 
     it('should return underlying clients', () => {
       const clients = client.getClients();
       expect(clients.regular).toBe(mockRegularClient);
       expect(clients.enhanced).toBe(mockEnhancedClientInstance);
-    });
-  });
+
 
   describe('Options Management', () => {
     let client: IntegratedApiClient;
 
     beforeEach(() => {
       client = new IntegratedApiClient();
-    });
 
     it('should update options', () => {
       const newOptions = { useEnhancedAuth: false };
@@ -371,7 +339,6 @@ describe('IntegratedApiClient', () => {
       
       const options = client.getOptions();
       expect(options.useEnhancedAuth).toBe(false);
-    });
 
     it('should get current options', () => {
       const options = client.getOptions();
@@ -379,29 +346,25 @@ describe('IntegratedApiClient', () => {
         useEnhancedAuth: true,
         autoRetryOn401: true,
         includeCredentials: true,
-      });
-    });
-  });
+
+
 
   describe('Error Handling', () => {
     let client: IntegratedApiClient;
 
     beforeEach(() => {
       client = new IntegratedApiClient();
-    });
 
     it('should propagate errors from enhanced client', async () => {
       const error = new Error('Enhanced client error');
       mockEnhancedClientInstance.request.mockRejectedValue(error);
 
       await expect(client.get('/api/protected/data')).rejects.toThrow('Enhanced client error');
-    });
 
     it('should propagate errors from regular client', async () => {
       const error = new Error('Regular client error');
       mockRegularClient.request.mockRejectedValue(error);
 
       await expect(client.requestPublic({ endpoint: '/api/public/data', method: 'GET' })).rejects.toThrow('Regular client error');
-    });
-  });
-});
+
+

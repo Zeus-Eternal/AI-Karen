@@ -3,18 +3,16 @@
  * Requirements: 1.3, 2.3, 3.3, 4.3
  */
 
-'use client';
+"use client";
 
 import React, { useState, useCallback } from 'react';
-import { 
+
   errorHandler, 
   handleError, 
   withErrorHandling, 
-  ErrorCategory,
-  ErrorSeverity,
   type CategorizedError,
   type ErrorHandlingResult 
-} from '@/lib/errors';
+import { } from '@/lib/errors';
 
 interface ErrorDemoState {
   isLoading: boolean;
@@ -29,7 +27,6 @@ export function ErrorHandlingDemo() {
     lastError: null,
     successMessage: '',
     errorHistory: []
-  });
 
   const updateState = useCallback((updates: Partial<ErrorDemoState>) => {
     setState(prev => ({ ...prev, ...updates }));
@@ -42,7 +39,6 @@ export function ErrorHandlingDemo() {
     maxRetryAttempts: 3,
     enableRecovery: true,
     context: { demo: 'network-error' }
-  });
 
   const simulateAuthError = withErrorHandling(async () => {
     throw new Error('Session expired - please log in again');
@@ -50,7 +46,6 @@ export function ErrorHandlingDemo() {
     maxRetryAttempts: 2,
     enableRecovery: true,
     context: { demo: 'auth-error' }
-  });
 
   const simulateDatabaseError = withErrorHandling(async () => {
     throw new Error('Database connection pool exhausted');
@@ -58,7 +53,6 @@ export function ErrorHandlingDemo() {
     maxRetryAttempts: 5,
     enableRecovery: true,
     context: { demo: 'database-error' }
-  });
 
   const simulateTimeoutError = withErrorHandling(async () => {
     throw new Error('Request timed out after 30 seconds');
@@ -66,13 +60,12 @@ export function ErrorHandlingDemo() {
     maxRetryAttempts: 3,
     enableRecovery: true,
     context: { demo: 'timeout-error' }
-  });
 
   const simulateValidationError = async () => {
     const result = await handleError(new Error('Validation failed: required field missing'), {
       enableRecovery: false,
       context: { demo: 'validation-error' }
-    });
+
     return result;
   };
 
@@ -80,7 +73,7 @@ export function ErrorHandlingDemo() {
     const result = await handleError(new Error('Invalid backend URL configuration'), {
       enableRecovery: false,
       context: { demo: 'config-error' }
-    });
+
     return result;
   };
 
@@ -93,12 +86,11 @@ export function ErrorHandlingDemo() {
         isLoading: false,
         successMessage: `${errorType} demo completed successfully!`,
         lastError: null
-      });
+
     } catch (error) {
       const errorResult = await handleError(error as Error, {
         enableRecovery: true,
         context: { demo: errorType }
-      });
 
       setState(prev => ({
         ...prev,
@@ -148,71 +140,63 @@ export function ErrorHandlingDemo() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6 sm:w-auto md:w-full">
+    <div className="max-w-6xl mx-auto p-6 space-y-6 ">
       <div className="bg-white rounded-lg shadow-lg p-6 sm:p-4 md:p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">
-          Comprehensive Error Handling Demo
         </h1>
         <p className="text-gray-600 mb-6">
-          This demo showcases the comprehensive error handling system with categorization, 
           recovery strategies, and user-friendly messaging.
         </p>
 
         {/* Demo Controls */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           <button
-            onClick={() = aria-label="Button"> handleErrorDemo(simulateNetworkError, 'Network Error')}
+            onClick={() => handleErrorDemo(simulateNetworkError, 'Network Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
           >
-            Network Error
           </button>
           
           <button
-            onClick={() = aria-label="Button"> handleErrorDemo(simulateAuthError, 'Auth Error')}
+            onClick={() => handleErrorDemo(simulateAuthError, 'Auth Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
           >
-            Auth Error
           </button>
           
           <button
-            onClick={() = aria-label="Button"> handleErrorDemo(simulateDatabaseError, 'Database Error')}
+            onClick={() => handleErrorDemo(simulateDatabaseError, 'Database Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50"
           >
-            Database Error
           </button>
           
           <button
-            onClick={() = aria-label="Button"> handleErrorDemo(simulateTimeoutError, 'Timeout Error')}
+            onClick={() => handleErrorDemo(simulateTimeoutError, 'Timeout Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50"
           >
-            Timeout Error
           </button>
           
           <button
-            onClick={() = aria-label="Button"> handleDirectErrorDemo(simulateValidationError, 'Validation Error')}
+            onClick={() => handleDirectErrorDemo(simulateValidationError, 'Validation Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
-            Validation Error
           </button>
           
           <button
-            onClick={() = aria-label="Button"> handleDirectErrorDemo(simulateConfigError, 'Config Error')}
+            onClick={() => handleDirectErrorDemo(simulateConfigError, 'Config Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
           >
-            Config Error
           </button>
         </div>
 
         {/* Loading State */}
         {state.isLoading && (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 sm:w-auto md:w-full"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 "></div>
             <span className="ml-2 text-gray-600">Processing error demo...</span>
           </div>
         )}
@@ -222,7 +206,7 @@ export function ErrorHandlingDemo() {
           <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-4 sm:p-4 md:p-6">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400 sm:w-auto md:w-full" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-green-400 " viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
               </div>
@@ -313,7 +297,6 @@ export function ErrorHandlingDemo() {
                 onClick={clearHistory}
                 className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 md:text-base lg:text-lg"
                aria-label="Button">
-                Clear History
               </button>
             </div>
             

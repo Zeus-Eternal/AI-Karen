@@ -1,32 +1,15 @@
+
+"use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-'use client';
 
 
+import { } from 'lucide-react';
 
-
-
-
-
-  Lightbulb,
-  MessageSquare,
-  HelpCircle,
-  ArrowRight,
-  Zap,
-  Brain,
-  Clock,
-  TrendingUp
-} from 'lucide-react';
-
-  ContextSuggestion,
-  EnhancedChatMessage,
-  ConversationContext,
-  UserPattern
-} from '@/types/enhanced-chat';
+import { } from '@/types/enhanced-chat';
 
 interface ContextSuggestionsProps {
   messages: EnhancedChatMessage[];
@@ -64,15 +47,14 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
           text: 'Can you explain this code in more detail?',
           confidence: 0.85,
           reasoning: 'User received code and might need explanation'
-        });
-        
+
         suggestions.push({
           id: 'follow-up-code-2',
           type: 'follow_up',
           text: 'How can I modify this code for my use case?',
           confidence: 0.80,
           reasoning: 'Common follow-up for code examples'
-        });
+
       }
 
       if (lastMessage.content.includes('error') || lastMessage.content.includes('problem')) {
@@ -82,7 +64,7 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
           text: 'What are some alternative approaches?',
           confidence: 0.75,
           reasoning: 'User encountered an issue and might need alternatives'
-        });
+
       }
     }
 
@@ -94,15 +76,14 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
         text: 'Can you break this down into simpler steps?',
         confidence: 0.70,
         reasoning: 'Complex conversation might benefit from simplification'
-      });
-      
+
       suggestions.push({
         id: 'clarification-2',
         type: 'clarification',
         text: 'What are the key points I should focus on?',
         confidence: 0.68,
         reasoning: 'Help user focus on important aspects'
-      });
+
     }
 
     // Topic-related suggestions
@@ -113,7 +94,7 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
         text: `Tell me more about ${currentTopic}`,
         confidence: 0.65,
         reasoning: 'Expand on current topic of discussion'
-      });
+
     }
 
     // Pattern-based suggestions from user behavior
@@ -125,9 +106,8 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
           text: `Would you like help with ${pattern.pattern}?`,
           confidence: pattern.confidence * 0.8,
           reasoning: `Based on user's preference pattern: ${pattern.pattern}`
-        });
+
       }
-    });
 
     // Memory-based suggestions
     if (conversationContext.memoryContext.relevantMemories.length > 0) {
@@ -138,7 +118,7 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
         text: 'This reminds me of something we discussed before...',
         confidence: topMemory.relevance * 0.9,
         reasoning: 'Reference to relevant past conversation'
-      });
+
     }
 
     // Action suggestions based on message content
@@ -153,7 +133,7 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
           text: 'Would you like a step-by-step tutorial?',
           confidence: 0.75,
           reasoning: 'User asking for guidance'
-        });
+
       }
       
       if (content.includes('example') || content.includes('show me')) {
@@ -163,7 +143,7 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
           text: 'Can you show me a practical example?',
           confidence: 0.80,
           reasoning: 'User requesting examples'
-        });
+
       }
       
       if (content.includes('best') || content.includes('recommend')) {
@@ -173,7 +153,7 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
           text: 'What are the best practices for this?',
           confidence: 0.72,
           reasoning: 'User seeking recommendations'
-        });
+
       }
     }
 
@@ -223,11 +203,11 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
     <Card className={`${className}`}>
       <CardContent className="p-4 sm:p-4 md:p-6">
         <div className="flex items-center gap-2 mb-3">
-          <Lightbulb className="h-4 w-4 text-primary sm:w-auto md:w-full" />
+          <Lightbulb className="h-4 w-4 text-primary " />
           <h3 className="font-medium text-sm md:text-base lg:text-lg">Smart Suggestions</h3>
           {isGenerating && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm md:text-base">
-              <div className="w-2 h-2 bg-primary rounded-full animate-pulse sm:w-auto md:w-full"></div>
+              <div className="w-2 h-2 bg-primary rounded-full animate-pulse "></div>
               Generating...
             </div>
           )}
@@ -245,16 +225,16 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
               {suggestions.map((suggestion) => {
                 const Icon = getSuggestionIcon(suggestion.type);
                 return (
-                  <button
+                  <Button
                     key={suggestion.id}
                     variant="ghost"
                     size="sm"
                     className="w-full justify-start h-auto p-3 text-left hover:bg-muted/50 sm:p-4 md:p-6"
-                    onClick={() = aria-label="Button"> onSuggestionSelect(suggestion)}
+                    onClick={() => onSuggestionSelect(suggestion)}
                   >
                     <div className="flex items-start gap-3 w-full">
-                      <Icon className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground sm:w-auto md:w-full" />
-                      <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                      <Icon className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground " />
+                      <div className="flex-1 min-w-0 ">
                         <p className="text-sm font-medium text-left md:text-base lg:text-lg">
                           {suggestion.text}
                         </p>
@@ -266,7 +246,7 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
                             {suggestion.type.replace('_', ' ')}
                           </Badge>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm md:text-base">
-                            <TrendingUp className="h-3 w-3 sm:w-auto md:w-full" />
+                            <TrendingUp className="h-3 w-3 " />
                             {Math.round(suggestion.confidence * 100)}%
                           </div>
                         </div>
@@ -282,7 +262,6 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
         {suggestions.length > 0 && (
           <div className="mt-3 pt-3 border-t">
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              Suggestions based on conversation context and your patterns
             </p>
           </div>
         )}

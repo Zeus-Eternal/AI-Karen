@@ -45,7 +45,6 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
 describe('LanguageSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders select variant by default', async () => {
     render(
@@ -58,7 +57,6 @@ describe('LanguageSelector', () => {
     await screen.findByRole('combobox');
     
     expect(screen.getByRole('combobox')).toBeInTheDocument();
-  });
 
   it('renders inline variant', async () => {
     render(
@@ -72,7 +70,6 @@ describe('LanguageSelector', () => {
     
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(3); // en, es, fr
-  });
 
   it('renders dropdown variant', async () => {
     render(
@@ -85,7 +82,6 @@ describe('LanguageSelector', () => {
     await screen.findByRole('button');
     
     expect(screen.getByRole('button')).toBeInTheDocument();
-  });
 
   it('shows flags when enabled', async () => {
     render(
@@ -100,7 +96,6 @@ describe('LanguageSelector', () => {
     // Flags are rendered as emoji text, check for their presence
     const container = screen.getByRole('button', { name: /switch to english/i }).closest('div');
     expect(container).toBeInTheDocument();
-  });
 
   it('hides flags when disabled', async () => {
     render(
@@ -115,7 +110,6 @@ describe('LanguageSelector', () => {
     // Should still render buttons but without flag emojis
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(3);
-  });
 
   it('applies custom className', async () => {
     render(
@@ -129,7 +123,6 @@ describe('LanguageSelector', () => {
     
     const container = screen.getByRole('combobox').closest('div');
     expect(container).toHaveClass('custom-class');
-  });
 
   it('handles locale change in inline variant', async () => {
     const { i18n } = await import('../../../lib/i18n');
@@ -147,7 +140,6 @@ describe('LanguageSelector', () => {
     fireEvent.click(spanishButton);
 
     expect(i18n.changeLocale).toHaveBeenCalledWith('es');
-  });
 
   it('shows active state for current locale in inline variant', async () => {
     render(
@@ -164,7 +156,6 @@ describe('LanguageSelector', () => {
     
     const spanishButton = screen.getByRole('button', { name: /switch to spanish/i });
     expect(spanishButton).toHaveAttribute('aria-pressed', 'false');
-  });
 
   it('has proper accessibility attributes', async () => {
     render(
@@ -181,8 +172,7 @@ describe('LanguageSelector', () => {
     buttons.forEach(button => {
       expect(button).toHaveAttribute('aria-label');
       expect(button).toHaveAttribute('aria-pressed');
-    });
-  });
+
 
   it('displays correct locale codes', async () => {
     render(
@@ -197,5 +187,4 @@ describe('LanguageSelector', () => {
     expect(screen.getByText('EN')).toBeInTheDocument();
     expect(screen.getByText('ES')).toBeInTheDocument();
     expect(screen.getByText('FR')).toBeInTheDocument();
-  });
-});
+

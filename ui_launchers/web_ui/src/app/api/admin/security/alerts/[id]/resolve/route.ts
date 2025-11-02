@@ -69,7 +69,7 @@ export async function POST(
     );
     return NextResponse.json({
       message: 'Security alert resolved successfully'
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to resolve security alert' },

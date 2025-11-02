@@ -7,6 +7,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { IntelligentErrorPanel, IntelligentErrorPanelProps } from '../IntelligentErrorPanel';
@@ -70,11 +71,9 @@ describe('IntelligentErrorPanel', () => {
     vi.clearAllMocks();
     (getApiClient as any).mockReturnValue(mockApiClient);
     mockApiClient.post.mockResolvedValue({ data: mockAnalysisResponse });
-  });
 
   afterEach(() => {
     vi.clearAllTimers();
-  });
 
   describe('Loading State', () => {
     it('should show loading state while analyzing error', async () => {
@@ -87,8 +86,7 @@ describe('IntelligentErrorPanel', () => {
         expect(screen.getByText('Analyzing Error...')).toBeInTheDocument();
         expect(screen.getByText('Generating intelligent response and next steps')).toBeInTheDocument();
         expect(screen.getByTestId('refresh-icon')).toHaveClass('animate-spin');
-      });
-    });
+
 
     it('should show skeleton loading elements', async () => {
       mockApiClient.post.mockImplementation(() => new Promise(() => {}));
@@ -101,9 +99,8 @@ describe('IntelligentErrorPanel', () => {
           el.className.includes('animate-pulse') || el.className.includes('skeleton')
         );
         expect(skeletons.length).toBeGreaterThan(0);
-      });
-    });
-  });
+
+
 
   describe('Error Analysis Display', () => {
     it('should display error analysis results correctly', async () => {
@@ -113,8 +110,7 @@ describe('IntelligentErrorPanel', () => {
         expect(screen.getByText('OpenAI API Key Missing')).toBeInTheDocument();
         expect(screen.getByText('The OpenAI API key is not configured in your environment.')).toBeInTheDocument();
         expect(screen.getByText('HIGH')).toBeInTheDocument();
-      });
-    });
+
 
     it('should display next steps as numbered list', async () => {
       render(<IntelligentErrorPanel {...defaultProps} />);
@@ -129,8 +125,7 @@ describe('IntelligentErrorPanel', () => {
         expect(screen.getByText('1')).toBeInTheDocument();
         expect(screen.getByText('2')).toBeInTheDocument();
         expect(screen.getByText('3')).toBeInTheDocument();
-      });
-    });
+
 
     it('should display provider health information', async () => {
       render(<IntelligentErrorPanel {...defaultProps} />);
@@ -139,8 +134,7 @@ describe('IntelligentErrorPanel', () => {
         expect(screen.getByText('openai Status')).toBeInTheDocument();
         expect(screen.getByText('95% success rate')).toBeInTheDocument();
         expect(screen.getByText('1200ms avg')).toBeInTheDocument();
-      });
-    });
+
 
     it('should show appropriate severity icon and styling', async () => {
       render(<IntelligentErrorPanel {...defaultProps} />);
@@ -150,9 +144,8 @@ describe('IntelligentErrorPanel', () => {
         // Check for high severity styling (orange color)
         const severityIcon = screen.getByTestId('alert-triangle-icon');
         expect(severityIcon).toHaveClass('text-orange-500');
-      });
-    });
-  });
+
+
 
   describe('User Interactions', () => {
     it('should call onRetry when retry button is clicked', async () => {
@@ -163,8 +156,7 @@ describe('IntelligentErrorPanel', () => {
         const retryButton = screen.getByRole('button', { name: /try again/i });
         fireEvent.click(retryButton);
         expect(onRetry).toHaveBeenCalledTimes(1);
-      });
-    });
+
 
     it('should call onDismiss when dismiss button is clicked', async () => {
       const onDismiss = vi.fn();
@@ -174,8 +166,7 @@ describe('IntelligentErrorPanel', () => {
         const dismissButton = screen.getByRole('button', { name: '×' });
         fireEvent.click(dismissButton);
         expect(onDismiss).toHaveBeenCalledTimes(1);
-      });
-    });
+
 
     it('should open help URL when help button is clicked', async () => {
       const originalOpen = window.open;
@@ -187,10 +178,8 @@ describe('IntelligentErrorPanel', () => {
         const helpButton = screen.getByRole('button', { name: /help/i });
         fireEvent.click(helpButton);
         expect(window.open).toHaveBeenCalledWith('https://platform.openai.com/docs/quickstart', '_blank');
-      });
 
       window.open = originalOpen;
-    });
 
     it('should show/hide technical details when details button is clicked', async () => {
       render(<IntelligentErrorPanel {...defaultProps} />);
@@ -204,8 +193,7 @@ describe('IntelligentErrorPanel', () => {
         
         // Button text should change
         expect(screen.getByRole('button', { name: /hide details/i })).toBeInTheDocument();
-      });
-    });
+
 
     it('should refresh analysis when refresh button is clicked', async () => {
       render(<IntelligentErrorPanel {...defaultProps} />);
@@ -216,9 +204,8 @@ describe('IntelligentErrorPanel', () => {
         
         // API should be called again
         expect(mockApiClient.post).toHaveBeenCalledTimes(2);
-      });
-    });
-  });
+
+
 
   describe('Error Handling', () => {
     it('should display fallback analysis when API call fails', async () => {
@@ -230,8 +217,7 @@ describe('IntelligentErrorPanel', () => {
         expect(screen.getByText('Error Analysis Unavailable')).toBeInTheDocument();
         expect(screen.getByText('Unable to generate intelligent error response at this time.')).toBeInTheDocument();
         expect(screen.getByText('Contact admin')).toBeInTheDocument();
-      });
-    });
+
 
     it('should show error state with retry option when analysis fails', async () => {
       mockApiClient.post.mockRejectedValue(new Error('Service unavailable'));
@@ -241,9 +227,8 @@ describe('IntelligentErrorPanel', () => {
       await waitFor(() => {
         expect(screen.getByText('Analysis Failed')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Retry Logic', () => {
     it('should track retry count and disable retry after max attempts', async () => {
@@ -264,8 +249,7 @@ describe('IntelligentErrorPanel', () => {
         // Third click should not work (button should be disabled or hidden)
         fireEvent.click(retryButton);
         expect(onRetry).toHaveBeenCalledTimes(2);
-      });
-    });
+
 
     it('should show retry countdown when retry_after is specified', async () => {
       const responseWithRetryAfter = {
@@ -279,9 +263,8 @@ describe('IntelligentErrorPanel', () => {
       await waitFor(() => {
         expect(screen.getByText('Retry in 60s')).toBeInTheDocument();
         expect(screen.getByTestId('clock-icon')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Caching Indicators', () => {
     it('should show cached indicator when response is cached', async () => {
@@ -296,8 +279,7 @@ describe('IntelligentErrorPanel', () => {
       await waitFor(() => {
         expect(screen.getByText('Cached')).toBeInTheDocument();
         expect(screen.getByTestId('clock-icon')).toBeInTheDocument();
-      });
-    });
+
 
     it('should display analysis metadata', async () => {
       render(<IntelligentErrorPanel {...defaultProps} />);
@@ -305,9 +287,8 @@ describe('IntelligentErrorPanel', () => {
       await waitFor(() => {
         expect(screen.getByText('Analysis: 150.5ms')).toBeInTheDocument();
         expect(screen.getByText('Category: api_key_missing')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Contact Admin Functionality', () => {
     it('should show contact admin button when contact_admin is true', async () => {
@@ -321,8 +302,7 @@ describe('IntelligentErrorPanel', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /contact admin/i })).toBeInTheDocument();
-      });
-    });
+
 
     it('should open mailto link when contact admin is clicked', async () => {
       const originalOpen = window.open;
@@ -344,11 +324,9 @@ describe('IntelligentErrorPanel', () => {
           expect.stringContaining('mailto:admin@example.com'),
           '_blank'
         );
-      });
 
       window.open = originalOpen;
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('should have proper ARIA attributes', async () => {
@@ -359,8 +337,7 @@ describe('IntelligentErrorPanel', () => {
         expect(screen.getByTestId('card')).toBeInTheDocument();
         expect(screen.getByTestId('card-header')).toBeInTheDocument();
         expect(screen.getByTestId('card-content')).toBeInTheDocument();
-      });
-    });
+
 
     it('should have accessible button labels', async () => {
       render(<IntelligentErrorPanel {...defaultProps} onRetry={vi.fn()} onDismiss={vi.fn()} />);
@@ -369,9 +346,8 @@ describe('IntelligentErrorPanel', () => {
         expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: '×' })).toBeInTheDocument();
         expect(screen.getByRole('button', { title: 'Refresh analysis' })).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Props Configuration', () => {
     it('should not auto-fetch when autoFetch is false', () => {
@@ -379,7 +355,6 @@ describe('IntelligentErrorPanel', () => {
       
       // API should not be called automatically
       expect(mockApiClient.post).not.toHaveBeenCalled();
-    });
 
     it('should show technical details by default when showTechnicalDetails is true', async () => {
       render(<IntelligentErrorPanel {...defaultProps} showTechnicalDetails={true} />);
@@ -387,8 +362,7 @@ describe('IntelligentErrorPanel', () => {
       await waitFor(() => {
         expect(screen.getByText('Technical Details:')).toBeInTheDocument();
         expect(screen.getByText('OPENAI_API_KEY environment variable not set')).toBeInTheDocument();
-      });
-    });
+
 
     it('should pass user context to API request', async () => {
       const userContext = { userId: '123', feature: 'chat' };
@@ -401,7 +375,6 @@ describe('IntelligentErrorPanel', () => {
             user_context: expect.objectContaining(userContext)
           })
         );
-      });
-    });
-  });
-});
+
+
+

@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { i18n, type I18nManager, type FormatOptions, type InterpolationOptions, type PluralOptions } from '../lib/i18n';
 import { defaultResources } from '../lib/i18n/resources';
@@ -61,7 +62,7 @@ export function I18nProvider({
             document.documentElement.lang = newLocale;
             document.documentElement.dir = i18n.getTextDirection();
           }
-        });
+
         setIsLoading(false);
         setMounted(true);
         return unsubscribe;

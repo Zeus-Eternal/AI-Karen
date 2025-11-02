@@ -53,8 +53,7 @@ export function useErrorRecovery(
     isRetrying: false,
     canRetry: true,
     lastRetryAt: null,
-  });
-  
+
   const timeoutRef = useRef<NodeJS.Timeout>();
   const { setError, clearError } = useUIStore(selectErrorState(key));
   
@@ -81,8 +80,7 @@ export function useErrorRecovery(
         isRetrying: false,
         canRetry: true,
         lastRetryAt: null,
-      });
-      
+
       if (isRetry && onRecovery) {
         onRecovery();
       }
@@ -103,8 +101,7 @@ export function useErrorRecovery(
           canRetry: canStillRetry && shouldRetryError,
           lastRetryAt: isRetry ? new Date() : prev.lastRetryAt,
         };
-      });
-      
+
       setError(errorObj.message);
       
       // Check if we should auto-retry
@@ -156,8 +153,7 @@ export function useErrorRecovery(
       isRetrying: false,
       canRetry: true,
       lastRetryAt: null,
-    });
-    
+
     clearError();
   }, [clearError]);
   

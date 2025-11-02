@@ -11,7 +11,6 @@ jest.mock('@/lib/model-selection-service', () => ({
 describe('/api/generate/image/batch', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
 
   describe('POST - Create Batch', () => {
     it('should create batch generation job successfully', async () => {
@@ -47,7 +46,6 @@ describe('/api/generate/image/batch', () => {
           global_model_id: 'sd-v1-5',
           priority: 'normal'
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -61,7 +59,6 @@ describe('/api/generate/image/batch', () => {
       expect(data.status).toBe('queued');
       expect(response.headers.get('X-Batch-ID')).toBe(data.batch_id);
       expect(response.headers.get('Location')).toBe(`/api/generate/image/batch/${data.batch_id}`);
-    });
 
     it('should return error for empty requests array', async () => {
       const request = new NextRequest('http://localhost:3000/api/generate/image/batch', {
@@ -69,27 +66,23 @@ describe('/api/generate/image/batch', () => {
         body: JSON.stringify({
           requests: []
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing or empty requests array');
-    });
 
     it('should return error for missing requests field', async () => {
       const request = new NextRequest('http://localhost:3000/api/generate/image/batch', {
         method: 'POST',
         body: JSON.stringify({})
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing or empty requests array');
-    });
 
     it('should return error for excessive batch size', async () => {
       const requests = Array.from({ length: 25 }, (_, i) => ({
@@ -100,14 +93,12 @@ describe('/api/generate/image/batch', () => {
       const request = new NextRequest('http://localhost:3000/api/generate/image/batch', {
         method: 'POST',
         body: JSON.stringify({ requests })
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Batch size cannot exceed 20 requests');
-    });
 
     it('should validate individual requests', async () => {
       const request = new NextRequest('http://localhost:3000/api/generate/image/batch', {
@@ -119,14 +110,12 @@ describe('/api/generate/image/batch', () => {
             { prompt: 'Another valid prompt' }
           ]
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Request 2 is missing required field: prompt');
-    });
 
     it('should return error when no image models available', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -146,14 +135,12 @@ describe('/api/generate/image/batch', () => {
         body: JSON.stringify({
           requests: [{ prompt: 'Test prompt' }]
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(503);
       expect(data.error).toBe('No image generation models available');
-    });
 
     it('should assign default IDs to requests without IDs', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -177,15 +164,13 @@ describe('/api/generate/image/batch', () => {
             { prompt: 'Third prompt' } // No ID
           ]
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(202);
       expect(data.success).toBe(true);
-    });
-  });
+
 
   describe('GET - Batch Status', () => {
     it('should return recent batches when no batch_id provided', async () => {
@@ -196,7 +181,6 @@ describe('/api/generate/image/batch', () => {
       expect(response.status).toBe(200);
       expect(data.recent_batches).toBeInstanceOf(Array);
       expect(data.active_batches).toBeGreaterThanOrEqual(0);
-    });
 
     it('should return error for non-existent batch', async () => {
       const request = new NextRequest('http://localhost:3000/api/generate/image/batch?batch_id=non-existent');
@@ -206,7 +190,6 @@ describe('/api/generate/image/batch', () => {
       expect(response.status).toBe(404);
       expect(data.error).toBe('Batch not found');
       expect(data.batch_id).toBe('non-existent');
-    });
 
     it('should handle service errors gracefully', async () => {
       // This test would require mocking internal batch storage, 
@@ -215,8 +198,7 @@ describe('/api/generate/image/batch', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-    });
-  });
+
 
   describe('Batch Processing Integration', () => {
     it('should process batch and update status', async () => {
@@ -241,7 +223,6 @@ describe('/api/generate/image/batch', () => {
             { prompt: 'Test prompt 2' }
           ]
         })
-      });
 
       const createResponse = await POST(createRequest);
       const createData = await createResponse.json();
@@ -270,6 +251,5 @@ describe('/api/generate/image/batch', () => {
 
       expect(statusResponse2.status).toBe(200);
       expect(['queued', 'processing', 'completed']).toContain(statusData2.status);
-    });
-  });
-});
+
+

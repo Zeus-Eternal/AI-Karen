@@ -140,9 +140,6 @@ export interface AccessibilityProps {
 // Combined props for enhanced components
 export interface EnhancedComponentProps
   extends BaseComponentProps,
-    AnimationProps,
-    InteractionProps,
-    ResponsiveProps,
     AccessibilityProps {}
 
 // Utility types for compound components
@@ -201,7 +198,4 @@ export interface StylingProps {
 // Combined enhanced props
 export interface FullyEnhancedProps
   extends EnhancedComponentProps,
-    ThemeProps,
-    StylingProps,
-    ComponentState,
     ComponentActions {}

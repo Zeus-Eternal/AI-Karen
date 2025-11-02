@@ -40,13 +40,11 @@ const mockLocation = {
 Object.defineProperty(window, 'location', {
   value: mockLocation,
   writable: true,
-});
 
 // Mock document.cookie
 Object.defineProperty(document, 'cookie', {
   writable: true,
   value: '',
-});
 
 // Mock UI components to avoid dependency issues
 vi.mock('@/components/ui/button', () => ({
@@ -122,11 +120,9 @@ describe('Authentication Integration Tests', () => {
     mockLocation.href = '';
     document.cookie = '';
     mockFetch.mockClear();
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Complete Login Flow Integration', () => {
     it('should complete successful login flow from form to authentication', async () => {
@@ -167,9 +163,8 @@ describe('Authentication Integration Tests', () => {
             password: 'validpassword123',
           }),
           credentials: 'include',
-        });
-      });
-    });
+
+
 
     it('should handle login failure with proper error display', async () => {
       const user = userEvent.setup();
@@ -194,11 +189,9 @@ describe('Authentication Integration Tests', () => {
       // Verify error is displayed
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Verify form is still visible (no redirect)
       expect(screen.getByText('Welcome to AI Karen')).toBeInTheDocument();
-    });
 
     it('should handle 2FA requirement flow', async () => {
       const user = userEvent.setup();
@@ -223,7 +216,6 @@ describe('Authentication Integration Tests', () => {
       // Verify 2FA field appears
       await waitFor(() => {
         expect(screen.getByLabelText(/two-factor authentication code/i)).toBeInTheDocument();
-      });
 
       // Mock successful 2FA login
       mockFetch.mockResolvedValueOnce(
@@ -251,10 +243,9 @@ describe('Authentication Integration Tests', () => {
             totp_code: '123456',
           }),
           credentials: 'include',
-        });
-      });
-    });
-  });
+
+
+
 
   describe('Session Persistence Integration', () => {
     it('should restore authentication state from valid session on app load', async () => {
@@ -283,15 +274,13 @@ describe('Authentication Integration Tests', () => {
             'Accept': 'application/json',
           },
           credentials: 'include',
-        });
-      });
+
 
       // Should render protected content
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
         expect(screen.getByText('Protected Dashboard')).toBeInTheDocument();
-      });
-    });
+
 
     it('should redirect to login when session validation fails', async () => {
       // Mock session cookie exists but validation fails
@@ -310,8 +299,7 @@ describe('Authentication Integration Tests', () => {
       // Should validate session and redirect to login
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
-    });
+
 
     it('should redirect to login when no session cookie exists', async () => {
       // No session cookie
@@ -322,9 +310,8 @@ describe('Authentication Integration Tests', () => {
       // Should redirect to login immediately
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
-    });
-  });
+
+
 
   describe('Protected Route Integration', () => {
     it('should allow access to protected content when authenticated', async () => {
@@ -346,11 +333,9 @@ describe('Authentication Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
         expect(screen.getByText('This content requires authentication')).toBeInTheDocument();
-      });
 
       // Should not redirect
       expect(mockReplace).not.toHaveBeenCalled();
-    });
 
     it('should redirect unauthenticated users to login', async () => {
       // No session cookie
@@ -361,12 +346,10 @@ describe('Authentication Integration Tests', () => {
       // Should redirect to login
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
 
       // Should not render protected content
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Multiple Failed Attempts Integration', () => {
     it('should not bypass authentication after multiple failed attempts', async () => {
@@ -402,7 +385,6 @@ describe('Authentication Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Attempt 2
       await user.clear(screen.getByLabelText(/email address/i));
@@ -413,7 +395,6 @@ describe('Authentication Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Attempt 3
       await user.clear(screen.getByLabelText(/email address/i));
@@ -424,7 +405,6 @@ describe('Authentication Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Verify all attempts were made (no bypass)
       expect(mockFetch).toHaveBeenCalledTimes(3);
@@ -451,7 +431,6 @@ describe('Authentication Integration Tests', () => {
 
       // Should still show login form (no bypass)
       expect(screen.getByText('Welcome to AI Karen')).toBeInTheDocument();
-    });
 
     it('should still allow valid login after failed attempts', async () => {
       const user = userEvent.setup();
@@ -489,7 +468,7 @@ describe('Authentication Integration Tests', () => {
 
         await waitFor(() => {
           expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-        });
+
       }
 
       // Valid attempt
@@ -508,9 +487,8 @@ describe('Authentication Integration Tests', () => {
             password: 'validpassword',
           }),
         }));
-      });
-    });
-  });
+
+
 
   describe('Network Error Handling Integration', () => {
     it('should handle network errors during login gracefully', async () => {
@@ -531,11 +509,9 @@ describe('Authentication Integration Tests', () => {
       // Should show network error
       await waitFor(() => {
         expect(screen.getByText('Network error')).toBeInTheDocument();
-      });
 
       // Should remain on login form
       expect(screen.getByText('Welcome to AI Karen')).toBeInTheDocument();
-    });
 
     it('should handle network errors during session validation', async () => {
       // Mock session cookie exists
@@ -549,7 +525,6 @@ describe('Authentication Integration Tests', () => {
       // Should redirect to login on network error
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
-    });
-  });
-});
+
+
+

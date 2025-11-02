@@ -1,14 +1,15 @@
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
-import {
+
   widgetRegistry,
   getWidgetComponent,
   getWidgetDefaultConfig,
   getAvailableWidgetTypes,
   getWidgetInfo,
   createWidgetConfig
-} from '../WidgetRegistry';
+import { } from '../WidgetRegistry';
 import type { WidgetConfig } from '@/types/dashboard';
 
 describe('WidgetRegistry', () => {
@@ -19,8 +20,7 @@ describe('WidgetRegistry', () => {
       
       expectedTypes.forEach(type => {
         expect(actualTypes).toContain(type);
-      });
-    });
+
 
     it('has valid structure for each widget type', () => {
       Object.entries(widgetRegistry).forEach(([type, widget]) => {
@@ -32,22 +32,19 @@ describe('WidgetRegistry', () => {
         expect(typeof widget.name).toBe('string');
         expect(typeof widget.description).toBe('string');
         expect(typeof widget.defaultConfig).toBe('object');
-      });
-    });
-  });
+
+
 
   describe('getWidgetComponent', () => {
     it('returns component for valid widget type', () => {
       const component = getWidgetComponent('metric');
       expect(component).toBeDefined();
       expect(typeof component).toBe('function');
-    });
 
     it('returns null for invalid widget type', () => {
       const component = getWidgetComponent('invalid-type');
       expect(component).toBeNull();
-    });
-  });
+
 
   describe('getWidgetDefaultConfig', () => {
     it('returns default config for valid widget type', () => {
@@ -57,13 +54,11 @@ describe('WidgetRegistry', () => {
       expect(config.size).toBeDefined();
       expect(config.position).toBeDefined();
       expect(config.enabled).toBe(true);
-    });
 
     it('returns empty object for invalid widget type', () => {
       const config = getWidgetDefaultConfig('invalid-type');
       expect(config).toEqual({});
-    });
-  });
+
 
   describe('getAvailableWidgetTypes', () => {
     it('returns array of widget types', () => {
@@ -73,8 +68,7 @@ describe('WidgetRegistry', () => {
       expect(types).toContain('metric');
       expect(types).toContain('status');
       expect(types).toContain('chart');
-    });
-  });
+
 
   describe('getWidgetInfo', () => {
     it('returns widget info for valid type', () => {
@@ -83,13 +77,11 @@ describe('WidgetRegistry', () => {
       expect(info?.name).toBe('Metric Widget');
       expect(info?.description).toContain('KPIs');
       expect(info?.icon).toBe('TrendingUp');
-    });
 
     it('returns null for invalid type', () => {
       const info = getWidgetInfo('invalid-type');
       expect(info).toBeNull();
-    });
-  });
+
 
   describe('createWidgetConfig', () => {
     it('creates widget config with default values', () => {
@@ -102,7 +94,6 @@ describe('WidgetRegistry', () => {
       expect(config.size).toBeDefined();
       expect(config.position).toBeDefined();
       expect(config.enabled).toBe(true);
-    });
 
     it('applies overrides to default config', () => {
       const overrides = {
@@ -116,15 +107,13 @@ describe('WidgetRegistry', () => {
       expect(config.title).toBe('Custom Title');
       expect(config.size).toBe('large');
       expect(config.config.customProp).toBe('value');
-    });
 
     it('generates unique IDs for multiple widgets', () => {
       const config1 = createWidgetConfig('metric');
       const config2 = createWidgetConfig('metric');
       
       expect(config1.id).not.toBe(config2.id);
-    });
-  });
+
 
   describe('Widget Components', () => {
     it('renders MetricWidget placeholder', () => {
@@ -145,7 +134,6 @@ describe('WidgetRegistry', () => {
         expect(screen.getByText('Metric Widget')).toBeInTheDocument();
         expect(screen.getByText('Test Metric')).toBeInTheDocument();
       }
-    });
 
     it('renders StatusWidget placeholder', () => {
       const StatusWidget = getWidgetComponent('status');
@@ -165,7 +153,6 @@ describe('WidgetRegistry', () => {
         expect(screen.getByText('Status Widget')).toBeInTheDocument();
         expect(screen.getByText('Test Status')).toBeInTheDocument();
       }
-    });
 
     it('renders ChartWidget placeholder', () => {
       const ChartWidget = getWidgetComponent('chart');
@@ -185,7 +172,6 @@ describe('WidgetRegistry', () => {
         expect(screen.getByText('Chart Widget')).toBeInTheDocument();
         expect(screen.getByText('Test Chart')).toBeInTheDocument();
       }
-    });
 
     it('renders LogWidget placeholder', () => {
       const LogWidget = getWidgetComponent('log');
@@ -205,7 +191,6 @@ describe('WidgetRegistry', () => {
         expect(screen.getByText('Log Widget')).toBeInTheDocument();
         expect(screen.getByText('Test Logs')).toBeInTheDocument();
       }
-    });
 
     it('renders TableWidget placeholder', () => {
       const TableWidget = getWidgetComponent('table');
@@ -225,6 +210,5 @@ describe('WidgetRegistry', () => {
         expect(screen.getByText('Table Widget')).toBeInTheDocument();
         expect(screen.getByText('Test Table')).toBeInTheDocument();
       }
-    });
-  });
-});
+
+

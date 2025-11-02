@@ -476,11 +476,9 @@ export const animationPerformanceMonitor = new AnimationPerformanceMonitor();
 export default {
   performanceAnimationVariants,
   reducedMotionVariants,
-  AnimationPerformanceMonitor,
   animationCSS,
   useAnimationPerformance,
   usePerformanceAwareAnimation,
   useWillChange,
   animationPerformanceMonitor,
-  ANIMATION_PERFORMANCE_THRESHOLDS,
 };

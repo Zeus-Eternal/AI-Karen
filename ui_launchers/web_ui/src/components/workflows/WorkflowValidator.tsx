@@ -1,5 +1,6 @@
-'use client';
+"use client";
 
+import React from 'react';
 import { WorkflowDefinition, WorkflowValidationResult, ValidationError, ValidationWarning } from '@/types/workflows';
 
 export class WorkflowValidator {
@@ -14,7 +15,7 @@ export class WorkflowValidator {
         type: 'missing_connection',
         message: 'Workflow must contain at least one node',
         severity: 'error'
-      });
+
     }
 
     // Check for disconnected nodes
@@ -22,7 +23,6 @@ export class WorkflowValidator {
     workflow.edges.forEach(edge => {
       connectedNodes.add(edge.source);
       connectedNodes.add(edge.target);
-    });
 
     workflow.nodes.forEach(node => {
       if (!connectedNodes.has(node.id) && workflow.nodes.length > 1) {
@@ -32,9 +32,8 @@ export class WorkflowValidator {
           nodeId: node.id,
           message: `Node "${node.data.label}" is not connected to any other nodes`,
           suggestion: 'Connect this node to the workflow or remove it'
-        });
+
       }
-    });
 
     // Check for circular dependencies
     const circularDependencies = this.detectCircularDependencies(workflow);
@@ -44,8 +43,7 @@ export class WorkflowValidator {
         type: 'circular_dependency',
         message: `Circular dependency detected: ${cycle.join(' → ')}`,
         severity: 'error'
-      });
-    });
+
 
     // Check for missing required inputs
     workflow.nodes.forEach(node => {
@@ -63,12 +61,11 @@ export class WorkflowValidator {
                 nodeId: node.id,
                 message: `Required input "${input.name}" is not connected in node "${node.data.label}"`,
                 severity: 'error'
-              });
+
             }
           }
-        });
+
       }
-    });
 
     // Check for type mismatches
     workflow.edges.forEach(edge => {
@@ -87,11 +84,10 @@ export class WorkflowValidator {
               edgeId: edge.id,
               message: `Type mismatch: Cannot connect ${sourceOutput.type} to ${targetInput.type}`,
               severity: 'error'
-            });
+
           }
         }
       }
-    });
 
     // Check for performance issues
     if (workflow.nodes.length > 50) {
@@ -100,7 +96,7 @@ export class WorkflowValidator {
         type: 'performance',
         message: 'Large workflow detected. Consider breaking it into smaller sub-workflows',
         suggestion: 'Split complex workflows into reusable sub-workflows'
-      });
+
     }
 
     // Check for input/output nodes
@@ -113,7 +109,7 @@ export class WorkflowValidator {
         type: 'best_practice',
         message: 'Workflow has no input nodes',
         suggestion: 'Add an input node to define how data enters the workflow'
-      });
+
     }
     
     if (!hasOutputNode && workflow.nodes.length > 1) {
@@ -122,7 +118,7 @@ export class WorkflowValidator {
         type: 'best_practice',
         message: 'Workflow has no output nodes',
         suggestion: 'Add an output node to define how results are returned'
-      });
+
     }
 
     // Check for deprecated node types
@@ -134,9 +130,8 @@ export class WorkflowValidator {
           nodeId: node.id,
           message: `Node type "${node.type}" is deprecated`,
           suggestion: 'Consider upgrading to a newer node type'
-        });
+
       }
-    });
 
     return {
       valid: errors.length === 0,
@@ -152,13 +147,11 @@ export class WorkflowValidator {
     // Build adjacency list
     workflow.nodes.forEach(node => {
       graph.set(node.id, []);
-    });
 
     workflow.edges.forEach(edge => {
       const neighbors = graph.get(edge.source) || [];
       neighbors.push(edge.target);
       graph.set(edge.source, neighbors);
-    });
 
     // DFS to detect cycles
     const visited = new Set<string>();
@@ -195,7 +188,6 @@ export class WorkflowValidator {
       if (!visited.has(node.id)) {
         dfs(node.id);
       }
-    });
 
     return cycles;
   }
@@ -253,8 +245,7 @@ export function WorkflowValidationDisplay({
   if (validationResult.valid && validationResult.warnings.length === 0) {
     return (
       <div className="text-green-600 text-sm flex items-center gap-2 md:text-base lg:text-lg">
-        <div className="w-2 h-2 bg-green-500 rounded-full sm:w-auto md:w-full" />
-        Workflow validation passed
+        <div className="w-2 h-2 bg-green-500 rounded-full " />
       </div>
     );
   }
@@ -263,7 +254,7 @@ export function WorkflowValidationDisplay({
     <div className="space-y-2">
       {validationResult.errors.map(error => (
         <div key={error.id} className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded text-sm md:text-base lg:text-lg">
-          <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0 sm:w-auto md:w-full" />
+          <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0 " />
           <div className="flex-1">
             <p className="text-red-800 font-medium">Error: {error.message}</p>
             {error.nodeId && (
@@ -272,10 +263,9 @@ export function WorkflowValidationDisplay({
           </div>
           {onFixError && (
             <button
-              onClick={() = aria-label="Button"> onFixError(error.id)}
+              onClick={() => onFixError(error.id)}
               className="text-red-600 hover:text-red-800 text-xs underline sm:text-sm md:text-base"
             >
-              Fix
             </button>
           )}
         </div>
@@ -283,7 +273,7 @@ export function WorkflowValidationDisplay({
 
       {validationResult.warnings.map(warning => (
         <div key={warning.id} className="flex items-start gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm md:text-base lg:text-lg">
-          <div className="w-2 h-2 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0 sm:w-auto md:w-full" />
+          <div className="w-2 h-2 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0 " />
           <div className="flex-1">
             <p className="text-yellow-800 font-medium">Warning: {warning.message}</p>
             {warning.suggestion && (

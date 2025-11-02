@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { WorkflowMonitor } from '../WorkflowMonitor';
@@ -77,7 +78,6 @@ describe('WorkflowMonitor Performance Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('rendering performance', () => {
     it('should render efficiently with 100 executions', async () => {
@@ -103,7 +103,6 @@ describe('WorkflowMonitor Performance Tests', () => {
       // Verify content is rendered
       expect(screen.getByText('Workflow Monitor')).toBeInTheDocument();
       expect(screen.getByText('100')).toBeInTheDocument(); // Total executions
-    });
 
     it('should render efficiently with 500 executions', async () => {
       const executions = generateMockExecutions(500);
@@ -126,7 +125,6 @@ describe('WorkflowMonitor Performance Tests', () => {
       expect(renderTime).toBeLessThan(2000);
       
       expect(screen.getByText('500')).toBeInTheDocument(); // Total executions
-    });
 
     it('should handle large log datasets efficiently', async () => {
       // Create execution with many logs
@@ -166,12 +164,10 @@ describe('WorkflowMonitor Performance Tests', () => {
       // Should handle large log rendering efficiently
       await waitFor(() => {
         expect(screen.getByText('Logs')).toBeInTheDocument();
-      });
 
       // Verify logs are rendered (should be virtualized or paginated)
       expect(screen.getByText(/entries/)).toBeInTheDocument();
-    });
-  });
+
 
   describe('filtering performance', () => {
     it('should filter executions efficiently', async () => {
@@ -203,8 +199,7 @@ describe('WorkflowMonitor Performance Tests', () => {
       await waitFor(() => {
         const executionCount = screen.getByText(/Executions \(\d+\)/);
         expect(executionCount).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle status filtering efficiently', async () => {
       const executions = generateMockExecutions(300);
@@ -234,9 +229,8 @@ describe('WorkflowMonitor Performance Tests', () => {
       await waitFor(() => {
         const executionCount = screen.getByText(/Executions \(\d+\)/);
         expect(executionCount).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('memory usage', () => {
     it('should not cause memory leaks with frequent updates', async () => {
@@ -269,8 +263,7 @@ describe('WorkflowMonitor Performance Tests', () => {
 
       // Component should still be responsive
       expect(screen.getByText('Workflow Monitor')).toBeInTheDocument();
-    });
-  });
+
 
   describe('interaction performance', () => {
     it('should handle execution selection efficiently', async () => {
@@ -299,8 +292,7 @@ describe('WorkflowMonitor Performance Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Logs')).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle log level filtering efficiently', async () => {
       const execution = generateMockExecutions(1)[0];
@@ -326,7 +318,6 @@ describe('WorkflowMonitor Performance Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Logs')).toBeInTheDocument();
-      });
 
       const logLevelFilter = screen.getByDisplayValue('All Levels');
       
@@ -339,8 +330,7 @@ describe('WorkflowMonitor Performance Tests', () => {
 
       // Log filtering should be fast
       expect(filterTime).toBeLessThan(100);
-    });
-  });
+
 
   describe('scroll performance', () => {
     it('should handle scrolling through large execution lists efficiently', async () => {
@@ -367,6 +357,5 @@ describe('WorkflowMonitor Performance Tests', () => {
 
       // Scrolling should be smooth
       expect(scrollTime).toBeLessThan(50);
-    });
-  });
-});
+
+

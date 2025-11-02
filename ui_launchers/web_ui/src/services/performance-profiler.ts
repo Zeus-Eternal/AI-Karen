@@ -98,7 +98,7 @@ export class PerformanceProfiler {
         for (const entry of list.getEntries()) {
           this.analyzeNavigationTiming(entry as PerformanceNavigationTiming);
         }
-      });
+
       navigationObserver.observe({ entryTypes: ['navigation'] });
       this.observers.push(navigationObserver);
     } catch (error) {
@@ -109,7 +109,7 @@ export class PerformanceProfiler {
         for (const entry of list.getEntries()) {
           this.analyzeResourceTiming(entry as PerformanceResourceTiming);
         }
-      });
+
       resourceObserver.observe({ entryTypes: ['resource'] });
       this.observers.push(resourceObserver);
     } catch (error) {
@@ -120,7 +120,7 @@ export class PerformanceProfiler {
         for (const entry of list.getEntries()) {
           this.analyzePaintTiming(entry);
         }
-      });
+
       paintObserver.observe({ entryTypes: ['paint'] });
       this.observers.push(paintObserver);
     } catch (error) {
@@ -136,7 +136,7 @@ export class PerformanceProfiler {
         for (const entry of list.getEntries()) {
           this.captureUserTiming(entry);
         }
-      });
+
       userTimingObserver.observe({ entryTypes: ['measure', 'mark'] });
       this.observers.push(userTimingObserver);
     } catch (error) {
@@ -152,7 +152,7 @@ export class PerformanceProfiler {
         for (const entry of list.getEntries()) {
           this.detectLongTaskBottleneck(entry);
         }
-      });
+
       longTaskObserver.observe({ entryTypes: ['longtask'] });
       this.observers.push(longTaskObserver);
     } catch (error) {
@@ -271,7 +271,7 @@ export class PerformanceProfiler {
           'Use a CDN for static assets',
           'Optimize database queries',
         ],
-      });
+
     }
     if (entry.domContentLoadedEventEnd - entry.domContentLoadedEventStart > 500) {
       this.createBottleneck({
@@ -285,7 +285,7 @@ export class PerformanceProfiler {
           'Defer non-critical JavaScript',
           'Optimize DOM manipulation',
         ],
-      });
+
     }
     this.analyzeProfileForBottlenecks(profile);
     this.profiles.push(profile);
@@ -328,7 +328,7 @@ export class PerformanceProfiler {
           'Use a CDN',
           'Implement caching headers',
         ],
-      });
+
     }
     if (entry.transferSize > 1024 * 1024) { // 1MB
       this.createBottleneck({
@@ -343,7 +343,7 @@ export class PerformanceProfiler {
           'Implement lazy loading',
           'Split large bundles',
         ],
-      });
+
     }
     this.analyzeProfileForBottlenecks(profile);
     this.profiles.push(profile);
@@ -380,7 +380,7 @@ export class PerformanceProfiler {
           'Inline critical CSS',
           'Optimize web fonts loading',
         ],
-      });
+
     }
     this.profiles.push(profile);
   }
@@ -423,7 +423,7 @@ export class PerformanceProfiler {
         'Implement time slicing',
         'Move heavy computation to Web Workers',
       ],
-    });
+
   }
   /**
    * Set up React profiler
@@ -457,14 +457,14 @@ export class PerformanceProfiler {
             'Minimize DOM manipulation in loops',
             'Consider virtual DOM or efficient rendering libraries',
           ],
-        });
+
       }
-    });
+
     observer.observe(document.body, {
       childList: true,
       subtree: true,
       attributes: true,
-    });
+
   }
   /**
    * Start bottleneck detection
@@ -503,7 +503,7 @@ export class PerformanceProfiler {
         impact: Math.min(100, profile.duration / 50),
         duration: profile.duration,
         suggestions: this.getSuggestionsForProfileType(profile.type, profile.duration),
-      });
+
     }
   }
   /**
@@ -569,7 +569,7 @@ export class PerformanceProfiler {
       priority,
       detectedAt: Date.now(),
       ...bottleneck,
-    });
+
     // Keep only last 100 bottlenecks
     if (this.bottlenecks.length > 100) {
       this.bottlenecks = this.bottlenecks.slice(-50);
@@ -594,8 +594,8 @@ export class PerformanceProfiler {
         implementation: pattern.implementation,
         estimatedGain: pattern.estimatedGain,
         confidence: pattern.confidence,
-      });
-    });
+
+
   }
   /**
    * Identify performance patterns
@@ -615,7 +615,7 @@ export class PerformanceProfiler {
         implementation: 'Implement API response caching and request optimization',
         estimatedGain: 40,
         confidence: 85,
-      });
+
     }
     // Pattern: Excessive rendering
     const renderProfiles = profiles.filter(p => p.type === 'render');
@@ -632,7 +632,7 @@ export class PerformanceProfiler {
 // Use React.memo to prevent unnecessary re-renders
 const MyComponent = React.memo(({ data }) => {
   return <div>{data.value}</div>;
-});
+
 // Use useMemo for expensive calculations
 const expensiveValue = useMemo(() => {
   return heavyCalculation(data);
@@ -640,7 +640,7 @@ const expensiveValue = useMemo(() => {
         `,
         estimatedGain: 25,
         confidence: 75,
-      });
+
     }
     return patterns;
   }
@@ -664,9 +664,9 @@ const expensiveValue = useMemo(() => {
           implementation: bottleneck.suggestions.join('. '),
           estimatedGain: Math.min(50, bottleneck.impact),
           confidence: Math.min(90, bottleneck.frequency * 20),
-        });
+
       }
-    });
+
   }
   /**
    * Compare performance between two time periods
@@ -692,9 +692,9 @@ const expensiveValue = useMemo(() => {
           improvement,
           regression: improvement < -5, // 5% degradation threshold
           significance,
-        });
+
       }
-    });
+
     this.comparisons = comparisons;
     return comparisons;
   }
@@ -784,7 +784,7 @@ const expensiveValue = useMemo(() => {
           }
         }
       }
-    });
+
   }
   /**
    * Add a regression test
@@ -815,7 +815,7 @@ const expensiveValue = useMemo(() => {
     return [...this.bottlenecks].sort((a, b) => {
       const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
       return priorityOrder[b.priority] - priorityOrder[a.priority];
-    });
+
   }
   /**
    * Get optimization suggestions
@@ -824,7 +824,7 @@ const expensiveValue = useMemo(() => {
     return [...this.suggestions].sort((a, b) => {
       const impactOrder = { critical: 4, high: 3, medium: 2, low: 1 };
       return impactOrder[b.impact] - impactOrder[a.impact];
-    });
+
   }
   /**
    * Get performance comparisons

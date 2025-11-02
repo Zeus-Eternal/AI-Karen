@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState, FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ export const InputBox: React.FC<inputBoxProps aria-label="Input"> = ({ onSend, i
     <form onSubmit={handleSubmit} className="flex gap-2">
       <input
         value={value}
-        onChange={(event) = aria-label="Input"> setValue(event.target.value)}
+        onChange={(event) => setValue(event.target.value)}
         placeholder={placeholder}
         aria-label="Chat message"
         disabled={isLoading}

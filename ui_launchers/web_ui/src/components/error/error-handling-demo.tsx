@@ -1,47 +1,25 @@
+
+"use client";
 import React from 'react';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { 
-import {
+
 import { useProgressiveEnhancement } from '@/utils/progressive-enhancement';
 import { useFeatureDetection } from '@/utils/feature-detection';
-'use client';
 
+import { } from './section-error-boundaries';
 
-
-
-
-
-  ModernErrorBoundary,
-  SidebarErrorBoundary,
-  RightPanelErrorBoundary,
-  FormErrorBoundary,
-  ModalErrorBoundary,
-} from './section-error-boundaries';
-
-  RetryButton,
-  RetryCard,
-  RetryWrapper,
-  InlineRetry,
-  RetryBanner,
-  LoadingRetry,
-} from '../ui/retry-components';
+import { } from '../ui/retry-components';
 
   withRetry,
   useAsyncRetry,
-  RetryBoundary,
   useRetryFetch,
-} from '../ui/with-retry';
+import { } from '../ui/with-retry';
 
-  FadeAnimation,
-  SlideAnimation,
-  ScaleAnimation,
-  CollapseAnimation,
-  SpinnerAnimation,
-} from '../ui/animation-fallbacks';
+import { } from '../ui/animation-fallbacks';
 
 
 // Test components that can throw errors
@@ -63,7 +41,6 @@ const AsyncOperation = ({ shouldFail = false, delay = 1000 }) => {
     maxAttempts: 3,
     baseDelay: 1000,
     retryOnMount: true,
-  });
 
   // Focus management for accessibility
   useEffect(() => {
@@ -96,18 +73,15 @@ const FetchDemo = () => {
   const { data, error, isLoading, isRetrying, execute, retry, canRetry } = useRetryFetch(url, {}, {
     maxAttempts: 3,
     baseDelay: 1000,
-  });
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
-        <button onClick={() = aria-label="Button"> { setUrl('/api/success'); execute(); }}>
-          Test Success
+        <Button onClick={() => { setUrl('/api/success'); execute(); }}>
         </Button>
-        <button onClick={() = aria-label="Button"> { setUrl('/api/error'); execute(); }}>
-          Test Error
+        <Button onClick={() => { setUrl('/api/error'); execute(); }}>
         </Button>
-        <button onClick={() = aria-label="Button"> { setUrl('/api/timeout'); execute(); }}>
-          Test Timeout
+        <Button onClick={() => { setUrl('/api/timeout'); execute(); }}>
         </Button>
       </div>
       <LoadingRetry
@@ -196,17 +170,13 @@ const AnimationFallbackDemo = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
-        <button onClick={() = aria-label="Button"> setShowFade(!showFade)}>
-          Toggle Fade
+        <Button onClick={() => setShowFade(!showFade)}>
         </Button>
-        <button onClick={() = aria-label="Button"> setShowSlide(!showSlide)}>
-          Toggle Slide
+        <Button onClick={() => setShowSlide(!showSlide)}>
         </Button>
-        <button onClick={() = aria-label="Button"> setShowScale(!showScale)}>
-          Toggle Scale
+        <Button onClick={() => setShowScale(!showScale)}>
         </Button>
-        <button onClick={() = aria-label="Button"> setShowCollapse(!showCollapse)}>
-          Toggle Collapse
+        <Button onClick={() => setShowCollapse(!showCollapse)}>
         </Button>
       </div>
       <div className="space-y-4">
@@ -217,7 +187,6 @@ const AnimationFallbackDemo = () => {
           <CardContent>
             <FadeAnimation show={showFade}>
               <div className="p-4 bg-blue-100 rounded sm:p-4 md:p-6">
-                This content fades in and out
               </div>
             </FadeAnimation>
           </CardContent>
@@ -229,7 +198,6 @@ const AnimationFallbackDemo = () => {
           <CardContent>
             <SlideAnimation show={showSlide} direction="up">
               <div className="p-4 bg-green-100 rounded sm:p-4 md:p-6">
-                This content slides up and down
               </div>
             </SlideAnimation>
           </CardContent>
@@ -241,7 +209,6 @@ const AnimationFallbackDemo = () => {
           <CardContent>
             <ScaleAnimation show={showScale}>
               <div className="p-4 bg-purple-100 rounded sm:p-4 md:p-6">
-                This content scales in and out
               </div>
             </ScaleAnimation>
           </CardContent>
@@ -271,16 +238,15 @@ export function ErrorHandlingDemo() {
     form: false,
     modal: false,
     async: false,
-  });
+
   const toggleError = (component: keyof typeof errorStates) => {
     setErrorStates(prev => ({ ...prev, [component]: !prev[component] }));
   };
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6 sm:w-auto md:w-full">
+    <div className="max-w-6xl mx-auto p-6 space-y-6 ">
       <div className="text-center">
         <h1 className="text-3xl font-bold mb-2">Error Handling & Graceful Degradation Demo</h1>
         <p className="text-muted-foreground">
-          Comprehensive demonstration of modern error handling, retry mechanisms, and progressive enhancement
         </p>
       </div>
       <Tabs defaultValue="error-boundaries" className="w-full">
@@ -297,11 +263,10 @@ export function ErrorHandlingDemo() {
               <CardHeader>
                 <CardTitle>Sidebar Error Boundary</CardTitle>
                 <CardDescription>
-                  Specialized error boundary for sidebar components
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <button onClick={() = aria-label="Button"> toggleError('sidebar')}>
+                <Button onClick={() => toggleError('sidebar')}>
                   {errorStates.sidebar ? 'Fix Sidebar' : 'Break Sidebar'}
                 </Button>
                 <SidebarErrorBoundary>
@@ -313,11 +278,10 @@ export function ErrorHandlingDemo() {
               <CardHeader>
                 <CardTitle>Right Panel Error Boundary</CardTitle>
                 <CardDescription>
-                  Specialized error boundary for right panel components
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <button onClick={() = aria-label="Button"> toggleError('rightPanel')}>
+                <Button onClick={() => toggleError('rightPanel')}>
                   {errorStates.rightPanel ? 'Fix Panel' : 'Break Panel'}
                 </Button>
                 <RightPanelErrorBoundary>
@@ -329,11 +293,10 @@ export function ErrorHandlingDemo() {
               <CardHeader>
                 <CardTitle>Form Error Boundary</CardTitle>
                 <CardDescription>
-                  Specialized error boundary for form components
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <button onClick={() = aria-label="Button"> toggleError('form')}>
+                <Button onClick={() => toggleError('form')}>
                   {errorStates.form ? 'Fix Form' : 'Break Form'}
                 </Button>
                 <FormErrorBoundary>
@@ -345,11 +308,10 @@ export function ErrorHandlingDemo() {
               <CardHeader>
                 <CardTitle>Modal Error Boundary</CardTitle>
                 <CardDescription>
-                  Specialized error boundary for modal components
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <button onClick={() = aria-label="Button"> toggleError('modal')}>
+                <Button onClick={() => toggleError('modal')}>
                   {errorStates.modal ? 'Fix Modal' : 'Break Modal'}
                 </Button>
                 <ModalErrorBoundary>
@@ -365,13 +327,12 @@ export function ErrorHandlingDemo() {
               <CardHeader>
                 <CardTitle>Async Operation with Retry</CardTitle>
                 <CardDescription>
-                  Demonstrates automatic retry with exponential backoff
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex gap-2">
-                    <button onClick={() = aria-label="Button"> toggleError('async')}>
+                    <Button onClick={() => toggleError('async')}>
                       {errorStates.async ? 'Make Succeed' : 'Make Fail'}
                     </Button>
                   </div>
@@ -383,7 +344,6 @@ export function ErrorHandlingDemo() {
               <CardHeader>
                 <CardTitle>Fetch with Retry</CardTitle>
                 <CardDescription>
-                  HTTP requests with intelligent retry logic
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -394,7 +354,6 @@ export function ErrorHandlingDemo() {
               <CardHeader>
                 <CardTitle>Retry Components</CardTitle>
                 <CardDescription>
-                  Various retry UI components and patterns
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -452,7 +411,6 @@ export function ErrorHandlingDemo() {
             <CardHeader>
               <CardTitle>Animation Fallbacks</CardTitle>
               <CardDescription>
-                Graceful degradation for animations based on browser support and user preferences
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -465,7 +423,6 @@ export function ErrorHandlingDemo() {
             <CardHeader>
               <CardTitle>Comprehensive Error Handling</CardTitle>
               <CardDescription>
-                Complete error handling system with all features combined
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -484,10 +441,9 @@ export function ErrorHandlingDemo() {
                 >
                   <div className="space-y-4">
                     <p>This section demonstrates the complete error handling system.</p>
-                    <button onClick={() = aria-label="Button"> {
+                    <Button onClick={() => {
                       throw new Error('Comprehensive demo error');
                     }}>
-                      Trigger Comprehensive Error
                     </Button>
                   </div>
                 </ModernErrorBoundary>

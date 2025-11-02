@@ -62,7 +62,7 @@ export class FeatureFlagManager {
     };
     Object.values(defaultFlags).forEach((flag) => {
       this.flags.set(flag.name, flag);
-    });
+
   }
   private loadFlagsFromStorage(): void {
     try {
@@ -74,9 +74,9 @@ export class FeatureFlagManager {
             this.flags.set(name, {
               ...this.flags.get(name)!,
               ...(flag as Partial<FeatureFlag>),
-            });
+
           }
-        });
+
       }
     } catch (error) {
     }
@@ -161,7 +161,7 @@ export class FeatureFlagManager {
           callback(flag);
         } catch (error) {
         }
-      });
+
     }
   }
   // Auto-disable flags based on service health

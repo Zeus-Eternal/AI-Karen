@@ -1,9 +1,10 @@
+
+"use client";
 import React, { useState, useCallback } from 'react';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -12,35 +13,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import type { WidgetConfig, WidgetType } from '@/types/dashboard';
-'use client';
 
+import { } from '@/components/ui/dialog';
+import { } from '@/components/ui/form';
 
-
-
-
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { } from '@/components/ui/select';
 
 
 
@@ -62,7 +39,7 @@ const baseWidgetSchema = z.object({
   size: z.enum(['small', 'medium', 'large', 'full']),
   refreshInterval: z.number().min(1000).max(300000).optional(),
   enabled: z.boolean(),
-});
+
 // Widget-specific schemas
 const metricWidgetSchema = baseWidgetSchema.extend({
   config: z.object({
@@ -76,7 +53,7 @@ const metricWidgetSchema = baseWidgetSchema.extend({
     }).optional(),
     showTrend: z.boolean().default(true),
   }),
-});
+
 const statusWidgetSchema = baseWidgetSchema.extend({
   config: z.object({
     service: z.string().min(1, 'Service is required'),
@@ -85,7 +62,7 @@ const statusWidgetSchema = baseWidgetSchema.extend({
     showDetails: z.boolean().default(true),
     showHistory: z.boolean().default(true),
   }),
-});
+
 const chartWidgetSchema = baseWidgetSchema.extend({
   config: z.object({
     dataSource: z.string().min(1, 'Data source is required'),
@@ -95,7 +72,7 @@ const chartWidgetSchema = baseWidgetSchema.extend({
     showLegend: z.boolean().default(true),
     enableZoom: z.boolean().default(true),
   }),
-});
+
 const logWidgetSchema = baseWidgetSchema.extend({
   config: z.object({
     logSource: z.string().min(1, 'Log source is required'),
@@ -104,7 +81,7 @@ const logWidgetSchema = baseWidgetSchema.extend({
     autoScroll: z.boolean().default(true),
     showMetadata: z.boolean().default(false),
   }),
-});
+
 const getSchemaForType = (type: WidgetType) => {
   switch (type) {
     case 'metric':
@@ -131,7 +108,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
   const form = useForm<WidgetConfig>({
     resolver: zodResolver(schema) as any,
     defaultValues: config,
-  });
+
   const handleSave = useCallback((data: WidgetConfig) => {
     onSave(data);
     onClose();
@@ -194,7 +171,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                     <input placeholder="e.g., cpu_usage, memory_usage" {...field} />
                   </FormControl>
                   <FormDescription>
-                    The specific metric to display
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -250,7 +226,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                           type="number" 
                           placeholder="Warning threshold"
                           {...field}
-                          onChange={(e) = aria-label="Input"> field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -268,7 +244,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                           type="number" 
                           placeholder="Critical threshold"
                           {...field}
-                          onChange={(e) = aria-label="Input"> field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -285,7 +261,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Show Trend</FormLabel>
                     <FormDescription>
-                      Display trend indicators and percentage changes
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -335,7 +310,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                     <input placeholder="https://api.example.com/health" {...field} />
                   </FormControl>
                   <FormDescription>
-                    Custom endpoint for health checks
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -373,7 +347,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Show Details</FormLabel>
                     <FormDescription>
-                      Display additional service details
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -393,7 +366,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Show History</FormLabel>
                     <FormDescription>
-                      Display status history indicators
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -488,11 +460,10 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                     <textarea
                       placeholder="Enter series names, one per line"
                       value={field.value?.join('\n') || ''}
-                      onChange={(e) = aria-label="Textarea"> field.onChange(e.target.value.split('\n').filter(Boolean))}
+                      onChange={(e) => field.onChange(e.target.value.split('\n').filter(Boolean))}
                     />
                   </FormControl>
                   <FormDescription>
-                    Enter each data series on a new line
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -506,7 +477,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Show Legend</FormLabel>
                     <FormDescription>
-                      Display chart legend
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -526,7 +496,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Enable Zoom</FormLabel>
                     <FormDescription>
-                      Allow zooming and panning
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -592,7 +561,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                     ))}
                   </div>
                   <FormDescription>
-                    Click to toggle log levels
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -630,7 +598,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Auto Scroll</FormLabel>
                     <FormDescription>
-                      Automatically scroll to new entries
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -650,7 +617,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Show Metadata</FormLabel>
                     <FormDescription>
-                      Display additional log metadata
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -670,7 +636,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
   };
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto sm:w-auto md:w-full">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto ">
         <DialogHeader>
           <DialogTitle>Configure Widget</DialogTitle>
           <DialogDescription>
@@ -750,7 +716,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">Enabled</FormLabel>
                       <FormDescription>
-                        Enable or disable this widget
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -770,16 +735,13 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
               {renderTypeSpecificFields()}
             </div>
             <DialogFooter className="gap-2">
-              <button type="button" variant="outline" onClick={onClose} aria-label="Button">
-                Cancel
+              <Button type="button" variant="outline" onClick={onClose} >
               </Button>
               {onPreview && (
-                <button type="button" variant="outline" onClick={handlePreview} aria-label="Button">
-                  Preview
+                <Button type="button" variant="outline" onClick={handlePreview} >
                 </Button>
               )}
               <button type="submit" aria-label="Submit form">
-                Save Changes
               </Button>
             </DialogFooter>
           </form>

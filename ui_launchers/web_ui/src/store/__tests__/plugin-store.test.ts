@@ -17,7 +17,6 @@ vi.mock('../plugin-store', async () => {
     ...actual,
     // We'll override the store implementation in tests
   };
-});
 
 describe('Plugin Store', () => {
   const mockPlugin: PluginInfo = {
@@ -110,9 +109,8 @@ describe('Plugin Store', () => {
         view: 'list',
         showInstallationWizard: false,
         showMarketplace: false,
-      });
-    });
-  });
+
+
 
   describe('Initial State', () => {
     it('should have correct initial state', () => {
@@ -131,8 +129,7 @@ describe('Plugin Store', () => {
       expect(result.current.view).toBe('list');
       expect(result.current.showInstallationWizard).toBe(false);
       expect(result.current.showMarketplace).toBe(false);
-    });
-  });
+
 
   describe('Plugin Selection', () => {
     it('should select a plugin', () => {
@@ -140,27 +137,22 @@ describe('Plugin Store', () => {
       
       act(() => {
         result.current.selectPlugin(mockPlugin);
-      });
-      
+
       expect(result.current.selectedPlugin).toEqual(mockPlugin);
-    });
 
     it('should deselect a plugin', () => {
       const { result } = renderHook(() => usePluginStore());
       
       act(() => {
         result.current.selectPlugin(mockPlugin);
-      });
-      
+
       expect(result.current.selectedPlugin).toEqual(mockPlugin);
       
       act(() => {
         result.current.selectPlugin(null);
-      });
-      
+
       expect(result.current.selectedPlugin).toBeNull();
-    });
-  });
+
 
   describe('Search and Filtering', () => {
     it('should update search query', () => {
@@ -168,52 +160,43 @@ describe('Plugin Store', () => {
       
       act(() => {
         result.current.setSearchQuery('test query');
-      });
-      
+
       expect(result.current.searchQuery).toBe('test query');
-    });
 
     it('should update filters', () => {
       const { result } = renderHook(() => usePluginStore());
       
       act(() => {
         result.current.setFilters({ status: ['active'], enabled: true });
-      });
-      
+
       expect(result.current.filters).toEqual({
         status: ['active'],
         enabled: true,
-      });
-    });
+
 
     it('should merge filters when updating', () => {
       const { result } = renderHook(() => usePluginStore());
       
       act(() => {
         result.current.setFilters({ status: ['active'] });
-      });
-      
+
       act(() => {
         result.current.setFilters({ enabled: true });
-      });
-      
+
       expect(result.current.filters).toEqual({
         status: ['active'],
         enabled: true,
-      });
-    });
+
 
     it('should update sorting', () => {
       const { result } = renderHook(() => usePluginStore());
       
       act(() => {
         result.current.setSorting('version', 'desc');
-      });
-      
+
       expect(result.current.sortBy).toBe('version');
       expect(result.current.sortOrder).toBe('desc');
-    });
-  });
+
 
   describe('View Management', () => {
     it('should update view mode', () => {
@@ -221,43 +204,35 @@ describe('Plugin Store', () => {
       
       act(() => {
         result.current.setView('grid');
-      });
-      
+
       expect(result.current.view).toBe('grid');
-    });
 
     it('should toggle installation wizard', () => {
       const { result } = renderHook(() => usePluginStore());
       
       act(() => {
         result.current.setShowInstallationWizard(true);
-      });
-      
+
       expect(result.current.showInstallationWizard).toBe(true);
       
       act(() => {
         result.current.setShowInstallationWizard(false);
-      });
-      
+
       expect(result.current.showInstallationWizard).toBe(false);
-    });
 
     it('should toggle marketplace', () => {
       const { result } = renderHook(() => usePluginStore());
       
       act(() => {
         result.current.setShowMarketplace(true);
-      });
-      
+
       expect(result.current.showMarketplace).toBe(true);
       
       act(() => {
         result.current.setShowMarketplace(false);
-      });
-      
+
       expect(result.current.showMarketplace).toBe(false);
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should set and clear errors', () => {
@@ -265,16 +240,13 @@ describe('Plugin Store', () => {
       
       act(() => {
         result.current.setError('test-error', 'Test error message');
-      });
-      
+
       expect(result.current.errors['test-error']).toBe('Test error message');
       
       act(() => {
         result.current.setError('test-error', null);
-      });
-      
+
       expect(result.current.errors['test-error']).toBeUndefined();
-    });
 
     it('should clear all errors', () => {
       const { result } = renderHook(() => usePluginStore());
@@ -282,31 +254,26 @@ describe('Plugin Store', () => {
       act(() => {
         result.current.setError('error1', 'Error 1');
         result.current.setError('error2', 'Error 2');
-      });
-      
+
       expect(result.current.errors['error1']).toBe('Error 1');
       expect(result.current.errors['error2']).toBe('Error 2');
       
       act(() => {
         result.current.clearErrors();
-      });
-      
+
       expect(result.current.errors.plugins).toBeNull();
       expect(result.current.errors.installation).toBeNull();
       expect(result.current.errors.marketplace).toBeNull();
-    });
-  });
+
 
   describe('Plugin Operations', () => {
     beforeEach(() => {
       // Mock the API calls to resolve immediately
       vi.clearAllTimers();
       vi.useFakeTimers();
-    });
 
     afterEach(() => {
       vi.useRealTimers();
-    });
 
     it('should load plugins successfully', async () => {
       const { result } = renderHook(() => usePluginStore());
@@ -316,12 +283,10 @@ describe('Plugin Store', () => {
         usePluginStore.setState({
           plugins: [mockPlugin],
           loading: { ...result.current.loading, plugins: false },
-        });
-      });
-      
+
+
       expect(result.current.plugins).toEqual([mockPlugin]);
       expect(result.current.loading.plugins).toBe(false);
-    });
 
     it('should handle plugin loading error', async () => {
       const { result } = renderHook(() => usePluginStore());
@@ -330,12 +295,10 @@ describe('Plugin Store', () => {
         usePluginStore.setState({
           loading: { ...result.current.loading, plugins: false },
           errors: { ...result.current.errors, plugins: 'Failed to load plugins' },
-        });
-      });
-      
+
+
       expect(result.current.errors.plugins).toBe('Failed to load plugins');
       expect(result.current.loading.plugins).toBe(false);
-    });
 
     it('should enable a plugin', async () => {
       const { result } = renderHook(() => usePluginStore());
@@ -345,20 +308,17 @@ describe('Plugin Store', () => {
       act(() => {
         usePluginStore.setState({
           plugins: [disabledPlugin],
-        });
-      });
-      
+
+
       // Simulate enabling the plugin
       act(() => {
         const updatedPlugin = { ...disabledPlugin, enabled: true, status: 'active' as const };
         usePluginStore.setState({
           plugins: [updatedPlugin],
-        });
-      });
-      
+
+
       expect(result.current.plugins[0].enabled).toBe(true);
       expect(result.current.plugins[0].status).toBe('active');
-    });
 
     it('should disable a plugin', async () => {
       const { result } = renderHook(() => usePluginStore());
@@ -367,20 +327,17 @@ describe('Plugin Store', () => {
       act(() => {
         usePluginStore.setState({
           plugins: [mockPlugin],
-        });
-      });
-      
+
+
       // Simulate disabling the plugin
       act(() => {
         const updatedPlugin = { ...mockPlugin, enabled: false, status: 'inactive' as const };
         usePluginStore.setState({
           plugins: [updatedPlugin],
-        });
-      });
-      
+
+
       expect(result.current.plugins[0].enabled).toBe(false);
       expect(result.current.plugins[0].status).toBe('inactive');
-    });
 
     it('should uninstall a plugin', async () => {
       const { result } = renderHook(() => usePluginStore());
@@ -390,21 +347,18 @@ describe('Plugin Store', () => {
         usePluginStore.setState({
           plugins: [mockPlugin],
           selectedPlugin: mockPlugin,
-        });
-      });
-      
+
+
       // Simulate uninstalling the plugin
       act(() => {
         usePluginStore.setState({
           plugins: [],
           selectedPlugin: null,
-        });
-      });
-      
+
+
       expect(result.current.plugins).toEqual([]);
       expect(result.current.selectedPlugin).toBeNull();
-    });
-  });
+
 
   describe('Filtered Plugins Selector', () => {
     const plugins: PluginInfo[] = [
@@ -462,7 +416,6 @@ describe('Plugin Store', () => {
       const filtered = selectFilteredPlugins(state as any);
       expect(filtered).toHaveLength(1);
       expect(filtered[0].name).toBe('Weather Plugin');
-    });
 
     it('should filter plugins by status', () => {
       const state = {
@@ -476,7 +429,6 @@ describe('Plugin Store', () => {
       const filtered = selectFilteredPlugins(state as any);
       expect(filtered).toHaveLength(1);
       expect(filtered[0].status).toBe('active');
-    });
 
     it('should filter plugins by category', () => {
       const state = {
@@ -490,7 +442,6 @@ describe('Plugin Store', () => {
       const filtered = selectFilteredPlugins(state as any);
       expect(filtered).toHaveLength(1);
       expect(filtered[0].manifest.category).toBe('analytics');
-    });
 
     it('should filter plugins by enabled status', () => {
       const state = {
@@ -504,7 +455,6 @@ describe('Plugin Store', () => {
       const filtered = selectFilteredPlugins(state as any);
       expect(filtered).toHaveLength(2);
       expect(filtered.every(p => p.enabled)).toBe(true);
-    });
 
     it('should filter plugins with errors', () => {
       const state = {
@@ -518,7 +468,6 @@ describe('Plugin Store', () => {
       const filtered = selectFilteredPlugins(state as any);
       expect(filtered).toHaveLength(1);
       expect(filtered[0].lastError).toBeDefined();
-    });
 
     it('should sort plugins by name ascending', () => {
       const state = {
@@ -533,7 +482,6 @@ describe('Plugin Store', () => {
       expect(filtered[0].name).toBe('Analytics Plugin');
       expect(filtered[1].name).toBe('Email Plugin');
       expect(filtered[2].name).toBe('Weather Plugin');
-    });
 
     it('should sort plugins by name descending', () => {
       const state = {
@@ -548,7 +496,6 @@ describe('Plugin Store', () => {
       expect(filtered[0].name).toBe('Weather Plugin');
       expect(filtered[1].name).toBe('Email Plugin');
       expect(filtered[2].name).toBe('Analytics Plugin');
-    });
 
     it('should sort plugins by status', () => {
       const state = {
@@ -563,7 +510,6 @@ describe('Plugin Store', () => {
       expect(filtered[0].status).toBe('active');
       expect(filtered[1].status).toBe('error');
       expect(filtered[2].status).toBe('inactive');
-    });
 
     it('should combine search and filters', () => {
       const state = {
@@ -578,6 +524,5 @@ describe('Plugin Store', () => {
       expect(filtered).toHaveLength(2);
       expect(filtered.every(p => p.enabled)).toBe(true);
       expect(filtered.every(p => p.name.toLowerCase().includes('plugin'))).toBe(true);
-    });
-  });
-});
+
+

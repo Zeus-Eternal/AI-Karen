@@ -60,7 +60,6 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
-});
 
 // Test wrapper with all providers
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -69,7 +68,6 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       queries: { retry: false },
       mutations: { retry: false },
     },
-  });
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -93,7 +91,6 @@ describe('UI System Integration Tests', () => {
     vi.clearAllMocks();
     // Reset store state
     useUIStore.getState().reset?.();
-  });
 
   describe('Complete User Workflows', () => {
     it('should handle complete form submission workflow', async () => {
@@ -130,7 +127,6 @@ describe('UI System Integration Tests', () => {
                   </Form.Field>
                   <Form.Actions>
                     <InteractiveButton type="submit" data-testid="submit-btn">
-                      Submit
                     </InteractiveButton>
                   </Form.Actions>
                 </Form.Root>
@@ -158,8 +154,7 @@ describe('UI System Integration Tests', () => {
             email: 'john@example.com',
           })
         );
-      });
-    });
+
 
     it('should handle modal workflow with focus management', async () => {
       const user = userEvent.setup();
@@ -174,7 +169,6 @@ describe('UI System Integration Tests', () => {
                 onClick={() => setIsOpen(true)}
                 data-testid="open-modal"
               >
-                Open Modal
               </InteractiveButton>
               
               <Modal.Root open={isOpen} onOpenChange={setIsOpen}>
@@ -191,14 +185,12 @@ describe('UI System Integration Tests', () => {
                       onClick={() => setIsOpen(false)}
                       data-testid="cancel-btn"
                     >
-                      Cancel
                     </InteractiveButton>
                     <InteractiveButton
                       variant="primary"
                       onClick={() => setIsOpen(false)}
                       data-testid="confirm-btn"
                     >
-                      Confirm
                     </InteractiveButton>
                   </Modal.Actions>
                 </Modal.Content>
@@ -230,11 +222,9 @@ describe('UI System Integration Tests', () => {
 
       await waitFor(() => {
         expect(modal).not.toBeInTheDocument();
-      });
 
       // Focus should return to trigger
       expect(openButton).toHaveFocus();
-    });
 
     it('should handle responsive layout changes', async () => {
       const user = userEvent.setup();
@@ -249,7 +239,6 @@ describe('UI System Integration Tests', () => {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
-      });
 
       window.matchMedia = vi.fn().mockImplementation(mockMatchMedia);
 
@@ -287,9 +276,8 @@ describe('UI System Integration Tests', () => {
 
       cards.forEach(card => {
         expect(card).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('State Management Integration', () => {
     it('should integrate with UI store for theme changes', async () => {
@@ -305,7 +293,6 @@ describe('UI System Integration Tests', () => {
               onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
               data-testid="theme-toggle"
             >
-              Toggle Theme
             </InteractiveButton>
           </TestWrapper>
         );
@@ -325,7 +312,6 @@ describe('UI System Integration Tests', () => {
 
       await user.click(toggleButton);
       expect(themeDisplay).toHaveTextContent('dark');
-    });
 
     it('should integrate with UI store for sidebar state', async () => {
       const user = userEvent.setup();
@@ -342,7 +328,6 @@ describe('UI System Integration Tests', () => {
               onClick={toggleSidebar}
               data-testid="sidebar-toggle"
             >
-              Toggle Sidebar
             </InteractiveButton>
           </TestWrapper>
         );
@@ -362,7 +347,6 @@ describe('UI System Integration Tests', () => {
 
       await user.click(toggleButton);
       expect(sidebarState).toHaveTextContent('expanded');
-    });
 
     it('should integrate with right panel state management', async () => {
       const user = userEvent.setup();
@@ -378,19 +362,16 @@ describe('UI System Integration Tests', () => {
                   onClick={() => setRightPanelView('dashboard')}
                   data-testid="dashboard-btn"
                 >
-                  Dashboard
                 </InteractiveButton>
                 <InteractiveButton
                   onClick={() => setRightPanelView('settings')}
                   data-testid="settings-btn"
                 >
-                  Settings
                 </InteractiveButton>
                 <InteractiveButton
                   onClick={() => setRightPanelView('analytics')}
                   data-testid="analytics-btn"
                 >
-                  Analytics
                 </InteractiveButton>
               </div>
               <RightPanel
@@ -420,15 +401,13 @@ describe('UI System Integration Tests', () => {
       await user.click(settingsBtn);
       await waitFor(() => {
         expect(screen.getByText('Settings Content')).toBeInTheDocument();
-      });
 
       // Switch to analytics
       await user.click(analyticsBtn);
       await waitFor(() => {
         expect(screen.getByText('Analytics Content')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Error Handling and Recovery', () => {
     it('should handle component errors gracefully', async () => {
@@ -450,7 +429,6 @@ describe('UI System Integration Tests', () => {
               onClick={() => setHasError(true)}
               data-testid="trigger-error"
             >
-              Trigger Error
             </InteractiveButton>
             <ErrorComponent shouldError={hasError} />
           </TestWrapper>
@@ -470,10 +448,8 @@ describe('UI System Integration Tests', () => {
       // Should show error boundary
       await waitFor(() => {
         expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-      });
 
       consoleError.mockRestore();
-    });
 
     it('should handle async errors with retry mechanism', async () => {
       const user = userEvent.setup();
@@ -515,7 +491,6 @@ describe('UI System Integration Tests', () => {
                     onClick={fetchData}
                     data-testid="retry-btn"
                   >
-                    Retry
                   </InteractiveButton>
                 </div>
               )}
@@ -525,7 +500,6 @@ describe('UI System Integration Tests', () => {
                   onClick={fetchData}
                   data-testid="load-btn"
                 >
-                  Load Data
                 </InteractiveButton>
               )}
             </div>
@@ -545,7 +519,6 @@ describe('UI System Integration Tests', () => {
       // Should show error
       await waitFor(() => {
         expect(screen.getByText('Error: Network error')).toBeInTheDocument();
-      });
 
       // Retry should succeed
       const retryButton = screen.getByTestId('retry-btn');
@@ -553,9 +526,8 @@ describe('UI System Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Data: Success data')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Responsive Behavior', () => {
     it('should adapt layout based on container size', async () => {
@@ -576,7 +548,6 @@ describe('UI System Integration Tests', () => {
         }, 100);
         
         return mockObserver;
-      });
 
       const ResponsiveDemo = () => {
         const [containerSize, setContainerSize] = React.useState('small');
@@ -621,8 +592,7 @@ describe('UI System Integration Tests', () => {
       // Wait for size change
       await waitFor(() => {
         expect(screen.getByText('Container size: large')).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle touch interactions on mobile', async () => {
       // Mock touch events
@@ -640,7 +610,6 @@ describe('UI System Integration Tests', () => {
               onTouchStart={() => setTouchCount(c => c + 1)}
               data-testid="touch-button"
             >
-              Touch me
             </InteractiveButton>
             <div data-testid="touch-count">Touches: {touchCount}</div>
           </TestWrapper>
@@ -657,9 +626,8 @@ describe('UI System Integration Tests', () => {
 
       await waitFor(() => {
         expect(counter).toHaveTextContent('Touches: 1');
-      });
-    });
-  });
+
+
 
   describe('Performance Integration', () => {
     it('should handle large datasets efficiently', async () => {
@@ -719,15 +687,13 @@ describe('UI System Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('item-count')).toHaveTextContent('Showing 1 items');
-      });
 
       // Clear filter
       await user.clear(filterInput);
 
       await waitFor(() => {
         expect(screen.getByTestId('item-count')).toHaveTextContent('Showing 1000 items');
-      });
-    });
+
 
     it('should optimize re-renders with proper memoization', async () => {
       const renderCount = { parent: 0, child: 0 };
@@ -735,7 +701,6 @@ describe('UI System Integration Tests', () => {
       const ChildComponent = React.memo(({ value }: { value: string }) => {
         renderCount.child++;
         return <div data-testid="child-value">{value}</div>;
-      });
 
       const ParentComponent = () => {
         renderCount.parent++;
@@ -772,7 +737,6 @@ describe('UI System Integration Tests', () => {
         expect(screen.getByTestId('parent-renders')).toHaveTextContent('Parent renders: 2');
         // Child should not re-render due to memoization
         expect(screen.getByTestId('child-renders')).toHaveTextContent('Child renders: 1');
-      });
-    });
-  });
-});
+
+
+

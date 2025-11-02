@@ -7,7 +7,7 @@
  * Requirements: 7.2, 7.5
  */
 
-'use client';
+"use client";
 
 import React from 'react';
 import { X, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
@@ -69,15 +69,15 @@ export function ProgressIndicator({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'running':
-        return <Loader2 className="h-5 w-5 animate-spin text-blue-600 sm:w-auto md:w-full" />;
+        return <Loader2 className="h-5 w-5 animate-spin text-blue-600 " />;
       case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle className="h-5 w-5 text-green-600 " />;
       case 'failed':
-        return <XCircle className="h-5 w-5 text-red-600 sm:w-auto md:w-full" />;
+        return <XCircle className="h-5 w-5 text-red-600 " />;
       case 'cancelled':
-        return <AlertCircle className="h-5 w-5 text-yellow-600 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-5 w-5 text-yellow-600 " />;
       default:
-        return <div className="h-5 w-5 rounded-full bg-gray-300 sm:w-auto md:w-full" />;
+        return <div className="h-5 w-5 rounded-full bg-gray-300 " />;
     }
   };
 
@@ -126,7 +126,6 @@ export function ProgressIndicator({
               className="px-3 py-1 text-sm font-medium text-red-600 border border-red-300 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 md:text-base lg:text-lg"
               aria-label="Cancel operation"
             >
-              Cancel
             </button>
           )}
           
@@ -136,7 +135,7 @@ export function ProgressIndicator({
               className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
               aria-label="Close progress indicator"
             >
-              <X className="h-5 w-5 sm:w-auto md:w-full" />
+              <X className="h-5 w-5 " />
             </button>
           )}
         </div>
@@ -146,7 +145,6 @@ export function ProgressIndicator({
       <div className="p-4 sm:p-4 md:p-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-gray-700 md:text-base lg:text-lg">
-            Progress
           </span>
           <span className="text-sm text-gray-600 md:text-base lg:text-lg">
             {overallProgress}%
@@ -207,13 +205,12 @@ export function ProgressIndicator({
         <div className="border-t border-gray-200">
           <div className="p-4 sm:p-4 md:p-6">
             <h4 className="text-sm font-medium text-gray-900 mb-3 md:text-base lg:text-lg">
-              Operation Steps
             </h4>
             <div className="space-y-2">
               {progress.steps.map((step) => (
                 <div key={step.id} className="flex items-center space-x-3">
                   {getStatusIcon(step.status)}
-                  <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                  <div className="flex-1 min-w-0 ">
                     <div className="flex items-center justify-between">
                       <span className={`text-sm font-medium ${getStatusColor(step.status)}`}>
                         {step.label}
@@ -247,7 +244,7 @@ export function ProgressIndicator({
         <div className="border-t border-gray-200">
           <div className="p-4 sm:p-4 md:p-6">
             <button
-              onClick={() = aria-label="Button"> setShowErrorDetails(!showErrorDetails)}
+              onClick={() => setShowErrorDetails(!showErrorDetails)}
               className="flex items-center justify-between w-full text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
             >
               <h4 className="text-sm font-medium text-red-600 md:text-base lg:text-lg">

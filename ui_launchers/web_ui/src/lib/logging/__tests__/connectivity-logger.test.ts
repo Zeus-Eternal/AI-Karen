@@ -27,7 +27,6 @@ const mockSessionStorage = {
 
 Object.defineProperty(window, 'sessionStorage', {
   value: mockSessionStorage
-});
 
 describe('ConnectivityLogger', () => {
   let logger: ConnectivityLogger;
@@ -38,12 +37,10 @@ describe('ConnectivityLogger', () => {
       enableConsoleLogging: true,
       enableRemoteLogging: false,
       logLevel: 'debug'
-    });
-  });
+
 
   afterEach(() => {
     logger.stopAutoFlush();
-  });
 
   describe('logConnectivity', () => {
     it('should log connectivity issues with proper structure', () => {
@@ -76,7 +73,6 @@ describe('ConnectivityLogger', () => {
           })
         })
       );
-    });
 
     it('should determine correct subcategory based on error type', () => {
       const timeoutError = new Error('Request timeout');
@@ -96,8 +92,7 @@ describe('ConnectivityLogger', () => {
           subcategory: 'timeout'
         })
       );
-    });
-  });
+
 
   describe('logAuthentication', () => {
     it('should log authentication attempts with sanitized email', () => {
@@ -126,7 +121,6 @@ describe('ConnectivityLogger', () => {
           })
         })
       );
-    });
 
     it('should handle authentication failures', () => {
       const authData = {
@@ -158,8 +152,7 @@ describe('ConnectivityLogger', () => {
           })
         })
       );
-    });
-  });
+
 
   describe('logPerformance', () => {
     it('should log performance metrics', () => {
@@ -186,13 +179,11 @@ describe('ConnectivityLogger', () => {
           performanceData
         })
       );
-    });
 
     it('should skip performance logging when disabled', () => {
       const disabledLogger = new ConnectivityLogger({
         enablePerformanceMetrics: false
-      });
-      
+
       disabledLogger.logPerformance(
         'info',
         'Performance test',
@@ -200,8 +191,7 @@ describe('ConnectivityLogger', () => {
       );
       
       expect(mockConsole.info).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('logError', () => {
     it('should log general errors with context', () => {
@@ -230,16 +220,14 @@ describe('ConnectivityLogger', () => {
           })
         })
       );
-    });
-  });
+
 
   describe('log level filtering', () => {
     it('should respect log level configuration', () => {
       const warnLogger = new ConnectivityLogger({
         logLevel: 'warn',
         enableConsoleLogging: true
-      });
-      
+
       // Debug and info should be filtered out
       warnLogger.logConnectivity('debug', 'Debug message', { url: 'test', method: 'GET' });
       warnLogger.logConnectivity('info', 'Info message', { url: 'test', method: 'GET' });
@@ -253,8 +241,7 @@ describe('ConnectivityLogger', () => {
       
       expect(mockConsole.warn).toHaveBeenCalled();
       expect(mockConsole.error).toHaveBeenCalled();
-    });
-  });
+
 
   describe('remote logging', () => {
     it('should buffer logs for remote sending', () => {
@@ -262,8 +249,7 @@ describe('ConnectivityLogger', () => {
         enableRemoteLogging: true,
         remoteEndpoint: 'https://logs.example.com/api/logs',
         batchSize: 2
-      });
-      
+
       remoteLogger.logConnectivity('info', 'Test 1', { url: 'test1', method: 'GET' });
       remoteLogger.logConnectivity('info', 'Test 2', { url: 'test2', method: 'GET' });
       
@@ -276,7 +262,6 @@ describe('ConnectivityLogger', () => {
           body: expect.stringContaining('"logs"')
         })
       );
-    });
 
     it('should handle remote logging failures gracefully', async () => {
       (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
@@ -285,8 +270,7 @@ describe('ConnectivityLogger', () => {
         enableRemoteLogging: true,
         remoteEndpoint: 'https://logs.example.com/api/logs',
         batchSize: 1
-      });
-      
+
       // Should not throw error
       remoteLogger.logConnectivity('info', 'Test', { url: 'test', method: 'GET' });
       
@@ -297,8 +281,7 @@ describe('ConnectivityLogger', () => {
         'Failed to send logs to remote endpoint:',
         expect.any(Error)
       );
-    });
-  });
+
 
   describe('configuration management', () => {
     it('should update configuration', () => {
@@ -309,7 +292,6 @@ describe('ConnectivityLogger', () => {
       
       const updatedConfig = logger.getConfig();
       expect(updatedConfig.logLevel).toBe('error');
-    });
 
     it('should start auto flush when remote logging is enabled', () => {
       const spy = jest.spyOn(logger as any, 'startAutoFlush');
@@ -317,11 +299,9 @@ describe('ConnectivityLogger', () => {
       logger.updateConfig({
         enableRemoteLogging: true,
         flushInterval: 1000
-      });
-      
+
       expect(spy).toHaveBeenCalled();
-    });
-  });
+
 
   describe('correlation tracking integration', () => {
     it('should include correlation ID in log context', () => {
@@ -339,20 +319,17 @@ describe('ConnectivityLogger', () => {
           })
         })
       );
-    });
-  });
+
 
   describe('email sanitization', () => {
     it('should sanitize short emails', () => {
       const logger = new ConnectivityLogger();
       const sanitized = (logger as any).sanitizeEmail('ab@example.com');
       expect(sanitized).toBe('ab***@example.com');
-    });
 
     it('should sanitize longer emails', () => {
       const logger = new ConnectivityLogger();
       const sanitized = (logger as any).sanitizeEmail('longuser@example.com');
       expect(sanitized).toBe('lo***@example.com');
-    });
-  });
-});
+
+

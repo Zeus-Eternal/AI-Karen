@@ -1,8 +1,7 @@
 "use client"
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
-
+import * as React from "react";
+import { cn } from "@/lib/utils";
 // Text component variants and sizes
 type TextVariant = "default" | "muted" | "accent" | "destructive" | "success" | "warning"
 type TextSize = "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl" | "4xl"
@@ -22,7 +21,6 @@ interface TextProps {
 
 // Polymorphic Text Component
 const Text = React.forwardRef<
-  HTMLSpanElement,
   TextProps & React.HTMLAttributes<HTMLSpanElement> & { as?: React.ElementType }
 >(
   (
@@ -117,7 +115,6 @@ const Heading = React.forwardRef<
 Heading.displayName = "Heading"
 
 const Paragraph = React.forwardRef<
-  HTMLParagraphElement,
   TextProps & React.HTMLAttributes<HTMLParagraphElement> & { as?: "p" }
 >(({ as = "p", size = "base", ...props }, ref) => (
   <Text as={as} ref={ref} size={size} {...props} />
@@ -125,7 +122,6 @@ const Paragraph = React.forwardRef<
 Paragraph.displayName = "Paragraph"
 
 const Label = React.forwardRef<
-  HTMLLabelElement,
   TextProps & React.HTMLAttributes<HTMLLabelElement> & { as?: "label" }
 >(({ as = "label", size = "sm", weight = "medium", ...props }, ref) => (
   <Text as={as} ref={ref} size={size} weight={weight} {...props} />
@@ -133,7 +129,6 @@ const Label = React.forwardRef<
 Label.displayName = "Label"
 
 const Caption = React.forwardRef<
-  HTMLSpanElement,
   TextProps & React.HTMLAttributes<HTMLSpanElement> & { as?: "span" }
 >(({ as = "span", size = "xs", variant = "muted", ...props }, ref) => (
   <Text as={as} ref={ref} size={size} variant={variant} {...props} />
@@ -141,7 +136,6 @@ const Caption = React.forwardRef<
 Caption.displayName = "Caption"
 
 const Code = React.forwardRef<
-  HTMLElement,
   TextProps & React.HTMLAttributes<HTMLElement> & { as?: "code" }
 >(({ as = "code", className, ...props }, ref) => (
   <Text
@@ -157,18 +151,7 @@ const Code = React.forwardRef<
 Code.displayName = "Code"
 
 export {
-  Text,
-  Heading,
-  Paragraph,
-  Label,
-  Caption,
-  Code,
 }
 
 export type {
-  TextProps,
-  TextVariant,
-  TextSize,
-  TextWeight,
-  TextAlign,
 }

@@ -189,7 +189,7 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
         <Card>
           <CardContent className="p-6 sm:p-4 md:p-6">
             <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 sm:w-auto md:w-full"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 "></div>
               <span className="ml-2 text-muted-foreground">Loading system health...</span>
             </div>
           </CardContent>
@@ -203,7 +203,6 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
         <Card>
           <CardContent className="p-6 sm:p-4 md:p-6">
             <div className="text-center text-muted-foreground">
-              Failed to load system health data
             </div>
           </CardContent>
         </Card>
@@ -221,19 +220,19 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
               <Badge variant={getOverallStatusBadge(systemHealth.overall)} className="text-sm md:text-base lg:text-lg">
                 {systemHealth.overall.toUpperCase()}
               </Badge>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={fetchSystemHealth}
                 disabled={isLoading}
                 className="text-xs sm:text-sm md:text-base"
-               aria-label="Button">
+               >
                 {isLoading ? 'Refreshing...' : 'Refresh'}
               </Button>
-              <button
+              <Button
                 variant="ghost"
                 size="sm"
-                onClick={() = aria-label="Button"> setAutoRefresh(!autoRefresh)}
+                onClick={() => setAutoRefresh(!autoRefresh)}
                 className={`text-xs ${autoRefresh ? 'text-blue-600' : 'text-muted-foreground'}`}
               >
                 Auto-refresh {autoRefresh ? 'ON' : 'OFF'}

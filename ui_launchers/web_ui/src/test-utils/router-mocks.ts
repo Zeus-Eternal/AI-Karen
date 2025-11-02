@@ -47,7 +47,6 @@ export const mockLocation = {
 Object.defineProperty(window, 'location', {
   value: mockLocation,
   writable: true,
-});
 
 // Reset all mocks function for test cleanup
 export const resetRouterMocks = () => {

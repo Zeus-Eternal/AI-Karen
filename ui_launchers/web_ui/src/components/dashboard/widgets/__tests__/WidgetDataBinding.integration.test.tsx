@@ -12,7 +12,6 @@ import type { WidgetConfig, MetricData, StatusData, ChartData, LogData } from '@
 vi.mock('ag-charts-react', () => ({
   AgCharts: ({ options }: any) => (
     <div data-testid="ag-charts" data-options={JSON.stringify(options)}>
-      Mock Chart
     </div>
   ),
 }));
@@ -86,14 +85,11 @@ describe('Widget Data Binding Integration Tests', () => {
           retry: false,
         },
       },
-    });
-    
+
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     queryClient.clear();
-  });
 
   const renderWithQueryClient = (component: React.ReactElement) => {
     return render(
@@ -133,7 +129,6 @@ describe('Widget Data Binding Integration Tests', () => {
       );
 
       expect(screen.getByText('Loading...')).toBeInTheDocument();
-    });
 
     it('handles error state correctly', () => {
       const errorData = {
@@ -149,7 +144,6 @@ describe('Widget Data Binding Integration Tests', () => {
       );
 
       expect(screen.getByText('Error: Failed to fetch metric data')).toBeInTheDocument();
-    });
 
     it('updates data in real-time', async () => {
       let currentData = {
@@ -187,8 +181,7 @@ describe('Widget Data Binding Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText('75.0%')).toBeInTheDocument();
-      });
-    });
+
 
     it('triggers threshold alerts on data changes', async () => {
       let currentData = {
@@ -226,9 +219,8 @@ describe('Widget Data Binding Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Warning')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('StatusWidget Data Binding', () => {
     const statusConfig: WidgetConfig = {
@@ -283,9 +275,8 @@ describe('Widget Data Binding Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByText('Warning')).toBeInTheDocument();
         expect(screen.getByText('High response time detected')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('ChartWidget Data Binding', () => {
     const chartConfig: WidgetConfig = {
@@ -357,9 +348,8 @@ describe('Widget Data Binding Integration Tests', () => {
         const chartElement = screen.getByTestId('ag-charts');
         const optionsData = JSON.parse(chartElement.getAttribute('data-options') || '{}');
         expect(optionsData.data).toHaveLength(3);
-      });
-    });
-  });
+
+
 
   describe('LogWidget Data Binding', () => {
     const logConfig: WidgetConfig = {
@@ -432,9 +422,8 @@ describe('Widget Data Binding Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByText('High memory usage')).toBeInTheDocument();
         expect(screen.getByText('2 of 2 entries')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('WebSocket Real-time Updates', () => {
     it('handles WebSocket connection and data updates', async () => {
@@ -450,7 +439,6 @@ describe('Widget Data Binding Integration Tests', () => {
 
       await waitFor(() => {
         expect(ws.onopen).toBeDefined();
-      });
 
       // Simulate receiving widget data update
       act(() => {
@@ -462,8 +450,7 @@ describe('Widget Data Binding Integration Tests', () => {
             label: 'CPU Usage',
             format: 'percentage',
           },
-        });
-      });
+
 
       await waitFor(() => {
         expect(receivedData).toEqual({
@@ -474,10 +461,9 @@ describe('Widget Data Binding Integration Tests', () => {
             label: 'CPU Usage',
             format: 'percentage',
           },
-        });
-      });
-    });
-  });
+
+
+
 
   describe('Error Recovery', () => {
     it('recovers from network errors', async () => {
@@ -530,7 +516,6 @@ describe('Widget Data Binding Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByText('45.0%')).toBeInTheDocument();
         expect(screen.queryByText('Error: Network error')).not.toBeInTheDocument();
-      });
-    });
-  });
-});
+
+
+

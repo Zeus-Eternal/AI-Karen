@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAccessibility } from '../../providers/accessibility-provider';

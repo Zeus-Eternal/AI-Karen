@@ -1,46 +1,19 @@
+
+"use client";
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import {
 import { format, formatDistanceToNow } from 'date-fns';
-'use client';
+
+import { } from 'lucide-react';
+
+import { } from '@/components/ui/dropdown-menu';
 
 
-
-
-
-
-
-
-  MessageSquare,
-  Plus,
-  Search,
-  Filter,
-  Clock,
-  Users,
-  Tag,
-  Archive,
-  Trash2,
-  MoreHorizontal,
-  TrendingUp,
-  Brain
-} from 'lucide-react';
-
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
-
-
-  ConversationThread,
-  ThreadMetadata,
-  EnhancedChatMessage
-} from '@/types/enhanced-chat';
+import { } from '@/types/enhanced-chat';
 
 interface ConversationThreadingProps {
   threads: ConversationThread[];
@@ -80,7 +53,6 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
       const matchesFilter = filterStatus === 'all' || thread.status === filterStatus;
       
       return matchesSearch && matchesFilter;
-    });
 
     // Sort threads
     filtered.sort((a, b) => {
@@ -93,7 +65,6 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
         default:
           return b.updatedAt.getTime() - a.updatedAt.getTime();
       }
-    });
 
     return filtered;
   }, [threads, searchQuery, filterStatus, sortBy]);
@@ -143,7 +114,7 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
         onClick={() => onThreadSelect(thread.id)}
       >
         <div className="flex items-start justify-between mb-2">
-          <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+          <div className="flex-1 min-w-0 ">
             <h3 className="font-medium text-sm truncate md:text-base lg:text-lg">{thread.title}</h3>
             <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">{thread.topic}</p>
           </div>
@@ -155,8 +126,8 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button variant="ghost" size="sm" className="h-6 w-6 p-0 sm:w-auto md:w-full" aria-label="Button">
-                  <MoreHorizontal className="h-3 w-3 sm:w-auto md:w-full" />
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 " >
+                  <MoreHorizontal className="h-3 w-3 " />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -164,7 +135,7 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
                   e.stopPropagation();
                   onThreadArchive(thread.id);
                 }}>
-                  <Archive className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                  <Archive className="h-4 w-4 mr-2 " />
                   {thread.status === 'archived' ? 'Unarchive' : 'Archive'}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -175,8 +146,7 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
                   }}
                   className="text-destructive"
                 >
-                  <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Delete
+                  <Trash2 className="h-4 w-4 mr-2 " />
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -190,13 +160,13 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
           </span>
           
           <div className={`flex items-center gap-1 text-xs ${getSentimentColor(thread.metadata.sentiment)}`}>
-            <TrendingUp className="h-3 w-3 sm:w-auto md:w-full" />
+            <TrendingUp className="h-3 w-3 " />
             {thread.metadata.sentiment}
           </div>
           
           {thread.metadata.tags.length > 0 && (
             <div className="flex items-center gap-1">
-              <Tag className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
+              <Tag className="h-3 w-3 text-muted-foreground " />
               <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {thread.metadata.tags.slice(0, 2).join(', ')}
                 {thread.metadata.tags.length > 2 && '...'}
@@ -216,18 +186,18 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
         <div className="flex items-center justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3 sm:w-auto md:w-full" />
+              <Clock className="h-3 w-3 " />
               {formatDistanceToNow(thread.updatedAt, { addSuffix: true })}
             </span>
             
             <span className="flex items-center gap-1">
-              <Users className="h-3 w-3 sm:w-auto md:w-full" />
+              <Users className="h-3 w-3 " />
               {thread.participants.length}
             </span>
           </div>
           
           <div className="flex items-center gap-1">
-            <Brain className="h-3 w-3 sm:w-auto md:w-full" />
+            <Brain className="h-3 w-3 " />
             <span>{Math.round(thread.metadata.averageResponseTime)}ms avg</span>
           </div>
         </div>
@@ -240,17 +210,15 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <MessageSquare className="h-5 w-5 sm:w-auto md:w-full" />
-            Conversations
+            <MessageSquare className="h-5 w-5 " />
           </CardTitle>
           
           <button
             size="sm"
-            onClick={() = aria-label="Button"> setShowCreateForm(true)}
+            onClick={() => setShowCreateForm(true)}
             className="h-8"
           >
-            <Plus className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-            New
+            <Plus className="h-4 w-4 mr-1 " />
           </Button>
         </div>
 
@@ -260,7 +228,7 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
             <input
               placeholder="Enter conversation topic..."
               value={newThreadTopic}
-              onChange={(e) = aria-label="Input"> setNewThreadTopic(e.target.value)}
+              onChange={(e) => setNewThreadTopic(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleCreateThread();
@@ -272,18 +240,16 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
               autoFocus
             />
             <div className="flex gap-2">
-              <button size="sm" onClick={handleCreateThread} aria-label="Button">
-                Create
+              <Button size="sm" onClick={handleCreateThread} >
               </Button>
-              <button 
+              <Button 
                 size="sm" 
                 variant="outline" 
-                onClick={() = aria-label="Button"> {
+                onClick={() => {
                   setShowCreateForm(false);
                   setNewThreadTopic('');
                 }}
               >
-                Cancel
               </Button>
             </div>
           </div>
@@ -292,21 +258,21 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
         {/* Search and filters */}
         <div className="space-y-2">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground " />
             <input
               placeholder="Search conversations..."
               value={searchQuery}
-              onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 h-9"
             />
           </div>
           
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Filter className="h-4 w-4 text-muted-foreground " />
             
             <select
               value={filterStatus}
-              onChange={(e) = aria-label="Select option"> setFilterStatus(e.target.value as any)}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
               className="text-sm border rounded px-2 py-1 bg-background md:text-base lg:text-lg"
             >
               <option value="all">All</option>
@@ -316,7 +282,7 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
             
             <select
               value={sortBy}
-              onChange={(e) = aria-label="Select option"> setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as any)}
               className="text-sm border rounded px-2 py-1 bg-background md:text-base lg:text-lg"
             >
               <option value="updated">Last Updated</option>
@@ -332,20 +298,19 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
           <div className="space-y-3 pb-4">
             {filteredAndSortedThreads.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                 <p className="text-sm md:text-base lg:text-lg">
                   {searchQuery || filterStatus !== 'all' 
                     ? 'No conversations match your filters' 
                     : 'No conversations yet'}
                 </p>
                 {!searchQuery && filterStatus === 'all' && (
-                  <button
+                  <Button
                     variant="outline"
                     size="sm"
                     className="mt-2"
-                    onClick={() = aria-label="Button"> setShowCreateForm(true)}
+                    onClick={() => setShowCreateForm(true)}
                   >
-                    Start a conversation
                   </Button>
                 )}
               </div>

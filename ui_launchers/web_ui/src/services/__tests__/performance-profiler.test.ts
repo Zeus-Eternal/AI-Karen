@@ -49,21 +49,17 @@ describe('PerformanceProfiler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     profiler = new PerformanceProfiler();
-  });
 
   afterEach(() => {
     profiler.destroy();
-  });
 
   describe('Initialization', () => {
     it('should initialize profiler', () => {
       expect(profiler).toBeDefined();
-    });
 
     it('should be enabled by default', () => {
       expect(profiler['isEnabled']).toBe(true);
-    });
-  });
+
 
   describe('Profile Management', () => {
     it('should start a profile', () => {
@@ -72,7 +68,6 @@ describe('PerformanceProfiler', () => {
       expect(id).toBeTruthy();
       expect(profiler['activeProfiles'].has(id)).toBe(true);
       expect(mockPerformance.mark).toHaveBeenCalledWith('test-function-start');
-    });
 
     it('should end a profile', () => {
       const id = profiler.startProfile('test-function');
@@ -84,26 +79,22 @@ describe('PerformanceProfiler', () => {
       expect(profiler['activeProfiles'].has(id)).toBe(false);
       expect(mockPerformance.mark).toHaveBeenCalledWith('test-function-end');
       expect(mockPerformance.measure).toHaveBeenCalledWith('test-function', 'test-function-start', 'test-function-end');
-    });
 
     it('should return null when ending non-existent profile', () => {
       const profile = profiler.endProfile('non-existent');
       expect(profile).toBeNull();
-    });
 
     it('should not start profile when disabled', () => {
       profiler.setEnabled(false);
       const id = profiler.startProfile('test-function');
       expect(id).toBe('');
-    });
 
     it('should not end profile when disabled', () => {
       const id = profiler.startProfile('test-function');
       profiler.setEnabled(false);
       const profile = profiler.endProfile(id);
       expect(profile).toBeNull();
-    });
-  });
+
 
   describe('Function Profiling', () => {
     it('should profile synchronous function', () => {
@@ -117,7 +108,6 @@ describe('PerformanceProfiler', () => {
       expect(profiles.length).toBe(1);
       expect(profiles[0].name).toBe('sync-test');
       expect(profiles[0].type).toBe('function');
-    });
 
     it('should profile asynchronous function', async () => {
       const testFn = vi.fn(async () => 'async-result');
@@ -129,7 +119,6 @@ describe('PerformanceProfiler', () => {
       const profiles = profiler.getProfiles();
       expect(profiles.length).toBe(1);
       expect(profiles[0].name).toBe('async-test');
-    });
 
     it('should handle function errors gracefully', () => {
       const errorFn = vi.fn(() => { throw new Error('Test error'); });
@@ -141,7 +130,6 @@ describe('PerformanceProfiler', () => {
       // Profile should still be recorded
       const profiles = profiler.getProfiles();
       expect(profiles.length).toBe(1);
-    });
 
     it('should handle async function errors gracefully', async () => {
       const errorFn = vi.fn(async () => { throw new Error('Async error'); });
@@ -153,8 +141,7 @@ describe('PerformanceProfiler', () => {
       // Profile should still be recorded
       const profiles = profiler.getProfiles();
       expect(profiles.length).toBe(1);
-    });
-  });
+
 
   describe('Bottleneck Detection', () => {
     it('should detect slow operations as bottlenecks', () => {
@@ -174,7 +161,6 @@ describe('PerformanceProfiler', () => {
       
       const bottlenecks = profiler.getBottlenecks();
       expect(bottlenecks.length).toBeGreaterThan(0);
-    });
 
     it('should create bottleneck for long tasks', () => {
       const longTaskEntry = {
@@ -190,7 +176,6 @@ describe('PerformanceProfiler', () => {
       expect(bottlenecks.length).toBe(1);
       expect(bottlenecks[0].type).toBe('javascript');
       expect(bottlenecks[0].description).toContain('Long running task');
-    });
 
     it('should not create duplicate bottlenecks', () => {
       const bottleneckData = {
@@ -208,8 +193,7 @@ describe('PerformanceProfiler', () => {
       const bottlenecks = profiler.getBottlenecks();
       expect(bottlenecks.length).toBe(1);
       expect(bottlenecks[0].frequency).toBe(2);
-    });
-  });
+
 
   describe('Navigation Timing Analysis', () => {
     it('should analyze navigation timing', () => {
@@ -232,8 +216,7 @@ describe('PerformanceProfiler', () => {
       expect(bottlenecks.length).toBeGreaterThan(0);
       expect(bottlenecks.some(b => b.type === 'network')).toBe(true);
       expect(bottlenecks.some(b => b.type === 'javascript')).toBe(true);
-    });
-  });
+
 
   describe('Resource Timing Analysis', () => {
     it('should analyze resource timing', () => {
@@ -262,8 +245,7 @@ describe('PerformanceProfiler', () => {
       expect(bottlenecks.length).toBeGreaterThan(0);
       expect(bottlenecks.some(b => b.description.includes('Slow resource loading'))).toBe(true);
       expect(bottlenecks.some(b => b.description.includes('Large resource size') || b.description.includes('Slow resource loading'))).toBe(true);
-    });
-  });
+
 
   describe('Paint Timing Analysis', () => {
     it('should analyze paint timing', () => {
@@ -284,8 +266,7 @@ describe('PerformanceProfiler', () => {
       expect(bottlenecks.length).toBe(1);
       expect(bottlenecks[0].type).toBe('render');
       expect(bottlenecks[0].description).toContain('Slow first contentful paint');
-    });
-  });
+
 
   describe('User Timing Capture', () => {
     it('should capture user timing measures', () => {
@@ -302,7 +283,6 @@ describe('PerformanceProfiler', () => {
       expect(profiles.length).toBe(1);
       expect(profiles[0].name).toBe('custom-measure');
       expect(profiles[0].metadata.userTiming).toBe(true);
-    });
 
     it('should ignore user timing marks', () => {
       const markEntry = {
@@ -316,8 +296,7 @@ describe('PerformanceProfiler', () => {
       
       const profiles = profiler.getProfiles();
       expect(profiles.length).toBe(0);
-    });
-  });
+
 
   describe('Performance Patterns', () => {
     it('should identify frequent slow API calls pattern', () => {
@@ -334,7 +313,7 @@ describe('PerformanceProfiler', () => {
           children: [],
           bottleneck: true,
           severity: 'medium',
-        });
+
       }
       
       profiler['analyzePerformancePatterns']();
@@ -342,7 +321,6 @@ describe('PerformanceProfiler', () => {
       const suggestions = profiler.getOptimizationSuggestions();
       expect(suggestions.length).toBeGreaterThan(0);
       expect(suggestions.some(s => s.title.includes('Frequent Slow API Calls') || s.title.includes('API'))).toBe(true);
-    });
 
     it('should identify excessive rendering pattern', () => {
       // Add many render profiles
@@ -358,15 +336,14 @@ describe('PerformanceProfiler', () => {
           children: [],
           bottleneck: false,
           severity: 'low',
-        });
+
       }
       
       profiler['analyzePerformancePatterns']();
       
       const suggestions = profiler.getOptimizationSuggestions();
       expect(suggestions.some(s => s.title.includes('Excessive Rendering'))).toBe(true);
-    });
-  });
+
 
   describe('Performance Comparison', () => {
     beforeEach(() => {
@@ -384,7 +361,7 @@ describe('PerformanceProfiler', () => {
           children: [],
           bottleneck: false,
           severity: 'low',
-        });
+
       }
       
       // Add current profiles (faster)
@@ -401,9 +378,8 @@ describe('PerformanceProfiler', () => {
           children: [],
           bottleneck: false,
           severity: 'low',
-        });
+
       }
-    });
 
     it('should compare performance between time periods', () => {
       const now = Date.now();
@@ -416,7 +392,6 @@ describe('PerformanceProfiler', () => {
       expect(comparisons[0].name).toBe('test-function');
       expect(comparisons[0].improvement).toBeGreaterThan(0); // Should show improvement
       expect(comparisons[0].regression).toBe(false);
-    });
 
     it('should detect performance regression', () => {
       // Add slower current profiles
@@ -433,7 +408,7 @@ describe('PerformanceProfiler', () => {
           children: [],
           bottleneck: true,
           severity: 'medium',
-        });
+
       }
       
       // Add faster baseline profiles
@@ -450,7 +425,7 @@ describe('PerformanceProfiler', () => {
           children: [],
           bottleneck: false,
           severity: 'low',
-        });
+
       }
       
       const now = Date.now();
@@ -463,8 +438,7 @@ describe('PerformanceProfiler', () => {
       expect(regressionComparison).toBeDefined();
       expect(regressionComparison?.regression).toBe(true);
       expect(regressionComparison?.improvement).toBeLessThan(-5);
-    });
-  });
+
 
   describe('Regression Tests', () => {
     it('should add regression test', () => {
@@ -476,7 +450,6 @@ describe('PerformanceProfiler', () => {
       expect(tests[0].baseline).toBe(1000);
       expect(tests[0].threshold).toBe(20);
       expect(tests[0].status).toBe('pass');
-    });
 
     it('should update regression test status', () => {
       profiler.addRegressionTest('test-function', 1000, 20);
@@ -494,7 +467,7 @@ describe('PerformanceProfiler', () => {
           children: [],
           bottleneck: true,
           severity: 'medium',
-        });
+
       }
       
       profiler['updateRegressionTests']();
@@ -502,8 +475,7 @@ describe('PerformanceProfiler', () => {
       const tests = profiler.getRegressionTests();
       expect(tests[0].status).toBe('fail');
       expect(tests[0].currentValue).toBeGreaterThan(1000);
-    });
-  });
+
 
   describe('Data Management', () => {
     it('should get profiles with limit', () => {
@@ -520,7 +492,7 @@ describe('PerformanceProfiler', () => {
           children: [],
           bottleneck: false,
           severity: 'low',
-        });
+
       }
       
       const allProfiles = profiler.getProfiles();
@@ -528,7 +500,6 @@ describe('PerformanceProfiler', () => {
       
       const limitedProfiles = profiler.getProfiles(5);
       expect(limitedProfiles.length).toBe(5);
-    });
 
     it('should sort bottlenecks by priority', () => {
       profiler['bottlenecks'] = [
@@ -574,7 +545,6 @@ describe('PerformanceProfiler', () => {
       expect(bottlenecks[0].priority).toBe('critical');
       expect(bottlenecks[1].priority).toBe('medium');
       expect(bottlenecks[2].priority).toBe('low');
-    });
 
     it('should sort suggestions by impact', () => {
       profiler['suggestions'] = [
@@ -605,7 +575,6 @@ describe('PerformanceProfiler', () => {
       const suggestions = profiler.getOptimizationSuggestions();
       expect(suggestions[0].impact).toBe('high');
       expect(suggestions[1].impact).toBe('low');
-    });
 
     it('should limit profiles to prevent memory leaks', () => {
       // Add many profiles
@@ -621,7 +590,7 @@ describe('PerformanceProfiler', () => {
           children: [],
           bottleneck: false,
           severity: 'low',
-        });
+
       }
       
       // Trigger profile end which should clean up
@@ -629,7 +598,6 @@ describe('PerformanceProfiler', () => {
       profiler.endProfile(id);
       
       expect(profiler['profiles'].length).toBeLessThanOrEqual(500);
-    });
 
     it('should clear all data', () => {
       profiler.startProfile('test');
@@ -644,15 +612,13 @@ describe('PerformanceProfiler', () => {
         suggestions: [],
         priority: 'medium',
         detectedAt: Date.now(),
-      });
-      
+
       profiler.clear();
       
       expect(profiler.getProfiles()).toHaveLength(0);
       expect(profiler.getBottlenecks()).toHaveLength(0);
       expect(profiler['activeProfiles'].size).toBe(0);
-    });
-  });
+
 
   describe('Enable/Disable', () => {
     it('should enable and disable profiler', () => {
@@ -663,8 +629,7 @@ describe('PerformanceProfiler', () => {
       
       profiler.setEnabled(true);
       expect(profiler['isEnabled']).toBe(true);
-    });
-  });
+
 
   describe('Cleanup', () => {
     it('should cleanup observers on destroy', () => {
@@ -675,6 +640,5 @@ describe('PerformanceProfiler', () => {
       
       expect(disconnectSpy).toHaveBeenCalled();
       expect(profiler['observers']).toHaveLength(0);
-    });
-  });
-});
+
+

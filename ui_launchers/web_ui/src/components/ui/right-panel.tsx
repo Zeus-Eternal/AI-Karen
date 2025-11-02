@@ -299,7 +299,7 @@ export const RightPanelNavigation = forwardRef<HTMLElement, RightPanelNavigation
                     key={view.id}
                     variant={activeView === view.id ? "default" : "ghost"}
                     size="sm"
-                    onClick={() = aria-label="Button"> onViewChange?.(view.id)}
+                    onClick={() => onViewChange?.(view.id)}
                     className={cn(
                       "whitespace-nowrap shrink-0",
                       // Responsive spacing and alignment
@@ -387,7 +387,6 @@ export const RightPanel = forwardRef<HTMLElement, RightPanelProps>(
       overlayOnMobile,
       touchGestures,
       onGestureClose: onClose,
-    });
 
     // Panel backdrop for mobile overlay
     const { showBackdrop, backdropProps } = usePanelBackdrop(isOpen, onClose);

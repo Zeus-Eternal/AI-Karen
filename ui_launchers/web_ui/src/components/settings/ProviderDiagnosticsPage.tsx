@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,26 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from "@/hooks/use-toast";
-import {
-  Activity,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  Database,
-  Download,
-  ExternalLink,
-  Eye,
-  FileText,
-  HardDrive,
-  Info,
-  Loader2,
-  RefreshCw,
-  Settings,
-  Shield,
-  Terminal,
-  Wrench,
-  Zap
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 interface DiagnosticInfo {
   provider_name: string;
@@ -138,7 +122,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
         title: "Diagnostics Failed",
         description: `Could not load diagnostics for ${providerName}: ${(error as Error).message}`,
         variant: "destructive",
-      });
+
     } finally {
       setLoading(false);
     }
@@ -150,13 +134,13 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
       toast({
         title: "Diagnostics Refreshed",
         description: "Provider diagnostics have been updated.",
-      });
+
     } catch (error) {
       toast({
         title: "Refresh Failed",
         description: "Could not refresh diagnostics.",
         variant: "destructive",
-      });
+
     } finally {
       setRefreshing(false);
     }
@@ -171,7 +155,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
         toast({
           title: "Repair Successful",
           description: response.message || "Repair action completed successfully.",
-        });
+
         // Refresh diagnostics to see the changes
         await loadDiagnostics();
       } else {
@@ -182,7 +166,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
         title: "Repair Failed",
         description: `Could not execute repair: ${(error as Error).message}`,
         variant: "destructive",
-      });
+
     } finally {
       setExecutingRepair(null);
     }
@@ -229,7 +213,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary " />
             <div className="space-y-2">
               <p className="text-lg font-medium">Loading Diagnostics</p>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -244,7 +228,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
   if (!diagnostics) {
     return (
       <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertCircle className="h-4 w-4 " />
         <AlertTitle>Diagnostics Unavailable</AlertTitle>
         <AlertDescription>
           Could not load diagnostics for {providerName}. The provider may not be properly configured.
@@ -260,29 +244,27 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 sm:w-auto md:w-full" />
+                <Activity className="h-5 w-5 " />
                 {providerName} Diagnostics
               </CardTitle>
               <CardDescription>
-                Detailed status information and troubleshooting tools
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={refreshDiagnostics}
                 disabled={refreshing}
-               aria-label="Button">
+               >
                 {refreshing ? (
-                  <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-4 w-4 animate-spin " />
                 ) : (
-                  <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
+                  <RefreshCw className="h-4 w-4 " />
                 )}
               </Button>
               {onClose && (
-                <button variant="outline" size="sm" onClick={onClose} aria-label="Button">
-                  Close
+                <Button variant="outline" size="sm" onClick={onClose} >
                 </Button>
               )}
             </div>
@@ -339,25 +321,24 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-4 w-4 sm:w-auto md:w-full" />
-                  Configuration
+                  <Settings className="h-4 w-4 " />
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm md:text-base lg:text-lg">API Key Configured</span>
                   {diagnostics.configuration.api_key_configured ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 " />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
+                    <AlertCircle className="h-4 w-4 text-red-600 " />
                   )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm md:text-base lg:text-lg">API Key Valid</span>
                   {diagnostics.configuration.api_key_valid ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 " />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
+                    <AlertCircle className="h-4 w-4 text-red-600 " />
                   )}
                 </div>
                 <div className="flex items-center justify-between">
@@ -378,8 +359,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 sm:w-auto md:w-full" />
-                  Capabilities
+                  <Shield className="h-4 w-4 " />
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -387,9 +367,9 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
                   {Object.entries(diagnostics.capabilities).map(([capability, available]) => (
                     <div key={capability} className="flex items-center gap-2">
                       {available ? (
-                        <CheckCircle2 className="h-3 w-3 text-green-600 sm:w-auto md:w-full" />
+                        <CheckCircle2 className="h-3 w-3 text-green-600 " />
                       ) : (
-                        <AlertCircle className="h-3 w-3 text-gray-400 sm:w-auto md:w-full" />
+                        <AlertCircle className="h-3 w-3 text-gray-400 " />
                       )}
                       <span className="text-sm capitalize md:text-base lg:text-lg">{capability.replace('_', ' ')}</span>
                     </div>
@@ -401,8 +381,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Download className="h-4 w-4 sm:w-auto md:w-full" />
-                  Dependencies
+                  <Download className="h-4 w-4 " />
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -415,9 +394,9 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
                       </span>
                     </div>
                     {pkg.installed ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                      <CheckCircle2 className="h-4 w-4 text-green-600 " />
                     ) : (
-                      <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
+                      <AlertCircle className="h-4 w-4 text-red-600 " />
                     )}
                   </div>
                 ))}
@@ -427,8 +406,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />
-                  System Requirements
+                  <HardDrive className="h-4 w-4 " />
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -447,9 +425,9 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
                 <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                   <span>GPU Available</span>
                   {diagnostics.dependencies.system_requirements.gpu_available ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 " />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-gray-400 sm:w-auto md:w-full" />
+                    <AlertCircle className="h-4 w-4 text-gray-400 " />
                   )}
                 </div>
               </CardContent>
@@ -460,11 +438,9 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Database className="h-4 w-4 sm:w-auto md:w-full" />
-                Model Information
+                <Database className="h-4 w-4 " />
               </CardTitle>
               <CardDescription>
-                Available models and their status
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -502,9 +478,9 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
                           </span>
                         )}
                         {model.available ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                          <CheckCircle2 className="h-4 w-4 text-green-600 " />
                         ) : (
-                          <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
+                          <AlertCircle className="h-4 w-4 text-red-600 " />
                         )}
                       </div>
                     </div>
@@ -518,8 +494,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Zap className="h-4 w-4 sm:w-auto md:w-full" />
-                Performance Metrics
+                <Zap className="h-4 w-4 " />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -568,14 +543,13 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
-                Recent Errors
+                <AlertCircle className="h-4 w-4 " />
               </CardTitle>
             </CardHeader>
             <CardContent>
               {diagnostics.recent_errors.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600 sm:w-auto md:w-full" />
+                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600 " />
                   <p>No recent errors found</p>
                 </div>
               ) : (
@@ -594,7 +568,6 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
                       {error.stack_trace && (
                         <details className="text-xs sm:text-sm md:text-base">
                           <summary className="cursor-pointer text-muted-foreground">
-                            Stack Trace
                           </summary>
                           <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto sm:text-sm md:text-base">
                             {error.stack_trace}
@@ -614,8 +587,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Info className="h-4 w-4 sm:w-auto md:w-full" />
-                  Recovery Suggestions
+                  <Info className="h-4 w-4 " />
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -655,11 +627,9 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Wrench className="h-4 w-4 sm:w-auto md:w-full" />
-                  Automated Repair Actions
+                  <Wrench className="h-4 w-4 " />
                 </CardTitle>
                 <CardDescription>
-                  Click to execute automated fixes for common issues
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -690,7 +660,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
                       </div>
                     )}
                     <button
-                      onClick={() = aria-label="Button"> executeRepairAction(action.id)}
+                      onClick={() => executeRepairAction(action.id)}
                       disabled={!action.auto_executable || executingRepair === action.id}
                       variant={action.risk_level === 'high' ? 'destructive' : 'default'}
                       size="sm"
@@ -698,13 +668,12 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
                     >
                       {executingRepair === action.id ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                           Executing...
                         </>
                       ) : (
                         <>
-                          <Wrench className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                          Execute Repair
+                          <Wrench className="h-4 w-4 mr-2 " />
                         </>
                       )}
                     </Button>

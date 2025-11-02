@@ -4,12 +4,12 @@
  */
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { 
+
   createFormAria, 
   createAriaLabel, 
   mergeAriaProps,
   type AriaProps 
-} from "@/utils/aria";
+import { } from "@/utils/aria";
 export interface AriaEnhancedInputProps extends React.ComponentProps<"input"> {
   /** Accessible label for the input */
   ariaLabel?: string;
@@ -147,7 +147,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
       <div className="relative">
         {showSearchIcon && (
           <svg
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none sm:w-auto md:w-full"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none "
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -181,7 +181,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:text-foreground focus:outline-none sm:w-auto md:w-full"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:text-foreground focus:outline-none "
             aria-label="Clear search"
           >
             <svg
@@ -236,7 +236,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
           <button
             type="button"
             onClick={togglePasswordVisibility}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded sm:w-auto md:w-full"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded "
             aria-label={showPassword ? "Hide password" : "Show password"}
             aria-pressed={showPassword}
           >

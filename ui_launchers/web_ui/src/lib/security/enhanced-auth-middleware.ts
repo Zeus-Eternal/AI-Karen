@@ -158,7 +158,7 @@ export class EnhancedAuthMiddleware {
       await this.adminUtils.updateUser(user.user_id, {
         last_login_at: new Date(),
         failed_login_attempts: 0
-      });
+
       return {
         success: true,
         user,
@@ -216,7 +216,7 @@ export class EnhancedAuthMiddleware {
             session_token: sessionToken
           },
           ip_address: ipAddress
-        });
+
         // Optionally terminate session for security
         // await sessionTimeoutManager.terminateSession(sessionToken, 'ip_mismatch');
         // return null;
@@ -256,7 +256,7 @@ export class EnhancedAuthMiddleware {
           logout_method: 'user_initiated',
           logout_at: new Date().toISOString()
         }
-      });
+
     } catch (error) {
     }
   }

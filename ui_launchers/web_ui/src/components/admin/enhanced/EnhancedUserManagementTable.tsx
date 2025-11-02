@@ -7,7 +7,7 @@
  * Requirements: 7.2, 7.4, 7.5, 7.7
  */
 
-'use client';
+"use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRole } from '@/hooks/useRole';
@@ -19,13 +19,7 @@ import { SimpleProgressBar } from '@/components/ui/progress-indicator';
 import { useKeyboardNavigation } from '@/lib/accessibility/keyboard-navigation';
 import { useAriaLiveRegion, AriaManager } from '@/lib/accessibility/aria-helpers';
 import AdminErrorHandler, { type AdminError } from '@/lib/errors/admin-error-handler';
-import type { 
-  User, 
-  UserListFilter, 
-  PaginationParams, 
-  PaginatedResponse,
-  AdminApiResponse 
-} from '@/types/admin';
+import type {  User, UserListFilter, PaginationParams, PaginatedResponse, AdminApiResponse } from '@/types/admin';
 
 interface EnhancedUserManagementTableProps {
   selectedUsers: string[];
@@ -79,7 +73,7 @@ export function EnhancedUserManagementTable({
     limit: 20,
     sort_by: 'created_at',
     sort_order: 'desc'
-  });
+
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
 
@@ -93,7 +87,6 @@ export function EnhancedUserManagementTable({
       setDeletingUser(null);
       setDeactivatingUser(null);
     }
-  });
 
   // Load users with error handling and retry logic
   const loadUsers = useCallback(async (retryCount = 0) => {
@@ -118,7 +111,6 @@ export function EnhancedUserManagementTable({
             params.append(key, value.toString());
           }
         }
-      });
 
       const response = await fetch(`/api/admin/users?${params.toString()}`);
       
@@ -148,7 +140,6 @@ export function EnhancedUserManagementTable({
         operation: 'load_users',
         userId: 'current_user',
         timestamp: new Date()
-      });
 
       // Retry logic for retryable errors
       if (AdminErrorHandler.shouldRetry(adminError, retryCount + 1)) {
@@ -239,7 +230,6 @@ export function EnhancedUserManagementTable({
       
       const response = await fetch(`/api/admin/users/${deletingUser.user_id}`, {
         method: 'DELETE'
-      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -260,7 +250,6 @@ export function EnhancedUserManagementTable({
         operation: 'delete_user',
         resource: deletingUser.user_id,
         timestamp: new Date()
-      });
 
       setError(adminError);
       announce(`Failed to delete user: ${adminError.message}`, 'assertive');
@@ -277,7 +266,6 @@ export function EnhancedUserManagementTable({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !user.is_active })
-      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -300,7 +288,6 @@ export function EnhancedUserManagementTable({
         operation: 'toggle_user_status',
         resource: user.user_id,
         timestamp: new Date()
-      });
 
       setError(adminError);
       announce(`Failed to update user status: ${adminError.message}`, 'assertive');
@@ -356,7 +343,7 @@ export function EnhancedUserManagementTable({
           >
             {column.sortable ? (
               <button
-                onClick={() = aria-label="Button"> handleSort(column.key as keyof User)}
+                onClick={() => handleSort(column.key as keyof User)}
                 className="flex items-center space-x-1 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
                 aria-label={column.ariaLabel}
                 aria-sort={
@@ -391,7 +378,7 @@ export function EnhancedUserManagementTable({
         <input
           type="checkbox"
           checked={selectedUsers.includes(user.user_id)}
-          onChange={(e) = aria-label="Input"> handleSelectUser(user.user_id, e.target.checked)}
+          onChange={(e) => handleSelectUser(user.user_id, e.target.checked)}
           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
           aria-label={`Select user ${user.email}`}
         />
@@ -432,15 +419,14 @@ export function EnhancedUserManagementTable({
           {canEditUser(user) && (
             <>
               <button
-                onClick={() = aria-label="Button"> handleEditUser(user)}
+                onClick={() => handleEditUser(user)}
                 className="text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
                 aria-label={`Edit user ${user.email}`}
                 disabled={operationLoading === `edit-${user.user_id}`}
               >
-                Edit
               </button>
               <button
-                onClick={() = aria-label="Button"> {
+                onClick={() => {
                   if (user.is_active) {
                     setDeactivatingUser(user);
                   } else {
@@ -457,7 +443,7 @@ export function EnhancedUserManagementTable({
               >
                 {operationLoading === `toggle-${user.user_id}` ? (
                   <span className="flex items-center">
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1 sm:w-auto md:w-full" />
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1 " />
                     Processing...
                   </span>
                 ) : (
@@ -466,12 +452,11 @@ export function EnhancedUserManagementTable({
               </button>
               {hasRole('super_admin') && (
                 <button
-                  onClick={() = aria-label="Button"> setDeletingUser(user)}
+                  onClick={() => setDeletingUser(user)}
                   className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded"
                   aria-label={`Delete user ${user.email}`}
                   disabled={operationLoading === `delete-${user.user_id}`}
                 >
-                  Delete
                 </button>
               )}
             </>
@@ -488,20 +473,18 @@ export function EnhancedUserManagementTable({
     >
       <div className="flex-1 flex justify-between sm:hidden">
         <button
-          onClick={() = aria-label="Button"> handlePageChange(pagination.page - 1)}
+          onClick={() => handlePageChange(pagination.page - 1)}
           disabled={pagination.page <= 1}
           className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
           aria-label="Go to previous page"
         >
-          Previous
         </button>
         <button
-          onClick={() = aria-label="Button"> handlePageChange(pagination.page + 1)}
+          onClick={() => handlePageChange(pagination.page + 1)}
           disabled={pagination.page >= totalPages}
           className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
           aria-label="Go to next page"
         >
-          Next
         </button>
       </div>
       <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
@@ -515,7 +498,7 @@ export function EnhancedUserManagementTable({
             <span className="mr-2">Show:</span>
             <select
               value={pagination.limit}
-              onChange={(e) = aria-label="Select option"> handleLimitChange(parseInt(e.target.value))}
+              onChange={(e) => handleLimitChange(parseInt(e.target.value))}
               className="border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 md:text-base lg:text-lg"
               aria-label="Number of users per page"
             >
@@ -529,12 +512,11 @@ export function EnhancedUserManagementTable({
         <div>
           <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
             <button
-              onClick={() = aria-label="Button"> handlePageChange(pagination.page - 1)}
+              onClick={() => handlePageChange(pagination.page - 1)}
               disabled={pagination.page <= 1}
               className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
               aria-label="Go to previous page"
             >
-              Previous
             </button>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
               const pageNum = i + Math.max(1, pagination.page - 2);
@@ -542,7 +524,7 @@ export function EnhancedUserManagementTable({
               return (
                 <button
                   key={pageNum}
-                  onClick={() = aria-label="Button"> handlePageChange(pageNum)}
+                  onClick={() => handlePageChange(pageNum)}
                   className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                     pageNum === pagination.page
                       ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
@@ -556,12 +538,11 @@ export function EnhancedUserManagementTable({
               );
             })}
             <button
-              onClick={() = aria-label="Button"> handlePageChange(pagination.page + 1)}
+              onClick={() => handlePageChange(pagination.page + 1)}
               disabled={pagination.page >= totalPages}
               className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
               aria-label="Go to next page"
             >
-              Next
             </button>
           </nav>
         </div>
@@ -572,9 +553,9 @@ export function EnhancedUserManagementTable({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12" role="status" aria-live="polite">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4 sm:w-auto md:w-full"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4 "></div>
         <p className="text-gray-600">Loading users...</p>
-        <SimpleProgressBar progress={50} className="w-48 mt-4 sm:w-auto md:w-full" />
+        <SimpleProgressBar progress={50} className="w-48 mt-4 " />
       </div>
     );
   }

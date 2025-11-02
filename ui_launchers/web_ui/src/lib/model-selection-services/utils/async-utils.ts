@@ -19,7 +19,6 @@ export async function withTimeout<T>(
 ): Promise<T> {
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
-  });
 
   return Promise.race([promise, timeoutPromise]);
 }
@@ -145,7 +144,7 @@ export function debounceAsync<T extends (...args: any[]) => Promise<any>>(
         resolvePromise = null;
         rejectPromise = null;
       }, waitMs);
-    });
+
   };
 }
 
@@ -197,10 +196,9 @@ export class AsyncQueue {
         } catch (error) {
           reject(error);
         }
-      });
 
       this.process();
-    });
+
   }
 
   /**
@@ -267,7 +265,7 @@ export class Semaphore {
 
     return new Promise(resolve => {
       this.waiting.push(resolve);
-    });
+
   }
 
   /**
@@ -410,9 +408,9 @@ export async function firstSuccessful<T>(promises: Promise<T>[]): Promise<T> {
           if (completed === promises.length) {
             reject(new Error(`All promises failed: ${errors.map(e => e.message).join(', ')}`));
           }
-        });
-    });
-  });
+
+
+
 }
 
 /**
@@ -434,9 +432,8 @@ export function cancellable<T>(
         if (!cancelled) {
           reject(error);
         }
-      });
-  });
-  
+
+
   return {
     promise: cancellablePromise,
     cancel: () => {

@@ -52,14 +52,13 @@ class TelemetryService {
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => {
         this.flush();
-      });
 
       // Flush on visibility change (tab switch, minimize)
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
           this.flush();
         }
-      });
+
     }
   }
 
@@ -124,7 +123,6 @@ class TelemetryService {
       spanId,
       spanName: name,
       startTime
-    });
 
     return {
       id: spanId,
@@ -140,7 +138,6 @@ class TelemetryService {
           startTime,
           endTime,
           duration
-        });
 
         return duration;
       },
@@ -150,7 +147,7 @@ class TelemetryService {
           spanName: name,
           tagKey: key,
           tagValue: value
-        });
+
       }
     };
   }
@@ -244,7 +241,6 @@ class TelemetryService {
           timestamp: new Date().toISOString()
         }
       })
-    });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);

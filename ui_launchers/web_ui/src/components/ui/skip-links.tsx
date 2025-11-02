@@ -57,7 +57,7 @@ export const SkipLinks = React.forwardRef<HTMLDivElement, SkipLinksProps>(
         targetElement.scrollIntoView({ 
           behavior: 'smooth', 
           block: 'start' 
-        });
+
       }
     };
 
@@ -155,7 +155,7 @@ export const SkipToContent = React.forwardRef<HTMLAnchorElement, SkipToContentPr
         targetElement.scrollIntoView({ 
           behavior: 'smooth', 
           block: 'start' 
-        });
+
       }
       
       onClick?.(e);
@@ -241,7 +241,7 @@ export const useSkipLinks = () => {
         );
       }
       return [...prev, link];
-    });
+
   }, []);
 
   const removeSkipLink = React.useCallback((id: string) => {

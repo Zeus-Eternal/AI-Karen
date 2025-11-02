@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
@@ -90,8 +91,7 @@ describe('DownloadManager', () => {
       clearCompleted: mockClearCompleted,
       isLoading: false,
       error: null,
-    });
-  });
+
 
   it('renders download manager with tasks', () => {
     render(<DownloadManager />);
@@ -101,7 +101,6 @@ describe('DownloadManager', () => {
     expect(screen.getByText('Microsoft Phi-2 Q4_K_M')).toBeInTheDocument();
     expect(screen.getByText('Failed Model')).toBeInTheDocument();
     expect(screen.getByText('Paused Model')).toBeInTheDocument();
-  });
 
   it('displays download statistics', () => {
     render(<DownloadManager />);
@@ -110,7 +109,6 @@ describe('DownloadManager', () => {
     expect(screen.getByText('1 active')).toBeInTheDocument();
     expect(screen.getByText('1 completed')).toBeInTheDocument();
     expect(screen.getByText('1 failed')).toBeInTheDocument();
-  });
 
   it('shows downloading task with progress', () => {
     render(<DownloadManager />);
@@ -124,7 +122,6 @@ describe('DownloadManager', () => {
       expect(downloadingTask).toHaveTextContent('5.00 MB/s');
       expect(downloadingTask).toHaveTextContent('1m 9s');
     }
-  });
 
   it('shows completed task', () => {
     render(<DownloadManager />);
@@ -136,7 +133,6 @@ describe('DownloadManager', () => {
       expect(completedTask).toHaveTextContent('100%');
       expect(completedTask).toHaveTextContent('Completed');
     }
-  });
 
   it('shows error task with error message', () => {
     render(<DownloadManager />);
@@ -148,7 +144,6 @@ describe('DownloadManager', () => {
       expect(errorTask).toHaveTextContent('Error');
       expect(errorTask).toHaveTextContent('Network connection failed');
     }
-  });
 
   it('shows paused task', () => {
     render(<DownloadManager />);
@@ -160,7 +155,6 @@ describe('DownloadManager', () => {
       expect(pausedTask).toHaveTextContent('60%');
       expect(pausedTask).toHaveTextContent('Paused');
     }
-  });
 
   it('cancels download when cancel button is clicked', async () => {
     render(<DownloadManager />);
@@ -170,8 +164,7 @@ describe('DownloadManager', () => {
     
     await waitFor(() => {
       expect(mockCancelDownload).toHaveBeenCalledWith('task-1');
-    });
-  });
+
 
   it('pauses download when pause button is clicked', async () => {
     render(<DownloadManager />);
@@ -181,8 +174,7 @@ describe('DownloadManager', () => {
     
     await waitFor(() => {
       expect(mockPauseDownload).toHaveBeenCalledWith('task-1');
-    });
-  });
+
 
   it('resumes download when resume button is clicked', async () => {
     render(<DownloadManager />);
@@ -192,8 +184,7 @@ describe('DownloadManager', () => {
     
     await waitFor(() => {
       expect(mockResumeDownload).toHaveBeenCalledWith('task-4');
-    });
-  });
+
 
   it('retries download when retry button is clicked', async () => {
     render(<DownloadManager />);
@@ -203,8 +194,7 @@ describe('DownloadManager', () => {
     
     await waitFor(() => {
       expect(mockRetryDownload).toHaveBeenCalledWith('task-3');
-    });
-  });
+
 
   it('clears completed downloads when clear button is clicked', async () => {
     render(<DownloadManager />);
@@ -214,8 +204,7 @@ describe('DownloadManager', () => {
     
     await waitFor(() => {
       expect(mockClearCompleted).toHaveBeenCalled();
-    });
-  });
+
 
   it('filters tasks by status', async () => {
     render(<DownloadManager />);
@@ -226,13 +215,11 @@ describe('DownloadManager', () => {
     await waitFor(() => {
       const downloadingOption = screen.getByText('Downloading');
       fireEvent.click(downloadingOption);
-    });
-    
+
     await waitFor(() => {
       expect(screen.getByText('TinyLlama 1.1B Chat Q4_K_M')).toBeInTheDocument();
       expect(screen.queryByText('Microsoft Phi-2 Q4_K_M')).not.toBeInTheDocument();
-    });
-  });
+
 
   it('sorts tasks by different criteria', async () => {
     render(<DownloadManager />);
@@ -243,12 +230,10 @@ describe('DownloadManager', () => {
     await waitFor(() => {
       const progressOption = screen.getByText('Progress');
       fireEvent.click(progressOption);
-    });
-    
+
     // Tasks should be reordered by progress
     const taskElements = screen.getAllByTestId('download-task');
     expect(taskElements).toHaveLength(4);
-  });
 
   it('shows empty state when no tasks', () => {
     mockUseDownloadStatus.mockReturnValue({
@@ -260,13 +245,11 @@ describe('DownloadManager', () => {
       clearCompleted: mockClearCompleted,
       isLoading: false,
       error: null,
-    });
-    
+
     render(<DownloadManager />);
     
     expect(screen.getByText('No downloads')).toBeInTheDocument();
     expect(screen.getByText('No download tasks found')).toBeInTheDocument();
-  });
 
   it('shows loading state', () => {
     mockUseDownloadStatus.mockReturnValue({
@@ -278,12 +261,10 @@ describe('DownloadManager', () => {
       clearCompleted: mockClearCompleted,
       isLoading: true,
       error: null,
-    });
-    
+
     render(<DownloadManager />);
     
     expect(screen.getByText('Loading downloads...')).toBeInTheDocument();
-  });
 
   it('shows error state', () => {
     mockUseDownloadStatus.mockReturnValue({
@@ -295,13 +276,11 @@ describe('DownloadManager', () => {
       clearCompleted: mockClearCompleted,
       isLoading: false,
       error: 'Failed to load downloads',
-    });
-    
+
     render(<DownloadManager />);
     
     expect(screen.getByText('Error loading downloads')).toBeInTheDocument();
     expect(screen.getByText('Failed to load downloads')).toBeInTheDocument();
-  });
 
   it('shows compact view when enabled', () => {
     render(<DownloadManager compact={true} />);
@@ -311,7 +290,6 @@ describe('DownloadManager', () => {
     // In compact mode, some details might be hidden
     const compactTask = screen.getByText('TinyLlama 1.1B Chat Q4_K_M').closest('[data-testid="download-task"]');
     expect(compactTask).toHaveClass('compact');
-  });
 
   it('refreshes downloads when refresh button is clicked', async () => {
     const mockRefresh = vi.fn();
@@ -325,8 +303,7 @@ describe('DownloadManager', () => {
       refresh: mockRefresh,
       isLoading: false,
       error: null,
-    });
-    
+
     render(<DownloadManager />);
     
     const refreshButton = screen.getByRole('button', { name: /refresh/i });
@@ -334,8 +311,7 @@ describe('DownloadManager', () => {
     
     await waitFor(() => {
       expect(mockRefresh).toHaveBeenCalled();
-    });
-  });
+
 
   it('displays total download progress', () => {
     render(<DownloadManager />);
@@ -345,21 +321,18 @@ describe('DownloadManager', () => {
     
     // Calculate expected overall progress: (45.5 + 100 + 25 + 60) / 4 = 57.625%
     expect(screen.getByText(/57.6%/)).toBeInTheDocument();
-  });
 
   it('shows download speed for active downloads', () => {
     render(<DownloadManager />);
     
     const downloadingTask = screen.getByText('TinyLlama 1.1B Chat Q4_K_M').closest('[data-testid="download-task"]');
     expect(downloadingTask).toHaveTextContent('5.00 MB/s');
-  });
 
   it('shows estimated time remaining for active downloads', () => {
     render(<DownloadManager />);
     
     const downloadingTask = screen.getByText('TinyLlama 1.1B Chat Q4_K_M').closest('[data-testid="download-task"]');
     expect(downloadingTask).toHaveTextContent('1m 9s');
-  });
 
   it('handles task actions with confirmation for destructive actions', async () => {
     render(<DownloadManager />);
@@ -371,15 +344,13 @@ describe('DownloadManager', () => {
     await waitFor(() => {
       expect(screen.getByText('Cancel Download')).toBeInTheDocument();
       expect(screen.getByText(/are you sure you want to cancel/i)).toBeInTheDocument();
-    });
-    
+
     const confirmButton = screen.getByRole('button', { name: /confirm/i });
     fireEvent.click(confirmButton);
     
     await waitFor(() => {
       expect(mockCancelDownload).toHaveBeenCalledWith('task-1');
-    });
-  });
+
 
   it('shows task details when expanded', async () => {
     render(<DownloadManager />);
@@ -392,8 +363,7 @@ describe('DownloadManager', () => {
       expect(screen.getByText('Start Time')).toBeInTheDocument();
       expect(screen.getByText('Downloaded')).toBeInTheDocument();
       expect(screen.getByText('Total Size')).toBeInTheDocument();
-    });
-  });
+
 
   it('groups tasks by status', async () => {
     render(<DownloadManager />);
@@ -406,8 +376,7 @@ describe('DownloadManager', () => {
       expect(screen.getByText('Completed Downloads')).toBeInTheDocument();
       expect(screen.getByText('Failed Downloads')).toBeInTheDocument();
       expect(screen.getByText('Paused Downloads')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles keyboard navigation', async () => {
     render(<DownloadManager />);
@@ -420,7 +389,6 @@ describe('DownloadManager', () => {
     
     const secondTask = screen.getAllByTestId('download-task')[1];
     expect(secondTask).toHaveFocus();
-  });
 
   it('shows task context menu on right click', async () => {
     render(<DownloadManager />);
@@ -432,8 +400,7 @@ describe('DownloadManager', () => {
       expect(screen.getByText('Cancel Download')).toBeInTheDocument();
       expect(screen.getByText('Pause Download')).toBeInTheDocument();
       expect(screen.getByText('View Details')).toBeInTheDocument();
-    });
-  });
+
 
   it('persists filter and sort preferences', async () => {
     render(<DownloadManager />);
@@ -445,14 +412,12 @@ describe('DownloadManager', () => {
     await waitFor(() => {
       const downloadingOption = screen.getByText('Downloading');
       fireEvent.click(downloadingOption);
-    });
-    
+
     // Preferences should be saved to localStorage
     expect(localStorage.setItem).toHaveBeenCalledWith(
       'downloadManager.preferences',
       expect.stringContaining('downloading')
     );
-  });
 
   it('handles bulk actions', async () => {
     render(<DownloadManager />);
@@ -464,14 +429,12 @@ describe('DownloadManager', () => {
     
     await waitFor(() => {
       expect(screen.getByText('2 selected')).toBeInTheDocument();
-    });
-    
+
     // Bulk cancel
     const bulkCancelButton = screen.getByRole('button', { name: /cancel selected/i });
     fireEvent.click(bulkCancelButton);
     
     await waitFor(() => {
       expect(mockCancelDownload).toHaveBeenCalledTimes(2);
-    });
-  });
-});
+
+

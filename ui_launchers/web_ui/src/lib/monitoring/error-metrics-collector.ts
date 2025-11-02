@@ -162,20 +162,17 @@ export class ErrorMetricsCollector {
     const errorsByCategory: Record<string, number> = {};
     recentErrors.forEach(event => {
       errorsByCategory[event.category] = (errorsByCategory[event.category] || 0) + 1;
-    });
-    
+
     // Calculate error counts by severity
     const errorsBySeverity: Record<string, number> = {};
     recentErrors.forEach(event => {
       errorsBySeverity[event.severity] = (errorsBySeverity[event.severity] || 0) + 1;
-    });
-    
+
     // Calculate error counts by section
     const errorsBySection: Record<string, number> = {};
     recentErrors.forEach(event => {
       errorsBySection[event.section] = (errorsBySection[event.section] || 0) + 1;
-    });
-    
+
     // Calculate mean time to recovery
     const recoveredErrors = recentErrors.filter(event => event.recovered && event.recoveryTime);
     const meanTimeToRecovery = recoveredErrors.length > 0
@@ -284,8 +281,7 @@ export class ErrorMetricsCollector {
     recentErrors.forEach(event => {
       const key = `${event.type}:${event.message}`;
       frequency[key] = (frequency[key] || 0) + 1;
-    });
-    
+
     return frequency;
   }
 

@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { Suspense, ComponentType, LazyExoticComponent } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -21,7 +22,7 @@ const DefaultLoadingFallback: React.FC = () => (
     transition={{ duration: 0.2 }}
   >
     <div className="flex items-center space-x-2 text-muted-foreground">
-      <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+      <Loader2 className="h-4 w-4 animate-spin " />
       <span className="text-sm md:text-base lg:text-lg">Loading...</span>
     </div>
   </motion.div>
@@ -36,7 +37,7 @@ const DefaultErrorFallback: React.FC<{ error: Error; retry: () => void }> = ({ e
   >
     <div className="text-destructive mb-4">
       <svg
-        className="h-12 w-12 mx-auto mb-2 sm:w-auto md:w-full"
+        className="h-12 w-12 mx-auto mb-2 "
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -57,7 +58,6 @@ const DefaultErrorFallback: React.FC<{ error: Error; retry: () => void }> = ({ e
       onClick={retry}
       className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
      aria-label="Button">
-      Try Again
     </button>
   </motion.div>
 );
@@ -114,8 +114,7 @@ export const LazyComponent: React.FC<LazyComponentProps> = ({
 };
 // Utility function to create lazy components with options
 export function createLazyComponent<T extends ComponentType<any>>(
-  importFn: () => Promise<{ default: T }>,
-  options: LazyLoadOptions = {}
+  importFn: () => Promise<{ default: T }>, options: LazyLoadOptions = {} from "@/lib/placeholder";
 ): LazyExoticComponent<T> {
   const LazyComp = React.lazy(() => {
     // Add artificial delay if specified (useful for testing)
@@ -124,10 +123,10 @@ export function createLazyComponent<T extends ComponentType<any>>(
         setTimeout(() => {
           importFn().then(resolve);
         }, options.delay);
-      });
+
     }
     return importFn();
-  });
+
   // Return a wrapped component that includes error boundary and fallback
   return React.lazy(() =>
     Promise.resolve({
@@ -147,8 +146,7 @@ export function useLazyPreload() {
   const preloadComponent = React.useCallback(
     (importFn: () => Promise<{ default: ComponentType<any> }>) => {
       // Preload the component by calling the import function
-      importFn().catch(error => {
-      });
+      importFn().catch(error => { }); from "@/components/ui/placeholder";
     },
     []
   );

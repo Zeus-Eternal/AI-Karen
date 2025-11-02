@@ -8,31 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Search, 
-  Filter, 
-  Clock, 
-  Star, 
-  Tag, 
-  Calendar,
-  ChevronDown,
-  ChevronUp,
-  Bookmark,
-  History,
-  X,
-  SortAsc,
-  SortDesc
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getMemoryService } from '@/services/memoryService';
-import type { 
-  MemoryEntry,
-  MemorySearchOptions,
-  MemorySearchResult,
-  MemorySearchHistory,
-  SavedSearch,
-  MemorySearchProps,
-  SearchFacets
-} from '@/types/memory';
+import type {  MemoryEntry, MemorySearchOptions, MemorySearchResult, MemorySearchHistory, SavedSearch, MemorySearchProps, SearchFacets } from '@/types/memory';
 interface SearchFilters {
   tags: string[];
   contentTypes: string[];
@@ -73,7 +52,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
     dateRange: [null, null],
     sortBy: 'relevance',
     sortOrder: 'desc'
-  });
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const memoryService = useMemo(() => getMemoryService(), []);
   // Load search history and saved searches on mount
@@ -175,7 +154,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
         dateRange: searchOptions.timeRange,
         minSimilarity: searchOptions.similarityThreshold,
         maxResults: searchOptions.topK
-      });
+
       // Enhance result with mock facets and suggestions
       const enhancedResult: MemorySearchResult = {
         memories: result.memories,
@@ -208,11 +187,11 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
       // Count tags
       memory.tags.forEach(tag => {
         tags[tag] = (tags[tag] || 0) + 1;
-      });
+
       // Count clusters
       const cluster = memory.metadata?.cluster || 'general';
       clusters[cluster] = (clusters[cluster] || 0) + 1;
-    });
+
     return {
       types: Object.entries(types).map(([type, count]) => ({ type, count })),
       tags: Object.entries(tags).map(([tag, count]) => ({ tag, count })),
@@ -323,7 +302,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
       dateRange: [null, null],
       sortBy: 'relevance',
       sortOrder: 'desc'
-    });
+
   }, []);
   const formatTimestamp = useCallback((timestamp: number) => {
     const date = new Date(timestamp);
@@ -356,23 +335,23 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
           {/* Search Input */}
           <div className="relative">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-auto md:w-full" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 " />
               <input
                 ref={searchInputRef}
                 type="text"
                 placeholder="Search memories semantically..."
                 value={query}
-                onChange={(e) = aria-label="Input"> setQuery(e.target.value)}
+                onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onFocus={() => setShowSuggestions(true)}
                 className="pl-10 pr-4"
               />
               {query && (
                 <button
-                  onClick={() = aria-label="Button"> setQuery('')}
+                  onClick={() => setQuery('')}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <X className="w-4 h-4 sm:w-auto md:w-full" />
+                  <X className="w-4 h-4 " />
                 </button>
               )}
             </div>
@@ -383,7 +362,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                   {suggestions.map((suggestion, index) => (
                     <button
                       key={index}
-                      onClick={() = aria-label="Button"> {
+                      onClick={() => {
                         setQuery(suggestion.query);
                         performSearch(suggestion.query);
                       }}
@@ -391,9 +370,9 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                     >
                       <div className="flex items-center space-x-2">
                         {suggestion.type === 'history' ? (
-                          <History className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />
+                          <History className="w-4 h-4 text-gray-400 " />
                         ) : (
-                          <Search className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />
+                          <Search className="w-4 h-4 text-gray-400 " />
                         )}
                         <span>{suggestion.query}</span>
                       </div>
@@ -411,32 +390,32 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
           {/* Search Controls */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <button
-                onClick={() = aria-label="Button"> performSearch()}
+              <Button
+                onClick={() => performSearch()}
                 disabled={loading || !query.trim()}
                 className="px-6"
               >
                 {loading ? 'Searching...' : 'Search'}
               </Button>
-              <button
+              <Button
                 variant="outline"
-                onClick={() = aria-label="Button"> setShowFilters(!showFilters)}
+                onClick={() => setShowFilters(!showFilters)}
                 className="flex items-center space-x-1"
               >
-                <Filter className="w-4 h-4 sm:w-auto md:w-full" />
+                <Filter className="w-4 h-4 " />
                 <span>Filters</span>
-                {showFilters ? <ChevronUp className="w-4 h-4 sm:w-auto md:w-full" /> : <ChevronDown className="w-4 h-4 sm:w-auto md:w-full" />}
+                {showFilters ? <ChevronUp className="w-4 h-4 " /> : <ChevronDown className="w-4 h-4 " />}
               </Button>
               {query.trim() && (
-                <button
+                <Button
                   variant="outline"
-                  onClick={() = aria-label="Button"> {
+                  onClick={() => {
                     const name = prompt('Enter a name for this search:');
                     if (name) saveSearch(name);
                   }}
                   className="flex items-center space-x-1"
                 >
-                  <Bookmark className="w-4 h-4 sm:w-auto md:w-full" />
+                  <Bookmark className="w-4 h-4 " />
                   <span>Save</span>
                 </Button>
               )}
@@ -459,7 +438,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                     {searchResult?.facets.tags.slice(0, 5).map(({ tag, count }) => (
                       <button
                         key={tag}
-                        onClick={() = aria-label="Button"> {
+                        onClick={() => {
                           setFilters(prev => ({
                             ...prev,
                             tags: prev.tags.includes(tag)
@@ -484,7 +463,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                   <div className="flex space-x-2">
                     <select
                       value={filters.sortBy}
-                      onChange={(e) = aria-label="Select option"> setFilters(prev => ({ 
+                      onChange={(e) => setFilters(prev => ({ 
                         ...prev, 
                         sortBy: e.target.value as any 
                       }))}
@@ -496,24 +475,23 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                       <option value="access_count">Access Count</option>
                     </select>
                     <button
-                      onClick={() = aria-label="Button"> setFilters(prev => ({
+                      onClick={() => setFilters(prev => ({
                         ...prev,
                         sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc'
                       }))}
                       className="px-2 py-1 border rounded hover:bg-gray-50"
                     >
-                      {filters.sortOrder === 'asc' ? <SortAsc className="w-4 h-4 sm:w-auto md:w-full" /> : <SortDesc className="w-4 h-4 sm:w-auto md:w-full" />}
+                      {filters.sortOrder === 'asc' ? <SortAsc className="w-4 h-4 " /> : <SortDesc className="w-4 h-4 " />}
                     </button>
                   </div>
                 </div>
                 {/* Clear Filters */}
                 <div className="flex items-end">
-                  <button
+                  <Button
                     variant="outline"
                     onClick={clearFilters}
                     className="text-sm md:text-base lg:text-lg"
-                   aria-label="Button">
-                    Clear Filters
+                   >
                   </Button>
                 </div>
               </div>
@@ -536,8 +514,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
               <Card className="p-6 text-center sm:p-4 md:p-6">
                 <div className="text-red-600 mb-2">Search Error</div>
                 <p className="text-gray-600 mb-4">{error}</p>
-                <button onClick={() = aria-label="Button"> performSearch()} variant="outline">
-                  Try Again
+                <Button onClick={() => performSearch()} variant="outline">
                 </Button>
               </Card>
             ) : loading ? (
@@ -545,8 +522,8 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                 {[1, 2, 3].map(i => (
                   <Card key={i} className="p-4 sm:p-4 md:p-6">
                     <div className="animate-pulse space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-3/4 sm:w-auto md:w-full"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2 sm:w-auto md:w-full"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4 "></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2 "></div>
                       <div className="h-3 bg-gray-200 rounded w-full"></div>
                     </div>
                   </Card>
@@ -578,7 +555,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                           )}
                           {memory.confidence && (
                             <div className="flex items-center space-x-1">
-                              <Star className="w-3 h-3 text-yellow-500 sm:w-auto md:w-full" />
+                              <Star className="w-3 h-3 text-yellow-500 " />
                               <span className="text-xs text-gray-600 sm:text-sm md:text-base">
                                 {(memory.confidence * 100).toFixed(0)}%
                               </span>
@@ -586,7 +563,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                           )}
                         </div>
                         <div className="flex items-center space-x-2 text-xs text-gray-500 sm:text-sm md:text-base">
-                          <Clock className="w-3 h-3 sm:w-auto md:w-full" />
+                          <Clock className="w-3 h-3 " />
                           <span>{formatTimestamp(memory.timestamp)}</span>
                         </div>
                       </div>
@@ -601,7 +578,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                         <div className="flex flex-wrap gap-1">
                           {memory.tags.slice(0, 5).map(tag => (
                             <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
-                              <Tag className="w-2 h-2 mr-1 sm:w-auto md:w-full" />
+                              <Tag className="w-2 h-2 mr-1 " />
                               {tag}
                             </Badge>
                           ))}
@@ -620,14 +597,12 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
               <Card className="p-6 text-center sm:p-4 md:p-6">
                 <div className="text-gray-600 mb-2">No memories found</div>
                 <p className="text-sm text-gray-500 md:text-base lg:text-lg">
-                  Try adjusting your search terms or filters
                 </p>
               </Card>
             ) : (
               <Card className="p-6 text-center sm:p-4 md:p-6">
                 <div className="text-gray-600 mb-2">Start searching</div>
                 <p className="text-sm text-gray-500 md:text-base lg:text-lg">
-                  Enter a search query to find relevant memories
                 </p>
               </Card>
             )}
@@ -645,7 +620,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <History className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />
+                      <History className="w-4 h-4 text-gray-400 " />
                       <span className="font-medium">{historyItem.query}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-500 md:text-base lg:text-lg">
@@ -673,7 +648,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Bookmark className="w-4 h-4 text-blue-500 sm:w-auto md:w-full" />
+                        <Bookmark className="w-4 h-4 text-blue-500 " />
                         <span className="font-medium">{savedSearch.name}</span>
                       </div>
                       <Badge variant="secondary">{savedSearch.useCount} uses</Badge>
@@ -692,7 +667,6 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
                 <Card className="p-6 text-center sm:p-4 md:p-6">
                   <div className="text-gray-600">No saved searches</div>
                   <p className="text-sm text-gray-500 mt-1 md:text-base lg:text-lg">
-                    Save frequently used searches for quick access
                   </p>
                 </Card>
               )}

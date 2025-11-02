@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,22 +13,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import {
-  Upload,
-  FileText,
-  Settings,
-  Zap,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  X,
-  FolderOpen,
-  Download,
-  Cpu,
-  HardDrive,
-  Layers,
-  Merge
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
 interface UploadFile {
@@ -135,7 +123,7 @@ export default function ModelUploadManager({
     // Start uploading files
     newUploadFiles.forEach(uploadFile => {
       uploadModelFile(uploadFile);
-    });
+
   };
   const uploadModelFile = async (uploadFile: UploadFile) => {
     try {
@@ -154,7 +142,7 @@ export default function ModelUploadManager({
             f.id === uploadFile.id ? { ...f, progress } : f
           ));
         }
-      });
+
       xhr.addEventListener('load', () => {
         if (xhr.status === 200) {
           const response = JSON.parse(xhr.responseText);
@@ -164,15 +152,15 @@ export default function ModelUploadManager({
           toast({
             title: "Upload Complete",
             description: `${uploadFile.file.name} uploaded successfully`,
-          });
+
           onModelUploaded?.(response.path);
         } else {
           throw new Error(`Upload failed: ${xhr.statusText}`);
         }
-      });
+
       xhr.addEventListener('error', () => {
         throw new Error('Upload failed due to network error');
-      });
+
       xhr.open('POST', `${backend.getBaseUrl()}/api/models/local/upload`);
       xhr.send(formData);
     } catch (error) {
@@ -187,7 +175,7 @@ export default function ModelUploadManager({
         variant: 'destructive',
         title: "Upload Failed",
         description: `Failed to upload ${uploadFile.file.name}`,
-      });
+
     }
   };
   const removeUploadFile = (id: string) => {
@@ -200,7 +188,7 @@ export default function ModelUploadManager({
         variant: 'destructive',
         title: "Missing Information",
         description: "Please specify both source and target paths",
-      });
+
       return;
     }
     try {
@@ -213,11 +201,11 @@ export default function ModelUploadManager({
           architecture: selectedArchitecture === 'auto' ? undefined : selectedArchitecture,
           vocab_only: vocabOnly
         })
-      });
+
       toast({
         title: "Conversion Started",
         description: "Model conversion job has been queued",
-      });
+
       onJobCreated?.(response);
       // Reset form
       setConversionSource('');
@@ -230,7 +218,7 @@ export default function ModelUploadManager({
         variant: 'destructive',
         title: info.title || "Conversion Failed",
         description: info.message || "Could not start model conversion",
-      });
+
     } finally {
       setProcessing(false);
     }
@@ -241,7 +229,7 @@ export default function ModelUploadManager({
         variant: 'destructive',
         title: "Missing Information",
         description: "Please specify both source and target paths",
-      });
+
       return;
     }
     try {
@@ -254,11 +242,11 @@ export default function ModelUploadManager({
           quantization_format: quantizationFormat,
           allow_requantize: allowRequantize
         })
-      });
+
       toast({
         title: "Quantization Started",
         description: "Model quantization job has been queued",
-      });
+
       onJobCreated?.(response);
       // Reset form
       setQuantizationSource('');
@@ -271,7 +259,7 @@ export default function ModelUploadManager({
         variant: 'destructive',
         title: info.title || "Quantization Failed",
         description: info.message || "Could not start model quantization",
-      });
+
     } finally {
       setProcessing(false);
     }
@@ -282,7 +270,7 @@ export default function ModelUploadManager({
         variant: 'destructive',
         title: "Missing Information",
         description: "Please specify base model, LoRA adapter, and output paths",
-      });
+
       return;
     }
     try {
@@ -295,11 +283,11 @@ export default function ModelUploadManager({
           output_path: loraOutputPath,
           alpha: parseFloat(loraAlpha)
         })
-      });
+
       toast({
         title: "LoRA Merge Started",
         description: "LoRA merge job has been queued",
-      });
+
       onJobCreated?.(response);
       // Reset form
       setLoraBaseModel('');
@@ -312,7 +300,7 @@ export default function ModelUploadManager({
         variant: 'destructive',
         title: info.title || "LoRA Merge Failed",
         description: info.message || "Could not start LoRA merge",
-      });
+
     } finally {
       setProcessing(false);
     }
@@ -324,31 +312,25 @@ export default function ModelUploadManager({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Upload className="h-5 w-5 sm:w-auto md:w-full" />
-          Advanced Model Management
+          <Upload className="h-5 w-5 " />
         </CardTitle>
         <CardDescription>
-          Upload, convert, quantize, and customize models for optimal performance
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="upload" className="flex items-center gap-2">
-              <Upload className="h-4 w-4 sm:w-auto md:w-full" />
-              Upload
+              <Upload className="h-4 w-4 " />
             </TabsTrigger>
             <TabsTrigger value="convert" className="flex items-center gap-2">
-              <Settings className="h-4 w-4 sm:w-auto md:w-full" />
-              Convert
+              <Settings className="h-4 w-4 " />
             </TabsTrigger>
             <TabsTrigger value="quantize" className="flex items-center gap-2">
-              <Layers className="h-4 w-4 sm:w-auto md:w-full" />
-              Quantize
+              <Layers className="h-4 w-4 " />
             </TabsTrigger>
             <TabsTrigger value="lora" className="flex items-center gap-2">
-              <Merge className="h-4 w-4 sm:w-auto md:w-full" />
-              LoRA Merge
+              <Merge className="h-4 w-4 " />
             </TabsTrigger>
           </TabsList>
           {/* Upload Tab */}
@@ -368,22 +350,19 @@ export default function ModelUploadManager({
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
               >
-                <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                 <div className="space-y-2">
                   <p className="text-lg font-medium">
-                    Drop model files here or click to browse
                   </p>
                   <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                    Supports GGUF, SafeTensors, PyTorch models, and archives
                   </p>
                 </div>
-                <button 
+                <Button 
                   variant="outline" 
                   className="mt-4"
                   onClick={openFileDialog}
-                 aria-label="Button">
-                  <FolderOpen className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Browse Files
+                 >
+                  <FolderOpen className="h-4 w-4 mr-2 " />
                 </Button>
               </div>
               <input
@@ -399,28 +378,28 @@ export default function ModelUploadManager({
                   <h4 className="font-medium">Upload Progress</h4>
                   {uploadFiles.map((uploadFile) => (
                     <div key={uploadFile.id} className="flex items-center gap-3 p-3 border rounded-lg sm:p-4 md:p-6">
-                      <FileText className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
-                      <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                      <FileText className="h-4 w-4 text-muted-foreground " />
+                      <div className="flex-1 min-w-0 ">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm font-medium truncate md:text-base lg:text-lg">
                             {uploadFile.file.name}
                           </span>
                           <div className="flex items-center gap-2">
                             {uploadFile.status === 'uploaded' && (
-                              <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                              <CheckCircle2 className="h-4 w-4 text-green-600 " />
                             )}
                             {uploadFile.status === 'error' && (
-                              <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
+                              <AlertCircle className="h-4 w-4 text-red-600 " />
                             )}
                             {uploadFile.status === 'uploading' && (
-                              <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                              <Loader2 className="h-4 w-4 animate-spin " />
                             )}
-                            <button
+                            <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() = aria-label="Button"> removeUploadFile(uploadFile.id)}
+                              onClick={() => removeUploadFile(uploadFile.id)}
                             >
-                              <X className="h-4 w-4 sm:w-auto md:w-full" />
+                              <X className="h-4 w-4 " />
                             </Button>
                           </div>
                         </div>
@@ -451,7 +430,7 @@ export default function ModelUploadManager({
           {/* Convert Tab */}
           <TabsContent value="convert" className="space-y-6">
             <Alert>
-              <Settings className="h-4 w-4 sm:w-auto md:w-full" />
+              <Settings className="h-4 w-4 " />
               <AlertTitle>Model Conversion</AlertTitle>
               <AlertDescription>
                 Convert Transformers models to GGUF format for use with llama.cpp runtime.
@@ -466,10 +445,9 @@ export default function ModelUploadManager({
                     id="conversion-source"
                     placeholder="/path/to/huggingface/model"
                     value={conversionSource}
-                    onChange={(e) = aria-label="Input"> setConversionSource(e.target.value)}
+                    onChange={(e) => setConversionSource(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-                    Path to Hugging Face model directory
                   </p>
                 </div>
                 <div>
@@ -478,10 +456,9 @@ export default function ModelUploadManager({
                     id="conversion-target"
                     placeholder="/path/to/output.gguf"
                     value={conversionTarget}
-                    onChange={(e) = aria-label="Input"> setConversionTarget(e.target.value)}
+                    onChange={(e) => setConversionTarget(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-                    Output path for converted GGUF file
                   </p>
                 </div>
               </div>
@@ -506,7 +483,7 @@ export default function ModelUploadManager({
                     type="checkbox"
                     id="vocab-only"
                     checked={vocabOnly}
-                    onChange={(e) = aria-label="Input"> setVocabOnly(e.target.checked)}
+                    onChange={(e) => setVocabOnly(e.target.checked)}
                   />
                   <Label htmlFor="vocab-only" className="text-sm md:text-base lg:text-lg">
                     Vocabulary only (for merging with existing model)
@@ -521,13 +498,12 @@ export default function ModelUploadManager({
              aria-label="Button">
               {processing ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                   Converting...
                 </>
               ) : (
                 <>
-                  <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Start Conversion
+                  <Settings className="h-4 w-4 mr-2 " />
                 </>
               )}
             </Button>
@@ -535,7 +511,7 @@ export default function ModelUploadManager({
           {/* Quantize Tab */}
           <TabsContent value="quantize" className="space-y-6">
             <Alert>
-              <Layers className="h-4 w-4 sm:w-auto md:w-full" />
+              <Layers className="h-4 w-4 " />
               <AlertTitle>Model Quantization</AlertTitle>
               <AlertDescription>
                 Reduce model size and memory usage by quantizing weights to lower precision.
@@ -550,7 +526,7 @@ export default function ModelUploadManager({
                     id="quantization-source"
                     placeholder="/path/to/source.gguf"
                     value={quantizationSource}
-                    onChange={(e) = aria-label="Input"> setQuantizationSource(e.target.value)}
+                    onChange={(e) => setQuantizationSource(e.target.value)}
                   />
                 </div>
                 <div>
@@ -559,7 +535,7 @@ export default function ModelUploadManager({
                     id="quantization-target"
                     placeholder="/path/to/quantized.gguf"
                     value={quantizationTarget}
-                    onChange={(e) = aria-label="Input"> setQuantizationTarget(e.target.value)}
+                    onChange={(e) => setQuantizationTarget(e.target.value)}
                   />
                 </div>
               </div>
@@ -587,7 +563,7 @@ export default function ModelUploadManager({
                     type="checkbox"
                     id="allow-requantize"
                     checked={allowRequantize}
-                    onChange={(e) = aria-label="Input"> setAllowRequantize(e.target.checked)}
+                    onChange={(e) => setAllowRequantize(e.target.checked)}
                   />
                   <Label htmlFor="allow-requantize" className="text-sm md:text-base lg:text-lg">
                     Allow re-quantization of already quantized models
@@ -602,13 +578,12 @@ export default function ModelUploadManager({
              aria-label="Button">
               {processing ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                   Quantizing...
                 </>
               ) : (
                 <>
-                  <Layers className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Start Quantization
+                  <Layers className="h-4 w-4 mr-2 " />
                 </>
               )}
             </Button>
@@ -616,7 +591,7 @@ export default function ModelUploadManager({
           {/* LoRA Merge Tab */}
           <TabsContent value="lora" className="space-y-6">
             <Alert>
-              <Merge className="h-4 w-4 sm:w-auto md:w-full" />
+              <Merge className="h-4 w-4 " />
               <AlertTitle>LoRA Adapter Merging</AlertTitle>
               <AlertDescription>
                 Merge LoRA (Low-Rank Adaptation) adapters with base models to create
@@ -630,10 +605,9 @@ export default function ModelUploadManager({
                   id="lora-base-model"
                   placeholder="/path/to/base-model.gguf"
                   value={loraBaseModel}
-                  onChange={(e) = aria-label="Input"> setLoraBaseModel(e.target.value)}
+                  onChange={(e) => setLoraBaseModel(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-                  Path to the base GGUF model
                 </p>
               </div>
               <div>
@@ -642,10 +616,9 @@ export default function ModelUploadManager({
                   id="lora-adapter"
                   placeholder="/path/to/lora-adapter"
                   value={loraAdapterPath}
-                  onChange={(e) = aria-label="Input"> setLoraAdapterPath(e.target.value)}
+                  onChange={(e) => setLoraAdapterPath(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-                  Path to the LoRA adapter directory or file
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -655,7 +628,7 @@ export default function ModelUploadManager({
                     id="lora-output"
                     placeholder="/path/to/merged-model.gguf"
                     value={loraOutputPath}
-                    onChange={(e) = aria-label="Input"> setLoraOutputPath(e.target.value)}
+                    onChange={(e) => setLoraOutputPath(e.target.value)}
                   />
                 </div>
                 <div>
@@ -668,7 +641,7 @@ export default function ModelUploadManager({
                     max="10.0"
                     placeholder="1.0"
                     value={loraAlpha}
-                    onChange={(e) = aria-label="Input"> setLoraAlpha(e.target.value)}
+                    onChange={(e) => setLoraAlpha(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                     Scaling factor for LoRA weights (typically 1.0)
@@ -683,13 +656,12 @@ export default function ModelUploadManager({
              aria-label="Button">
               {processing ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                   Merging...
                 </>
               ) : (
                 <>
-                  <Merge className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Start LoRA Merge
+                  <Merge className="h-4 w-4 mr-2 " />
                 </>
               )}
             </Button>

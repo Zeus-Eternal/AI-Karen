@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
         // @ts-ignore Node/undici hints
         keepalive: true,
         cache: 'no-store',
-      });
+
       clearTimeout(timeout);
       const contentType = response.headers.get('content-type') || '';
       let data: any = {};

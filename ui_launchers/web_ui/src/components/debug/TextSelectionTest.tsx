@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-
+import React from 'react';
 export default function TextSelectionTest() {
   const testTexts = [
     "This is a simple text that should be selectable.",
@@ -22,7 +22,7 @@ export default function TextSelectionTest() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto sm:w-auto md:w-full">
+    <div className="p-6 max-w-2xl mx-auto ">
       <h2 className="text-2xl font-bold mb-4">Text Selection Test</h2>
       <p className="mb-4 text-gray-600">
         This component tests text selection functionality. Try selecting text below:
@@ -40,9 +40,8 @@ export default function TextSelectionTest() {
             </p>
             <button 
               className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm md:text-base lg:text-lg"
-              onClick={() = aria-label="Button"> handleTextClick(text)}
+              onClick={() => handleTextClick(text)}
             >
-              Select This Text
             </button>
           </div>
         ))}

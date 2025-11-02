@@ -4,17 +4,7 @@
  * Core email service for sending emails, managing templates, and handling
  * different email providers (SMTP, SendGrid, SES, etc.).
  */
-import { 
-  EmailMessage, 
-  EmailServiceConfig, 
-  SendEmailResponse, 
-  EmailTemplate,
-  EmailTemplateVariables,
-  EmailNotification,
-  EmailNotificationType,
-  BulkEmailOperation,
-  EmailServiceHealth
-} from './types';
+import {  EmailMessage, EmailServiceConfig, SendEmailResponse, EmailTemplate, EmailTemplateVariables, EmailNotification, EmailNotificationType, BulkEmailOperation, EmailServiceHealth } from './types';
 import { TemplateEngine, EmailTemplateManager } from './template-engine';
 import { getEmailServiceConfig, testEmailService } from './config';
 /**
@@ -37,7 +27,7 @@ class SMTPProvider implements EmailProvider {
         to: message.to,
         subject: message.subject,
         html: message.html_content.substring(0, 100) + '...',
-      });
+
       return {
         success: true,
         message_id: `smtp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -49,9 +39,9 @@ class SMTPProvider implements EmailProvider {
         resolve({
           success: true,
           message_id: `smtp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        });
+
       }, 100);
-    });
+
   }
   async testConnection(): Promise<boolean> {
     return this.config.enabled && !!this.config.smtp_host;

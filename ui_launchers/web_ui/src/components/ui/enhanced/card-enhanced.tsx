@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
@@ -170,7 +170,6 @@ const CardHeaderEnhanced = React.forwardRef<HTMLDivElement, CardHeaderProps>(
 CardHeaderEnhanced.displayName = 'CardHeaderEnhanced';
 
 const CardTitleEnhanced = React.forwardRef<
-  HTMLParagraphElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
   <h3
@@ -186,7 +185,6 @@ const CardTitleEnhanced = React.forwardRef<
 CardTitleEnhanced.displayName = 'CardTitleEnhanced';
 
 const CardDescriptionEnhanced = React.forwardRef<
-  HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
   <p
@@ -224,11 +222,5 @@ const CardFooterEnhanced = React.forwardRef<HTMLDivElement, CardFooterProps>(
 CardFooterEnhanced.displayName = 'CardFooterEnhanced';
 
 export {
-  CardEnhanced,
-  CardHeaderEnhanced,
-  CardFooterEnhanced,
-  CardTitleEnhanced,
-  CardDescriptionEnhanced,
-  CardContentEnhanced,
   cardVariants,
 };

@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,20 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Play,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  Zap,
-  Key,
-  Database,
-  Wifi,
-  Activity,
-  Settings,
-  TestTube
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 interface TestResult {
   test_type: string;
@@ -71,20 +61,20 @@ export function ProviderTestingInterface({
           api_key: requiresApiKey ? apiKey : undefined,
           test_prompt: testPrompt
         })
-      });
+
       setTestResults(response);
       onTestComplete?.(response);
       toast({
         title: "Validation Complete",
         description: `Provider validation ${response.overall_status}`,
         variant: response.overall_status === 'failed' ? 'destructive' : 'default'
-      });
+
     } catch (error) {
       toast({
         title: "Validation Failed",
         description: `Could not validate ${providerName}: ${(error as Error).message}`,
         variant: "destructive",
-      });
+
     } finally {
       setTesting(false);
     }
@@ -100,7 +90,7 @@ export function ProviderTestingInterface({
           api_key: requiresApiKey ? apiKey : undefined,
           test_prompt: testPrompt
         })
-      });
+
       // Update test results
       if (testResults) {
         const updatedResults = { ...testResults };
@@ -111,21 +101,21 @@ export function ProviderTestingInterface({
         title: `${testType} Test Complete`,
         description: response.success ? 'Test passed' : `Test failed: ${response.message}`,
         variant: response.success ? 'default' : 'destructive'
-      });
+
     } catch (error) {
       toast({
         title: `${testType} Test Failed`,
         description: (error as Error).message,
         variant: "destructive",
-      });
+
     } finally {
       setActiveTest(null);
     }
   };
   const getTestIcon = (result?: TestResult) => {
-    if (!result) return <Clock className="h-4 w-4 text-gray-400 sm:w-auto md:w-full" />;
-    if (result.success) return <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
-    return <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+    if (!result) return <Clock className="h-4 w-4 text-gray-400 " />;
+    if (result.success) return <CheckCircle2 className="h-4 w-4 text-green-600 " />;
+    return <AlertCircle className="h-4 w-4 text-red-600 " />;
   };
   const getTestBadge = (result?: TestResult) => {
     if (!result) return <Badge variant="outline">Not Run</Badge>;
@@ -140,7 +130,7 @@ export function ProviderTestingInterface({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <TestTube className="h-5 w-5 sm:w-auto md:w-full" />
+          <TestTube className="h-5 w-5 " />
           Provider Testing & Validation
         </CardTitle>
         <CardDescription>
@@ -158,15 +148,14 @@ export function ProviderTestingInterface({
             {requiresApiKey && (
               <div className="space-y-2">
                 <Label htmlFor="api-key" className="flex items-center gap-2">
-                  <Key className="h-4 w-4 sm:w-auto md:w-full" />
-                  API Key
+                  <Key className="h-4 w-4 " />
                 </Label>
                 <input
                   id="api-key"
                   type="password"
                   placeholder="Enter API key for testing..."
                   value={apiKey}
-                  onChange={(e) = aria-label="Input"> setApiKey(e.target.value)}
+                  onChange={(e) => setApiKey(e.target.value)}
                 />
               </div>
             )}
@@ -177,7 +166,7 @@ export function ProviderTestingInterface({
                 id="test-prompt"
                 placeholder="Enter a test prompt..."
                 value={testPrompt}
-                onChange={(e) = aria-label="Textarea"> setTestPrompt(e.target.value)}
+                onChange={(e) => setTestPrompt(e.target.value)}
                 rows={3}
               />
             </div>
@@ -189,20 +178,19 @@ export function ProviderTestingInterface({
              aria-label="Button">
               {testing ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                   Running Validation...
                 </>
               ) : (
                 <>
-                  <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Run Full Validation
+                  <Play className="h-4 w-4 mr-2 " />
                 </>
               )}
             </Button>
             {/* Quick Results */}
             {testResults && (
               <Alert variant={testResults.overall_status === 'failed' ? 'destructive' : 'default'}>
-                <Activity className="h-4 w-4 sm:w-auto md:w-full" />
+                <Activity className="h-4 w-4 " />
                 <AlertTitle>Validation Results</AlertTitle>
                 <AlertDescription>
                   <div className="space-y-2 mt-2">
@@ -243,22 +231,22 @@ export function ProviderTestingInterface({
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Wifi className="h-4 w-4 sm:w-auto md:w-full" />
+                      <Wifi className="h-4 w-4 " />
                       <CardTitle className="text-sm md:text-base lg:text-lg">Connectivity</CardTitle>
                     </div>
                     {getTestBadge(testResults?.connectivity)}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <button
+                  <Button
                     variant="outline"
                     size="sm"
-                    onClick={() = aria-label="Button"> runIndividualTest('connectivity')}
+                    onClick={() => runIndividualTest('connectivity')}
                     disabled={activeTest === 'connectivity'}
                     className="w-full"
                   >
                     {activeTest === 'connectivity' ? (
-                      <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                      <Loader2 className="h-4 w-4 animate-spin " />
                     ) : (
                       'Test Connection'
                     )}
@@ -276,22 +264,22 @@ export function ProviderTestingInterface({
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Key className="h-4 w-4 sm:w-auto md:w-full" />
+                      <Key className="h-4 w-4 " />
                       <CardTitle className="text-sm md:text-base lg:text-lg">Authentication</CardTitle>
                     </div>
                     {getTestBadge(testResults?.authentication)}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <button
+                  <Button
                     variant="outline"
                     size="sm"
-                    onClick={() = aria-label="Button"> runIndividualTest('authentication')}
+                    onClick={() => runIndividualTest('authentication')}
                     disabled={activeTest === 'authentication' || (requiresApiKey && !apiKey.trim())}
                     className="w-full"
                   >
                     {activeTest === 'authentication' ? (
-                      <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                      <Loader2 className="h-4 w-4 animate-spin " />
                     ) : (
                       'Test Auth'
                     )}
@@ -309,22 +297,22 @@ export function ProviderTestingInterface({
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Database className="h-4 w-4 sm:w-auto md:w-full" />
+                      <Database className="h-4 w-4 " />
                       <CardTitle className="text-sm md:text-base lg:text-lg">Model Discovery</CardTitle>
                     </div>
                     {getTestBadge(testResults?.model_discovery)}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <button
+                  <Button
                     variant="outline"
                     size="sm"
-                    onClick={() = aria-label="Button"> runIndividualTest('model_discovery')}
+                    onClick={() => runIndividualTest('model_discovery')}
                     disabled={activeTest === 'model_discovery'}
                     className="w-full"
                   >
                     {activeTest === 'model_discovery' ? (
-                      <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                      <Loader2 className="h-4 w-4 animate-spin " />
                     ) : (
                       'Discover Models'
                     )}
@@ -342,22 +330,22 @@ export function ProviderTestingInterface({
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Settings className="h-4 w-4 sm:w-auto md:w-full" />
+                      <Settings className="h-4 w-4 " />
                       <CardTitle className="text-sm md:text-base lg:text-lg">Capabilities</CardTitle>
                     </div>
                     {getTestBadge(testResults?.capability_check)}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <button
+                  <Button
                     variant="outline"
                     size="sm"
-                    onClick={() = aria-label="Button"> runIndividualTest('capability_check')}
+                    onClick={() => runIndividualTest('capability_check')}
                     disabled={activeTest === 'capability_check'}
                     className="w-full"
                   >
                     {activeTest === 'capability_check' ? (
-                      <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                      <Loader2 className="h-4 w-4 animate-spin " />
                     ) : (
                       'Check Capabilities'
                     )}
@@ -376,8 +364,7 @@ export function ProviderTestingInterface({
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 sm:w-auto md:w-full" />
-                    Performance Test Results
+                    <Zap className="h-4 w-4 " />
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -413,7 +400,7 @@ export function ProviderTestingInterface({
             {/* Recommendations */}
             {testResults?.recommendations && testResults.recommendations.length > 0 && (
               <Alert>
-                <Activity className="h-4 w-4 sm:w-auto md:w-full" />
+                <Activity className="h-4 w-4 " />
                 <AlertTitle>Recommendations</AlertTitle>
                 <AlertDescription>
                   <ul className="list-disc list-inside space-y-1 mt-2">

@@ -1,4 +1,3 @@
-import { 
 import { logger } from '@/lib/logger';
 /**
  * Authenticated Extension Service
@@ -16,16 +15,10 @@ import { logger } from '@/lib/logger';
 
 
   getEnhancedKarenBackendService, 
-  EnhancedKarenBackendService,
-  ExtensionApiError 
-} from '@/lib/auth/enhanced-karen-backend-service';
+import { } from '@/lib/auth/enhanced-karen-backend-service';
 
   getExtensionAuthErrorHandler,
-  ExtensionAuthErrorHandler,
-  ErrorClassification,
-  RecoveryStrategy,
-  ErrorContext
-} from '@/lib/auth/extension-auth-error-handler';
+import { } from '@/lib/auth/extension-auth-error-handler';
 
 
 // Extension interfaces
@@ -333,7 +326,7 @@ export class AuthenticatedExtensionService {
             } catch (error) {
               logger.error('Error in event callback:', error);
             }
-          });
+
         }
       } catch (error) {
         logger.warn('Failed to poll extension events:', error);

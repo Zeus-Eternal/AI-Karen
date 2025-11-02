@@ -19,13 +19,11 @@ const mockLocalStorage = {
 Object.defineProperty(window, 'localStorage', {
   value: mockLocalStorage,
   writable: true,
-});
 
 describe('Dashboard Store', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockLocalStorage.getItem.mockReturnValue(null);
-  });
 
   describe('Dashboard Management', () => {
     it('should create a new dashboard', () => {
@@ -39,14 +37,12 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         expect(dashboardId).toBeDefined();
         expect(result.current.dashboards[dashboardId]).toBeDefined();
         expect(result.current.dashboards[dashboardId].name).toBe('Test Dashboard');
         expect(result.current.activeDashboardId).toBe(dashboardId);
-      });
-    });
+
 
     it('should update dashboard configuration', () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -58,17 +54,14 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         result.current.updateDashboard(dashboardId, {
           name: 'Updated Dashboard',
           layout: 'masonry'
-        });
 
         expect(result.current.dashboards[dashboardId].name).toBe('Updated Dashboard');
         expect(result.current.dashboards[dashboardId].layout).toBe('masonry');
-      });
-    });
+
 
     it('should delete dashboard', () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -80,14 +73,12 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         result.current.deleteDashboard(dashboardId);
 
         expect(result.current.dashboards[dashboardId]).toBeUndefined();
         expect(result.current.activeDashboardId).toBeNull();
-      });
-    });
+
 
     it('should duplicate dashboard', () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -109,7 +100,6 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         const duplicateId = result.current.duplicateDashboard(originalId, 'Duplicate Dashboard');
 
@@ -118,9 +108,8 @@ describe('Dashboard Store', () => {
         expect(result.current.dashboards[duplicateId].name).toBe('Duplicate Dashboard');
         expect(result.current.dashboards[duplicateId].widgets).toHaveLength(1);
         expect(result.current.dashboards[duplicateId].widgets[0].id).not.toBe('widget-1');
-      });
-    });
-  });
+
+
 
   describe('Widget Management', () => {
     it('should add widget to dashboard', () => {
@@ -133,7 +122,6 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         const widgetId = result.current.addWidget(dashboardId, {
           type: 'metric',
@@ -142,14 +130,12 @@ describe('Dashboard Store', () => {
           position: { x: 0, y: 0, w: 1, h: 1 },
           config: { metric: 'cpu_usage' },
           enabled: true
-        });
 
         expect(widgetId).toBeDefined();
         expect(result.current.dashboards[dashboardId].widgets).toHaveLength(1);
         expect(result.current.dashboards[dashboardId].widgets[0].id).toBe(widgetId);
         expect(result.current.dashboards[dashboardId].widgets[0].title).toBe('CPU Usage');
-      });
-    });
+
 
     it('should update widget configuration', () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -161,7 +147,6 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         const widgetId = result.current.addWidget(dashboardId, {
           type: 'metric',
@@ -170,18 +155,15 @@ describe('Dashboard Store', () => {
           position: { x: 0, y: 0, w: 1, h: 1 },
           config: { metric: 'cpu_usage' },
           enabled: true
-        });
 
         result.current.updateWidget(dashboardId, widgetId, {
           title: 'Updated CPU Usage',
           size: 'medium'
-        });
 
         const widget = result.current.dashboards[dashboardId].widgets[0];
         expect(widget.title).toBe('Updated CPU Usage');
         expect(widget.size).toBe('medium');
-      });
-    });
+
 
     it('should remove widget from dashboard', () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -193,7 +175,6 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         const widgetId = result.current.addWidget(dashboardId, {
           type: 'metric',
@@ -202,13 +183,11 @@ describe('Dashboard Store', () => {
           position: { x: 0, y: 0, w: 1, h: 1 },
           config: { metric: 'cpu_usage' },
           enabled: true
-        });
 
         result.current.removeWidget(dashboardId, widgetId);
 
         expect(result.current.dashboards[dashboardId].widgets).toHaveLength(0);
-      });
-    });
+
 
     it('should reorder widgets', () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -220,7 +199,6 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         const widget1Id = result.current.addWidget(dashboardId, {
           type: 'metric',
@@ -229,7 +207,6 @@ describe('Dashboard Store', () => {
           position: { x: 0, y: 0, w: 1, h: 1 },
           config: {},
           enabled: true
-        });
 
         const widget2Id = result.current.addWidget(dashboardId, {
           type: 'metric',
@@ -238,7 +215,6 @@ describe('Dashboard Store', () => {
           position: { x: 1, y: 0, w: 1, h: 1 },
           config: {},
           enabled: true
-        });
 
         // Reorder widgets
         result.current.reorderWidgets(dashboardId, [widget2Id, widget1Id]);
@@ -246,9 +222,8 @@ describe('Dashboard Store', () => {
         const widgets = result.current.dashboards[dashboardId].widgets;
         expect(widgets[0].id).toBe(widget2Id);
         expect(widgets[1].id).toBe(widget1Id);
-      });
-    });
-  });
+
+
 
   describe('Template Management', () => {
     it('should create custom template', () => {
@@ -267,14 +242,12 @@ describe('Dashboard Store', () => {
             filters: []
           },
           tags: ['custom']
-        });
 
         expect(templateId).toBeDefined();
         expect(result.current.templates[templateId]).toBeDefined();
         expect(result.current.templates[templateId].name).toBe('Custom Template');
         expect(result.current.templates[templateId].category).toBe('user');
-      });
-    });
+
 
     it('should apply template to create new dashboard', () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -302,7 +275,6 @@ describe('Dashboard Store', () => {
             filters: []
           },
           tags: ['test']
-        });
 
         const dashboardId = result.current.applyTemplate(templateId);
 
@@ -312,9 +284,8 @@ describe('Dashboard Store', () => {
         expect(result.current.dashboards[dashboardId].widgets).toHaveLength(1);
         expect(result.current.dashboards[dashboardId].widgets[0].title).toBe('Template Widget');
         expect(result.current.dashboards[dashboardId].widgets[0].id).not.toBe('template-widget');
-      });
-    });
-  });
+
+
 
   describe('Filter Management', () => {
     it('should manage global filters', () => {
@@ -326,7 +297,6 @@ describe('Dashboard Store', () => {
           type: 'status',
           value: 'healthy',
           enabled: true
-        });
 
         expect(filterId).toBeDefined();
         expect(result.current.globalFilters).toHaveLength(1);
@@ -337,8 +307,7 @@ describe('Dashboard Store', () => {
 
         result.current.removeGlobalFilter(filterId);
         expect(result.current.globalFilters).toHaveLength(0);
-      });
-    });
+
 
     it('should manage dashboard-specific filters', () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -350,14 +319,12 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         const filterId = result.current.addDashboardFilter(dashboardId, {
           name: 'Category Filter',
           type: 'category',
           value: 'system',
           enabled: true
-        });
 
         expect(filterId).toBeDefined();
         expect(result.current.dashboards[dashboardId].filters).toHaveLength(1);
@@ -368,8 +335,7 @@ describe('Dashboard Store', () => {
 
         result.current.removeDashboardFilter(dashboardId, filterId);
         expect(result.current.dashboards[dashboardId].filters).toHaveLength(0);
-      });
-    });
+
 
     it('should manage time range', () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -382,13 +348,11 @@ describe('Dashboard Store', () => {
 
       act(() => {
         result.current.setGlobalTimeRange(newTimeRange);
-      });
 
       expect(result.current.globalTimeRange.start).toEqual(newTimeRange.start);
       expect(result.current.globalTimeRange.end).toEqual(newTimeRange.end);
       expect(result.current.globalTimeRange.preset).toBe('custom');
-    });
-  });
+
 
   describe('Export/Import', () => {
     it('should export dashboard', async () => {
@@ -401,7 +365,6 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         const exportData = await result.current.exportDashboard(dashboardId);
         const parsed = JSON.parse(exportData);
@@ -409,8 +372,7 @@ describe('Dashboard Store', () => {
         expect(parsed.version).toBe('1.0');
         expect(parsed.type).toBe('dashboard');
         expect(parsed.data.name).toBe('Export Test');
-      });
-    });
+
 
     it('should export all dashboards', async () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -422,7 +384,6 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         result.current.createDashboard({
           name: 'Dashboard 2',
@@ -430,7 +391,6 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
 
         const exportData = await result.current.exportAllDashboards();
         const parsed = JSON.parse(exportData);
@@ -438,8 +398,7 @@ describe('Dashboard Store', () => {
         expect(parsed.version).toBe('1.0');
         expect(parsed.type).toBe('dashboard-collection');
         expect(Object.keys(parsed.data.dashboards)).toHaveLength(2);
-      });
-    });
+
 
     it('should import dashboard', async () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -464,7 +423,6 @@ describe('Dashboard Store', () => {
           refreshInterval: 30000,
           filters: []
         }
-      });
 
       await act(async () => {
         const dashboardId = await result.current.importDashboard(importData);
@@ -475,8 +433,7 @@ describe('Dashboard Store', () => {
         expect(result.current.dashboards[dashboardId].widgets).toHaveLength(1);
         expect(result.current.dashboards[dashboardId].widgets[0].title).toBe('Imported Widget');
         expect(result.current.dashboards[dashboardId].widgets[0].id).not.toBe('imported-widget');
-      });
-    });
+
 
     it('should handle invalid import data', async () => {
       const { result } = renderHook(() => useDashboardStore());
@@ -485,9 +442,8 @@ describe('Dashboard Store', () => {
 
       await act(async () => {
         await expect(result.current.importDashboard(invalidData)).rejects.toThrow();
-      });
-    });
-  });
+
+
 
   describe('UI State Management', () => {
     it('should manage editing state', () => {
@@ -495,46 +451,38 @@ describe('Dashboard Store', () => {
 
       act(() => {
         result.current.setEditing(true);
-      });
 
       expect(result.current.isEditing).toBe(true);
 
       act(() => {
         result.current.setEditing(false);
-      });
 
       expect(result.current.isEditing).toBe(false);
       expect(result.current.selectedWidgets).toHaveLength(0);
-    });
 
     it('should manage widget selection', () => {
       const { result } = renderHook(() => useDashboardStore());
 
       act(() => {
         result.current.setSelectedWidgets(['widget-1', 'widget-2']);
-      });
 
       expect(result.current.selectedWidgets).toEqual(['widget-1', 'widget-2']);
 
       act(() => {
         result.current.toggleWidgetSelection('widget-3');
-      });
 
       expect(result.current.selectedWidgets).toEqual(['widget-1', 'widget-2', 'widget-3']);
 
       act(() => {
         result.current.toggleWidgetSelection('widget-1');
-      });
 
       expect(result.current.selectedWidgets).toEqual(['widget-2', 'widget-3']);
 
       act(() => {
         result.current.clearSelection();
-      });
 
       expect(result.current.selectedWidgets).toHaveLength(0);
-    });
-  });
+
 
   describe('Persistence', () => {
     it('should persist state to localStorage', () => {
@@ -547,12 +495,10 @@ describe('Dashboard Store', () => {
           layout: 'grid',
           refreshInterval: 30000,
           filters: []
-        });
-      });
+
 
       // Verify localStorage.setItem was called
       expect(mockLocalStorage.setItem).toHaveBeenCalled();
-    });
 
     it('should restore state from localStorage', () => {
       const persistedState = {
@@ -588,6 +534,5 @@ describe('Dashboard Store', () => {
 
       expect(result.current.dashboards['dashboard-1']).toBeDefined();
       expect(result.current.dashboards['dashboard-1'].name).toBe('Restored Dashboard');
-    });
-  });
-});
+
+

@@ -3,7 +3,7 @@
  * Displays API integration health metrics and alerts
  */
 
-'use client';
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,19 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
-  Server, 
-  TrendingUp,
-  XCircle,
-  Bell,
-  BellOff,
-  RefreshCw,
-  Zap
-} from 'lucide-react';
+
+import { Activity, AlertTriangle, CheckCircle, XCircle, Clock, RefreshCw, Bell, BellOff, TrendingUp, Zap, Server } from 'lucide-react';
 import { getHealthMonitor, type HealthMetrics, type Alert as HealthAlert } from '@/lib/health-monitor';
 
 interface HealthDashboardProps {
@@ -105,10 +94,10 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
-      case 'degraded': return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
-      case 'error': return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
-      default: return <Clock className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
+      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-600 " />;
+      case 'degraded': return <AlertTriangle className="h-4 w-4 text-yellow-600 " />;
+      case 'error': return <XCircle className="h-4 w-4 text-red-600 " />;
+      default: return <Clock className="h-4 w-4 text-gray-600 " />;
     }
   };
 
@@ -140,7 +129,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 sm:w-auto md:w-full" />
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 " />
           <p>Loading health metrics...</p>
         </div>
       </div>
@@ -154,19 +143,18 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
         <div>
           <h2 className="text-2xl font-bold">API Health Dashboard</h2>
           <p className="text-muted-foreground">
-            Monitor backend API integration status and performance
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={isMonitoring ? 'default' : 'secondary'}>
             {isMonitoring ? 'Monitoring Active' : 'Monitoring Stopped'}
           </Badge>
-          <button
+          <Button
             variant="outline"
             size="sm"
             onClick={handleToggleMonitoring}
-           aria-label="Button">
-            {isMonitoring ? <BellOff className="h-4 w-4 sm:w-auto md:w-full" /> : <Bell className="h-4 w-4 sm:w-auto md:w-full" />}
+           >
+            {isMonitoring ? <BellOff className="h-4 w-4 " /> : <Bell className="h-4 w-4 " />}
             {isMonitoring ? 'Stop' : 'Start'}
           </Button>
         </div>
@@ -177,7 +165,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Overall Status</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Activity className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -195,7 +183,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Error Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -215,7 +203,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Response Time</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Zap className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -227,7 +215,6 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
               max={100}
             />
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              Average response time
             </p>
           </CardContent>
         </Card>
@@ -235,14 +222,13 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Uptime</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Server className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {formatUptime(metrics.uptime)}
             </div>
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              Since monitoring started
             </p>
           </CardContent>
         </Card>
@@ -251,7 +237,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
       {/* Alerts Section */}
       {unacknowledgedAlerts.length > 0 && (
         <Alert>
-          <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+          <AlertTriangle className="h-4 w-4 " />
           <AlertDescription>
             You have {unacknowledgedAlerts.length} unacknowledged alert{unacknowledgedAlerts.length !== 1 ? 's' : ''}
           </AlertDescription>
@@ -313,8 +299,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Recent Alerts</h3>
             {alerts.length > 0 && (
-              <button variant="outline" size="sm" onClick={handleClearAlerts} aria-label="Button">
-                Clear All
+              <Button variant="outline" size="sm" onClick={handleClearAlerts} >
               </Button>
             )}
           </div>
@@ -323,7 +308,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
             <Card>
               <CardContent className="flex items-center justify-center py-8">
                 <div className="text-center">
-                  <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2 " />
                   <p className="text-muted-foreground">No alerts</p>
                 </div>
               </CardContent>
@@ -346,17 +331,15 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
                         <p className="text-sm md:text-base lg:text-lg">{alert.message}</p>
                         {alert.acknowledged && (
                           <Badge variant="outline" className="mt-1">
-                            Acknowledged
                           </Badge>
                         )}
                       </div>
                       {!alert.acknowledged && (
-                        <button
+                        <Button
                           variant="outline"
                           size="sm"
-                          onClick={() = aria-label="Button"> handleAcknowledgeAlert(alert.id)}
+                          onClick={() => handleAcknowledgeAlert(alert.id)}
                         >
-                          Acknowledge
                         </Button>
                       )}
                     </div>
@@ -428,3 +411,5 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     </div>
   );
 }
+
+export default HealthDashboard;

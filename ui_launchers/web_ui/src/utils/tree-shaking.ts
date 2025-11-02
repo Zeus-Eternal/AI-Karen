@@ -7,21 +7,21 @@ export const OPTIMIZED_IMPORTS = {
   // Lodash - use individual functions instead of full library
   lodash: {
     original: "import _ from 'lodash'",
-    optimized: "import { debounce, throttle, cloneDeep } from 'lodash-es'",
+import {     optimized: "import { debounce, throttle, cloneDeep } from 'lodash-es'",
     savings: "~70KB",
   },
   
   // Date-fns - use individual functions
   'date-fns': {
     original: "import * as dateFns from 'date-fns'",
-    optimized: "import { format, parseISO, isValid } from 'date-fns'",
+import {     optimized: "import { format, parseISO, isValid } from 'date-fns'",
     savings: "~60KB",
   },
   
   // Lucide React - use individual icons
   'lucide-react': {
     original: "import * as Icons from 'lucide-react'",
-    optimized: "import { Search, User, Settings } from 'lucide-react'",
+import {     optimized: "import { Search, User, Settings } from 'lucide-react'",
     savings: "~200KB",
   },
   
@@ -35,7 +35,7 @@ export const OPTIMIZED_IMPORTS = {
   // React Hook Form - use specific imports
   'react-hook-form': {
     original: "import * as RHF from 'react-hook-form'",
-    optimized: "import { useForm, Controller } from 'react-hook-form'",
+import {     optimized: "import { useForm, Controller } from 'react-hook-form'",
     savings: "~20KB",
   },
 } as const;
@@ -112,8 +112,7 @@ export class TreeShakingAnalyzer {
         message: `Unused import detected: ${importName}`,
         line: this.findImportLine(content, importName),
         suggestion: `Remove unused import: ${importName}`,
-      });
-    });
+
 
     return {
       issues,
@@ -129,7 +128,7 @@ export class TreeShakingAnalyzer {
         type: 'inefficient-import',
         severity: 'error',
         message: 'Full lodash import detected - this includes the entire library (~70KB)',
-        suggestion: 'Use individual function imports: import { debounce } from "lodash-es"',
+import {         suggestion: 'Use individual function imports: import { debounce } from "lodash-es"',
       },
       'lodash-namespace': {
         type: 'inefficient-import',
@@ -141,19 +140,19 @@ export class TreeShakingAnalyzer {
         type: 'inefficient-import',
         severity: 'error',
         message: 'Full date-fns import detected - this includes the entire library (~60KB)',
-        suggestion: 'Use individual function imports: import { format } from "date-fns"',
+import {         suggestion: 'Use individual function imports: import { format } from "date-fns"',
       },
       'lucide-full': {
         type: 'inefficient-import',
         severity: 'error',
         message: 'Full lucide-react import detected - this includes all icons (~200KB)',
-        suggestion: 'Use individual icon imports: import { Search } from "lucide-react"',
+import {         suggestion: 'Use individual icon imports: import { Search } from "lucide-react"',
       },
       'react-hook-form-full': {
         type: 'inefficient-import',
         severity: 'warning',
         message: 'Full react-hook-form import detected',
-        suggestion: 'Use individual imports: import { useForm } from "react-hook-form"',
+import {         suggestion: 'Use individual imports: import { useForm } from "react-hook-form"',
       },
     };
 
@@ -191,12 +190,13 @@ export class TreeShakingAnalyzer {
       if (namedImports) {
         // Check named imports
         const imports = namedImports.split(',').map(imp => imp.trim());
-        imports.forEach(imp => {
-          const importName = imp.split(' as ')[0].trim();
-          if (!this.isImportUsed(content, importName)) {
-            unusedImports.push(importName);
-          }
+        imports.forEach(imp => { 
+          const importName = imp.split(' as ')[0].trim(); 
+          if (!this.isImportUsed(content, importName)) { 
+            unusedImports.push(importName); 
+          } 
         });
+
       } else if (namespaceImport) {
         // Check namespace import
         if (!this.isImportUsed(content, namespaceImport)) {
@@ -241,7 +241,6 @@ export class TreeShakingAnalyzer {
       } else if (issue.severity === 'warning') {
         score -= 10;
       }
-    });
 
     return Math.max(0, score);
   }
@@ -254,7 +253,6 @@ export class TreeShakingAnalyzer {
       if (savingsMatch) {
         totalSavings += parseInt(savingsMatch[1]);
       }
-    });
 
     return totalSavings > 0 ? `~${totalSavings}KB` : '0KB';
   }

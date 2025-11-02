@@ -1,21 +1,11 @@
-'use client';
+"use client";
 
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Brain, 
-  Database, 
-  Plug, 
-  GitBranch, 
-  RotateCcw, 
-  Play, 
-  Square, 
-  Settings,
-  AlertCircle,
-  CheckCircle
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 
 interface WorkflowNodeData {
   label: string;
@@ -89,17 +79,17 @@ export const WorkflowNodeComponent = memo<NodeProps<WorkflowNodeData>>(({ data, 
             top: `${((index + 1) / (data.inputs!.length + 1)) * 100}%`,
             background: input.required ? '#ef4444' : '#6b7280',
           }}
-          className="w-3 h-3 sm:w-auto md:w-full"
+          className="w-3 h-3 "
         />
       ))}
 
       <CardContent className="p-3 sm:p-4 md:p-6">
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0">
-            <IconComponent className="h-5 w-5 sm:w-auto md:w-full" />
+            <IconComponent className="h-5 w-5 " />
           </div>
           
-          <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+          <div className="flex-1 min-w-0 ">
             <div className="flex items-center justify-between mb-1">
               <h4 className="font-medium text-sm truncate md:text-base lg:text-lg">{data.label}</h4>
               {data.status && (
@@ -107,9 +97,9 @@ export const WorkflowNodeComponent = memo<NodeProps<WorkflowNodeData>>(({ data, 
                   variant="secondary" 
                   className={`text-xs ${statusColors[data.status]}`}
                 >
-                  {data.status === 'running' && <div className="w-2 h-2 bg-current rounded-full animate-pulse mr-1 sm:w-auto md:w-full" />}
-                  {data.status === 'completed' && <CheckCircle className="w-3 h-3 mr-1 sm:w-auto md:w-full" />}
-                  {data.status === 'error' && <AlertCircle className="w-3 h-3 mr-1 sm:w-auto md:w-full" />}
+                  {data.status === 'running' && <div className="w-2 h-2 bg-current rounded-full animate-pulse mr-1 " />}
+                  {data.status === 'completed' && <CheckCircle className="w-3 h-3 mr-1 " />}
+                  {data.status === 'error' && <AlertCircle className="w-3 h-3 mr-1 " />}
                   {data.status}
                 </Badge>
               )}
@@ -148,11 +138,10 @@ export const WorkflowNodeComponent = memo<NodeProps<WorkflowNodeData>>(({ data, 
             top: `${((index + 1) / (data.outputs!.length + 1)) * 100}%`,
             background: '#6b7280',
           }}
-          className="w-3 h-3 sm:w-auto md:w-full"
+          className="w-3 h-3 "
         />
       ))}
     </Card>
   );
-});
 
 WorkflowNodeComponent.displayName = 'WorkflowNodeComponent';

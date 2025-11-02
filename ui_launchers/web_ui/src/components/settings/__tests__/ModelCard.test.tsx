@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
@@ -55,7 +56,6 @@ describe('ModelCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Available Model', () => {
     it('renders available model correctly', () => {
@@ -74,7 +74,6 @@ describe('ModelCard', () => {
       expect(screen.getByText('llama-cpp')).toBeInTheDocument();
       expect(screen.getByText('638.01 MB')).toBeInTheDocument(); // Formatted size
       expect(screen.getByText('Available')).toBeInTheDocument();
-    });
 
     it('displays model metadata', () => {
       render(
@@ -92,7 +91,6 @@ describe('ModelCard', () => {
       expect(screen.getByText('~1GB')).toBeInTheDocument();
       expect(screen.getByText('Apache 2.0')).toBeInTheDocument();
       expect(screen.getByText('2048')).toBeInTheDocument();
-    });
 
     it('displays capabilities as badges', () => {
       render(
@@ -108,7 +106,6 @@ describe('ModelCard', () => {
       expect(screen.getByText('text-generation')).toBeInTheDocument();
       expect(screen.getByText('chat')).toBeInTheDocument();
       expect(screen.getByText('local-inference')).toBeInTheDocument();
-    });
 
     it('shows download button for available model', () => {
       render(
@@ -124,7 +121,6 @@ describe('ModelCard', () => {
       const downloadButton = screen.getByRole('button', { name: /download/i });
       expect(downloadButton).toBeInTheDocument();
       expect(downloadButton).not.toBeDisabled();
-    });
 
     it('calls onDownload when download button is clicked', async () => {
       render(
@@ -142,8 +138,7 @@ describe('ModelCard', () => {
 
       await waitFor(() => {
         expect(mockOnDownload).toHaveBeenCalledWith('tinyllama-1.1b-chat-q4');
-      });
-    });
+
 
     it('shows info button', () => {
       render(
@@ -158,7 +153,6 @@ describe('ModelCard', () => {
 
       const infoButton = screen.getByRole('button', { name: /info/i });
       expect(infoButton).toBeInTheDocument();
-    });
 
     it('calls onInfo when info button is clicked', async () => {
       render(
@@ -176,9 +170,8 @@ describe('ModelCard', () => {
 
       await waitFor(() => {
         expect(mockOnInfo).toHaveBeenCalledWith(mockModel);
-      });
-    });
-  });
+
+
 
   describe('Local Model', () => {
     it('renders local model correctly', () => {
@@ -195,7 +188,6 @@ describe('ModelCard', () => {
       expect(screen.getByText('Local Model')).toBeInTheDocument();
       expect(screen.getByText('Local')).toBeInTheDocument();
       expect(screen.getByText('953.67 MB')).toBeInTheDocument(); // Disk usage
-    });
 
     it('shows delete button for local model', () => {
       render(
@@ -210,7 +202,6 @@ describe('ModelCard', () => {
 
       const deleteButton = screen.getByRole('button', { name: /delete/i });
       expect(deleteButton).toBeInTheDocument();
-    });
 
     it('calls onDelete when delete button is clicked', async () => {
       render(
@@ -228,8 +219,7 @@ describe('ModelCard', () => {
 
       await waitFor(() => {
         expect(mockOnDelete).toHaveBeenCalledWith('local-model');
-      });
-    });
+
 
     it('displays last used time', () => {
       render(
@@ -244,7 +234,6 @@ describe('ModelCard', () => {
 
       expect(screen.getByText(/last used/i)).toBeInTheDocument();
       expect(screen.getByText(/1 hour ago/i)).toBeInTheDocument();
-    });
 
     it('displays local path', () => {
       render(
@@ -258,8 +247,7 @@ describe('ModelCard', () => {
       );
 
       expect(screen.getByText('/path/to/model.gguf')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Downloading Model', () => {
     it('renders downloading model correctly', () => {
@@ -276,7 +264,6 @@ describe('ModelCard', () => {
       expect(screen.getByText('Downloading Model')).toBeInTheDocument();
       expect(screen.getByText('Downloading')).toBeInTheDocument();
       expect(screen.getByText('65.5%')).toBeInTheDocument();
-    });
 
     it('shows progress bar for downloading model', () => {
       render(
@@ -292,7 +279,6 @@ describe('ModelCard', () => {
       const progressBar = screen.getByRole('progressbar');
       expect(progressBar).toBeInTheDocument();
       expect(progressBar).toHaveAttribute('aria-valuenow', '65.5');
-    });
 
     it('shows cancel button for downloading model', () => {
       render(
@@ -307,7 +293,6 @@ describe('ModelCard', () => {
 
       const cancelButton = screen.getByRole('button', { name: /cancel/i });
       expect(cancelButton).toBeInTheDocument();
-    });
 
     it('calls onCancel when cancel button is clicked', async () => {
       render(
@@ -325,8 +310,7 @@ describe('ModelCard', () => {
 
       await waitFor(() => {
         expect(mockOnCancel).toHaveBeenCalledWith('downloading-model');
-      });
-    });
+
 
     it('disables download button for downloading model', () => {
       render(
@@ -341,8 +325,7 @@ describe('ModelCard', () => {
 
       const downloadButton = screen.queryByRole('button', { name: /download/i });
       expect(downloadButton).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Error Model', () => {
     it('renders error model correctly', () => {
@@ -358,7 +341,6 @@ describe('ModelCard', () => {
 
       expect(screen.getByText('Error Model')).toBeInTheDocument();
       expect(screen.getByText('Error')).toBeInTheDocument();
-    });
 
     it('shows error styling', () => {
       render(
@@ -373,7 +355,6 @@ describe('ModelCard', () => {
 
       const errorBadge = screen.getByText('Error');
       expect(errorBadge).toHaveClass('bg-destructive');
-    });
 
     it('shows retry button for error model', () => {
       render(
@@ -388,8 +369,7 @@ describe('ModelCard', () => {
 
       const retryButton = screen.getByRole('button', { name: /retry/i });
       expect(retryButton).toBeInTheDocument();
-    });
-  });
+
 
   describe('Compact Mode', () => {
     it('renders in compact mode', () => {
@@ -409,7 +389,6 @@ describe('ModelCard', () => {
       // In compact mode, description should be truncated or hidden
       const description = screen.queryByText('A compact 1.1B parameter language model optimized for chat applications');
       expect(description).not.toBeInTheDocument();
-    });
 
     it('shows fewer details in compact mode', () => {
       render(
@@ -429,8 +408,7 @@ describe('ModelCard', () => {
       
       // Detailed metadata might be hidden in compact mode
       expect(screen.queryByText('Context Length')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Model Status Badges', () => {
     it('shows correct badge color for available status', () => {
@@ -446,7 +424,6 @@ describe('ModelCard', () => {
 
       const statusBadge = screen.getByText('Available');
       expect(statusBadge).toHaveClass('bg-blue-100');
-    });
 
     it('shows correct badge color for local status', () => {
       render(
@@ -461,7 +438,6 @@ describe('ModelCard', () => {
 
       const statusBadge = screen.getByText('Local');
       expect(statusBadge).toHaveClass('bg-green-100');
-    });
 
     it('shows correct badge color for downloading status', () => {
       render(
@@ -476,7 +452,6 @@ describe('ModelCard', () => {
 
       const statusBadge = screen.getByText('Downloading');
       expect(statusBadge).toHaveClass('bg-yellow-100');
-    });
 
     it('shows correct badge color for error status', () => {
       render(
@@ -491,8 +466,7 @@ describe('ModelCard', () => {
 
       const statusBadge = screen.getByText('Error');
       expect(statusBadge).toHaveClass('bg-destructive');
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('has proper ARIA labels', () => {
@@ -511,7 +485,6 @@ describe('ModelCard', () => {
       
       const infoButton = screen.getByRole('button', { name: /info/i });
       expect(infoButton).toHaveAttribute('aria-label', expect.stringContaining('Info'));
-    });
 
     it('has proper heading structure', () => {
       render(
@@ -526,7 +499,6 @@ describe('ModelCard', () => {
 
       const heading = screen.getByRole('heading', { name: 'TinyLlama 1.1B Chat Q4_K_M' });
       expect(heading).toBeInTheDocument();
-    });
 
     it('has proper progress bar attributes for downloading model', () => {
       render(
@@ -543,8 +515,7 @@ describe('ModelCard', () => {
       expect(progressBar).toHaveAttribute('aria-valuenow', '65.5');
       expect(progressBar).toHaveAttribute('aria-valuemin', '0');
       expect(progressBar).toHaveAttribute('aria-valuemax', '100');
-    });
-  });
+
 
   describe('Edge Cases', () => {
     it('handles model without metadata', () => {
@@ -565,7 +536,6 @@ describe('ModelCard', () => {
 
       expect(screen.getByText('TinyLlama 1.1B Chat Q4_K_M')).toBeInTheDocument();
       // Should not crash and should still render basic info
-    });
 
     it('handles model without capabilities', () => {
       const modelWithoutCapabilities = {
@@ -585,7 +555,6 @@ describe('ModelCard', () => {
 
       expect(screen.getByText('TinyLlama 1.1B Chat Q4_K_M')).toBeInTheDocument();
       // Should not show capability badges but should not crash
-    });
 
     it('handles very long model names', () => {
       const modelWithLongName = {
@@ -604,7 +573,6 @@ describe('ModelCard', () => {
       );
 
       expect(screen.getByText(modelWithLongName.name)).toBeInTheDocument();
-    });
 
     it('handles zero size models', () => {
       const zeroSizeModel = {
@@ -623,6 +591,5 @@ describe('ModelCard', () => {
       );
 
       expect(screen.getByText('0 B')).toBeInTheDocument();
-    });
-  });
-});
+
+

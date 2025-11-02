@@ -1,10 +1,9 @@
 "use client"
 
-import * as React from "react"
-import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { X } from "lucide-react"
-import { cn } from "@/lib/utils"
-
+import * as React from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 // Base types for modal compound components
 interface BaseModalProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -30,7 +29,6 @@ ModalRoot.displayName = "ModalRoot"
 // Modal Trigger Component
 const ModalTrigger = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Trigger>,
-  ModalTriggerProps
 >(({ asChild = false, ...props }, ref) => (
   <DialogPrimitive.Trigger ref={ref} asChild={asChild} {...props} />
 ))
@@ -61,7 +59,6 @@ ModalOverlay.displayName = "ModalOverlay"
 // Modal Content Component
 const ModalContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  ModalContentProps
 >(({ className, children, size = "md", showCloseButton = true, ...props }, ref) => (
   <ModalPortal>
     <ModalOverlay />
@@ -90,7 +87,7 @@ const ModalContent = React.forwardRef<
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-          <X className="h-4 w-4 sm:w-auto md:w-full" />
+          <X className="h-4 w-4 " />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
       )}
@@ -196,24 +193,7 @@ const Modal = {
 }
 
 export {
-  Modal,
-  ModalRoot,
-  ModalTrigger,
-  ModalPortal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalTitle,
-  ModalDescription,
-  ModalBody,
-  ModalActions,
-  ModalClose,
 }
 
 export type {
-  ModalRootProps,
-  ModalTriggerProps,
-  ModalContentProps,
-  ModalActionsProps,
-  BaseModalProps,
 }

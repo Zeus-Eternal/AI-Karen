@@ -6,12 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
-import {
-  HealthMonitor,
-  getHealthMonitor,
-  initializeHealthMonitor,
-  HealthEventType,
-} from '../health-monitor';
+import { HealthMonitor, getHealthMonitor, initializeHealthMonitor, HealthEventType } from '../health-monitor';
 
 // Mock the connection manager
 const mockConnectionManager = {
@@ -50,13 +45,11 @@ describe('HealthMonitor', () => {
     mockConnectionManager.makeRequest.mockClear();
     vi.clearAllTimers();
     vi.useFakeTimers();
-  });
 
   afterEach(() => {
     healthMonitor.stopMonitoring();
     vi.useRealTimers();
     vi.restoreAllMocks();
-  });
 
   describe('Initialization', () => {
     it('should initialize with default configuration', () => {
@@ -66,7 +59,6 @@ describe('HealthMonitor', () => {
       expect(config.maxConsecutiveFailures).toBe(3);
       expect(config.failoverEnabled).toBe(true);
       expect(config.healthCheckTimeout).toBe(10000);
-    });
 
     it('should initialize with custom configuration', () => {
       const customConfig = {
@@ -81,7 +73,6 @@ describe('HealthMonitor', () => {
       expect(config.checkInterval).toBe(60000);
       expect(config.maxConsecutiveFailures).toBe(5);
       expect(config.failoverEnabled).toBe(false);
-    });
 
     it('should initialize endpoints from configuration', () => {
       const endpoints = healthMonitor.getAllEndpoints();
@@ -94,12 +85,10 @@ describe('HealthMonitor', () => {
       expect(endpoints[1].url).toBe('http://localhost:8001');
       expect(endpoints[1].priority).toBe(2);
       expect(endpoints[1].isActive).toBe(false);
-    });
 
     it('should set active endpoint to primary', () => {
       expect(healthMonitor.getActiveEndpoint()).toBe('http://localhost:8000');
-    });
-  });
+
 
   describe('Endpoint Management', () => {
     it('should add endpoint', () => {
@@ -111,14 +100,12 @@ describe('HealthMonitor', () => {
       expect(newEndpoint).toBeDefined();
       expect(newEndpoint!.priority).toBe(10);
       expect(newEndpoint!.isActive).toBe(false);
-    });
 
     it('should remove endpoint', () => {
       healthMonitor.removeEndpoint('http://localhost:8001');
       
       const endpoints = healthMonitor.getAllEndpoints();
       expect(endpoints.find(ep => ep.url === 'http://localhost:8001')).toBeUndefined();
-    });
 
     it('should update active endpoint when removing active endpoint', () => {
       // Remove the active endpoint
@@ -127,7 +114,6 @@ describe('HealthMonitor', () => {
       // Should failover to next healthy endpoint
       const activeEndpoint = healthMonitor.getActiveEndpoint();
       expect(activeEndpoint).toBe('http://localhost:8001');
-    });
 
     it('should get endpoint health', () => {
       const health = healthMonitor.getEndpointHealth('http://localhost:8000');
@@ -136,15 +122,13 @@ describe('HealthMonitor', () => {
       expect(health!.isHealthy).toBe(true);
       expect(health!.totalChecks).toBe(0);
       expect(health!.uptime).toBe(100);
-    });
-  });
+
 
   describe('Health Checks', () => {
     it('should perform successful health check', async () => {
       mockConnectionManager.makeRequest.mockResolvedValue({
         status: 200,
         data: { status: 'healthy' },
-      });
 
       const result = await healthMonitor.checkEndpointHealth('http://localhost:8000');
       
@@ -162,7 +146,6 @@ describe('HealthMonitor', () => {
           circuitBreakerEnabled: false,
         }
       );
-    });
 
     it('should handle failed health check', async () => {
       const error = new Error('Connection failed');
@@ -174,14 +157,12 @@ describe('HealthMonitor', () => {
       expect(result.endpoint).toBe('http://localhost:8000');
       expect(result.error).toBe('Connection failed');
       expect(result.details).toBe(error);
-    });
 
     it('should handle health check for non-existent endpoint', async () => {
       const result = await healthMonitor.checkEndpointHealth('http://localhost:9999');
       
       expect(result.isHealthy).toBe(false);
       expect(result.error).toBe('Endpoint not found');
-    });
 
     it('should check all endpoints', async () => {
       mockConnectionManager.makeRequest
@@ -195,8 +176,7 @@ describe('HealthMonitor', () => {
       expect(results[0].isHealthy).toBe(true);
       expect(results[1].isHealthy).toBe(false);
       expect(results[2].isHealthy).toBe(true);
-    });
-  });
+
 
   describe('Health Metrics', () => {
     it('should update health metrics on successful check', async () => {
@@ -211,7 +191,6 @@ describe('HealthMonitor', () => {
       expect(health!.consecutiveFailures).toBe(0);
       expect(health!.isHealthy).toBe(true);
       expect(health!.uptime).toBe(100);
-    });
 
     it('should update health metrics on failed check', async () => {
       mockConnectionManager.makeRequest.mockRejectedValue(new Error('Failed'));
@@ -225,7 +204,6 @@ describe('HealthMonitor', () => {
       expect(health!.consecutiveFailures).toBe(1);
       expect(health!.isHealthy).toBe(true); // Still healthy until threshold reached
       expect(health!.uptime).toBe(0);
-    });
 
     it('should mark endpoint as unhealthy after consecutive failures', async () => {
       mockConnectionManager.makeRequest.mockRejectedValue(new Error('Failed'));
@@ -238,7 +216,6 @@ describe('HealthMonitor', () => {
       const health = healthMonitor.getEndpointHealth('http://localhost:8000');
       expect(health!.consecutiveFailures).toBe(3);
       expect(health!.isHealthy).toBe(false);
-    });
 
     it('should reset consecutive failures on successful check', async () => {
       mockConnectionManager.makeRequest
@@ -253,8 +230,7 @@ describe('HealthMonitor', () => {
       const health = healthMonitor.getEndpointHealth('http://localhost:8000');
       expect(health!.consecutiveFailures).toBe(0);
       expect(health!.isHealthy).toBe(true);
-    });
-  });
+
 
   describe('Failover Logic', () => {
     it('should perform automatic failover when active endpoint fails', async () => {
@@ -267,7 +243,6 @@ describe('HealthMonitor', () => {
       
       // Should failover to next healthy endpoint
       expect(healthMonitor.getActiveEndpoint()).toBe('http://localhost:8001');
-    });
 
     it('should not perform failover when disabled', async () => {
       healthMonitor.updateConfig({ failoverEnabled: false });
@@ -280,22 +255,19 @@ describe('HealthMonitor', () => {
       
       // Should remain on original endpoint
       expect(healthMonitor.getActiveEndpoint()).toBe('http://localhost:8000');
-    });
 
     it('should force failover to specific endpoint', () => {
       const success = healthMonitor.forceFailover('http://localhost:8002');
       
       expect(success).toBe(true);
       expect(healthMonitor.getActiveEndpoint()).toBe('http://localhost:8002');
-    });
 
     it('should fail to force failover to non-existent endpoint', () => {
       const success = healthMonitor.forceFailover('http://localhost:9999');
       
       expect(success).toBe(false);
       expect(healthMonitor.getActiveEndpoint()).toBe('http://localhost:8000');
-    });
-  });
+
 
   describe('Monitoring', () => {
     it('should start monitoring', () => {
@@ -304,7 +276,6 @@ describe('HealthMonitor', () => {
       healthMonitor.startMonitoring();
       
       expect(healthMonitor.isMonitoringActive()).toBe(true);
-    });
 
     it('should stop monitoring', () => {
       healthMonitor.startMonitoring();
@@ -313,7 +284,6 @@ describe('HealthMonitor', () => {
       healthMonitor.stopMonitoring();
       
       expect(healthMonitor.isMonitoringActive()).toBe(false);
-    });
 
     it('should perform periodic health checks when monitoring', async () => {
       mockConnectionManager.makeRequest.mockResolvedValue({ status: 200 });
@@ -325,7 +295,6 @@ describe('HealthMonitor', () => {
       
       // Should have performed health checks on all endpoints (initial + periodic)
       expect(mockConnectionManager.makeRequest).toHaveBeenCalledTimes(6); // 3 endpoints * 2 checks
-    });
 
     it('should update configuration and restart monitoring', () => {
       healthMonitor.startMonitoring();
@@ -334,8 +303,7 @@ describe('HealthMonitor', () => {
       
       expect(healthMonitor.getConfig().checkInterval).toBe(60000);
       expect(healthMonitor.isMonitoringActive()).toBe(true);
-    });
-  });
+
 
   describe('Event Handling', () => {
     it('should emit health check success events', async () => {
@@ -351,7 +319,6 @@ describe('HealthMonitor', () => {
           endpoint: 'http://localhost:8000',
         })
       );
-    });
 
     it('should emit health check failure events', async () => {
       const eventListener = vi.fn();
@@ -366,7 +333,6 @@ describe('HealthMonitor', () => {
           endpoint: 'http://localhost:8000',
         })
       );
-    });
 
     it('should emit failover events', async () => {
       const eventListener = vi.fn();
@@ -389,7 +355,6 @@ describe('HealthMonitor', () => {
           }),
         })
       );
-    });
 
     it('should remove event listeners', async () => {
       const eventListener = vi.fn();
@@ -400,8 +365,7 @@ describe('HealthMonitor', () => {
       await healthMonitor.checkEndpointHealth('http://localhost:8000');
       
       expect(eventListener).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('Health Summary', () => {
     it('should provide health summary', () => {
@@ -413,7 +377,6 @@ describe('HealthMonitor', () => {
       expect(summary.unhealthyEndpoints).toBe(0);
       expect(summary.overallUptime).toBe(100);
       expect(summary.isMonitoring).toBe(false);
-    });
 
     it('should update health summary after health checks', async () => {
       mockConnectionManager.makeRequest
@@ -428,8 +391,7 @@ describe('HealthMonitor', () => {
       expect(summary.healthyEndpoints).toBe(3);
       expect(summary.unhealthyEndpoints).toBe(0);
       expect(summary.overallUptime).toBeLessThan(100); // But uptime is affected
-    });
-  });
+
 
   describe('Statistics Reset', () => {
     it('should reset health statistics', async () => {
@@ -450,15 +412,13 @@ describe('HealthMonitor', () => {
       expect(health!.failedChecks).toBe(0);
       expect(health!.isHealthy).toBe(true);
       expect(health!.uptime).toBe(100);
-    });
-  });
+
 
   describe('Singleton Pattern', () => {
     it('should return same instance from getHealthMonitor', () => {
       const monitor1 = getHealthMonitor();
       const monitor2 = getHealthMonitor();
       expect(monitor1).toBe(monitor2);
-    });
 
     it('should create new instance with initializeHealthMonitor', () => {
       const monitor1 = getHealthMonitor();
@@ -468,15 +428,13 @@ describe('HealthMonitor', () => {
       // Subsequent calls should return the new instance
       const monitor3 = getHealthMonitor();
       expect(monitor2).toBe(monitor3);
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle errors in event listeners gracefully', async () => {
       const faultyListener = vi.fn(() => {
         throw new Error('Listener error');
-      });
-      
+
       healthMonitor.addEventListener(HealthEventType.HEALTH_CHECK_SUCCESS, faultyListener);
       
       mockConnectionManager.makeRequest.mockResolvedValue({ status: 200 });
@@ -484,6 +442,5 @@ describe('HealthMonitor', () => {
       // Should not throw error despite faulty listener
       await expect(healthMonitor.checkEndpointHealth('http://localhost:8000')).resolves.toBeDefined();
       expect(faultyListener).toHaveBeenCalled();
-    });
-  });
-});
+
+

@@ -14,12 +14,10 @@ describe('useReducedMotion', () => {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: mockMatchMedia,
-    });
-  });
+
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   it('returns false when prefers-reduced-motion is not set', () => {
     const mockMediaQuery = {
@@ -34,7 +32,6 @@ describe('useReducedMotion', () => {
     
     expect(result.current).toBe(false);
     expect(mockMatchMedia).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)');
-  });
 
   it('returns true when prefers-reduced-motion is set', () => {
     const mockMediaQuery = {
@@ -48,7 +45,6 @@ describe('useReducedMotion', () => {
     const { result } = renderHook(() => useReducedMotion());
     
     expect(result.current).toBe(true);
-  });
 
   it('adds and removes event listener for media query changes', () => {
     const mockMediaQuery = {
@@ -66,7 +62,6 @@ describe('useReducedMotion', () => {
     unmount();
     
     expect(mockMediaQuery.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
-  });
 
   it('updates when media query changes', async () => {
     let changeHandler: (event: MediaQueryListEvent) => void;
@@ -92,8 +87,7 @@ describe('useReducedMotion', () => {
     rerender();
     
     expect(result.current).toBe(true);
-  });
-});
+
 
 describe('useAnimationDuration', () => {
   beforeEach(() => {
@@ -104,13 +98,11 @@ describe('useAnimationDuration', () => {
     };
     
     mockMatchMedia.mockReturnValue(mockMediaQuery);
-  });
 
   it('returns normal duration when reduced motion is false', () => {
     const { result } = renderHook(() => useAnimationDuration(0.3, 0.01));
     
     expect(result.current).toBe(0.3);
-  });
 
   it('returns reduced duration when reduced motion is true', () => {
     const mockMediaQuery = {
@@ -124,7 +116,6 @@ describe('useAnimationDuration', () => {
     const { result } = renderHook(() => useAnimationDuration(0.3, 0.01));
     
     expect(result.current).toBe(0.01);
-  });
 
   it('uses default reduced duration when not provided', () => {
     const mockMediaQuery = {
@@ -138,8 +129,7 @@ describe('useAnimationDuration', () => {
     const { result } = renderHook(() => useAnimationDuration(0.3));
     
     expect(result.current).toBe(0.01);
-  });
-});
+
 
 describe('useAnimationVariants', () => {
   const normalVariants = {
@@ -160,7 +150,6 @@ describe('useAnimationVariants', () => {
     };
     
     mockMatchMedia.mockReturnValue(mockMediaQuery);
-  });
 
   it('returns normal variants when reduced motion is false', () => {
     const { result } = renderHook(() => 
@@ -168,7 +157,6 @@ describe('useAnimationVariants', () => {
     );
     
     expect(result.current).toBe(normalVariants);
-  });
 
   it('returns reduced variants when reduced motion is true', () => {
     const mockMediaQuery = {
@@ -184,5 +172,4 @@ describe('useAnimationVariants', () => {
     );
     
     expect(result.current).toBe(reducedVariants);
-  });
-});
+

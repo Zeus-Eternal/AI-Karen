@@ -3,6 +3,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { EndpointStatusDashboard } from '../endpoint-status-dashboard';
@@ -108,7 +109,6 @@ vi.mock('@/lib/config', () => ({
 describe('EndpointStatusDashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders the dashboard with endpoint status', async () => {
     render(<EndpointStatusDashboard />);
@@ -124,8 +124,7 @@ describe('EndpointStatusDashboard', () => {
     await waitFor(() => {
       expect(screen.getByText('/api/health')).toBeInTheDocument();
       expect(screen.getByText('/api/auth/status')).toBeInTheDocument();
-    });
-  });
+
 
   it('shows endpoint status correctly', async () => {
     render(<EndpointStatusDashboard />);
@@ -138,8 +137,7 @@ describe('EndpointStatusDashboard', () => {
       // Check error endpoint
       const errorBadges = screen.getAllByText('error');
       expect(errorBadges.length).toBeGreaterThan(0);
-    });
-  });
+
 
   it('can run comprehensive diagnostics', async () => {
     render(<EndpointStatusDashboard />);
@@ -149,8 +147,7 @@ describe('EndpointStatusDashboard', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Comprehensive diagnostics completed/)).toBeInTheDocument();
-    });
-  });
+
 
   it('displays diagnostic logs', async () => {
     render(<EndpointStatusDashboard />);
@@ -161,8 +158,7 @@ describe('EndpointStatusDashboard', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Connection failed to /api/auth/status')).toBeInTheDocument();
-    });
-  });
+
 
   it('can test custom endpoints', async () => {
     render(<EndpointStatusDashboard />);
@@ -182,8 +178,7 @@ describe('EndpointStatusDashboard', () => {
     // The test should complete (mocked to resolve)
     await waitFor(() => {
       expect(input).toHaveValue('/api/test');
-    });
-  });
+
 
   it('can export diagnostic logs', async () => {
     // Mock URL.createObjectURL and related functions
@@ -200,15 +195,12 @@ describe('EndpointStatusDashboard', () => {
         download: '',
         click: mockClick,
       })),
-    });
-    
+
     Object.defineProperty(document.body, 'appendChild', {
       value: mockAppendChild,
-    });
-    
+
     Object.defineProperty(document.body, 'removeChild', {
       value: mockRemoveChild,
-    });
 
     render(<EndpointStatusDashboard />);
 
@@ -223,7 +215,6 @@ describe('EndpointStatusDashboard', () => {
     expect(mockClick).toHaveBeenCalled();
     expect(mockAppendChild).toHaveBeenCalled();
     expect(mockRemoveChild).toHaveBeenCalled();
-  });
 
   it('handles monitoring toggle', async () => {
     render(<EndpointStatusDashboard />);
@@ -233,5 +224,4 @@ describe('EndpointStatusDashboard', () => {
 
     // The button text should change (though the mock doesn't actually change the state)
     expect(toggleButton).toBeInTheDocument();
-  });
-});
+

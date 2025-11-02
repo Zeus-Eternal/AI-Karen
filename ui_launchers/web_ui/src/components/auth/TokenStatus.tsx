@@ -3,7 +3,7 @@
  * Shows current token expiry and allows creation of long-lived tokens
  */
 
-'use client';
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,6 @@ export const TokenStatus: React.FC = () => {
   const [message] = useState<{ type: 'success' | 'error'; text: string } | null>({
     type: 'error',
     text: 'Token management is currently not available in simplified authentication mode.'
-  });
 
   if (!isAuthenticated()) {
     return null;
@@ -27,17 +26,15 @@ export const TokenStatus: React.FC = () => {
     <Card className="w-full max-w-md">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Shield className="h-5 w-5 sm:w-auto md:w-full" />
-          Token Status
+          <Shield className="h-5 w-5 " />
         </CardTitle>
         <CardDescription>
-          Manage your authentication token for API stability
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between p-3 bg-muted rounded-lg sm:p-4 md:p-6">
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Shield className="h-4 w-4 text-muted-foreground " />
             <span className="text-sm font-medium md:text-base lg:text-lg">Session Status:</span>
           </div>
           <Badge variant="default">Cookie-based</Badge>

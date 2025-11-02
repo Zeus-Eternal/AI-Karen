@@ -8,6 +8,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, expect, describe, it } from 'vitest';
 import { RightPanel, RightPanelView } from '../right-panel';
@@ -67,7 +68,6 @@ describe('Panel Spacing and Alignment Fixes', () => {
       
       // Check that panel has proper backdrop blur
       expect(panel).toHaveClass('backdrop-blur-md');
-    });
 
     it('should handle different width variants correctly', () => {
       const { rerender } = render(
@@ -95,7 +95,6 @@ describe('Panel Spacing and Alignment Fixes', () => {
 
       panel = screen.getByTestId('right-panel');
       expect(panel).toHaveClass('w-[32rem]', 'min-w-[32rem]');
-    });
 
     it('should apply proper content overflow handling', () => {
       render(
@@ -113,8 +112,7 @@ describe('Panel Spacing and Alignment Fixes', () => {
       // Check that scrollable content has proper overflow
       const scrollableContent = screen.getByTestId('view1-content').closest('.overflow-y-auto');
       expect(scrollableContent).toHaveClass('scrollbar-hide');
-    });
-  });
+
 
   describe('PanelHeader Alignment', () => {
     it('should align header content properly', () => {
@@ -135,7 +133,6 @@ describe('Panel Spacing and Alignment Fixes', () => {
       // Check that header has consistent border and background
       expect(header).toHaveClass('border-b', 'border-border/50');
       expect(header).toHaveClass('bg-background/95', 'backdrop-blur-md');
-    });
 
     it('should handle different header variants', () => {
       const { rerender } = render(
@@ -157,7 +154,6 @@ describe('Panel Spacing and Alignment Fixes', () => {
 
       title = screen.getByRole('heading', { level: 2 });
       expect(title).toHaveClass('text-xl');
-    });
 
     it('should align actions and close button properly', () => {
       const mockClose = vi.fn();
@@ -181,8 +177,7 @@ describe('Panel Spacing and Alignment Fixes', () => {
       
       // Check that close button has proper transition
       expect(closeButton).toHaveClass('transition-all', 'duration-200');
-    });
-  });
+
 
   describe('PanelContent Overflow Handling', () => {
     it('should handle scrollable content properly', () => {
@@ -198,7 +193,6 @@ describe('Panel Spacing and Alignment Fixes', () => {
       expect(content).toHaveClass('overflow-y-auto', 'overflow-x-hidden');
       expect(content).toHaveClass('scroll-smooth');
       expect(content).toHaveClass('scrollbar-hide');
-    });
 
     it('should apply consistent padding using design tokens', () => {
       const { rerender } = render(
@@ -218,7 +212,6 @@ describe('Panel Spacing and Alignment Fixes', () => {
 
       container = screen.getByText('Test Content').closest('.p-6');
       expect(container).toBeInTheDocument();
-    });
 
     it('should handle grid layout with proper alignment', () => {
       render(
@@ -232,7 +225,6 @@ describe('Panel Spacing and Alignment Fixes', () => {
       
       const contentColumn = screen.getByText('Test Content').closest('.col-span-6');
       expect(contentColumn).toHaveClass('col-start-3'); // offset of 2 means start at 3
-    });
 
     it('should prevent content overflow', () => {
       render(
@@ -246,8 +238,7 @@ describe('Panel Spacing and Alignment Fixes', () => {
       
       const contentColumn = screen.getByText('Test Content').closest('.min-w-0');
       expect(contentColumn).toHaveClass('max-w-full');
-    });
-  });
+
 
   describe('Panel Navigation Alignment', () => {
     it('should align navigation items properly', () => {
@@ -266,7 +257,6 @@ describe('Panel Spacing and Alignment Fixes', () => {
       expect(navigation).toHaveClass('border-b', 'border-border/50');
       expect(navigation).toHaveClass('bg-muted/30', 'backdrop-blur-sm');
       expect(navigation).toHaveClass('px-4', 'py-2', 'sm:px-6');
-    });
 
     it('should handle navigation button alignment', () => {
       render(
@@ -295,9 +285,8 @@ describe('Panel Spacing and Alignment Fixes', () => {
           'focus-visible:ring-2',
           'focus-visible:ring-[var(--component-button-default-ring)]'
         );
-      });
-    });
-  });
+
+
 
   describe('Panel Footer Alignment', () => {
     it('should align footer content properly', () => {
@@ -318,8 +307,7 @@ describe('Panel Spacing and Alignment Fixes', () => {
       
       // Check that footer has proper alignment
       expect(footer).toHaveClass('flex', 'items-center');
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('should be accessible', () => {
@@ -334,7 +322,6 @@ describe('Panel Spacing and Alignment Fixes', () => {
       // Check basic accessibility attributes
       const panel = screen.getByRole('complementary');
       expect(panel).toBeInTheDocument();
-    });
 
     it('should support keyboard navigation', () => {
       const mockViewChange = vi.fn();
@@ -354,7 +341,6 @@ describe('Panel Spacing and Alignment Fixes', () => {
       // Test click interaction (keyboard events are handled by the button)
       fireEvent.click(view2Button);
       expect(mockViewChange).toHaveBeenCalledWith('view2');
-    });
 
     it('should support screen readers', () => {
       const mockClose = vi.fn();
@@ -371,8 +357,7 @@ describe('Panel Spacing and Alignment Fixes', () => {
 
       const closeButton = screen.getByRole('button', { name: /close panel/i });
       expect(closeButton).toHaveAttribute('aria-label', 'Close panel');
-    });
-  });
+
 
   describe('Performance', () => {
     it('should optimize scrolling performance', () => {
@@ -388,8 +373,7 @@ describe('Panel Spacing and Alignment Fixes', () => {
       expect(scrollableElement).toHaveStyle({
         scrollBehavior: 'smooth',
         willChange: 'scroll-position',
-      });
-    });
+
 
     it('should use content containment for better performance', () => {
       render(
@@ -406,7 +390,6 @@ describe('Panel Spacing and Alignment Fixes', () => {
       // Check that panel has content containment
       expect(panel).toHaveStyle({
         contain: 'layout style paint',
-      });
-    });
-  });
-});
+
+
+

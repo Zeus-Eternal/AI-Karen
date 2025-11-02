@@ -1,20 +1,14 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Library,
-  CheckCircle,
-  AlertCircle,
-  Download,
-  ExternalLink,
-  Loader2,
-  RefreshCw,
-  Info
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 interface ModelCompatibility {
   model_id: string;
@@ -96,7 +90,7 @@ export default function ModelProviderIntegration({
         title: "Failed to Load Model Compatibility",
         description: "Could not load model compatibility information.",
         variant: "destructive",
-      });
+
     } finally {
       setLoading(false);
     }
@@ -108,13 +102,13 @@ export default function ModelProviderIntegration({
       toast({
         title: "Compatibility Refreshed",
         description: "Model compatibility information has been updated.",
-      });
+
     } catch (error) {
       toast({
         title: "Refresh Failed",
         description: "Could not refresh compatibility information.",
         variant: "destructive",
-      });
+
     } finally {
       setRefreshing(false);
     }
@@ -136,7 +130,7 @@ export default function ModelProviderIntegration({
       <Card>
         <CardContent className="flex items-center justify-center py-8">
           <div className="text-center space-y-2">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary " />
             <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
               Loading model compatibility information...
             </p>
@@ -153,32 +147,29 @@ export default function ModelProviderIntegration({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Library className="h-5 w-5 sm:w-auto md:w-full" />
+                <Library className="h-5 w-5 " />
                 Model-Provider Integration
               </CardTitle>
               <CardDescription>
-                Model compatibility and recommendations for your configured providers
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={handleRefresh}
                 disabled={refreshing}
-               aria-label="Button">
+               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
               </Button>
               {onNavigateToModelLibrary && (
-                <button
+                <Button
                   variant="default"
                   size="sm"
                   onClick={onNavigateToModelLibrary}
                   className="gap-2"
-                 aria-label="Button">
-                  <Library className="h-4 w-4 sm:w-auto md:w-full" />
-                  Model Library
+                 >
+                  <Library className="h-4 w-4 " />
                 </Button>
               )}
             </div>
@@ -208,9 +199,9 @@ export default function ModelProviderIntegration({
                   <CardTitle className="text-base">{provider.name}</CardTitle>
                   <div className="flex items-center gap-1">
                     {provider.health_status === 'healthy' ? (
-                      <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+                      <CheckCircle className="h-4 w-4 text-green-500 " />
                     ) : (
-                      <AlertCircle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />
+                      <AlertCircle className="h-4 w-4 text-yellow-500 " />
                     )}
                     <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                       {provider.provider_type}
@@ -259,16 +250,15 @@ export default function ModelProviderIntegration({
                       </div>
                     ) : (
                       <Alert>
-                        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                        <AlertCircle className="h-4 w-4 " />
                         <AlertDescription className="text-xs sm:text-sm md:text-base">
-                          No compatible models found
                         </AlertDescription>
                       </Alert>
                     )}
                   </div>
                 ) : (
                   <div className="text-center py-2">
-                    <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground sm:w-auto md:w-full" />
+                    <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground " />
                     <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">Loading...</p>
                   </div>
                 )}
@@ -282,11 +272,10 @@ export default function ModelProviderIntegration({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5 sm:w-auto md:w-full" />
+              <Info className="h-5 w-5 " />
               {selectedProvider} Model Recommendations
             </CardTitle>
             <CardDescription>
-              Detailed compatibility information and model recommendations
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -340,7 +329,6 @@ export default function ModelProviderIntegration({
                       {suggestion.recommendations.excellent.length > 0 && (
                         <div>
                           <h5 className="text-sm font-medium text-green-700 dark:text-green-400 mb-1 md:text-base lg:text-lg">
-                            Excellent Compatibility
                           </h5>
                           <div className="flex flex-wrap gap-2">
                             {suggestion.recommendations.excellent.map(modelId => (
@@ -355,7 +343,6 @@ export default function ModelProviderIntegration({
                       {suggestion.recommendations.good.length > 0 && (
                         <div>
                           <h5 className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-1 md:text-base lg:text-lg">
-                            Good Compatibility
                           </h5>
                           <div className="flex flex-wrap gap-2">
                             {suggestion.recommendations.good.map(modelId => (
@@ -370,7 +357,6 @@ export default function ModelProviderIntegration({
                       {suggestion.recommendations.acceptable.length > 0 && (
                         <div>
                           <h5 className="text-sm font-medium text-yellow-700 dark:text-yellow-400 mb-1 md:text-base lg:text-lg">
-                            Compatible
                           </h5>
                           <div className="flex flex-wrap gap-2">
                             {suggestion.recommendations.acceptable.map(modelId => (
@@ -427,33 +413,31 @@ export default function ModelProviderIntegration({
                   {/* Action Buttons */}
                   <div className="flex gap-2 pt-2">
                     {onNavigateToModelLibrary && (
-                      <button
+                      <Button
                         variant="default"
                         size="sm"
                         onClick={onNavigateToModelLibrary}
                         className="gap-2"
-                       aria-label="Button">
-                        <Library className="h-4 w-4 sm:w-auto md:w-full" />
-                        Browse Models
+                       >
+                        <Library className="h-4 w-4 " />
                       </Button>
                     )}
-                    <button
+                    <Button
                       variant="outline"
                       size="sm"
-                      onClick={() = aria-label="Button"> {
+                      onClick={() => {
                         // Open provider documentation if available
                         const provider = providers.find(p => p.name === selectedProvider);
                         if (provider) {
                           toast({
                             title: "Provider Information",
                             description: `${provider.name}: ${provider.description}`,
-                          });
+
                         }
                       }}
                       className="gap-2"
                     >
-                      <ExternalLink className="h-4 w-4 sm:w-auto md:w-full" />
-                      Provider Info
+                      <ExternalLink className="h-4 w-4 " />
                     </Button>
                   </div>
                 </>

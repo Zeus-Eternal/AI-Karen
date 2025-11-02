@@ -165,15 +165,13 @@ export class DatabaseQueryOptimizer {
    */
   async authenticateUser(email: string, passwordHash: string): Promise<any> {
     const query = `
-      SELECT user_id, email, full_name, roles, is_active, tenant_id, 
              two_factor_enabled, preferences, last_login, created_at
-      FROM users 
       WHERE email = $1 AND password_hash = $2 AND is_active = true
     `;
     
     return this.executeAuthQuery(query, [email, passwordHash], {
       cacheTtl: 60000, // Cache for 1 minute for security
-    });
+
   }
 
   /**
@@ -181,15 +179,13 @@ export class DatabaseQueryOptimizer {
    */
   async getUserById(userId: string): Promise<any> {
     const query = `
-      SELECT user_id, email, full_name, roles, is_active, tenant_id,
              two_factor_enabled, preferences, last_login, created_at
-      FROM users 
       WHERE user_id = $1 AND is_active = true
     `;
     
     return this.executeAuthQuery(query, [userId], {
       cacheTtl: 300000, // Cache for 5 minutes
-    });
+
   }
 
   /**
@@ -197,15 +193,13 @@ export class DatabaseQueryOptimizer {
    */
   async getUserByEmail(email: string): Promise<any> {
     const query = `
-      SELECT user_id, email, full_name, roles, is_active, tenant_id,
              two_factor_enabled, preferences, last_login, created_at
-      FROM users 
       WHERE email = $1 AND is_active = true
     `;
     
     return this.executeAuthQuery(query, [email], {
       cacheTtl: 300000, // Cache for 5 minutes
-    });
+
   }
 
   /**
@@ -215,7 +209,6 @@ export class DatabaseQueryOptimizer {
     const query = `
       SELECT s.session_id, s.user_id, s.expires_at, s.is_active,
              u.email, u.roles, u.tenant_id
-      FROM sessions s
       JOIN users u ON s.user_id = u.user_id
       WHERE s.session_token = $1 AND s.is_active = true 
             AND s.expires_at > NOW() AND u.is_active = true
@@ -223,7 +216,7 @@ export class DatabaseQueryOptimizer {
     
     return this.executeAuthQuery(query, [sessionToken], {
       cacheTtl: 30000, // Cache for 30 seconds for security
-    });
+
   }
 
   /**
@@ -231,7 +224,6 @@ export class DatabaseQueryOptimizer {
    */
   async updateLastLogin(userId: string): Promise<void> {
     const query = `
-      UPDATE users 
       SET last_login = NOW() 
       WHERE user_id = $1
     `;
@@ -487,7 +479,7 @@ export class DatabaseQueryOptimizer {
       params,
       executionTime,
       threshold: this.config.slowQueryThreshold,
-    });
+
   }
 
   /**

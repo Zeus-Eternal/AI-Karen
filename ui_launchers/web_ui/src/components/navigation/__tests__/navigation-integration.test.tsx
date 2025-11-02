@@ -8,11 +8,9 @@ describe('Navigation Components Integration', () => {
     expect(RoleBasedNavigation).toBeDefined();
     expect(AdminBreadcrumbs).toBeDefined();
     expect(NavigationLayout).toBeDefined();
-  });
 
   it('components are functions', () => {
     expect(typeof RoleBasedNavigation).toBe('function');
     expect(typeof AdminBreadcrumbs).toBe('function');
     expect(typeof NavigationLayout).toBe('function');
-  });
-});
+

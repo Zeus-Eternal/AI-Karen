@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { AgCharts } from 'ag-charts-react';
 import { AgChartOptions } from 'ag-charts-community';
@@ -9,18 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { 
-  Network, 
-  Brain, 
-  Filter, 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCcw,
-  Settings,
-  Eye,
-  EyeOff,
-  Maximize2
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -138,7 +129,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         cluster: node.cluster,
         color: node.color || (node.type === 'cluster' ? '#3b82f6' : '#10b981')
       };
-    });
+
     return nodeData;
   }, [processedData, layoutType]);
   // Chart options for network visualization
@@ -257,13 +248,13 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
       toast({
         title: 'Network Refreshed',
         description: 'Memory network data has been updated successfully.'
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Refresh Failed',
         description: 'Failed to refresh network data. Please try again.'
-      });
+
     }
   }, [onRefresh, toast]);
   const handleZoomIn = () => {
@@ -294,24 +285,22 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <Network className="h-5 w-5 sm:w-auto md:w-full" />
-            Memory Network Visualization
+            <Network className="h-5 w-5 " />
           </CardTitle>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               variant="outline"
               size="sm"
-              onClick={() = aria-label="Button"> setIsFullscreen(!isFullscreen)}
+              onClick={() => setIsFullscreen(!isFullscreen)}
             >
-              <Maximize2 className="h-4 w-4 sm:w-auto md:w-full" />
+              <Maximize2 className="h-4 w-4 " />
             </Button>
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
-             aria-label="Button">
-              <RotateCcw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Refresh
+             >
+              <RotateCcw className="h-4 w-4 mr-2 " />
             </Button>
           </div>
         </div>
@@ -319,11 +308,11 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         {data && (
           <div className="flex items-center gap-4 mt-4">
             <Badge variant="secondary">
-              <Brain className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
+              <Brain className="h-3 w-3 mr-1 " />
               {data.totalMemories} Memories
             </Badge>
             <Badge variant="secondary">
-              <Network className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
+              <Network className="h-3 w-3 mr-1 " />
               {processedData.nodes.length} Nodes
             </Badge>
             <Badge variant="secondary">
@@ -362,7 +351,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             <div className="flex items-center gap-2">
               <Label htmlFor="layout-select" className="text-sm md:text-base lg:text-lg">Layout:</Label>
               <select value={layoutType} onValueChange={(value) = aria-label="Select option"> setLayoutType(value as LayoutType)}>
-                <selectTrigger className="w-32 sm:w-auto md:w-full" id="layout-select" aria-label="Select option">
+                <selectTrigger className="w-32 " id="layout-select" aria-label="Select option">
                   <selectValue />
                 </SelectTrigger>
                 <selectContent aria-label="Select option">
@@ -376,7 +365,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             <div className="flex items-center gap-2">
               <Label htmlFor="filter-select" className="text-sm md:text-base lg:text-lg">Filter:</Label>
               <select value={filterType} onValueChange={(value) = aria-label="Select option"> setFilterType(value as FilterType)}>
-                <selectTrigger className="w-40 sm:w-auto md:w-full" id="filter-select" aria-label="Select option">
+                <selectTrigger className="w-40 " id="filter-select" aria-label="Select option">
                   <selectValue />
                 </SelectTrigger>
                 <selectContent aria-label="Select option">
@@ -391,7 +380,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Label htmlFor="confidence-slider" className="text-sm md:text-base lg:text-lg">Min Confidence:</Label>
-              <div className="w-24 sm:w-auto md:w-full">
+              <div className="w-24 ">
                 <Slider
                   id="confidence-slider"
                   value={confidenceThreshold}
@@ -402,7 +391,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
                   className="w-full"
                 />
               </div>
-              <span className="text-xs text-muted-foreground w-8 sm:w-auto md:w-full">
+              <span className="text-xs text-muted-foreground w-8 ">
                 {Math.round(confidenceThreshold[0] * 100)}%
               </span>
             </div>
@@ -426,18 +415,17 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         </div>
         {/* Zoom Controls */}
         <div className="flex items-center gap-2 mt-2">
-          <button variant="outline" size="sm" onClick={handleZoomOut} aria-label="Button">
-            <ZoomOut className="h-4 w-4 sm:w-auto md:w-full" />
+          <Button variant="outline" size="sm" onClick={handleZoomOut} >
+            <ZoomOut className="h-4 w-4 " />
           </Button>
           <span className="text-sm text-muted-foreground px-2 md:text-base lg:text-lg">
             {Math.round(zoomLevel * 100)}%
           </span>
-          <button variant="outline" size="sm" onClick={handleZoomIn} aria-label="Button">
-            <ZoomIn className="h-4 w-4 sm:w-auto md:w-full" />
+          <Button variant="outline" size="sm" onClick={handleZoomIn} >
+            <ZoomIn className="h-4 w-4 " />
           </Button>
-          <button variant="outline" size="sm" onClick={handleResetView} aria-label="Button">
-            <RotateCcw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Reset
+          <Button variant="outline" size="sm" onClick={handleResetView} >
+            <RotateCcw className="h-4 w-4 mr-2 " />
           </Button>
         </div>
       </CardHeader>
@@ -456,11 +444,11 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-blue-500 sm:w-auto md:w-full"></div>
+                <div className="w-4 h-4 rounded-full bg-blue-500 "></div>
                 <span className="text-sm md:text-base lg:text-lg">Clusters</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-green-500 sm:w-auto md:w-full"></div>
+                <div className="w-4 h-4 rounded-full bg-green-500 "></div>
                 <span className="text-sm md:text-base lg:text-lg">Memories</span>
               </div>
             </div>

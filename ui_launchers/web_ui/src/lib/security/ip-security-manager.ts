@@ -88,7 +88,7 @@ export class IpSecurityManager {
             whitelist_enabled: true
           },
           severity: 'high'
-        });
+
         return { allowed: false, reason: 'IP address not whitelisted for super admin access' };
       }
     }
@@ -106,7 +106,7 @@ export class IpSecurityManager {
             whitelist_enabled: true
           },
           severity: 'medium'
-        });
+
         return { allowed: false, reason: 'IP address not whitelisted for admin access' };
       }
     }
@@ -159,7 +159,7 @@ export class IpSecurityManager {
       },
       ip_address: ipAddress,
       user_agent: userAgent
-    });
+
   }
   /**
    * Record failed login attempt from IP
@@ -190,7 +190,7 @@ export class IpSecurityManager {
         threshold: this.config.max_failed_attempts_per_ip
       },
       ip_address: ipAddress
-    });
+
   }
   /**
    * Add IP to whitelist
@@ -225,7 +225,7 @@ export class IpSecurityManager {
         user_id: userId,
         role_restriction: roleRestriction
       }
-    });
+
     return entry;
   }
   /**
@@ -248,7 +248,7 @@ export class IpSecurityManager {
         description: entry.description,
         removed_by: removedBy
       }
-    });
+
     return true;
   }
   /**
@@ -269,7 +269,7 @@ export class IpSecurityManager {
         duration_ms: durationMs
       },
       ip_address: ipAddress
-    });
+
     // Log security event
     await this.logSecurityEvent({
       event_type: 'suspicious_activity',
@@ -280,7 +280,7 @@ export class IpSecurityManager {
         blocked_until: blockedUntil.toISOString()
       },
       severity: 'medium'
-    });
+
   }
   /**
    * Unblock IP address
@@ -302,7 +302,7 @@ export class IpSecurityManager {
         unblocked_by: unblockedBy
       },
       ip_address: ipAddress
-    });
+
     return true;
   }
   /**
@@ -362,7 +362,7 @@ export class IpSecurityManager {
           ip,
           reason: blockInfo.reason,
           blockedUntil: blockInfo.blockedUntil
-        });
+
       }
     }
     return blocked;
@@ -383,7 +383,7 @@ export class IpSecurityManager {
         new_config: this.config,
         updated_by: updatedBy
       }
-    });
+
   }
   /**
    * Check if IP is whitelisted
@@ -462,7 +462,7 @@ export class IpSecurityManager {
           location: record.location
         },
         severity: 'medium'
-      });
+
       // Auto-block if enabled
       if (this.config.auto_block_suspicious_ips) {
         await this.blockIp(record.ip_address, 'suspicious_activity_detected', this.config.ip_lockout_duration);

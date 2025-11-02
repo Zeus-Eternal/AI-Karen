@@ -22,7 +22,6 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
-});
 
 // Mock IntersectionObserver
 global.IntersectionObserver = vi.fn().mockImplementation(() => ({
@@ -35,7 +34,6 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
 global.requestIdleCallback = vi.fn((callback) => {
   setTimeout(callback, 0);
   return 1; // Return a mock request ID
-});
 
 // Mock ResizeObserver
 global.ResizeObserver = vi.fn().mockImplementation(() => ({
@@ -84,7 +82,6 @@ HTMLCanvasElement.prototype.getContext = vi.fn((contextId: string) => {
     } as any;
   }
   return null;
-});
 
 // Mock HTMLElement.scrollIntoView
 HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -100,4 +97,3 @@ global.performance = {
 // runs a cleanup after each test case (e.g. clearing jsdom)
 afterEach(() => {
   cleanup();
-});

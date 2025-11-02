@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,9 +28,9 @@ export default function LLMModelConfigPanel({ onSave }: { onSave?: (cfg: LLMMode
   return (
     <form
       onSubmit={handleSubmit((data) => {
-        data.systemPrompt = sanitizeInput(data.systemPrompt)
-        if (data.apiKey) storeApiKey(data.apiKey)
-        onSave?.(data)
+        data.systemPrompt = sanitizeInput(data.systemPrompt);
+        if (data.apiKey) storeApiKey(data.apiKey);
+        onSave?.(data);
       })}
       className="space-y-4"
     >
@@ -50,19 +51,19 @@ export default function LLMModelConfigPanel({ onSave }: { onSave?: (cfg: LLMMode
           </div>
           <div className="space-y-1">
             <Label htmlFor="maxTokens">Max Tokens</Label>
-            <input id="maxTokens" type="number" {...register("maxTokens", { valueAsNumber: true })} />
+            <Input id="maxTokens" type="number" {...register("maxTokens", { valueAsNumber: true })} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="systemPrompt">System Prompt</Label>
-            <textarea id="systemPrompt" rows={3} {...register("systemPrompt")} />
+            <Textarea id="systemPrompt" rows={3} {...register("systemPrompt")} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="apiKey">API Key</Label>
-            <input id="apiKey" type="password" {...register("apiKey")} />
+            <Input id="apiKey" type="password" {...register("apiKey")} />
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <button size="sm" type="submit" aria-label="Submit form">Save</Button>
+          <Button size="sm" type="submit">Save</Button>
         </CardFooter>
       </Card>
     </form>

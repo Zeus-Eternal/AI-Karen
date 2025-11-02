@@ -17,17 +17,14 @@ const mockLocation = {
 Object.defineProperty(window, 'location', {
   value: mockLocation,
   writable: true,
-});
 
 describe('Cookie-based API Client', () => {
   beforeEach(() => {
     mockFetch.mockClear();
     mockLocation.href = '';
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   it('should include credentials in all requests', async () => {
     const apiClient = getApiClient();
@@ -47,7 +44,6 @@ describe('Cookie-based API Client', () => {
         credentials: 'include',
       })
     );
-  });
 
   it('should redirect to login on 401 error', async () => {
     const apiClient = getApiClient();
@@ -66,7 +62,6 @@ describe('Cookie-based API Client', () => {
     }
 
     expect(mockLocation.href).toBe('/login');
-  });
 
   it('should handle FormData uploads without JSON stringification', async () => {
     const apiClient = getApiClient();
@@ -93,7 +88,6 @@ describe('Cookie-based API Client', () => {
     // Verify body is FormData, not stringified
     const callArgs = mockFetch.mock.calls[0][1];
     expect(callArgs.body).toBeInstanceOf(FormData);
-  });
 
   it('should handle JSON requests with proper stringification', async () => {
     const apiClient = getApiClient();
@@ -119,7 +113,6 @@ describe('Cookie-based API Client', () => {
         }),
       })
     );
-  });
 
   it('should not include manual token headers', async () => {
     const apiClient = getApiClient();
@@ -136,7 +129,6 @@ describe('Cookie-based API Client', () => {
     const callArgs = mockFetch.mock.calls[0][1];
     expect(callArgs.headers).not.toHaveProperty('Authorization');
     expect(callArgs.headers).not.toHaveProperty('X-Auth-Token');
-  });
 
   it('should handle network errors without complex retry logic', async () => {
     const apiClient = getApiClient();
@@ -147,5 +139,4 @@ describe('Cookie-based API Client', () => {
     
     // Should only make one attempt, no retries
     expect(mockFetch).toHaveBeenCalledTimes(1);
-  });
-});
+

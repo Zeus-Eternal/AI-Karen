@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ErrorToast, ErrorToastContainer } from '../ErrorToast';
@@ -12,7 +13,6 @@ vi.mock('@/hooks/use-telemetry', () => ({
 describe('ErrorToast', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders error toast with message', () => {
     render(
@@ -24,7 +24,6 @@ describe('ErrorToast', () => {
     );
 
     expect(screen.getByText('Test error message')).toBeInTheDocument();
-  });
 
   it('renders with title when provided', () => {
     render(
@@ -38,7 +37,6 @@ describe('ErrorToast', () => {
 
     expect(screen.getByText('Error Title')).toBeInTheDocument();
     expect(screen.getByText('Test message')).toBeInTheDocument();
-  });
 
   it('calls onClose when close button is clicked', async () => {
     const onClose = vi.fn();
@@ -57,8 +55,7 @@ describe('ErrorToast', () => {
     // Should call onClose after animation delay
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled();
-    });
-  });
+
 
   it('calls onAction when action button is clicked', () => {
     const onAction = vi.fn();
@@ -77,7 +74,6 @@ describe('ErrorToast', () => {
     fireEvent.click(actionButton);
 
     expect(onAction).toHaveBeenCalled();
-  });
 
   it('auto-closes after duration when not persistent', async () => {
     const onClose = vi.fn();
@@ -94,7 +90,6 @@ describe('ErrorToast', () => {
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled();
     }, { timeout: 500 });
-  });
 
   it('does not auto-close when persistent', async () => {
     const onClose = vi.fn();
@@ -113,7 +108,6 @@ describe('ErrorToast', () => {
     await new Promise(resolve => setTimeout(resolve, 200));
     
     expect(onClose).not.toHaveBeenCalled();
-  });
 
   it('renders different types with appropriate styling', () => {
     const types = ['error', 'warning', 'info', 'success'] as const;
@@ -129,8 +123,7 @@ describe('ErrorToast', () => {
       
       const toast = container.querySelector('[role="alert"]');
       expect(toast).toBeInTheDocument();
-    });
-  });
+
 
   it('handles keyboard escape to close', async () => {
     const onClose = vi.fn();
@@ -147,8 +140,7 @@ describe('ErrorToast', () => {
     
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled();
-    });
-  });
+
 
   it('does not close on escape when not dismissible', () => {
     const onClose = vi.fn();
@@ -165,8 +157,7 @@ describe('ErrorToast', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     
     expect(onClose).not.toHaveBeenCalled();
-  });
-});
+
 
 describe('ErrorToastContainer', () => {
   it('renders multiple toasts', () => {
@@ -184,7 +175,6 @@ describe('ErrorToastContainer', () => {
 
     expect(screen.getByText('First toast')).toBeInTheDocument();
     expect(screen.getByText('Second toast')).toBeInTheDocument();
-  });
 
   it('limits number of toasts displayed', () => {
     const toasts = Array.from({ length: 10 }, (_, i) => ({
@@ -206,7 +196,6 @@ describe('ErrorToastContainer', () => {
     expect(screen.getByText('Toast 1')).toBeInTheDocument();
     expect(screen.getByText('Toast 2')).toBeInTheDocument();
     expect(screen.queryByText('Toast 3')).not.toBeInTheDocument();
-  });
 
   it('prioritizes toasts by priority', () => {
     const toasts = [
@@ -227,5 +216,4 @@ describe('ErrorToastContainer', () => {
     expect(screen.getByText('Critical priority')).toBeInTheDocument();
     expect(screen.getByText('Medium priority')).toBeInTheDocument();
     expect(screen.queryByText('Low priority')).not.toBeInTheDocument();
-  });
-});
+

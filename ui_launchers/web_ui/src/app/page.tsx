@@ -1,7 +1,9 @@
+"use client";
+import React from 'react';
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import {
+
 import SettingsDialogComponent from "@/components/settings/SettingsDialog";
 import DatabaseConnectorPluginPage from "@/components/plugins/DatabaseConnectorPluginPage";
 import FacebookPluginPage from "@/components/plugins/FacebookPluginPage";
@@ -20,56 +22,35 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import dynamic from "next/dynamic";
 import { TextSelectionProvider } from "@/components/ui/text-selection-provider";
-"use client";
-
-
-
-
-
-  Brain,
-  MessageSquare,
-  SettingsIcon as SettingsIconLucide,
+import {
   Bell,
-  SlidersHorizontal,
-  LayoutGrid,
-  Database,
-  Facebook,
-  BookOpenCheck,
-  Mail,
+  Brain,
   CalendarDays,
   CloudSun,
+  Database,
+  Facebook,
+  LayoutGrid,
+  Mail,
+  MessageSquare,
   PlugZap,
+  Settings as SettingsIconLucide,
+  SlidersHorizontal,
 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
-
-
-
-
-
-
-
-
-
-
-  Sheet,
-  SheetTrigger,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-
-  Sidebar,
+import {
   SidebarProvider,
-  SidebarTrigger as AppSidebarTrigger,
+  Sidebar,
+  SidebarTrigger,
+  SidebarHeader,
+  SidebarContent,
+  SidebarFooter,
   SidebarInset,
-  SidebarHeader as AppSidebarHeader,
-  SidebarContent as AppSidebarContent,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarFooter as AppSidebarFooter,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarGroup,
+  SidebarGroupLabel,
 } from "@/components/ui/sidebar";
 
 
@@ -159,12 +140,11 @@ function AuthenticatedHomePage() {
             align="center"
           >
             <FlexContainer className="space-x-3" align="center">
-              <AppSidebarTrigger className="mr-1 md:mr-2 smooth-transition interactive">
+              <SidebarTrigger className="mr-1 md:mr-2 smooth-transition interactive">
                 <span className="sr-only">Toggle sidebar</span>
-              </AppSidebarTrigger>
+              </SidebarTrigger>
               <Brain className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0 smooth-transform" />
               <h1 className="text-xl md:text-2xl font-semibold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                Karen AI
               </h1>
             </FlexContainer>
             <FlexContainer className="gap-2" align="center">
@@ -178,7 +158,6 @@ function AuthenticatedHomePage() {
                       <SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground smooth-transition" />
                     }
                   >
-                    Settings
                   </IconButton>
                 </SheetTrigger>
                 <SheetContent
@@ -208,16 +187,15 @@ function AuthenticatedHomePage() {
               className="border-r z-20 sidebar-enhanced"
               aria-label="Main navigation"
             >
-              <AppSidebarHeader className="p-4">
+              <SidebarHeader className="p-4">
                 <h2
                   id="home-primary-nav-title"
                   className="text-lg font-semibold tracking-tight"
                 >
-                  Navigation
                 </h2>
-              </AppSidebarHeader>
+              </SidebarHeader>
               <Separator className="my-1" />
-              <AppSidebarContent className="p-2 scroll-smooth">
+              <SidebarContent className="p-2 scroll-smooth">
                 <nav aria-labelledby="home-primary-nav-title">
                   <SidebarMenu>
                     <SidebarMenuItem>
@@ -228,7 +206,6 @@ function AuthenticatedHomePage() {
                       >
                         <Link href="/chat">
                           <MessageSquare />
-                          Chat
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -239,7 +216,6 @@ function AuthenticatedHomePage() {
                         className="w-full"
                       >
                         <LayoutGrid />
-                        Dashboard
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
@@ -249,7 +225,6 @@ function AuthenticatedHomePage() {
                         className="w-full"
                       >
                         <SettingsIconLucide />
-                        Settings
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
@@ -259,7 +234,6 @@ function AuthenticatedHomePage() {
                         className="w-full"
                       >
                         <Bell />
-                        Comms Center
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </SidebarMenu>
@@ -279,7 +253,6 @@ function AuthenticatedHomePage() {
                           className="w-full"
                         >
                           <PlugZap />
-                          Plugin Overview
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
@@ -291,7 +264,6 @@ function AuthenticatedHomePage() {
                           className="w-full"
                         >
                           <Database />
-                          Database Connector
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
@@ -301,7 +273,6 @@ function AuthenticatedHomePage() {
                           className="w-full"
                         >
                           <Facebook />
-                          Facebook Plugin
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
@@ -311,7 +282,6 @@ function AuthenticatedHomePage() {
                           className="w-full"
                         >
                           <Mail />
-                          Gmail Plugin
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
@@ -331,18 +301,16 @@ function AuthenticatedHomePage() {
                           className="w-full"
                         >
                           <CloudSun />
-                          Weather Service
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     </SidebarMenu>
                   </nav>
                 </SidebarGroup>
-              </AppSidebarContent>
-              <AppSidebarFooter className="p-2 border-t">
+              </SidebarContent>
+              <SidebarFooter className="p-2 border-t">
                 <p className="text-xs text-muted-foreground text-center">
-                  Karen AI Menu
                 </p>
-              </AppSidebarFooter>
+              </SidebarFooter>
             </Sidebar>
           )}
 
@@ -363,7 +331,6 @@ function AuthenticatedHomePage() {
                   <div className="modern-card">
                     <div className="modern-card-header">
                       <h2 className="text-2xl font-semibold tracking-tight">
-                        Communications Center
                       </h2>
                       <p className="text-sm text-muted-foreground mt-2">
                         Updates, alerts, and notes from Karen.
@@ -384,7 +351,6 @@ function AuthenticatedHomePage() {
                         This space is reserved for future features.
                       </p>
                       <p className="mt-2 text-sm text-muted-foreground">
-                        For example, Karen might save summaries of long
                         conversations or important points she's learned here for
                         your easy review.
                       </p>

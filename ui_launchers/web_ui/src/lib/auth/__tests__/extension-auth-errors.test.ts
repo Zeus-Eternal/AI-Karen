@@ -2,14 +2,7 @@
  * Tests for Extension Authentication Error Handling
  */
 
-import {
-  ExtensionAuthErrorFactory,
-  ExtensionAuthErrorCategory,
-  ExtensionAuthErrorSeverity,
-  ExtensionAuthRecoveryStrategy,
-  ExtensionAuthErrorHandler,
-  extensionAuthErrorHandler
-} from '../extension-auth-errors';
+import { ExtensionAuthErrorFactory, ExtensionAuthErrorCategory, ExtensionAuthErrorSeverity, ExtensionAuthRecoveryStrategy, ExtensionAuthErrorHandler, extensionAuthErrorHandler } from '../extension-auth-errors';
 
 describe('ExtensionAuthErrorFactory', () => {
   describe('createTokenExpiredError', () => {
@@ -26,8 +19,7 @@ describe('ExtensionAuthErrorFactory', () => {
       expect(error.userActionRequired).toBe(false);
       expect(error.context).toEqual(context);
       expect(error.resolutionSteps).toHaveLength(3);
-    });
-  });
+
 
   describe('createPermissionDeniedError', () => {
     it('should create a permission denied error with correct properties', () => {
@@ -39,51 +31,43 @@ describe('ExtensionAuthErrorFactory', () => {
       expect(error.recoveryStrategy).toBe(ExtensionAuthRecoveryStrategy.FALLBACK_TO_READONLY);
       expect(error.retryable).toBe(false);
       expect(error.userActionRequired).toBe(true);
-    });
-  });
+
 
   describe('createFromHttpStatus', () => {
     it('should create appropriate error for 401 status', () => {
       const error = ExtensionAuthErrorFactory.createFromHttpStatus(401);
       expect(error.category).toBe(ExtensionAuthErrorCategory.TOKEN_EXPIRED);
-    });
 
     it('should create appropriate error for 403 status', () => {
       const error = ExtensionAuthErrorFactory.createFromHttpStatus(403);
       expect(error.category).toBe(ExtensionAuthErrorCategory.PERMISSION_DENIED);
-    });
 
     it('should create appropriate error for 503 status', () => {
       const error = ExtensionAuthErrorFactory.createFromHttpStatus(503);
       expect(error.category).toBe(ExtensionAuthErrorCategory.SERVICE_UNAVAILABLE);
-    });
 
     it('should create network error for unknown status', () => {
       const error = ExtensionAuthErrorFactory.createFromHttpStatus(500);
       expect(error.category).toBe(ExtensionAuthErrorCategory.NETWORK_ERROR);
-    });
-  });
+
 
   describe('createFromException', () => {
     it('should create token expired error for token expired exception', () => {
       const exception = new Error('Token expired');
       const error = ExtensionAuthErrorFactory.createFromException(exception);
       expect(error.category).toBe(ExtensionAuthErrorCategory.TOKEN_EXPIRED);
-    });
 
     it('should create network error for network exception', () => {
       const exception = new Error('Network error occurred');
       const error = ExtensionAuthErrorFactory.createFromException(exception);
       expect(error.category).toBe(ExtensionAuthErrorCategory.NETWORK_ERROR);
-    });
 
     it('should create permission denied error for permission exception', () => {
       const exception = new Error('Permission denied');
       const error = ExtensionAuthErrorFactory.createFromException(exception);
       expect(error.category).toBe(ExtensionAuthErrorCategory.PERMISSION_DENIED);
-    });
-  });
-});
+
+
 
 describe('ExtensionAuthErrorHandler', () => {
   let handler: ExtensionAuthErrorHandler;
@@ -91,7 +75,6 @@ describe('ExtensionAuthErrorHandler', () => {
   beforeEach(() => {
     handler = ExtensionAuthErrorHandler.getInstance();
     handler.clearErrorHistory();
-  });
 
   describe('handleError', () => {
     it('should handle error and return ErrorInfo', () => {
@@ -104,7 +87,6 @@ describe('ExtensionAuthErrorHandler', () => {
       expect(errorInfo.message).toBe(authError.message);
       expect(errorInfo.retry_possible).toBe(authError.retryable);
       expect(errorInfo.user_action_required).toBe(authError.userActionRequired);
-    });
 
     it('should add error to history', () => {
       const authError = ExtensionAuthErrorFactory.createTokenExpiredError();
@@ -113,40 +95,34 @@ describe('ExtensionAuthErrorHandler', () => {
       const history = handler.getErrorHistory();
       expect(history).toHaveLength(1);
       expect(history[0]).toEqual(authError);
-    });
-  });
+
 
   describe('getRecoveryStrategy', () => {
     it('should return correct recovery strategy', () => {
       const authError = ExtensionAuthErrorFactory.createTokenExpiredError();
       const strategy = handler.getRecoveryStrategy(authError);
       expect(strategy).toBe(ExtensionAuthRecoveryStrategy.RETRY_WITH_REFRESH);
-    });
-  });
+
 
   describe('isRetryable', () => {
     it('should return true for retryable errors', () => {
       const authError = ExtensionAuthErrorFactory.createTokenExpiredError();
       expect(handler.isRetryable(authError)).toBe(true);
-    });
 
     it('should return false for non-retryable errors', () => {
       const authError = ExtensionAuthErrorFactory.createPermissionDeniedError();
       expect(handler.isRetryable(authError)).toBe(false);
-    });
-  });
+
 
   describe('requiresUserAction', () => {
     it('should return false for automatic recovery errors', () => {
       const authError = ExtensionAuthErrorFactory.createTokenExpiredError();
       expect(handler.requiresUserAction(authError)).toBe(false);
-    });
 
     it('should return true for errors requiring user action', () => {
       const authError = ExtensionAuthErrorFactory.createPermissionDeniedError();
       expect(handler.requiresUserAction(authError)).toBe(true);
-    });
-  });
+
 
   describe('getErrorStatistics', () => {
     it('should return correct statistics', () => {
@@ -161,8 +137,7 @@ describe('ExtensionAuthErrorHandler', () => {
       const stats = handler.getErrorStatistics();
       expect(stats[ExtensionAuthErrorCategory.TOKEN_EXPIRED]).toBe(2);
       expect(stats[ExtensionAuthErrorCategory.PERMISSION_DENIED]).toBe(1);
-    });
-  });
+
 
   describe('detectSystemicIssue', () => {
     it('should detect systemic issues with multiple recent errors', () => {
@@ -173,15 +148,13 @@ describe('ExtensionAuthErrorHandler', () => {
       }
 
       expect(handler.detectSystemicIssue()).toBe(true);
-    });
 
     it('should not detect systemic issues with few errors', () => {
       const error = ExtensionAuthErrorFactory.createTokenExpiredError();
       handler.handleError(error);
 
       expect(handler.detectSystemicIssue()).toBe(false);
-    });
-  });
+
 
   describe('clearErrorHistory', () => {
     it('should clear error history', () => {
@@ -192,18 +165,15 @@ describe('ExtensionAuthErrorHandler', () => {
       
       handler.clearErrorHistory();
       expect(handler.getErrorHistory()).toHaveLength(0);
-    });
-  });
-});
+
+
 
 describe('Global error handler instance', () => {
   it('should provide singleton instance', () => {
     const instance1 = ExtensionAuthErrorHandler.getInstance();
     const instance2 = ExtensionAuthErrorHandler.getInstance();
     expect(instance1).toBe(instance2);
-  });
 
   it('should be accessible via exported constant', () => {
     expect(extensionAuthErrorHandler).toBeInstanceOf(ExtensionAuthErrorHandler);
-  });
-});
+

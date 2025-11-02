@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ModelSelector } from '../ModelSelector';
@@ -109,12 +110,10 @@ describe('ModelSelector', () => {
       total_count: mockModels.length,
       local_count: 2,
       available_count: 1,
-    });
-  });
+
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('STATUS_PRIORITY functionality', () => {
     it('should sort models by status priority correctly', async () => {
@@ -123,7 +122,6 @@ describe('ModelSelector', () => {
       // Wait for models to load
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       // The component should sort models by STATUS_PRIORITY
       // local (0) should come first, then downloading (1), then available (2), etc.
@@ -137,8 +135,7 @@ describe('ModelSelector', () => {
         // Local models should appear first in the list
         const options = screen.getAllByRole('option');
         expect(options.length).toBeGreaterThan(0);
-      });
-    });
+
 
     it('should use correct priority values for status sorting', async () => {
       const testModels = [
@@ -153,18 +150,15 @@ describe('ModelSelector', () => {
         total_count: testModels.length,
         local_count: 1,
         available_count: 1,
-      });
 
       render(<ModelSelector task="chat" includeDownloadable={true} />);
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       // Verify that models are processed and sorted according to STATUS_PRIORITY
       // This is tested indirectly through the component's behavior
       expect(screen.getByRole('combobox')).toBeInTheDocument();
-    });
 
     it('should handle unknown status with default priority (99)', async () => {
       const testModels = [
@@ -177,19 +171,16 @@ describe('ModelSelector', () => {
         total_count: testModels.length,
         local_count: 1,
         available_count: 0,
-      });
 
       render(<ModelSelector task="chat" />);
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       // The component should handle unknown status gracefully
       // and use the default priority value
       expect(screen.getByRole('combobox')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Status badge rendering', () => {
     it('should render status badges with correct variants', async () => {
@@ -197,7 +188,6 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       const selectTrigger = screen.getByRole('combobox');
       fireEvent.click(selectTrigger);
@@ -207,8 +197,7 @@ describe('ModelSelector', () => {
         // The exact implementation depends on how badges are rendered in the component
         const options = screen.getAllByRole('option');
         expect(options.length).toBeGreaterThan(0);
-      });
-    });
+
 
     it('should use getStatusBadgeVariant for badge styling', async () => {
       const { getStatusBadgeVariant } = await import('@/lib/model-utils');
@@ -217,12 +206,10 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       // Verify that getStatusBadgeVariant is called for status rendering
       expect(getStatusBadgeVariant).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Model filtering and compatibility', () => {
     it('should filter models based on task compatibility', async () => {
@@ -230,7 +217,6 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       // Only chat-compatible models should be available
       const selectTrigger = screen.getByRole('combobox');
@@ -240,15 +226,13 @@ describe('ModelSelector', () => {
         const options = screen.getAllByRole('option');
         // Should filter out image generation models for chat task
         expect(options.length).toBeLessThan(mockModels.length);
-      });
-    });
+
 
     it('should include downloadable models when specified', async () => {
       render(<ModelSelector task="any" includeDownloadable={true} />);
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       const selectTrigger = screen.getByRole('combobox');
       fireEvent.click(selectTrigger);
@@ -256,15 +240,13 @@ describe('ModelSelector', () => {
       await waitFor(() => {
         // Should include available models when includeDownloadable is true
         expect(screen.getAllByRole('option')).toBeDefined();
-      });
-    });
+
 
     it('should exclude downloadable models when not specified', async () => {
       render(<ModelSelector task="any" includeDownloadable={false} />);
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       const selectTrigger = screen.getByRole('combobox');
       fireEvent.click(selectTrigger);
@@ -273,9 +255,8 @@ describe('ModelSelector', () => {
         // Should not include available models when includeDownloadable is false
         const options = screen.getAllByRole('option');
         expect(options.length).toBeGreaterThan(0);
-      });
-    });
-  });
+
+
 
   describe('Model selection and value handling', () => {
     it('should handle model selection correctly', async () => {
@@ -284,7 +265,6 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       const selectTrigger = screen.getByRole('combobox');
       fireEvent.click(selectTrigger);
@@ -295,8 +275,7 @@ describe('ModelSelector', () => {
           fireEvent.click(options[0]);
           expect(onValueChange).toHaveBeenCalled();
         }
-      });
-    });
+
 
     it('should auto-select first available model when autoSelect is true', async () => {
       const onValueChange = vi.fn();
@@ -304,14 +283,12 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       // Should auto-select the first local model
       await waitFor(() => {
         expect(onValueChange).toHaveBeenCalled();
-      });
-    });
-  });
+
+
 
   describe('Error handling and loading states', () => {
     it('should show loading state initially', () => {
@@ -320,7 +297,6 @@ describe('ModelSelector', () => {
       render(<ModelSelector task="chat" />);
 
       expect(screen.getByText('Loading models...')).toBeInTheDocument();
-    });
 
     it('should handle API errors gracefully', async () => {
       mockBackend.makeRequestPublic.mockRejectedValue(new Error('API Error'));
@@ -329,8 +305,7 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Failed to load models')).toBeInTheDocument();
-      });
-    });
+
 
     it('should show refresh button on error', async () => {
       mockBackend.makeRequestPublic.mockRejectedValue(new Error('API Error'));
@@ -340,9 +315,8 @@ describe('ModelSelector', () => {
       await waitFor(() => {
         const refreshButton = screen.getByRole('button');
         expect(refreshButton).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Download progress display', () => {
     it('should show download progress for downloading models', async () => {
@@ -350,7 +324,6 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       const selectTrigger = screen.getByRole('combobox');
       fireEvent.click(selectTrigger);
@@ -360,9 +333,8 @@ describe('ModelSelector', () => {
         // The exact text depends on the implementation
         const options = screen.getAllByRole('option');
         expect(options.length).toBeGreaterThan(0);
-      });
-    });
-  });
+
+
 
   describe('Accessibility', () => {
     it('should have proper ARIA attributes', async () => {
@@ -370,18 +342,15 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       const selectTrigger = screen.getByRole('combobox');
       expect(selectTrigger).toHaveAttribute('aria-expanded');
-    });
 
     it('should be keyboard navigable', async () => {
       render(<ModelSelector task="chat" />);
 
       await waitFor(() => {
         expect(mockBackend.makeRequestPublic).toHaveBeenCalled();
-      });
 
       const selectTrigger = screen.getByRole('combobox');
       
@@ -391,7 +360,6 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(screen.getAllByRole('option')).toBeDefined();
-      });
-    });
-  });
-});
+
+
+

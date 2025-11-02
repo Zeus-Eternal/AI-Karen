@@ -1,8 +1,7 @@
 "use client"
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
-
+import * as React from "react";
+import { cn } from "@/lib/utils";
 interface ResizablePanelGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   direction?: "horizontal" | "vertical"
 }
@@ -16,8 +15,6 @@ interface ResizablePanelProps extends React.HTMLAttributes<HTMLDivElement> {
 interface ResizableHandleProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 const ResizablePanelGroup = React.forwardRef<
-  HTMLDivElement,
-  ResizablePanelGroupProps
 >(({ className, direction = "horizontal", ...props }, ref) => (
   <div
     ref={ref}
@@ -32,8 +29,6 @@ const ResizablePanelGroup = React.forwardRef<
 ResizablePanelGroup.displayName = "ResizablePanelGroup"
 
 const ResizablePanel = React.forwardRef<
-  HTMLDivElement,
-  ResizablePanelProps
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
@@ -44,8 +39,6 @@ const ResizablePanel = React.forwardRef<
 ResizablePanel.displayName = "ResizablePanel"
 
 const ResizableHandle = React.forwardRef<
-  HTMLDivElement,
-  ResizableHandleProps
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}

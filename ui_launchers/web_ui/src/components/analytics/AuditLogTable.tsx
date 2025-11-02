@@ -1,15 +1,10 @@
 "use client";
 
+import React from 'react';
 import { useEffect, useState } from "react";
 import { AuditService, AuditLogEntry } from "@/services/auditService";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
+
+import { } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export default function AuditLogTable() {

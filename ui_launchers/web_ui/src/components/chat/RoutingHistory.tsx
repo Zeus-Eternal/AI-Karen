@@ -37,7 +37,7 @@ export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit =
       const res = await backend.makeRequestPublic<{ status: string; output: any }>("/api/copilot/start", {
         method: "POST",
         body: JSON.stringify({ action: "routing.audit", payload: { limit } }),
-      });
+
       const out = (res as any)?.output || {};
       setEvents(out.events || []);
     } catch (e) {
@@ -53,18 +53,18 @@ export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit =
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-      <Card className="w-[90vw] max-w-3xl max-h-[80vh] overflow-hidden sm:w-auto md:w-full">
+      <Card className="w-[90vw] max-w-3xl max-h-[80vh] overflow-hidden ">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Activity className="h-4 w-4 sm:w-auto md:w-full" /> Routing History
+            <Activity className="h-4 w-4 " /> Routing History
             <Badge variant="outline" className="text-xs sm:text-sm md:text-base">last {limit}</Badge>
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={load} disabled={loading} title="Refresh" className="h-8 w-8 p-0 sm:w-auto md:w-full">
+            <Button variant="ghost" size="sm" onClick={load} disabled={loading} title="Refresh" className="h-8 w-8 p-0 ">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
-            <Button variant="ghost" size="sm" onClick={onClose} title="Close" className="h-8 w-8 p-0 sm:w-auto md:w-full">
-              <X className="h-4 w-4 sm:w-auto md:w-full" />
+            <Button variant="ghost" size="sm" onClick={onClose} title="Close" className="h-8 w-8 p-0 ">
+              <X className="h-4 w-4 " />
             </Button>
           </div>
         </CardHeader>

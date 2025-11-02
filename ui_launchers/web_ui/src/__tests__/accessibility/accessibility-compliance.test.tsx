@@ -92,36 +92,31 @@ describe('Accessibility Compliance Tests', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should pass axe accessibility tests for forms', async () => {
       const { container } = render(<MockForm />);
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should pass axe accessibility tests for navigation', async () => {
       const { container } = render(<MockNavigation />);
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should pass axe accessibility tests for modals', async () => {
       const { container } = render(<MockModal isOpen={true} />);
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should pass axe accessibility tests for landmarks', async () => {
       const { container } = render(<MockLandmarks />);
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('Custom Accessibility Test Suite', () => {
     it('should pass basic accessibility tests', async () => {
@@ -133,7 +128,6 @@ describe('Accessibility Compliance Tests', () => {
       expect(report.passed).toBe(true);
       expect(report.score).toBeGreaterThanOrEqual(80);
       expect(report.violations).toHaveLength(0);
-    });
 
     it('should pass keyboard accessibility tests', async () => {
       const { container } = render(
@@ -153,7 +147,6 @@ describe('Accessibility Compliance Tests', () => {
       expect(report.passed).toBe(true);
       expect(report.focusableElements).toBeGreaterThan(0);
       expect(report.unreachableElements).toHaveLength(0);
-    });
 
     it('should pass screen reader tests', async () => {
       const { container } = render(
@@ -173,7 +166,6 @@ describe('Accessibility Compliance Tests', () => {
 
       expect(report.passed).toBe(true);
       expect(report.missingLabels).toHaveLength(0);
-    });
 
     it('should pass ARIA tests', async () => {
       const { container } = render(
@@ -193,8 +185,7 @@ describe('Accessibility Compliance Tests', () => {
       expect(report.passed).toBe(true);
       expect(report.invalidAttributes).toHaveLength(0);
       expect(report.brokenReferences).toHaveLength(0);
-    });
-  });
+
 
   describe('Error Scenarios', () => {
     it('should detect missing form labels', async () => {
@@ -213,7 +204,6 @@ describe('Accessibility Compliance Tests', () => {
         violation => violation.id === 'label'
       );
       expect(labelViolations.length).toBeGreaterThan(0);
-    });
 
     it('should detect missing alt text', async () => {
       const { container } = render(
@@ -229,7 +219,6 @@ describe('Accessibility Compliance Tests', () => {
         violation => violation.id === 'image-alt'
       );
       expect(imageAltViolations.length).toBeGreaterThan(0);
-    });
 
     it('should detect invalid ARIA attributes', async () => {
       const { container } = render(
@@ -244,7 +233,6 @@ describe('Accessibility Compliance Tests', () => {
 
       expect(report.passed).toBe(false);
       expect(report.invalidAttributes.length + report.brokenReferences.length).toBeGreaterThan(0);
-    });
 
     it('should detect focus trap issues', async () => {
       const { container } = render(
@@ -257,8 +245,7 @@ describe('Accessibility Compliance Tests', () => {
       const report = await testSuite.keyboard();
 
       expect(report.trapIssues.length).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('Complex Component Testing', () => {
     function ComplexComponent() {
@@ -295,7 +282,6 @@ describe('Accessibility Compliance Tests', () => {
             <section>
               <h2>Interactive Elements</h2>
               <button aria-expanded="false" aria-controls="collapsible">
-                Toggle Content
               </button>
               <div id="collapsible" aria-hidden="true">
                 <p>Collapsible content</p>
@@ -330,10 +316,8 @@ describe('Accessibility Compliance Tests', () => {
           type: 'tag',
           values: ['wcag2a', 'wcag2aa', 'wcag21aa'],
         },
-      });
 
       expect(results).toHaveNoViolations();
-    });
 
     it('should pass custom test suite', async () => {
       const { container } = render(<ComplexComponent />);
@@ -350,6 +334,5 @@ describe('Accessibility Compliance Tests', () => {
       expect(keyboard.passed).toBe(true);
       expect(screenReader.passed).toBe(true);
       expect(aria.passed).toBe(true);
-    });
-  });
-});
+
+

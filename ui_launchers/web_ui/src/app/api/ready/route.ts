@@ -102,7 +102,6 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
         Accept: 'application/json',
       },
       cache: 'no-store',
-    });
 
     const responseTime = Date.now() - startTime;
 
@@ -113,7 +112,7 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
       safeWarn('Readiness check received non-JSON response from backend health endpoint', {
         url: healthUrl,
         statusCode: response.status,
-      });
+
     }
 
     if (!response.ok) {
@@ -144,7 +143,6 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
     safeWarn('Backend health check failed', {
       url: healthUrl,
       error: error instanceof Error ? error.message : String(error),
-    });
 
     return {
       url,
@@ -518,11 +516,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         Pragma: 'no-cache',
         Expires: '0',
       },
-    });
+
   } catch (error) {
     safeWarn('Readiness endpoint failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
 
     const readinessState = getReadinessState();
 
@@ -562,6 +559,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         Pragma: 'no-cache',
         Expires: '0',
       },
-    });
+
   }
 }

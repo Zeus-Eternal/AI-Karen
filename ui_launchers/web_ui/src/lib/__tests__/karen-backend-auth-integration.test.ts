@@ -80,8 +80,7 @@ describe('KarenBackendService Authentication Integration', () => {
         removeItem: vi.fn(),
       },
       writable: true,
-    });
-  });
+
 
   test('should successfully call extension API with authentication', async () => {
     // Mock successful response
@@ -104,17 +103,14 @@ describe('KarenBackendService Authentication Integration', () => {
         }),
       })
     );
-  });
 
   test('should handle authentication status check', async () => {
     const isAuthenticated = await service.checkExtensionAuthStatus();
     expect(isAuthenticated).toBe(true);
-  });
 
   test('should clear extension authentication', () => {
     service.clearExtensionAuth();
     // Should not throw
-  });
 
   test('should register background tasks with proper payload', async () => {
     vi.mocked(global.fetch).mockResolvedValue(
@@ -148,7 +144,6 @@ describe('KarenBackendService Authentication Integration', () => {
         }),
       })
     );
-  });
 
   test('should get extension health status', async () => {
     vi.mocked(global.fetch).mockResolvedValue(
@@ -174,7 +169,6 @@ describe('KarenBackendService Authentication Integration', () => {
         }),
       })
     );
-  });
 
   test('should handle extension health check failures gracefully', async () => {
     vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'));
@@ -183,7 +177,6 @@ describe('KarenBackendService Authentication Integration', () => {
 
     expect(result.status).toBe('unhealthy');
     expect(result.overall_health).toBe('unknown');
-  });
 
   test('should load and unload extensions', async () => {
     vi.mocked(global.fetch).mockResolvedValue(
@@ -203,5 +196,4 @@ describe('KarenBackendService Authentication Integration', () => {
     expect(unloadResult.status).toBe('loaded'); // Same mock response
 
     expect(global.fetch).toHaveBeenCalledTimes(2);
-  });
-});
+

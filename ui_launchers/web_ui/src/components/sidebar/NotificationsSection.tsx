@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { KAREN_SUGGESTED_FACTS_LS_KEY } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -46,7 +48,7 @@ export default function NotificationsSection() {
       ) : (
         <>
           <Alert variant="default" className="bg-primary/5 border-primary/20">
-            <MessageSquarePlus className="h-4 w-4 !text-primary/80 sm:w-auto md:w-full" />
+            <MessageSquarePlus className="h-4 w-4 !text-primary/80 " />
             <AlertTitle className="text-sm font-semibold text-primary md:text-base lg:text-lg">Review Karen's Suggestions</AlertTitle>
             <AlertDescription className="text-xs text-primary/90 sm:text-sm md:text-base">
               Karen has identified these new pieces of information from your conversations. You can review, confirm, or dismiss them in <strong>Settings &gt; Facts</strong> to help her remember them accurately.

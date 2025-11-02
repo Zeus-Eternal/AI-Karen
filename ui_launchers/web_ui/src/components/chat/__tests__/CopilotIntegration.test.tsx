@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import CopilotActions, { type ChatContext } from '../CopilotActions';
@@ -83,19 +84,16 @@ describe('Copilot Integration Demo', () => {
       content: `describe('calculateSum', () => {
   test('should add two positive numbers', () => {
     expect(calculateSum(2, 3)).toBe(5);
-  });
-  
+
   test('should add negative numbers', () => {
     expect(calculateSum(-2, -3)).toBe(-5);
-  });
-  
+
   test('should handle decimal numbers', () => {
     expect(calculateSum(2.5, 3.7)).toBeCloseTo(6.2);
-  });
-  
+
   test('should throw error for non-numeric inputs', () => {
     expect(() => calculateSum('2', 3)).toThrow('Both arguments must be numbers');
-  });
+
 });`,
       language: 'javascript',
       metadata: {
@@ -121,7 +119,6 @@ describe('Copilot Integration Demo', () => {
     );
 
     expect(screen.getByText('Copilot Actions')).toBeInTheDocument();
-  });
 
   it('renders CopilotArtifacts with code suggestions', () => {
     const mockHandlers = {
@@ -140,7 +137,6 @@ describe('Copilot Integration Demo', () => {
     expect(screen.getByText('2 Copilot Artifacts')).toBeInTheDocument();
     expect(screen.getByText('Optimized Function')).toBeInTheDocument();
     expect(screen.getByText('Unit Tests')).toBeInTheDocument();
-  });
 
   it('renders EnhancedMessageBubble with artifacts integration', () => {
     const mockHandlers = {
@@ -186,7 +182,6 @@ The optimized version includes input validation and better error handling."
     
     // Should show artifacts tab when artifacts are present
     expect(screen.getByText('Artifacts (2)')).toBeInTheDocument();
-  });
 
   it('demonstrates the complete copilot workflow', () => {
     // This test demonstrates how all components work together
@@ -227,5 +222,4 @@ The optimized version includes input validation and better error handling."
     expect(container.querySelector('.copilot-demo')).toBeInTheDocument();
     expect(screen.getByText('Copilot Actions')).toBeInTheDocument();
     expect(screen.getByText('Here\'s your optimized code with tests:')).toBeInTheDocument();
-  });
-});
+

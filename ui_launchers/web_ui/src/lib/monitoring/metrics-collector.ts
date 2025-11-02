@@ -191,7 +191,7 @@ export class MetricsCollector {
       if (duration <= bucket) {
         durationMetrics.buckets[bucket] = (durationMetrics.buckets[bucket] || 0) + 1;
       }
-    });
+
     durationMetrics.sum += duration;
     durationMetrics.count++;
     durationMetrics.total++;
@@ -252,7 +252,7 @@ export class MetricsCollector {
       if (responseTime <= bucket) {
         responseTimeMetrics.buckets[bucket] = (responseTimeMetrics.buckets[bucket] || 0) + 1;
       }
-    });
+
     responseTimeMetrics.sum += responseTime;
     responseTimeMetrics.count++;
     responseTimeMetrics.total++;
@@ -285,7 +285,7 @@ export class MetricsCollector {
       if (duration <= bucket) {
         queryMetrics.buckets[bucket] = (queryMetrics.buckets[bucket] || 0) + 1;
       }
-    });
+
     queryMetrics.sum += duration;
     queryMetrics.count++;
     queryMetrics.total++;

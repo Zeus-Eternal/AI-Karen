@@ -243,7 +243,7 @@ export class HttpConnectionPool {
           reject(new Error('Request timeout in queue'));
         }
       }, queuedRequest.timeout);
-    });
+
   }
   /**
    * Process queued requests
@@ -373,7 +373,7 @@ export class HttpConnectionPool {
           return false;
         }
         return true;
-      });
+
       if (validConnections.length !== hostConnections.length) {
         this.connections.set(host, validConnections);
       }

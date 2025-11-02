@@ -95,7 +95,7 @@ export class EndpointValidationService {
         field: 'backendUrl',
         message: 'Backend URL is required',
         severity: 'error',
-      });
+
       return;
     }
 
@@ -108,7 +108,7 @@ export class EndpointValidationService {
           field: 'backendUrl',
           message: `Invalid protocol: ${url.protocol}. Only HTTP and HTTPS are supported`,
           severity: 'error',
-        });
+
       }
 
       // Check for localhost in production
@@ -118,7 +118,7 @@ export class EndpointValidationService {
           field: 'backendUrl',
           message: 'Using localhost in production environment may cause connectivity issues',
           severity: 'warning',
-        });
+
       }
 
       // Check for HTTP in production
@@ -128,7 +128,7 @@ export class EndpointValidationService {
           field: 'backendUrl',
           message: 'Using HTTP in production is not recommended for security reasons',
           severity: 'warning',
-        });
+
       }
 
       // Check port range
@@ -139,7 +139,7 @@ export class EndpointValidationService {
             field: 'backendUrl',
             message: `Invalid port number: ${port}. Must be between 1 and 65535`,
             severity: 'error',
-          });
+
         }
       }
 
@@ -148,7 +148,7 @@ export class EndpointValidationService {
         field: 'backendUrl',
         message: `Invalid URL format: ${backendUrl}`,
         severity: 'error',
-      });
+
     }
   }
 
@@ -161,7 +161,7 @@ export class EndpointValidationService {
         field: 'fallbackUrls',
         message: 'No fallback URLs configured. Consider adding fallback endpoints for better reliability',
         severity: 'warning',
-      });
+
       return;
     }
 
@@ -175,7 +175,7 @@ export class EndpointValidationService {
             field: `fallbackUrls[${index}]`,
             message: `Invalid protocol in fallback URL: ${parsedUrl.protocol}`,
             severity: 'error',
-          });
+
         }
 
       } catch (error) {
@@ -183,9 +183,8 @@ export class EndpointValidationService {
           field: `fallbackUrls[${index}]`,
           message: `Invalid fallback URL format: ${url}`,
           severity: 'error',
-        });
+
       }
-    });
 
     // Check for duplicate URLs
     const uniqueUrls = new Set(fallbackUrls);
@@ -194,7 +193,7 @@ export class EndpointValidationService {
         field: 'fallbackUrls',
         message: 'Duplicate fallback URLs detected',
         severity: 'warning',
-      });
+
     }
   }
 
@@ -209,7 +208,7 @@ export class EndpointValidationService {
           field: 'healthCheckInterval',
           message: `Health check interval is very low (${config.healthCheckInterval}ms). This may impact performance`,
           severity: 'warning',
-        });
+
       }
 
       if (config.healthCheckInterval > 300000) { // 5 minutes
@@ -217,7 +216,7 @@ export class EndpointValidationService {
           field: 'healthCheckInterval',
           message: `Health check interval is very high (${config.healthCheckInterval}ms). Issues may not be detected quickly`,
           severity: 'warning',
-        });
+
       }
 
       // Validate timeout
@@ -226,7 +225,7 @@ export class EndpointValidationService {
           field: 'healthCheckTimeout',
           message: `Health check timeout is very low (${config.healthCheckTimeout}ms). May cause false negatives`,
           severity: 'warning',
-        });
+
       }
 
       if (config.healthCheckTimeout >= config.healthCheckInterval) {
@@ -234,7 +233,7 @@ export class EndpointValidationService {
           field: 'healthCheckTimeout',
           message: `Health check timeout (${config.healthCheckTimeout}ms) must be less than interval (${config.healthCheckInterval}ms)`,
           severity: 'error',
-        });
+
       }
     }
   }
@@ -248,7 +247,7 @@ export class EndpointValidationService {
         field: 'corsOrigins',
         message: 'No CORS origins configured. This may cause cross-origin request issues',
         severity: 'warning',
-      });
+
       return;
     }
 
@@ -258,7 +257,7 @@ export class EndpointValidationService {
           field: `corsOrigins[${index}]`,
           message: 'Wildcard CORS origin (*) is not recommended for production',
           severity: 'warning',
-        });
+
         return;
       }
 
@@ -269,9 +268,9 @@ export class EndpointValidationService {
           field: `corsOrigins[${index}]`,
           message: `Invalid CORS origin format: ${origin}`,
           severity: 'error',
-        });
+
       }
-    });
+
   }
 
   /**
@@ -287,7 +286,7 @@ export class EndpointValidationService {
         field: 'environment',
         message: 'Docker environment detected but backend URL does not appear to use container networking',
         severity: 'warning',
-      });
+
     }
 
     if (envInfo.networkMode === 'external' && 
@@ -296,7 +295,7 @@ export class EndpointValidationService {
         field: 'networkMode',
         message: 'External network mode detected but backend URL uses localhost',
         severity: 'warning',
-      });
+
     }
 
     // Provide environment info
@@ -304,7 +303,7 @@ export class EndpointValidationService {
       field: 'environment',
       message: `Detected environment: ${envInfo.environment}, network mode: ${envInfo.networkMode}`,
       severity: 'info',
-    });
+
   }
 
   /**
@@ -316,7 +315,7 @@ export class EndpointValidationService {
         field: 'healthCheckTimeout',
         message: `Health check timeout is very high (${config.healthCheckTimeout}ms). Consider reducing for better responsiveness`,
         severity: 'warning',
-      });
+
     }
   }
 
@@ -347,7 +346,6 @@ export class EndpointValidationService {
           'Accept': 'application/json',
           'Cache-Control': 'no-cache',
         },
-      });
 
       clearTimeout(timeoutId);
       const responseTime = performance.now() - startTime;
@@ -481,7 +479,6 @@ export class EndpointValidationService {
         method: 'HEAD', // Use HEAD to minimize data transfer
         signal: controller.signal,
         mode: 'cors', // Test CORS
-      });
 
       clearTimeout(timeoutId);
       const responseTime = performance.now() - startTime;
@@ -614,8 +611,4 @@ export function initializeEndpointValidationService(): EndpointValidationService
 
 // Export types with unique names to avoid conflicts
 export type {
-  ValidationError as EndpointValidationError,
-  ConfigValidationResult as EndpointConfigValidationResult,
-  HealthCheckResult as EndpointHealthCheckResult,
-  ConnectivityTestResult as EndpointConnectivityTestResult,
 };

@@ -5,33 +5,26 @@
 
 // Core types and enums
 export {
-  ErrorCategory,
-  ErrorSeverity,
   type CategorizedError,
   type ErrorPattern,
-  ERROR_PATTERNS,
-  USER_ERROR_MESSAGES
-} from './error-categories';
+import { } from './error-categories';
 
 // Error categorization
 export {
-  ErrorCategorizer
-} from './error-categorizer';
+import { } from './error-categorizer';
 
 // Error recovery
 export {
   type RecoveryAction,
   type RecoveryStrategy,
   type RecoveryResult,
-  ErrorRecoveryManager
-} from './error-recovery';
+import { } from './error-recovery';
 
 // Comprehensive error handler
 export {
   type ErrorHandlingOptions,
   type ErrorHandlingResult,
-  ComprehensiveErrorHandler
-} from './comprehensive-error-handler';
+import { } from './comprehensive-error-handler';
 
 // Import for internal use
 import { ComprehensiveErrorHandler } from './comprehensive-error-handler';

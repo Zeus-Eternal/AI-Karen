@@ -4,13 +4,7 @@
  * Reliable email delivery system with retry mechanisms, rate limiting,
  * and priority processing for admin notifications.
  */
-import { 
-  EmailMessage, 
-  EmailQueueConfig, 
-  BulkEmailOperation,
-  EmailDeliveryStatus,
-  EmailQueueResponse 
-} from './types';
+import {  EmailMessage, EmailQueueConfig, BulkEmailOperation, EmailDeliveryStatus, EmailQueueResponse } from './types';
 import { DEFAULT_QUEUE_CONFIG } from './config';
 import { emailService } from './email-service';
 /**
@@ -258,7 +252,7 @@ export class EmailQueueManager {
       if (!stats.oldestItem || item.createdAt < stats.oldestItem) {
         stats.oldestItem = item.createdAt;
       }
-    });
+
     return stats;
   }
   /**
@@ -303,7 +297,7 @@ export class EmailQueueManager {
         item.message.status = 'queued';
         retriedCount++;
       }
-    });
+
     return retriedCount;
   }
   /**
@@ -366,7 +360,7 @@ export class BulkEmailProcessor {
               operation.recipients[recipientIndex].error_message = result.errors[index];
             }
           }
-        });
+
         // Delay between batches if configured
         if (operation.delay_between_batches > 0 && i + batchSize < messages.length) {
           await new Promise(resolve => setTimeout(resolve, operation.delay_between_batches * 1000));

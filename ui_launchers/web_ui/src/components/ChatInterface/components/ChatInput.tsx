@@ -46,10 +46,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     <div className="border-t p-4 sm:p-4 md:p-6" id="chat-input">
       <form onSubmit={onSubmit} className="flex gap-2">
         <div className="flex-1 relative">
-          <input
+          <Input
             ref={inputRef}
             value={inputValue}
-            onChange={(e) = aria-label="Input"> onInputChange(e.target.value)}
+            onChange={(e) => onInputChange(e.target.value)}
             placeholder={placeholder}
             disabled={isTyping}
             className="pr-20"
@@ -72,27 +72,25 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
           {/* File Upload Button */}
           {enableFileUpload && (
-            <button
+            <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="absolute right-6 top-1/2 -translate-y-1/2 h-6 w-6 p-0 sm:w-auto md:w-full"
-              disabled={isTyping}
-             aria-label="Button">
-              <Paperclip className="h-4 w-4 sm:w-auto md:w-full" />
+              className="absolute right-6 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+              disabled={isTyping}>
+              <Paperclip className="h-4 w-4" />
             </Button>
           )}
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={!inputValue.trim() || isTyping}
-          size="sm"
-         aria-label="Submit form">
+          size="sm">
           {isTyping ? (
-            <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Send className="h-4 w-4 sm:w-auto md:w-full" />
+            <Send className="h-4 w-4" />
           )}
         </Button>
       </form>
@@ -108,37 +106,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         />
 
         <div className="flex items-center gap-2 flex-wrap">
-          <button
+          <Button
             variant="outline"
             size="sm"
-            onClick={() = aria-label="Button"> onQuickAction("debug", "Help me debug this code", "code")}
-            disabled={isTyping}
-          >
-            Debug Code
+            onClick={() => onQuickAction("debug", "Help me debug this code", "code")}
+            disabled={isTyping}>
           </Button>
-          <button
+          <Button
             variant="outline"
             size="sm"
-            onClick={() = aria-label="Button"> onQuickAction("explain", "Explain this concept", "text")}
-            disabled={isTyping}
-          >
-            Explain
+            onClick={() => onQuickAction("explain", "Explain this concept", "text")}
+            disabled={isTyping}>
           </Button>
-          <button
+          <Button
             variant="outline"
             size="sm"
-            onClick={() = aria-label="Button"> onQuickAction("docs", "Generate documentation", "documentation")}
-            disabled={isTyping}
-          >
-            Document
+            onClick={() => onQuickAction("docs", "Generate documentation", "documentation")}
+            disabled={isTyping}>
           </Button>
-          <button
+          <Button
             variant="outline"
             size="sm"
-            onClick={() = aria-label="Button"> onQuickAction("optimize", "Optimize this code", "code")}
-            disabled={isTyping}
-          >
-            Optimize
+            onClick={() => onQuickAction("optimize", "Optimize this code", "code")}
+            disabled={isTyping}>
           </Button>
         </div>
       </div>

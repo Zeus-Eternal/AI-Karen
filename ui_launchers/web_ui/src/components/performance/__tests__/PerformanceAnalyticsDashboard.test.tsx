@@ -4,6 +4,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import { PerformanceAnalyticsDashboard } from '../PerformanceAnalyticsDashboard';
@@ -133,11 +134,9 @@ describe('PerformanceAnalyticsDashboard', () => {
     mockGetCurrentResourceUsage.mockReturnValue(mockResourceUsage);
     mockOnAlert.mockReturnValue(() => {}); // Unsubscribe function
     mockGetOptimizationRecommendations.mockReturnValue(mockRecommendations);
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Rendering', () => {
     it('should render the dashboard with title and description', () => {
@@ -145,7 +144,6 @@ describe('PerformanceAnalyticsDashboard', () => {
       
       expect(screen.getByText('Performance Analytics')).toBeInTheDocument();
       expect(screen.getByText(/Monitor application performance/)).toBeInTheDocument();
-    });
 
     it('should render time range selector', () => {
       render(<PerformanceAnalyticsDashboard />);
@@ -154,7 +152,6 @@ describe('PerformanceAnalyticsDashboard', () => {
       expect(screen.getByText('6H')).toBeInTheDocument();
       expect(screen.getByText('24H')).toBeInTheDocument();
       expect(screen.getByText('7D')).toBeInTheDocument();
-    });
 
     it('should render Web Vitals cards', async () => {
       render(<PerformanceAnalyticsDashboard />);
@@ -165,8 +162,7 @@ describe('PerformanceAnalyticsDashboard', () => {
         expect(screen.getByText('CLS')).toBeInTheDocument();
         expect(screen.getByText('FCP')).toBeInTheDocument();
         expect(screen.getByText('TTFB')).toBeInTheDocument();
-      });
-    });
+
 
     it('should render resource usage cards', () => {
       render(<PerformanceAnalyticsDashboard />);
@@ -174,15 +170,13 @@ describe('PerformanceAnalyticsDashboard', () => {
       expect(screen.getByText('Memory Usage')).toBeInTheDocument();
       expect(screen.getByText('Network')).toBeInTheDocument();
       expect(screen.getByText('Active Alerts')).toBeInTheDocument();
-    });
 
     it('should render performance charts', () => {
       render(<PerformanceAnalyticsDashboard />);
       
       expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
       expect(screen.getByTestId('line-chart')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Data Loading', () => {
     it('should load performance data on mount', async () => {
@@ -193,16 +187,14 @@ describe('PerformanceAnalyticsDashboard', () => {
         expect(mockGetAlerts).toHaveBeenCalledWith(20);
         expect(mockGetWebVitalsMetrics).toHaveBeenCalled();
         expect(mockGetCurrentResourceUsage).toHaveBeenCalled();
-      });
-    });
+
 
     it('should subscribe to alerts on mount', async () => {
       render(<PerformanceAnalyticsDashboard />);
       
       await waitFor(() => {
         expect(mockOnAlert).toHaveBeenCalled();
-      });
-    });
+
 
     it('should refresh data at specified interval', async () => {
       vi.useFakeTimers();
@@ -217,11 +209,9 @@ describe('PerformanceAnalyticsDashboard', () => {
       
       await waitFor(() => {
         expect(mockGetMetrics).toHaveBeenCalledTimes(2);
-      });
-      
+
       vi.useRealTimers();
-    });
-  });
+
 
   describe('Web Vitals Display', () => {
     it('should display Web Vitals values correctly', () => {
@@ -230,7 +220,6 @@ describe('PerformanceAnalyticsDashboard', () => {
       expect(screen.getByText('2000ms')).toBeInTheDocument(); // LCP
       expect(screen.getByText('100ms')).toBeInTheDocument(); // FID
       expect(screen.getByText('0.100')).toBeInTheDocument(); // CLS
-    });
 
     it('should show correct status badges for Web Vitals', async () => {
       render(<PerformanceAnalyticsDashboard />);
@@ -238,8 +227,7 @@ describe('PerformanceAnalyticsDashboard', () => {
       await waitFor(() => {
         // LCP 2000ms should be "Good" (< 2500ms)
         expect(screen.getAllByText('Good')).toHaveLength(5); // All vitals are good
-      });
-    });
+
 
     it('should handle missing Web Vitals gracefully', () => {
       mockGetWebVitalsMetrics.mockReturnValue({ lcp: 2000 }); // Only LCP
@@ -248,8 +236,7 @@ describe('PerformanceAnalyticsDashboard', () => {
       
       expect(screen.getByText('2000ms')).toBeInTheDocument();
       // Should not crash with missing metrics
-    });
-  });
+
 
   describe('Resource Usage Display', () => {
     it('should display memory usage correctly', () => {
@@ -257,14 +244,12 @@ describe('PerformanceAnalyticsDashboard', () => {
       
       expect(screen.getByText('65.0%')).toBeInTheDocument();
       expect(screen.getByText('62.0MB / 95.4MB')).toBeInTheDocument();
-    });
 
     it('should display network information correctly', () => {
       render(<PerformanceAnalyticsDashboard />);
       
       expect(screen.getByText('10Mbps')).toBeInTheDocument();
       expect(screen.getByText('4g • 50ms RTT')).toBeInTheDocument();
-    });
 
     it('should display alert count correctly', () => {
       render(<PerformanceAnalyticsDashboard />);
@@ -272,8 +257,7 @@ describe('PerformanceAnalyticsDashboard', () => {
       expect(screen.getByText('2')).toBeInTheDocument(); // Total alerts
       expect(screen.getByText('1 Critical')).toBeInTheDocument();
       expect(screen.getByText('1 Warning')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Alerts Display', () => {
     it('should display performance alerts', () => {
@@ -283,7 +267,6 @@ describe('PerformanceAnalyticsDashboard', () => {
       expect(screen.getByText('Performance Critical')).toBeInTheDocument();
       expect(screen.getByText('LCP is slower than expected')).toBeInTheDocument();
       expect(screen.getByText('Memory usage is critically high')).toBeInTheDocument();
-    });
 
     it('should limit alerts display to 3', () => {
       const manyAlerts = Array.from({ length: 5 }, (_, i) => ({
@@ -305,8 +288,7 @@ describe('PerformanceAnalyticsDashboard', () => {
       expect(screen.getByText('Alert 1')).toBeInTheDocument();
       expect(screen.getByText('Alert 2')).toBeInTheDocument();
       expect(screen.queryByText('Alert 3')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Time Range Selection', () => {
     it('should change time range when tab is clicked', async () => {
@@ -318,16 +300,14 @@ describe('PerformanceAnalyticsDashboard', () => {
       // Should trigger data recalculation
       await waitFor(() => {
         expect(mockGetMetrics).toHaveBeenCalled();
-      });
-    });
+
 
     it('should filter chart data based on selected time range', () => {
       render(<PerformanceAnalyticsDashboard />);
       
       // Chart should be rendered with filtered data
       expect(screen.getByTestId('line-chart')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Chart Tabs', () => {
     it('should render performance trends tab by default', async () => {
@@ -336,8 +316,7 @@ describe('PerformanceAnalyticsDashboard', () => {
       await waitFor(() => {
         expect(screen.getAllByText('Performance Trends')).toHaveLength(2); // Tab and title
         expect(screen.getByText('Track performance metrics over time')).toBeInTheDocument();
-      });
-    });
+
 
     it('should switch to Web Vitals tab', async () => {
       render(<PerformanceAnalyticsDashboard />);
@@ -348,8 +327,7 @@ describe('PerformanceAnalyticsDashboard', () => {
       await waitFor(() => {
         expect(screen.getByText('Web Vitals Distribution')).toBeInTheDocument();
         expect(screen.getByText('Performance Score')).toBeInTheDocument();
-      });
-    });
+
 
     it('should switch to Resource Usage tab', async () => {
       render(<PerformanceAnalyticsDashboard />);
@@ -359,9 +337,8 @@ describe('PerformanceAnalyticsDashboard', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Resource Usage Over Time')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Recommendations', () => {
     it('should display optimization recommendations when enabled', () => {
@@ -370,13 +347,11 @@ describe('PerformanceAnalyticsDashboard', () => {
       expect(screen.getByText('Optimization Recommendations')).toBeInTheDocument();
       expect(screen.getByText(/Consider optimizing images/)).toBeInTheDocument();
       expect(screen.getByText(/Reduce JavaScript execution time/)).toBeInTheDocument();
-    });
 
     it('should hide recommendations when disabled', () => {
       render(<PerformanceAnalyticsDashboard showRecommendations={false} />);
       
       expect(screen.queryByText('Optimization Recommendations')).not.toBeInTheDocument();
-    });
 
     it('should not display recommendations section when no recommendations', () => {
       mockGetOptimizationRecommendations.mockReturnValue([]);
@@ -384,8 +359,7 @@ describe('PerformanceAnalyticsDashboard', () => {
       render(<PerformanceAnalyticsDashboard showRecommendations={true} />);
       
       expect(screen.queryByText('Optimization Recommendations')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Metric Trends', () => {
     it('should calculate and display metric trends', () => {
@@ -406,8 +380,7 @@ describe('PerformanceAnalyticsDashboard', () => {
       
       // Should show trend indicators (up/down arrows)
       expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle missing resource usage gracefully', () => {
@@ -416,7 +389,6 @@ describe('PerformanceAnalyticsDashboard', () => {
       expect(() => {
         render(<PerformanceAnalyticsDashboard />);
       }).not.toThrow();
-    });
 
     it('should handle empty metrics gracefully', () => {
       mockGetMetrics.mockReturnValue([]);
@@ -425,7 +397,6 @@ describe('PerformanceAnalyticsDashboard', () => {
       expect(() => {
         render(<PerformanceAnalyticsDashboard />);
       }).not.toThrow();
-    });
 
     it('should handle empty alerts gracefully', () => {
       mockGetAlerts.mockReturnValue([]);
@@ -434,8 +405,7 @@ describe('PerformanceAnalyticsDashboard', () => {
       
       // Should not show alert sections
       expect(screen.queryByText('Performance Warning')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Cleanup', () => {
     it('should cleanup intervals and subscriptions on unmount', () => {
@@ -447,8 +417,7 @@ describe('PerformanceAnalyticsDashboard', () => {
       unmount();
       
       expect(unsubscribe).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('should have proper ARIA labels and roles', () => {
@@ -456,7 +425,6 @@ describe('PerformanceAnalyticsDashboard', () => {
       
       // Check for proper heading structure
       expect(screen.getByRole('heading', { name: /Performance Analytics/ })).toBeInTheDocument();
-    });
 
     it('should support keyboard navigation for tabs', () => {
       render(<PerformanceAnalyticsDashboard />);
@@ -467,6 +435,5 @@ describe('PerformanceAnalyticsDashboard', () => {
       // Tab should be focusable
       webVitalsTab.focus();
       expect(document.activeElement).toBe(webVitalsTab);
-    });
-  });
-});
+
+

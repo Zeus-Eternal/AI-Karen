@@ -6,20 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { 
-  validateSession, 
-  login, 
-  logout, 
-  hasSessionCookie,
-  setSession,
-  getSession,
-  clearSession,
-  isSessionValid,
-  getCurrentUser,
-  hasRole,
-  isAuthenticated,
-  type SessionData 
-} from '../session';
+import {  validateSession, login, logout, hasSessionCookie, setSession, getSession, clearSession, isSessionValid, getCurrentUser, hasRole, isAuthenticated, type SessionData } from '../session';
 
 // Mock fetch
 const mockFetch = vi.fn();
@@ -29,7 +16,6 @@ global.fetch = mockFetch;
 Object.defineProperty(document, 'cookie', {
   writable: true,
   value: '',
-});
 
 // Mock console methods
 const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -49,37 +35,31 @@ describe('Session Validation and Cookie Handling', () => {
     clearSession();
     document.cookie = '';
     mockFetch.mockClear();
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Session Cookie Detection', () => {
     it('should detect session cookie when present', () => {
       document.cookie = 'session_id=abc123; path=/';
       
       expect(hasSessionCookie()).toBe(true);
-    });
 
     it('should not detect session cookie when absent', () => {
       document.cookie = 'other_cookie=value; path=/';
       
       expect(hasSessionCookie()).toBe(false);
-    });
 
     it('should not detect session cookie when no cookies exist', () => {
       document.cookie = '';
       
       expect(hasSessionCookie()).toBe(false);
-    });
 
     it('should handle multiple cookies correctly', () => {
       document.cookie = 'first=value1; session_id=abc123; last=value2';
       
       expect(hasSessionCookie()).toBe(true);
-    });
-  });
+
 
   describe('Session Validation - Single API Call', () => {
     it('should validate session with single successful API call', async () => {
@@ -111,7 +91,6 @@ describe('Session Validation and Cookie Handling', () => {
           'Accept': 'application/json',
         },
         credentials: 'include',
-      });
 
       // Should store session data
       const session = getSession();
@@ -120,8 +99,7 @@ describe('Session Validation and Cookie Handling', () => {
         email: 'test@example.com',
         roles: ['user'],
         tenantId: 'tenant123',
-      });
-    });
+
 
     it('should fail validation with single unsuccessful API call', async () => {
       mockFetch.mockResolvedValueOnce(
@@ -136,7 +114,6 @@ describe('Session Validation and Cookie Handling', () => {
       expect(result).toBe(false);
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(getSession()).toBeNull();
-    });
 
     it('should handle network errors without retry logic', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
@@ -146,7 +123,6 @@ describe('Session Validation and Cookie Handling', () => {
       expect(result).toBe(false);
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(getSession()).toBeNull();
-    });
 
     it('should handle malformed response gracefully', async () => {
       mockFetch.mockResolvedValueOnce(
@@ -161,7 +137,6 @@ describe('Session Validation and Cookie Handling', () => {
       expect(result).toBe(false);
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(getSession()).toBeNull();
-    });
 
     it('should clear session on validation failure', async () => {
       // Set initial session
@@ -180,8 +155,7 @@ describe('Session Validation and Cookie Handling', () => {
 
       expect(result).toBe(false);
       expect(getSession()).toBeNull();
-    });
-  });
+
 
   describe('Login Flow - Single API Call', () => {
     it('should login successfully with valid credentials', async () => {
@@ -215,7 +189,6 @@ describe('Session Validation and Cookie Handling', () => {
           password: 'password123',
         }),
         credentials: 'include',
-      });
 
       // Should store session data
       const session = getSession();
@@ -224,8 +197,7 @@ describe('Session Validation and Cookie Handling', () => {
         email: 'test@example.com',
         roles: ['user'],
         tenantId: 'tenant123',
-      });
-    });
+
 
     it('should login with TOTP code when provided', async () => {
       const mockResponse = {
@@ -258,8 +230,7 @@ describe('Session Validation and Cookie Handling', () => {
           totp_code: '123456',
         }),
         credentials: 'include',
-      });
-    });
+
 
     it('should handle login failure and clear session', async () => {
       mockFetch.mockResolvedValueOnce(
@@ -273,7 +244,6 @@ describe('Session Validation and Cookie Handling', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(getSession()).toBeNull();
-    });
 
     it('should handle network errors during login', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
@@ -282,7 +252,6 @@ describe('Session Validation and Cookie Handling', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(getSession()).toBeNull();
-    });
 
     it('should handle server errors with fallback message', async () => {
       mockFetch.mockResolvedValueOnce(
@@ -295,8 +264,7 @@ describe('Session Validation and Cookie Handling', () => {
       await expect(login('test@example.com', 'password123')).rejects.toThrow('Login failed: 500');
 
       expect(getSession()).toBeNull();
-    });
-  });
+
 
   describe('Logout Flow - Simple Cookie Clearing', () => {
     it('should clear session and call logout endpoint', async () => {
@@ -316,11 +284,9 @@ describe('Session Validation and Cookie Handling', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
-      });
 
       // Should clear session
       expect(getSession()).toBeNull();
-    });
 
     it('should clear session even if logout endpoint fails', async () => {
       // Set initial session
@@ -335,8 +301,7 @@ describe('Session Validation and Cookie Handling', () => {
       expect(getSession()).toBeNull();
       // Note: console.warn is called but may be mocked differently in test environment
       expect(getSession()).toBeNull();
-    });
-  });
+
 
   describe('Session State Management', () => {
     it('should store and retrieve session data correctly', () => {
@@ -347,7 +312,6 @@ describe('Session Validation and Cookie Handling', () => {
 
       expect(getSession()).toEqual(mockSessionData);
       expect(isSessionValid()).toBe(true);
-    });
 
     it('should clear session data correctly', () => {
       setSession(mockSessionData);
@@ -357,7 +321,6 @@ describe('Session Validation and Cookie Handling', () => {
 
       expect(getSession()).toBeNull();
       expect(isSessionValid()).toBe(false);
-    });
 
     it('should get current user data', () => {
       expect(getCurrentUser()).toBeNull();
@@ -365,7 +328,6 @@ describe('Session Validation and Cookie Handling', () => {
       setSession(mockSessionData);
 
       expect(getCurrentUser()).toEqual(mockSessionData);
-    });
 
     it('should check user roles correctly', () => {
       expect(hasRole('admin')).toBe(false);
@@ -375,7 +337,6 @@ describe('Session Validation and Cookie Handling', () => {
       expect(hasRole('admin')).toBe(true);
       expect(hasRole('user')).toBe(true);
       expect(hasRole('superadmin')).toBe(false);
-    });
 
     it('should check authentication status correctly', () => {
       expect(isAuthenticated()).toBe(false);
@@ -387,8 +348,7 @@ describe('Session Validation and Cookie Handling', () => {
       clearSession();
 
       expect(isAuthenticated()).toBe(false);
-    });
-  });
+
 
   describe('Error Handling Edge Cases', () => {
     it('should handle undefined window in server environment', () => {
@@ -400,13 +360,11 @@ describe('Session Validation and Cookie Handling', () => {
 
       // Restore window
       global.window = originalWindow;
-    });
 
     it('should handle malformed cookie strings', () => {
       document.cookie = 'malformed cookie string without equals';
       
       expect(hasSessionCookie()).toBe(false);
-    });
 
     it('should handle empty response bodies gracefully', async () => {
       mockFetch.mockResolvedValueOnce(
@@ -420,7 +378,6 @@ describe('Session Validation and Cookie Handling', () => {
 
       expect(result).toBe(false);
       expect(getSession()).toBeNull();
-    });
 
     it('should handle response without user data', async () => {
       mockFetch.mockResolvedValueOnce(
@@ -434,8 +391,7 @@ describe('Session Validation and Cookie Handling', () => {
 
       expect(result).toBe(false);
       expect(getSession()).toBeNull();
-    });
-  });
+
 
   describe('No Retry Logic Verification', () => {
     it('should not retry failed validation requests', async () => {
@@ -445,7 +401,6 @@ describe('Session Validation and Cookie Handling', () => {
 
       expect(result).toBe(false);
       expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
 
     it('should not retry failed login requests', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
@@ -453,7 +408,6 @@ describe('Session Validation and Cookie Handling', () => {
       await expect(login('test@example.com', 'password123')).rejects.toThrow('Network error');
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
 
     it('should not retry failed logout requests', async () => {
       setSession(mockSessionData);
@@ -463,6 +417,5 @@ describe('Session Validation and Cookie Handling', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(getSession()).toBeNull();
-    });
-  });
-});
+
+

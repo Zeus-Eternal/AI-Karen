@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,18 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Eye,
-  Brain,
-  Search,
-  Tag,
-  Palette,
-  Image as ImageIcon,
-  Zap,
-  AlertCircle,
-  CheckCircle,
-  Copy
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment, AttachmentAnalysis } from '@/types/enhanced-chat';
 
@@ -172,13 +162,13 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
       toast({
         title: 'Analysis Complete',
         description: 'Image has been analyzed successfully'
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Analysis Failed',
         description: 'Failed to analyze image'
-      });
+
     } finally {
       setIsAnalyzing(false);
       setAnalysisProgress(0);
@@ -195,13 +185,13 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
       toast({
         title: 'Copied',
         description: 'Extracted text copied to clipboard'
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Copy Failed',
         description: 'Failed to copy text'
-      });
+
     }
   };
 
@@ -224,8 +214,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
     <Card className={`h-full flex flex-col ${className}`}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
-          <Brain className="h-5 w-5 sm:w-auto md:w-full" />
-          Image Analysis
+          <Brain className="h-5 w-5 " />
         </CardTitle>
       </CardHeader>
 
@@ -251,7 +240,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
             disabled={isAnalyzing}
             className="flex-1"
            aria-label="Button">
-            <Zap className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+            <Zap className="h-4 w-4 mr-2 " />
             {isAnalyzing ? 'Analyzing...' : 'Analyze Image'}
           </Button>
         </div>
@@ -274,7 +263,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-                    <Eye className="h-4 w-4 sm:w-auto md:w-full" />
+                    <Eye className="h-4 w-4 " />
                     Objects Detected ({analysisResult.objects.length})
                   </CardTitle>
                 </CardHeader>
@@ -297,15 +286,15 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-                      <Search className="h-4 w-4 sm:w-auto md:w-full" />
+                      <Search className="h-4 w-4 " />
                       Text Extracted ({analysisResult.text.length})
-                      <button
+                      <Button
                         variant="ghost"
                         size="sm"
                         onClick={copyExtractedText}
                         className="ml-auto"
-                       aria-label="Button">
-                        <Copy className="h-4 w-4 sm:w-auto md:w-full" />
+                       >
+                        <Copy className="h-4 w-4 " />
                       </Button>
                     </CardTitle>
                   </CardHeader>
@@ -328,8 +317,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-                    <Palette className="h-4 w-4 sm:w-auto md:w-full" />
-                    Color Palette
+                    <Palette className="h-4 w-4 " />
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -337,7 +325,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
                     {analysisResult.colors.map((color, index) => (
                       <div key={index} className="flex items-center gap-2 p-2 border rounded sm:p-4 md:p-6">
                         <div
-                          className="w-6 h-6 rounded border sm:w-auto md:w-full"
+                          className="w-6 h-6 rounded border "
                           style={{ backgroundColor: color.hex }}
                         />
                         <div className="flex-1">
@@ -357,7 +345,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-                      <ImageIcon className="h-4 w-4 sm:w-auto md:w-full" />
+                      <ImageIcon className="h-4 w-4 " />
                       Faces Detected ({analysisResult.faces.length})
                     </CardTitle>
                   </CardHeader>
@@ -401,8 +389,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-                    <Tag className="h-4 w-4 sm:w-auto md:w-full" />
-                    Scene Understanding
+                    <Tag className="h-4 w-4 " />
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -435,8 +422,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-                    <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
-                    Image Quality
+                    <CheckCircle className="h-4 w-4 " />
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -483,12 +469,11 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
         {/* No Analysis State */}
         {!analysisResult && !isAnalyzing && (
           <div className="text-center py-8">
-            <Brain className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+            <Brain className="h-12 w-12 mx-auto mb-4 opacity-50 " />
             <p className="text-sm text-muted-foreground mb-4 md:text-base lg:text-lg">
               Click "Analyze Image" to extract insights from this image
             </p>
             <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              Analysis includes object detection, text extraction, color analysis, and more
             </div>
           </div>
         )}

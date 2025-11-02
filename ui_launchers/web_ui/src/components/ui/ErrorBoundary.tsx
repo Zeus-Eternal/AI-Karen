@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({
       errorInfo,
       fallbackResponse
-    });
+
   }
   handleRetry = async () => {
     if (this.state.retryCount >= this.maxRetries) {
@@ -69,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
         error: null,
         errorInfo: null,
         fallbackResponse: null
-      });
+
     }, 1000);
   };
   handleReset = () => {
@@ -81,7 +81,7 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo: null,
       fallbackResponse: null,
       retryCount: 0
-    });
+
   };
   componentWillUnmount() {
     if (this.retryTimeout) {
@@ -131,7 +131,6 @@ export class ErrorBoundary extends Component<Props, State> {
               </button>
             )}
             <button onClick={this.handleReset} className="reset-button" aria-label="Button">
-              Reset Component
             </button>
           </div>
         </div>
@@ -192,10 +191,8 @@ export class ErrorBoundary extends Component<Props, State> {
         {enableRetry && (
           <div className="fallback-actions">
             <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
-              Try Advanced View Again
             </button>
             <button onClick={this.handleReset} className="reset-button" aria-label="Button">
-              Reset Component
             </button>
           </div>
         )}
@@ -220,10 +217,8 @@ export class ErrorBoundary extends Component<Props, State> {
         {enableRetry && (
           <div className="fallback-actions">
             <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
-              Refresh Data
             </button>
             <button onClick={this.handleReset} className="reset-button" aria-label="Button">
-              Reset Component
             </button>
           </div>
         )}
@@ -239,7 +234,6 @@ export class ErrorBoundary extends Component<Props, State> {
           <p>{message}</p>
           {enableRetry && (
             <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
-              Retry Loading
             </button>
           )}
         </div>
@@ -256,10 +250,8 @@ export class ErrorBoundary extends Component<Props, State> {
           {enableRetry && (
             <div className="fallback-actions">
               <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
-                Retry
               </button>
               <button onClick={this.handleReset} className="reset-button" aria-label="Button">
-                Reset
               </button>
             </div>
           )}
@@ -279,10 +271,8 @@ export class ErrorBoundary extends Component<Props, State> {
           {enableRetry && (
             <div className="fallback-actions">
               <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
-                Retry
               </button>
               <button onClick={this.handleReset} className="reset-button" aria-label="Button">
-                Reset
               </button>
             </div>
           )}

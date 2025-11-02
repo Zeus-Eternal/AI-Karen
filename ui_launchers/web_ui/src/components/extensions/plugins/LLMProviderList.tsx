@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +32,7 @@ export default function LLMProviderList() {
         <Card key={p.id}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm flex items-center gap-1 md:text-base lg:text-lg">
-              <Plug className="h-4 w-4 sm:w-auto md:w-full" /> {p.name}
+              <Plug className="h-4 w-4 " /> {p.name}
             </CardTitle>
             <Badge variant={p.status === "healthy" ? "default" : "destructive"}>{p.status}</Badge>
           </CardHeader>
@@ -39,7 +40,7 @@ export default function LLMProviderList() {
             Model: <span className="font-mono">{p.model}</span>
           </CardContent>
           <CardFooter>
-            <button size="sm" variant="outline" aria-label="Button">Configure</Button>
+            <Button size="sm" variant="outline" >Configure</Button>
           </CardFooter>
         </Card>
       ))}

@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { ChatBubble } from '@/components/chat';
@@ -10,7 +11,6 @@ describe('ChatBubble', () => {
     const wrapper = container.firstChild as HTMLElement;
     expect(wrapper).toHaveClass('flex-row-reverse');
     expect(screen.queryByText(/Model:/)).toBeNull();
-  });
 
   it('renders assistant message with meta badges', () => {
     const { container } = render(
@@ -23,7 +23,6 @@ describe('ChatBubble', () => {
     expect(screen.getByText('Tokens: 128')).toBeInTheDocument();
     // Cost formatted to 6 decimals if toFixed exists
     expect(screen.getByText(/Cost: 0\.000123/)).toBeInTheDocument();
-  });
 
   it('omits meta bar when all meta flags disabled', () => {
     webUIConfig.showModelBadge = false;
@@ -38,5 +37,4 @@ describe('ChatBubble', () => {
     webUIConfig.showModelBadge = true;
     webUIConfig.showLatencyBadge = true;
     webUIConfig.showConfidenceBadge = true;
-  });
-});
+

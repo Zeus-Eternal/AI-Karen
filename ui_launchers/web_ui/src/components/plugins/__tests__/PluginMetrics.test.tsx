@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -81,7 +82,6 @@ describe('PluginMetrics', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders plugin metrics overview', () => {
     render(
@@ -94,7 +94,6 @@ describe('PluginMetrics', () => {
 
     expect(screen.getByText('Plugin Metrics')).toBeInTheDocument();
     expect(screen.getByText(`Performance and resource usage for ${mockPlugin.name}`)).toBeInTheDocument();
-  });
 
   it('displays key performance metrics', () => {
     render(
@@ -110,7 +109,6 @@ describe('PluginMetrics', () => {
     expect(screen.getByText('250')).toBeInTheDocument(); // Average execution time
     expect(screen.getByText('2.00')).toBeInTheDocument(); // Error rate percentage
     expect(screen.getByText('99.8')).toBeInTheDocument(); // Health score
-  });
 
   it('displays resource usage with progress bars', () => {
     render(
@@ -132,7 +130,6 @@ describe('PluginMetrics', () => {
     expect(screen.getByText('15.2 MB')).toBeInTheDocument(); // Memory
     expect(screen.getByText('0.8 MB/s')).toBeInTheDocument(); // Network
     expect(screen.getByText('2.1 MB')).toBeInTheDocument(); // Disk
-  });
 
   it('shows recent activity information', () => {
     render(
@@ -147,7 +144,6 @@ describe('PluginMetrics', () => {
     expect(screen.getByText('Last Execution')).toBeInTheDocument();
     expect(screen.getByText('Last Health Check')).toBeInTheDocument();
     expect(screen.getByText('Plugin Status')).toBeInTheDocument();
-  });
 
   it('displays health issues when present', () => {
     const pluginWithIssues = {
@@ -172,7 +168,6 @@ describe('PluginMetrics', () => {
 
     expect(screen.getByText('Health Issues')).toBeInTheDocument();
     expect(screen.getByText('API rate limit approaching')).toBeInTheDocument();
-  });
 
   it('shows no health issues message when healthy', () => {
     render(
@@ -184,7 +179,6 @@ describe('PluginMetrics', () => {
     );
 
     expect(screen.getByText('No health issues')).toBeInTheDocument();
-  });
 
   it('handles time range selection', async () => {
     const user = userEvent.setup();
@@ -203,7 +197,6 @@ describe('PluginMetrics', () => {
     await user.click(lastHourOption);
 
     expect(screen.getByDisplayValue('Last Hour')).toBeInTheDocument();
-  });
 
   it('toggles between simple and advanced view', async () => {
     const user = userEvent.setup();
@@ -219,7 +212,6 @@ describe('PluginMetrics', () => {
     await user.click(advancedButton);
 
     expect(screen.getByRole('tab', { name: /advanced/i })).toBeInTheDocument();
-  });
 
   it('calls onRefresh when refresh button is clicked', async () => {
     const user = userEvent.setup();
@@ -236,8 +228,7 @@ describe('PluginMetrics', () => {
 
     await waitFor(() => {
       expect(mockOnRefresh).toHaveBeenCalled();
-    });
-  });
+
 
   it('calls onConfigureAlerts when alerts button is clicked', async () => {
     const user = userEvent.setup();
@@ -253,7 +244,6 @@ describe('PluginMetrics', () => {
     await user.click(alertsButton);
 
     expect(mockOnConfigureAlerts).toHaveBeenCalled();
-  });
 
   it('displays performance tab content', async () => {
     const user = userEvent.setup();
@@ -272,7 +262,6 @@ describe('PluginMetrics', () => {
     expect(screen.getByText('Execution Count')).toBeInTheDocument();
     expect(screen.getByText('Error Rate Trend')).toBeInTheDocument();
     expect(screen.getByText('Performance Summary')).toBeInTheDocument();
-  });
 
   it('displays resources tab content', async () => {
     const user = userEvent.setup();
@@ -291,7 +280,6 @@ describe('PluginMetrics', () => {
     expect(screen.getByText('Memory Usage')).toBeInTheDocument();
     expect(screen.getByText('Network I/O')).toBeInTheDocument();
     expect(screen.getByText('Disk I/O')).toBeInTheDocument();
-  });
 
   it('displays health tab content', async () => {
     const user = userEvent.setup();
@@ -309,7 +297,6 @@ describe('PluginMetrics', () => {
     expect(screen.getByText('Health Status')).toBeInTheDocument();
     expect(screen.getByText('Health Checks')).toBeInTheDocument();
     expect(screen.getByText('Recent Issues')).toBeInTheDocument();
-  });
 
   it('shows correct health status indicators', () => {
     render(
@@ -322,7 +309,6 @@ describe('PluginMetrics', () => {
 
     // Should show healthy status
     expect(screen.getByText('Healthy')).toBeInTheDocument();
-  });
 
   it('handles warning health status', () => {
     const warningPlugin = {
@@ -346,7 +332,6 @@ describe('PluginMetrics', () => {
     );
 
     expect(screen.getByText('85.5%')).toBeInTheDocument();
-  });
 
   it('handles critical health status', () => {
     const criticalPlugin = {
@@ -370,7 +355,6 @@ describe('PluginMetrics', () => {
     );
 
     expect(screen.getByText('45.2%')).toBeInTheDocument();
-  });
 
   it('displays performance alerts', () => {
     render(
@@ -383,7 +367,6 @@ describe('PluginMetrics', () => {
 
     // Should show mock alerts
     expect(screen.getByText('Performance Alerts')).toBeInTheDocument();
-  });
 
   it('allows dismissing alerts', async () => {
     const user = userEvent.setup();
@@ -405,7 +388,6 @@ describe('PluginMetrics', () => {
       await user.click(alertDismissButton);
       // Alert should be dismissed (implementation detail)
     }
-  });
 
   it('shows advanced metrics when enabled', async () => {
     const user = userEvent.setup();
@@ -427,7 +409,6 @@ describe('PluginMetrics', () => {
 
     expect(screen.getByText('Detailed Metrics')).toBeInTheDocument();
     expect(screen.getByText('System Integration')).toBeInTheDocument();
-  });
 
   it('handles refresh loading state', async () => {
     const user = userEvent.setup();
@@ -444,7 +425,6 @@ describe('PluginMetrics', () => {
 
     // Should show loading state briefly
     expect(refreshButton).toBeDisabled();
-  });
 
   it('displays metric trends correctly', () => {
     render(
@@ -458,7 +438,6 @@ describe('PluginMetrics', () => {
     // Should show trend indicators (up/down arrows)
     const trendElements = screen.getAllByText(/\+\d+%|\-\d+%/);
     expect(trendElements.length).toBeGreaterThan(0);
-  });
 
   it('shows correct status colors for different metric levels', () => {
     const highErrorPlugin = {
@@ -481,5 +460,4 @@ describe('PluginMetrics', () => {
     );
 
     expect(screen.getByText('15.00')).toBeInTheDocument();
-  });
-});
+

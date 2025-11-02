@@ -54,7 +54,7 @@ export const GET = requireSuperAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});
+
 /**
  * PUT /api/admin/system/config - Update system configuration (super admin only)
  */
@@ -119,7 +119,7 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
           },
           ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
           user_agent: request.headers.get('user-agent') || undefined
-        });
+
       } catch (configError) {
         errors[key] = configError instanceof Error ? configError.message : 'Unknown error';
       }
@@ -170,4 +170,3 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});

@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import {
-  makeBackendRequest,
-  getTimeoutConfig,
-  getRetryPolicy
-} from '@/app/api/_utils/backend';
+import { makeBackendRequest, getTimeoutConfig, getRetryPolicy } from '@/app/api/_utils/backend';
 import { isSimpleAuthEnabled } from '@/lib/auth/env';
 import { ConnectionError } from '@/lib/connection/connection-manager';
 import { logger } from '@/lib/logger';
@@ -99,8 +95,7 @@ export async function POST(request: NextRequest) {
       requestId,
       backendStatus: result.status,
       responseTime: totalResponseTime,
-    });
-    
+
     // Create the response with the data
     const nextResponse = NextResponse.json(data);
     
@@ -127,7 +122,7 @@ export async function POST(request: NextRequest) {
           secure: shouldUseSecureCookies,
           path: '/',
           maxAge: data?.expires_in ? Number(data.expires_in) : 24 * 60 * 60,
-        });
+
       } catch {
         // ignore cookie errors when running outside production to keep local development flexible
       }

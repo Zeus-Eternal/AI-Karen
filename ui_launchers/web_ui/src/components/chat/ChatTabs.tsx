@@ -56,16 +56,13 @@ export const ChatTabs: React.FC<ChatTabsProps> = ({
     >
       <TabsList className="grid w-full grid-cols-3 mx-4 mt-4">
         <TabsTrigger value="chat" className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 sm:w-auto md:w-full" />
-          Chat
+          <MessageSquare className="h-4 w-4 " />
         </TabsTrigger>
         <TabsTrigger value="code" className="flex items-center gap-2">
-          <Code className="h-4 w-4 sm:w-auto md:w-full" />
-          Code
+          <Code className="h-4 w-4 " />
         </TabsTrigger>
         <TabsTrigger value="analytics" className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 sm:w-auto md:w-full" />
-          Analytics
+          <BarChart3 className="h-4 w-4 " />
         </TabsTrigger>
       </TabsList>
 

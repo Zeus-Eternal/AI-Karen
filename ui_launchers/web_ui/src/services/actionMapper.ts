@@ -81,7 +81,7 @@ export class ActionRegistry {
             priority,
             dueDate,
             tags
-          });
+
           return {
             success: true,
             message: `Task "${title}" added successfully`,
@@ -97,7 +97,7 @@ export class ActionRegistry {
       description: 'Add a new task to the task list',
       requiredParams: ['title'],
       optionalParams: ['description', 'priority', 'dueDate', 'tags']
-    });
+
     // Pin Memory Action
     this.registerHandler({
       type: 'pin_memory',
@@ -126,7 +126,7 @@ export class ActionRegistry {
             content: content.substring(0, 100) + '...',
             title,
             importance
-          });
+
           return {
             success: true,
             message: 'Memory pinned successfully',
@@ -142,7 +142,7 @@ export class ActionRegistry {
       description: 'Pin important information to memory',
       requiredParams: ['content'],
       optionalParams: ['title', 'tags', 'importance']
-    });
+
     // Open Document Action
     this.registerHandler({
       type: 'open_doc',
@@ -158,7 +158,7 @@ export class ActionRegistry {
             title: title || 'Document',
             type,
             openedAt: new Date().toISOString()
-          });
+
           // Store reference in memory
           await this.memoryService.storeMemory(
             `Opened document: ${title || url}`,
@@ -188,7 +188,7 @@ export class ActionRegistry {
       description: 'Open a document or URL',
       requiredParams: ['url'],
       optionalParams: ['title', 'type']
-    });
+
     // Export Note Action
     this.registerHandler({
       type: 'export_note',
@@ -223,7 +223,7 @@ export class ActionRegistry {
             format,
             filename: noteFilename,
             exportedAt: new Date().toISOString()
-          });
+
           // Store export reference in memory
           await this.memoryService.storeMemory(
             `Exported note: ${noteTitle}`,
@@ -253,7 +253,7 @@ export class ActionRegistry {
       description: 'Export content as a downloadable note',
       requiredParams: ['content'],
       optionalParams: ['title', 'format', 'filename']
-    });
+
     // Search Memory Action
     this.registerHandler({
       type: 'search_memory',
@@ -267,13 +267,13 @@ export class ActionRegistry {
             tags,
             dateRange: timeRange,
             maxResults
-          });
+
           // Dispatch event with search results
           this.dispatchEvent('kari:memory_searched', {
             query,
             results: searchResults.memories.length,
             searchTime: searchResults.searchTime
-          });
+
           return {
             success: true,
             message: `Found ${searchResults.memories.length} memories`,
@@ -293,7 +293,7 @@ export class ActionRegistry {
       description: 'Search through stored memories',
       requiredParams: ['query'],
       optionalParams: ['maxResults', 'tags', 'timeRange']
-    });
+
     // Create Conversation Action
     this.registerHandler({
       type: 'create_conversation',
@@ -307,7 +307,7 @@ export class ActionRegistry {
             initialMessage,
             tags,
             createdAt: new Date().toISOString()
-          });
+
           return {
             success: true,
             message: 'New conversation created',
@@ -323,7 +323,7 @@ export class ActionRegistry {
       description: 'Create a new conversation',
       requiredParams: [],
       optionalParams: ['title', 'initialMessage', 'tags']
-    });
+
   }
   /**
    * Setup event listeners for legacy event names
@@ -339,8 +339,8 @@ export class ActionRegistry {
     Object.entries(legacyEventMap).forEach(([legacyEvent, actionType]) => {
       window.addEventListener(legacyEvent, (event: any) => {
         this.performAction(actionType, event.detail || {});
-      });
-    });
+
+
   }
   /**
    * Register a new action handler
@@ -394,7 +394,7 @@ export class ActionRegistry {
         success: result.success,
         params: Object.keys(params),
         message: result.message
-      });
+
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -413,7 +413,7 @@ export class ActionRegistry {
     const sortedActions = actions.sort((a, b) => {
       const priorityOrder = { high: 3, medium: 2, low: 1 };
       return (priorityOrder[b.priority || 'medium'] || 2) - (priorityOrder[a.priority || 'medium'] || 2);
-    });
+
     for (const action of sortedActions) {
       const result = await this.performAction(action.type, action.params || {});
       results.push(result);
@@ -469,7 +469,7 @@ export class ActionRegistry {
         description: 'Add this as a task',
         icon: 'CheckSquare',
         priority: 'medium'
-      });
+
     }
     if (lowerContext.includes('remember') || lowerContext.includes('important') || lowerContext.includes('note')) {
       suggestions.push({
@@ -479,7 +479,7 @@ export class ActionRegistry {
         description: 'Pin this to memory',
         icon: 'Pin',
         priority: 'medium'
-      });
+
     }
     if (lowerContext.includes('export') || lowerContext.includes('save') || lowerContext.includes('download')) {
       suggestions.push({
@@ -489,7 +489,7 @@ export class ActionRegistry {
         description: 'Export as note',
         icon: 'Download',
         priority: 'low'
-      });
+
     }
     if (lowerContext.includes('search') || lowerContext.includes('find') || lowerContext.includes('look for')) {
       const query = this.extractSearchQuery(context);
@@ -501,7 +501,7 @@ export class ActionRegistry {
           description: `Search for "${query}"`,
           icon: 'Search',
           priority: 'medium'
-        });
+
       }
     }
     return suggestions;
@@ -560,7 +560,7 @@ export function initializeActionRegistry(customHandlers?: ActionHandler[]): Acti
   if (customHandlers) {
     customHandlers.forEach(handler => {
       actionRegistry!.registerHandler(handler);
-    });
+
   }
   return actionRegistry;
 }

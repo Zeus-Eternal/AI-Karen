@@ -1,18 +1,13 @@
 "use client";
+
+import React from 'react';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Download,
-  Loader2,
-  CheckCircle,
-  AlertCircle,
-  X,
-  Trash2,
-  RefreshCw
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { useDownloadStatus, DownloadTask } from '@/hooks/use-download-status';
 import ModelDownloadProgress from './ModelDownloadProgress';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
@@ -105,33 +100,30 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Download className="h-5 w-5 sm:w-auto md:w-full" />
-                Download Manager
+                <Download className="h-5 w-5 " />
                 <HelpTooltip helpKey="downloadManager" variant="inline" size="sm" />
-                {isPolling && <Loader2 className="h-4 w-4 animate-spin text-blue-500 sm:w-auto md:w-full" />}
+                {isPolling && <Loader2 className="h-4 w-4 animate-spin text-blue-500 " />}
               </CardTitle>
               <CardDescription>
                 Monitor and manage model downloads in real-time.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={refreshDownloads}
                 disabled={isPolling}
-               aria-label="Button">
+               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isPolling ? 'animate-spin' : ''}`} />
-                Refresh
               </Button>
               {completedDownloads.length > 0 && (
-                <button
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={clearCompletedDownloads}
-                 aria-label="Button">
-                  <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Clear Completed
+                 >
+                  <Trash2 className="h-4 w-4 mr-2 " />
                 </Button>
               )}
             </div>
@@ -143,7 +135,7 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Download className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />
+              <Download className="h-4 w-4 text-blue-500 " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Active</p>
                 <p className="text-2xl font-bold">{activeDownloads.length}</p>
@@ -154,7 +146,7 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+              <CheckCircle className="h-4 w-4 text-green-500 " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Completed</p>
                 <p className="text-2xl font-bold">{completedDownloads.length}</p>
@@ -165,7 +157,7 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
+              <AlertCircle className="h-4 w-4 text-red-500 " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Errors</p>
                 <p className="text-2xl font-bold">{erroredDownloads.length}</p>
@@ -176,7 +168,7 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Download className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Download className="h-4 w-4 text-muted-foreground " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Total</p>
                 <p className="text-2xl font-bold">{downloadTasks.length}</p>
@@ -190,8 +182,7 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-500 sm:w-auto md:w-full" />
-              Active Downloads
+              <Loader2 className="h-5 w-5 animate-spin text-blue-500 " />
               <Badge variant="default" className="gap-1">
                 {activeDownloads.length} active
               </Badge>
@@ -218,8 +209,7 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />
-              Failed Downloads
+              <AlertCircle className="h-5 w-5 text-red-500 " />
               <Badge variant="destructive" className="gap-1">
                 {erroredDownloads.length} failed
               </Badge>
@@ -247,8 +237,7 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500 sm:w-auto md:w-full" />
-                  Completed Downloads
+                  <CheckCircle className="h-5 w-5 text-green-500 " />
                   <Badge variant="default" className="gap-1 bg-green-500 hover:bg-green-600">
                     {completedDownloads.length} completed
                   </Badge>
@@ -257,10 +246,10 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
                   Successfully downloaded models. These are now available in your local library.
                 </CardDescription>
               </div>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setShowCompleted(!showCompleted)}
+                onClick={() => setShowCompleted(!showCompleted)}
               >
                 {showCompleted ? 'Hide' : 'Show'} Completed
               </Button>
@@ -288,7 +277,7 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center space-y-4">
-              <Download className="h-8 w-8 mx-auto text-muted-foreground sm:w-auto md:w-full" />
+              <Download className="h-8 w-8 mx-auto text-muted-foreground " />
               <div className="space-y-2">
                 <p className="text-lg font-medium">No Downloads</p>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -302,7 +291,7 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
       {/* Polling Status */}
       {isPolling && activeDownloads.length > 0 && (
         <Alert>
-          <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+          <Loader2 className="h-4 w-4 animate-spin " />
           <AlertDescription>
             Monitoring {activeDownloads.length} active download{activeDownloads.length !== 1 ? 's' : ''}...
           </AlertDescription>

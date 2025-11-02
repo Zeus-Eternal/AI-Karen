@@ -173,12 +173,12 @@ export class PerformanceTracker {
               this.updateBundleSize(resourceEntry);
               break;
           }
-        });
-      });
+
+
       // Observe different types of performance entries
       this.performanceObserver.observe({ 
         entryTypes: ['paint', 'navigation', 'resource', 'largest-contentful-paint'] 
-      });
+
     } catch (error) {
     }
   }
@@ -195,8 +195,8 @@ export class PerformanceTracker {
             // Check for GC performance alerts
             this.checkGCPerformance(entry.duration);
           }
-        });
-      });
+
+
       this.gcObserver.observe({ entryTypes: ['gc'] });
     } catch (error) {
     }
@@ -264,7 +264,7 @@ export class PerformanceTracker {
         this.metrics.eventLoop.delay = delay;
         // Calculate event loop utilization (simplified)
         this.metrics.eventLoop.utilization = Math.min(delay / 16, 1); // Assuming 60fps target
-      });
+
     }
   }
   private collectNetworkMetrics() {

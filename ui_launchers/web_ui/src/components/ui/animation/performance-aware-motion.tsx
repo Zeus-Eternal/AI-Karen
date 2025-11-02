@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
 import React from 'react';
 import { motion, MotionProps, AnimatePresence } from 'framer-motion';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
-import { 
+
   usePerformanceAwareAnimation,
   performanceAnimationVariants,
   reducedMotionVariants,
   useWillChange
-} from '@/utils/animation-performance';
+import { } from '@/utils/animation-performance';
 
 interface PerformanceAwareMotionProps extends Omit<MotionProps, 'variants'> {
   variant?: keyof typeof performanceAnimationVariants;

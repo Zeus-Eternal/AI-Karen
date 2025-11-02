@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 /**
  * Security Settings Panel Component
  * 
@@ -15,20 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Shield, 
-  ShieldAlert, 
-  ShieldCheck, 
-  Clock, 
-  Globe, 
-  AlertTriangle,
-  Eye,
-  EyeOff,
-  Trash2,
-  RefreshCw,
-  Download,
-  Ban
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 interface SecuritySettings {
   mfaEnforcement: {
     requireForAdmins: boolean;
@@ -133,7 +122,7 @@ export default function SecuritySettingsPanel() {
         title: 'Error',
         description: 'Failed to load security settings',
         variant: 'destructive'
-      });
+
     } finally {
       setLoading(false);
     }
@@ -169,7 +158,7 @@ export default function SecuritySettingsPanel() {
       }
       current[keys[keys.length - 1]] = value;
       return updated;
-    });
+
     setHasChanges(true);
   };
   const handleSaveSettings = async () => {
@@ -181,12 +170,12 @@ export default function SecuritySettingsPanel() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(settings)
-      });
+
       if (response.ok) {
         toast({
           title: 'Success',
           description: 'Security settings saved successfully'
-        });
+
         setHasChanges(false);
       } else {
         const error = await response.json();
@@ -197,7 +186,7 @@ export default function SecuritySettingsPanel() {
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to save settings',
         variant: 'destructive'
-      });
+
     } finally {
       setSaving(false);
     }
@@ -206,7 +195,7 @@ export default function SecuritySettingsPanel() {
     try {
       const response = await fetch(`/api/admin/security/alerts/${alertId}/resolve`, {
         method: 'POST'
-      });
+
       if (response.ok) {
         setAlerts(prev => prev.map(alert => 
           alert.id === alertId ? { ...alert, resolved: true } : alert
@@ -214,34 +203,34 @@ export default function SecuritySettingsPanel() {
         toast({
           title: 'Success',
           description: 'Alert resolved successfully'
-        });
+
       }
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to resolve alert',
         variant: 'destructive'
-      });
+
     }
   };
   const handleUnblockIP = async (ipId: string) => {
     try {
       const response = await fetch(`/api/admin/security/blocked-ips/${ipId}`, {
         method: 'DELETE'
-      });
+
       if (response.ok) {
         setBlockedIPs(prev => prev.filter(ip => ip.id !== ipId));
         toast({
           title: 'Success',
           description: 'IP address unblocked successfully'
-        });
+
       }
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to unblock IP address',
         variant: 'destructive'
-      });
+
     }
   };
   const handleExportSecurityReport = async () => {
@@ -263,7 +252,7 @@ export default function SecuritySettingsPanel() {
         title: 'Error',
         description: 'Failed to export security report',
         variant: 'destructive'
-      });
+
     }
   };
   const getSeverityBadgeVariant = (severity: string) => {
@@ -279,7 +268,7 @@ export default function SecuritySettingsPanel() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary "></div>
         <span className="ml-2">Loading security settings...</span>
       </div>
     );
@@ -291,26 +280,24 @@ export default function SecuritySettingsPanel() {
         <div>
           <h3 className="text-lg font-semibold">Security Settings</h3>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-            Configure advanced security policies and monitoring
           </p>
         </div>
         <div className="flex gap-2">
-          <button variant="outline" onClick={handleExportSecurityReport} aria-label="Button">
-            <Download className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-            Export Report
+          <Button variant="outline" onClick={handleExportSecurityReport} >
+            <Download className="mr-2 h-4 w-4 " />
           </Button>
           <button
             onClick={handleSaveSettings}
             disabled={!hasChanges || saving}
            aria-label="Button">
-            <Shield className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
+            <Shield className="mr-2 h-4 w-4 " />
             {saving ? 'Saving...' : 'Save Settings'}
           </Button>
         </div>
       </div>
       {hasChanges && (
         <div className="flex items-center gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg sm:p-4 md:p-6">
-          <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
+          <AlertTriangle className="h-4 w-4 text-yellow-600 " />
           <span className="text-sm text-yellow-800 md:text-base lg:text-lg">
             You have unsaved security settings changes.
           </span>
@@ -321,11 +308,10 @@ export default function SecuritySettingsPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 sm:w-auto md:w-full" />
+              <ShieldCheck className="h-5 w-5 " />
               Multi-Factor Authentication
             </CardTitle>
             <CardDescription>
-              Configure MFA requirements and policies
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -353,10 +339,9 @@ export default function SecuritySettingsPanel() {
                 min="0"
                 max="30"
                 value={settings.mfaEnforcement.gracePeriodDays}
-                onChange={(e) = aria-label="Input"> handleSettingsChange('mfaEnforcement.gracePeriodDays', parseInt(e.target.value))}
+                onChange={(e) => handleSettingsChange('mfaEnforcement.gracePeriodDays', parseInt(e.target.value))}
               />
               <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-                Days users have to set up MFA after requirement is enabled
               </p>
             </div>
           </CardContent>
@@ -365,11 +350,9 @@ export default function SecuritySettingsPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 sm:w-auto md:w-full" />
-              Session Security
+              <Clock className="h-5 w-5 " />
             </CardTitle>
             <CardDescription>
-              Configure session timeouts and security policies
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -381,7 +364,7 @@ export default function SecuritySettingsPanel() {
                 min="5"
                 max="480"
                 value={settings.sessionSecurity.adminTimeoutMinutes}
-                onChange={(e) = aria-label="Input"> handleSettingsChange('sessionSecurity.adminTimeoutMinutes', parseInt(e.target.value))}
+                onChange={(e) => handleSettingsChange('sessionSecurity.adminTimeoutMinutes', parseInt(e.target.value))}
               />
             </div>
             <div>
@@ -392,7 +375,7 @@ export default function SecuritySettingsPanel() {
                 min="5"
                 max="1440"
                 value={settings.sessionSecurity.userTimeoutMinutes}
-                onChange={(e) = aria-label="Input"> handleSettingsChange('sessionSecurity.userTimeoutMinutes', parseInt(e.target.value))}
+                onChange={(e) => handleSettingsChange('sessionSecurity.userTimeoutMinutes', parseInt(e.target.value))}
               />
             </div>
             <div>
@@ -403,7 +386,7 @@ export default function SecuritySettingsPanel() {
                 min="1"
                 max="10"
                 value={settings.sessionSecurity.maxConcurrentSessions}
-                onChange={(e) = aria-label="Input"> handleSettingsChange('sessionSecurity.maxConcurrentSessions', parseInt(e.target.value))}
+                onChange={(e) => handleSettingsChange('sessionSecurity.maxConcurrentSessions', parseInt(e.target.value))}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -420,8 +403,7 @@ export default function SecuritySettingsPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5 sm:w-auto md:w-full" />
-              IP Restrictions
+              <Globe className="h-5 w-5 " />
             </CardTitle>
             <CardDescription>
               Configure IP-based access controls
@@ -452,7 +434,7 @@ export default function SecuritySettingsPanel() {
                 min="3"
                 max="20"
                 value={settings.ipRestrictions.maxFailedAttempts}
-                onChange={(e) = aria-label="Input"> handleSettingsChange('ipRestrictions.maxFailedAttempts', parseInt(e.target.value))}
+                onChange={(e) => handleSettingsChange('ipRestrictions.maxFailedAttempts', parseInt(e.target.value))}
               />
             </div>
             <div>
@@ -461,7 +443,7 @@ export default function SecuritySettingsPanel() {
                 id="allowedRanges"
                 placeholder="192.168.1.0/24&#10;10.0.0.0/8"
                 value={settings.ipRestrictions.allowedRanges.join('\n')}
-                onChange={(e) = aria-label="Textarea"> handleSettingsChange('ipRestrictions.allowedRanges', e.target.value.split('\n').filter(Boolean))}
+                onChange={(e) => handleSettingsChange('ipRestrictions.allowedRanges', e.target.value.split('\n').filter(Boolean))}
                 rows={3}
               />
               <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
@@ -474,11 +456,9 @@ export default function SecuritySettingsPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 sm:w-auto md:w-full" />
-              Security Monitoring
+              <ShieldAlert className="h-5 w-5 " />
             </CardTitle>
             <CardDescription>
-              Configure security alerts and monitoring thresholds
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -498,7 +478,7 @@ export default function SecuritySettingsPanel() {
                 min="5"
                 max="100"
                 value={settings.monitoring.alertThresholds.failedLogins}
-                onChange={(e) = aria-label="Input"> handleSettingsChange('monitoring.alertThresholds.failedLogins', parseInt(e.target.value))}
+                onChange={(e) => handleSettingsChange('monitoring.alertThresholds.failedLogins', parseInt(e.target.value))}
               />
             </div>
             <div>
@@ -509,7 +489,7 @@ export default function SecuritySettingsPanel() {
                 min="3"
                 max="50"
                 value={settings.monitoring.alertThresholds.suspiciousActivity}
-                onChange={(e) = aria-label="Input"> handleSettingsChange('monitoring.alertThresholds.suspiciousActivity', parseInt(e.target.value))}
+                onChange={(e) => handleSettingsChange('monitoring.alertThresholds.suspiciousActivity', parseInt(e.target.value))}
               />
             </div>
             <div>
@@ -520,7 +500,7 @@ export default function SecuritySettingsPanel() {
                 min="30"
                 max="365"
                 value={settings.monitoring.logRetentionDays}
-                onChange={(e) = aria-label="Input"> handleSettingsChange('monitoring.logRetentionDays', parseInt(e.target.value))}
+                onChange={(e) => handleSettingsChange('monitoring.logRetentionDays', parseInt(e.target.value))}
               />
             </div>
           </CardContent>
@@ -531,39 +511,34 @@ export default function SecuritySettingsPanel() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 sm:w-auto md:w-full" />
-              Security Alerts
+              <AlertTriangle className="h-5 w-5 " />
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setShowResolvedAlerts(!showResolvedAlerts)}
+                onClick={() => setShowResolvedAlerts(!showResolvedAlerts)}
               >
                 {showResolvedAlerts ? (
                   <>
-                    <EyeOff className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
-                    Hide Resolved
+                    <EyeOff className="mr-1 h-3 w-3 " />
                   </>
                 ) : (
                   <>
-                    <Eye className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
-                    Show Resolved
+                    <Eye className="mr-1 h-3 w-3 " />
                   </>
                 )}
               </Button>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={loadSecurityAlerts}
-               aria-label="Button">
-                <RefreshCw className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
-                Refresh
+               >
+                <RefreshCw className="mr-1 h-3 w-3 " />
               </Button>
             </div>
           </CardTitle>
           <CardDescription>
-            Recent security alerts and incidents
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -582,7 +557,6 @@ export default function SecuritySettingsPanel() {
               {filteredAlerts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                    No security alerts found
                   </TableCell>
                 </TableRow>
               ) : (
@@ -605,12 +579,11 @@ export default function SecuritySettingsPanel() {
                     </TableCell>
                     <TableCell className="text-right">
                       {!alert.resolved && (
-                        <button
+                        <Button
                           variant="outline"
                           size="sm"
-                          onClick={() = aria-label="Button"> handleResolveAlert(alert.id)}
+                          onClick={() => handleResolveAlert(alert.id)}
                         >
-                          Resolve
                         </Button>
                       )}
                     </TableCell>
@@ -625,11 +598,9 @@ export default function SecuritySettingsPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Ban className="h-5 w-5 sm:w-auto md:w-full" />
-            Blocked IP Addresses
+            <Ban className="h-5 w-5 " />
           </CardTitle>
           <CardDescription>
-            IP addresses that have been automatically blocked
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -648,7 +619,6 @@ export default function SecuritySettingsPanel() {
               {blockedIPs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                    No blocked IP addresses
                   </TableCell>
                 </TableRow>
               ) : (
@@ -664,13 +634,12 @@ export default function SecuritySettingsPanel() {
                       {ip.expiresAt ? new Date(ip.expiresAt).toLocaleString() : 'Permanent'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <button
+                      <Button
                         variant="outline"
                         size="sm"
-                        onClick={() = aria-label="Button"> handleUnblockIP(ip.id)}
+                        onClick={() => handleUnblockIP(ip.id)}
                       >
-                        <Trash2 className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
-                        Unblock
+                        <Trash2 className="mr-1 h-3 w-3 " />
                       </Button>
                     </TableCell>
                   </TableRow>

@@ -31,37 +31,32 @@ mockIntersectionObserver.mockReturnValue({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
-});
 
 Object.defineProperty(window, 'IntersectionObserver', {
   writable: true,
   configurable: true,
   value: mockIntersectionObserver,
-});
 
 Object.defineProperty(global, 'IntersectionObserver', {
   writable: true,
   configurable: true,
   value: mockIntersectionObserver,
-});
 
 describe('LazyImage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIntersectionObserver.mockClear();
-  });
 
   it('should show placeholder initially', () => {
     render(
       <LazyImage
         src="test-image.jpg"
         alt="Test image"
-        className="w-32 h-32 sm:w-auto md:w-full"
+        className="w-32 h-32 "
       />
     );
 
     expect(screen.getByTestId('image-icon')).toBeInTheDocument();
-  });
 
   it('should show custom fallback when provided', () => {
     const CustomFallback = () => <div data-testid="custom-fallback">Custom Placeholder</div>;
@@ -75,7 +70,6 @@ describe('LazyImage', () => {
     );
 
     expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-  });
 
   it('should observe intersection and load image when in view', async () => {
     const mockObserve = vi.fn();
@@ -96,7 +90,6 @@ describe('LazyImage', () => {
 
     expect(mockIntersectionObserver).toHaveBeenCalled();
     expect(mockObserve).toHaveBeenCalled();
-  });
 
   it('should handle image load success', async () => {
     const onLoad = vi.fn();
@@ -113,7 +106,6 @@ describe('LazyImage', () => {
         unobserve: vi.fn(),
         disconnect: vi.fn(),
       };
-    });
 
     render(
       <LazyImage
@@ -127,14 +119,12 @@ describe('LazyImage', () => {
     await waitFor(() => {
       const img = screen.getByRole('img', { hidden: true });
       expect(img).toBeInTheDocument();
-    });
 
     // Simulate image load
     const img = screen.getByRole('img', { hidden: true });
     fireEvent.load(img);
 
     expect(onLoad).toHaveBeenCalled();
-  });
 
   it('should handle image load error', async () => {
     const onError = vi.fn();
@@ -150,7 +140,6 @@ describe('LazyImage', () => {
         unobserve: vi.fn(),
         disconnect: vi.fn(),
       };
-    });
 
     render(
       <LazyImage
@@ -164,7 +153,6 @@ describe('LazyImage', () => {
     await waitFor(() => {
       const img = screen.getByRole('img', { hidden: true });
       expect(img).toBeInTheDocument();
-    });
 
     // Simulate image error
     const img = screen.getByRole('img', { hidden: true });
@@ -175,8 +163,7 @@ describe('LazyImage', () => {
     // Should show error fallback
     await waitFor(() => {
       expect(screen.getByTestId('alert-circle')).toBeInTheDocument();
-    });
-  });
+
 
   it('should show custom error fallback', async () => {
     const CustomErrorFallback = () => <div data-testid="custom-error">Custom Error</div>;
@@ -191,7 +178,6 @@ describe('LazyImage', () => {
         unobserve: vi.fn(),
         disconnect: vi.fn(),
       };
-    });
 
     render(
       <LazyImage
@@ -204,12 +190,10 @@ describe('LazyImage', () => {
     await waitFor(() => {
       const img = screen.getByRole('img', { hidden: true });
       fireEvent.error(img);
-    });
 
     await waitFor(() => {
       expect(screen.getByTestId('custom-error')).toBeInTheDocument();
-    });
-  });
+
 
   it('should support blur data URL placeholder', () => {
     render(
@@ -222,7 +206,6 @@ describe('LazyImage', () => {
 
     const blurImg = screen.getByRole('img', { hidden: true });
     expect(blurImg).toHaveAttribute('src', 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ');
-  });
 
   it('should use custom threshold and rootMargin', () => {
     const mockObserver = {
@@ -249,8 +232,7 @@ describe('LazyImage', () => {
         rootMargin: '100px',
       })
     );
-  });
-});
+
 
 describe('useImagePreloader', () => {
   // Mock Image constructor
@@ -265,7 +247,6 @@ describe('useImagePreloader', () => {
     
     // Mock Image constructor
     global.Image = vi.fn(() => mockImage) as any;
-  });
 
   it('should preload images successfully', async () => {
     const TestComponent = () => {
@@ -298,8 +279,7 @@ describe('useImagePreloader', () => {
     await waitFor(() => {
       expect(screen.getByTestId('loaded-count')).toHaveTextContent('2');
       expect(screen.getByTestId('image1-loaded')).toHaveTextContent('true');
-    });
-  });
+
 
   it('should handle image preload failures', async () => {
     const TestComponent = () => {
@@ -328,8 +308,7 @@ describe('useImagePreloader', () => {
     await waitFor(() => {
       expect(screen.getByTestId('failed-count')).toHaveTextContent('1');
       expect(screen.getByTestId('image-failed')).toHaveTextContent('true');
-    });
-  });
+
 
   it('should return promise results for batch preloading', async () => {
     const { preloadImages } = useImagePreloader();
@@ -353,5 +332,4 @@ describe('useImagePreloader', () => {
     expect(results).toHaveLength(2);
     expect(results[0].status).toBe('fulfilled');
     expect(results[1].status).toBe('rejected');
-  });
-});
+

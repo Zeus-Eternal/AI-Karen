@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Enhanced Loading States with Smooth Animations
@@ -70,14 +70,14 @@ const MessageSkeleton: React.FC<{ isUser?: boolean }> = ({ isUser = false }) => 
       className={`flex gap-3 mb-6 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
       {/* Avatar Skeleton */}
-      <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full sm:w-auto md:w-full" />
+      <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full " />
       
       {/* Message Content Skeleton */}
       <div className={`flex-1 max-w-[75%] ${isUser ? 'text-right' : 'text-left'}`}>
         <div className="space-y-2">
-          <Skeleton className="h-4 w-3/4 sm:w-auto md:w-full" />
-          <Skeleton className="h-4 w-1/2 sm:w-auto md:w-full" />
-          <Skeleton className="h-4 w-2/3 sm:w-auto md:w-full" />
+          <Skeleton className="h-4 w-3/4 " />
+          <Skeleton className="h-4 w-1/2 " />
+          <Skeleton className="h-4 w-2/3 " />
         </div>
       </div>
     </motion.div>
@@ -91,24 +91,24 @@ const ChatLoadingSkeleton: React.FC = () => {
       <MessageSkeleton isUser />
       <MessageSkeleton />
       <div className="flex gap-3">
-        <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full sm:w-auto md:w-full" />
+        <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full " />
         <div className="flex-1">
           <div className="inline-block p-4 rounded-2xl bg-gray-100 dark:bg-gray-800 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ repeat: Infinity, duration: 1.5 }}
-                className="w-2 h-2 bg-gray-400 rounded-full sm:w-auto md:w-full"
+                className="w-2 h-2 bg-gray-400 rounded-full "
               />
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}
-                className="w-2 h-2 bg-gray-400 rounded-full sm:w-auto md:w-full"
+                className="w-2 h-2 bg-gray-400 rounded-full "
               />
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }}
-                className="w-2 h-2 bg-gray-400 rounded-full sm:w-auto md:w-full"
+                className="w-2 h-2 bg-gray-400 rounded-full "
               />
             </div>
           </div>
@@ -215,7 +215,7 @@ const LoadingCard: React.FC<LoadingCardProps> = ({
         transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
         className="mb-4"
       >
-        {icon || <Sparkles className="h-8 w-8 text-blue-500 sm:w-auto md:w-full" />}
+        {icon || <Sparkles className="h-8 w-8 text-blue-500 " />}
       </motion.div>
       
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -360,14 +360,4 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
 
 // Export all components
 export {
-  LoadingSpinner,
-  Skeleton,
-  MessageSkeleton,
-  ChatLoadingSkeleton,
-  PulseLoader,
-  Shimmer,
-  LoadingCard,
-  ProgressBar,
-  FloatingDots,
-  LoadingOverlay
 };

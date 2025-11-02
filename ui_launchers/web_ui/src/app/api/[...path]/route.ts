@@ -106,7 +106,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
           // @ts-ignore undici option in Node runtime
           keepalive: true,
           cache: 'no-store',
-        });
+
         lastError = null;
         break;
       } catch (err: any) {
@@ -138,7 +138,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
           // @ts-ignore undici option in Node runtime
           keepalive: true,
           cache: 'no-store',
-        });
+
         if (fallbackResp) {
           response = fallbackResp;
         }
@@ -175,7 +175,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
       if (headerValue) {
         nextResponse.headers.set(headerName, headerValue);
       }
-    });
+
     // Add CORS headers for better browser compatibility
     nextResponse.headers.set('Access-Control-Allow-Credentials', 'true');
     return nextResponse;

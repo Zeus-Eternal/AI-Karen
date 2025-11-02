@@ -5,6 +5,7 @@
  */
 
 
+import React from 'react';
 import { DynamicExtensionRouter } from '@/lib/extensions/dynamic-router';
 import { ExtensionPageFallback } from '@/components/extensions/ExtensionPageFallback';
 

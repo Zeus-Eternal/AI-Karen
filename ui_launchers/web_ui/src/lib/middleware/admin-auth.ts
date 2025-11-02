@@ -28,7 +28,7 @@ async function validateAdminSession(request: NextRequest): Promise<User | null> 
         'Cookie': request.headers.get('cookie') || '',
         'Content-Type': 'application/json',
       },
-    });
+
     if (!response.ok) {
       return null;
     }
@@ -202,7 +202,7 @@ export async function withAdminAuth<T>(
       },
       ip_address: getClientIP(request),
       user_agent: request.headers.get('user-agent') || undefined
-    });
+
     // Call the handler with admin context
     return await handler(request, context);
   } catch (error) {

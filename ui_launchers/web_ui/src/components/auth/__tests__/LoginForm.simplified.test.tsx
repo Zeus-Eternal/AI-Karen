@@ -3,6 +3,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -69,7 +70,6 @@ vi.mock('@/components/ui/theme-toggle', () => ({
 describe('LoginForm - Simplified Authentication', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders basic login form elements', () => {
     render(<LoginForm />);
@@ -78,7 +78,6 @@ describe('LoginForm - Simplified Authentication', () => {
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
-  });
 
   it('handles simple form submission with valid credentials', async () => {
     const user = userEvent.setup();
@@ -99,9 +98,8 @@ describe('LoginForm - Simplified Authentication', () => {
         email: 'test@example.com',
         password: 'validpassword123',
         totp_code: '',
-      });
-    });
-  });
+
+
 
   it('displays simple error messages for authentication failures', async () => {
     const user = userEvent.setup();
@@ -120,8 +118,7 @@ describe('LoginForm - Simplified Authentication', () => {
     // Check for error message
     await waitFor(() => {
       expect(screen.getByText(errorMessage)).toBeInTheDocument();
-    });
-  });
+
 
   it('shows 2FA field when 2FA is required', async () => {
     const user = userEvent.setup();
@@ -139,8 +136,7 @@ describe('LoginForm - Simplified Authentication', () => {
     // Wait for 2FA field to appear
     await waitFor(() => {
       expect(screen.getByLabelText(/two-factor authentication code/i)).toBeInTheDocument();
-    });
-  });
+
 
   it('prevents multiple failed attempts from bypassing authentication', async () => {
     const user = userEvent.setup();
@@ -160,7 +156,6 @@ describe('LoginForm - Simplified Authentication', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-    });
 
     // Second failed attempt
     await user.clear(screen.getByLabelText(/email address/i));
@@ -171,7 +166,6 @@ describe('LoginForm - Simplified Authentication', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-    });
 
     // Third failed attempt
     await user.clear(screen.getByLabelText(/email address/i));
@@ -182,11 +176,9 @@ describe('LoginForm - Simplified Authentication', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-    });
 
     // Verify that login was called for each attempt (no bypass)
     expect(mockLogin).toHaveBeenCalledTimes(3);
-  });
 
   it('clears error when user starts typing', async () => {
     const user = userEvent.setup();
@@ -201,12 +193,10 @@ describe('LoginForm - Simplified Authentication', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-    });
 
     // Start typing in email field - error should clear
     await user.type(screen.getByLabelText(/email address/i), 'a');
 
     // Error should be cleared
     expect(screen.queryByText('Invalid credentials')).not.toBeInTheDocument();
-  });
-});
+

@@ -46,7 +46,6 @@ describe('SecurityManager', () => {
   beforeEach(() => {
     securityManager = new SecurityManager();
     vi.clearAllMocks();
-  });
 
   describe('Account Lockout', () => {
     it('should detect unlocked account', async () => {
@@ -56,7 +55,6 @@ describe('SecurityManager', () => {
       
       expect(isLocked).toBe(false);
       expect(mockAdminUtils.getUserById).toHaveBeenCalledWith('user-123');
-    });
 
     it('should detect locked account', async () => {
       const lockedUser = {
@@ -68,7 +66,6 @@ describe('SecurityManager', () => {
       const isLocked = await securityManager.isAccountLocked('user-123');
       
       expect(isLocked).toBe(true);
-    });
 
     it('should unlock expired lock', async () => {
       const expiredLockUser = {
@@ -83,14 +80,12 @@ describe('SecurityManager', () => {
       expect(mockAdminUtils.updateUser).toHaveBeenCalledWith('user-123', {
         locked_until: undefined,
         failed_login_attempts: 0
-      });
-    });
+
 
     it('should lock account after max failed attempts', async () => {
       mockAdminUtils.getUsers.mockResolvedValue({
         data: [mockUser]
-      });
-      
+
       // Simulate max failed attempts
       for (let i = 0; i < SECURITY_CONFIG.MAX_FAILED_ATTEMPTS; i++) {
         await securityManager.recordFailedLogin('test@example.com', '192.168.1.1');
@@ -102,8 +97,7 @@ describe('SecurityManager', () => {
           locked_until: expect.any(Date)
         })
       );
-    });
-  });
+
 
   describe('Progressive Login Delays', () => {
     it('should apply progressive delays', async () => {
@@ -120,7 +114,6 @@ describe('SecurityManager', () => {
       expect(delays[2]).toBe(2); // Third attempt has 2 second delay
       expect(delays[3]).toBe(5); // Fourth attempt has 5 second delay
       expect(delays[4]).toBe(10); // Fifth attempt has 10 second delay
-    });
 
     it('should reset delays after timeout', async () => {
       // Record failed attempt
@@ -132,7 +125,6 @@ describe('SecurityManager', () => {
       // Next attempt should have no delay
       const delay = await securityManager.recordFailedLogin('test@example.com', '192.168.1.1');
       expect(delay).toBe(0);
-    });
 
     it('should clear failed attempts after successful login', () => {
       securityManager.clearFailedAttempts('test@example.com', '192.168.1.1');
@@ -141,8 +133,7 @@ describe('SecurityManager', () => {
       expect(() => {
         securityManager.clearFailedAttempts('test@example.com', '192.168.1.1');
       }).not.toThrow();
-    });
-  });
+
 
   describe('MFA Enforcement', () => {
     it('should require MFA for super admin', async () => {
@@ -153,7 +144,6 @@ describe('SecurityManager', () => {
       
       expect(required).toBe(true);
       expect(mockAdminUtils.getSystemConfig).toHaveBeenCalledWith('mfa_required_for_admins');
-    });
 
     it('should require MFA for admin when configured', async () => {
       mockAdminUtils.getSystemConfig.mockResolvedValue({ value: true });
@@ -161,7 +151,6 @@ describe('SecurityManager', () => {
       const required = await securityManager.isMfaRequired(mockUser);
       
       expect(required).toBe(true);
-    });
 
     it('should not require MFA for regular users', async () => {
       const regularUser = { ...mockUser, role: 'user' as const };
@@ -169,7 +158,6 @@ describe('SecurityManager', () => {
       const required = await securityManager.isMfaRequired(regularUser);
       
       expect(required).toBe(false);
-    });
 
     it('should enforce MFA requirement', async () => {
       const adminUser = { ...mockUser, two_factor_enabled: false };
@@ -187,21 +175,18 @@ describe('SecurityManager', () => {
           })
         })
       );
-    });
-  });
+
 
   describe('Session Management', () => {
     it('should get correct session timeout for roles', () => {
       expect(securityManager.getSessionTimeout('super_admin')).toBe(SECURITY_CONFIG.SUPER_ADMIN_SESSION_TIMEOUT);
       expect(securityManager.getSessionTimeout('admin')).toBe(SECURITY_CONFIG.ADMIN_SESSION_TIMEOUT);
       expect(securityManager.getSessionTimeout('user')).toBe(SECURITY_CONFIG.USER_SESSION_TIMEOUT);
-    });
 
     it('should check concurrent session limits', async () => {
       const canCreate = await securityManager.checkConcurrentSessionLimit('user-123', 'super_admin');
       
       expect(canCreate).toBe(true); // No existing sessions
-    });
 
     it('should create admin session with proper timeout', async () => {
       const session = await securityManager.createAdminSession(mockUser, '192.168.1.1', 'test-agent');
@@ -218,7 +203,6 @@ describe('SecurityManager', () => {
           user_id: mockUser.user_id
         })
       );
-    });
 
     it('should terminate session', async () => {
       const session = await securityManager.createAdminSession(mockUser);
@@ -231,8 +215,7 @@ describe('SecurityManager', () => {
           resource_id: session.session_token
         })
       );
-    });
-  });
+
 
   describe('Security Events', () => {
     it('should log security event', async () => {
@@ -242,20 +225,17 @@ describe('SecurityManager', () => {
         ip_address: '192.168.1.1',
         details: { reason: 'test' },
         severity: 'medium'
-      });
-      
+
       expect(mockAdminUtils.createAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'security.event',
           resource_type: 'security_event'
         })
       );
-    });
 
     it('should get security events', () => {
       const events = securityManager.getSecurityEvents('user-123');
       expect(Array.isArray(events)).toBe(true);
-    });
 
     it('should resolve security event', async () => {
       // First create an event
@@ -264,8 +244,7 @@ describe('SecurityManager', () => {
         user_id: 'user-123',
         details: {},
         severity: 'low'
-      });
-      
+
       const events = securityManager.getSecurityEvents('user-123');
       const eventId = events[0]?.id;
       
@@ -279,14 +258,12 @@ describe('SecurityManager', () => {
           })
         );
       }
-    });
-  });
+
 
   describe('IP Whitelisting', () => {
     it('should check super admin IP whitelist when disabled', async () => {
       const allowed = await securityManager.checkSuperAdminIpWhitelist('192.168.1.1');
       expect(allowed).toBe(true); // Disabled by default
-    });
 
     it('should check super admin IP whitelist when enabled', async () => {
       // Enable IP whitelisting
@@ -301,8 +278,7 @@ describe('SecurityManager', () => {
       
       // Reset for other tests
       SECURITY_CONFIG.SUPER_ADMIN_IP_WHITELIST_ENABLED = false;
-    });
-  });
+
 
   describe('Cleanup', () => {
     it('should clean up expired sessions and old events', async () => {
@@ -314,8 +290,7 @@ describe('SecurityManager', () => {
           user_id: 'system'
         })
       );
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle database errors gracefully', async () => {
@@ -324,7 +299,6 @@ describe('SecurityManager', () => {
       const isLocked = await securityManager.isAccountLocked('user-123');
       
       expect(isLocked).toBe(false); // Should default to false on error
-    });
 
     it('should handle missing user gracefully', async () => {
       mockAdminUtils.getUserById.mockResolvedValue(null);
@@ -332,6 +306,5 @@ describe('SecurityManager', () => {
       const isLocked = await securityManager.isAccountLocked('nonexistent-user');
       
       expect(isLocked).toBe(false);
-    });
-  });
-});
+
+

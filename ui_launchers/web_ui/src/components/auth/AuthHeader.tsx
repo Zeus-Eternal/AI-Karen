@@ -1,7 +1,8 @@
 "use client";
-import Link from 'next/link'
-import { useAuth } from '@/contexts/AuthContext'
 
+import React from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 export default function AuthHeader() {
   const { user } = useAuth()
   return (

@@ -5,20 +5,8 @@ import { getMemoryService } from '@/services/memoryService';
 import { getPluginService } from '@/services/pluginService';
 import { getKarenBackend } from '@/lib/karen-backend';
 // Minimal tool imports for backward compatibility
-import {
-  getCurrentDate,
-  getCurrentTime,
-  getWeather,
-  mockQueryBookDatabase,
-  mockCheckGmailUnread,
-  mockComposeGmail
-} from '@/ai/tools/core-tools';
-import type {
-  AiData,
-  KarenSettings,
-  HandleUserMessageResult,
-  ChatMessage
-} from '@/lib/types';
+import { getCurrentDate, getCurrentTime, getWeather, mockQueryBookDatabase, mockCheckGmailUnread, mockComposeGmail } from '@/ai/tools/core-tools';
+import type { AiData, KarenSettings, HandleUserMessageResult, ChatMessage } from '@/lib/types';
 import { DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
 import { handleError } from '@/lib/errorHandler';
 // --- Chat message handler ---
@@ -43,7 +31,7 @@ export async function handleUserMessage(
           content: line.replace(/^(User:|Karen:)\s*/, ''),
           timestamp: new Date(Date.now() - (arr.length - index) * 60000),
         } as ChatMessage;
-      });
+
     const result = await chatService.processUserMessage(
       prompt,
       messages,
@@ -63,7 +51,7 @@ export async function handleUserMessage(
       operation: 'handleUserMessage',
       component: 'actions',
       additionalData: { prompt: prompt.substring(0, 100) }
-    });
+
     return {
       finalResponse: `Karen: ${errorResponse.userFriendlyMessage}`,
       suggestedNewFacts: undefined,
@@ -85,7 +73,7 @@ export async function getSuggestedStarter(assistantType: string): Promise<string
         ...(backend['config'].apiKey && { 'Authorization': `Bearer ${backend['config'].apiKey}` }),
       },
       body: JSON.stringify({ assistantType }),
-    });
+
     if (response.ok) {
       const data = await response.json();
       // Pick a random prompt, or the first if array is empty.
@@ -135,7 +123,7 @@ export async function handleUserMessageWithKarenBackend(
       userId,
       sessionId,
       additionalData: { prompt: prompt.substring(0, 100) }
-    });
+
     return {
       finalResponse: `Karen: ${errorResponse.userFriendlyMessage}`,
       summaryWasGenerated: false,
@@ -236,7 +224,7 @@ export async function searchKarenMemories(
       topK: options.topK ?? 10,
       similarityThreshold: options.similarityThreshold ?? 0.6,
       tags: options.tags,
-    });
+
   } catch (error) {
     return [];
   }

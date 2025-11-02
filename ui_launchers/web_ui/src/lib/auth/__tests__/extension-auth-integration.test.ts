@@ -1,4 +1,3 @@
-import {
 import { extensionAuthRecoveryManager } from "../extension-auth-recovery";
 import { getExtensionAuthManager } from "../extension-auth-manager";
 import { vi, describe, it, beforeEach, expect } from "vitest";
@@ -9,14 +8,11 @@ import { vi, describe, it, beforeEach, expect } from "vitest";
  */
 
 
-  ExtensionAuthErrorFactory,
-  ExtensionAuthRecoveryStrategy,
   extensionAuthErrorHandler,
-} from "../extension-auth-errors";
+import { } from "../extension-auth-errors";
 
-  ExtensionFeatureLevel,
   extensionAuthDegradationManager,
-} from "../extension-auth-degradation";
+import { } from "../extension-auth-degradation";
 
 
 
@@ -51,7 +47,6 @@ describe("Extension Authentication Error Handling Integration", () => {
       clearAuth: vi.fn(),
     };
     mockGetExtensionAuthManager.mockReturnValue(mockAuthManager);
-  });
 
   describe("Token Expired Error Flow", () => {
     it("should handle successful token refresh and restore functionality", async () => {
@@ -59,7 +54,6 @@ describe("Extension Authentication Error Handling Integration", () => {
       const error = ExtensionAuthErrorFactory.createTokenExpiredError({
         endpoint: "/api/extensions/",
         operation: "extension_list",
-      });
 
       // Mock successful token refresh
       mockAuthManager.forceRefresh.mockResolvedValue("new-access-token");
@@ -91,14 +85,12 @@ describe("Extension Authentication Error Handling Integration", () => {
       expect(
         extensionAuthDegradationManager.isFeatureAvailable("extension_list")
       ).toBe(true);
-    });
 
     it("should handle failed token refresh and apply degradation", async () => {
       // Simulate token expired error
       const error = ExtensionAuthErrorFactory.createTokenExpiredError({
         endpoint: "/api/extensions/",
         operation: "extension_list",
-      });
 
       // Mock failed token refresh
       mockAuthManager.forceRefresh.mockResolvedValue(null);
@@ -114,8 +106,7 @@ describe("Extension Authentication Error Handling Integration", () => {
       expect(recoveryResult.success).toBe(false);
       expect(recoveryResult.requiresUserAction).toBe(true);
       expect(recoveryResult.message).toContain("user authentication required");
-    });
-  });
+
 
   describe("Permission Denied Error Flow", () => {
     it("should apply readonly degradation and provide fallback data", async () => {
@@ -123,7 +114,6 @@ describe("Extension Authentication Error Handling Integration", () => {
       const error = ExtensionAuthErrorFactory.createPermissionDeniedError({
         endpoint: "/api/extensions/",
         operation: "extension_install",
-      });
 
       // Process the error through the complete system
       const errorInfo = extensionAuthErrorHandler.handleError(error);
@@ -157,8 +147,7 @@ describe("Extension Authentication Error Handling Integration", () => {
       expect(
         extensionAuthDegradationManager.isFeatureAvailable("extension_list")
       ).toBe(true);
-    });
-  });
+
 
   describe("Service Unavailable Error Flow", () => {
     it("should use cached data when available", async () => {
@@ -173,7 +162,6 @@ describe("Extension Authentication Error Handling Integration", () => {
       const error = ExtensionAuthErrorFactory.createServiceUnavailableError({
         endpoint: "/api/extensions/",
         operation: "extension_list",
-      });
 
       // Process the error through the complete system
       const recoveryResult = await extensionAuthRecoveryManager.attemptRecovery(
@@ -194,20 +182,17 @@ describe("Extension Authentication Error Handling Integration", () => {
       );
       expect(recoveryResult.fallbackData).toEqual({
         extensions: [{ name: "cached-extension" }],
-      });
 
       // Verify cached features are available
       expect(
         extensionAuthDegradationManager.isFeatureAvailable("extension_list")
       ).toBe(true);
-    });
 
     it("should use static fallback when no cached data available", async () => {
       // Simulate service unavailable error without cached data
       const error = ExtensionAuthErrorFactory.createServiceUnavailableError({
         endpoint: "/api/extensions/",
         operation: "extension_list",
-      });
 
       // Process the error through the complete system
       const recoveryResult = await extensionAuthRecoveryManager.attemptRecovery(
@@ -222,8 +207,7 @@ describe("Extension Authentication Error Handling Integration", () => {
       expect(recoveryResult.fallbackData.message).toContain(
         "temporarily unavailable"
       );
-    });
-  });
+
 
   describe("Configuration Error Flow", () => {
     it("should disable all features and require admin intervention", async () => {
@@ -231,7 +215,6 @@ describe("Extension Authentication Error Handling Integration", () => {
       const error = ExtensionAuthErrorFactory.createConfigurationError({
         endpoint: "/api/extensions/",
         operation: "extension_list",
-      });
 
       // Process the error through the complete system
       const errorInfo = extensionAuthErrorHandler.handleError(error);
@@ -268,8 +251,7 @@ describe("Extension Authentication Error Handling Integration", () => {
       expect(
         extensionAuthDegradationManager.isFeatureAvailable("background_tasks")
       ).toBe(false);
-    });
-  });
+
 
   describe("Network Error Flow", () => {
     it("should apply graceful degradation with retry capability", async () => {
@@ -277,7 +259,6 @@ describe("Extension Authentication Error Handling Integration", () => {
       const error = ExtensionAuthErrorFactory.createNetworkError({
         endpoint: "/api/extensions/",
         operation: "extension_list",
-      });
 
       // Process the error through the complete system
       const errorInfo = extensionAuthErrorHandler.handleError(error);
@@ -302,8 +283,7 @@ describe("Extension Authentication Error Handling Integration", () => {
       const degradationState =
         extensionAuthDegradationManager.getDegradationState();
       expect(degradationState.level).toBe(ExtensionFeatureLevel.CACHED);
-    });
-  });
+
 
   describe("Multiple Error Scenarios", () => {
     it("should handle cascading errors appropriately", async () => {
@@ -336,7 +316,6 @@ describe("Extension Authentication Error Handling Integration", () => {
       const recoveryStats =
         extensionAuthRecoveryManager.getRecoveryStatistics();
       expect(recoveryStats.totalAttempts).toBe(2);
-    });
 
     it("should detect systemic issues with multiple errors", async () => {
       // Generate multiple errors quickly
@@ -347,8 +326,7 @@ describe("Extension Authentication Error Handling Integration", () => {
 
       // Verify systemic issue detection
       expect(extensionAuthErrorHandler.detectSystemicIssue()).toBe(true);
-    });
-  });
+
 
   describe("Recovery and Restoration Flow", () => {
     it("should restore full functionality after successful recovery", async () => {
@@ -371,8 +349,7 @@ describe("Extension Authentication Error Handling Integration", () => {
       expect(
         extensionAuthDegradationManager.isFeatureAvailable("extension_install")
       ).toBe(true);
-    });
-  });
+
 
   describe("Feature Availability During Degradation", () => {
     it("should correctly determine feature availability at different degradation levels", () => {
@@ -417,6 +394,5 @@ describe("Extension Authentication Error Handling Integration", () => {
       expect(
         extensionAuthDegradationManager.isFeatureAvailable("extension_install")
       ).toBe(false);
-    });
-  });
-});
+
+

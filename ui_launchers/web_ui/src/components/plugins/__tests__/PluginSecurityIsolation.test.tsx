@@ -82,7 +82,7 @@ const enforcePermissionIsolation = (plugin: PluginInfo, requestedPermission: str
       pluginId: plugin.id,
       permission: requestedPermission,
       reason: 'Permission not defined in manifest',
-    });
+
     return false;
   }
   
@@ -93,7 +93,7 @@ const enforcePermissionIsolation = (plugin: PluginInfo, requestedPermission: str
       pluginId: plugin.id,
       permission: requestedPermission,
       reason: 'Permission not granted',
-    });
+
     return false;
   }
   
@@ -103,7 +103,7 @@ const enforcePermissionIsolation = (plugin: PluginInfo, requestedPermission: str
       pluginId: plugin.id,
       permission: requestedPermission,
       reason: 'Admin permission requires sandboxed execution',
-    });
+
     return false;
   }
   
@@ -123,7 +123,7 @@ const validateResourceLimits = (plugin: PluginInfo, usage: { memory: number; cpu
       resource: 'memory',
       usage: usage.memory,
       limit: limits.maxMemory,
-    });
+
     return false;
   }
   
@@ -133,7 +133,7 @@ const validateResourceLimits = (plugin: PluginInfo, usage: { memory: number; cpu
       resource: 'cpu',
       usage: usage.cpu,
       limit: limits.maxCpu,
-    });
+
     return false;
   }
   
@@ -143,7 +143,7 @@ const validateResourceLimits = (plugin: PluginInfo, usage: { memory: number; cpu
       resource: 'disk',
       usage: usage.disk,
       limit: limits.maxDisk,
-    });
+
     return false;
   }
   
@@ -230,7 +230,6 @@ const createSecurePlugin = (): PluginInfo => ({
     missing: [],
     conflicts: [],
   },
-});
 
 const createInsecurePlugin = (): PluginInfo => ({
   ...createSecurePlugin(),
@@ -276,12 +275,10 @@ const createInsecurePlugin = (): PluginInfo => ({
       required: false,
     },
   ],
-});
 
 describe('Plugin Security Isolation Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Sandbox Enforcement', () => {
     it('should enforce sandbox isolation for sandboxed plugins', () => {
@@ -290,7 +287,6 @@ describe('Plugin Security Isolation Tests', () => {
       
       expect(validation.valid).toBe(true);
       expect(validation.violations).toHaveLength(0);
-    });
 
     it('should detect security violations in non-sandboxed plugins', () => {
       const plugin = createInsecurePlugin();
@@ -300,7 +296,6 @@ describe('Plugin Security Isolation Tests', () => {
       expect(validation.violations).toContain('Non-sandboxed plugin with system call access poses security risk');
       expect(validation.violations).toContain('Admin permissions require sandboxed execution');
       expect(validation.violations).toContain('Network access without trusted domains is not allowed');
-    });
 
     it('should prevent system calls from sandboxed plugins', () => {
       const plugin = createSecurePlugin();
@@ -308,14 +303,12 @@ describe('Plugin Security Isolation Tests', () => {
       // Sandboxed plugin should not allow system calls
       expect(plugin.manifest.securityPolicy.allowSystemCalls).toBe(false);
       expect(plugin.manifest.sandboxed).toBe(true);
-    });
 
     it('should isolate plugin file system access', () => {
       const plugin = createSecurePlugin();
       
       // Plugin should not have file system access
       expect(plugin.manifest.securityPolicy.allowFileSystemAccess).toBe(false);
-    });
 
     it('should restrict network access to trusted domains only', () => {
       const plugin = createSecurePlugin();
@@ -323,8 +316,7 @@ describe('Plugin Security Isolation Tests', () => {
       expect(plugin.manifest.securityPolicy.allowNetworkAccess).toBe(true);
       expect(plugin.manifest.securityPolicy.trustedDomains).toContain('api.example.com');
       expect(plugin.manifest.securityPolicy.trustedDomains).toHaveLength(1);
-    });
-  });
+
 
   describe('Permission Enforcement', () => {
     it('should allow access to granted permissions', () => {
@@ -333,7 +325,6 @@ describe('Plugin Security Isolation Tests', () => {
       
       expect(hasAccess).toBe(true);
       expect(mockSecurityEnforcer.auditSecurityEvent).not.toHaveBeenCalled();
-    });
 
     it('should deny access to non-granted permissions', () => {
       const plugin = createSecurePlugin();
@@ -344,8 +335,7 @@ describe('Plugin Security Isolation Tests', () => {
         pluginId: 'secure-plugin',
         permission: 'write-data',
         reason: 'Permission not defined in manifest',
-      });
-    });
+
 
     it('should deny access to undefined permissions', () => {
       const plugin = createSecurePlugin();
@@ -356,8 +346,7 @@ describe('Plugin Security Isolation Tests', () => {
         pluginId: 'secure-plugin',
         permission: 'undefined-permission',
         reason: 'Permission not defined in manifest',
-      });
-    });
+
 
     it('should enforce additional restrictions for admin permissions', () => {
       const plugin = createInsecurePlugin();
@@ -368,8 +357,7 @@ describe('Plugin Security Isolation Tests', () => {
         pluginId: 'insecure-plugin',
         permission: 'admin-access',
         reason: 'Admin permission requires sandboxed execution',
-      });
-    });
+
 
     it('should validate permission categories and levels', () => {
       const plugin = createSecurePlugin();
@@ -378,8 +366,7 @@ describe('Plugin Security Isolation Tests', () => {
       expect(permission.category).toBe('data');
       expect(permission.level).toBe('read');
       expect(permission.required).toBe(true);
-    });
-  });
+
 
   describe('Resource Limit Enforcement', () => {
     it('should allow resource usage within limits', () => {
@@ -389,7 +376,6 @@ describe('Plugin Security Isolation Tests', () => {
       
       expect(withinLimits).toBe(true);
       expect(mockSecurityEnforcer.auditSecurityEvent).not.toHaveBeenCalled();
-    });
 
     it('should detect memory limit violations', () => {
       const plugin = createSecurePlugin();
@@ -402,8 +388,7 @@ describe('Plugin Security Isolation Tests', () => {
         resource: 'memory',
         usage: 300,
         limit: 256,
-      });
-    });
+
 
     it('should detect CPU limit violations', () => {
       const plugin = createSecurePlugin();
@@ -416,8 +401,7 @@ describe('Plugin Security Isolation Tests', () => {
         resource: 'cpu',
         usage: 75,
         limit: 50,
-      });
-    });
+
 
     it('should detect disk limit violations', () => {
       const plugin = createSecurePlugin();
@@ -430,8 +414,7 @@ describe('Plugin Security Isolation Tests', () => {
         resource: 'disk',
         usage: 150,
         limit: 100,
-      });
-    });
+
 
     it('should handle multiple resource violations', () => {
       const plugin = createSecurePlugin();
@@ -440,8 +423,7 @@ describe('Plugin Security Isolation Tests', () => {
       
       expect(withinLimits).toBe(false);
       expect(mockSecurityEnforcer.auditSecurityEvent).toHaveBeenCalledTimes(1); // First violation stops execution
-    });
-  });
+
 
   describe('Security Policy Validation', () => {
     it('should validate secure plugin configurations', () => {
@@ -450,7 +432,6 @@ describe('Plugin Security Isolation Tests', () => {
       expect(plugin.manifest.sandboxed).toBe(true);
       expect(plugin.manifest.securityPolicy.allowSystemCalls).toBe(false);
       expect(plugin.manifest.securityPolicy.trustedDomains).toHaveLength(1);
-    });
 
     it('should identify insecure plugin configurations', () => {
       const plugin = createInsecurePlugin();
@@ -458,14 +439,12 @@ describe('Plugin Security Isolation Tests', () => {
       
       expect(validation.valid).toBe(false);
       expect(validation.violations.length).toBeGreaterThan(0);
-    });
 
     it('should enforce trusted domain restrictions', () => {
       const plugin = createSecurePlugin();
       
       expect(plugin.manifest.securityPolicy.allowNetworkAccess).toBe(true);
       expect(plugin.manifest.securityPolicy.trustedDomains).toEqual(['api.example.com']);
-    });
 
     it('should validate permission requirements', () => {
       const plugin = createSecurePlugin();
@@ -473,8 +452,7 @@ describe('Plugin Security Isolation Tests', () => {
       
       expect(requiredPermissions).toHaveLength(1);
       expect(requiredPermissions[0].id).toBe('read-data');
-    });
-  });
+
 
   describe('Security Event Auditing', () => {
     it('should audit permission denial events', () => {
@@ -482,21 +460,18 @@ describe('Plugin Security Isolation Tests', () => {
       enforcePermissionIsolation(plugin, 'non-existent-permission');
       
       expect(mockSecurityEnforcer.auditSecurityEvent).toHaveBeenCalledWith('permission_invalid', expect.any(Object));
-    });
 
     it('should audit resource violation events', () => {
       const plugin = createSecurePlugin();
       validateResourceLimits(plugin, { memory: 300, cpu: 25, disk: 50 });
       
       expect(mockSecurityEnforcer.auditSecurityEvent).toHaveBeenCalledWith('resource_violation', expect.any(Object));
-    });
 
     it('should audit security policy violations', () => {
       const plugin = createInsecurePlugin();
       enforcePermissionIsolation(plugin, 'admin-access');
       
       expect(mockSecurityEnforcer.auditSecurityEvent).toHaveBeenCalledWith('permission_violation', expect.any(Object));
-    });
 
     it('should include relevant context in audit events', () => {
       const plugin = createSecurePlugin();
@@ -506,9 +481,8 @@ describe('Plugin Security Isolation Tests', () => {
         pluginId: 'secure-plugin',
         permission: 'invalid-permission',
         reason: 'Permission not defined in manifest',
-      });
-    });
-  });
+
+
 
   describe('Isolation Boundary Tests', () => {
     it('should prevent cross-plugin data access', () => {
@@ -518,7 +492,6 @@ describe('Plugin Security Isolation Tests', () => {
       // Plugin 1 should not be able to access Plugin 2's permissions
       expect(plugin1.id).not.toBe(plugin2.id);
       expect(plugin1.permissions).not.toBe(plugin2.permissions);
-    });
 
     it('should isolate plugin configurations', () => {
       const plugin1 = createSecurePlugin();
@@ -529,7 +502,6 @@ describe('Plugin Security Isolation Tests', () => {
       
       // Configurations should be isolated
       expect(plugin1.config).not.toBe(plugin2.config);
-    });
 
     it('should prevent privilege escalation', () => {
       const plugin = createSecurePlugin();
@@ -537,7 +509,6 @@ describe('Plugin Security Isolation Tests', () => {
       // Plugin should not be able to escalate to admin privileges
       const hasAdminAccess = enforcePermissionIsolation(plugin, 'admin-access');
       expect(hasAdminAccess).toBe(false);
-    });
 
     it('should maintain security boundaries during plugin updates', () => {
       const plugin = createSecurePlugin();
@@ -546,8 +517,7 @@ describe('Plugin Security Isolation Tests', () => {
       // Security settings should remain consistent
       expect(plugin.manifest.sandboxed).toBe(originalSandboxed);
       expect(plugin.manifest.securityPolicy.allowSystemCalls).toBe(false);
-    });
-  });
+
 
   describe('Security Compliance Tests', () => {
     it('should enforce minimum security standards', () => {
@@ -557,7 +527,6 @@ describe('Plugin Security Isolation Tests', () => {
       expect(plugin.manifest.sandboxed).toBe(true);
       expect(plugin.manifest.securityPolicy.allowSystemCalls).toBe(false);
       expect(plugin.manifest.securityPolicy.trustedDomains).toBeDefined();
-    });
 
     it('should validate security policy completeness', () => {
       const plugin = createSecurePlugin();
@@ -567,7 +536,6 @@ describe('Plugin Security Isolation Tests', () => {
       expect(policy).toHaveProperty('allowFileSystemAccess');
       expect(policy).toHaveProperty('allowSystemCalls');
       expect(policy).toHaveProperty('trustedDomains');
-    });
 
     it('should ensure permission principle of least privilege', () => {
       const plugin = createSecurePlugin();
@@ -577,7 +545,6 @@ describe('Plugin Security Isolation Tests', () => {
       expect(permissions).toHaveLength(1);
       expect(permissions[0].level).toBe('read');
       expect(permissions[0].category).toBe('data');
-    });
 
     it('should validate security configuration consistency', () => {
       const plugin = createSecurePlugin();
@@ -592,6 +559,5 @@ describe('Plugin Security Isolation Tests', () => {
         expect(plugin.manifest.securityPolicy.trustedDomains).toBeDefined();
         expect(plugin.manifest.securityPolicy.trustedDomains!.length).toBeGreaterThan(0);
       }
-    });
-  });
-});
+
+

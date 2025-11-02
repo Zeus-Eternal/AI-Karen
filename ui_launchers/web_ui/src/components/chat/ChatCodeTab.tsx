@@ -1,1 +1,1 @@
-export { ChatCodeTab } from "@/components/ChatInterface/components/ChatCodeTab";
+import { export { ChatCodeTab } from "@/components/ChatInterface/components/ChatCodeTab";

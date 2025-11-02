@@ -34,7 +34,6 @@ export const useInfiniteScroll = ({
     const observer = new IntersectionObserver(handleIntersection, {
       threshold,
       rootMargin,
-    });
 
     observer.observe(element);
 

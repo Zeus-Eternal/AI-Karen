@@ -1,14 +1,4 @@
-import type {
-  AuthenticationError,
-  AuthenticationErrorType,
-  ValidationErrors,
-  ValidationRule,
-  ValidationConfig,
-  LoginCredentials,
-  ErrorClassification,
-  ErrorMessageConfig,
-  RetryConfig
-} from './auth';
+import type { AuthenticationError, AuthenticationErrorType, ValidationErrors, ValidationRule, ValidationConfig, LoginCredentials, ErrorClassification, ErrorMessageConfig, RetryConfig } from './auth';
 
 /**
  * Utility functions for authentication error handling and validation

@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -28,7 +29,6 @@ const localStorageMock = {
 
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
-});
 
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -43,7 +43,6 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
-});
 
 function TestComponent() {
   const { preferences, updatePreference, resetPreferences, isLoading, error } = usePreferences();
@@ -65,7 +64,6 @@ describe('PreferencesProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMock.getItem.mockReturnValue(null);
-  });
 
   it('should provide preferences context', async () => {
     render(
@@ -76,12 +74,10 @@ describe('PreferencesProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('false');
-    });
 
     expect(screen.getByTestId('theme')).toHaveTextContent('system');
     expect(screen.getByTestId('reduced-motion')).toHaveTextContent('false');
     expect(screen.getByTestId('error')).toHaveTextContent('no-error');
-  });
 
   it('should update preferences', async () => {
     const user = userEvent.setup();
@@ -94,13 +90,11 @@ describe('PreferencesProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('false');
-    });
 
     await user.click(screen.getByText('Set Dark Theme'));
     
     expect(screen.getByTestId('theme')).toHaveTextContent('dark');
     expect(mockSetTheme).toHaveBeenCalledWith('dark');
-  });
 
   it('should reset preferences', async () => {
     const user = userEvent.setup();
@@ -113,7 +107,6 @@ describe('PreferencesProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('false');
-    });
 
     // Change a preference
     await user.click(screen.getByText('Set Dark Theme'));
@@ -122,14 +115,12 @@ describe('PreferencesProvider', () => {
     // Reset preferences
     await user.click(screen.getByText('Reset'));
     expect(screen.getByTestId('theme')).toHaveTextContent('system');
-  });
 
   it('should load preferences from localStorage', async () => {
     const storedPreferences = JSON.stringify({
       theme: 'dark',
       reducedMotion: true,
-    });
-    
+
     localStorageMock.getItem.mockReturnValue(storedPreferences);
 
     render(
@@ -140,11 +131,9 @@ describe('PreferencesProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('false');
-    });
 
     // Verify localStorage was called
     expect(localStorageMock.getItem).toHaveBeenCalledWith('user-preferences');
-  });
 
   it('should throw error when used outside provider', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -154,5 +143,4 @@ describe('PreferencesProvider', () => {
     }).toThrow('usePreferences must be used within a PreferencesProvider');
     
     consoleSpy.mockRestore();
-  });
-});
+

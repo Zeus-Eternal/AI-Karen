@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers,
       signal: AbortSignal.timeout(20000), // 20 second timeout for large model lists
-    });
+
     const data = await response.json();
     // Return the backend response with appropriate status
     return NextResponse.json(data, { 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'public, max-age=600', // Cache for 10 minutes
         'Pragma': 'cache',
       }
-    });
+
   } catch (error) {
     // Return structured error response
     return NextResponse.json(

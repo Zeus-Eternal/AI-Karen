@@ -3,13 +3,7 @@
  * Requirements: 1.3, 2.3, 3.3, 4.3
  */
 
-import { 
-  ErrorCategory, 
-  ErrorSeverity, 
-  CategorizedError, 
-  ERROR_PATTERNS, 
-  USER_ERROR_MESSAGES 
-} from './error-categories';
+import {  ErrorCategory, ErrorSeverity, CategorizedError, ERROR_PATTERNS, USER_ERROR_MESSAGES } from './error-categories';
 
 export class ErrorCategorizer {
   private static instance: ErrorCategorizer;
@@ -38,7 +32,6 @@ export class ErrorCategorizer {
         return errorMessage.toLowerCase().includes(pattern.pattern.toLowerCase());
       }
       return pattern.pattern.test(errorMessage);
-    });
 
     const category = matchedPattern?.category || ErrorCategory.UNKNOWN;
     const severity = matchedPattern?.severity || ErrorSeverity.MEDIUM;

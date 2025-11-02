@@ -1,9 +1,10 @@
+
+"use client";
 import React, { useState, useMemo, useCallback } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-community';
-import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,45 +16,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
-'use client';
+
+import { } from 'lucide-react';
 
 
 
 
-
-  Shield,
-  Users,
-  User,
-  Lock,
-  Unlock,
-  Eye,
-  Edit,
-  Download,
-  Trash2,
-  Plus,
-  Settings,
-  Check,
-  X,
-  AlertTriangle
-} from 'lucide-react';
-
-
-
-
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter
-} from '@/components/ui/dialog';
-
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
+import { } from '@/components/ui/dialog';
+import { } from '@/components/ui/select';
 
 
 
@@ -121,7 +91,7 @@ const formatDate = (dateString: string): string => {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    });
+
   } catch {
     return dateString;
   }
@@ -150,7 +120,7 @@ const PermissionTypeRenderer = ({ value }: { value: string }) => {
   return (
     <ErrorBoundary fallback={<div>Something went wrong in FilePermissionManager</div>}>
       <div className="flex items-center gap-2">
-      <Icon className="h-4 w-4 sm:w-auto md:w-full" />
+      <Icon className="h-4 w-4 " />
       <span>{permission.label}</span>
     </div>
   );
@@ -160,14 +130,14 @@ const UserRenderer = ({ data }: { data: FilePermission }) => {
   if (data.user_id) {
     return (
       <div className="flex items-center gap-2">
-        <User className="h-4 w-4 sm:w-auto md:w-full" />
+        <User className="h-4 w-4 " />
         <span>{data.user_id}</span>
       </div>
     );
   } else if (data.role) {
     return (
       <div className="flex items-center gap-2">
-        <Users className="h-4 w-4 sm:w-auto md:w-full" />
+        <Users className="h-4 w-4 " />
         <Badge variant="outline">{data.role}</Badge>
       </div>
     );
@@ -183,12 +153,11 @@ const StatusRenderer = ({ data }: { data: FilePermission }) => {
     <div className="flex items-center gap-2">
       {isActive ? (
         <Badge variant="secondary" className="bg-green-100 text-green-800">
-          <Check className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
-          Active
+          <Check className="mr-1 h-3 w-3 " />
         </Badge>
       ) : (
         <Badge variant="secondary" className="bg-red-100 text-red-800">
-          <X className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
+          <X className="mr-1 h-3 w-3 " />
           {isExpired ? 'Expired' : 'Inactive'}
         </Badge>
       )}
@@ -211,21 +180,21 @@ const ActionsRenderer = ({
 
   return (
     <div className="flex items-center gap-1">
-      <button
+      <Button
         variant="ghost"
         size="sm"
-        onClick={() = aria-label="Button"> onEdit(data)}
-        className="h-8 w-8 p-0 sm:w-auto md:w-full"
+        onClick={() => onEdit(data)}
+        className="h-8 w-8 p-0 "
       >
-        <Edit className="h-4 w-4 sm:w-auto md:w-full" />
+        <Edit className="h-4 w-4 " />
       </Button>
-      <button
+      <Button
         variant="ghost"
         size="sm"
-        onClick={() = aria-label="Button"> onDelete(data.id)}
-        className="h-8 w-8 p-0 text-destructive hover:text-destructive sm:w-auto md:w-full"
+        onClick={() => onDelete(data.id)}
+        className="h-8 w-8 p-0 text-destructive hover:text-destructive "
       >
-        <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
+        <Trash2 className="h-4 w-4 " />
       </Button>
     </div>
   );
@@ -250,7 +219,6 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
   const [newPermission, setNewPermission] = useState<Partial<FilePermission>>({
     permission_type: 'read',
     is_active: true
-  });
 
   // Permission grid columns
   const permissionColumns = useMemo<ColDef[]>(() => [
@@ -397,19 +365,17 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 sm:w-auto md:w-full" />
+                <Shield className="h-5 w-5 " />
                 File Permissions: {fileName}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
-                Manage access permissions for this file
               </p>
             </div>
             {!readOnly && (
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
                   <button aria-label="Button">
-                    <Plus className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                    Add Permission
+                    <Plus className="mr-2 h-4 w-4 " />
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
@@ -487,7 +453,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                             return (
                               <selectItem key={permission.value} value={permission.value} aria-label="Select option">
                                 <div className="flex items-center gap-2">
-                                  <Icon className="h-4 w-4 sm:w-auto md:w-full" />
+                                  <Icon className="h-4 w-4 " />
                                   <div>
                                     <div>{permission.label}</div>
                                     <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
@@ -507,7 +473,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                       <input
                         type="datetime-local"
                         value={newPermission.expires_at?.slice(0, 16) || ''}
-                        onChange={(e) = aria-label="Input"> setNewPermission({
+                        onChange={(e) => setNewPermission({
                           ...newPermission,
                           expires_at: e.target.value ? new Date(e.target.value).toISOString() : undefined
                         })}
@@ -527,11 +493,9 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                     </div>
                   </div>
                   <DialogFooter>
-                    <button variant="outline" onClick={() = aria-label="Button"> setIsAddDialogOpen(false)}>
-                      Cancel
+                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                     </Button>
-                    <button onClick={handleAddPermission} aria-label="Button">
-                      Add Permission
+                    <Button onClick={handleAddPermission} >
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -546,7 +510,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Shield className="h-4 w-4 text-muted-foreground " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Total Permissions</p>
                 <p className="text-2xl font-bold">{permissionStats.total}</p>
@@ -558,7 +522,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Check className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+              <Check className="h-4 w-4 text-green-600 " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Active</p>
                 <p className="text-2xl font-bold text-green-600">{permissionStats.active}</p>
@@ -570,7 +534,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
+              <AlertTriangle className="h-4 w-4 text-yellow-600 " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Expired</p>
                 <p className="text-2xl font-bold text-yellow-600">{permissionStats.expired}</p>
@@ -582,7 +546,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Users className="h-4 w-4 text-muted-foreground " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Selected</p>
                 <p className="text-2xl font-bold">{selectedPermissions.length}</p>
@@ -623,7 +587,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
               }}
               noRowsOverlayComponent={() => (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <Shield className="h-12 w-12 mb-2 sm:w-auto md:w-full" />
+                  <Shield className="h-12 w-12 mb-2 " />
                   <p>No permissions configured</p>
                 </div>
               )}
@@ -641,10 +605,10 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                 {selectedPermissions.length} permission{selectedPermissions.length !== 1 ? 's' : ''} selected
               </span>
               <div className="flex items-center gap-2">
-                <button
+                <Button
                   variant="outline"
                   size="sm"
-                  onClick={() = aria-label="Button"> {
+                  onClick={() => {
                     const updatedPermissions = currentPermissions.map(p =>
                       selectedPermissions.find(sp => sp.id === p.id)
                         ? { ...p, is_active: true }
@@ -653,13 +617,12 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                     onPermissionUpdate(updatedPermissions);
                   }}
                 >
-                  <Unlock className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                  Activate
+                  <Unlock className="mr-2 h-4 w-4 " />
                 </Button>
-                <button
+                <Button
                   variant="outline"
                   size="sm"
-                  onClick={() = aria-label="Button"> {
+                  onClick={() => {
                     const updatedPermissions = currentPermissions.map(p =>
                       selectedPermissions.find(sp => sp.id === p.id)
                         ? { ...p, is_active: false }
@@ -668,20 +631,18 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                     onPermissionUpdate(updatedPermissions);
                   }}
                 >
-                  <Lock className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                  Deactivate
+                  <Lock className="mr-2 h-4 w-4 " />
                 </Button>
-                <button
+                <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() = aria-label="Button"> {
+                  onClick={() => {
                     const selectedIds = selectedPermissions.map(p => p.id);
                     const updatedPermissions = currentPermissions.filter(p => !selectedIds.includes(p.id));
                     onPermissionUpdate(updatedPermissions);
                   }}
                 >
-                  <Trash2 className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                  Delete
+                  <Trash2 className="mr-2 h-4 w-4 " />
                 </Button>
               </div>
             </div>
@@ -715,7 +676,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                       return (
                         <selectItem key={permission.value} value={permission.value} aria-label="Select option">
                           <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4 sm:w-auto md:w-full" />
+                            <Icon className="h-4 w-4 " />
                             {permission.label}
                           </div>
                         </SelectItem>
@@ -730,7 +691,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                 <input
                   type="datetime-local"
                   value={editingPermission.expires_at?.slice(0, 16) || ''}
-                  onChange={(e) = aria-label="Input"> setEditingPermission({
+                  onChange={(e) => setEditingPermission({
                     ...editingPermission,
                     expires_at: e.target.value ? new Date(e.target.value).toISOString() : undefined
                   })}
@@ -751,11 +712,9 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
             </div>
           )}
           <DialogFooter>
-            <button variant="outline" onClick={() = aria-label="Button"> setIsEditDialogOpen(false)}>
-              Cancel
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
             </Button>
-            <button onClick={handleUpdatePermission} aria-label="Button">
-              Update Permission
+            <Button onClick={handleUpdatePermission} >
             </Button>
           </DialogFooter>
         </DialogContent>

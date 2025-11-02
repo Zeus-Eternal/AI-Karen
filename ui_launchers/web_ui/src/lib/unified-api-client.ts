@@ -269,7 +269,7 @@ export class UnifiedApiClient {
         results.push({ 
           success: false, 
           error: error instanceof Error ? error.message : 'Unknown error' 
-        });
+
       }
     }
     return results;
@@ -299,7 +299,7 @@ export class UnifiedApiClient {
           error: error instanceof Error ? error.message : 'Unknown error'
         };
       }
-    });
+
     const results = await Promise.all(endpointTests);
     const endpointStatus = results.reduce((acc, result) => {
       acc[result.name] = {

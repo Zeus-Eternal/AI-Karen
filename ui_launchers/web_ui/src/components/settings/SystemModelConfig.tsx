@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,21 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Settings,
-  Cpu,
-  HardDrive,
-  Activity,
-  RefreshCw,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Info,
-  Loader2,
-  RotateCcw,
-  Lightbulb,
-  BarChart3
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 interface TransformerConfig {
   // Precision settings
@@ -132,7 +120,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     use_bettertransformer: false,
     optimize_for_inference: false,
     enable_xformers: false
-  });
+
   const [recommendations, setRecommendations] = useState<HardwareRecommendations | null>(null);
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
   const [loading, setLoading] = useState(false);
@@ -173,7 +161,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
           optimize_for_inference: selectedModel.configuration?.optimize_for_inference || false,
           enable_xformers: selectedModel.configuration?.enable_xformers || false,
           max_memory: selectedModel.configuration?.max_memory
-        });
+
       }
       loadRecommendations();
       loadMetrics();
@@ -226,7 +214,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
           variant: 'destructive',
           title: "Configuration Invalid",
           description: (validation as any).error || "Please check your settings",
-        });
+
         return;
       }
       await backend.makeRequestPublic(
@@ -239,7 +227,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       toast({
         title: "Configuration Saved",
         description: "Model configuration updated successfully",
-      });
+
       // Reload model data
       const updatedModel = await backend.makeRequestPublic<SystemModelInfo>(
         `/api/models/system/${selectedModel.id}`
@@ -250,7 +238,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
         variant: 'destructive',
         title: "Save Failed",
         description: "Could not save model configuration",
-      });
+
     } finally {
       setSaving(false);
     }
@@ -272,13 +260,13 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       toast({
         title: "Configuration Reset",
         description: "Model configuration reset to defaults",
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: "Reset Failed",
         description: "Could not reset model configuration",
-      });
+
     } finally {
       setLoading(false);
     }
@@ -298,18 +286,18 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
           status: (response as any).status,
           last_health_check: (response as any).last_health_check,
           error_message: (response as any).error_message
-        });
+
       }
       toast({
         title: "Health Check Complete",
         description: `Model status: ${(response as any).status}`,
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: "Health Check Failed",
         description: "Could not check model health",
-      });
+
     } finally {
       setLoading(false);
     }
@@ -329,20 +317,20 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600 " />;
       case 'unhealthy':
-        return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+        return <XCircle className="h-4 w-4 text-red-600 " />;
       case 'loading':
-        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin sm:w-auto md:w-full" />;
+        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin " />;
       default:
-        return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600 " />;
     }
   };
   if (!model) {
     return (
       <Card>
         <CardContent className="text-center py-12">
-          <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+          <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
           <p className="text-lg font-medium mb-2">No Model Selected</p>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             Select a system model to configure its settings.
@@ -358,7 +346,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg sm:p-4 md:p-6">
-                <Settings className="h-5 w-5 text-primary sm:w-auto md:w-full" />
+                <Settings className="h-5 w-5 text-primary " />
               </div>
               <div>
                 <CardTitle>{model.name}</CardTitle>
@@ -395,34 +383,31 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
             </div>
           </div>
           <div className="flex gap-2">
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={performHealthCheck}
               disabled={loading}
-             aria-label="Button">
+             >
               {loading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin " />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                <RefreshCw className="h-4 w-4 mr-2 " />
               )}
-              Health Check
             </Button>
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={resetConfiguration}
               disabled={loading}
-             aria-label="Button">
-              <RotateCcw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Reset to Defaults
+             >
+              <RotateCcw className="h-4 w-4 mr-2 " />
             </Button>
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={onClose}
-             aria-label="Button">
-              Close
+             >
             </Button>
           </div>
         </CardContent>
@@ -449,7 +434,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       </Tabs>
       {validationResult && !validationResult.valid && (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+          <AlertTriangle className="h-4 w-4 " />
           <AlertTitle>Configuration Error</AlertTitle>
           <AlertDescription>{validationResult.error}</AlertDescription>
         </Alert>
@@ -461,7 +446,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
          aria-label="Button">
           {saving ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin " />
               Saving...
             </>
           ) : (
@@ -482,7 +467,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     return (
       <Card>
         <CardContent className="text-center py-12">
-          <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+          <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
           <p className="text-lg font-medium mb-2">No Configuration Available</p>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             This model type does not have configurable settings.
@@ -496,11 +481,10 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Cpu className="h-5 w-5 sm:w-auto md:w-full" />
+            <Cpu className="h-5 w-5 " />
             LLaMA-CPP Configuration
           </CardTitle>
           <CardDescription>
-            Configure quantization, context length, GPU layers, and inference parameters
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -611,7 +595,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       <React.Suspense fallback={
         <Card>
           <CardContent className="text-center py-12">
-            <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin sm:w-auto md:w-full" />
+            <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin " />
             <p className="text-lg font-medium mb-2">Loading Configuration</p>
           </CardContent>
         </Card>
@@ -634,11 +618,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 sm:w-auto md:w-full" />
-            Basic Classifier Configuration
+            <Activity className="h-5 w-5 " />
           </CardTitle>
           <CardDescription>
-            Configure classification thresholds, feature extraction, and training parameters
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -722,8 +704,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 sm:w-auto md:w-full" />
-            Performance Metrics
+            <BarChart3 className="h-5 w-5 " />
           </CardTitle>
           <CardDescription>
             Real-time performance monitoring and metrics
@@ -761,7 +742,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
             </div>
           ) : (
             <div className="text-center py-12">
-              <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
               <p className="text-lg font-medium mb-2">No Performance Data</p>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Performance metrics will appear after model usage.
@@ -777,11 +758,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 sm:w-auto md:w-full" />
-            Hardware Recommendations
+            <Lightbulb className="h-5 w-5 " />
           </CardTitle>
           <CardDescription>
-            Optimized settings based on your hardware configuration
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -829,7 +808,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
             </div>
           ) : (
             <div className="text-center py-12">
-              <Lightbulb className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Lightbulb className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
               <p className="text-lg font-medium mb-2">Loading Recommendations</p>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Analyzing your hardware configuration...
@@ -845,11 +824,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Info className="h-5 w-5 sm:w-auto md:w-full" />
-            Model Capabilities
+            <Info className="h-5 w-5 " />
           </CardTitle>
           <CardDescription>
-            Supported features and runtime compatibility
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

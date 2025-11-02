@@ -54,8 +54,7 @@ export function useNonBlockingLoading(
     startTime: null,
     duration: 0,
     hasTimedOut: false,
-  });
-  
+
   const timeoutRef = useRef<NodeJS.Timeout>();
   const minTimeRef = useRef<NodeJS.Timeout>();
   const showDelayRef = useRef<NodeJS.Timeout>();
@@ -86,8 +85,7 @@ export function useNonBlockingLoading(
       startTime,
       duration: 0,
       hasTimedOut: false,
-    });
-    
+
     // Set loading in store if interactions should be blocked
     if (!allowInteractions) {
       setLoading(true);
@@ -180,8 +178,7 @@ export function useNonBlockingLoading(
       startTime: null,
       duration: 0,
       hasTimedOut: false,
-    });
-    
+
     setLoading(false);
   }, [setLoading]);
   

@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,10 +23,11 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormValues) => void }) {
-  const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { refreshInterval: 5, enableLogs: false, logLevel: "info", endpoint: "http://localhost" },
   });
+
   const { toast } = useToast();
   const refresh = watch("refreshInterval");
 
@@ -53,23 +55,23 @@ export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormVa
           </div>
           <div className="space-y-1">
             <label className="text-sm font-medium md:text-base lg:text-lg">Log Level</label>
-            <select value={watch("logLevel")} onValueChange={(val) = aria-label="Select option"> setValue("logLevel", val as any)}>
-              <selectTrigger aria-label="Select option"><selectValue /></SelectTrigger>
-              <selectContent aria-label="Select option">
-                <selectItem value="info" aria-label="Select option">Info</SelectItem>
-                <selectItem value="debug" aria-label="Select option">Debug</SelectItem>
-                <selectItem value="error" aria-label="Select option">Error</SelectItem>
+            <Select value={watch("logLevel")} onValueChange={(val) => setValue("logLevel", val as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="info">Info</SelectItem>
+                <SelectItem value="debug">Debug</SelectItem>
+                <SelectItem value="error">Error</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
             <label className="text-sm font-medium md:text-base lg:text-lg" htmlFor="endpoint">Endpoint</label>
-            <input id="endpoint" {...register("endpoint")} />
+            <Input id="endpoint" {...register("endpoint")} />
             {errors.endpoint && <p className="text-xs text-destructive sm:text-sm md:text-base">Enter valid URL</p>}
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <button size="sm" type="submit" aria-label="Submit form">Save</Button>
+          <Button size="sm" type="submit">Save</Button>
         </CardFooter>
       </Card>
     </form>

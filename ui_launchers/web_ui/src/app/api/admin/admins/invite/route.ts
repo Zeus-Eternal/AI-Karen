@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       invitedBy: currentUser.user_id,
       expiresAt,
       message: message || undefined
-    });
+
     // Send invitation email
     try {
       await sendInvitationEmail(email, invitationToken, message, currentUser.email);
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: 'Admin invitation sent successfully',
       invitationId: invitation.id
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to send admin invitation' },
@@ -117,6 +117,6 @@ async function sendInvitationEmail(
       inviterEmail,
       expirationDays: 7
     }
-  });
+
   */
 }

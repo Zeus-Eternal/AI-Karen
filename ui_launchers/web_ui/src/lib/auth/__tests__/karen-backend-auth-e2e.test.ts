@@ -124,11 +124,9 @@ beforeEach(() => {
   console.error = vi.fn();
   console.info = vi.fn();
   console.debug = vi.fn();
-});
 
 afterEach(() => {
   Object.assign(console, originalConsole);
-});
 
 describe('KarenBackendService Extension Authentication E2E Tests', () => {
   let backendService: KarenBackendService;
@@ -144,8 +142,7 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
     backendService = new KarenBackendService({
       baseUrl: '',
       timeout: 5000
-    });
-  });
+
 
   describe('Extension List API Integration', () => {
     it('should successfully fetch extension list with authentication', async () => {
@@ -193,7 +190,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
           })
         })
       );
-    });
 
     it('should handle 401 unauthorized response with token refresh', async () => {
       // Mock initial 401 response
@@ -230,7 +226,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
 
       // Verify that fetch was called twice (initial + retry)
       expect(mockFetch).toHaveBeenCalledTimes(2);
-    });
 
     it('should provide fallback data when authentication fails completely', async () => {
       // Mock persistent 401 response
@@ -250,7 +245,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
       expect(result).toBeDefined();
       expect(result.extensions).toEqual([]);
       expect(result.message).toContain('temporarily unavailable');
-    });
 
     it('should handle 403 forbidden response with readonly fallback', async () => {
       // Mock 403 response
@@ -272,8 +266,7 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
       expect(result).toBeDefined();
       expect(result.extensions).toEqual([]);
       expect(result.message).toContain('temporarily unavailable');
-    });
-  });
+
 
   describe('Background Tasks API Integration', () => {
     it('should successfully fetch background tasks with authentication', async () => {
@@ -316,7 +309,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
           })
         })
       );
-    });
 
     it('should successfully register background task with authentication', async () => {
       const taskData = {
@@ -356,7 +348,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
           body: JSON.stringify(taskData)
         })
       );
-    });
 
     it('should handle background task registration with insufficient permissions', async () => {
       const taskData = {
@@ -381,8 +372,7 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
 
       expect(result).toBeDefined();
       expect(result.message).toContain('temporarily unavailable');
-    });
-  });
+
 
   describe('Service Unavailable Scenarios', () => {
     it('should handle 503 service unavailable with retry logic', async () => {
@@ -419,7 +409,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
 
       expect(result).toBeDefined();
       expect(mockFetch).toHaveBeenCalledTimes(2);
-    });
 
     it('should provide cached data when service remains unavailable', async () => {
       // Mock persistent 503 responses
@@ -439,8 +428,7 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
       expect(result).toBeDefined();
       expect(result.extensions).toEqual([]);
       expect(result.message).toContain('temporarily unavailable');
-    });
-  });
+
 
   describe('Network Error Scenarios', () => {
     it('should handle network timeout errors', async () => {
@@ -454,7 +442,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
       expect(result).toBeDefined();
       expect(result.extensions).toEqual([]);
       expect(result.message).toContain('temporarily unavailable');
-    });
 
     it('should handle DNS resolution failures', async () => {
       const networkError = new TypeError('Failed to fetch');
@@ -465,23 +452,20 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
 
       expect(result).toBeDefined();
       expect(result.extensions).toEqual([]);
-    });
 
     it('should handle CORS errors gracefully', async () => {
       const corsError = new TypeError('Failed to fetch');
       // Simulate CORS error characteristics
       Object.defineProperty(corsError, 'message', {
         value: 'Failed to fetch'
-      });
-      
+
       mockFetch.mockRejectedValueOnce(corsError);
 
       const result = await backendService.listExtensions();
 
       expect(result).toBeDefined();
       expect(result.message).toContain('temporarily unavailable');
-    });
-  });
+
 
   describe('Rate Limiting Scenarios', () => {
     it('should handle 429 rate limiting with exponential backoff', async () => {
@@ -520,8 +504,7 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
 
       expect(result).toBeDefined();
       expect(mockFetch).toHaveBeenCalledTimes(2);
-    });
-  });
+
 
   describe('Malformed Response Handling', () => {
     it('should handle responses with invalid JSON', async () => {
@@ -537,7 +520,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
 
       expect(result).toBeDefined();
       expect(result.extensions).toEqual([]);
-    });
 
     it('should handle empty response bodies', async () => {
       mockFetch.mockResolvedValueOnce(new Response('', {
@@ -548,7 +530,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
       const result = await backendService.listExtensions();
 
       expect(result).toBeDefined();
-    });
 
     it('should handle non-JSON response content', async () => {
       mockFetch.mockResolvedValueOnce(new Response(
@@ -563,8 +544,7 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
 
       expect(result).toBeDefined();
       expect(result.extensions).toEqual([]);
-    });
-  });
+
 
   describe('Authentication Header Management', () => {
     it('should include proper authentication headers for extension endpoints', async () => {
@@ -587,7 +567,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
           })
         })
       );
-    });
 
     it('should handle missing authentication gracefully', async () => {
       // Mock auth manager returning no headers
@@ -595,7 +574,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
       const mockAuthManager = getExtensionAuthManager();
       vi.mocked(mockAuthManager.getAuthHeaders).mockResolvedValueOnce({
         'Content-Type': 'application/json'
-      });
 
       mockFetch.mockResolvedValueOnce(new Response(
         JSON.stringify({ extensions: {}, total: 0 }),
@@ -613,8 +591,7 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
           })
         })
       );
-    });
-  });
+
 
   describe('Performance and Reliability', () => {
     it('should handle multiple concurrent requests without interference', async () => {
@@ -635,10 +612,8 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
       results.forEach(result => {
         expect(result).toBeDefined();
         expect(result.extensions).toBeDefined();
-      });
 
       expect(mockFetch).toHaveBeenCalledTimes(10);
-    });
 
     it('should handle request cancellation gracefully', async () => {
       const abortController = new AbortController();
@@ -662,8 +637,7 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
       // Should still handle gracefully
       const result = await requestPromise;
       expect(result).toBeDefined();
-    });
-  });
+
 
   describe('Real-world Integration Scenarios', () => {
     it('should handle complete authentication flow in production-like scenario', async () => {
@@ -711,7 +685,6 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
 
       // Verify the complete flow: initial request + token refresh + retry
       expect(mockFetch).toHaveBeenCalledTimes(3);
-    });
 
     it('should handle partial system failure with mixed responses', async () => {
       // Scenario: Some extension services are down, others working
@@ -740,6 +713,5 @@ describe('KarenBackendService Extension Authentication E2E Tests', () => {
       const tasksResult = await backendService.listBackgroundTasks();
       expect(tasksResult.tasks).toEqual([]);
       expect(tasksResult.message).toContain('temporarily unavailable');
-    });
-  });
-});
+
+

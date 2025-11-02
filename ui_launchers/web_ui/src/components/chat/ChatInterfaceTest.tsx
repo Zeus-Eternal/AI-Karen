@@ -1,7 +1,8 @@
 /**
  * ChatInterface Test Component - For testing error handling fixes
  */
-'use client';
+"use client";
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,20 +49,16 @@ export function ChatInterfaceTest() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2 flex-wrap">
-            <button onClick={testConsoleError} variant="outline" aria-label="Button">
-              Test Console Error Handling
+            <Button onClick={testConsoleError} variant="outline" >
             </Button>
-            <button onClick={testChatInterface} variant="outline" aria-label="Button">
-              Load ChatInterface
+            <Button onClick={testChatInterface} variant="outline" >
             </Button>
-            <button onClick={simulateError} variant="outline" aria-label="Button">
-              Simulate Error
+            <Button onClick={simulateError} variant="outline" >
             </Button>
-            <button 
-              onClick={() = aria-label="Button"> setTestResults([])} 
+            <Button 
+              onClick={() => setTestResults([])} 
               variant="ghost"
             >
-              Clear Results
             </Button>
           </div>
           {testResults.length > 0 && (

@@ -59,7 +59,7 @@ export async function testDatabaseConnectivity(): Promise<DatabaseConnectivityRe
       timeout: timeoutManager.getTimeout(OperationType.SESSION_VALIDATION),
       retryAttempts: 1,
       exponentialBackoff: false,
-    });
+
     const responseTime = Date.now() - startTime;
     return {
       isConnected: true,
@@ -105,7 +105,7 @@ export async function testDatabaseAuthentication(
       timeout: timeoutManager.getTimeout(OperationType.AUTHENTICATION),
       retryAttempts: 2,
       exponentialBackoff: true,
-    });
+
     const responseTime = Date.now() - startTime;
     const userData = result.data.user || result.data.user_data;
     if (!userData) {
@@ -272,7 +272,7 @@ export async function cleanupTestSession(): Promise<void> {
     }, {
       timeout: 5000,
       retryAttempts: 1,
-    });
+
   } catch (error) {
     // Ignore cleanup errors
   }

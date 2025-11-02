@@ -61,7 +61,7 @@ export const useTabOrder = (options: TabOrderOptions = {}) => {
       
       newItems.set(item.id, { ...item, tabIndex });
       return newItems;
-    });
+
   }, [rovingTabIndex, focusedItemId]);
 
   // Unregister a tab order item
@@ -70,7 +70,7 @@ export const useTabOrder = (options: TabOrderOptions = {}) => {
       const newItems = new Map(prev);
       newItems.delete(id);
       return newItems;
-    });
+
   }, []);
 
   // Update an existing item
@@ -82,7 +82,7 @@ export const useTabOrder = (options: TabOrderOptions = {}) => {
         newItems.set(id, { ...existing, ...updates });
       }
       return newItems;
-    });
+
   }, []);
 
   // Get ordered list of focusable items
@@ -97,7 +97,7 @@ export const useTabOrder = (options: TabOrderOptions = {}) => {
           if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
         }
         return 0;
-      });
+
   }, [items]);
 
   // Focus a specific item
@@ -117,9 +117,9 @@ export const useTabOrder = (options: TabOrderOptions = {}) => {
         newItems.forEach((item, itemId) => {
           const tabIndex = itemId === id ? 0 : -1;
           newItems.set(itemId, { ...item, tabIndex });
-        });
+
         return newItems;
-      });
+
     }
 
     return true;
@@ -325,7 +325,7 @@ export const useTabOrderItem = (
         disabled,
         onFocus,
         onBlur,
-      });
+
     }
 
     return () => {

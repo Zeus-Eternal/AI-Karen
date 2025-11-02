@@ -1,4 +1,6 @@
-'use client';
+"use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 export default function TestPage() {
   const [status, setStatus] = useState('Loading...');
@@ -14,7 +16,7 @@ export default function TestPage() {
       })
       .catch(err => {
         setStatus(`API error: ${err.message}`);
-      });
+
     // Test authentication
     fetch('/api/auth/login', {
       method: 'POST',
@@ -31,7 +33,7 @@ export default function TestPage() {
       })
       .catch(err => {
         setAuthStatus(`Auth error: ${err.message}`);
-      });
+
   }, []);
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -51,7 +53,6 @@ export default function TestPage() {
               href="/" 
               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
             >
-              Go to Main App
             </a>
           </div>
         </div>

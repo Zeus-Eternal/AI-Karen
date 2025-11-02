@@ -1,4 +1,3 @@
-import {
 import { getExtensionAuthManager } from '../extension-auth-manager';
 import { vi } from 'vitest';
 /**
@@ -6,14 +5,11 @@ import { vi } from 'vitest';
  */
 
 
-  ExtensionAuthRecoveryManager,
   extensionAuthRecoveryManager,
   type RecoveryAttemptResult
-} from '../extension-auth-recovery';
+import { } from '../extension-auth-recovery';
 
-  ExtensionAuthErrorFactory,
-  ExtensionAuthRecoveryStrategy
-} from '../extension-auth-errors';
+import { } from '../extension-auth-errors';
 
 
 
@@ -76,7 +72,6 @@ describe('ExtensionAuthRecoveryManager', () => {
       clearAuth: vi.fn()
     };
     mockGetExtensionAuthManager.mockReturnValue(mockAuthManager);
-  });
 
   describe('attemptRecovery', () => {
     it('should attempt recovery with retry and refresh strategy', async () => {
@@ -89,7 +84,6 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(result.strategy).toBe(ExtensionAuthRecoveryStrategy.RETRY_WITH_REFRESH);
       expect(result.requiresUserAction).toBe(false);
       expect(mockAuthManager.forceRefresh).toHaveBeenCalled();
-    });
 
     it('should handle failed token refresh', async () => {
       const error = ExtensionAuthErrorFactory.createTokenExpiredError();
@@ -101,7 +95,6 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(result.strategy).toBe(ExtensionAuthRecoveryStrategy.RETRY_WITH_REFRESH);
       expect(result.requiresUserAction).toBe(true);
       expect(result.nextAttemptDelay).toBeDefined();
-    });
 
     it('should handle permission denied with readonly fallback', async () => {
       const error = ExtensionAuthErrorFactory.createPermissionDeniedError();
@@ -112,7 +105,6 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(result.strategy).toBe(ExtensionAuthRecoveryStrategy.FALLBACK_TO_READONLY);
       expect(result.requiresUserAction).toBe(false);
       expect(result.fallbackData).toBeDefined();
-    });
 
     it('should handle service unavailable with cached fallback', async () => {
       const error = ExtensionAuthErrorFactory.createServiceUnavailableError();
@@ -123,7 +115,6 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(result.strategy).toBe(ExtensionAuthRecoveryStrategy.FALLBACK_TO_CACHED);
       expect(result.requiresUserAction).toBe(false);
       expect(result.fallbackData).toBeDefined();
-    });
 
     it('should handle redirect to login strategy', async () => {
       const error = ExtensionAuthErrorFactory.createTokenInvalidError();
@@ -134,7 +125,6 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(result.strategy).toBe(ExtensionAuthRecoveryStrategy.REDIRECT_TO_LOGIN);
       expect(result.requiresUserAction).toBe(true);
       expect(mockAuthManager.clearAuth).toHaveBeenCalled();
-    });
 
     it('should handle graceful degradation strategy', async () => {
       const error = ExtensionAuthErrorFactory.createNetworkError();
@@ -145,7 +135,6 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(result.strategy).toBe(ExtensionAuthRecoveryStrategy.GRACEFUL_DEGRADATION);
       expect(result.requiresUserAction).toBe(false);
       expect(result.fallbackData).toBeDefined();
-    });
 
     it('should handle retry with backoff strategy', async () => {
       const error = ExtensionAuthErrorFactory.createRateLimitedError();
@@ -156,7 +145,6 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(result.strategy).toBe(ExtensionAuthRecoveryStrategy.RETRY_WITH_BACKOFF);
       expect(result.requiresUserAction).toBe(false);
       expect(result.nextAttemptDelay).toBeDefined();
-    });
 
     it('should handle no recovery strategy', async () => {
       const error = ExtensionAuthErrorFactory.createConfigurationError();
@@ -166,7 +154,6 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(result.success).toBe(false);
       expect(result.strategy).toBe(ExtensionAuthRecoveryStrategy.NO_RECOVERY);
       expect(result.requiresUserAction).toBe(true);
-    });
 
     it('should track recovery attempts', async () => {
       const error = ExtensionAuthErrorFactory.createTokenExpiredError();
@@ -178,7 +165,6 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(stats.totalAttempts).toBe(1);
       expect(stats.successfulRecoveries).toBe(1);
       expect(stats.failedRecoveries).toBe(0);
-    });
 
     it('should limit retry attempts', async () => {
       const error = ExtensionAuthErrorFactory.createRateLimitedError();
@@ -191,8 +177,7 @@ describe('ExtensionAuthRecoveryManager', () => {
 
       // Should eventually stop retrying
       expect(result.success).toBe(false);
-    });
-  });
+
 
   describe('getRecoveryStatistics', () => {
     it('should return correct statistics', async () => {
@@ -209,8 +194,7 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(stats.successfulRecoveries).toBe(2);
       expect(stats.failedRecoveries).toBe(0);
       expect(stats.recoveryStrategiesUsed.length).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('clearRecoveryHistory', () => {
     it('should clear recovery history', async () => {
@@ -226,8 +210,7 @@ describe('ExtensionAuthRecoveryManager', () => {
 
       stats = manager.getRecoveryStatistics();
       expect(stats.totalAttempts).toBe(0);
-    });
-  });
+
 
   describe('getActiveRecoveries', () => {
     it('should track active recoveries', async () => {
@@ -240,8 +223,7 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(activeRecoveries.length).toBeGreaterThanOrEqual(0);
 
       await recoveryPromise;
-    });
-  });
+
 
   describe('cancelRecovery', () => {
     it('should cancel specific recovery', async () => {
@@ -254,13 +236,11 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(cancelled).toBe(true);
 
       await recoveryPromise;
-    });
 
     it('should return false for non-existent recovery', () => {
       const cancelled = manager.cancelRecovery('/api/nonexistent/', 'test');
       expect(cancelled).toBe(false);
-    });
-  });
+
 
   describe('cancelAllRecoveries', () => {
     it('should cancel all active recoveries', async () => {
@@ -276,8 +256,7 @@ describe('ExtensionAuthRecoveryManager', () => {
       expect(activeRecoveries.length).toBe(0);
 
       await Promise.all([recovery1, recovery2]);
-    });
-  });
+
 
   describe('error handling in recovery', () => {
     it('should handle exceptions during recovery gracefully', async () => {
@@ -288,18 +267,15 @@ describe('ExtensionAuthRecoveryManager', () => {
 
       expect(result.success).toBe(false);
       expect(result.requiresUserAction).toBe(true);
-    });
-  });
-});
+
+
 
 describe('Global recovery manager instance', () => {
   it('should provide singleton instance', () => {
     const instance1 = ExtensionAuthRecoveryManager.getInstance();
     const instance2 = ExtensionAuthRecoveryManager.getInstance();
     expect(instance1).toBe(instance2);
-  });
 
   it('should be accessible via exported constant', () => {
     expect(extensionAuthRecoveryManager).toBeInstanceOf(ExtensionAuthRecoveryManager);
-  });
-});
+

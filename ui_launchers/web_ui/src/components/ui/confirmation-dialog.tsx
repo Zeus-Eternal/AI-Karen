@@ -6,7 +6,8 @@
  * 
  * Requirements: 7.2, 7.7
  */
-'use client';
+"use client";
+
 import React, { useEffect, useRef } from 'react';
 import { AlertTriangle, Trash2, UserX, Shield, X } from 'lucide-react';
 export interface ConfirmationDialogProps {
@@ -121,13 +122,13 @@ export function ConfirmationDialog({
   const getDefaultIcon = () => {
     switch (type) {
       case 'danger':
-        return <AlertTriangle className="h-6 w-6 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-6 w-6 " />;
       case 'warning':
-        return <AlertTriangle className="h-6 w-6 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-6 w-6 " />;
       case 'info':
-        return <Shield className="h-6 w-6 sm:w-auto md:w-full" />;
+        return <Shield className="h-6 w-6 " />;
       default:
-        return <AlertTriangle className="h-6 w-6 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-6 w-6 " />;
     }
   };
   const styles = getTypeStyles();
@@ -158,7 +159,7 @@ export function ConfirmationDialog({
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
             aria-label="Close dialog"
           >
-            <X className="h-5 w-5 sm:w-auto md:w-full" />
+            <X className="h-5 w-5 " />
           </button>
           <div className="p-6 sm:p-4 md:p-6">
             {/* Icon and Title */}
@@ -184,7 +185,7 @@ export function ConfirmationDialog({
                   <ul className="text-sm text-gray-600 space-y-1 md:text-base lg:text-lg">
                     {details.map((detail, index) => (
                       <li key={index} className="flex items-start">
-                        <span className="inline-block w-2 h-2 bg-gray-400 rounded-full mt-1.5 mr-2 flex-shrink-0 sm:w-auto md:w-full" />
+                        <span className="inline-block w-2 h-2 bg-gray-400 rounded-full mt-1.5 mr-2 flex-shrink-0 " />
                         {detail}
                       </li>
                     ))}
@@ -200,7 +201,7 @@ export function ConfirmationDialog({
                   <input
                     type="text"
                     value={typedText}
-                    onChange={(e) = aria-label="Input"> setTypedText(e.target.value)}
+                    onChange={(e) => setTypedText(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     }
                     autoComplete="off"
@@ -227,7 +228,7 @@ export function ConfirmationDialog({
                aria-label="Button">
                 {loading ? (
                   <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 sm:w-auto md:w-full" />
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 " />
                     Processing...
                   </div>
                 ) : (
@@ -273,7 +274,7 @@ export function DeleteUserConfirmation({
         'The user will lose access immediately',
         'Any ongoing sessions will be terminated'
       ]}
-      icon={<Trash2 className="h-6 w-6 sm:w-auto md:w-full" />}
+      icon={<Trash2 className="h-6 w-6 " />}
     />
   );
 }
@@ -306,7 +307,7 @@ export function DeactivateUserConfirmation({
         'The account can be reactivated later',
         'User data will be preserved'
       ]}
-      icon={<UserX className="h-6 w-6 sm:w-auto md:w-full" />}
+      icon={<UserX className="h-6 w-6 " />}
     />
   );
 }

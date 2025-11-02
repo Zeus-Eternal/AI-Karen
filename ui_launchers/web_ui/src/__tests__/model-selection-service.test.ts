@@ -29,7 +29,7 @@ vi.mock('@/lib/karen-backend', () => ({
             used: 250 * 1024 * 1024 * 1024,
             usage_percent: 50
           }
-        });
+
       }
       
       if (url.includes('/api/system/memory')) {
@@ -37,7 +37,7 @@ vi.mock('@/lib/karen-backend', () => ({
           total: 8 * 1024 * 1024 * 1024,
           available: 4 * 1024 * 1024 * 1024,
           used: 4 * 1024 * 1024 * 1024
-        });
+
       }
       
       if (url.includes('/api/models/resource-usage/history')) {
@@ -49,13 +49,13 @@ vi.mock('@/lib/karen-backend', () => ({
           memory_usage: 1000000000,
           cpu_usage: 25,
           timestamp: new Date().toISOString()
-        });
+
       }
       
       if (url.includes('/api/providers/compatibility')) {
         return Promise.resolve({
           compatible: true
-        });
+
       }
       
       if (url.includes('/api/models/health/file-check')) {
@@ -63,14 +63,14 @@ vi.mock('@/lib/karen-backend', () => ({
           exists: true,
           readable: true,
           corrupted: false
-        });
+
       }
       
       if (url.includes('/api/models/load-test')) {
         return Promise.resolve({
           success: true,
           memory_usage: 2000000000
-        });
+
       }
       
       // Default response for model endpoints
@@ -91,7 +91,6 @@ describe('ModelSelectionService Directory Scanning', () => {
   beforeEach(() => {
     service = ModelSelectionService.getInstance();
     service.clearCache();
-  });
 
   describe('scanLlamaCppModels', () => {
     it('should scan and return llama-cpp models with proper metadata', async () => {
@@ -111,7 +110,6 @@ describe('ModelSelectionService Directory Scanning', () => {
         expect(model.metadata).toHaveProperty('architecture');
         expect(model.capabilities).toContain('text-generation');
       }
-    });
 
     it('should include health information when requested', async () => {
       const models = await service.scanLlamaCppModels('models/llama-cpp', { includeHealth: true });
@@ -124,8 +122,7 @@ describe('ModelSelectionService Directory Scanning', () => {
           expect(model.health).toHaveProperty('last_check');
         }
       }
-    });
-  });
+
 
   describe('scanTransformersModels', () => {
     it('should scan and return transformers models with proper metadata', async () => {
@@ -143,8 +140,7 @@ describe('ModelSelectionService Directory Scanning', () => {
         expect(model).toHaveProperty('metadata');
         expect(model.capabilities.length).toBeGreaterThan(0);
       }
-    });
-  });
+
 
   describe('scanStableDiffusionModels', () => {
     it('should scan and return stable diffusion models with proper metadata', async () => {
@@ -164,8 +160,7 @@ describe('ModelSelectionService Directory Scanning', () => {
         expect(model.metadata).toHaveProperty('resolution');
         expect(model.capabilities).toContain('text2img');
       }
-    });
-  });
+
 
   describe('scanFluxModels', () => {
     it('should scan and return flux models with proper metadata', async () => {
@@ -185,15 +180,13 @@ describe('ModelSelectionService Directory Scanning', () => {
         expect(model.metadata).toHaveProperty('variant');
         expect(model.capabilities).toContain('text2img');
       }
-    });
-  });
+
 
   describe('scanLocalDirectories', () => {
     it('should scan all directories and return combined results', async () => {
       const models = await service.scanLocalDirectories({
         directories: ['models/llama-cpp', 'models/transformers', 'models/stable-diffusion', 'models/flux']
-      });
-      
+
       expect(Array.isArray(models)).toBe(true);
       
       // Check that we have models from different types
@@ -213,8 +206,7 @@ describe('ModelSelectionService Directory Scanning', () => {
         expect(model).toHaveProperty('capabilities');
         expect(model).toHaveProperty('metadata');
         expect(model).toHaveProperty('last_scanned');
-      });
-    });
+
 
     it('should use cache when not forcing refresh', async () => {
       // First call
@@ -224,7 +216,6 @@ describe('ModelSelectionService Directory Scanning', () => {
       const models2 = await service.scanLocalDirectories({});
       
       expect(models1).toEqual(models2);
-    });
 
     it('should bypass cache when forcing refresh', async () => {
       // First call
@@ -234,24 +225,21 @@ describe('ModelSelectionService Directory Scanning', () => {
       const models = await service.scanLocalDirectories({ forceRefresh: true });
       
       expect(Array.isArray(models)).toBe(true);
-    });
-  });
+
 
   describe('getAvailableModels with scanning', () => {
     it('should integrate directory scanning with existing model fetching', async () => {
       const models = await service.getAvailableModels(false, {
         forceRefresh: true,
         includeHealth: true
-      });
-      
+
       expect(Array.isArray(models)).toBe(true);
       expect(models.length).toBeGreaterThan(0);
       
       // Should have models with scanning metadata
       const scannedModels = models.filter(m => m.last_scanned);
       expect(scannedModels.length).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('selectOptimalModel with type filtering', () => {
     it('should filter models by type', async () => {
@@ -265,33 +253,28 @@ describe('ModelSelectionService Directory Scanning', () => {
       if (imageResult.selectedModel) {
         expect(imageResult.selectedModel.type).toBe('image');
       }
-    });
 
     it('should include dynamic scanning when requested', async () => {
       const result = await service.selectOptimalModel({ 
         includeDynamicScan: true,
         forceRefresh: true 
-      });
-      
+
       expect(result).toHaveProperty('selectedModel');
       expect(result).toHaveProperty('availableModels');
       expect(result).toHaveProperty('selectionReason');
       
       // Should have some models available
       expect(result.availableModels.length).toBeGreaterThan(0);
-    });
 
     it('should support multimodal model selection', async () => {
       const result = await service.selectOptimalModel({ 
         filterByType: 'text',
         includeDynamicScan: true 
-      });
-      
+
       if (result.selectedModel) {
         // Should select either text or multimodal model that supports text
         expect(['text', 'multimodal']).toContain(result.selectedModel.type);
       }
-    });
 
     it('should handle context preservation in model selection', async () => {
       const currentContext = {
@@ -303,12 +286,10 @@ describe('ModelSelectionService Directory Scanning', () => {
         filterByType: 'text',
         contextPreservation: true,
         currentContext
-      });
 
       expect(result).toHaveProperty('selectedModel');
       expect(result).toHaveProperty('availableModels');
-    });
-  });
+
 
   describe('Enhanced Model Registry', () => {
     it('should create and maintain model registry with categorization', async () => {
@@ -325,7 +306,6 @@ describe('ModelSelectionService Directory Scanning', () => {
       expect(registry.categories).toHaveProperty('byHealth');
       
       expect(typeof registry.lastUpdate).toBe('number');
-    });
 
     it('should use registry cache when not forcing refresh', async () => {
       // First call
@@ -335,7 +315,6 @@ describe('ModelSelectionService Directory Scanning', () => {
       const registry2 = await service.getModelRegistry();
       
       expect(registry1.lastUpdate).toBe(registry2.lastUpdate);
-    });
 
     it('should categorize models correctly', async () => {
       const registry = await service.getModelRegistry(true);
@@ -345,16 +324,14 @@ describe('ModelSelectionService Directory Scanning', () => {
         expect(Array.isArray(models)).toBe(true);
         models.forEach(model => {
           expect(model).toHaveProperty('type');
-        });
-      });
+
 
       // Check provider categorization
       Object.values(registry.categories.byProvider).forEach(models => {
         expect(Array.isArray(models)).toBe(true);
         models.forEach(model => {
           expect(model).toHaveProperty('provider');
-        });
-      });
+
 
       // Check capability categorization
       Object.values(registry.categories.byCapability).forEach(models => {
@@ -362,9 +339,8 @@ describe('ModelSelectionService Directory Scanning', () => {
         models.forEach(model => {
           expect(model).toHaveProperty('capabilities');
           expect(Array.isArray(model.capabilities)).toBe(true);
-        });
-      });
-    });
+
+
 
     it('should provide model lookup with filtering', async () => {
       const textModels = await service.lookupModels({ type: 'text' });
@@ -377,18 +353,15 @@ describe('ModelSelectionService Directory Scanning', () => {
       
       textModels.forEach(model => {
         expect(model.type).toBe('text');
-      });
-      
+
       localModels.forEach(model => {
         expect(model.status).toBe('local');
-      });
-      
+
       healthyModels.forEach(model => {
         if (model.health) {
           expect(model.health.is_healthy).toBe(true);
         }
-      });
-    });
+
 
     it('should support model lookup with sorting', async () => {
       const modelsByName = await service.lookupModels({ sortBy: 'name' });
@@ -407,13 +380,11 @@ describe('ModelSelectionService Directory Scanning', () => {
           expect(modelsBySize[i].size || 0).toBeGreaterThanOrEqual(modelsBySize[i-1].size || 0);
         }
       }
-    });
 
     it('should support model lookup with limits', async () => {
       const limitedModels = await service.lookupModels({ limit: 2 });
       
       expect(limitedModels.length).toBeLessThanOrEqual(2);
-    });
 
     it('should get models by category', async () => {
       const textModels = await service.getModelsByCategory('type', 'text');
@@ -426,16 +397,13 @@ describe('ModelSelectionService Directory Scanning', () => {
       
       textModels.forEach(model => {
         expect(model.type).toBe('text');
-      });
-      
+
       llamaCppModels.forEach(model => {
         expect(model.provider).toBe('llama-cpp');
-      });
-      
+
       chatModels.forEach(model => {
         expect(model.capabilities).toContain('chat');
-      });
-    });
+
 
     it('should provide category summary with counts', async () => {
       const summary = await service.getModelCategorySummary();
@@ -449,13 +417,11 @@ describe('ModelSelectionService Directory Scanning', () => {
       Object.values(summary.types).forEach(count => {
         expect(typeof count).toBe('number');
         expect(count).toBeGreaterThanOrEqual(0);
-      });
-      
+
       Object.values(summary.providers).forEach(count => {
         expect(typeof count).toBe('number');
         expect(count).toBeGreaterThanOrEqual(0);
-      });
-    });
+
 
     it('should include registry stats in selection stats', async () => {
       const stats = await service.getSelectionStats();
@@ -471,8 +437,7 @@ describe('ModelSelectionService Directory Scanning', () => {
         expect(typeof stats.registryStats.healthyModels).toBe('number');
         expect(typeof stats.registryStats.unhealthyModels).toBe('number');
       }
-    });
-  });
+
 
   describe('File System Watching', () => {
     it('should start and stop directory watching', async () => {
@@ -486,7 +451,6 @@ describe('ModelSelectionService Directory Scanning', () => {
         directories: ['models/llama-cpp', 'models/transformers'],
         enablePolling: true,
         pollingInterval: 1000
-      });
 
       status = service.getWatchingStatus();
       expect(status.isWatching).toBe(true);
@@ -499,7 +463,6 @@ describe('ModelSelectionService Directory Scanning', () => {
       status = service.getWatchingStatus();
       expect(status.isWatching).toBe(false);
       expect(status.watchedDirectories).toHaveLength(0);
-    });
 
     it('should not start watching if already active', async () => {
       await service.startDirectoryWatching();
@@ -513,14 +476,12 @@ describe('ModelSelectionService Directory Scanning', () => {
       expect(status1.watchedDirectories).toEqual(status2.watchedDirectories);
       
       service.stopDirectoryWatching();
-    });
 
     it('should add and remove change listeners', async () => {
       const changeEvents: any[] = [];
       
       const unsubscribe = service.addChangeListener((event) => {
         changeEvents.push(event);
-      });
 
       let status = service.getWatchingStatus();
       expect(status.changeListeners).toBe(1);
@@ -530,7 +491,6 @@ describe('ModelSelectionService Directory Scanning', () => {
 
       status = service.getWatchingStatus();
       expect(status.changeListeners).toBe(0);
-    });
 
     it('should automatically start watching when getting available models', async () => {
       // Ensure not watching initially
@@ -547,7 +507,6 @@ describe('ModelSelectionService Directory Scanning', () => {
       expect(status.watchedDirectories.length).toBeGreaterThan(0);
 
       service.stopDirectoryWatching();
-    });
 
     it('should clear watching state when clearing cache', () => {
       // Start watching first
@@ -562,7 +521,6 @@ describe('ModelSelectionService Directory Scanning', () => {
       status = service.getWatchingStatus();
       expect(status.isWatching).toBe(false);
       expect(status.watchedDirectories).toHaveLength(0);
-    });
 
     it('should include watching stats in selection stats', async () => {
       await service.startDirectoryWatching();
@@ -583,8 +541,7 @@ describe('ModelSelectionService Directory Scanning', () => {
       }
 
       service.stopDirectoryWatching();
-    });
-  });
+
 
   describe('Health Monitoring', () => {
     it('should perform comprehensive health check on models', async () => {
@@ -608,7 +565,6 @@ describe('ModelSelectionService Directory Scanning', () => {
           expect(typeof health.performance_metrics).toBe('object');
         }
       }
-    });
 
     it('should check if model is ready with health checking', async () => {
       const models = await service.getAvailableModels();
@@ -624,7 +580,6 @@ describe('ModelSelectionService Directory Scanning', () => {
         const healthReady = await service.isModelReady(model.id, true);
         expect(typeof healthReady).toBe('boolean');
       }
-    });
 
     it('should get model health status', async () => {
       const models = await service.getAvailableModels();
@@ -640,12 +595,10 @@ describe('ModelSelectionService Directory Scanning', () => {
           expect(health).toHaveProperty('memory_requirement');
         }
       }
-    });
 
     it('should return null for non-existent model health', async () => {
       const health = await service.getModelHealthStatus('non-existent-model');
       expect(health).toBeNull();
-    });
 
     it('should include performance metrics in selection stats', async () => {
       const stats = await service.getSelectionStats();
@@ -686,8 +639,7 @@ describe('ModelSelectionService Directory Scanning', () => {
         expect(Array.isArray(stats.healthSummary.commonIssues)).toBe(true);
         expect(typeof stats.healthSummary.lastHealthCheck).toBe('string');
       }
-    });
-  });
+
 
   describe('Resource Monitoring', () => {
     it('should get system resource information', async () => {
@@ -712,7 +664,6 @@ describe('ModelSelectionService Directory Scanning', () => {
       expect(resources.disk).toHaveProperty('available');
       expect(resources.disk).toHaveProperty('used');
       expect(resources.disk).toHaveProperty('usage_percent');
-    });
 
     it('should check if model can be loaded based on resources', async () => {
       const models = await service.getAvailableModels();
@@ -737,14 +688,12 @@ describe('ModelSelectionService Directory Scanning', () => {
           expect(typeof canLoad.reason).toBe('string');
         }
       }
-    });
 
     it('should return error for non-existent model resource check', async () => {
       const canLoad = await service.canLoadModel('non-existent-model');
       
       expect(canLoad.canLoad).toBe(false);
       expect(canLoad.reason).toBe('Model not found');
-    });
 
     it('should get optimal GPU for model loading', async () => {
       const models = await service.getAvailableModels();
@@ -766,7 +715,6 @@ describe('ModelSelectionService Directory Scanning', () => {
           expect(optimalGPU).toHaveProperty('gpu_name');
         }
       }
-    });
 
     it('should monitor resource usage during operations', async () => {
       const models = await service.getAvailableModels();
@@ -783,7 +731,6 @@ describe('ModelSelectionService Directory Scanning', () => {
         expect(typeof monitoring.peak_memory_usage).toBe('number');
         expect(typeof monitoring.average_cpu_usage).toBe('number');
       }
-    });
 
     it('should track model resource usage', async () => {
       const models = await service.getAvailableModels();
@@ -804,7 +751,6 @@ describe('ModelSelectionService Directory Scanning', () => {
           expect(typeof usage.timestamp).toBe('string');
         }
       }
-    });
 
     it('should get resource usage history', async () => {
       const history = await service.getResourceUsageHistory('24h');
@@ -825,8 +771,7 @@ describe('ModelSelectionService Directory Scanning', () => {
         expect(typeof entry.model_id).toBe('string');
         expect(typeof entry.model_name).toBe('string');
         expect(typeof entry.efficiency_score).toBe('number');
-      });
-    });
+
 
     it('should get resource recommendations', async () => {
       const recommendations = await service.getResourceRecommendations();
@@ -846,16 +791,14 @@ describe('ModelSelectionService Directory Scanning', () => {
         expect(rec).toHaveProperty('resource_fit');
         
         expect(['excellent', 'good', 'acceptable', 'poor']).toContain(rec.resource_fit);
-      });
-    });
+
 
     it('should select optimal model with resource feasibility checking', async () => {
       const result = await service.selectOptimalModel({
         checkResourceFeasibility: true,
         maxMemoryUsage: 8 * 1024 * 1024 * 1024, // 8GB limit
         requireGPU: false
-      });
-      
+
       expect(result).toHaveProperty('selectedModel');
       expect(result).toHaveProperty('availableModels');
       expect(result).toHaveProperty('selectionReason');
@@ -867,8 +810,7 @@ describe('ModelSelectionService Directory Scanning', () => {
         // but the model should have passed the initial feasibility filter
         expect(canLoad).toHaveProperty('canLoad');
       }
-    });
-  });
+
 
   describe('Multi-modal provider management', () => {
     it('should switch models with context preservation', async () => {
@@ -884,27 +826,23 @@ describe('ModelSelectionService Directory Scanning', () => {
         const result = await service.switchModel(targetModel.id, {
           preserveContext: true,
           currentContext
-        });
 
         expect(result).toHaveProperty('success');
         expect(result).toHaveProperty('contextPreserved');
         expect(result).toHaveProperty('model');
         expect(result).toHaveProperty('message');
       }
-    });
 
     it('should get models by type with enhanced registry filtering', async () => {
       const textModels = await service.getModelsByType('text', {
         includeMultimodal: true,
         onlyHealthy: false
-      });
 
       expect(Array.isArray(textModels)).toBe(true);
       
       textModels.forEach(model => {
         expect(['text', 'multimodal']).toContain(model.type);
-      });
-    });
+
 
     it('should check context preservation support', () => {
       const textModel = {
@@ -934,7 +872,6 @@ describe('ModelSelectionService Directory Scanning', () => {
       
       // Different types should not support context preservation for text model
       expect(service.checkContextPreservationSupport(textModel, imageContext)).toBe(false);
-    });
 
     it('should get enhanced selection stats with registry and watching information', async () => {
       const stats = await service.getSelectionStats();
@@ -953,6 +890,5 @@ describe('ModelSelectionService Directory Scanning', () => {
       expect(typeof stats.modelsByType.image).toBe('number');
       expect(typeof stats.modelsByType.embedding).toBe('number');
       expect(typeof stats.modelsByType.multimodal).toBe('number');
-    });
-  });
-});
+
+

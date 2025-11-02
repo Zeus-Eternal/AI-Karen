@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
             'X-Load-Time': loadTime.toString(),
             'X-Model-Provider': targetModel.provider
           }
-        });
+
       } else {
         return NextResponse.json(
           {

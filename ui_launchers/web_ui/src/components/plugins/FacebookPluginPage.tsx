@@ -1,6 +1,7 @@
 
 "use client";
 
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Facebook, MessageSquare, AlertTriangle, Settings, Info, BarChart3, Send, Zap } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 import { Switch } from "@/components/ui/switch";
 
 /**
@@ -22,7 +23,7 @@ export default function FacebookPluginPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3">
-        <Facebook className="h-8 w-8 text-blue-600 sm:w-auto md:w-full" />
+        <Facebook className="h-8 w-8 text-blue-600 " />
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Facebook Integration Plugin (Conceptual)</h2>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -31,16 +32,16 @@ export default function FacebookPluginPage() {
         </div>
       </div>
 
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
-        <AlertTitle>Conceptual Demonstration & Mocked Functionality</AlertTitle>
-        <AlertDescription>
+      <div role="alert" className="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground text-destructive border-destructive/50 dark:border-destructive [&>svg]:text-destructive">
+        <AlertTriangle className="h-4 w-4 " />
+        <h5 className="mb-1 font-medium leading-none tracking-tight">Conceptual Demonstration & Mocked Functionality</h5>
+        <div className="text-sm [&_p]:leading-relaxed">
           The UI elements on this page are for demonstration purposes and are **not currently functional**.
           Implementing live Facebook integration requires OAuth, API calls, and a secure backend service.
           <br />
           This page illustrates how Karen could potentially interact with Facebook if such a plugin were fully developed.
-        </AlertDescription>
-      </Alert>
+        </div>
+      </div>
 
       {/* Connection Settings Section */}
       <Card>
@@ -51,8 +52,8 @@ export default function FacebookPluginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <button className="w-full sm:w-auto" disabled aria-label="Button">
-            <Facebook className="mr-2 h-4 w-4 sm:w-auto md:w-full" /> Connect with Facebook
+          <Button className="w-full sm:w-auto" disabled>
+            <Facebook className="mr-2 h-4 w-4" /> Connect with Facebook
           </Button>
           <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
             Status: Not Connected. Connecting would typically involve an OAuth flow.
@@ -72,14 +73,14 @@ export default function FacebookPluginPage() {
         </CardHeader>
         <CardContent>
           <ResponsiveCardGrid>
-          <button variant="outline" disabled className="w-full" aria-label="Button">
-            <MessageSquare className="mr-2 h-4 w-4 sm:w-auto md:w-full"/> Fetch Recent Posts
+          <Button variant="outline" disabled className="w-full" >
+            <MessageSquare className="mr-2 h-4 w-4 "/> Fetch Recent Posts
           </Button>
-          <button variant="outline" disabled className="w-full" aria-label="Button">
-            <Send className="mr-2 h-4 w-4 sm:w-auto md:w-full"/> Post to Timeline
+          <Button variant="outline" disabled className="w-full" >
+            <Send className="mr-2 h-4 w-4 "/> Post to Timeline
           </Button>
-           <button variant="outline" disabled className="w-full" aria-label="Button">
-            <BarChart3 className="mr-2 h-4 w-4 sm:w-auto md:w-full"/> Analyze Page Insights
+           <Button variant="outline" disabled className="w-full" >
+            <BarChart3 className="mr-2 h-4 w-4 "/> Analyze Page Insights
           </Button>
           </ResponsiveCardGrid>
         </CardContent>
@@ -91,7 +92,7 @@ export default function FacebookPluginPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center">
-            <Zap className="mr-2 h-5 w-5 text-primary/80 sm:w-auto md:w-full" />
+            <Zap className="mr-2 h-5 w-5 text-primary/80 " />
             Premium Automations (Conceptual)
           </CardTitle>
           <CardDescription>
@@ -113,16 +114,16 @@ export default function FacebookPluginPage() {
             </div>
             <Switch id="auto-summarize-mentions" disabled />
           </div>
-           <Alert variant="default" className="bg-background">
-            <Info className="h-4 w-4 sm:w-auto md:w-full" />
-            <AlertTitle className="text-sm font-semibold md:text-base lg:text-lg">Future Feature</AlertTitle>
-            <AlertDescription className="text-xs sm:text-sm md:text-base">
+           <div role="alert" className="bg-background relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground">
+            <Info className="h-4 w-4 " />
+            <h5 className="text-sm font-semibold md:text-base lg:text-lg mb-1 font-medium leading-none tracking-tight">Future Feature</h5>
+            <div className="text-xs sm:text-sm md:text-base text-sm [&_p]:leading-relaxed">
               These automation features are placeholders. Implementing background tasks for Facebook requires secure authentication (OAuth refresh tokens), scheduling, and API interaction logic on a backend server.
-            </AlertDescription>
-          </Alert>
+            </div>
+          </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <button disabled aria-label="Button">Save Facebook Automations</Button>
+          <Button disabled >Save Facebook Automations</Button>
         </CardFooter>
       </Card>
 
@@ -139,7 +140,7 @@ export default function FacebookPluginPage() {
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="fb-default-page">Default Page/Profile ID for Posts</Label>
-            <input id="fb-default-page" placeholder="e.g., 100001234567890 or 'mypageusername'" disabled />
+            <Input id="fb-default-page" placeholder="e.g., 100001234567890 or 'mypageusername'" disabled />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="fb-notifications">Notification Preferences</Label>
@@ -149,14 +150,14 @@ export default function FacebookPluginPage() {
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <button disabled aria-label="Button">Save Facebook Settings</Button>
+          <Button disabled >Save Facebook Settings</Button>
         </CardFooter>
       </Card>
 
-      <Alert>
-        <Info className="h-4 w-4 sm:w-auto md:w-full" />
-        <AlertTitle>How to Use This Conceptual Plugin (Future)</AlertTitle>
-        <AlertDescription>
+      <div role="alert" className="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground">
+        <Info className="h-4 w-4 " />
+        <h5 className="mb-1 font-medium leading-none tracking-tight">How to Use This Conceptual Plugin (Future)</h5>
+        <div className="text-sm [&_p]:leading-relaxed">
           If this plugin were fully implemented, you could potentially interact with it via chat. For example:
           <ul className="list-disc list-inside pl-4 mt-1 text-xs sm:text-sm md:text-base">
               <li>"Karen, what are my latest Facebook notifications?"</li>
@@ -164,8 +165,8 @@ export default function FacebookPluginPage() {
               <li>"Karen, show me insights for my main Facebook page."</li>
           </ul>
           This page illustrates future possibilities for more direct Facebook interaction and configuration.
-        </AlertDescription>
-      </Alert>
+        </div>
+      </div>
 
     </div>
   );

@@ -7,13 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import { NextRequest } from 'next/server';
-import { 
-  AuditLogger, 
-  getAuditLogger, 
-  auditLog,
-  AUDIT_ACTIONS,
-  AUDIT_RESOURCE_TYPES 
-} from '../audit-logger';
+import {  AuditLogger, getAuditLogger, auditLog, AUDIT_ACTIONS, AUDIT_RESOURCE_TYPES } from '../audit-logger';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 
 // Mock the database utilities
@@ -45,11 +39,9 @@ describe('AuditLogger', () => {
 
     // Reset mocks
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('log method', () => {
     it('should create audit log with basic information', async () => {
@@ -71,8 +63,7 @@ describe('AuditLogger', () => {
         details: {},
         ip_address: undefined,
         user_agent: undefined
-      });
-    });
+
 
     it('should create audit log with all optional parameters', async () => {
       const mockAuditId = 'audit-456';
@@ -100,8 +91,7 @@ describe('AuditLogger', () => {
         details,
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
+
 
     it('should extract IP address from x-forwarded-for header', async () => {
       const mockAuditId = 'audit-789';
@@ -127,7 +117,6 @@ describe('AuditLogger', () => {
           ip_address: '203.0.113.1'
         })
       );
-    });
 
     it('should handle manual IP and user agent override', async () => {
       const mockAuditId = 'audit-manual';
@@ -149,8 +138,7 @@ describe('AuditLogger', () => {
           user_agent: 'Custom Agent'
         })
       );
-    });
-  });
+
 
   describe('specialized logging methods', () => {
     it('should log user action correctly', async () => {
@@ -176,8 +164,7 @@ describe('AuditLogger', () => {
         details,
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
+
 
     it('should log authentication action correctly', async () => {
       const mockAuditId = 'audit-auth-action';
@@ -201,8 +188,7 @@ describe('AuditLogger', () => {
         details,
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
+
 
     it('should log system config action correctly', async () => {
       const mockAuditId = 'audit-config-action';
@@ -227,8 +213,7 @@ describe('AuditLogger', () => {
         details,
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
+
 
     it('should log security event with severity', async () => {
       const mockAuditId = 'audit-security-event';
@@ -256,8 +241,7 @@ describe('AuditLogger', () => {
         }),
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
+
 
     it('should log bulk operation correctly', async () => {
       const mockAuditId = 'audit-bulk-operation';
@@ -288,9 +272,8 @@ describe('AuditLogger', () => {
         },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
-  });
+
+
 
   describe('audit log retrieval', () => {
     it('should get audit logs with default parameters', async () => {
@@ -323,7 +306,6 @@ describe('AuditLogger', () => {
         {},
         { page: 1, limit: 50 }
       );
-    });
 
     it('should get audit logs with filter and pagination', async () => {
       const filter = { user_id: 'user-123', action: AUDIT_ACTIONS.USER_CREATE };
@@ -347,7 +329,6 @@ describe('AuditLogger', () => {
 
       expect(result).toEqual(mockLogs);
       expect(mockDbUtils.getAuditLogs).toHaveBeenCalledWith(filter, pagination);
-    });
 
     it('should get user audit logs', async () => {
       const userId = 'user-123';
@@ -372,7 +353,6 @@ describe('AuditLogger', () => {
         { user_id: userId },
         { page: 1, limit: 50 }
       );
-    });
 
     it('should get recent audit logs', async () => {
       const mockLogs = {
@@ -404,8 +384,7 @@ describe('AuditLogger', () => {
         { start_date: expect.any(Date) },
         { page: 1, limit: 100, sort_by: 'timestamp', sort_order: 'desc' }
       );
-    });
-  });
+
 
   describe('audit log statistics', () => {
     it('should calculate audit log statistics', async () => {
@@ -462,9 +441,8 @@ describe('AuditLogger', () => {
           { date: '2024-01-01', count: 1 },
           { date: '2024-01-02', count: 2 }
         ]
-      });
-    });
-  });
+
+
 
   describe('search functionality', () => {
     it('should search audit logs by text', async () => {
@@ -496,8 +474,7 @@ describe('AuditLogger', () => {
 
       expect(result.data).toHaveLength(1);
       expect(result.data[0].action).toBe(AUDIT_ACTIONS.USER_CREATE);
-    });
-  });
+
 
   describe('singleton instance', () => {
     it('should return the same instance', () => {
@@ -505,13 +482,11 @@ describe('AuditLogger', () => {
       const instance2 = getAuditLogger();
 
       expect(instance1).toBe(instance2);
-    });
-  });
+
 
   describe('convenience functions', () => {
     beforeEach(() => {
       mockDbUtils.createAuditLog.mockResolvedValue('audit-convenience');
-    });
 
     it('should log user created event', async () => {
       await auditLog.userCreated('admin-123', 'user-456', 'test@example.com', 'user', mockRequest);
@@ -524,8 +499,7 @@ describe('AuditLogger', () => {
         details: { email: 'test@example.com', role: 'user' },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
+
 
     it('should log successful login event', async () => {
       await auditLog.loginSuccessful('user-123', mockRequest);
@@ -538,8 +512,7 @@ describe('AuditLogger', () => {
         details: {},
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
+
 
     it('should log failed login event', async () => {
       await auditLog.loginFailed('user-123', 'invalid_password', mockRequest);
@@ -552,8 +525,7 @@ describe('AuditLogger', () => {
         details: { reason: 'invalid_password' },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
+
 
     it('should log config update event', async () => {
       await auditLog.configUpdated('admin-123', 'mfa_required', false, true, mockRequest);
@@ -566,8 +538,7 @@ describe('AuditLogger', () => {
         details: { old_value: false, new_value: true },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
+
 
     it('should log security breach event', async () => {
       const details = { threat_type: 'sql_injection', severity: 'high' };
@@ -581,8 +552,7 @@ describe('AuditLogger', () => {
         details: { ...details, severity: 'critical' },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
+
 
     it('should log bulk user activation', async () => {
       const userIds = ['user-1', 'user-2', 'user-3'];
@@ -599,8 +569,7 @@ describe('AuditLogger', () => {
         },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
+
 
     it('should log data export event', async () => {
       await auditLog.dataExported('admin-123', 'csv', 150, mockRequest);
@@ -613,9 +582,8 @@ describe('AuditLogger', () => {
         details: { export_type: 'csv', record_count: 150 },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
-  });
+
+
 
   describe('error handling', () => {
     it('should handle database errors gracefully', async () => {
@@ -625,7 +593,6 @@ describe('AuditLogger', () => {
       await expect(
         auditLogger.log('user-123', AUDIT_ACTIONS.USER_CREATE, AUDIT_RESOURCE_TYPES.USER)
       ).rejects.toThrow('Database connection failed');
-    });
 
     it('should handle missing request headers gracefully', async () => {
       const mockAuditId = 'audit-no-headers';
@@ -649,6 +616,5 @@ describe('AuditLogger', () => {
           user_agent: undefined
         })
       );
-    });
-  });
-});
+
+

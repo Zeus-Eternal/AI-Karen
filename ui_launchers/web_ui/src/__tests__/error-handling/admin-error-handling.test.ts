@@ -18,12 +18,10 @@ const originalConsoleWarn = console.warn;
 beforeAll(() => {
   console.error = jest.fn();
   console.warn = jest.fn();
-});
 
 afterAll(() => {
   console.error = originalConsoleError;
   console.warn = originalConsoleWarn;
-});
 
 describe('AdminErrorHandler', () => {
   describe('Error Creation', () => {
@@ -36,7 +34,6 @@ describe('AdminErrorHandler', () => {
       expect(error.severity).toBe('medium');
       expect(error.retryable).toBe(true);
       expect(error.remediation).toHaveLength(3);
-    });
 
     it('should create unknown error for invalid code', () => {
       const error = AdminErrorHandler.createError('INVALID_CODE', 'Test details');
@@ -46,7 +43,6 @@ describe('AdminErrorHandler', () => {
       expect(error.details).toBe('Test details');
       expect(error.severity).toBe('medium');
       expect(error.retryable).toBe(true);
-    });
 
     it('should create error from HTTP status codes', () => {
       const error401 = AdminErrorHandler.fromHttpError(401);
@@ -64,7 +60,6 @@ describe('AdminErrorHandler', () => {
       const error500 = AdminErrorHandler.fromHttpError(500);
       expect(error500.code).toBe('SYSTEM_SERVER_ERROR');
       expect(error500.severity).toBe('high');
-    });
 
     it('should create error from network errors', () => {
       const networkError = new TypeError('Failed to fetch');
@@ -73,7 +68,6 @@ describe('AdminErrorHandler', () => {
       expect(error.code).toBe('SYSTEM_NETWORK_ERROR');
       expect(error.severity).toBe('medium');
       expect(error.retryable).toBe(true);
-    });
 
     it('should handle abort errors', () => {
       const abortError = new Error('The operation was aborted');
@@ -84,8 +78,7 @@ describe('AdminErrorHandler', () => {
       expect(error.code).toBe('OPERATION_CANCELLED');
       expect(error.severity).toBe('low');
       expect(error.retryable).toBe(true);
-    });
-  });
+
 
   describe('Retry Logic', () => {
     it('should determine if error is retryable', () => {
@@ -95,7 +88,6 @@ describe('AdminErrorHandler', () => {
       expect(AdminErrorHandler.shouldRetry(retryableError, 1)).toBe(true);
       expect(AdminErrorHandler.shouldRetry(retryableError, 3)).toBe(false); // Max attempts reached
       expect(AdminErrorHandler.shouldRetry(nonRetryableError, 1)).toBe(false);
-    });
 
     it('should calculate retry delay with exponential backoff', () => {
       const error = AdminErrorHandler.createError('SYSTEM_SERVER_ERROR');
@@ -109,20 +101,17 @@ describe('AdminErrorHandler', () => {
       expect(delay2).toBeGreaterThan(delay1);
       expect(delay3).toBeGreaterThan(delay2);
       expect(delay3).toBeLessThan(31000); // Should cap at 30s + jitter
-    });
 
     it('should not retry validation errors', () => {
       const validationError = AdminErrorHandler.createError('VALIDATION_WEAK_PASSWORD');
       
       expect(AdminErrorHandler.shouldRetry(validationError, 1)).toBe(false);
-    });
 
     it('should not retry auth errors', () => {
       const authError = AdminErrorHandler.createError('AUTH_INSUFFICIENT_PERMISSIONS');
       
       expect(AdminErrorHandler.shouldRetry(authError, 1)).toBe(false);
-    });
-  });
+
 
   describe('Error Logging', () => {
     it('should log high severity errors to console.error', () => {
@@ -131,8 +120,7 @@ describe('AdminErrorHandler', () => {
       AdminErrorHandler.logError(error, {
         operation: 'test_operation',
         timestamp: new Date()
-      });
-      
+
       expect(console.error).toHaveBeenCalledWith(
         'Admin Error:',
         expect.objectContaining({
@@ -140,7 +128,6 @@ describe('AdminErrorHandler', () => {
           severity: 'high'
         })
       );
-    });
 
     it('should log medium severity errors to console.warn', () => {
       const error = AdminErrorHandler.createError('USER_NOT_FOUND');
@@ -154,9 +141,8 @@ describe('AdminErrorHandler', () => {
           severity: 'medium'
         })
       );
-    });
-  });
-});
+
+
 
 describe('useAdminErrorHandler Hook', () => {
   it('should initialize with no error', () => {
@@ -166,19 +152,16 @@ describe('useAdminErrorHandler Hook', () => {
     expect(result.current.isRetrying).toBe(false);
     expect(result.current.retryCount).toBe(0);
     expect(result.current.canRetry).toBe(false);
-  });
 
   it('should handle errors correctly', () => {
     const { result } = renderHook(() => useAdminErrorHandler());
     
     act(() => {
       result.current.handleError(new Error('Test error'));
-    });
-    
+
     expect(result.current.error).not.toBeNull();
     expect(result.current.error?.code).toBe('UNKNOWN_ERROR');
     expect(result.current.error?.details).toBe('Test error');
-  });
 
   it('should handle HTTP response errors', () => {
     const { result } = renderHook(() => useAdminErrorHandler());
@@ -187,10 +170,8 @@ describe('useAdminErrorHandler Hook', () => {
     
     act(() => {
       result.current.handleError(mockResponse);
-    });
-    
+
     expect(result.current.error?.code).toBe('USER_NOT_FOUND');
-  });
 
   it('should handle async operations with success', async () => {
     const { result } = renderHook(() => useAdminErrorHandler());
@@ -200,12 +181,10 @@ describe('useAdminErrorHandler Hook', () => {
     let operationResult: any;
     await act(async () => {
       operationResult = await result.current.handleAsyncOperation(mockOperation);
-    });
-    
+
     expect(operationResult).toBe('success');
     expect(result.current.error).toBeNull();
     expect(mockOperation).toHaveBeenCalled();
-  });
 
   it('should handle async operations with failure', async () => {
     const { result } = renderHook(() => useAdminErrorHandler());
@@ -215,12 +194,10 @@ describe('useAdminErrorHandler Hook', () => {
     let operationResult: any;
     await act(async () => {
       operationResult = await result.current.handleAsyncOperation(mockOperation);
-    });
-    
+
     expect(operationResult).toBeNull();
     expect(result.current.error).not.toBeNull();
     expect(result.current.error?.details).toBe('Operation failed');
-  });
 
   it('should retry failed operations', async () => {
     const { result } = renderHook(() => useAdminErrorHandler({
@@ -234,50 +211,41 @@ describe('useAdminErrorHandler Hook', () => {
     // First attempt fails
     await act(async () => {
       await result.current.handleAsyncOperation(mockOperation);
-    });
-    
+
     expect(result.current.error).not.toBeNull();
     expect(result.current.canRetry).toBe(true);
     
     // Retry succeeds
     await act(async () => {
       await result.current.retry();
-    });
-    
+
     await waitFor(() => {
       expect(result.current.error).toBeNull();
       expect(result.current.retryCount).toBe(0);
-    });
-    
+
     expect(mockOperation).toHaveBeenCalledTimes(2);
-  });
 
   it('should not retry non-retryable errors', async () => {
     const { result } = renderHook(() => useAdminErrorHandler());
     
     act(() => {
       result.current.handleError(new Response('Forbidden', { status: 403 }));
-    });
-    
+
     expect(result.current.canRetry).toBe(false);
-  });
 
   it('should clear errors', () => {
     const { result } = renderHook(() => useAdminErrorHandler());
     
     act(() => {
       result.current.handleError(new Error('Test error'));
-    });
-    
+
     expect(result.current.error).not.toBeNull();
     
     act(() => {
       result.current.clearError();
-    });
-    
+
     expect(result.current.error).toBeNull();
     expect(result.current.retryCount).toBe(0);
-  });
 
   it('should set custom error', () => {
     const { result } = renderHook(() => useAdminErrorHandler());
@@ -286,10 +254,8 @@ describe('useAdminErrorHandler Hook', () => {
     
     act(() => {
       result.current.setError(customError);
-    });
-    
+
     expect(result.current.error).toBe(customError);
-  });
 
   it('should handle context in operations', async () => {
     const { result } = renderHook(() => useAdminErrorHandler({
@@ -301,12 +267,10 @@ describe('useAdminErrorHandler Hook', () => {
     await act(async () => {
       await result.current.handleAsyncOperation(mockOperation, {
         resource: 'test_resource'
-      });
-    });
-    
+
+
     expect(result.current.error).not.toBeNull();
     // Context should be merged and used for logging
-  });
 
   it('should respect max retry limit', async () => {
     const { result } = renderHook(() => useAdminErrorHandler({
@@ -318,19 +282,16 @@ describe('useAdminErrorHandler Hook', () => {
     // First attempt
     await act(async () => {
       await result.current.handleAsyncOperation(mockOperation);
-    });
-    
+
     expect(result.current.canRetry).toBe(true);
     
     // First retry
     await act(async () => {
       await result.current.retry();
-    });
-    
+
     expect(result.current.canRetry).toBe(false);
     expect(result.current.retryCount).toBe(1);
-  });
-});
+
 
 describe('Error Message Quality', () => {
   it('should provide helpful remediation steps', () => {
@@ -352,9 +313,8 @@ describe('Error Message Quality', () => {
       error.remediation!.forEach(step => {
         expect(step.length).toBeGreaterThan(10); // Reasonable length
         expect(step).toMatch(/^[A-Z]/); // Starts with capital letter
-      });
-    });
-  });
+
+
 
   it('should have appropriate severity levels', () => {
     const criticalErrors = ['SYSTEM_DATABASE_ERROR'];
@@ -365,23 +325,19 @@ describe('Error Message Quality', () => {
     criticalErrors.forEach(code => {
       const error = AdminErrorHandler.createError(code);
       expect(error.severity).toBe('critical');
-    });
-    
+
     highErrors.forEach(code => {
       const error = AdminErrorHandler.createError(code);
       expect(error.severity).toBe('high');
-    });
-    
+
     mediumErrors.forEach(code => {
       const error = AdminErrorHandler.createError(code);
       expect(error.severity).toBe('medium');
-    });
-    
+
     lowErrors.forEach(code => {
       const error = AdminErrorHandler.createError(code);
       expect(error.severity).toBe('low');
-    });
-  });
+
 
   it('should have user-friendly messages', () => {
     const error = AdminErrorHandler.createError('USER_NOT_FOUND');
@@ -393,8 +349,7 @@ describe('Error Message Quality', () => {
     expect(error.message.length).toBeGreaterThan(10);
     expect(error.message).toMatch(/^[A-Z]/); // Starts with capital
     expect(error.message).toMatch(/\.$/); // Ends with period
-  });
-});
+
 
 describe('Specialized Error Handlers', () => {
   it('should configure user management errors correctly', () => {
@@ -404,7 +359,6 @@ describe('Specialized Error Handlers', () => {
     // Should have appropriate configuration for user management
     expect(result.current.error).toBeNull();
     expect(result.current.canRetry).toBe(false);
-  });
 
   it('should configure bulk operation errors correctly', () => {
     const { useBulkOperationErrors } = require('@/hooks/useAdminErrorHandler');
@@ -413,7 +367,6 @@ describe('Specialized Error Handlers', () => {
     // Bulk operations should have limited retries
     expect(result.current.error).toBeNull();
     expect(result.current.canRetry).toBe(false);
-  });
 
   it('should configure system config errors correctly', () => {
     const { useSystemConfigErrors } = require('@/hooks/useAdminErrorHandler');
@@ -422,7 +375,6 @@ describe('Specialized Error Handlers', () => {
     // System config should allow more retries
     expect(result.current.error).toBeNull();
     expect(result.current.canRetry).toBe(false);
-  });
 
   it('should configure audit log errors correctly', () => {
     const { useAuditLogErrors } = require('@/hooks/useAdminErrorHandler');
@@ -431,8 +383,7 @@ describe('Specialized Error Handlers', () => {
     // Audit logs should be less intrusive
     expect(result.current.error).toBeNull();
     expect(result.current.canRetry).toBe(false);
-  });
-});
+
 
 describe('Error Recovery Scenarios', () => {
   it('should handle network recovery', async () => {
@@ -445,20 +396,17 @@ describe('Error Recovery Scenarios', () => {
     // Network fails
     await act(async () => {
       await result.current.handleAsyncOperation(mockOperation);
-    });
-    
+
     expect(result.current.error?.code).toBe('SYSTEM_NETWORK_ERROR');
     expect(result.current.canRetry).toBe(true);
     
     // Network recovers
     await act(async () => {
       await result.current.retry();
-    });
-    
+
     await waitFor(() => {
       expect(result.current.error).toBeNull();
-    });
-  });
+
 
   it('should handle server recovery', async () => {
     const { result } = renderHook(() => useAdminErrorHandler());
@@ -470,20 +418,17 @@ describe('Error Recovery Scenarios', () => {
     // Server error
     await act(async () => {
       await result.current.handleAsyncOperation(mockOperation);
-    });
-    
+
     expect(result.current.error?.code).toBe('SYSTEM_SERVER_ERROR');
     expect(result.current.canRetry).toBe(true);
     
     // Server recovers
     await act(async () => {
       await result.current.retry();
-    });
-    
+
     await waitFor(() => {
       expect(result.current.error).toBeNull();
-    });
-  });
+
 
   it('should handle permanent failures gracefully', async () => {
     const { result } = renderHook(() => useAdminErrorHandler({
@@ -495,20 +440,16 @@ describe('Error Recovery Scenarios', () => {
     // Initial failure
     await act(async () => {
       await result.current.handleAsyncOperation(mockOperation);
-    });
-    
+
     // Retry 1
     await act(async () => {
       await result.current.retry();
-    });
-    
+
     // Retry 2 (final)
     await act(async () => {
       await result.current.retry();
-    });
-    
+
     expect(result.current.canRetry).toBe(false);
     expect(result.current.retryCount).toBe(2);
     expect(result.current.error).not.toBeNull();
-  });
-});
+

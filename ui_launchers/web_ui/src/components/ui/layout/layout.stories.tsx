@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GridContainer } from './grid-container';
 import { FlexContainer } from './flex-container';
@@ -295,7 +296,6 @@ export const ComplexLayouts: Story = {
                   <FlexContainer justify="between" align="center" className="mt-4">
                     <span className="text-xs text-gray-500 sm:text-sm md:text-base">Category</span>
                     <button className="px-3 py-1 bg-blue-500 text-white text-xs rounded sm:text-sm md:text-base" aria-label="Button">
-                      Action
                     </button>
                   </FlexContainer>
                 </div>
@@ -322,7 +322,6 @@ export const ComplexLayouts: Story = {
                   images, and other content elements.
                 </p>
                 <p>
-                  The layout automatically adapts to different screen sizes while maintaining
                   optimal reading width and sidebar positioning.
                 </p>
               </SampleCard>
@@ -349,8 +348,7 @@ export const Overview: Story = {
     <div className="p-8 space-y-12 sm:p-4 md:p-6">
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-4">Modern Layout System</h1>
-        <p className="text-lg text-gray-600 max-w-3xl mx-auto sm:w-auto md:w-full">
-          A comprehensive layout system built with CSS Grid, Flexbox, and container queries 
+        <p className="text-lg text-gray-600 max-w-3xl mx-auto ">
           for creating responsive, flexible, and maintainable layouts.
         </p>
       </div>
@@ -375,9 +373,9 @@ export const Overview: Story = {
             Flexible layouts with alignment, distribution, and wrapping options.
           </p>
           <FlexContainer gap="0.5rem" justify="between">
-            <div className="h-8 w-16 bg-green-200 rounded sm:w-auto md:w-full"></div>
-            <div className="h-8 w-16 bg-green-200 rounded sm:w-auto md:w-full"></div>
-            <div className="h-8 w-16 bg-green-200 rounded sm:w-auto md:w-full"></div>
+            <div className="h-8 w-16 bg-green-200 rounded "></div>
+            <div className="h-8 w-16 bg-green-200 rounded "></div>
+            <div className="h-8 w-16 bg-green-200 rounded "></div>
           </FlexContainer>
         </div>
 
@@ -395,28 +393,28 @@ export const Overview: Story = {
         <h2 className="text-2xl font-bold mb-6 text-center">Key Benefits</h2>
         <FlexContainer wrap gap="2rem" justify="center">
           <div className="text-center">
-            <div className="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
+            <div className="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-3 flex items-center justify-center ">
               <span className="text-white font-bold">📱</span>
             </div>
             <h4 className="font-semibold">Responsive</h4>
             <p className="text-sm text-gray-600 md:text-base lg:text-lg">Adapts to all screen sizes</p>
           </div>
           <div className="text-center">
-            <div className="w-16 h-16 bg-green-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
+            <div className="w-16 h-16 bg-green-500 rounded-full mx-auto mb-3 flex items-center justify-center ">
               <span className="text-white font-bold">⚡</span>
             </div>
             <h4 className="font-semibold">Performance</h4>
             <p className="text-sm text-gray-600 md:text-base lg:text-lg">Optimized CSS layouts</p>
           </div>
           <div className="text-center">
-            <div className="w-16 h-16 bg-purple-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
+            <div className="w-16 h-16 bg-purple-500 rounded-full mx-auto mb-3 flex items-center justify-center ">
               <span className="text-white font-bold">🎨</span>
             </div>
             <h4 className="font-semibold">Flexible</h4>
             <p className="text-sm text-gray-600 md:text-base lg:text-lg">Customizable and extensible</p>
           </div>
           <div className="text-center">
-            <div className="w-16 h-16 bg-orange-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
+            <div className="w-16 h-16 bg-orange-500 rounded-full mx-auto mb-3 flex items-center justify-center ">
               <span className="text-white font-bold">🔧</span>
             </div>
             <h4 className="font-semibold">Developer Friendly</h4>

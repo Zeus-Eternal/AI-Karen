@@ -4,13 +4,7 @@
  * Template rendering, validation, and management system for email templates.
  * Supports variable substitution, conditional content, and template validation.
  */
-import { 
-  EmailTemplate, 
-  EmailTemplateVariables, 
-  EmailTemplateValidation,
-  CreateEmailTemplateRequest,
-  UpdateEmailTemplateRequest 
-} from './types';
+import {  EmailTemplate, EmailTemplateVariables, EmailTemplateValidation, CreateEmailTemplateRequest, UpdateEmailTemplateRequest } from './types';
 import { DEFAULT_TEMPLATES } from './config';
 /**
  * Simple template variable replacement
@@ -26,7 +20,7 @@ export class TemplateEngine {
     Object.entries(variables).forEach(([key, value]) => {
       const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
       rendered = rendered.replace(regex, String(value));
-    });
+
     // Handle conditional blocks {{#if variable}}...{{/if}}
     rendered = this.renderConditionals(rendered, variables);
     // Clean up any remaining template syntax
@@ -41,7 +35,7 @@ export class TemplateEngine {
     return template.replace(conditionalRegex, (match, variable, content) => {
       const value = variables[variable];
       return value ? content : '';
-    });
+
   }
   /**
    * Clean up remaining template syntax
@@ -247,7 +241,7 @@ export class EmailTemplateManager {
     const variables: EmailTemplateVariables = {};
     variableNames.forEach(name => {
       variables[name] = [name] || `[${name}]`;
-    });
+
     return variables;
   }
   /**

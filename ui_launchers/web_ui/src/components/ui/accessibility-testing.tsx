@@ -59,14 +59,14 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
         headingHierarchyValid = false;
       }
       lastLevel = level;
-    });
+
     results.push({
       name: 'Heading Hierarchy',
       description: 'Checks if headings follow proper hierarchical order',
       passed: headingHierarchyValid,
       error: headingHierarchyValid ? undefined : 'Heading levels skip numbers in hierarchy',
       suggestions: headingHierarchyValid ? undefined : ['Use consecutive heading levels (h1, h2, h3, etc.)'],
-    });
+
     // Test 2: Check for alt text on images
     const images = element.querySelectorAll('img');
     let imagesWithAlt = 0;
@@ -74,7 +74,7 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
       if (img.hasAttribute('alt')) {
         imagesWithAlt++;
       }
-    });
+
     const altTextPassed = images.length === 0 || imagesWithAlt === images.length;
     results.push({
       name: 'Image Alt Text',
@@ -82,7 +82,7 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
       passed: altTextPassed,
       error: altTextPassed ? undefined : `${images.length - imagesWithAlt} images missing alt text`,
       suggestions: altTextPassed ? undefined : ['Add alt attributes to all images', 'Use empty alt="" for decorative images'],
-    });
+
     // Test 3: Check for proper form labels
     const inputs = element.querySelectorAll('input, select, textarea');
     let inputsWithLabels = 0;
@@ -93,7 +93,7 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
       if (hasLabel) {
         inputsWithLabels++;
       }
-    });
+
     const labelsPassed = inputs.length === 0 || inputsWithLabels === inputs.length;
     results.push({
       name: 'Form Labels',
@@ -101,7 +101,7 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
       passed: labelsPassed,
       error: labelsPassed ? undefined : `${inputs.length - inputsWithLabels} inputs missing labels`,
       suggestions: labelsPassed ? undefined : ['Add labels to all form inputs', 'Use aria-label or aria-labelledby for inputs'],
-    });
+
     // Test 4: Check for keyboard accessibility
     const interactiveElements = element.querySelectorAll('button, a, input, select, textarea, [tabindex]');
     let keyboardAccessible = 0;
@@ -110,7 +110,7 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
       if (tabIndex === null || parseInt(tabIndex) >= 0) {
         keyboardAccessible++;
       }
-    });
+
     const keyboardPassed = interactiveElements.length === 0 || keyboardAccessible === interactiveElements.length;
     results.push({
       name: 'Keyboard Accessibility',
@@ -118,7 +118,7 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
       passed: keyboardPassed,
       error: keyboardPassed ? undefined : `${interactiveElements.length - keyboardAccessible} elements not keyboard accessible`,
       suggestions: keyboardPassed ? undefined : ['Ensure all interactive elements have tabindex >= 0', 'Remove tabindex="-1" from interactive elements'],
-    });
+
     // Test 5: Check for ARIA landmarks
     const landmarks = element.querySelectorAll('[role="banner"], [role="main"], [role="navigation"], [role="complementary"], [role="contentinfo"], header, main, nav, aside, footer');
     const landmarksPassed = landmarks.length > 0;
@@ -128,7 +128,7 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
       passed: landmarksPassed,
       error: landmarksPassed ? undefined : 'No landmark regions found',
       suggestions: landmarksPassed ? undefined : ['Add semantic HTML elements (header, main, nav, aside, footer)', 'Use ARIA landmark roles'],
-    });
+
     // Test 6: Check for color contrast (basic check)
     const elementsWithColor = element.querySelectorAll('*');
     let contrastIssues = 0;
@@ -140,7 +140,7 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
       if (color === backgroundColor) {
         contrastIssues++;
       }
-    });
+
     const contrastPassed = contrastIssues === 0;
     results.push({
       name: 'Color Contrast',
@@ -148,7 +148,7 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
       passed: contrastPassed,
       error: contrastPassed ? undefined : `${contrastIssues} potential contrast issues found`,
       suggestions: contrastPassed ? undefined : ['Ensure text has sufficient contrast with background', 'Use tools like WebAIM Contrast Checker'],
-    });
+
     return results;
   }, []);
   const runTests = React.useCallback(async () => {

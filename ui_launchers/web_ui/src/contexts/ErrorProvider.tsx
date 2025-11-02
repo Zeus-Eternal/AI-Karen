@@ -7,18 +7,11 @@
  * Requirements: 3.2, 3.3, 3.7, 4.4
  */
 
-'use client';
+"use client";
 
 import React, { createContext, useContext, useCallback, useState, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
-import { 
-  useIntelligentError, 
-  useIntelligentErrorBoundary,
-  useIntelligentApiError,
-  type ErrorAnalysisResponse,
-  type ErrorAnalysisRequest,
-  type UseIntelligentErrorOptions 
-} from '@/hooks/use-intelligent-error';
+import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
 
 export interface ErrorContextType {
   // Current error analysis
@@ -97,19 +90,16 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({
       onAnalysisError?.(error);
       options.onAnalysisError?.(error);
     },
-  });
 
   // Error boundary hook
   const boundaryError = useIntelligentErrorBoundary({
     ...options,
     autoAnalyze: false, // We'll handle this manually
-  });
 
   // API error hook
   const apiError = useIntelligentApiError({
     ...options,
     autoAnalyze: false, // We'll handle this manually
-  });
 
   // Generate unique error ID
   const generateErrorId = useCallback(() => {
@@ -134,7 +124,6 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({
       const updated = [newError, ...prev];
       // Limit the number of global errors
       return updated.slice(0, maxGlobalErrors);
-    });
 
     // Analyze the error
     intelligentError.analyzeError(error, context);
@@ -227,7 +216,7 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({
           };
         }
         return updated;
-      });
+
     }
   }, [intelligentError.analysis]);
 

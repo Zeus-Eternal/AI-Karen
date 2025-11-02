@@ -3,6 +3,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ChatModeSelector, { ChatMode, ChatContext } from '../ChatModeSelector';
@@ -76,7 +77,7 @@ vi.mock('@/components/ui/badge', () => ({
 vi.mock('@/components/ui/select', () => ({
   Select: ({ children, value, onValueChange }: any) => (
     <div data-testid="select" data-value={value}>
-      <button onClick={() = aria-label="Button"> onValueChange?.('test-value')}>
+      <button onClick={() => onValueChange?.('test-value')}>
         {children}
       </button>
     </div>
@@ -130,14 +131,12 @@ describe('ChatModeSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders without crashing', () => {
     render(<ChatModeSelector {...mockProps} />);
     
     expect(screen.getByText('Chat Mode & Model Selection')).toBeInTheDocument();
     expect(screen.getByText('Switch between different chat modes and models')).toBeInTheDocument();
-  });
 
   it('displays available chat modes', () => {
     render(<ChatModeSelector {...mockProps} />);
@@ -145,14 +144,12 @@ describe('ChatModeSelector', () => {
     expect(screen.getByText('Text Generation')).toBeInTheDocument();
     expect(screen.getByText('Image Generation')).toBeInTheDocument();
     expect(screen.getByText('Multi-modal')).toBeInTheDocument();
-  });
 
   it('shows current mode as active', () => {
     render(<ChatModeSelector {...mockProps} currentMode="text" />);
     
     const textModeButton = screen.getByText('Text Generation').closest('button');
     expect(textModeButton).toHaveAttribute('data-variant', 'default');
-  });
 
   it('displays model count for each mode', () => {
     render(<ChatModeSelector {...mockProps} />);
@@ -161,7 +158,6 @@ describe('ChatModeSelector', () => {
     expect(screen.getByText('1 model')).toBeInTheDocument(); // Text mode
     expect(screen.getByText('1 model')).toBeInTheDocument(); // Image mode  
     expect(screen.getByText('1 model')).toBeInTheDocument(); // Multimodal mode
-  });
 
   it('shows active conversation context when provided', () => {
     render(
@@ -173,7 +169,6 @@ describe('ChatModeSelector', () => {
     
     expect(screen.getByText('Active Conversation')).toBeInTheDocument();
     expect(screen.getByText('1 message in current conversation')).toBeInTheDocument();
-  });
 
   it('calls onModeChange when mode is changed', async () => {
     render(<ChatModeSelector {...mockProps} />);
@@ -184,8 +179,7 @@ describe('ChatModeSelector', () => {
     // Should show confirmation dialog for mode change
     await waitFor(() => {
       expect(screen.getByTestId('dialog')).toBeInTheDocument();
-    });
-  });
+
 
   it('shows confirmation dialog for mode changes with active conversation', async () => {
     render(
@@ -201,8 +195,7 @@ describe('ChatModeSelector', () => {
     await waitFor(() => {
       expect(screen.getByTestId('dialog')).toBeInTheDocument();
       expect(screen.getByText('Confirm Mode Change')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles model selection within current mode', () => {
     render(<ChatModeSelector {...mockProps} />);
@@ -210,7 +203,6 @@ describe('ChatModeSelector', () => {
     const selectElement = screen.getByTestId('select');
     expect(selectElement).toBeInTheDocument();
     expect(selectElement).toHaveAttribute('data-value', 'text-model-1');
-  });
 
   it('disables controls when disabled prop is true', () => {
     render(<ChatModeSelector {...mockProps} disabled={true} />);
@@ -218,14 +210,12 @@ describe('ChatModeSelector', () => {
     const buttons = screen.getAllByRole('button');
     buttons.forEach(button => {
       expect(button).toBeDisabled();
-    });
-  });
+
 
   it('shows quick switch button when multiple models available', () => {
     render(<ChatModeSelector {...mockProps} />);
     
     expect(screen.getByText('Quick Switch')).toBeInTheDocument();
-  });
 
   it('displays model capabilities in model selection', () => {
     render(<ChatModeSelector {...mockProps} />);
@@ -233,7 +223,6 @@ describe('ChatModeSelector', () => {
     // The select should show model capabilities as badges
     expect(screen.getByText('text-generation')).toBeInTheDocument();
     expect(screen.getByText('chat')).toBeInTheDocument();
-  });
 
   it('handles loading state', () => {
     // Mock loading state
@@ -244,12 +233,10 @@ describe('ChatModeSelector', () => {
       setSelectedModel: vi.fn(),
       loading: true,
       error: null
-    });
 
     render(<ChatModeSelector {...mockProps} />);
     
     expect(screen.getByText('Loading models...')).toBeInTheDocument();
-  });
 
   it('handles error state', () => {
     // Mock error state
@@ -260,12 +247,10 @@ describe('ChatModeSelector', () => {
       setSelectedModel: vi.fn(),
       loading: false,
       error: 'Failed to load models'
-    });
 
     render(<ChatModeSelector {...mockProps} />);
     
     expect(screen.getByText('Error loading models: Failed to load models')).toBeInTheDocument();
-  });
 
   it('shows warning when no models available for a mode', () => {
     // Mock state with no image models
@@ -288,11 +273,9 @@ describe('ChatModeSelector', () => {
       setSelectedModel: vi.fn(),
       loading: false,
       error: null
-    });
 
     render(<ChatModeSelector {...mockProps} />);
     
     // Image mode should show 0 models
     expect(screen.getByText('0 models')).toBeInTheDocument();
-  });
-});
+

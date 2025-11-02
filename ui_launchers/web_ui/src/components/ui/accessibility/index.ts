@@ -37,8 +37,8 @@ export * from '../skip-links';
 export * from '../accessibility-testing';
 
 // Re-export commonly used types
-export type { AriaProps, AriaRole } from '../../../utils/aria';
-export type { FocusManagementOptions } from '../../../hooks/use-focus-management';
-export type { KeyboardNavigationOptions } from '../../../hooks/use-keyboard-navigation';
-export type { SkipLink } from '../skip-links';
-export type { AccessibilityTestResult, AccessibilityTestSuite } from '../accessibility-testing';
+import { export type { AriaProps, AriaRole } from '../../../utils/aria';
+import { export type { FocusManagementOptions } from '../../../hooks/use-focus-management';
+import { export type { KeyboardNavigationOptions } from '../../../hooks/use-keyboard-navigation';
+import { export type { SkipLink } from '../skip-links';
+import { export type { AccessibilityTestResult, AccessibilityTestSuite } from '../accessibility-testing';

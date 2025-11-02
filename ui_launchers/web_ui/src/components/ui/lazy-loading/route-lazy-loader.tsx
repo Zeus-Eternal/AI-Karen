@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { Suspense, ComponentType } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, AlertTriangle } from 'lucide-react';
@@ -22,7 +23,7 @@ const DefaultRouteFallback: React.FC = () => (
         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         className="inline-block mb-4"
       >
-        <Loader2 className="h-8 w-8 text-primary sm:w-auto md:w-full" />
+        <Loader2 className="h-8 w-8 text-primary " />
       </motion.div>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -53,7 +54,7 @@ const DefaultRouteErrorFallback: React.FC<{ error: Error; resetErrorBoundary: ()
         transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
         className="mb-6"
       >
-        <AlertTriangle className="h-16 w-16 text-destructive mx-auto sm:w-auto md:w-full" />
+        <AlertTriangle className="h-16 w-16 text-destructive mx-auto " />
       </motion.div>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -68,7 +69,6 @@ const DefaultRouteErrorFallback: React.FC<{ error: Error; resetErrorBoundary: ()
         </p>
         <details className="mb-6 text-left">
           <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors md:text-base lg:text-lg">
-            Technical details
           </summary>
           <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-auto max-h-32 sm:text-sm md:text-base">
             {error.message}
@@ -80,13 +80,11 @@ const DefaultRouteErrorFallback: React.FC<{ error: Error; resetErrorBoundary: ()
             onClick={resetErrorBoundary}
             className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
            aria-label="Button">
-            Try Again
           </button>
           <button
-            onClick={() = aria-label="Button"> window.location.href = '/'}
+            onClick={() => window.location.href = '/'}
             className="w-full px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors"
           >
-            Go to Home
           </button>
         </div>
       </motion.div>
@@ -114,18 +112,14 @@ export const RouteLazyLoader: React.FC<RouteLazyLoaderProps> = ({
 };
 // Utility function to create lazy route components
 export function createLazyRoute<T extends ComponentType<any>>(
-  importFn: () => Promise<{ default: T }>,
-  options: {
-    fallback?: React.ComponentType;
-    errorFallback?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>;
+  importFn: () => Promise<{ default: T }>, options: { fallback?: React.ComponentType; errorFallback?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>; from "@/lib/placeholder";
     preload?: boolean;
   } = {}
 ) {
   const LazyRouteComponent = React.lazy(importFn);
   // Preload the component if requested
   if (options.preload) {
-    importFn().catch(error => {
-    });
+    importFn().catch(error => { }); from "@/components/ui/placeholder";
   }
   return ((props: any) => (
     <RouteLazyLoader
@@ -140,8 +134,7 @@ export function createLazyRoute<T extends ComponentType<any>>(
 export function useRoutePreloader() {
   const preloadRoute = React.useCallback(
     (importFn: () => Promise<{ default: ComponentType<any> }>) => {
-      importFn().catch(error => {
-      });
+      importFn().catch(error => { }); from "@/components/ui/placeholder";
     },
     []
   );

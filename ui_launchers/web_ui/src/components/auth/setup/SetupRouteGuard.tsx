@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -34,12 +34,11 @@ export const SetupRouteGuard: React.FC<SetupRouteGuardProps> = ({
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950">
         <div className="text-center space-y-4">
           <div className="relative">
-            <Brain className="h-16 w-16 text-primary mx-auto animate-pulse sm:w-auto md:w-full" />
-            <div className="absolute inset-0 h-16 w-16 bg-primary/20 rounded-full blur-xl animate-pulse sm:w-auto md:w-full" />
+            <Brain className="h-16 w-16 text-primary mx-auto animate-pulse " />
+            <div className="absolute inset-0 h-16 w-16 bg-primary/20 rounded-full blur-xl animate-pulse " />
           </div>
           <div className="space-y-2">
             <h2 className="text-xl font-semibold text-foreground">
-              Checking Setup Status
             </h2>
             <p className="text-muted-foreground">
               Please wait while we verify your system configuration...
@@ -55,10 +54,9 @@ export const SetupRouteGuard: React.FC<SetupRouteGuardProps> = ({
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950 p-4 sm:p-4 md:p-6">
         <div className="text-center space-y-4 max-w-md">
-          <Brain className="h-16 w-16 text-red-500 mx-auto sm:w-auto md:w-full" />
+          <Brain className="h-16 w-16 text-red-500 mx-auto " />
           <div className="space-y-2">
             <h2 className="text-xl font-semibold text-red-600">
-              Setup Check Failed
             </h2>
             <p className="text-muted-foreground">
               Unable to verify setup status. Please try refreshing the page.
@@ -68,10 +66,9 @@ export const SetupRouteGuard: React.FC<SetupRouteGuardProps> = ({
             </p>
           </div>
           <button
-            onClick={() = aria-label="Button"> window.location.reload()}
+            onClick={() => window.location.reload()}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
-            Refresh Page
           </button>
         </div>
       </div>

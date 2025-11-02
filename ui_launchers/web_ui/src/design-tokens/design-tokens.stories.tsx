@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { designTokens } from './index';
 
@@ -146,7 +147,6 @@ export const Typography: Story = {
               className="font-medium"
               style={{ fontSize: value }}
             >
-              The quick brown fox jumps over the lazy dog
             </div>
           </div>
         ))}
@@ -163,7 +163,6 @@ export const Typography: Story = {
                 className="text-lg"
                 style={{ fontWeight: value }}
               >
-                Font Weight Example
               </div>
             </div>
           ))}
@@ -278,7 +277,6 @@ export const Overview: Story = {
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-4">Modern Design System</h1>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          A comprehensive design token system built for modern web applications with 
           consistent colors, spacing, typography, shadows, and animations.
         </p>
       </div>
@@ -332,7 +330,6 @@ export const Overview: Story = {
               transitionTimingFunction: designTokens.animations.easing.out
             }}
           >
-            Primary Button
           </button>
           
           <div 

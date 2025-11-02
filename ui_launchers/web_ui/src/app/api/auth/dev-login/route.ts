@@ -16,7 +16,6 @@ export async function POST() {
 export async function GET() {
   logger.info("Health check against deprecated /api/auth/dev-login endpoint", {
     path: "/api/auth/dev-login",
-  });
 
   return NextResponse.json(
     {

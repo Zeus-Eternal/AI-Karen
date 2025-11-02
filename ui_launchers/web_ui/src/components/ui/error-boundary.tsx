@@ -1,4 +1,5 @@
 "use client";
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,8 +31,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         <Card className="w-full max-w-md mx-auto">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5 sm:w-auto md:w-full" />
-              Something went wrong
+              <AlertTriangle className="h-5 w-5 " />
             </CardTitle>
             <CardDescription>
               An error occurred while loading this component. This might be due to a backend connection issue.
@@ -45,14 +45,13 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 </div>
               )}
               <button
-                onClick={() = aria-label="Button"> {
+                onClick={() => {
                   this.setState({ hasError: false, error: undefined });
                   window.location.reload();
                 }}
                 className="w-full"
               >
-                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Reload Page
+                <RefreshCw className="h-4 w-4 mr-2 " />
               </Button>
             </div>
           </CardContent>

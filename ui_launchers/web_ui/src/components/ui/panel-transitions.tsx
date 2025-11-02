@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { Variants } from "framer-motion";
 
 // ============================================================================
@@ -301,8 +302,7 @@ export function applyTransitionConfig(
     } else {
       enhancedVariants[key] = variant;
     }
-  });
-  
+
   return enhancedVariants;
 }
 
@@ -322,7 +322,6 @@ export function createReducedMotionVariants(variants: Variants): Variants {
     } else {
       reducedVariants[key] = variant;
     }
-  });
-  
+
   return reducedVariants;
 }

@@ -145,8 +145,7 @@ export function groupPermissionsByCategory(permissions: ExtensionPermissions): R
   // Initialize categories
   Object.keys(PERMISSION_CATEGORIES).forEach(category => {
     grouped[category] = [];
-  });
-  
+
   // Group filesystem permissions
   if (permissions.filesystem) {
     grouped.filesystem = permissions.filesystem;

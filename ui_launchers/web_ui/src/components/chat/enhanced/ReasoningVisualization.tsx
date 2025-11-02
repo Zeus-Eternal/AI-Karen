@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,52 +7,18 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import {
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-'use client';
+
+import { } from 'lucide-react';
 
 
 
+import { } from '@/components/ui/collapsible';
 
+import { } from '@/components/ui/tooltip';
 
-
-
-
-
-  Brain,
-  ChevronRight,
-  ChevronDown,
-  Search,
-  Lightbulb,
-  Database,
-  Zap,
-  CheckCircle,
-  AlertCircle,
-  Info,
-  Download,
-  Copy,
-  Eye,
-  Clock
-} from 'lucide-react';
-
-
-
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-
-  ReasoningChain,
-  ReasoningStep,
-  SourceAttribution
-} from '@/types/enhanced-chat';
+import { } from '@/types/enhanced-chat';
 
 interface ReasoningVisualizationProps {
   reasoning: ReasoningChain;
@@ -79,7 +47,7 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
         newSet.add(stepId);
       }
       return newSet;
-    });
+
   };
 
   // Get step icon based on type
@@ -137,8 +105,7 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
       
       const blob = new Blob([JSON.stringify(exportData, null, 2)], {
         type: 'application/json'
-      });
-      
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -151,7 +118,7 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
       toast({
         title: 'Exported',
         description: 'Reasoning chain exported successfully'
-      });
+
     }
   };
 
@@ -166,13 +133,13 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
       toast({
         title: 'Copied',
         description: 'Reasoning summary copied to clipboard'
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Copy Failed',
         description: 'Failed to copy reasoning summary'
-      });
+
     }
   };
 
@@ -189,17 +156,17 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
             <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
               <div className="flex items-center gap-3">
                 {/* Step Number */}
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center sm:w-auto md:w-full">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center ">
                   <span className="text-sm font-medium text-primary md:text-base lg:text-lg">{index + 1}</span>
                 </div>
 
                 {/* Step Icon */}
                 <div className="flex-shrink-0">
-                  <Icon className="h-5 w-5 text-muted-foreground sm:w-auto md:w-full" />
+                  <Icon className="h-5 w-5 text-muted-foreground " />
                 </div>
 
                 {/* Step Content */}
-                <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                <div className="flex-1 min-w-0 ">
                   <div className="flex items-center gap-2 mb-1">
                     <CardTitle className="text-sm font-medium truncate md:text-base lg:text-lg">
                       {step.description}
@@ -222,9 +189,9 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
                 {/* Expand Icon */}
                 <div className="flex-shrink-0">
                   {isExpanded ? (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground " />
                   ) : (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground " />
                   )}
                 </div>
               </div>
@@ -239,13 +206,12 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
               {step.evidence && step.evidence.length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-sm font-medium mb-2 flex items-center gap-2 md:text-base lg:text-lg">
-                    <Info className="h-4 w-4 sm:w-auto md:w-full" />
-                    Evidence
+                    <Info className="h-4 w-4 " />
                   </h4>
                   <ul className="space-y-1">
                     {step.evidence.map((evidence, evidenceIndex) => (
                       <li key={evidenceIndex} className="text-sm text-muted-foreground flex items-start gap-2 md:text-base lg:text-lg">
-                        <CheckCircle className="h-3 w-3 mt-0.5 flex-shrink-0 text-green-600 sm:w-auto md:w-full" />
+                        <CheckCircle className="h-3 w-3 mt-0.5 flex-shrink-0 text-green-600 " />
                         {evidence}
                       </li>
                     ))}
@@ -263,14 +229,13 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
                   </div>
                   <Progress value={step.confidence * 100} className="h-2" />
                   <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                    Based on evidence quality and reasoning strength
                   </p>
                 </div>
               </div>
 
               {/* Timestamp Details */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground sm:text-sm md:text-base">
-                <Clock className="h-3 w-3 sm:w-auto md:w-full" />
+                <Clock className="h-3 w-3 " />
                 <span>Processed at {format(step.timestamp, 'MMM dd, yyyy HH:mm:ss')}</span>
               </div>
             </CardContent>
@@ -285,7 +250,7 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-          <Database className="h-4 w-4 sm:w-auto md:w-full" />
+          <Database className="h-4 w-4 " />
           Source Attribution ({reasoning.sources.length})
         </CardTitle>
       </CardHeader>
@@ -313,14 +278,13 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
               )}
               
               {source.url && (
-                <button
+                <Button
                   variant="ghost"
                   size="sm"
                   className="mt-2 h-auto p-0 text-xs sm:text-sm md:text-base"
-                  onClick={() = aria-label="Button"> window.open(source.url, '_blank')}
+                  onClick={() => window.open(source.url, '_blank')}
                 >
-                  <Eye className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                  View Source
+                  <Eye className="h-3 w-3 mr-1 " />
                 </Button>
               )}
             </div>
@@ -336,7 +300,7 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className={`flex items-center gap-2 ${className}`}>
-              <Brain className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Brain className="h-4 w-4 text-muted-foreground " />
               <div className={`px-2 py-1 rounded text-xs font-medium border ${getConfidenceColor(reasoning.confidence)}`}>
                 {Math.round(reasoning.confidence * 100)}%
               </div>
@@ -359,8 +323,7 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5 sm:w-auto md:w-full" />
-            AI Reasoning Chain
+            <Brain className="h-5 w-5 " />
           </CardTitle>
           
           <div className="flex items-center gap-2">
@@ -368,12 +331,12 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
               {getConfidenceLabel(reasoning.confidence)} ({Math.round(reasoning.confidence * 100)}%)
             </div>
             
-            <button variant="outline" size="sm" onClick={copyReasoningSummary} aria-label="Button">
-              <Copy className="h-4 w-4 sm:w-auto md:w-full" />
+            <Button variant="outline" size="sm" onClick={copyReasoningSummary} >
+              <Copy className="h-4 w-4 " />
             </Button>
             
-            <button variant="outline" size="sm" onClick={handleExport} aria-label="Button">
-              <Download className="h-4 w-4 sm:w-auto md:w-full" />
+            <Button variant="outline" size="sm" onClick={handleExport} >
+              <Download className="h-4 w-4 " />
             </Button>
           </div>
         </div>
@@ -406,17 +369,17 @@ export const ReasoningVisualization: React.FC<ReasoningVisualizationProps> = ({
             {/* Sources Toggle */}
             {reasoning.sources.length > 0 && (
               <div className="pt-4">
-                <button
+                <Button
                   variant="outline"
-                  onClick={() = aria-label="Button"> setShowSources(!showSources)}
+                  onClick={() => setShowSources(!showSources)}
                   className="w-full"
                 >
-                  <Database className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                  <Database className="h-4 w-4 mr-2 " />
                   {showSources ? 'Hide' : 'Show'} Sources ({reasoning.sources.length})
                   {showSources ? (
-                    <ChevronDown className="h-4 w-4 ml-2 sm:w-auto md:w-full" />
+                    <ChevronDown className="h-4 w-4 ml-2 " />
                   ) : (
-                    <ChevronRight className="h-4 w-4 ml-2 sm:w-auto md:w-full" />
+                    <ChevronRight className="h-4 w-4 ml-2 " />
                   )}
                 </Button>
                 

@@ -5,14 +5,13 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { 
+
   createNavigationAria, 
   createAriaLabel, 
   mergeAriaProps,
   generateAriaId,
   type AriaProps,
-  ARIA_ROLES 
-} from "@/utils/aria";
+import { } from "@/utils/aria";
 
 /**
  * Navigation Container - Main navigation wrapper
@@ -499,13 +498,4 @@ export const AriaTabPanel = React.forwardRef<HTMLDivElement, AriaTabPanelProps>(
 AriaTabPanel.displayName = "AriaTabPanel";
 
 export {
-  AriaNavigation as Navigation,
-  AriaNavList as NavList,
-  AriaNavItem as NavItem,
-  AriaNavLink as NavLink,
-  AriaBreadcrumb as Breadcrumb,
-  AriaBreadcrumbItem as BreadcrumbItem,
-  AriaTabList as TabList,
-  AriaTab as Tab,
-  AriaTabPanel as TabPanel,
 };

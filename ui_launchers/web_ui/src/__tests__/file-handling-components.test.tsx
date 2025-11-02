@@ -17,7 +17,7 @@ vi.mock('ag-grid-react', () => ({
             sizeColumnsToFit: vi.fn(),
             getSelectedRows: vi.fn(() => []),
           }
-        });
+
       }
     }, [onGridReady]);
 
@@ -140,7 +140,6 @@ describe('FileUploadDropzone', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders dropzone interface', () => {
     render(
@@ -154,7 +153,6 @@ describe('FileUploadDropzone', () => {
     expect(screen.getByTestId('dropzone')).toBeInTheDocument();
     expect(screen.getByText('Upload files')).toBeInTheDocument();
     expect(screen.getByText('Drag and drop files here, or click to browse')).toBeInTheDocument();
-  });
 
   it('handles file selection', async () => {
     render(
@@ -175,8 +173,7 @@ describe('FileUploadDropzone', () => {
           type: 'image/jpeg'
         })
       ]);
-    });
-  });
+
 
   it('displays file size and count limits', () => {
     render(
@@ -191,7 +188,6 @@ describe('FileUploadDropzone', () => {
 
     expect(screen.getByText('Max 5 files')).toBeInTheDocument();
     expect(screen.getByText('Up to 10.00 MB each')).toBeInTheDocument();
-  });
 
   it('disables dropzone when disabled prop is true', () => {
     render(
@@ -207,8 +203,7 @@ describe('FileUploadDropzone', () => {
     fireEvent.click(dropzone);
 
     expect(mockOnFilesSelected).not.toHaveBeenCalled();
-  });
-});
+
 
 describe('FileMetadataGrid', () => {
   const mockOnFileSelect = vi.fn();
@@ -218,7 +213,6 @@ describe('FileMetadataGrid', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders AG-Grid with file data', () => {
     render(
@@ -233,7 +227,6 @@ describe('FileMetadataGrid', () => {
 
     expect(screen.getByTestId('ag-grid')).toBeInTheDocument();
     expect(screen.getByText('File Metadata (2 files)')).toBeInTheDocument();
-  });
 
   it('displays file statistics cards', () => {
     render(
@@ -249,7 +242,6 @@ describe('FileMetadataGrid', () => {
     expect(screen.getByText('Total Files')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('Total Size')).toBeInTheDocument();
-  });
 
   it('handles file selection from grid', async () => {
     render(
@@ -267,8 +259,7 @@ describe('FileMetadataGrid', () => {
 
     await waitFor(() => {
       expect(mockOnFileSelect).toHaveBeenCalledWith(mockFileMetadata[0]);
-    });
-  });
+
 
   it('shows no data overlay when files array is empty', () => {
     render(
@@ -283,7 +274,6 @@ describe('FileMetadataGrid', () => {
 
     expect(screen.getByTestId('no-rows-overlay')).toBeInTheDocument();
     expect(screen.getByText('No files found')).toBeInTheDocument();
-  });
 
   it('displays loading state', () => {
     render(
@@ -299,8 +289,7 @@ describe('FileMetadataGrid', () => {
 
     // Loading state would be handled by AG-Grid's loading overlay
     expect(screen.getByTestId('ag-grid')).toBeInTheDocument();
-  });
-});
+
 
 describe('MultimediaPreview', () => {
   const mockOnDownload = vi.fn();
@@ -308,7 +297,6 @@ describe('MultimediaPreview', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders image preview for image files', () => {
     const imageFile = mockFileMetadata[0];
@@ -323,7 +311,6 @@ describe('MultimediaPreview', () => {
 
     expect(screen.getByText('Image Preview')).toBeInTheDocument();
     expect(screen.getByText(imageFile.filename)).toBeInTheDocument();
-  });
 
   it('renders file information card', () => {
     const file = mockFileMetadata[0];
@@ -339,7 +326,6 @@ describe('MultimediaPreview', () => {
     expect(screen.getByText('File Information')).toBeInTheDocument();
     expect(screen.getByText('MIME Type:')).toBeInTheDocument();
     expect(screen.getByText('Processing Status:')).toBeInTheDocument();
-  });
 
   it('displays file tags when available', () => {
     const file = mockFileMetadata[0];
@@ -355,7 +341,6 @@ describe('MultimediaPreview', () => {
     expect(screen.getByText('Tags:')).toBeInTheDocument();
     expect(screen.getByText('test')).toBeInTheDocument();
     expect(screen.getByText('image')).toBeInTheDocument();
-  });
 
   it('handles download button click', async () => {
     const file = mockFileMetadata[0];
@@ -372,7 +357,6 @@ describe('MultimediaPreview', () => {
     fireEvent.click(downloadButton);
 
     expect(mockOnDownload).toHaveBeenCalledWith(file.file_id);
-  });
 
   it('shows analysis results when provided', () => {
     const file = mockFileMetadata[0];
@@ -396,8 +380,7 @@ describe('MultimediaPreview', () => {
 
     expect(screen.getByText('Objects')).toBeInTheDocument();
     expect(screen.getByText('Confidence')).toBeInTheDocument();
-  });
-});
+
 
 describe('FilePermissionManager', () => {
   const mockOnPermissionUpdate = vi.fn();
@@ -415,7 +398,6 @@ describe('FilePermissionManager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders permission management interface', () => {
     render(
@@ -433,7 +415,6 @@ describe('FilePermissionManager', () => {
 
     expect(screen.getByText('File Permissions: test.jpg')).toBeInTheDocument();
     expect(screen.getByText('Current Permissions')).toBeInTheDocument();
-  });
 
   it('displays permission statistics', () => {
     render(
@@ -452,7 +433,6 @@ describe('FilePermissionManager', () => {
     expect(screen.getByText('Total Permissions')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument(); // Total permissions
-  });
 
   it('shows add permission button when not read-only', () => {
     render(
@@ -470,7 +450,6 @@ describe('FilePermissionManager', () => {
     );
 
     expect(screen.getByText('Add Permission')).toBeInTheDocument();
-  });
 
   it('hides add permission button when read-only', () => {
     render(
@@ -488,7 +467,6 @@ describe('FilePermissionManager', () => {
     );
 
     expect(screen.queryByText('Add Permission')).not.toBeInTheDocument();
-  });
 
   it('renders permissions in AG-Grid', () => {
     render(
@@ -505,8 +483,7 @@ describe('FilePermissionManager', () => {
     );
 
     expect(screen.getByTestId('ag-grid')).toBeInTheDocument();
-  });
-});
+
 
 describe('FileManagementInterface', () => {
   const mockOnFileSelect = vi.fn();
@@ -529,11 +506,9 @@ describe('FileManagementInterface', () => {
         })
       })
     ) as any;
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   it('renders main interface with tabs', async () => {
     render(
@@ -549,7 +524,6 @@ describe('FileManagementInterface', () => {
     expect(screen.getByText(/Files \(/)).toBeInTheDocument();
     expect(screen.getByText('Preview')).toBeInTheDocument();
     expect(screen.getByText('Permissions')).toBeInTheDocument();
-  });
 
   it('displays file statistics cards', async () => {
     render(
@@ -565,8 +539,7 @@ describe('FileManagementInterface', () => {
       expect(screen.getByText('Total Size')).toBeInTheDocument();
       expect(screen.getByText('Processing')).toBeInTheDocument();
       expect(screen.getByText('Failed')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles search functionality', async () => {
     render(
@@ -581,7 +554,6 @@ describe('FileManagementInterface', () => {
     await userEvent.type(searchInput, 'test');
 
     expect(searchInput).toHaveValue('test');
-  });
 
   it('switches between tabs', async () => {
     render(
@@ -598,8 +570,7 @@ describe('FileManagementInterface', () => {
     // Should show upload interface
     await waitFor(() => {
       expect(screen.getByTestId('dropzone')).toBeInTheDocument();
-    });
-  });
+
 
   it('loads files on mount', async () => {
     render(
@@ -615,8 +586,7 @@ describe('FileManagementInterface', () => {
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/files/enhanced/')
       );
-    });
-  });
+
 
   it('handles refresh button click', async () => {
     render(
@@ -632,8 +602,7 @@ describe('FileManagementInterface', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledTimes(2); // Initial load + refresh
-    });
-  });
+
 
   it('disables functionality when read-only', () => {
     render(
@@ -648,8 +617,7 @@ describe('FileManagementInterface', () => {
     // Should not show bulk action buttons for selection
     expect(screen.queryByText('Download Selected')).not.toBeInTheDocument();
     expect(screen.queryByText('Delete Selected')).not.toBeInTheDocument();
-  });
-});
+
 
 describe('AG-UI Integration', () => {
   it('formats data correctly for AG-Grid', () => {
@@ -668,7 +636,6 @@ describe('AG-UI Integration', () => {
     expect(gridData[0].ag_grid_metadata.rowId).toBe('file_1');
     expect(gridData[0].ag_grid_metadata.selectable).toBe(true);
     expect(gridData[0].ag_grid_metadata.cssClass).toBe('file-safe');
-  });
 
   it('formats data correctly for AG-Charts', () => {
     const chartData = {
@@ -687,7 +654,6 @@ describe('AG-UI Integration', () => {
     expect(chartData.data[0]).toHaveProperty('category');
     expect(chartData.data[0]).toHaveProperty('count');
     expect(chartData.series[0].type).toBe('bar');
-  });
 
   it('handles AG-Grid column definitions', () => {
     const columnDefs = [
@@ -719,5 +685,4 @@ describe('AG-UI Integration', () => {
     expect(columnDefs[0].cellRenderer).toBe('fileIconRenderer');
     expect(columnDefs[1].filter).toBe('agSetColumnFilter');
     expect(columnDefs[2].filter).toBe('agNumberColumnFilter');
-  });
-});
+

@@ -3,6 +3,7 @@
  */
 
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { ConnectionStatusIndicator } from '../ConnectionStatusIndicator';
 import { ConnectionStatus } from '../types';
@@ -42,11 +43,9 @@ describe('ConnectionStatusIndicator', () => {
     // Mock current time for consistent testing
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2024-01-01T12:05:00Z'));
-  });
 
   afterEach(() => {
     jest.useRealTimers();
-  });
 
   describe('Basic Rendering', () => {
     it('should render healthy status correctly', () => {
@@ -60,7 +59,6 @@ describe('ConnectionStatusIndicator', () => {
       expect(screen.getByText('Backend API')).toBeInTheDocument();
       expect(screen.getByText('Healthy')).toBeInTheDocument();
       expect(screen.getByText('500ms')).toBeInTheDocument();
-    });
 
     it('should render degraded status correctly', () => {
       render(
@@ -73,7 +71,6 @@ describe('ConnectionStatusIndicator', () => {
       expect(screen.getByText('Database')).toBeInTheDocument();
       expect(screen.getByText('Degraded')).toBeInTheDocument();
       expect(screen.getByText('3.00s')).toBeInTheDocument();
-    });
 
     it('should render failed status correctly', () => {
       render(
@@ -86,8 +83,7 @@ describe('ConnectionStatusIndicator', () => {
       expect(screen.getByText('Authentication')).toBeInTheDocument();
       expect(screen.getByText('Failed')).toBeInTheDocument();
       expect(screen.getByText('10.00s')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Response Time Formatting', () => {
     it('should format milliseconds correctly', () => {
@@ -100,7 +96,6 @@ describe('ConnectionStatusIndicator', () => {
       );
 
       expect(screen.getByText('250ms')).toBeInTheDocument();
-    });
 
     it('should format seconds correctly', () => {
       const status = { ...mockHealthyStatus, responseTime: 2500 };
@@ -112,8 +107,7 @@ describe('ConnectionStatusIndicator', () => {
       );
 
       expect(screen.getByText('2.50s')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Last Check Time Formatting', () => {
     it('should show "Just now" for recent checks', () => {
@@ -126,7 +120,6 @@ describe('ConnectionStatusIndicator', () => {
       );
 
       expect(screen.getByText('Just now')).toBeInTheDocument();
-    });
 
     it('should show minutes ago for checks within an hour', () => {
       const status = { ...mockHealthyStatus, lastCheck: new Date('2024-01-01T11:58:00Z') };
@@ -138,7 +131,6 @@ describe('ConnectionStatusIndicator', () => {
       );
 
       expect(screen.getByText('7m ago')).toBeInTheDocument();
-    });
 
     it('should show hours ago for older checks', () => {
       const status = { ...mockHealthyStatus, lastCheck: new Date('2024-01-01T10:00:00Z') };
@@ -150,8 +142,7 @@ describe('ConnectionStatusIndicator', () => {
       );
 
       expect(screen.getByText('2h ago')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Success Rate Calculation', () => {
     it('should calculate success rate correctly', () => {
@@ -164,7 +155,6 @@ describe('ConnectionStatusIndicator', () => {
       );
 
       expect(screen.getByText('98.0%')).toBeInTheDocument();
-    });
 
     it('should handle zero attempts', () => {
       const status = { ...mockHealthyStatus, successCount: 0, errorCount: 0 };
@@ -177,8 +167,7 @@ describe('ConnectionStatusIndicator', () => {
       );
 
       expect(screen.getByText('0.0%')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Details Display', () => {
     it('should show details when showDetails is true', () => {
@@ -196,7 +185,6 @@ describe('ConnectionStatusIndicator', () => {
       expect(screen.getByText('Errors')).toBeInTheDocument();
       expect(screen.getByText('98')).toBeInTheDocument();
       expect(screen.getByText('2')).toBeInTheDocument();
-    });
 
     it('should hide details when showDetails is false', () => {
       render(
@@ -209,8 +197,7 @@ describe('ConnectionStatusIndicator', () => {
 
       expect(screen.queryByText('Success Rate:')).not.toBeInTheDocument();
       expect(screen.queryByText('Endpoint:')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Status Colors', () => {
     it('should apply correct colors for response times', () => {
@@ -243,7 +230,6 @@ describe('ConnectionStatusIndicator', () => {
 
       // Slow response time should be red
       expect(screen.getByText('6.00s')).toHaveClass('text-red-600');
-    });
 
     it('should apply correct colors for success rates', () => {
       const { rerender } = render(
@@ -278,8 +264,7 @@ describe('ConnectionStatusIndicator', () => {
 
       // Low success rate should be red
       expect(screen.getByText('70.0%')).toHaveClass('text-red-600');
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('should have proper ARIA labels and titles', () => {
@@ -292,7 +277,6 @@ describe('ConnectionStatusIndicator', () => {
 
       const statusIndicator = screen.getByTitle('Status: Healthy');
       expect(statusIndicator).toBeInTheDocument();
-    });
 
     it('should truncate long endpoints with title attribute', () => {
       const longEndpointStatus = {
@@ -310,8 +294,7 @@ describe('ConnectionStatusIndicator', () => {
 
       const endpointElement = screen.getByTitle(longEndpointStatus.endpoint);
       expect(endpointElement).toBeInTheDocument();
-    });
-  });
+
 
   describe('Custom Styling', () => {
     it('should apply custom className', () => {
@@ -324,6 +307,5 @@ describe('ConnectionStatusIndicator', () => {
       );
 
       expect(container.firstChild).toHaveClass('custom-class');
-    });
-  });
-});
+
+

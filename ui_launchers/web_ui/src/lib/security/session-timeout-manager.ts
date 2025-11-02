@@ -107,7 +107,7 @@ export class SessionTimeoutManager {
       },
       ip_address: ipAddress,
       user_agent: userAgent
-    });
+
     return session;
   }
   /**
@@ -167,7 +167,7 @@ export class SessionTimeoutManager {
         extensions_used: session.extensionsUsed,
         max_extensions: config.maxExtensions
       }
-    });
+
     return { 
       success: true, 
       newExpiryTime,
@@ -288,7 +288,7 @@ export class SessionTimeoutManager {
           session_count: 1,
           last_activity: session.last_accessed,
           sessions: [session]
-        });
+
         continue;
       }
       existing.session_count += 1;
@@ -364,7 +364,7 @@ export class SessionTimeoutManager {
         extensions_used: session.extensionsUsed,
         warning_triggered_at: new Date().toISOString()
       }
-    });
+
     // In production, send real-time notification to user
   }
   /**
@@ -387,7 +387,7 @@ export class SessionTimeoutManager {
         extensions_used: session.extensionsUsed,
         expired_at: new Date().toISOString()
       }
-    });
+
     // Remove from active sessions
     this.activeSessions.delete(sessionToken);
   }

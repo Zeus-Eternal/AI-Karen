@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-
+import React from 'react';
 import { motion } from 'framer-motion';
 import { PageTransitionProps } from './types';
 import { transitionVariants, reducedMotionVariants } from './transition-variants';

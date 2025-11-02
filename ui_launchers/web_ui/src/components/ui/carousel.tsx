@@ -1,11 +1,9 @@
 "use client"
 
-import * as React from "react"
-import { ArrowLeft, ArrowRight } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-
+import * as React from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 type CarouselApi = {
   scrollPrev: () => void
   scrollNext: () => void
@@ -43,7 +41,6 @@ function useCarousel() {
 }
 
 const Carousel = React.forwardRef<
-  HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & CarouselProps
 >(
   (
@@ -140,7 +137,6 @@ const Carousel = React.forwardRef<
 Carousel.displayName = "Carousel"
 
 const CarouselContent = React.forwardRef<
-  HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   const { carouselRef, orientation } = useCarousel()
@@ -162,7 +158,6 @@ const CarouselContent = React.forwardRef<
 CarouselContent.displayName = "CarouselContent"
 
 const CarouselItem = React.forwardRef<
-  HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   const { orientation } = useCarousel()
@@ -184,7 +179,6 @@ const CarouselItem = React.forwardRef<
 CarouselItem.displayName = "CarouselItem"
 
 const CarouselPrevious = React.forwardRef<
-  HTMLButtonElement,
   React.ComponentProps<typeof Button>
 >(({ className, variant = "outline", size = "icon", ...props }, ref) => {
   const { orientation, scrollPrev, canScrollPrev } = useCarousel()
@@ -205,7 +199,7 @@ const CarouselPrevious = React.forwardRef<
       onClick={scrollPrev}
       {...props}
      aria-label="Button">
-      <ArrowLeft className="h-4 w-4 sm:w-auto md:w-full" />
+      <ArrowLeft className="h-4 w-4 " />
       <span className="sr-only">Previous slide</span>
     </Button>
   )
@@ -213,7 +207,6 @@ const CarouselPrevious = React.forwardRef<
 CarouselPrevious.displayName = "CarouselPrevious"
 
 const CarouselNext = React.forwardRef<
-  HTMLButtonElement,
   React.ComponentProps<typeof Button>
 >(({ className, variant = "outline", size = "icon", ...props }, ref) => {
   const { orientation, scrollNext, canScrollNext } = useCarousel()
@@ -234,7 +227,7 @@ const CarouselNext = React.forwardRef<
       onClick={scrollNext}
       {...props}
      aria-label="Button">
-      <ArrowRight className="h-4 w-4 sm:w-auto md:w-full" />
+      <ArrowRight className="h-4 w-4 " />
       <span className="sr-only">Next slide</span>
     </Button>
   )
@@ -243,9 +236,4 @@ CarouselNext.displayName = "CarouselNext"
 
 export {
   type CarouselApi,
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
 }

@@ -2,15 +2,12 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { 
-  EnhancedAnalyticsChart, 
-  MemoryNetworkVisualization, 
-  UserEngagementGrid,
+
   type EnhancedAnalyticsData,
   type AnalyticsStats,
   type MemoryNetworkData,
   type UserEngagementRow
-} from '@/components/analytics';
+import { } from '@/components/analytics';
 import { HookProvider } from '@/contexts/HookContext';
 
 // Mock AG-Charts
@@ -96,7 +93,6 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 describe('Enhanced Analytics Components', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('EnhancedAnalyticsChart', () => {
     const mockAnalyticsData: EnhancedAnalyticsData[] = [
@@ -150,7 +146,6 @@ describe('Enhanced Analytics Components', () => {
       expect(screen.getByTestId('ag-chart')).toBeInTheDocument();
       expect(screen.getByText('Total Messages')).toBeInTheDocument();
       expect(screen.getByText('55')).toBeInTheDocument();
-    });
 
     it('handles metric selection changes', async () => {
       const user = userEvent.setup();
@@ -176,8 +171,7 @@ describe('Enhanced Analytics Components', () => {
           'metricChange',
           expect.any(Function)
         );
-      });
-    });
+
 
     it('handles chart type changes', async () => {
       const user = userEvent.setup();
@@ -199,8 +193,7 @@ describe('Enhanced Analytics Components', () => {
       await waitFor(() => {
         const chart = screen.getByTestId('ag-chart');
         expect(chart).toHaveAttribute('data-chart-type', 'bar');
-      });
-    });
+
 
     it('handles timeframe changes', async () => {
       const mockOnTimeframeChange = vi.fn();
@@ -223,7 +216,6 @@ describe('Enhanced Analytics Components', () => {
       await user.click(sevenDayOption);
 
       expect(mockOnTimeframeChange).toHaveBeenCalledWith('7d');
-    });
 
     it('handles refresh action', async () => {
       const mockOnRefresh = vi.fn().mockResolvedValue(undefined);
@@ -243,7 +235,6 @@ describe('Enhanced Analytics Components', () => {
       await user.click(refreshButton);
 
       expect(mockOnRefresh).toHaveBeenCalled();
-    });
 
     it('registers and triggers hooks correctly', async () => {
       render(
@@ -267,9 +258,8 @@ describe('Enhanced Analytics Components', () => {
           }),
           { userId: 'test-user-123' }
         );
-      });
-    });
-  });
+
+
 
   describe('MemoryNetworkVisualization', () => {
     const mockNetworkData: MemoryNetworkData = {
@@ -323,7 +313,6 @@ describe('Enhanced Analytics Components', () => {
       expect(screen.getByTestId('ag-chart')).toBeInTheDocument();
       expect(screen.getByText('2 Memories')).toBeInTheDocument();
       expect(screen.getByText('3 Nodes')).toBeInTheDocument();
-    });
 
     it('handles layout type changes', async () => {
       const user = userEvent.setup();
@@ -343,8 +332,7 @@ describe('Enhanced Analytics Components', () => {
       // Verify layout change is applied
       await waitFor(() => {
         expect(screen.getByDisplayValue('Circular')).toBeInTheDocument();
-      });
-    });
+
 
     it('handles confidence threshold changes', async () => {
       const user = userEvent.setup();
@@ -364,8 +352,7 @@ describe('Enhanced Analytics Components', () => {
       
       await waitFor(() => {
         expect(screen.getByText('80%')).toBeInTheDocument();
-      });
-    });
+
 
     it('handles cluster filtering', async () => {
       const user = userEvent.setup();
@@ -382,7 +369,6 @@ describe('Enhanced Analytics Components', () => {
 
       // Verify cluster is selected (badge should change appearance)
       expect(programmingCluster).toBeInTheDocument();
-    });
 
     it('handles node click events', async () => {
       const mockOnNodeClick = vi.fn();
@@ -403,8 +389,7 @@ describe('Enhanced Analytics Components', () => {
           'nodeClick',
           expect.any(Function)
         );
-      });
-    });
+
 
     it('toggles fullscreen mode', async () => {
       const user = userEvent.setup();
@@ -421,8 +406,7 @@ describe('Enhanced Analytics Components', () => {
       // Check if fullscreen class is applied
       const card = screen.getByRole('region');
       expect(card).toHaveClass('fixed', 'inset-0', 'z-50');
-    });
-  });
+
 
   describe('UserEngagementGrid', () => {
     const mockEngagementData: UserEngagementRow[] = [
@@ -461,7 +445,6 @@ describe('Enhanced Analytics Components', () => {
       expect(screen.getByText('User Engagement Analytics (2 records)')).toBeInTheDocument();
       expect(screen.getByTestId('ag-grid')).toBeInTheDocument();
       expect(screen.getByTestId('grid-row-count')).toHaveTextContent('2');
-    });
 
     it('handles search functionality', async () => {
       const user = userEvent.setup();
@@ -476,7 +459,6 @@ describe('Enhanced Analytics Components', () => {
       await user.type(searchInput, 'chat');
 
       expect(searchInput).toHaveValue('chat');
-    });
 
     it('handles filter changes', async () => {
       const user = userEvent.setup();
@@ -494,7 +476,6 @@ describe('Enhanced Analytics Components', () => {
       await user.click(errorOnlyOption);
 
       expect(screen.getByDisplayValue('Errors Only')).toBeInTheDocument();
-    });
 
     it('handles time range changes', async () => {
       const user = userEvent.setup();
@@ -512,7 +493,6 @@ describe('Enhanced Analytics Components', () => {
       await user.click(oneHourOption);
 
       expect(screen.getByDisplayValue('1H')).toBeInTheDocument();
-    });
 
     it('handles row selection', async () => {
       const mockOnRowSelect = vi.fn();
@@ -532,7 +512,6 @@ describe('Enhanced Analytics Components', () => {
       await user.click(firstRow);
 
       expect(mockOnRowSelect).toHaveBeenCalledWith(mockEngagementData[0]);
-    });
 
     it('handles export functionality', async () => {
       const mockOnExport = vi.fn().mockResolvedValue(undefined);
@@ -551,7 +530,6 @@ describe('Enhanced Analytics Components', () => {
       await user.click(exportButton);
 
       expect(mockOnExport).toHaveBeenCalledWith(mockEngagementData);
-    });
 
     it('displays summary statistics', () => {
       render(
@@ -564,7 +542,6 @@ describe('Enhanced Analytics Components', () => {
       expect(screen.getByText('Success Rate')).toBeInTheDocument();
       expect(screen.getByText('Avg Duration')).toBeInTheDocument();
       expect(screen.getByText('Unique Users')).toBeInTheDocument();
-    });
 
     it('registers and triggers grid hooks', async () => {
       render(
@@ -588,9 +565,8 @@ describe('Enhanced Analytics Components', () => {
           }),
           { userId: 'test-user-123' }
         );
-      });
-    });
-  });
+
+
 
   describe('Integration Tests', () => {
     it('all components work together in analytics dashboard', () => {
@@ -646,6 +622,5 @@ describe('Enhanced Analytics Components', () => {
       // Verify all hooks are registered
       expect(mockHookContext.registerChartHook).toHaveBeenCalledTimes(4); // 2 for analytics, 2 for network
       expect(mockHookContext.registerGridHook).toHaveBeenCalledTimes(2); // 2 for engagement grid
-    });
-  });
-});
+
+

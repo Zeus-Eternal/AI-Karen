@@ -32,7 +32,6 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => (
 describe('InteractiveInput', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders correctly', () => {
     render(
@@ -42,7 +41,6 @@ describe('InteractiveInput', () => {
     );
     
     expect(screen.getByPlaceholderText('Enter text')).toBeInTheDocument();
-  });
 
   it('handles focus and blur events', async () => {
     const handleFocus = vi.fn();
@@ -66,7 +64,6 @@ describe('InteractiveInput', () => {
     
     await user.tab();
     expect(handleBlur).toHaveBeenCalledTimes(1);
-  });
 
   it('applies error styling when error prop is true', () => {
     render(
@@ -77,7 +74,6 @@ describe('InteractiveInput', () => {
     
     const input = screen.getByPlaceholderText('Enter text');
     expect(input).toHaveClass('border-destructive');
-  });
 
   it('applies success styling when success prop is true', () => {
     render(
@@ -88,7 +84,6 @@ describe('InteractiveInput', () => {
     
     const input = screen.getByPlaceholderText('Enter text');
     expect(input).toHaveClass('border-green-500');
-  });
 
   it('applies custom className', () => {
     render(
@@ -98,7 +93,6 @@ describe('InteractiveInput', () => {
     );
     
     expect(screen.getByPlaceholderText('Enter text')).toHaveClass('custom-class');
-  });
 
   it('forwards ref correctly', () => {
     const ref = React.createRef<HTMLInputElement>();
@@ -110,7 +104,6 @@ describe('InteractiveInput', () => {
     );
     
     expect(ref.current).toBeInstanceOf(HTMLInputElement);
-  });
 
   it('handles value changes', async () => {
     const user = userEvent.setup();
@@ -125,5 +118,4 @@ describe('InteractiveInput', () => {
     await user.type(input, 'Hello World');
     
     expect(input).toHaveValue('Hello World');
-  });
-});
+

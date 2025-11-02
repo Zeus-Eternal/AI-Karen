@@ -1,45 +1,23 @@
+
+"use client";
 import React, { useState } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { useEffect } from 'react';
-import { 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
 import { cn } from '@/lib/utils';
 import type { DashboardTemplate } from '@/store/dashboard-store';
-'use client';
 
-
-
-  Layout, 
-  Star, 
-  Users, 
-  Settings, 
-  Download,
-  Eye,
-  Plus,
-  Search
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 
 
 
 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { } from '@/components/ui/dialog';
+import { } from '@/components/ui/select';
 
 
 
@@ -101,7 +79,6 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
     }
 
     return true;
-  });
 
   // Group templates by category
   const groupedTemplates = filteredTemplates.reduce((acc, template) => {
@@ -126,13 +103,13 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
   const getCategoryIcon = (category: DashboardTemplate['category']) => {
     switch (category) {
       case 'system':
-        return <Settings className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Settings className="h-4 w-4 " />;
       case 'role-based':
-        return <Users className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Users className="h-4 w-4 " />;
       case 'user':
-        return <Star className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Star className="h-4 w-4 " />;
       default:
-        return <Layout className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Layout className="h-4 w-4 " />;
     }
   };
 
@@ -166,12 +143,11 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
     <ErrorBoundary fallback={<div>Something went wrong in DashboardTemplateSelector</div>}>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <button variant="outline" className={className} aria-label="Button">
-          <Layout className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-          Templates
+        <Button variant="outline" className={className} >
+          <Layout className="h-4 w-4 mr-2 " />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden sm:w-auto md:w-full">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden ">
         <DialogHeader>
           <DialogTitle>Dashboard Templates</DialogTitle>
         </DialogHeader>
@@ -180,17 +156,17 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
           {/* Search and Filter Controls */}
           <div className="flex gap-4 mb-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground " />
               <input
                 placeholder="Search templates..."
                 value={searchQuery}
-                onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
             
             <select value={selectedCategory} onValueChange={setSelectedCategory} aria-label="Select option">
-              <selectTrigger className="w-48 sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-48 " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
@@ -206,7 +182,7 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
           <div className="flex-1 overflow-y-auto">
             {Object.keys(groupedTemplates).length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <Layout className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+                <Layout className="h-12 w-12 mx-auto mb-4 opacity-50 " />
                 <h3 className="text-lg font-medium mb-2">No templates found</h3>
                 <p className="text-sm md:text-base lg:text-lg">
                   {searchQuery 
@@ -241,7 +217,7 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
                                 <CardTitle className="text-base flex items-center gap-2">
                                   {template.name}
                                   {template.isDefault && (
-                                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 sm:w-auto md:w-full" />
+                                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 " />
                                   )}
                                 </CardTitle>
                                 <CardDescription className="text-xs mt-1 sm:text-sm md:text-base">
@@ -283,19 +259,18 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
                             <div className="flex gap-2">
                               <button
                                 size="sm"
-                                onClick={() = aria-label="Button"> handleApplyTemplate(template.id)}
+                                onClick={() => handleApplyTemplate(template.id)}
                                 className="flex-1"
                               >
-                                <Plus className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                                Use Template
+                                <Plus className="h-3 w-3 mr-1 " />
                               </Button>
                               
-                              <button
+                              <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() = aria-label="Button"> handlePreviewTemplate(template)}
+                                onClick={() => handlePreviewTemplate(template)}
                               >
-                                <Eye className="h-3 w-3 sm:w-auto md:w-full" />
+                                <Eye className="h-3 w-3 " />
                               </Button>
                             </div>
                           </CardContent>
@@ -316,12 +291,12 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
           open={!!previewTemplate} 
           onOpenChange={() => setPreviewTemplate(null)}
         >
-          <DialogContent className="max-w-2xl sm:w-auto md:w-full">
+          <DialogContent className="max-w-2xl ">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 {previewTemplate.name}
                 {previewTemplate.isDefault && (
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 sm:w-auto md:w-full" />
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 " />
                 )}
               </DialogTitle>
             </DialogHeader>
@@ -381,20 +356,18 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
               )}
               
               <div className="flex justify-end gap-2 pt-4">
-                <button
+                <Button
                   variant="outline"
-                  onClick={() = aria-label="Button"> setPreviewTemplate(null)}
+                  onClick={() => setPreviewTemplate(null)}
                 >
-                  Close
                 </Button>
                 <button
-                  onClick={() = aria-label="Button"> {
+                  onClick={() => {
                     handleApplyTemplate(previewTemplate.id);
                     setPreviewTemplate(null);
                   }}
                 >
-                  <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Use This Template
+                  <Download className="h-4 w-4 mr-2 " />
                 </Button>
               </div>
             </div>

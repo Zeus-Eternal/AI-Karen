@@ -6,11 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
-import { 
-  SendEmailRequest,
-  BulkEmailRequest,
-  EmailNotificationType 
-} from '@/lib/email/types';
+import {  SendEmailRequest, BulkEmailRequest, EmailNotificationType } from '@/lib/email/types';
 import { emailService, notificationService } from '@/lib/email/email-service';
 import { emailQueueManager } from '@/lib/email/email-queue';
 import { auditLogger } from '@/lib/audit/audit-logger';
@@ -99,7 +95,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message_id: result.message_id,
         message: 'Email sent successfully'
-      });
+
     } else {
       return NextResponse.json(
         { 

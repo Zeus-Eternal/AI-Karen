@@ -57,7 +57,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       message: 'Model preferences updated successfully',
       preferences
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to update user model preferences' },

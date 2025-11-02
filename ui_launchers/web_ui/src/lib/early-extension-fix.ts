@@ -65,7 +65,7 @@
             'Content-Type': 'application/json',
             'X-Fallback-Mode': 'extension-readonly'
           }
-        });
+
       }
       return response;
     } catch (error) {
@@ -82,7 +82,7 @@
             'Content-Type': 'application/json',
             'X-Fallback-Mode': 'extension-offline'
           }
-        });
+
       }
       throw error;
     }

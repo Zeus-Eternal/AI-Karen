@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,31 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 // Removed Collapsible import - using simple expand/collapse with state
-import {
-  Activity,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Pause,
-  Play,
-  Square,
-  Trash2,
-  RefreshCw,
-  ChevronDown,
-  ChevronRight,
-  Settings,
-  Layers,
-  Merge,
-  Download,
-  HardDrive,
-  Loader2,
-  AlertCircle,
-  FileText,
-  Calendar,
-  Timer,
-  Cpu,
-  MemoryStick
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
 interface Job {
@@ -150,13 +129,13 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       toast({
         title: "Refreshed",
         description: "Job status and storage info updated",
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: "Refresh Failed",
         description: "Could not refresh job information",
-      });
+
     } finally {
       setRefreshing(false);
     }
@@ -165,11 +144,11 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
     try {
       await backend.makeRequestPublic(`/api/models/jobs/${jobId}/${action}`, {
         method: 'POST'
-      });
+
       toast({
         title: "Job Updated",
         description: `Job ${action}${action.endsWith('e') ? 'd' : action === 'cancel' ? 'led' : 'ed'}`,
-      });
+
       await loadJobs();
       await loadJobStats();
     } catch (error) {
@@ -178,18 +157,18 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
         variant: 'destructive',
         title: info.title || `${action.charAt(0).toUpperCase() + action.slice(1)} Failed`,
         description: info.message || `Could not ${action} job`,
-      });
+
     }
   };
   const deleteJob = async (jobId: string) => {
     try {
       await backend.makeRequestPublic(`/api/models/jobs/${jobId}`, {
         method: 'DELETE'
-      });
+
       toast({
         title: "Job Deleted",
         description: "Job removed from history",
-      });
+
       await loadJobs();
       await loadJobStats();
     } catch (error) {
@@ -197,7 +176,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
         variant: 'destructive',
         title: "Delete Failed",
         description: "Could not delete job",
-      });
+
     }
   };
   const cleanupStorage = async (paths: string[]) => {
@@ -205,18 +184,18 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       await backend.makeRequestPublic('/api/models/storage/cleanup', {
         method: 'POST',
         body: JSON.stringify({ paths })
-      });
+
       toast({
         title: "Cleanup Started",
         description: `Cleaning up ${paths.length} item${paths.length !== 1 ? 's' : ''}`,
-      });
+
       await loadStorageInfo();
     } catch (error) {
       toast({
         variant: 'destructive',
         title: "Cleanup Failed",
         description: "Could not cleanup storage",
-      });
+
     }
   };
   const toggleJobExpansion = (jobId: string) => {
@@ -228,40 +207,40 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
         newSet.add(jobId);
       }
       return newSet;
-    });
+
   };
   const getJobIcon = (job: Job) => {
     switch (job.kind) {
       case 'convert':
-        return <Settings className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Settings className="h-4 w-4 " />;
       case 'quantize':
-        return <Layers className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Layers className="h-4 w-4 " />;
       case 'lora_merge':
-        return <Merge className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Merge className="h-4 w-4 " />;
       case 'download':
-        return <Download className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Download className="h-4 w-4 " />;
       case 'upload':
-        return <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <HardDrive className="h-4 w-4 " />;
       default:
-        return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Activity className="h-4 w-4 " />;
     }
   };
   const getStatusIcon = (status: Job['status']) => {
     switch (status) {
       case 'queued':
-        return <Clock className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
+        return <Clock className="h-4 w-4 text-yellow-600 " />;
       case 'running':
-        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin sm:w-auto md:w-full" />;
+        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin " />;
       case 'paused':
-        return <Pause className="h-4 w-4 text-orange-600 sm:w-auto md:w-full" />;
+        return <Pause className="h-4 w-4 text-orange-600 " />;
       case 'completed':
-        return <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600 " />;
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+        return <XCircle className="h-4 w-4 text-red-600 " />;
       case 'cancelled':
-        return <Square className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
+        return <Square className="h-4 w-4 text-gray-600 " />;
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-4 w-4 text-gray-600 " />;
     }
   };
   const getStatusBadgeVariant = (status: Job['status']) => {
@@ -304,7 +283,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary " />
             <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading job information...</p>
           </div>
         </CardContent>
@@ -319,30 +298,27 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 sm:w-auto md:w-full" />
-                Job Center
+                <Activity className="h-5 w-5 " />
               </CardTitle>
               <CardDescription>
-                Monitor and manage model processing operations
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setAutoRefresh(!autoRefresh)}
+                onClick={() => setAutoRefresh(!autoRefresh)}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${autoRefresh ? 'animate-spin' : ''}`} />
                 Auto-refresh: {autoRefresh ? 'On' : 'Off'}
               </Button>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={handleRefresh}
                 disabled={refreshing}
-               aria-label="Button">
+               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
               </Button>
             </div>
           </div>
@@ -378,16 +354,15 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="active" className="flex items-center gap-2">
-            <Activity className="h-4 w-4 sm:w-auto md:w-full" />
+            <Activity className="h-4 w-4 " />
             Active ({activeJobs.length})
           </TabsTrigger>
           <TabsTrigger value="completed" className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 sm:w-auto md:w-full" />
+            <CheckCircle2 className="h-4 w-4 " />
             History ({completedJobs.length})
           </TabsTrigger>
           <TabsTrigger value="storage" className="flex items-center gap-2">
-            <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />
-            Storage
+            <HardDrive className="h-4 w-4 " />
           </TabsTrigger>
         </TabsList>
         {/* Active Jobs Tab */}
@@ -395,7 +370,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
           {activeJobs.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
-                <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                 <p className="text-lg font-medium mb-2">No Active Jobs</p>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   All jobs are completed. Start a new operation to see it here.
@@ -410,7 +385,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                     <div>
                       <button
                         className="w-full p-6 text-left hover:bg-muted/50 transition-colors sm:p-4 md:p-6"
-                        onClick={() = aria-label="Button"> toggleJobExpansion(job.id)}
+                        onClick={() => toggleJobExpansion(job.id)}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -428,9 +403,9 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                               {job.status}
                             </Badge>
                             {expandedJobs.has(job.id) ? (
-                              <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
+                              <ChevronDown className="h-4 w-4 " />
                             ) : (
-                              <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />
+                              <ChevronRight className="h-4 w-4 " />
                             )}
                           </div>
                         </div>
@@ -485,7 +460,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                      <Cpu className="h-4 w-4 sm:w-auto md:w-full" />
+                                      <Cpu className="h-4 w-4 " />
                                       <span className="text-sm md:text-base lg:text-lg">CPU</span>
                                     </div>
                                     <span className="text-sm font-medium md:text-base lg:text-lg">
@@ -494,7 +469,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                                   </div>
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                      <MemoryStick className="h-4 w-4 sm:w-auto md:w-full" />
+                                      <MemoryStick className="h-4 w-4 " />
                                       <span className="text-sm md:text-base lg:text-lg">Memory</span>
                                     </div>
                                     <span className="text-sm font-medium md:text-base lg:text-lg">
@@ -503,7 +478,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                                   </div>
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                      <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />
+                                      <HardDrive className="h-4 w-4 " />
                                       <span className="text-sm md:text-base lg:text-lg">Disk I/O</span>
                                     </div>
                                     <span className="text-sm font-medium md:text-base lg:text-lg">
@@ -517,33 +492,30 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                           {/* Job Controls */}
                           <div className="flex gap-2">
                             {job.status === 'running' && (
-                              <button
+                              <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() = aria-label="Button"> controlJob(job.id, 'pause')}
+                                onClick={() => controlJob(job.id, 'pause')}
                               >
-                                <Pause className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                                Pause
+                                <Pause className="h-4 w-4 mr-2 " />
                               </Button>
                             )}
                             {job.status === 'paused' && (
-                              <button
+                              <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() = aria-label="Button"> controlJob(job.id, 'resume')}
+                                onClick={() => controlJob(job.id, 'resume')}
                               >
-                                <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                                Resume
+                                <Play className="h-4 w-4 mr-2 " />
                               </Button>
                             )}
                             {['running', 'paused', 'queued'].includes(job.status) && (
-                              <button
+                              <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() = aria-label="Button"> controlJob(job.id, 'cancel')}
+                                onClick={() => controlJob(job.id, 'cancel')}
                               >
-                                <Square className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                                Cancel
+                                <Square className="h-4 w-4 mr-2 " />
                               </Button>
                             )}
                           </div>
@@ -576,7 +548,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
           {completedJobs.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
-                <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                 <p className="text-lg font-medium mb-2">No Job History</p>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Completed jobs will appear here for review and cleanup.
@@ -598,12 +570,12 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                           )}
                           <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground sm:text-sm md:text-base">
                             <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3 sm:w-auto md:w-full" />
+                              <Calendar className="h-3 w-3 " />
                               {new Date(job.created_at).toLocaleDateString()}
                             </div>
                             {job.completed_at && job.started_at && (
                               <div className="flex items-center gap-1">
-                                <Timer className="h-3 w-3 sm:w-auto md:w-full" />
+                                <Timer className="h-3 w-3 " />
                                 {formatDuration(job.completed_at - job.started_at)}
                               </div>
                             )}
@@ -615,18 +587,18 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                           {getStatusIcon(job.status)}
                           {job.status}
                         </Badge>
-                        <button
+                        <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() = aria-label="Button"> deleteJob(job.id)}
+                          onClick={() => deleteJob(job.id)}
                         >
-                          <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
+                          <Trash2 className="h-4 w-4 " />
                         </Button>
                       </div>
                     </div>
                     {job.error_message && (
                       <Alert variant="destructive" className="mt-4">
-                        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                        <AlertCircle className="h-4 w-4 " />
                         <AlertTitle>Error</AlertTitle>
                         <AlertDescription>{job.error_message}</AlertDescription>
                       </Alert>
@@ -646,7 +618,6 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                 <CardHeader>
                   <CardTitle>Storage Overview</CardTitle>
                   <CardDescription>
-                    Monitor disk usage and manage model storage
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -692,7 +663,6 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                   <CardHeader>
                     <CardTitle>Storage Cleanup</CardTitle>
                     <CardDescription>
-                      Remove temporary files and unused models to free up space
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -700,7 +670,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                       {storageInfo.cleanup_candidates.map((candidate, index) => (
                         <div key={index} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
                           <div className="flex items-center gap-3">
-                            <FileText className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                            <FileText className="h-4 w-4 text-muted-foreground " />
                             <div>
                               <div className="font-medium text-sm md:text-base lg:text-lg">{candidate.path.split('/').pop()}</div>
                               <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
@@ -709,23 +679,22 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                               </div>
                             </div>
                           </div>
-                          <button
+                          <Button
                             variant="outline"
                             size="sm"
-                            onClick={() = aria-label="Button"> cleanupStorage([candidate.path])}
+                            onClick={() => cleanupStorage([candidate.path])}
                           >
-                            <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                            Remove
+                            <Trash2 className="h-4 w-4 mr-2 " />
                           </Button>
                         </div>
                       ))}
                       {storageInfo.cleanup_candidates.length > 1 && (
-                        <button
+                        <Button
                           variant="outline"
                           className="w-full"
-                          onClick={() = aria-label="Button"> cleanupStorage(storageInfo.cleanup_candidates.map(c => c.path))}
+                          onClick={() => cleanupStorage(storageInfo.cleanup_candidates.map(c => c.path))}
                         >
-                          <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                          <Trash2 className="h-4 w-4 mr-2 " />
                           Clean All ({formatFileSize(storageInfo.cleanup_candidates.reduce((sum, c) => sum + c.size_gb, 0))})
                         </Button>
                       )}
@@ -737,7 +706,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
           ) : (
             <Card>
               <CardContent className="text-center py-12">
-                <HardDrive className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                <HardDrive className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                 <p className="text-lg font-medium mb-2">Storage Information Unavailable</p>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Could not load storage information. Try refreshing the page.

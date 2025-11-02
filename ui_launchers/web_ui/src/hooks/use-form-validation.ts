@@ -4,17 +4,9 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type {
-  ValidationErrors,
-  LoginCredentials
-} from '@/types/auth';
+import type { ValidationErrors, LoginCredentials } from '@/types/auth';
 import type { FormFieldType } from '@/types/auth-form';
-import {
-  FormValidator,
-  createFormValidator,
-  type FieldValidationResult,
-  type FormValidationResult
-} from '@/lib/form-validator';
+import { FormValidator, createFormValidator, type FieldValidationResult, type FormValidationResult } from '@/lib/form-validator';
 
 /**
  * Field validation state
@@ -86,7 +78,6 @@ const createInitialFieldState = (): FieldValidationState => ({
   isValidating: false,
   touched: false,
   focused: false
-});
 
 /**
  * Initial form validation state
@@ -100,7 +91,6 @@ const createInitialValidationState = (): FormValidationState => ({
   isValid: false,
   hasErrors: false,
   isValidating: false
-});
 
 /**
  * Form validation hook with real-time feedback
@@ -150,7 +140,7 @@ export function useFormValidation(config: UseFormValidationConfig = {}): UseForm
         isValidating,
         isValid
       };
-    });
+
   }, []);
 
   // Validate field synchronously
@@ -169,10 +159,10 @@ export function useFormValidation(config: UseFormValidationConfig = {}): UseForm
         updateFieldState(field, {
           error: result.error || null,
           isValidating: false
-        });
+
         resolve(result);
       }, delay);
-    });
+
   }, [validator, updateFieldState]);
 
   // Clear field error
@@ -200,7 +190,6 @@ export function useFormValidation(config: UseFormValidationConfig = {}): UseForm
     // Update all field states with validation results
     Object.entries(result.errors).forEach(([field, error]) => {
       updateFieldState(field as FormFieldType, { error, touched: true });
-    });
 
     // Clear errors for fields that are now valid
     const fieldTypes: FormFieldType[] = ['email', 'password', 'totp_code'];
@@ -208,7 +197,6 @@ export function useFormValidation(config: UseFormValidationConfig = {}): UseForm
       if (!result.errors[field] && validationState.fields[field].error) {
         updateFieldState(field, { error: null });
       }
-    });
 
     return result;
   }, [validator, updateFieldState, validationState.fields]);

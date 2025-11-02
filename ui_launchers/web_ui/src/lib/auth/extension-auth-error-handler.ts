@@ -242,7 +242,7 @@ export class ExtensionAuthErrorHandler {
               logger.debug('Retry action triggered for:', context.endpoint);
             },
             priority: 1,
-          });
+
         }
         break;
 
@@ -255,7 +255,7 @@ export class ExtensionAuthErrorHandler {
             logger.debug('Token refresh action triggered');
           },
           priority: 1,
-        });
+
         break;
 
       case RecoveryStrategy.FALLBACK_MODE:
@@ -267,7 +267,7 @@ export class ExtensionAuthErrorHandler {
               logger.debug('Fallback mode activated for:', context.endpoint);
             },
             priority: 2,
-          });
+
         }
         break;
 
@@ -279,7 +279,7 @@ export class ExtensionAuthErrorHandler {
             logger.debug('User action required for:', context.endpoint);
           },
           priority: 3,
-        });
+
         break;
 
       case RecoveryStrategy.IGNORE:
@@ -290,7 +290,7 @@ export class ExtensionAuthErrorHandler {
             logger.debug('Ignoring error for:', context.endpoint);
           },
           priority: 4,
-        });
+
         break;
     }
 

@@ -78,7 +78,6 @@ export class EndpointTester {
           'Cache-Control': 'no-cache',
         },
         mode: 'cors',
-      });
 
       clearTimeout(timeoutId);
       const responseTime = performance.now() - startTime;
@@ -136,7 +135,6 @@ export class EndpointTester {
           'Cache-Control': 'no-cache',
         },
         mode: 'cors',
-      });
 
       clearTimeout(timeoutId);
       const responseTime = performance.now() - startTime;
@@ -225,7 +223,6 @@ export class EndpointTester {
           'Cache-Control': 'no-cache',
         },
         mode: 'cors',
-      });
 
       clearTimeout(timeoutId);
       const responseTime = performance.now() - startTime;
@@ -347,7 +344,6 @@ export class EndpointTester {
         responseTime: comprehensive.connectivity.responseTime,
         issues: comprehensive.overall.issues,
       };
-    });
 
     const results = await Promise.all(testPromises);
 
@@ -357,7 +353,6 @@ export class EndpointTester {
         return b.score - a.score; // Higher score first
       }
       return a.responseTime - b.responseTime; // Faster response first
-    });
 
     // Find the best healthy endpoint
     const bestHealthy = results.find(r => r.isHealthy);
@@ -516,7 +511,4 @@ export function initializeEndpointTester(config?: Partial<EndpointTestConfig>): 
 
 // Export types
 export type {
-  EndpointTestResult as EndpointTestResultType,
-  HealthCheckResponse as HealthCheckResponseType,
-  EndpointTestConfig as EndpointTestConfigType,
 };

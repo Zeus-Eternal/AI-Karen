@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React from 'react';
 import { Permission, AccessContext } from '@/types/rbac';
@@ -73,12 +73,12 @@ interface PermissionDeniedFallbackProps {
 function PermissionDeniedFallback({ permissionResult }: PermissionDeniedFallbackProps) {
   const getIcon = () => {
     if (permissionResult.requiresElevation) {
-      return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
+      return <AlertTriangle className="h-4 w-4 " />;
     }
     if (permissionResult.restrictions?.length > 0) {
-      return <Lock className="h-4 w-4 sm:w-auto md:w-full" />;
+      return <Lock className="h-4 w-4 " />;
     }
-    return <ShieldX className="h-4 w-4 sm:w-auto md:w-full" />;
+    return <ShieldX className="h-4 w-4 " />;
   };
 
   const getVariant = () => {

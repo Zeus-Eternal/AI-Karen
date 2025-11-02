@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { PluginManager } from '../PluginManager';
@@ -97,14 +98,12 @@ vi.mock('../PluginMarketplace', () => ({
 describe('PluginManager Basic Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders plugin manager header', () => {
     render(<PluginManager />);
     
     expect(screen.getByText('Plugin Manager')).toBeInTheDocument();
     expect(screen.getByText('Manage and monitor your installed plugins and extensions')).toBeInTheDocument();
-  });
 
   it('renders main action buttons', () => {
     render(<PluginManager />);
@@ -112,20 +111,17 @@ describe('PluginManager Basic Tests', () => {
     expect(screen.getByText('Refresh')).toBeInTheDocument();
     expect(screen.getByText('Browse Marketplace')).toBeInTheDocument();
     expect(screen.getByText('Install Plugin')).toBeInTheDocument();
-  });
 
   it('renders search input', () => {
     render(<PluginManager />);
     
     expect(screen.getByPlaceholderText('Search plugins...')).toBeInTheDocument();
-  });
 
   it('renders filter controls', () => {
     render(<PluginManager />);
     
     expect(screen.getByText('All Status')).toBeInTheDocument();
     expect(screen.getByText('Name A-Z')).toBeInTheDocument();
-  });
 
   it('renders empty state when no plugins', () => {
     render(<PluginManager />);
@@ -136,5 +132,4 @@ describe('PluginManager Basic Tests', () => {
     // Should show empty state since we mocked empty plugins array
     expect(screen.getByText('No plugins installed')).toBeInTheDocument();
     expect(screen.getByText('Get started by installing your first plugin')).toBeInTheDocument();
-  });
-});
+

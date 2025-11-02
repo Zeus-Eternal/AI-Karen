@@ -95,7 +95,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
             originalError: error.message,
             handlerError: handlerError instanceof Error ? handlerError.message : 'Unknown',
             errorId,
-          });
+
         }
       }
     }
@@ -109,7 +109,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
         hadError: this.state.hasError,
         retryCount: this.state.retryCount,
         errorId: this.state.errorId,
-      });
+
     }
   }
   private reportToExternalService = async (
@@ -191,7 +191,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
         retryCount: retryCount + 1,
         isRetrying: false,
         lastErrorTime: 0,
-      });
+
     }, delay);
     this.retryTimeouts.push(timeout);
   };
@@ -288,7 +288,7 @@ const ErrorFallbackUI: React.FC<ErrorFallbackUIProps> = ({
       role="alert"
       aria-live="assertive"
     >
-      <div className="text-center space-y-4 max-w-2xl sm:w-auto md:w-full">
+      <div className="text-center space-y-4 max-w-2xl ">
         <div className="text-red-500 dark:text-red-400">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto">
             <circle cx="12" cy="12" r="10"/>
@@ -297,7 +297,6 @@ const ErrorFallbackUI: React.FC<ErrorFallbackUIProps> = ({
           </svg>
         </div>
         <h2 className="text-xl font-semibold text-red-800 dark:text-red-200">
-          Something went wrong
         </h2>
         <p className="text-red-700 dark:text-red-300">
           We encountered an unexpected error. This has been automatically reported to our team.
@@ -343,7 +342,7 @@ const ErrorFallbackUI: React.FC<ErrorFallbackUIProps> = ({
              aria-label="Button">
               {isRetrying ? (
                 <>
-                  <svg className="animate-spin h-4 w-4 sm:w-auto md:w-full" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-4 w-4 " fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -361,14 +360,12 @@ const ErrorFallbackUI: React.FC<ErrorFallbackUIProps> = ({
             className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors"
             type="button"
            aria-label="Button">
-            Reload Page
           </button>
           <button
             onClick={onReportIssue}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
             type="button"
            aria-label="Button">
-            Report Issue
           </button>
         </div>
         {errorId && (
@@ -377,7 +374,6 @@ const ErrorFallbackUI: React.FC<ErrorFallbackUIProps> = ({
               Error ID: <code className="bg-red-100 dark:bg-red-900/40 px-2 py-1 rounded text-xs font-mono sm:text-sm md:text-base">{errorId}</code>
             </p>
             <p className="text-xs opacity-75 sm:text-sm md:text-base">
-              Please include this ID when reporting the issue
             </p>
           </div>
         )}

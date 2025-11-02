@@ -12,12 +12,7 @@
  */
 
 import { logger } from '@/lib/logger';
-import { 
-  ExtensionAuthError, 
-  ExtensionAuthRecoveryStrategy,
-  ExtensionAuthErrorCategory,
-  ExtensionAuthErrorSeverity
-} from './extension-auth-errors';
+import {  ExtensionAuthError, ExtensionAuthRecoveryStrategy, ExtensionAuthErrorCategory, ExtensionAuthErrorSeverity } from './extension-auth-errors';
 
 /**
  * Extension feature availability levels
@@ -234,7 +229,6 @@ export class ExtensionAuthDegradationManager {
       affectedFeatures: affectedFeatures.length,
       availableFeatures: availableFeatures.length,
       recoveryEstimate: recoveryEstimate?.toISOString()
-    });
 
     return this.degradationState;
   }
@@ -327,7 +321,7 @@ export class ExtensionAuthDegradationManager {
       this.evictOldestCacheEntry();
     }
 
-    logger.debug(`Cached extension data for ${key} from ${source}`);
+import {     logger.debug(`Cached extension data for ${key} from ${source}`);
   }
 
   /**

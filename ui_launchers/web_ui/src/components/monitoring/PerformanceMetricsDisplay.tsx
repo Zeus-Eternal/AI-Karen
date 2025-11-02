@@ -134,7 +134,7 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
             <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
               <span>Response Time</span>
               <div className="flex items-center space-x-2">
-                <div className="w-24 bg-gray-200 rounded-full h-2 sm:w-auto md:w-full">
+                <div className="w-24 bg-gray-200 rounded-full h-2 ">
                   <div 
                     className={`h-2 rounded-full ${
                       metrics.averageResponseTime < 1000 ? 'bg-green-500' :
@@ -155,7 +155,7 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
             <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
               <span>Error Rate</span>
               <div className="flex items-center space-x-2">
-                <div className="w-24 bg-gray-200 rounded-full h-2 sm:w-auto md:w-full">
+                <div className="w-24 bg-gray-200 rounded-full h-2 ">
                   <div 
                     className={`h-2 rounded-full ${
                       metrics.errorRate < 1 ? 'bg-green-500' :
@@ -176,7 +176,7 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
             <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
               <span>Throughput</span>
               <div className="flex items-center space-x-2">
-                <div className="w-24 bg-gray-200 rounded-full h-2 sm:w-auto md:w-full">
+                <div className="w-24 bg-gray-200 rounded-full h-2 ">
                   <div 
                     className="h-2 rounded-full bg-blue-500"
                     style={{ 

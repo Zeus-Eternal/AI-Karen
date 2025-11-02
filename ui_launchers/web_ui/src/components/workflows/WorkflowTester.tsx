@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,36 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-'use client';
 
 
+import { } from 'lucide-react';
 
 
-
-
-
-
-
-
-
-
-  Play, 
-  Square, 
-  RotateCcw, 
-  CheckCircle, 
-  AlertCircle, 
-  Clock,
-  Eye,
-  Download
-} from 'lucide-react';
-
-
-  WorkflowDefinition, 
-  WorkflowTestResult, 
-  ExecutionLog,
-  WorkflowNode 
-} from '@/types/workflows';
+import { } from '@/types/workflows';
 
 interface WorkflowTesterProps {
   workflow: WorkflowDefinition;
@@ -107,7 +85,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
           message: error instanceof Error ? error.message : 'Unknown error occurred'
         }],
         error: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
+
     } finally {
       setIsRunning(false);
     }
@@ -132,7 +110,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
         return (
           <textarea
             value={input.value}
-            onChange={(e) = aria-label="Textarea"> handleInputChange(input.nodeId, input.inputId, e.target.value)}
+            onChange={(e) => handleInputChange(input.nodeId, input.inputId, e.target.value)}
             placeholder={`Enter ${input.name.toLowerCase()}...`}
             className="min-h-[80px]"
           />
@@ -143,7 +121,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
           <input
             type="number"
             value={input.value}
-            onChange={(e) = aria-label="Input"> handleInputChange(input.nodeId, input.inputId, parseFloat(e.target.value) || 0)}
+            onChange={(e) => handleInputChange(input.nodeId, input.inputId, parseFloat(e.target.value) || 0)}
             placeholder="0"
           />
         );
@@ -152,7 +130,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
         return (
           <select
             value={input.value.toString()}
-            onChange={(e) = aria-label="Select option"> handleInputChange(input.nodeId, input.inputId, e.target.value === 'true')}
+            onChange={(e) => handleInputChange(input.nodeId, input.inputId, e.target.value === 'true')}
             className="w-full p-2 border border-input rounded-md sm:p-4 md:p-6"
           >
             <option value="false">False</option>
@@ -165,7 +143,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
         return (
           <textarea
             value={typeof input.value === 'string' ? input.value : JSON.stringify(input.value, null, 2)}
-            onChange={(e) = aria-label="Textarea"> {
+            onChange={(e) => {
               try {
                 const parsed = JSON.parse(e.target.value);
                 handleInputChange(input.nodeId, input.inputId, parsed);
@@ -182,7 +160,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
         return (
           <input
             value={input.value}
-            onChange={(e) = aria-label="Input"> handleInputChange(input.nodeId, input.inputId, e.target.value)}
+            onChange={(e) => handleInputChange(input.nodeId, input.inputId, e.target.value)}
             placeholder={`Enter ${input.name.toLowerCase()}...`}
           />
         );
@@ -231,25 +209,22 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Test Configuration
               <div className="flex gap-2">
-                <button
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={handleResetTest}
                   disabled={isRunning}
-                 aria-label="Button">
-                  <RotateCcw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Reset
+                 >
+                  <RotateCcw className="h-4 w-4 mr-2 " />
                 </Button>
                 {isRunning ? (
-                  <button
+                  <Button
                     variant="destructive"
                     size="sm"
                     onClick={handleStopTest}
-                   aria-label="Button">
-                    <Square className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    Stop
+                   >
+                    <Square className="h-4 w-4 mr-2 " />
                   </Button>
                 ) : (
                   <button
@@ -257,8 +232,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                     onClick={handleRunTest}
                     disabled={!onTest}
                    aria-label="Button">
-                    <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    Run Test
+                    <Play className="h-4 w-4 mr-2 " />
                   </Button>
                 )}
               </div>
@@ -267,7 +241,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
           <CardContent>
             {testInputFields.length === 0 ? (
               <Alert>
-                <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                <AlertCircle className="h-4 w-4 " />
                 <AlertDescription>
                   No test inputs required. This workflow can be tested without input data.
                 </AlertDescription>
@@ -300,18 +274,16 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
               <CardTitle className="flex items-center gap-2">
                 {isRunning ? (
                   <>
-                    <Clock className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                    <Clock className="h-4 w-4 animate-spin " />
                     Running Test...
                   </>
                 ) : testResult?.success ? (
                   <>
-                    <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
-                    Test Completed
+                    <CheckCircle className="h-4 w-4 text-green-600 " />
                   </>
                 ) : (
                   <>
-                    <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
-                    Test Failed
+                    <AlertCircle className="h-4 w-4 text-red-600 " />
                   </>
                 )}
               </CardTitle>
@@ -331,18 +303,17 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                   </div>
                   {testResult.error && (
                     <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                      <AlertCircle className="h-4 w-4 " />
                       <AlertDescription>{testResult.error}</AlertDescription>
                     </Alert>
                   )}
                   <div className="flex gap-2 pt-2">
-                    <button
+                    <Button
                       variant="outline"
                       size="sm"
                       onClick={exportTestResults}
-                     aria-label="Button">
-                      <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Export Results
+                     >
+                      <Download className="h-4 w-4 mr-2 " />
                     </Button>
                   </div>
                 </div>
@@ -413,12 +384,12 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                           <h4 className="font-medium text-sm md:text-base lg:text-lg">
                             {node?.data.label || nodeId}
                           </h4>
-                          <button
+                          <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() = aria-label="Button"> setSelectedStep(selectedStep === nodeId ? null : nodeId)}
+                            onClick={() => setSelectedStep(selectedStep === nodeId ? null : nodeId)}
                           >
-                            <Eye className="h-4 w-4 sm:w-auto md:w-full" />
+                            <Eye className="h-4 w-4 " />
                           </Button>
                         </div>
                         
@@ -443,7 +414,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
           <Card>
             <CardContent className="flex items-center justify-center h-[200px] text-muted-foreground">
               <div className="text-center">
-                <Play className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                <Play className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                 <p>Run a test to see results here</p>
               </div>
             </CardContent>

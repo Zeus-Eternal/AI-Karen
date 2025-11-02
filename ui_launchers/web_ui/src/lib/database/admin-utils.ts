@@ -5,19 +5,7 @@
  * and other database operations specific to the admin management system.
  */
 
-import { 
-  User, 
-  AuditLog, 
-  SystemConfig, 
-  Permission, 
-  RolePermission,
-  UserListFilter,
-  AuditLogFilter,
-  PaginationParams,
-  PaginatedResponse,
-  AuditLogEntry,
-  RoleBasedQuery
-} from '@/types/admin';
+import {  User, AuditLog, SystemConfig, Permission, RolePermission, UserListFilter, AuditLogFilter, PaginationParams, PaginatedResponse, AuditLogEntry, RoleBasedQuery } from '@/types/admin';
 
 import { DatabaseClient, getDatabaseClient } from './client';
 
@@ -32,7 +20,6 @@ export class AdminDatabaseUtils {
    */
   async getUserWithRole(userId: string): Promise<User | null> {
     const query = `
-      SELECT 
         user_id,
         email,
         full_name,
@@ -49,7 +36,6 @@ export class AdminDatabaseUtils {
         locked_until,
         two_factor_enabled,
         two_factor_secret
-      FROM auth_users 
       WHERE user_id = $1 AND is_active = true
     `;
     
@@ -117,7 +103,6 @@ export class AdminDatabaseUtils {
     // Count total records
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM auth_users
       ${whereClause}
     `;
     const countResult = await this.db.query(countQuery, queryParams);
@@ -134,7 +119,6 @@ export class AdminDatabaseUtils {
 
     // Get paginated data
     const dataQuery = `
-      SELECT 
         user_id,
         email,
         full_name,
@@ -150,7 +134,6 @@ export class AdminDatabaseUtils {
         failed_login_attempts,
         locked_until,
         two_factor_enabled
-      FROM auth_users
       ${whereClause}
       ${orderClause}
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}
@@ -186,7 +169,6 @@ export class AdminDatabaseUtils {
    */
   async getUserPermissions(userId: string): Promise<Permission[]> {
     const query = `
-      SELECT permission_name as name, permission_description as description, permission_category as category
       FROM get_user_permissions($1)
     `;
     const result = await this.db.query(query, [userId]);
@@ -261,7 +243,6 @@ export class AdminDatabaseUtils {
     // Count total records
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM audit_logs al
       ${whereClause}
     `;
     const countResult = await this.db.query(countQuery, queryParams);
@@ -273,7 +254,6 @@ export class AdminDatabaseUtils {
 
     // Get paginated data with user information
     const dataQuery = `
-      SELECT 
         al.id,
         al.user_id,
         al.action,
@@ -285,7 +265,6 @@ export class AdminDatabaseUtils {
         al.timestamp,
         u.email as user_email,
         u.full_name as user_full_name
-      FROM audit_logs al
       LEFT JOIN auth_users u ON al.user_id = u.user_id
       ${whereClause}
       ORDER BY al.timestamp DESC
@@ -331,7 +310,6 @@ export class AdminDatabaseUtils {
    */
   async getSystemConfig(category?: string): Promise<SystemConfig[]> {
     let query = `
-      SELECT 
         sc.id,
         sc.key,
         sc.value,
@@ -343,7 +321,6 @@ export class AdminDatabaseUtils {
         sc.created_at,
         u.email as updated_by_email,
         u.full_name as updated_by_name
-      FROM system_config sc
       LEFT JOIN auth_users u ON sc.updated_by = u.user_id
     `;
     
@@ -389,7 +366,6 @@ export class AdminDatabaseUtils {
     const valueStr = valueType === 'object' ? JSON.stringify(value) : String(value);
     
     const query = `
-      UPDATE system_config 
       SET value = $1, value_type = $2, updated_by = $3, updated_at = NOW()
       ${description ? ', description = $5' : ''}
       WHERE key = $4
@@ -454,8 +430,7 @@ export class AdminDatabaseUtils {
         role: userData.role,
         full_name: userData.full_name
       }
-    });
-    
+
     return userId;
   }
 
@@ -474,7 +449,6 @@ export class AdminDatabaseUtils {
     }
     
     const query = `
-      UPDATE auth_users 
       SET role = $1, updated_at = NOW()
       WHERE user_id = $2
     `;
@@ -492,7 +466,7 @@ export class AdminDatabaseUtils {
         old_role: currentUser.role,
         new_role: newRole
       }
-    });
+
   }
 
   /**
@@ -557,7 +531,6 @@ export class AdminDatabaseUtils {
     queryParams.push(userId);
 
     const query = `
-      UPDATE auth_users 
       SET ${updateFields.join(', ')}
       WHERE user_id = $${paramIndex}
     `;
@@ -626,7 +599,6 @@ export class AdminDatabaseUtils {
    */
   async getUsersByRole(role: 'super_admin' | 'admin' | 'user'): Promise<User[]> {
     const query = `
-      SELECT 
         user_id,
         email,
         full_name,
@@ -642,9 +614,7 @@ export class AdminDatabaseUtils {
         failed_login_attempts,
         locked_until,
         two_factor_enabled
-      FROM auth_users 
       WHERE role = $1 AND is_active = true
-      ORDER BY created_at DESC
     `;
     
     const result = await this.db.query(query, [role]);
@@ -657,7 +627,6 @@ export class AdminDatabaseUtils {
   async isLastSuperAdmin(userId: string): Promise<boolean> {
     const query = `
       SELECT COUNT(*) as count
-      FROM auth_users 
       WHERE role = 'super_admin' AND is_active = true AND user_id != $1
     `;
     
@@ -677,7 +646,6 @@ export class AdminDatabaseUtils {
     
     const placeholders = userIds.map((_, index) => `$${index + 1}`).join(',');
     const query = `
-      UPDATE auth_users 
       SET is_active = $${userIds.length + 1}, updated_at = NOW()
       WHERE user_id IN (${placeholders})
     `;
@@ -693,7 +661,7 @@ export class AdminDatabaseUtils {
         user_ids: userIds,
         count: userIds.length
       }
-    });
+
   }
 
   // Dashboard Statistics Methods
@@ -713,7 +681,6 @@ export class AdminDatabaseUtils {
   async getAdminCount(): Promise<number> {
     const query = `
       SELECT COUNT(*) as count 
-      FROM auth_users 
       WHERE role IN ('admin', 'super_admin') AND is_active = true
     `;
     const result = await this.db.query(query);
@@ -726,7 +693,6 @@ export class AdminDatabaseUtils {
   async getActiveUserCount(): Promise<number> {
     const query = `
       SELECT COUNT(*) as count 
-      FROM auth_users 
       WHERE last_login_at >= NOW() - INTERVAL '24 hours' AND is_active = true
     `;
     const result = await this.db.query(query);
@@ -739,7 +705,6 @@ export class AdminDatabaseUtils {
   async getSecurityAlertsCount(): Promise<number> {
     const query = `
       SELECT COUNT(*) as count 
-      FROM security_alerts 
       WHERE resolved = false AND created_at >= NOW() - INTERVAL '7 days'
     `;
     const result = await this.db.query(query);
@@ -751,7 +716,6 @@ export class AdminDatabaseUtils {
    */
   async getUserByEmail(email: string): Promise<User | null> {
     const query = `
-      SELECT 
         user_id,
         email,
         full_name,
@@ -767,7 +731,6 @@ export class AdminDatabaseUtils {
         failed_login_attempts,
         locked_until,
         two_factor_enabled
-      FROM auth_users 
       WHERE email = $1
     `;
     
@@ -811,8 +774,6 @@ export class AdminDatabaseUtils {
    */
   async getSecuritySettings(): Promise<any> {
     const query = `
-      SELECT key, value, value_type
-      FROM system_config 
       WHERE category = 'security'
     `;
     
@@ -830,8 +791,7 @@ export class AdminDatabaseUtils {
       }
       
       current[keys[keys.length - 1]] = value;
-    });
-    
+
     return settings;
   }
 
@@ -912,11 +872,8 @@ export class AdminDatabaseUtils {
       : '';
 
     const query = `
-      SELECT 
         id, type, severity, message, timestamp, ip_address, user_id, resolved, created_at
-      FROM security_alerts
       ${whereClause}
-      ORDER BY created_at DESC
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
 
@@ -930,8 +887,6 @@ export class AdminDatabaseUtils {
    */
   async getSecurityAlert(alertId: string): Promise<any | null> {
     const query = `
-      SELECT id, type, severity, message, timestamp, ip_address, user_id, resolved, created_at
-      FROM security_alerts
       WHERE id = $1
     `;
     
@@ -944,7 +899,6 @@ export class AdminDatabaseUtils {
    */
   async resolveSecurityAlert(alertId: string, resolvedBy: string): Promise<void> {
     const query = `
-      UPDATE security_alerts 
       SET resolved = true, resolved_by = $2, resolved_at = NOW()
       WHERE id = $1
     `;
@@ -960,11 +914,8 @@ export class AdminDatabaseUtils {
     offset?: number;
   } = {}): Promise<any[]> {
     const query = `
-      SELECT 
         id, ip_address, reason, blocked_at, expires_at, failed_attempts, created_at
-      FROM blocked_ips
       WHERE (expires_at IS NULL OR expires_at > NOW())
-      ORDER BY blocked_at DESC
       LIMIT $1 OFFSET $2
     `;
     
@@ -980,8 +931,6 @@ export class AdminDatabaseUtils {
    */
   async getBlockedIP(blockedIpId: string): Promise<any | null> {
     const query = `
-      SELECT id, ip_address, reason, blocked_at, expires_at, failed_attempts, created_at
-      FROM blocked_ips
       WHERE id = $1
     `;
     
@@ -1023,10 +972,7 @@ export class AdminDatabaseUtils {
       : '';
 
     const query = `
-      SELECT ip_address, timestamp, user_agent, email_attempted
-      FROM failed_login_attempts
       ${whereClause}
-      ORDER BY timestamp DESC
     `;
     
     const result = await this.db.query(query, queryParams);
@@ -1057,10 +1003,8 @@ export class AdminDatabaseUtils {
     const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
 
     const query = `
-      SELECT 
         al.id, al.user_id, al.action, al.resource_type, al.resource_id, 
         al.details, al.timestamp, u.email as user_email
-      FROM audit_logs al
       LEFT JOIN auth_users u ON al.user_id = u.user_id
       ${whereClause}
       ORDER BY al.timestamp DESC
@@ -1080,7 +1024,6 @@ export class AdminDatabaseUtils {
     const totalUsersQuery = `SELECT COUNT(*) as count FROM auth_users WHERE is_active = true`;
     const activeUsersQuery = `
       SELECT COUNT(*) as count 
-      FROM auth_users 
       WHERE last_login_at >= NOW() - INTERVAL '24 hours' AND is_active = true
     `;
     
@@ -1094,7 +1037,6 @@ export class AdminDatabaseUtils {
     
     const adminUsersQuery = `
       SELECT COUNT(*) as count 
-      FROM auth_users 
       WHERE role IN ('admin', 'super_admin') AND is_active = true
     `;
 

@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
           'Content-Type': 'text/csv',
           'Content-Disposition': `attachment; filename="security-report-${new Date().toISOString().split('T')[0]}.csv"`
         }
-      });
+
     } else {
       // For PDF or other formats, you would integrate with a PDF generation library
       return NextResponse.json(
@@ -163,12 +163,12 @@ function generateFailedLoginTrends(failedLogins: any[], days: number) {
     const dayFailedLogins = failedLogins.filter(login => {
       const loginDate = new Date(login.timestamp);
       return loginDate >= dayStart && loginDate <= dayEnd;
-    });
+
     trends.push({
       date: dayStart.toISOString().split('T')[0],
       count: dayFailedLogins.length,
       uniqueIPs: new Set(dayFailedLogins.map(login => login.ipAddress)).size
-    });
+
   }
   return trends;
 }
@@ -185,7 +185,7 @@ function generateSecurityRecommendations(summary: any, alertsByType: any, blocke
       title: 'High Failed Login Activity',
       description: 'Consider implementing additional rate limiting or CAPTCHA verification.',
       action: 'Review authentication security settings'
-    });
+
   }
   // Many blocked IPs
   if (blockedIPs.length > 50) {
@@ -195,7 +195,7 @@ function generateSecurityRecommendations(summary: any, alertsByType: any, blocke
       title: 'High Number of Blocked IPs',
       description: 'Review blocked IP patterns to identify potential coordinated attacks.',
       action: 'Analyze blocked IP geographical distribution'
-    });
+
   }
   // Unresolved critical alerts
   if (summary.securityOverview.criticalAlerts > summary.securityOverview.resolvedAlerts) {
@@ -205,7 +205,7 @@ function generateSecurityRecommendations(summary: any, alertsByType: any, blocke
       title: 'Unresolved Critical Alerts',
       description: 'Multiple critical security alerts require immediate attention.',
       action: 'Review and resolve all critical security alerts'
-    });
+
   }
   // Frequent admin actions
   if (alertsByType['admin_action'] > 200) {
@@ -215,7 +215,7 @@ function generateSecurityRecommendations(summary: any, alertsByType: any, blocke
       title: 'High Admin Activity',
       description: 'Consider reviewing admin action patterns for unusual activity.',
       action: 'Audit recent administrative changes'
-    });
+
   }
   return recommendations;
 }
@@ -243,13 +243,13 @@ function generateCSVReport(reportData: any): string {
   lines.push('Type,Count');
   Object.entries(reportData.details.alertsByType).forEach(([type, count]) => {
     lines.push(`${type},${count}`);
-  });
+
   lines.push('');
   // Top blocked IPs
   lines.push('TOP BLOCKED IPs');
   lines.push('IP Address,Failed Attempts,Blocked At,Reason');
   reportData.details.topBlockedIPs.forEach((ip: any) => {
     lines.push(`${ip.ipAddress},${ip.failedAttempts},${ip.blockedAt},${ip.reason}`);
-  });
+
   return lines.join('\n');
 }

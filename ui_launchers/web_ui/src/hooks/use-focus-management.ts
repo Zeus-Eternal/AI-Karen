@@ -73,7 +73,7 @@ export const useFocusManagement = <T extends HTMLElement = HTMLElement>(
       if (element.getAttribute('aria-hidden') === 'true') return false;
       // Check exclude list
       return !excludeFromTrap.some(selector => element.matches(selector));
-    });
+
   }, [excludeFromTrap]);
   // Focus the first focusable element
   const focusFirst = useCallback(() => {
@@ -263,7 +263,7 @@ export const useFocusTrap = <T extends HTMLElement = HTMLElement>(
     enabled: isOpen,
     trapFocus: true,
     restoreFocus: true,
-  });
+
 };
 /**
  * Hook for managing focus restoration

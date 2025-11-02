@@ -74,7 +74,7 @@ function mockSession(userId: string, role: string) {
     userId,
     role,
     expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
-  });
+
   return sessionId;
 }
 
@@ -99,11 +99,9 @@ describe('Admin API Integration Tests', () => {
     
     // Populate test data
     testUsers.forEach(user => mockDatabase.users.set(user.id, user));
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('First-Run Setup API', () => {
     it('should check first-run status correctly', async () => {
@@ -115,7 +113,6 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/setup/check-first-run', {
         method: 'GET',
         credentials: 'include',
-      });
 
       const data = await response.json();
 
@@ -124,8 +121,7 @@ describe('Admin API Integration Tests', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/admin/setup/check-first-run', {
         method: 'GET',
         credentials: 'include',
-      });
-    });
+
 
     it('should create super admin successfully', async () => {
       const newSuperAdmin = {
@@ -153,7 +149,6 @@ describe('Admin API Integration Tests', () => {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(newSuperAdmin),
-      });
 
       const data = await response.json();
 
@@ -161,7 +156,6 @@ describe('Admin API Integration Tests', () => {
       expect(data.success).toBe(true);
       expect(data.user.role).toBe('super_admin');
       expect(data.user.email).toBe(newSuperAdmin.email);
-    });
 
     it('should validate password strength during setup', async () => {
       const weakPassword = {
@@ -182,14 +176,12 @@ describe('Admin API Integration Tests', () => {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(weakPassword),
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(400);
       expect(data.error).toContain('Password must be at least 12 characters');
-    });
 
     it('should prevent duplicate super admin creation', async () => {
       mockFetch.mockResolvedValueOnce(
@@ -208,15 +200,13 @@ describe('Admin API Integration Tests', () => {
           username: 'duplicate',
           password: 'SuperSecure123!@#',
         }),
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(409);
       expect(data.error).toBe('Super admin already exists');
-    });
-  });
+
 
   describe('User Management API', () => {
     it('should list users with pagination', async () => {
@@ -234,7 +224,6 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/users?page=1&limit=2', {
         method: 'GET',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
@@ -243,7 +232,6 @@ describe('Admin API Integration Tests', () => {
       expect(data.total).toBe(testUsers.length);
       expect(data.page).toBe(1);
       expect(data.limit).toBe(2);
-    });
 
     it('should create new user successfully', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -273,7 +261,6 @@ describe('Admin API Integration Tests', () => {
         headers: authHeaders.headers,
         credentials: authHeaders.credentials,
         body: JSON.stringify(newUser),
-      });
 
       const data = await response.json();
 
@@ -281,7 +268,6 @@ describe('Admin API Integration Tests', () => {
       expect(data.success).toBe(true);
       expect(data.user.email).toBe(newUser.email);
       expect(data.user.role).toBe('user');
-    });
 
     it('should update user successfully', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -306,7 +292,6 @@ describe('Admin API Integration Tests', () => {
         headers: authHeaders.headers,
         credentials: authHeaders.credentials,
         body: JSON.stringify(updates),
-      });
 
       const data = await response.json();
 
@@ -314,7 +299,6 @@ describe('Admin API Integration Tests', () => {
       expect(data.success).toBe(true);
       expect(data.user.username).toBe(updates.username);
       expect(data.user.isActive).toBe(updates.isActive);
-    });
 
     it('should delete user successfully', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -326,13 +310,11 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/users/1', {
         method: 'DELETE',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(true);
       expect(data.success).toBe(true);
-    });
 
     it('should handle bulk user operations', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -354,7 +336,6 @@ describe('Admin API Integration Tests', () => {
         headers: authHeaders.headers,
         credentials: authHeaders.credentials,
         body: JSON.stringify(bulkOperation),
-      });
 
       const data = await response.json();
 
@@ -362,7 +343,6 @@ describe('Admin API Integration Tests', () => {
       expect(data.success).toBe(true);
       expect(data.processed).toBe(2);
       expect(data.errors).toHaveLength(0);
-    });
 
     it('should import users from CSV', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -383,14 +363,12 @@ describe('Admin API Integration Tests', () => {
         method: 'POST',
         credentials: authHeaders.credentials,
         body: formData,
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(true);
       expect(data.success).toBe(true);
       expect(data.imported).toBe(2);
-    });
 
     it('should enforce admin permissions for user management', async () => {
       const authHeaders = mockAuthenticatedRequest('1', 'user');
@@ -405,15 +383,13 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/users', {
         method: 'GET',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(403);
       expect(data.error).toBe('Insufficient permissions');
-    });
-  });
+
 
   describe('Admin Management API', () => {
     it('should promote user to admin', async () => {
@@ -433,14 +409,12 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/admins/promote/1', {
         method: 'POST',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(true);
       expect(data.success).toBe(true);
       expect(data.user.role).toBe('admin');
-    });
 
     it('should demote admin to user', async () => {
       const authHeaders = mockAuthenticatedRequest('3', 'super_admin');
@@ -459,14 +433,12 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/admins/demote/2', {
         method: 'POST',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(true);
       expect(data.success).toBe(true);
       expect(data.user.role).toBe('user');
-    });
 
     it('should invite new admin', async () => {
       const authHeaders = mockAuthenticatedRequest('3', 'super_admin');
@@ -492,7 +464,6 @@ describe('Admin API Integration Tests', () => {
         headers: authHeaders.headers,
         credentials: authHeaders.credentials,
         body: JSON.stringify(invitation),
-      });
 
       const data = await response.json();
 
@@ -500,7 +471,6 @@ describe('Admin API Integration Tests', () => {
       expect(data.success).toBe(true);
       expect(data.invitation.email).toBe(invitation.email);
       expect(data.invitation.role).toBe('admin');
-    });
 
     it('should enforce super admin permissions for admin management', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -515,15 +485,13 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/admins/promote/1', {
         method: 'POST',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(403);
       expect(data.error).toBe('Super admin access required');
-    });
-  });
+
 
   describe('System Configuration API', () => {
     it('should get system configuration', async () => {
@@ -544,7 +512,6 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/system/config', {
         method: 'GET',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
@@ -552,7 +519,6 @@ describe('Admin API Integration Tests', () => {
       expect(data.config.passwordMinLength).toBe(12);
       expect(data.config.sessionTimeout).toBe(30);
       expect(data.config.mfaRequired).toBe(false);
-    });
 
     it('should update system configuration', async () => {
       const authHeaders = mockAuthenticatedRequest('3', 'super_admin');
@@ -574,7 +540,6 @@ describe('Admin API Integration Tests', () => {
         headers: authHeaders.headers,
         credentials: authHeaders.credentials,
         body: JSON.stringify(configUpdates),
-      });
 
       const data = await response.json();
 
@@ -582,7 +547,6 @@ describe('Admin API Integration Tests', () => {
       expect(data.success).toBe(true);
       expect(data.config.passwordMinLength).toBe(14);
       expect(data.config.mfaRequired).toBe(true);
-    });
 
     it('should validate configuration values', async () => {
       const authHeaders = mockAuthenticatedRequest('3', 'super_admin');
@@ -609,7 +573,6 @@ describe('Admin API Integration Tests', () => {
         headers: authHeaders.headers,
         credentials: authHeaders.credentials,
         body: JSON.stringify(invalidConfig),
-      });
 
       const data = await response.json();
 
@@ -617,8 +580,7 @@ describe('Admin API Integration Tests', () => {
       expect(response.status).toBe(400);
       expect(data.error).toBe('Validation failed');
       expect(data.details).toHaveLength(2);
-    });
-  });
+
 
   describe('Audit Logging API', () => {
     it('should retrieve audit logs with filtering', async () => {
@@ -660,7 +622,6 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/system/audit-logs?action=user_created&page=1&limit=50', {
         method: 'GET',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
@@ -668,7 +629,6 @@ describe('Admin API Integration Tests', () => {
       expect(data.logs).toHaveLength(2);
       expect(data.total).toBe(2);
       expect(data.logs[0].action).toBe('user_created');
-    });
 
     it('should export audit logs', async () => {
       const authHeaders = mockAuthenticatedRequest('3', 'super_admin');
@@ -684,20 +644,17 @@ describe('Admin API Integration Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         blob: async () => new Blob(['audit,log,data'], { type: 'text/csv' }),
-      });
 
       const response = await fetch('/api/admin/system/audit-logs/export', {
         method: 'POST',
         headers: authHeaders.headers,
         credentials: authHeaders.credentials,
         body: JSON.stringify(exportRequest),
-      });
 
       expect(response.ok).toBe(true);
       
       const blob = await response.blob();
       expect(blob.type).toBe('text/csv');
-    });
 
     it('should clean up old audit logs', async () => {
       const authHeaders = mockAuthenticatedRequest('3', 'super_admin');
@@ -716,14 +673,12 @@ describe('Admin API Integration Tests', () => {
         body: JSON.stringify({
           retentionDays: 90,
         }),
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(true);
       expect(data.success).toBe(true);
       expect(data.deletedCount).toBe(150);
-    });
 
     it('should enforce super admin permissions for audit logs', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -738,15 +693,13 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/system/audit-logs', {
         method: 'GET',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(403);
       expect(data.error).toBe('Super admin access required');
-    });
-  });
+
 
   describe('Authentication and Session Management', () => {
     it('should validate admin sessions correctly', async () => {
@@ -768,13 +721,11 @@ describe('Admin API Integration Tests', () => {
           'Cookie': `session=${sessionId}`,
         },
         credentials: 'include',
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(true);
       expect(data.user.role).toBe('admin');
-    });
 
     it('should reject expired sessions', async () => {
       const expiredSessionId = 'expired-session';
@@ -782,7 +733,6 @@ describe('Admin API Integration Tests', () => {
         userId: '2',
         role: 'admin',
         expiresAt: new Date(Date.now() - 1000), // Expired 1 second ago
-      });
 
       mockFetch.mockResolvedValueOnce(
         mockApiResponse(
@@ -797,14 +747,12 @@ describe('Admin API Integration Tests', () => {
           'Cookie': `session=${expiredSessionId}`,
         },
         credentials: 'include',
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(401);
       expect(data.error).toBe('Session expired');
-    });
 
     it('should check permissions correctly', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -819,15 +767,13 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/auth/check-permissions?permission=user_management', {
         method: 'GET',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(true);
       expect(data.hasPermission).toBe(true);
       expect(data.permissions).toContain('user_management');
-    });
-  });
+
 
   describe('Error Handling and Edge Cases', () => {
     it('should handle database connection errors', async () => {
@@ -843,14 +789,12 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/users', {
         method: 'GET',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(500);
       expect(data.error).toBe('Database connection failed');
-    });
 
     it('should handle malformed request data', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -867,14 +811,12 @@ describe('Admin API Integration Tests', () => {
         headers: authHeaders.headers,
         credentials: authHeaders.credentials,
         body: 'invalid-json',
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(400);
       expect(data.error).toBe('Invalid JSON in request body');
-    });
 
     it('should handle rate limiting', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -889,14 +831,12 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/users', {
         method: 'GET',
         ...authHeaders,
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(429);
       expect(data.error).toBe('Rate limit exceeded');
-    });
 
     it('should handle concurrent modification conflicts', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -913,15 +853,13 @@ describe('Admin API Integration Tests', () => {
         headers: authHeaders.headers,
         credentials: authHeaders.credentials,
         body: JSON.stringify({ username: 'newname' }),
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(409);
       expect(data.error).toBe('Resource was modified by another user');
-    });
-  });
+
 
   describe('Performance and Scalability', () => {
     it('should handle large dataset queries efficiently', async () => {
@@ -949,7 +887,7 @@ describe('Admin API Integration Tests', () => {
       const response = await fetch('/api/admin/users?page=1&limit=50', {
         method: 'GET',
         ...authHeaders,
-      });
+
       const endTime = Date.now();
 
       const data = await response.json();
@@ -960,7 +898,6 @@ describe('Admin API Integration Tests', () => {
       
       // Verify reasonable response time (less than 100ms for mocked response)
       expect(endTime - startTime).toBeLessThan(100);
-    });
 
     it('should handle bulk operations efficiently', async () => {
       const authHeaders = mockAuthenticatedRequest('2', 'admin');
@@ -983,14 +920,12 @@ describe('Admin API Integration Tests', () => {
           action: 'deactivate',
           userIds: bulkUserIds,
         }),
-      });
 
       const data = await response.json();
 
       expect(response.ok).toBe(true);
       expect(data.processed).toBe(100);
       expect(data.processingTime).toBeLessThan(1000); // Should be efficient
-    });
 
     it('should implement proper caching for frequently accessed data', async () => {
       const authHeaders = mockAuthenticatedRequest('3', 'super_admin');
@@ -1006,7 +941,6 @@ describe('Admin API Integration Tests', () => {
       const firstResponse = await fetch('/api/admin/system/config', {
         method: 'GET',
         ...authHeaders,
-      });
 
       const firstData = await firstResponse.json();
       expect(firstData.cached).toBe(false);
@@ -1022,10 +956,8 @@ describe('Admin API Integration Tests', () => {
       const secondResponse = await fetch('/api/admin/system/config', {
         method: 'GET',
         ...authHeaders,
-      });
 
       const secondData = await secondResponse.json();
       expect(secondData.cached).toBe(true);
-    });
-  });
-});
+
+

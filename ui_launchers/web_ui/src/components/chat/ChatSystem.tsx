@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CopilotKit } from '@copilotkit/react-core';
@@ -11,18 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  MessageSquare,
-  Grid3X3,
-  BarChart3,
-  Settings,
-  Send,
-  Bot,
-  Sparkles,
-  Brain,
-  Database,
-  Zap
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { ChatBubble } from './ChatBubble';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -92,7 +82,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
             variant: 'destructive',
             title: 'Chat Initialization Failed',
             description: 'Unable to start chat session. Please refresh and try again.'
-          });
+
         }
       }
     };
@@ -178,7 +168,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
         variant: 'destructive',
         title: 'Message Failed',
         description: 'Unable to process your message. Please try again.'
-      });
+
     } finally {
       setIsLoading(false);
     }
@@ -192,7 +182,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
       flex: 2,
       cellRenderer: (params: any) => (
         <div className="flex items-center gap-2 py-1">
-          <MessageSquare className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+          <MessageSquare className="h-4 w-4 text-muted-foreground " />
           <span className="font-medium">{params.value}</span>
         </div>
       )
@@ -250,16 +240,13 @@ return (
         <div className="border-b">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 sm:w-auto md:w-full" />
-              Chat
+              <MessageSquare className="h-4 w-4 " />
             </TabsTrigger>
             <TabsTrigger value="conversations" className="flex items-center gap-2">
-              <Grid3X3 className="h-4 w-4 sm:w-auto md:w-full" />
-              Conversations
+              <Grid3X3 className="h-4 w-4 " />
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 sm:w-auto md:w-full" />
-              Analytics
+              <BarChart3 className="h-4 w-4 " />
             </TabsTrigger>
           </TabsList>
         </div>
@@ -270,11 +257,9 @@ return (
               <Card className="flex-1 flex flex-col">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 sm:w-auto md:w-full" />
-                    AI Karen Chat
+                    <Sparkles className="h-5 w-5 " />
                     <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
-                      <Brain className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                      Enhanced with CopilotKit
+                      <Brain className="h-3 w-3 mr-1 " />
                     </Badge>
                   </CardTitle>
                 </CardHeader>
@@ -286,8 +271,8 @@ return (
                       {messages.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                           <div className="flex items-center justify-center gap-2 mb-4">
-                            <Bot className="h-12 w-12 opacity-50 sm:w-auto md:w-full" />
-                            <Zap className="h-8 w-8 text-primary sm:w-auto md:w-full" />
+                            <Bot className="h-12 w-12 opacity-50 " />
+                            <Zap className="h-8 w-8 text-primary " />
                           </div>
                           <p className="text-lg font-medium mb-2">Welcome to AI Karen</p>
                           <p className="text-sm md:text-base lg:text-lg">
@@ -308,16 +293,16 @@ return (
                       
                       {isLoading && (
                         <div className="flex gap-3 mb-4">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center sm:w-auto md:w-full">
-                            <Bot className="h-4 w-4 sm:w-auto md:w-full" />
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center ">
+                            <Bot className="h-4 w-4 " />
                           </div>
                           <div className="flex-1">
                             <div className="inline-block p-3 rounded-lg bg-muted border sm:p-4 md:p-6">
                               <div className="flex items-center gap-2">
                                 <div className="flex space-x-1">
-                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce sm:w-auto md:w-full"></div>
-                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce sm:w-auto md:w-full" style={{ animationDelay: '0.1s' }}></div>
-                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce sm:w-auto md:w-full" style={{ animationDelay: '0.2s' }}></div>
+                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce "></div>
+                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce " style={{ animationDelay: '0.1s' }}></div>
+                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce " style={{ animationDelay: '0.2s' }}></div>
                                 </div>
                                 <span className="text-sm text-muted-foreground md:text-base lg:text-lg">AI Karen is thinking...</span>
                               </div>
@@ -352,8 +337,7 @@ return (
             <Card className="h-full">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5 sm:w-auto md:w-full" />
-                  Conversation History
+                  <Database className="h-5 w-5 " />
                   <Badge variant="outline">{conversations.length} conversations</Badge>
                 </CardTitle>
               </CardHeader>
@@ -384,14 +368,13 @@ return (
             <Card className="h-full">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 sm:w-auto md:w-full" />
-                  Chat Analytics
+                  <BarChart3 className="h-5 w-5 " />
                   <Badge variant="secondary">Coming Soon</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-8 text-muted-foreground">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50 " />
                   <p className="text-lg font-medium mb-2">Analytics Dashboard</p>
                   <p className="text-sm md:text-base lg:text-lg">
                     Detailed conversation analytics and insights will be available here.

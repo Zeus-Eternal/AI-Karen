@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,16 +50,16 @@ export default function AgentList() {
           <CardContent className="space-y-2 text-sm md:text-base lg:text-lg">
             <div className="flex items-center justify-between">
               <span>Trigger</span>
-              <input className="w-40 sm:w-auto md:w-full" value={agent.trigger} readOnly />
+              <Input className="w-40" value={agent.trigger} readOnly />
             </div>
             <div className="flex items-center justify-between">
               <span>Action</span>
-              <input className="w-40 sm:w-auto md:w-full" value={agent.action} readOnly />
+              <Input className="w-40" value={agent.action} readOnly />
             </div>
           </CardContent>
           <CardFooter className="flex items-center justify-between">
             <Switch checked={agent.status === "running"} onCheckedChange={(val) => toggleAgent(agent.id, val)} />
-            <button size="sm" variant="outline" aria-label="Button">Configure</Button>
+            <Button size="sm" variant="outline">Configure</Button>
           </CardFooter>
         </Card>
       ))}

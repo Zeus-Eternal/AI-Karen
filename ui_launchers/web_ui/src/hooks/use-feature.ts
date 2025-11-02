@@ -2,12 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { safeError, safeWarn } from '@/lib/safe-console';
-import { 
-  loadConfigFromEnvironment, 
-  loadConfigFromStorage, 
-  mergeWithEnvironmentDefaults,
-  validateFeatureFlagConfig 
-} from '@/lib/featureFlagConfig';
+import {  loadConfigFromEnvironment, loadConfigFromStorage, mergeWithEnvironmentDefaults, validateFeatureFlagConfig } from '@/lib/featureFlagConfig';
 import { useTelemetry } from '@/hooks/use-telemetry';
 
 export type FeatureFlag = 
@@ -50,7 +45,6 @@ const resolveFeatureFlags = (): Record<FeatureFlag, boolean> => {
     const mergedFlags = mergeWithEnvironmentDefaults({
       ...storedFlags,
       ...envFlags
-    });
 
     // Validate the final configuration
     const validation = validateFeatureFlagConfig(mergedFlags);
@@ -96,7 +90,7 @@ export const useFeature = (flag?: string): boolean => {
         flag: flagName,
         enabled: isEnabled,
         source: 'useFeature'
-      });
+
     }
 
     return isEnabled;
@@ -116,14 +110,12 @@ export const useFeatures = (flags: FeatureFlag[]): Record<FeatureFlag, boolean> 
     
     flags.forEach(flag => {
       result[flag] = resolvedFlags[flag] ?? false;
-    });
 
     // Track batch feature flag check
     track('feature_flags_batch_checked', {
       flags: flags,
       results: result,
       source: 'useFeatures'
-    });
 
     return result;
   }, [flags, resolvedFlags, track]);

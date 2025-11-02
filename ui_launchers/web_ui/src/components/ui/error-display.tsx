@@ -6,7 +6,8 @@
  * 
  * Requirements: 7.2, 7.4
  */
-'use client';
+"use client";
+
 import React from 'react';
 import { AlertTriangle, RefreshCw, X, Info, AlertCircle, XCircle } from 'lucide-react';
 import type { AdminError } from '@/lib/errors/admin-error-handler';
@@ -29,15 +30,15 @@ export function ErrorDisplay({
   const getSeverityIcon = () => {
     switch (error.severity) {
       case 'critical':
-        return <XCircle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />;
+        return <XCircle className="h-5 w-5 text-red-500 " />;
       case 'high':
-        return <AlertCircle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-5 w-5 text-red-500 " />;
       case 'medium':
-        return <AlertTriangle className="h-5 w-5 text-yellow-500 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-5 w-5 text-yellow-500 " />;
       case 'low':
-        return <Info className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />;
+        return <Info className="h-5 w-5 text-blue-500 " />;
       default:
-        return <AlertTriangle className="h-5 w-5 text-yellow-500 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-5 w-5 text-yellow-500 " />;
     }
   };
   const getSeverityColors = () => {
@@ -66,7 +67,6 @@ export function ErrorDisplay({
               className="text-sm underline hover:no-underline focus:outline-none md:text-base lg:text-lg"
               aria-label="Retry operation"
             >
-              Retry
             </button>
           )}
           {onDismiss && (
@@ -75,7 +75,7 @@ export function ErrorDisplay({
               className="text-sm hover:opacity-70 focus:outline-none md:text-base lg:text-lg"
               aria-label="Dismiss error"
             >
-              <X className="h-4 w-4 sm:w-auto md:w-full" />
+              <X className="h-4 w-4 " />
             </button>
           )}
         </div>
@@ -114,8 +114,7 @@ export function ErrorDisplay({
                 className="inline-flex items-center text-sm font-medium underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base lg:text-lg"
                 aria-label="Retry the failed operation"
               >
-                <RefreshCw className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                Try Again
+                <RefreshCw className="h-4 w-4 mr-1 " />
               </button>
             )}
             <span className="text-xs opacity-75 sm:text-sm md:text-base">
@@ -130,7 +129,7 @@ export function ErrorDisplay({
               className="inline-flex text-sm hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base lg:text-lg"
               aria-label="Dismiss this error"
             >
-              <X className="h-5 w-5 sm:w-auto md:w-full" />
+              <X className="h-5 w-5 " />
             </button>
           </div>
         )}

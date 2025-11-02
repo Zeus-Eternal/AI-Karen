@@ -9,13 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import { validateEmail, hashPassword } from '@/lib/auth/setup-validation';
-import type { 
-  AdminApiResponse, 
-  CreateUserRequest, 
-  UserListFilter, 
-  PaginationParams,
-  User 
-} from '@/types/admin';
+import type {  AdminApiResponse, CreateUserRequest, UserListFilter, PaginationParams, User } from '@/types/admin';
 /**
  * GET /api/admin/users - List users with filtering and pagination
  */
@@ -99,7 +93,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});
+
 /**
  * POST /api/admin/users - Create new user
  */
@@ -177,7 +171,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       role: requestedRole,
       tenant_id: body.tenant_id || 'default',
       created_by: context.user.user_id
-    });
+
     // Get created user for response
     const createdUser = await adminUtils.getUserWithRole(userId);
     if (!createdUser) {
@@ -197,7 +191,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       },
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
-    });
+
     // Remove sensitive information from response
     const responseUser = {
       user_id: createdUser.user_id,
@@ -236,4 +230,3 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});

@@ -31,34 +31,29 @@ describe('Performance Benchmarks', () => {
       maxConnectionsPerHost: 5,
       connectionTimeout: 5000,
       enableKeepAlive: true,
-    });
 
     responseCache = initializeRequestResponseCache({
       maxSize: 100,
       defaultTtl: 60000,
       enableCompression: true,
       enablePersistence: false,
-    });
 
     queryOptimizer = initializeDatabaseQueryOptimizer({
       enableQueryCache: true,
       queryCacheTtl: 60000,
       enablePreparedStatements: true,
       maxCacheSize: 100,
-    });
 
     performanceOptimizer = initializePerformanceOptimizer({
       enableMetrics: true,
       metricsInterval: 1000,
-    });
-  });
+
 
   afterEach(async () => {
     await connectionPool.shutdown();
     responseCache.shutdown();
     queryOptimizer.shutdown();
     await performanceOptimizer.shutdown();
-  });
 
   describe('HTTP Connection Pool Performance', () => {
     it('should handle concurrent requests efficiently', async () => {
@@ -69,7 +64,6 @@ describe('Performance Benchmarks', () => {
         statusText: 'OK',
         headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => ({ success: true }),
-      });
 
       const startTime = Date.now();
       const concurrentRequests = 20;
@@ -87,7 +81,6 @@ describe('Performance Benchmarks', () => {
       expect(responses).toHaveLength(concurrentRequests);
       responses.forEach(response => {
         expect(response.ok).toBe(true);
-      });
 
       // Check performance metrics
       const metrics = connectionPool.getMetrics();
@@ -99,7 +92,6 @@ describe('Performance Benchmarks', () => {
       
       console.log(`Concurrent requests benchmark: ${concurrentRequests} requests in ${totalTime}ms`);
       console.log(`Connection pool metrics:`, metrics);
-    });
 
     it('should reuse connections effectively', async () => {
       (global.fetch as any).mockResolvedValue({
@@ -108,7 +100,6 @@ describe('Performance Benchmarks', () => {
         statusText: 'OK',
         headers: new Headers(),
         json: async () => ({ success: true }),
-      });
 
       const url = 'https://api.example.com/test';
       
@@ -122,7 +113,6 @@ describe('Performance Benchmarks', () => {
       // Should have connection reuse
       expect(metrics.connectionReuse).toBeGreaterThan(1);
       expect(metrics.totalConnections).toBeLessThan(3); // Should reuse connections
-    });
 
     it('should handle connection failures gracefully', async () => {
       // Mock network error
@@ -142,8 +132,7 @@ describe('Performance Benchmarks', () => {
 
       // Should fail quickly without hanging
       expect(totalTime).toBeLessThan(10000); // 10 seconds max
-    });
-  });
+
 
   describe('Request/Response Cache Performance', () => {
     it('should improve response times with caching', async () => {
@@ -167,7 +156,6 @@ describe('Performance Benchmarks', () => {
       expect(getTime).toBeLessThan(setTime);
       
       console.log(`Cache performance: Set ${setTime}ms, Get ${getTime}ms`);
-    });
 
     it('should handle large datasets efficiently', async () => {
       const largeData = Array.from({ length: 1000 }, (_, i) => ({
@@ -181,7 +169,6 @@ describe('Performance Benchmarks', () => {
       // Store large dataset
       await responseCache.set('large-dataset', largeData, {}, 200, {
         compress: true,
-      });
 
       // Retrieve large dataset
       const result = await responseCache.get('large-dataset');
@@ -197,7 +184,6 @@ describe('Performance Benchmarks', () => {
       
       const metrics = responseCache.getMetrics();
       console.log(`Large dataset cache: ${totalTime}ms, Memory: ${metrics.memoryUsage} bytes`);
-    });
 
     it('should maintain good hit rates under load', async () => {
       const requests = 100;
@@ -228,8 +214,7 @@ describe('Performance Benchmarks', () => {
       expect(totalTime).toBeLessThan(500); // 500ms max
       
       console.log(`Cache load test: ${requests} requests in ${totalTime}ms, Hit rate: ${(metrics.hitRate * 100).toFixed(1)}%`);
-    });
-  });
+
 
   describe('Database Query Optimizer Performance', () => {
     it('should cache authentication queries effectively', async () => {
@@ -255,7 +240,6 @@ describe('Performance Benchmarks', () => {
       expect(metrics.cacheHits).toBeGreaterThan(0);
       
       console.log(`Auth query performance: First ${time1}ms, Cached ${time2}ms`);
-    });
 
     it('should handle concurrent database queries', async () => {
       const concurrentQueries = 10;
@@ -278,7 +262,6 @@ describe('Performance Benchmarks', () => {
       const metrics = queryOptimizer.getMetrics();
       console.log(`Concurrent queries: ${concurrentQueries} queries in ${totalTime}ms`);
       console.log(`Query metrics:`, metrics);
-    });
 
     it('should identify and track slow queries', async () => {
       // Mock a slow query by using a complex operation
@@ -293,8 +276,7 @@ describe('Performance Benchmarks', () => {
       // Should track the query
       expect(metrics.totalQueries).toBeGreaterThan(0);
       expect(metrics.averageQueryTime).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('Integrated Performance Optimizer', () => {
     it('should provide comprehensive performance optimization', async () => {
@@ -305,7 +287,6 @@ describe('Performance Benchmarks', () => {
         statusText: 'OK',
         headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => ({ success: true, data: 'test' }),
-      });
 
       const startTime = Date.now();
       
@@ -332,7 +313,6 @@ describe('Performance Benchmarks', () => {
       const metrics = performanceOptimizer.getMetrics();
       console.log(`Integrated performance test: ${totalTime}ms`);
       console.log(`Performance metrics:`, metrics);
-    });
 
     it('should handle authentication flow efficiently', async () => {
       // Mock authentication response
@@ -345,7 +325,6 @@ describe('Performance Benchmarks', () => {
           access_token: 'test-token',
           user: { id: 'test-user', email: 'test@example.com' },
         }),
-      });
 
       const startTime = Date.now();
       
@@ -362,7 +341,6 @@ describe('Performance Benchmarks', () => {
       expect(totalTime).toBeLessThan(2000); // 2 seconds max
       
       console.log(`Authentication flow: ${totalTime}ms`);
-    });
 
     it('should provide performance recommendations', () => {
       const recommendations = performanceOptimizer.getPerformanceRecommendations();
@@ -371,7 +349,6 @@ describe('Performance Benchmarks', () => {
       
       // Should provide actionable recommendations
       console.log('Performance recommendations:', recommendations);
-    });
 
     it('should handle cache invalidation correctly', () => {
       // Test cache invalidation
@@ -379,8 +356,7 @@ describe('Performance Benchmarks', () => {
       
       expect(typeof clearedCount).toBe('number');
       expect(clearedCount).toBeGreaterThanOrEqual(0);
-    });
-  });
+
 
   describe('Performance Regression Tests', () => {
     it('should maintain performance under memory pressure', async () => {
@@ -407,7 +383,6 @@ describe('Performance Benchmarks', () => {
       const metrics = responseCache.getMetrics();
       console.log(`Memory pressure test: ${itemCount} items in ${totalTime}ms`);
       console.log(`Memory usage: ${metrics.memoryUsage} bytes`);
-    });
 
     it('should maintain connection pool efficiency under load', async () => {
       (global.fetch as any).mockResolvedValue({
@@ -416,7 +391,6 @@ describe('Performance Benchmarks', () => {
         statusText: 'OK',
         headers: new Headers(),
         json: async () => ({ success: true }),
-      });
 
       const requestCount = 100;
       const batchSize = 10;
@@ -443,9 +417,8 @@ describe('Performance Benchmarks', () => {
       
       console.log(`Load test: ${requestCount} requests in ${totalTime}ms`);
       console.log(`Connection reuse: ${metrics.connectionReuse}`);
-    });
-  });
-});
+
+
 
 describe('Performance Benchmarking Utilities', () => {
   it('should measure request latency accurately', async () => {
@@ -455,8 +428,7 @@ describe('Performance Benchmarking Utilities', () => {
     const testConnectionPool = initializeHttpConnectionPool({
       maxConnections: 5,
       maxConnectionsPerHost: 2,
-    });
-    
+
     (global.fetch as any).mockImplementation(() => 
       new Promise(resolve => {
         setTimeout(() => resolve({
@@ -488,21 +460,18 @@ describe('Performance Benchmarking Utilities', () => {
     
     expect(averageLatency).toBeGreaterThan(0);
     expect(minLatency).toBeLessThan(maxLatency);
-  });
 
   it('should measure throughput accurately', async () => {
     const testConnectionPool = initializeHttpConnectionPool({
       maxConnections: 5,
       maxConnectionsPerHost: 2,
-    });
-    
+
     (global.fetch as any).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: 'OK',
       headers: new Headers(),
       json: async () => ({ success: true }),
-    });
 
     const duration = 1000; // 1 second for faster test
     const startTime = Date.now();
@@ -524,5 +493,4 @@ describe('Performance Benchmarking Utilities', () => {
     
     expect(throughput).toBeGreaterThan(0);
     expect(requestCount).toBeGreaterThan(0);
-  });
-});
+

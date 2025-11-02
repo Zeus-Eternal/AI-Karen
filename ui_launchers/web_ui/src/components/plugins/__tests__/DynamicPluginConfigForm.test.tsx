@@ -5,6 +5,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { DynamicPluginConfigForm } from '../DynamicPluginConfigForm';
@@ -148,14 +149,12 @@ const mockProps = {
 describe('DynamicPluginConfigForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders configuration form correctly', () => {
     render(<DynamicPluginConfigForm {...mockProps} />);
     
     expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
     expect(screen.getByText('Configure settings for Test Plugin')).toBeInTheDocument();
-  });
 
   it('renders different field types correctly', async () => {
     render(<DynamicPluginConfigForm {...mockProps} />);
@@ -173,8 +172,7 @@ describe('DynamicPluginConfigForm', () => {
       
       // Boolean field (switch)
       expect(screen.getByLabelText(/Enable Logging/)).toBeInTheDocument();
-    });
-  });
+
 
   it('handles field value changes', async () => {
     render(<DynamicPluginConfigForm {...mockProps} />);
@@ -189,8 +187,7 @@ describe('DynamicPluginConfigForm', () => {
       
       // Should update the internal state
       expect(timeoutInput).toHaveValue(60);
-    });
-  });
+
 
   it('validates required fields', async () => {
     render(<DynamicPluginConfigForm {...mockProps} />);
@@ -201,8 +198,7 @@ describe('DynamicPluginConfigForm', () => {
     
     await waitFor(() => {
       expect(screen.getByText(/API Key is required/)).toBeInTheDocument();
-    });
-  });
+
 
   it('validates field constraints', async () => {
     render(<DynamicPluginConfigForm {...mockProps} />);
@@ -217,12 +213,10 @@ describe('DynamicPluginConfigForm', () => {
       
       const saveButton = screen.getByRole('button', { name: /save configuration/i });
       fireEvent.click(saveButton);
-    });
-    
+
     await waitFor(() => {
       expect(screen.getByText(/must be at most 300/)).toBeInTheDocument();
-    });
-  });
+
 
   it('handles password field visibility toggle', async () => {
     render(<DynamicPluginConfigForm {...mockProps} />);
@@ -240,8 +234,7 @@ describe('DynamicPluginConfigForm', () => {
       fireEvent.click(toggleButton);
       
       expect(passwordField).toHaveAttribute('type', 'text');
-    });
-  });
+
 
   it('handles form save successfully', async () => {
     mockProps.onSave.mockResolvedValue(undefined);
@@ -255,8 +248,7 @@ describe('DynamicPluginConfigForm', () => {
       expect(mockProps.onSave).toHaveBeenCalledWith(
         expect.objectContaining({ apiKey: 'test-key' })
       );
-    });
-  });
+
 
   it('handles form reset', async () => {
     const initialConfig = { timeout: 30, enableLogging: true };
@@ -269,8 +261,7 @@ describe('DynamicPluginConfigForm', () => {
     await waitFor(() => {
       const timeoutInput = screen.getByLabelText(/Timeout/);
       fireEvent.change(timeoutInput, { target: { value: '60' } });
-    });
-    
+
     // Reset the form
     const resetButton = screen.getByRole('button', { name: /reset/i });
     fireEvent.click(resetButton);
@@ -278,15 +269,13 @@ describe('DynamicPluginConfigForm', () => {
     await waitFor(() => {
       const timeoutInput = screen.getByLabelText(/Timeout/);
       expect(timeoutInput).toHaveValue(30);
-    });
-  });
+
 
   it('respects read-only mode', () => {
     render(<DynamicPluginConfigForm {...mockProps} readOnly />);
     
     const saveButton = screen.queryByRole('button', { name: /save configuration/i });
     expect(saveButton).not.toBeInTheDocument();
-  });
 
   it('handles JSON field formatting', async () => {
     render(<DynamicPluginConfigForm {...mockProps} />);
@@ -302,8 +291,7 @@ describe('DynamicPluginConfigForm', () => {
       // Should have format button
       const formatButton = screen.getByRole('button', { name: /format/i });
       expect(formatButton).toBeInTheDocument();
-    });
-  });
+
 
   it('shows validation errors for invalid JSON', async () => {
     render(<DynamicPluginConfigForm {...mockProps} />);
@@ -318,10 +306,8 @@ describe('DynamicPluginConfigForm', () => {
       
       const saveButton = screen.getByRole('button', { name: /save configuration/i });
       fireEvent.click(saveButton);
-    });
-    
+
     // Should show validation error or handle gracefully
-  });
 
   it('groups fields correctly', () => {
     render(<DynamicPluginConfigForm {...mockProps} />);
@@ -329,7 +315,6 @@ describe('DynamicPluginConfigForm', () => {
     // Should have grouped fields into sections
     expect(screen.getByText('Authentication')).toBeInTheDocument();
     expect(screen.getByText('General Settings')).toBeInTheDocument();
-  });
 
   it('handles search functionality', async () => {
     render(<DynamicPluginConfigForm {...mockProps} />);
@@ -337,5 +322,4 @@ describe('DynamicPluginConfigForm', () => {
     // Should have search functionality (though it might not be visible initially)
     // This tests the search logic indirectly through field filtering
     expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
-  });
-});
+

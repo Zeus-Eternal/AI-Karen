@@ -1,4 +1,5 @@
 
+import React from 'react';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import '../styles/globals.css';
@@ -21,7 +22,6 @@ const inter = Inter({
   display: 'swap',
   preload: true,
   fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
-});
 
 export const metadata: Metadata = {
   title: 'Karen AI - Intelligent Assistant',
@@ -112,10 +112,10 @@ export default function RootLayout({
                       filename: event.filename,
                       lineno: event.lineno,
                       colno: event.colno,
-                    });
+
                     return false;
                   }
-                });
+
               })();
             `,
           }}

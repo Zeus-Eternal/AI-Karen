@@ -41,7 +41,6 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       queries: { retry: false },
       mutations: { retry: false },
     },
-  });
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -56,13 +55,11 @@ describe('Error Handling Integration Tests', () => {
     mockConsole.error.mockClear();
     mockConsole.warn.mockClear();
     mockConsole.log.mockClear();
-  });
 
   afterEach(() => {
     mockConsole.error.mockRestore();
     mockConsole.warn.mockRestore();
     mockConsole.log.mockRestore();
-  });
 
   describe('Error Boundary Integration', () => {
     it('should handle component errors with retry functionality', async () => {
@@ -99,7 +96,6 @@ describe('Error Handling Integration Tests', () => {
       // Should show error boundary
       await waitFor(() => {
         expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-      });
 
       // Should have retry button
       const retryButton = screen.getByRole('button', { name: /retry/i });
@@ -110,8 +106,7 @@ describe('Error Handling Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('success-content')).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle section-specific errors without affecting other sections', async () => {
       const user = userEvent.setup();
@@ -149,13 +144,11 @@ describe('Error Handling Integration Tests', () => {
                   onClick={() => { headerError = true; }}
                   data-testid="trigger-header-error"
                 >
-                  Break Header
                 </InteractiveButton>
                 <InteractiveButton
                   onClick={() => { contentError = true; }}
                   data-testid="trigger-content-error"
                 >
-                  Break Content
                 </InteractiveButton>
               </div>
             </GridContainer>
@@ -178,8 +171,7 @@ describe('Error Handling Integration Tests', () => {
         expect(screen.queryByTestId('header-content')).not.toBeInTheDocument();
         // Content should still work
         expect(screen.getByTestId('main-content')).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle optimistic updates with error recovery', async () => {
       const user = userEvent.setup();
@@ -265,7 +257,6 @@ describe('Error Handling Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('add-item')).not.toBeDisabled();
-      });
 
       // Enable failure and try again
       const toggleFailure = screen.getByTestId('toggle-failure');
@@ -276,14 +267,12 @@ describe('Error Handling Integration Tests', () => {
       // Should show optimistic update first
       await waitFor(() => {
         expect(screen.getByTestId('item-3')).toBeInTheDocument();
-      });
 
       // Then should rollback on error
       await waitFor(() => {
         expect(screen.queryByTestId('item-3')).not.toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Form Error Handling', () => {
     it('should handle form validation errors gracefully', async () => {
@@ -358,7 +347,6 @@ describe('Error Handling Integration Tests', () => {
 
                     <Form.Actions>
                       <InteractiveButton type="submit" data-testid="submit-btn">
-                        Login
                       </InteractiveButton>
                     </Form.Actions>
                   </Form.Root>
@@ -382,7 +370,6 @@ describe('Error Handling Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByTestId('email-error')).toHaveTextContent('Email is required');
         expect(screen.getByTestId('password-error')).toHaveTextContent('Password is required');
-      });
 
       // Fix email, keep password invalid
       await user.type(emailInput, 'invalid-email');
@@ -392,7 +379,6 @@ describe('Error Handling Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByTestId('email-error')).toHaveTextContent('Invalid email format');
         expect(screen.getByTestId('password-error')).toHaveTextContent('Password must be at least 8 characters');
-      });
 
       // Fix both fields
       await user.clear(emailInput);
@@ -406,14 +392,12 @@ describe('Error Handling Integration Tests', () => {
         expect(onSubmit).toHaveBeenCalledWith({
           email: 'user@example.com',
           password: 'password123',
-        });
-      });
+
 
       // Errors should be cleared
       expect(screen.queryByTestId('email-error')).not.toBeInTheDocument();
       expect(screen.queryByTestId('password-error')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Network Error Recovery', () => {
     it('should handle network errors with exponential backoff', async () => {
@@ -429,7 +413,6 @@ describe('Error Handling Integration Tests', () => {
           maxRetries: maxAttempts,
           baseDelay: 100,
           maxDelay: 1000,
-        });
 
         const fetchData = async () => {
           setStatus('loading');
@@ -447,7 +430,6 @@ describe('Error Handling Integration Tests', () => {
               // Success on 3rd attempt
               await new Promise(resolve => setTimeout(resolve, 50));
               return 'Success data';
-            });
 
             setData('Success data');
             setStatus('success');
@@ -480,7 +462,6 @@ describe('Error Handling Integration Tests', () => {
                     }}
                     data-testid="reset-btn"
                   >
-                    Reset and Retry
                   </InteractiveButton>
                 )}
               </div>
@@ -511,7 +492,6 @@ describe('Error Handling Integration Tests', () => {
         expect(attemptDisplay).toHaveTextContent('Attempts: 3');
         expect(screen.getByTestId('data')).toHaveTextContent('Data: Success data');
       }, { timeout: 5000 });
-    });
 
     it('should handle offline/online state changes', async () => {
       const user = userEvent.setup();
@@ -546,7 +526,7 @@ describe('Error Handling Integration Tests', () => {
         const processQueue = () => {
           queuedActions.forEach(action => {
             console.log(`Processing queued: ${action}`);
-          });
+
           setQueuedActions([]);
         };
 
@@ -571,7 +551,6 @@ describe('Error Handling Integration Tests', () => {
                   onClick={() => performAction('Save document')}
                   data-testid="save-btn"
                 >
-                  Save Document
                 </InteractiveButton>
                 
                 <InteractiveButton
@@ -614,9 +593,8 @@ describe('Error Handling Integration Tests', () => {
       // Queue should be processed
       await waitFor(() => {
         expect(queueDisplay).toHaveTextContent('Queued actions: 0');
-      });
-    });
-  });
+
+
 
   describe('Graceful Degradation', () => {
     it('should degrade gracefully when features are unavailable', async () => {
@@ -681,6 +659,5 @@ describe('Error Handling Integration Tests', () => {
       // Restore APIs
       global.IntersectionObserver = originalIntersectionObserver;
       global.ResizeObserver = originalResizeObserver;
-    });
-  });
-});
+
+

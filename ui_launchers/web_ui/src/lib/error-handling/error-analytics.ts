@@ -281,7 +281,7 @@ export class ErrorAnalytics {
       if (keys.some(key => key.startsWith('__reactFiber') || key.startsWith('__reactInternalInstance'))) {
         componentCount++;
       }
-    });
+
     return componentCount;
   }
   private getBreadcrumbs(): ErrorBreadcrumb[] {
@@ -311,7 +311,7 @@ export class ErrorAnalytics {
     const toRemove = sortedErrors.slice(0, sortedErrors.length - (this.config.maxStoredErrors || 1000));
     toRemove.forEach(([errorId]) => {
       this.errorMetrics.delete(errorId);
-    });
+
   }
   private sendToAnalyticsServices(metrics: ErrorMetrics) {
     // Send to Google Analytics
@@ -326,7 +326,7 @@ export class ErrorAnalytics {
           severity: metrics.severity,
           recovery_attempts: metrics.recoveryAttempts,
         },
-      });
+
     }
     // Send to custom analytics endpoint
     const analyticsEndpoint = process.env.NEXT_PUBLIC_ANALYTICS_ENDPOINT;
@@ -339,7 +339,7 @@ export class ErrorAnalytics {
         },
         body: JSON.stringify(metrics)
       }).catch(error => {
-      });
+
     }
   }
   private updateTrends() {
@@ -357,7 +357,7 @@ export class ErrorAnalytics {
         hourlyData.set(hour, []);
       }
       hourlyData.get(hour)!.push(error);
-    });
+
     // Generate trend data
     const trends: ErrorTrend[] = Array.from(hourlyData.entries()).map(([period, errors]) => {
       const uniqueErrors = new Set(errors.map(e => e.errorMessage)).size;
@@ -376,7 +376,7 @@ export class ErrorAnalytics {
           : 0,
         topErrors
       };
-    });
+
     this.trendData = trends;
   }
   private getTopErrorsForPeriod(errors: ErrorMetrics[]): Array<{
@@ -391,7 +391,7 @@ export class ErrorAnalytics {
         errorCounts.set(key, { count: 0, severity: error.severity });
       }
       errorCounts.get(key)!.count++;
-    });
+
     return Array.from(errorCounts.entries())
       .map(([message, data]) => ({ message, ...data }))
       .sort((a, b) => b.count - a.count)
@@ -423,12 +423,12 @@ export class ErrorAnalytics {
           lastOccurrence: error.timestamp,
           severity: error.severity,
           category: error.category
-        });
+
       }
       const data = errorCounts.get(key)!;
       data.count++;
       data.lastOccurrence = Math.max(data.lastOccurrence, error.timestamp);
-    });
+
     const topErrors = Array.from(errorCounts.entries())
       .map(([message, data]) => ({ message, ...data }))
       .sort((a, b) => b.count - a.count)
@@ -440,13 +440,13 @@ export class ErrorAnalytics {
         sectionBreakdown[error.section] = { count: 0, resolutionRate: 0 };
       }
       sectionBreakdown[error.section].count++;
-    });
+
     Object.keys(sectionBreakdown).forEach(section => {
       const sectionErrors = allErrors.filter(e => e.section === section);
       const sectionResolved = sectionErrors.filter(e => e.resolved);
       sectionBreakdown[section].resolutionRate = 
         sectionErrors.length > 0 ? sectionResolved.length / sectionErrors.length : 0;
-    });
+
     // Calculate performance impact
     const performanceMetrics = allErrors
       .map(e => e.performanceMetrics)

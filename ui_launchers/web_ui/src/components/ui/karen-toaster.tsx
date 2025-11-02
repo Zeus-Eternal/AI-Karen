@@ -1,12 +1,8 @@
 "use client"
 
-import * as React from "react"
-import { useKarenAlerts } from "@/hooks/use-karen-alerts"
-import {
-  KarenToastProvider,
-  KarenToastViewport,
-  KarenToast,
-} from "./karen-toast"
+import * as React from "react";
+import { useKarenAlerts } from "@/hooks/use-karen-alerts";
+import { } from "./karen-toast"
 
 /**
  * Karen Toaster component that integrates with the AlertManager

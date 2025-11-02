@@ -2,15 +2,7 @@
  * Tests for logging integration utilities
  */
 
-import {
-  loggedFetch,
-  loggedFetchWithRetry,
-  logAuthenticationAttempt,
-  withPerformanceLogging,
-  withAsyncPerformanceLogging,
-  logComponentError,
-  logSessionEvent
-} from '../integration-utils';
+import { loggedFetch, loggedFetchWithRetry, logAuthenticationAttempt, withPerformanceLogging, withAsyncPerformanceLogging, logComponentError, logSessionEvent } from '../integration-utils';
 import { connectivityLogger } from '../connectivity-logger';
 import { correlationTracker } from '../correlation-tracker';
 import { performanceTracker } from '../performance-tracker';
@@ -30,8 +22,7 @@ describe('Integration Utils', () => {
     (performanceTracker.trackNetworkRequest as jest.Mock).mockReturnValue({
       start: jest.fn(),
       end: jest.fn(() => ({ duration: 100, responseTime: 100 }))
-    });
-  });
+
 
   describe('loggedFetch', () => {
     it('should add correlation ID to headers and log request', async () => {
@@ -40,7 +31,6 @@ describe('Integration Utils', () => {
 
       const response = await loggedFetch('https://api.example.com/test', {
         method: 'POST'
-      });
 
       expect(fetch).toHaveBeenCalledWith(
         'https://api.example.com/test',
@@ -83,7 +73,6 @@ describe('Integration Utils', () => {
           correlationId: 'test-correlation-id'
         })
       );
-    });
 
     it('should log errors and performance warnings', async () => {
       const error = new Error('Network error');
@@ -114,7 +103,6 @@ describe('Integration Utils', () => {
           correlationId: 'test-correlation-id'
         })
       );
-    });
 
     it('should log performance warnings for slow requests', async () => {
       const mockResponse = new Response('{"data": "test"}', { status: 200 });
@@ -138,8 +126,7 @@ describe('Integration Utils', () => {
           exceeded: true
         })
       );
-    });
-  });
+
 
   describe('loggedFetchWithRetry', () => {
     it('should retry failed requests and log retry attempts', async () => {
@@ -165,7 +152,6 @@ describe('Integration Utils', () => {
           retryAttempt: 1
         })
       );
-    });
 
     it('should log when all retries are exhausted', async () => {
       const error = new Error('Network error');
@@ -183,8 +169,7 @@ describe('Integration Utils', () => {
         }),
         error
       );
-    });
-  });
+
 
   describe('logAuthenticationAttempt', () => {
     it('should log successful authentication attempts', async () => {
@@ -223,13 +208,12 @@ describe('Integration Utils', () => {
           duration: expect.any(Number)
         })
       );
-    });
 
     it('should log failed authentication attempts', async () => {
       const error = new Error('Invalid credentials');
       const mockOperation = jest.fn(async () => {
         throw error;
-      });
+
       (correlationTracker.withCorrelationAsync as jest.Mock).mockImplementation(
         (id, fn) => fn()
       );
@@ -252,8 +236,7 @@ describe('Integration Utils', () => {
           duration: expect.any(Number)
         })
       );
-    });
-  });
+
 
   describe('withPerformanceLogging', () => {
     it('should wrap function with performance logging', () => {
@@ -261,7 +244,6 @@ describe('Integration Utils', () => {
       (performanceTracker.trackSyncOperation as jest.Mock).mockReturnValue({
         result: 'result',
         metrics: { duration: 150 }
-      });
 
       const wrappedFn = withPerformanceLogging(mockFn, 'test-operation');
       const result = wrappedFn('arg1', 'arg2');
@@ -283,8 +265,7 @@ describe('Integration Utils', () => {
           exceeded: true
         })
       );
-    });
-  });
+
 
   describe('withAsyncPerformanceLogging', () => {
     it('should wrap async function with performance logging', async () => {
@@ -292,7 +273,6 @@ describe('Integration Utils', () => {
       (performanceTracker.trackOperation as jest.Mock).mockResolvedValue({
         result: 'async-result',
         metrics: { duration: 2000 }
-      });
 
       const wrappedFn = withAsyncPerformanceLogging(mockFn, 'async-operation');
       const result = await wrappedFn('arg1');
@@ -314,8 +294,7 @@ describe('Integration Utils', () => {
           exceeded: true
         })
       );
-    });
-  });
+
 
   describe('logComponentError', () => {
     it('should log React component errors', () => {
@@ -332,8 +311,7 @@ describe('Integration Utils', () => {
           correlationId: 'test-correlation-id'
         })
       );
-    });
-  });
+
 
   describe('logSessionEvent', () => {
     it('should log session events', () => {
@@ -353,7 +331,6 @@ describe('Integration Utils', () => {
           userId: 'user-456'
         })
       );
-    });
 
     it('should log session expiration as failure', () => {
       logSessionEvent('expired', 'session-123');
@@ -372,6 +349,5 @@ describe('Integration Utils', () => {
           sessionId: 'session-123'
         })
       );
-    });
-  });
-});
+
+

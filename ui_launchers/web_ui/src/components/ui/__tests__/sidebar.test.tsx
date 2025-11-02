@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SidebarProvider, Sidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "../sidebar";
@@ -18,4 +19,3 @@ test("sidebar menu button is keyboard accessible", async () => {
   await userEvent.tab();
   expect(button).toHaveFocus();
   await userEvent.keyboard("{Enter}");
-});

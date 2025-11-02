@@ -161,7 +161,7 @@ export class PerformanceMonitor {
           latest: metrics[metrics.length - 1],
         };
       }
-    });
+
     return summary;
   }
   private monitorWebVitals(): void {
@@ -171,13 +171,13 @@ export class PerformanceMonitor {
       this.observePerformanceEntry('largest-contentful-paint', (entries) => {
         const lastEntry = entries[entries.length - 1];
         this.reportWebVital('LCP', lastEntry.startTime);
-      });
+
       // Monitor FID
       this.observePerformanceEntry('first-input', (entries) => {
         const firstEntry = entries[0] as any;
         const fid = firstEntry.processingStart - firstEntry.startTime;
         this.reportWebVital('FID', fid);
-      });
+
       // Monitor CLS
       let clsValue = 0;
       this.observePerformanceEntry('layout-shift', (entries) => {
@@ -185,16 +185,16 @@ export class PerformanceMonitor {
           if (!entry.hadRecentInput) {
             clsValue += entry.value;
           }
-        });
+
         this.reportWebVital('CLS', clsValue);
-      });
+
       // Monitor FCP
       this.observePerformanceEntry('paint', (entries) => {
         const fcpEntry = entries.find((entry: any) => entry.name === 'first-contentful-paint');
         if (fcpEntry) {
           this.reportWebVital('FCP', fcpEntry.startTime);
         }
-      });
+
     }
   }
   private monitorCustomMetrics(): void {
@@ -208,7 +208,7 @@ export class PerformanceMonitor {
         this.recordMetric('animation-frame-time', frameTime, { 
           type: 'animation-performance',
           frameCount 
-        });
+
       }
       lastFrameTime = currentTime;
       frameCount++;
@@ -229,9 +229,9 @@ export class PerformanceMonitor {
           url: entry.name,
           size: entry.transferSize,
           cached: entry.transferSize === 0,
-        });
-      });
-    });
+
+
+
   }
   private monitorNavigation(): void {
     if (typeof window === 'undefined' || !('PerformanceObserver' in window)) return;
@@ -241,18 +241,18 @@ export class PerformanceMonitor {
         this.recordMetric('navigation-total', entry.loadEventEnd - entry.startTime, {
           type: 'navigation',
           navigationType: entry.type,
-        });
+
         this.recordMetric('navigation-dns', entry.domainLookupEnd - entry.domainLookupStart, {
           type: 'navigation-timing',
-        });
+
         this.recordMetric('navigation-connect', entry.connectEnd - entry.connectStart, {
           type: 'navigation-timing',
-        });
+
         this.recordMetric('navigation-ttfb', entry.responseStart - entry.requestStart, {
           type: 'navigation-timing',
-        });
+
       }
-    });
+
   }
   private observePerformanceEntry(
     entryType: string, 
@@ -261,7 +261,7 @@ export class PerformanceMonitor {
     try {
       const observer = new PerformanceObserver((list) => {
         callback(list.getEntries());
-      });
+
       observer.observe({ entryTypes: [entryType] });
       this.observers.set(entryType, observer);
     } catch (error) {
@@ -311,7 +311,7 @@ export class PerformanceMonitor {
       summary.byType[type].totalSize += size;
       summary.byType[type].totalLoadTime += loadTime;
       summary.byType[type].avgLoadTime = summary.byType[type].totalLoadTime / summary.byType[type].count;
-    });
+
     return summary;
   }
   private getNavigationTimingSummary(): NavigationTimingSummary {
@@ -385,7 +385,7 @@ export function usePerformanceMonitor() {
     const monitor = new PerformanceMonitor((metric) => {
       // Update metrics when new ones are recorded
       setMetrics(prev => new Map(prev));
-    });
+
     monitor.startMonitoring();
     setIsMonitoring(true);
     return () => {

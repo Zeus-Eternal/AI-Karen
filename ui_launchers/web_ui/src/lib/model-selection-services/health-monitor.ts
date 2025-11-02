@@ -264,7 +264,7 @@ export class ModelHealthMonitor extends BaseModelService {
           format: model.format,
           metadata: model.metadata
         })
-      });
+
       const compatibility = response as {
         compatible: boolean;
         reason?: string;
@@ -301,7 +301,7 @@ export class ModelHealthMonitor extends BaseModelService {
           model_id: model.id,
           timeout_ms: 30000 // 30 second timeout
         })
-      });
+
       const loadTest = response as {
         success: boolean;
         memory_usage?: number;

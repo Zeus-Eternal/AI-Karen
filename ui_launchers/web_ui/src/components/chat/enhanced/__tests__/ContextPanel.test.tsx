@@ -1,13 +1,10 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ContextPanel from '../ContextPanel';
-import {
-  ConversationContext,
-  ConversationThread,
-  MemoryReference,
-  ContextSuggestion
-} from '@/types/enhanced-chat';
+
+import { } from '@/types/enhanced-chat';
 
 // Mock the date-fns functions
 vi.mock('date-fns', () => ({
@@ -128,7 +125,6 @@ describe('ContextPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders context panel with all tabs', () => {
     render(
@@ -145,7 +141,6 @@ describe('ContextPanel', () => {
     expect(screen.getByText('Memory')).toBeInTheDocument();
     expect(screen.getByText('Ideas')).toBeInTheDocument();
     expect(screen.getByText('Patterns')).toBeInTheDocument();
-  });
 
   it('displays related threads correctly', () => {
     render(
@@ -161,7 +156,6 @@ describe('ContextPanel', () => {
     expect(screen.getByText('Previous AI Discussion')).toBeInTheDocument();
     expect(screen.getByText('Machine Learning')).toBeInTheDocument();
     expect(screen.getByText('complex')).toBeInTheDocument();
-  });
 
   it('handles thread selection', async () => {
     render(
@@ -178,8 +172,7 @@ describe('ContextPanel', () => {
 
     await waitFor(() => {
       expect(mockOnThreadSelect).toHaveBeenCalledWith('related-thread-1');
-    });
-  });
+
 
   it('displays memory information in memory tab', async () => {
     render(
@@ -197,8 +190,7 @@ describe('ContextPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('Relevant Memories')).toBeInTheDocument();
       expect(screen.getByText('Context awareness in AI systems involves maintaining state')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles memory selection', async () => {
     render(
@@ -216,10 +208,8 @@ describe('ContextPanel', () => {
     await waitFor(() => {
       const memoryItem = screen.getByText('Context awareness in AI systems involves maintaining state').closest('div');
       fireEvent.click(memoryItem!);
-    });
 
     expect(mockOnMemorySelect).toHaveBeenCalledWith('mem-2');
-  });
 
   it('displays suggestions in suggestions tab', async () => {
     render(
@@ -237,8 +227,7 @@ describe('ContextPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('Smart Suggestions')).toBeInTheDocument();
       expect(screen.getByText('Would you like examples of context-aware systems?')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles suggestion selection', async () => {
     render(
@@ -256,7 +245,6 @@ describe('ContextPanel', () => {
     await waitFor(() => {
       const suggestionButton = screen.getByText('Would you like examples of context-aware systems?');
       fireEvent.click(suggestionButton);
-    });
 
     expect(mockOnSuggestionSelect).toHaveBeenCalledWith({
       id: 'sug-1',
@@ -264,8 +252,7 @@ describe('ContextPanel', () => {
       text: 'Would you like examples of context-aware systems?',
       confidence: 0.85,
       reasoning: 'User asking about implementation details'
-    });
-  });
+
 
   it('displays user patterns in patterns tab', async () => {
     render(
@@ -283,8 +270,7 @@ describe('ContextPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('User Patterns')).toBeInTheDocument();
       expect(screen.getByText('detailed technical explanations')).toBeInTheDocument();
-    });
-  });
+
 
   it('filters content based on search query', async () => {
     render(
@@ -301,15 +287,13 @@ describe('ContextPanel', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Previous AI Discussion')).toBeInTheDocument();
-    });
 
     // Search for something that doesn't exist
     fireEvent.change(searchInput, { target: { value: 'nonexistent' } });
 
     await waitFor(() => {
       expect(screen.queryByText('Previous AI Discussion')).not.toBeInTheDocument();
-    });
-  });
+
 
   it('displays memory statistics', async () => {
     render(
@@ -329,8 +313,7 @@ describe('ContextPanel', () => {
       // Check for memory stats in a more flexible way
       expect(screen.getByText(/Total/)).toBeInTheDocument();
       expect(screen.getByText(/Avg Relevance/)).toBeInTheDocument();
-    });
-  });
+
 
   it('handles empty states correctly', () => {
     const emptyContext: ConversationContext = {
@@ -358,5 +341,4 @@ describe('ContextPanel', () => {
     );
 
     expect(screen.getByText('No related conversations found')).toBeInTheDocument();
-  });
-});
+

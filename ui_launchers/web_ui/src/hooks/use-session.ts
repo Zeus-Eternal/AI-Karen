@@ -5,14 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import {
-  isAuthenticated,
-  getCurrentUser,
-  hasRole,
-  login as sessionLogin,
-  logout as sessionLogout,
-  getSession,
-} from '@/lib/auth/session';
+import { isAuthenticated, getCurrentUser, hasRole, login as sessionLogin, logout as sessionLogout, getSession } from '@/lib/auth/session';
 
 export interface UseSessionReturn {
   isAuthenticated: boolean;
@@ -37,14 +30,13 @@ export function useSession(): UseSessionReturn {
   const [sessionState, setSessionState] = useState({
     isAuthenticated: false,
     user: null as ReturnType<typeof getCurrentUser>,
-  });
 
   // Update session state from memory
   const updateSessionState = useCallback(() => {
     setSessionState({
       isAuthenticated: isAuthenticated(),
       user: getCurrentUser(),
-    });
+
   }, []);
 
   // Initialize session on mount

@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -9,17 +11,17 @@ import { PlugZap, MessageSquare, Info, Settings2, CalendarDays, CloudSun, Databa
  */
 export default function PluginOverviewPage() {
   const integratedTools = [
-    { name: "Date Service", description: "Provides current date.", icon: <CalendarDays className="h-5 w-5 text-primary/80 sm:w-auto md:w-full" /> },
-    { name: "Time Service", description: "Provides current time (local or for specified locations).", icon: <CalendarDays className="h-5 w-5 text-primary/80 sm:w-auto md:w-full" /> },
-    { name: "Weather Service", description: "Fetches current weather for specified locations.", icon: <CloudSun className="h-5 w-5 text-primary/80 sm:w-auto md:w-full" /> },
-    { name: "Item Details Lookup", description: "Looks up details for items (e.g., books) via chat. (Simulated)", icon: <Database className="h-5 w-5 text-primary/80 sm:w-auto md:w-full" /> },
-    { name: "Gmail Integration", description: "Checks unread emails and composes new ones via chat. (Simulated)", icon: <Mail className="h-5 w-5 text-primary/80 sm:w-auto md:w-full" /> },
-    { name: "Facebook Integration", description: "-primary/80" /> },
+    { name: "Date Service", description: "Provides current date.", icon: <CalendarDays className="h-5 w-5 text-primary/80 " /> },
+    { name: "Time Service", description: "Provides current time (local or for specified locations).", icon: <CalendarDays className="h-5 w-5 text-primary/80 " /> },
+    { name: "Weather Service", description: "Fetches current weather for specified locations.", icon: <CloudSun className="h-5 w-5 text-primary/80 " /> },
+    { name: "Item Details Lookup", description: "Looks up details for items (e.g., books) via chat. (Simulated)", icon: <Database className="h-5 w-5 text-primary/80 " /> },
+    { name: "Gmail Integration", description: "Checks unread emails and composes new ones via chat. (Simulated)", icon: <Mail className="h-5 w-5 text-primary/80 " /> },
+    { name: "Facebook Integration", description: "Connect and manage Facebook posts and interactions. (Conceptual)", icon: <Facebook className="h-5 w-5 text-primary/80" /> },
   ];
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3">
-        <PlugZap className="h-8 w-8 text-primary sm:w-auto md:w-full" />
+        <PlugZap className="h-8 w-8 text-primary " />
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Karen AI - Plugins & Tools Overview</h2>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -39,7 +41,7 @@ export default function PluginOverviewPage() {
             When you interact with Karen, her central AI decision-making flow (`decide-action-flow`) determines if a specialized tool is needed to fulfill your request. If so, it invokes the tool and then crafts a response based on the tool's output.
           </p>
           <Alert>
-            <MessageSquare className="h-4 w-4 sm:w-auto md:w-full" />
+            <MessageSquare className="h-4 w-4 " />
             <AlertTitle>Interaction Method</AlertTitle>
             <AlertDescription>
               Most of these tools are used by Karen when you ask relevant questions or make requests directly in the chat interface.
@@ -71,8 +73,7 @@ export default function PluginOverviewPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center">
-            <Settings2 className="mr-2 h-5 w-5 text-primary/80 sm:w-auto md:w-full" />
-            Vision for Advanced Plugin Architecture
+            <Settings2 className="mr-2 h-5 w-5 text-primary/80 " />
           </CardTitle>
           <CardDescription>
             The long-term goal for Karen AI is to support a more dynamic plugin system.
@@ -88,7 +89,7 @@ export default function PluginOverviewPage() {
             <li>A secure way to manage and "install" or "register" these plugins.</li>
           </ul>
           <Alert variant="default" className="bg-background">
-            <Info className="h-4 w-4 sm:w-auto md:w-full" />
+            <Info className="h-4 w-4 " />
             <AlertTitle className="text-sm font-semibold md:text-base lg:text-lg">Developer Note</AlertTitle>
             <AlertDescription className="text-xs sm:text-sm md:text-base">
               Achieving true "drag-and-drop" dynamic plugin integration with autonomous learning is a complex AI research and engineering challenge. The current system relies on developers explicitly defining tools and guiding Karen's use of them through prompt engineering.

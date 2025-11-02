@@ -33,7 +33,6 @@ const ErrorComponent: React.FC = () => {
 describe('LazyComponent', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('should render children when loaded successfully', async () => {
     render(
@@ -45,8 +44,7 @@ describe('LazyComponent', () => {
     await waitFor(() => {
       expect(screen.getByTestId('test-component')).toBeInTheDocument();
       expect(screen.getByText('Hello World')).toBeInTheDocument();
-    });
-  });
+
 
   it('should show loading fallback initially', () => {
     const CustomFallback = () => <div data-testid="custom-fallback">Custom Loading...</div>;
@@ -58,7 +56,6 @@ describe('LazyComponent', () => {
     );
 
     expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-  });
 
   it('should handle errors with error boundary', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -72,10 +69,8 @@ describe('LazyComponent', () => {
     await waitFor(() => {
       expect(screen.getByText('Failed to load component')).toBeInTheDocument();
       expect(screen.getByText('Try Again')).toBeInTheDocument();
-    });
 
     consoleSpy.mockRestore();
-  });
 
   it('should allow retry on error', async () => {
     const user = userEvent.setup();
@@ -89,7 +84,6 @@ describe('LazyComponent', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Try Again')).toBeInTheDocument();
-    });
 
     const retryButton = screen.getByText('Try Again');
     await user.click(retryButton);
@@ -97,10 +91,8 @@ describe('LazyComponent', () => {
     // Should still show error after retry (since ErrorComponent always throws)
     await waitFor(() => {
       expect(screen.getByText('Failed to load component')).toBeInTheDocument();
-    });
 
     consoleSpy.mockRestore();
-  });
 
   it('should use custom error fallback', async () => {
     const CustomErrorFallback = ({ error, retry }: { error: Error; retry: () => void }) => (
@@ -122,11 +114,9 @@ describe('LazyComponent', () => {
       expect(screen.getByTestId('custom-error')).toBeInTheDocument();
       expect(screen.getByText('Custom Error: Test error')).toBeInTheDocument();
       expect(screen.getByText('Custom Retry')).toBeInTheDocument();
-    });
 
     consoleSpy.mockRestore();
-  });
-});
+
 
 describe('createLazyComponent', () => {
   it('should create a lazy component that loads asynchronously', async () => {
@@ -143,8 +133,7 @@ describe('createLazyComponent', () => {
     await waitFor(() => {
       expect(screen.getByTestId('test-component')).toBeInTheDocument();
       expect(screen.getByText('Lazy Hello')).toBeInTheDocument();
-    });
-  });
+
 
   it('should handle loading errors', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -157,10 +146,8 @@ describe('createLazyComponent', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Failed to load component')).toBeInTheDocument();
-    });
 
     consoleSpy.mockRestore();
-  });
 
   it('should support artificial delay', async () => {
     const LazyDelayedComponent = createLazyComponent(
@@ -181,8 +168,7 @@ describe('createLazyComponent', () => {
     await waitFor(() => {
       expect(screen.getByTestId('test-component')).toBeInTheDocument();
     }, { timeout: 200 });
-  });
-});
+
 
 describe('useLazyPreload', () => {
   it('should preload components', () => {
@@ -201,7 +187,6 @@ describe('useLazyPreload', () => {
     render(<TestHookComponent />);
 
     expect(mockImport).toHaveBeenCalledTimes(1);
-  });
 
   it('should handle preload errors gracefully', () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -227,5 +212,4 @@ describe('useLazyPreload', () => {
     }, 0);
 
     consoleSpy.mockRestore();
-  });
-});
+

@@ -29,7 +29,7 @@ export async function POST(
     const headers: Record<string, string> = {};
     request.headers.forEach((value, key) => {
       headers[key] = value;
-    });
+
     const body = await request.json();
     // Extract event type based on provider
     let eventType: string;

@@ -108,7 +108,6 @@ export function withIntelligentError<P extends object>(
         }
         intelligentErrorOptions.onAnalysisComplete?.(analysis);
       },
-    });
 
     /**
      * Detect errors from props
@@ -157,7 +156,7 @@ export function withIntelligentError<P extends object>(
             props: errorContext,
             ...errorContext,
           },
-        });
+
       } else if (!errorToAnalyze && detectedError) {
         // Clear error if no longer present
         setDetectedError(null);
@@ -223,7 +222,7 @@ export function withIntelligentError<P extends object>(
         {/* Overlay error panel */}
         {position === 'overlay' && shouldShowPanel && (
           <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-4 md:p-6">
-            <div className="w-full max-w-2xl sm:w-auto md:w-full">
+            <div className="w-full max-w-2xl ">
               <IntelligentErrorPanel
                 error={detectedError || 'Unknown error'}
                 onDismiss={handleDismiss}

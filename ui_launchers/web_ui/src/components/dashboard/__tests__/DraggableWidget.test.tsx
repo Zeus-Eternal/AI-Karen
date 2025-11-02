@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 
@@ -34,7 +35,6 @@ describe('DraggableWidget', () => {
     );
 
     expect(screen.getByText('Widget Content')).toBeInTheDocument();
-  });
 
   it('applies drag handle with correct attributes', () => {
     render(
@@ -46,7 +46,6 @@ describe('DraggableWidget', () => {
     // Check for drag handle (GripVertical icon would be rendered)
     const dragHandle = screen.getByTitle('Drag to reorder');
     expect(dragHandle).toBeInTheDocument();
-  });
 
   it('applies custom className', () => {
     render(
@@ -57,7 +56,6 @@ describe('DraggableWidget', () => {
 
     const container = screen.getByText('Widget Content').closest('.group');
     expect(container).toHaveClass('custom-class');
-  });
 
   it('shows drag handle on hover', () => {
     render(
@@ -70,7 +68,6 @@ describe('DraggableWidget', () => {
     
     // The drag handle should have opacity-0 by default and opacity-100 on group hover
     expect(dragHandle).toHaveClass('opacity-0', 'group-hover:opacity-100');
-  });
 
   it('applies correct cursor styles to drag handle', () => {
     render(
@@ -81,5 +78,4 @@ describe('DraggableWidget', () => {
 
     const dragHandle = screen.getByTitle('Drag to reorder');
     expect(dragHandle).toHaveClass('cursor-grab', 'active:cursor-grabbing');
-  });
-});
+

@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useState, useMemo, useEffect } from "react";
@@ -62,16 +63,16 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
           <input
             placeholder="Direct download URL (.gguf, etc.)"
             value={downloadUrl}
-            onChange={(e) = aria-label="Input"> setDownloadUrl(e.target.value)}
+            onChange={(e) => setDownloadUrl(e.target.value)}
           />
           <button
-            onClick={async () = aria-label="Button"> {
+            onClick={() => {
               if (!downloadUrl.trim()) return;
               try {
                 const res = await backend.makeRequestPublic<any>(`/api/models/local/download`, {
                   method: 'POST',
                   body: JSON.stringify({ url: downloadUrl })
-                });
+
                 if (res?.job_id) {
                   toast({ title: 'Download started', description: res.path });
                   setJobs(prev => ({ ...prev, [res.job_id]: { job_id: res.job_id, status: res.status || 'running', progress: res.progress || 0, path: res.path } }));
@@ -81,7 +82,6 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
               }
             }}
           >
-            Download
           </Button>
         </div>
         {Object.keys(jobs).length > 0 && (
@@ -90,7 +90,7 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
             <ul className="space-y-2">
               {Object.values(jobs).map((job) => (
                 <li key={job.job_id} className="flex items-center justify-between gap-2 border rounded p-2 sm:p-4 md:p-6">
-                  <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                  <div className="flex-1 min-w-0 ">
                     <div className="text-xs text-muted-foreground break-all sm:text-sm md:text-base">{job.path}</div>
                     <div className="h-2 bg-muted rounded mt-1 overflow-hidden">
                       <div className="h-full bg-primary" style={{ width: `${Math.round((job.progress || 0) * 100)}%` }} />
@@ -100,21 +100,21 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {job.status === 'running' && (
-                      <button variant="outline" size="sm" onClick={async () = aria-label="Button"> {
+                      <Button variant="outline" size="sm" onClick={async () => {
                         try { await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/pause`, { method: 'POST' }); }
                         catch {}
                         setJobs(prev => ({ ...prev, [job.job_id]: { ...prev[job.job_id], status: 'paused' } }));
                       }}>Pause</Button>
                     )}
                     {job.status === 'paused' && (
-                      <button variant="outline" size="sm" onClick={async () = aria-label="Button"> {
+                      <Button variant="outline" size="sm" onClick={async () => {
                         try { await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/resume`, { method: 'POST' }); }
                         catch {}
                         setJobs(prev => ({ ...prev, [job.job_id]: { ...prev[job.job_id], status: 'running' } }));
                       }}>Resume</Button>
                     )}
                     {job.status !== 'completed' && job.status !== 'cancelled' && (
-                      <button variant="destructive" size="sm" onClick={async () = aria-label="Button"> {
+                      <Button variant="destructive" size="sm" onClick={async () => {
                         try { await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/cancel`, { method: 'POST' }); }
                         catch {}
                         setJobs(prev => ({ ...prev, [job.job_id]: { ...prev[job.job_id], status: 'cancelled' } }));
@@ -129,7 +129,7 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
         <input
           placeholder="Filter by name or provider"
           value={filter}
-          onChange={e = aria-label="Input"> setFilter(e.target.value)}
+          onChange={(e) => setFilter(e.target.value)}
         />
         {filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">No models found.</p>
@@ -142,10 +142,10 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
                   <span className="text-muted-foreground text-xs sm:text-sm md:text-base">{model.provider}{model.format ? ` • ${model.format}` : ''}</span>
                 </div>
                 {model.provider === 'local' && model.local_path && (
-                  <button
+                  <Button
                     variant="outline"
                     size="sm"
-                    onClick={async () = aria-label="Button"> {
+                    onClick={async () => {
                       if (!model.local_path) return;
                       try {
                         await backend.makeRequestPublic(`/api/models/local?path=${encodeURIComponent(model.local_path)}`, { method: 'DELETE' });
@@ -156,7 +156,6 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
                       }
                     }}
                   >
-                    Delete
                   </Button>
                 )}
               </li>

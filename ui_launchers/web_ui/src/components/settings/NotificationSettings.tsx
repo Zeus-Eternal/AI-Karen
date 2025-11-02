@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -101,13 +103,13 @@ export default function NotificationSettings() {
       toast({
         title: "Notification Settings Saved",
         description: "Your notification preferences have been updated.",
-      });
+
     } catch (error) {
        toast({
           title: "Error Saving Notification Settings",
           description: "Could not save notification preferences. localStorage might be disabled or full.",
           variant: "destructive",
-        });
+
     }
   };
   const resetToDefaults = () => {
@@ -122,13 +124,13 @@ export default function NotificationSettings() {
         toast({
           title: "Notification Settings Reset",
           description: "Notification preferences have been reset to defaults.",
-        });
+
     } catch (error) {
         toast({
             title: "Error Resetting Notification Settings",
             description: "Could not reset notification preferences.",
             variant: "destructive",
-        });
+
     }
   };
   return (
@@ -165,7 +167,6 @@ export default function NotificationSettings() {
                     disabled={!notifications.enabled}
                 />
                 <Label htmlFor="alert-insights" className={`cursor-pointer ${!notifications.enabled ? 'text-muted-foreground' : ''}`}>
-                    New Insights Available
                 </Label>
                 </div>
                 <p className="text-xs text-muted-foreground pl-7 sm:text-sm md:text-base">
@@ -181,7 +182,6 @@ export default function NotificationSettings() {
                     disabled={!notifications.enabled}
                 />
                 <Label htmlFor="alert-summary" className={`cursor-pointer ${!notifications.enabled ? 'text-muted-foreground' : ''}`}>
-                    Conversation Summary Ready
                 </Label>
                 </div>
                 <p className="text-xs text-muted-foreground pl-7 sm:text-sm md:text-base">
@@ -192,8 +192,8 @@ export default function NotificationSettings() {
         </div>
       </CardContent>
       <CardFooter className="flex justify-end space-x-2">
-            <button variant="outline" onClick={resetToDefaults} aria-label="Button">Reset to Defaults</Button>
-            <button onClick={saveSettings} aria-label="Button">Save Settings</Button>
+            <Button variant="outline" onClick={resetToDefaults} >Reset to Defaults</Button>
+            <Button onClick={saveSettings} >Save Settings</Button>
       </CardFooter>
     </Card>
   );

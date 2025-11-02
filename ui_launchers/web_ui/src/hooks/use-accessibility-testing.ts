@@ -52,7 +52,7 @@ export function useAccessibilityTesting(
     lastTested: null,
     passes: true,
     score: 100,
-  });
+
   const testSuiteRef = useRef<AccessibilityTestSuite | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   // Initialize test suite
@@ -225,7 +225,7 @@ export function useAccessibilityMonitor(
         console.groupEnd();
       }
     },
-  });
+
   return {
     violations,
     warnings,

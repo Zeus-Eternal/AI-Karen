@@ -1,24 +1,13 @@
-'use client';
+"use client";
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Brain, 
-  Database, 
-  Plug, 
-  GitBranch, 
-  RotateCcw, 
-  Play, 
-  Square, 
-  Settings,
-  Search,
-  FileInput,
-  FileOutput,
-  Zap
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { NodeTemplate } from '@/types/workflows';
 const nodeTemplates: NodeTemplate[] = [
   // Input Nodes
@@ -278,7 +267,7 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
                            node.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === 'all' || node.category === selectedCategory;
       return matchesSearch && matchesCategory;
-    });
+
   }, [searchTerm, selectedCategory]);
   const onDragStart = (event: React.DragEvent, nodeTemplate: NodeTemplate) => {
     if (readOnly) {
@@ -292,11 +281,11 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
     <div className="space-y-4">
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground " />
         <input
           placeholder="Search nodes..."
           value={searchTerm}
-          onChange={(e) = aria-label="Input"> setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
         />
       </div>
@@ -333,9 +322,9 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
                 <CardContent className="p-3 sm:p-4 md:p-6">
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
-                      <IconComponent className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                      <IconComponent className="h-4 w-4 text-muted-foreground " />
                     </div>
-                    <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                    <div className="flex-1 min-w-0 ">
                       <div className="flex items-center justify-between mb-1">
                         <h4 className="font-medium text-sm truncate md:text-base lg:text-lg">{node.name}</h4>
                         <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
@@ -358,7 +347,7 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
           })}
           {filteredNodes.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              <Search className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+              <Search className="h-8 w-8 mx-auto mb-2 opacity-50 " />
               <p className="text-sm md:text-base lg:text-lg">No nodes found matching your search.</p>
             </div>
           )}
@@ -366,7 +355,6 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
       </ScrollArea>
       {!readOnly && (
         <div className="text-xs text-muted-foreground text-center p-2 border-t sm:text-sm md:text-base">
-          Drag nodes to the canvas to build your workflow
         </div>
       )}
     </div>

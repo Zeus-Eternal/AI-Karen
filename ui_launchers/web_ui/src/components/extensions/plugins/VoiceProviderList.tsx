@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,13 +35,12 @@ export default function VoiceProviderList() {
         <Card key={p.id}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm flex items-center gap-1 md:text-base lg:text-lg">
-              <Volume2 className="h-4 w-4 sm:w-auto md:w-full" /> {p.name}
+              <Volume2 className="h-4 w-4 " /> {p.name}
             </CardTitle>
           </CardHeader>
           {p.previewText && (
             <CardContent>
-              <button size="sm" variant="outline" onClick={() = aria-label="Button"> p.previewText && handlePreview(p.previewText)}>
-                Preview Voice
+              <Button size="sm" variant="outline" onClick={() => p.previewText && handlePreview(p.previewText)}>
               </Button>
             </CardContent>
           )}

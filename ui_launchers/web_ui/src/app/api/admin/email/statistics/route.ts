@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         },
         generated_at: new Date().toISOString(),
       }
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to get email statistics' },

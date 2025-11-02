@@ -36,7 +36,7 @@ const TestComponent: React.FC = () => {
       error.analyzeError(err as Error, {
         error_type: 'LoginError',
         request_path: '/api/auth/login',
-      });
+
     }
   };
 
@@ -48,7 +48,7 @@ const TestComponent: React.FC = () => {
       error.handleApiError(err, {
         endpoint: '/api/protected/data',
         method: 'GET',
-      });
+
     }
   };
 
@@ -74,13 +74,10 @@ const TestComponent: React.FC = () => {
         {error.currentAnalysis ? error.currentAnalysis.title : 'No Analysis'}
       </div>
       <button data-testid="login-button" onClick={handleLogin}>
-        Login
       </button>
       <button data-testid="api-call-button" onClick={handleApiCall}>
-        Make API Call
       </button>
       <button data-testid="logout-button" onClick={handleLogout}>
-        Logout
       </button>
       <div data-testid="global-errors">
         {error.globalErrors.length} global errors
@@ -134,8 +131,7 @@ describe('End-to-End Session Flow', () => {
       reason: 'no_refresh_token',
       shouldShowLogin: true,
       message: 'No session to recover',
-    });
-  });
+
 
   describe('Initial Session Loading', () => {
     it('should show loading state during session initialization', async () => {
@@ -156,10 +152,8 @@ describe('End-to-End Session Flow', () => {
       // Wait for session to initialize
       await waitFor(() => {
         expect(screen.getByTestId('session-status')).toHaveTextContent('Not Authenticated');
-      });
 
       expect(mockSession.bootSession).toHaveBeenCalledTimes(1);
-    });
 
     it('should attempt session rehydration on startup', async () => {
       render(
@@ -170,8 +164,7 @@ describe('End-to-End Session Flow', () => {
 
       await waitFor(() => {
         expect(mockSession.bootSession).toHaveBeenCalledTimes(1);
-      });
-    });
+
 
     it('should handle session rehydration success', async () => {
       const mockUser = {
@@ -194,9 +187,8 @@ describe('End-to-End Session Flow', () => {
       await waitFor(() => {
         expect(screen.getByTestId('session-status')).toHaveTextContent('Authenticated');
         expect(screen.getByTestId('user-info')).toHaveTextContent('User: test@example.com');
-      });
-    });
-  });
+
+
 
   describe('Login Flow', () => {
     it('should handle successful login', async () => {
@@ -220,7 +212,6 @@ describe('End-to-End Session Flow', () => {
       // Wait for initial load
       await waitFor(() => {
         expect(screen.getByTestId('session-status')).toHaveTextContent('Not Authenticated');
-      });
 
       // Click login button
       fireEvent.click(screen.getByTestId('login-button'));
@@ -229,8 +220,7 @@ describe('End-to-End Session Flow', () => {
         expect(mockSession.login).toHaveBeenCalledWith('test@example.com', 'password123');
         expect(screen.getByTestId('session-status')).toHaveTextContent('Authenticated');
         expect(screen.getByTestId('user-info')).toHaveTextContent('User: test@example.com');
-      });
-    });
+
 
     it('should handle login failure with intelligent error analysis', async () => {
       const loginError = new Error('Invalid credentials');
@@ -245,7 +235,6 @@ describe('End-to-End Session Flow', () => {
       // Wait for initial load
       await waitFor(() => {
         expect(screen.getByTestId('session-status')).toHaveTextContent('Not Authenticated');
-      });
 
       // Click login button
       fireEvent.click(screen.getByTestId('login-button'));
@@ -254,9 +243,8 @@ describe('End-to-End Session Flow', () => {
         expect(mockSession.login).toHaveBeenCalledWith('test@example.com', 'password123');
         expect(screen.getByTestId('session-status')).toHaveTextContent('Not Authenticated');
         expect(screen.getByTestId('global-errors')).toHaveTextContent('1 global errors');
-      });
-    });
-  });
+
+
 
   describe('API Calls with Session Management', () => {
     it('should make authenticated API calls successfully', async () => {
@@ -277,7 +265,6 @@ describe('End-to-End Session Flow', () => {
         endpoint: '/api/protected/data',
         responseTime: 100,
         wasFailover: false,
-      });
 
       render(
         <Providers>
@@ -288,15 +275,13 @@ describe('End-to-End Session Flow', () => {
       // Wait for initial load
       await waitFor(() => {
         expect(screen.getByTestId('session-status')).toHaveTextContent('Authenticated');
-      });
 
       // Make API call
       fireEvent.click(screen.getByTestId('api-call-button'));
 
       await waitFor(() => {
         expect(mockApiClientInstance.get).toHaveBeenCalledWith('/api/protected/data');
-      });
-    });
+
 
     it('should handle API errors with intelligent analysis', async () => {
       const mockUser = {
@@ -323,7 +308,6 @@ describe('End-to-End Session Flow', () => {
       // Wait for initial load
       await waitFor(() => {
         expect(screen.getByTestId('session-status')).toHaveTextContent('Authenticated');
-      });
 
       // Make API call that fails
       fireEvent.click(screen.getByTestId('api-call-button'));
@@ -331,9 +315,8 @@ describe('End-to-End Session Flow', () => {
       await waitFor(() => {
         expect(mockApiClientInstance.get).toHaveBeenCalledWith('/api/protected/data');
         expect(screen.getByTestId('global-errors')).toHaveTextContent('1 global errors');
-      });
-    });
-  });
+
+
 
   describe('Session Recovery', () => {
     it('should attempt session recovery on authentication errors', async () => {
@@ -350,7 +333,6 @@ describe('End-to-End Session Flow', () => {
         reason: 'token_refreshed',
         shouldShowLogin: false,
         message: 'Session recovered successfully',
-      });
 
       mockSession.isAuthenticated.mockReturnValue(true);
       mockSession.getCurrentUser.mockReturnValue(mockUser);
@@ -364,16 +346,13 @@ describe('End-to-End Session Flow', () => {
       // Wait for initial load
       await waitFor(() => {
         expect(screen.getByTestId('session-status')).toHaveTextContent('Authenticated');
-      });
 
       // Simulate session recovery
       await act(async () => {
         const session = useSession();
         await session.attemptRecovery();
-      });
 
       expect(mockSessionRecovery.attemptSessionRecovery).toHaveBeenCalled();
-    });
 
     it('should handle failed session recovery', async () => {
       mockSessionRecovery.attemptSessionRecovery.mockResolvedValue({
@@ -381,7 +360,6 @@ describe('End-to-End Session Flow', () => {
         reason: 'invalid_refresh_token',
         shouldShowLogin: true,
         message: 'Session recovery failed. Please log in again.',
-      });
 
       render(
         <Providers>
@@ -392,7 +370,6 @@ describe('End-to-End Session Flow', () => {
       // Wait for initial load
       await waitFor(() => {
         expect(screen.getByTestId('session-status')).toHaveTextContent('Not Authenticated');
-      });
 
       // Simulate failed recovery
       await act(async () => {
@@ -400,9 +377,8 @@ describe('End-to-End Session Flow', () => {
         const result = await session.attemptRecovery();
         expect(result.success).toBe(false);
         expect(result.shouldShowLogin).toBe(true);
-      });
-    });
-  });
+
+
 
   describe('Logout Flow', () => {
     it('should handle successful logout', async () => {
@@ -426,14 +402,12 @@ describe('End-to-End Session Flow', () => {
       // Wait for initial load
       await waitFor(() => {
         expect(screen.getByTestId('session-status')).toHaveTextContent('Authenticated');
-      });
 
       // Mock logout success
       mockSession.logout.mockImplementation(() => {
         mockSession.isAuthenticated.mockReturnValue(false);
         mockSession.getCurrentUser.mockReturnValue(null);
         return Promise.resolve();
-      });
 
       // Click logout button
       fireEvent.click(screen.getByTestId('logout-button'));
@@ -442,9 +416,8 @@ describe('End-to-End Session Flow', () => {
         expect(mockSession.logout).toHaveBeenCalled();
         expect(screen.getByTestId('session-status')).toHaveTextContent('Not Authenticated');
         expect(screen.getByTestId('user-info')).toHaveTextContent('No User');
-      });
-    });
-  });
+
+
 
   describe('Error Handling Integration', () => {
     it('should track global errors across the application', async () => {
@@ -457,7 +430,6 @@ describe('End-to-End Session Flow', () => {
       // Wait for initial load
       await waitFor(() => {
         expect(screen.getByTestId('global-errors')).toHaveTextContent('0 global errors');
-      });
 
       // Simulate login error
       const loginError = new Error('Login failed');
@@ -467,7 +439,6 @@ describe('End-to-End Session Flow', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('global-errors')).toHaveTextContent('1 global errors');
-      });
 
       // Simulate API error
       const apiError = new Error('API failed') as any;
@@ -478,8 +449,7 @@ describe('End-to-End Session Flow', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('global-errors')).toHaveTextContent('2 global errors');
-      });
-    });
+
 
     it('should provide intelligent error analysis', async () => {
       // Mock error analysis response
@@ -500,7 +470,6 @@ describe('End-to-End Session Flow', () => {
         endpoint: '/api/error-response/analyze',
         responseTime: 150,
         wasFailover: false,
-      });
 
       render(
         <Providers>
@@ -516,9 +485,8 @@ describe('End-to-End Session Flow', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('error-analysis')).toHaveTextContent('Authentication Error');
-      });
-    });
-  });
+
+
 
   describe('Integration with Existing Auth Context', () => {
     it('should work alongside the existing AuthProvider', async () => {
@@ -532,10 +500,8 @@ describe('End-to-End Session Flow', () => {
       await waitFor(() => {
         expect(screen.getByTestId('session-status')).toBeInTheDocument();
         expect(screen.getByTestId('error-status')).toBeInTheDocument();
-      });
 
       // Should not interfere with each other
       expect(mockSession.bootSession).toHaveBeenCalledTimes(1);
-    });
-  });
-});
+
+

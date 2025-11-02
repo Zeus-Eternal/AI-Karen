@@ -1,6 +1,7 @@
 
 "use client";
 
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,7 @@ export default function DateTimePluginPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3">
-        <CalendarDays className="h-8 w-8 text-primary sm:w-auto md:w-full" />
+        <CalendarDays className="h-8 w-8 text-primary " />
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Date & Time Service</h2>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -29,7 +30,7 @@ export default function DateTimePluginPage() {
       </div>
 
        <Alert>
-        <Info className="h-4 w-4 sm:w-auto md:w-full" />
+        <Info className="h-4 w-4 " />
         <AlertTitle>How to Use Date & Time Features</AlertTitle>
         <AlertDescription>
           <p>You can ask Karen AI for the current date or time directly in the chat interface. For example:</p>
@@ -50,7 +51,7 @@ export default function DateTimePluginPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-start">
-            <CalendarDays className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0 mt-1 sm:w-auto md:w-full" />
+            <CalendarDays className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0 mt-1 " />
             <div>
               <h4 className="font-medium">Current Date</h4>
               <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
@@ -59,7 +60,7 @@ export default function DateTimePluginPage() {
             </div>
           </div>
           <div className="flex items-start">
-            <Clock className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0 mt-1 sm:w-auto md:w-full" />
+            <Clock className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0 mt-1 " />
             <div>
               <h4 className="font-medium">Current Time</h4>
               <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
@@ -84,7 +85,7 @@ export default function DateTimePluginPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center">
-            <Settings2 className="mr-2 h-5 w-5 text-primary/80 sm:w-auto md:w-full" />
+            <Settings2 className="mr-2 h-5 w-5 text-primary/80 " />
             Future Enhancements & Custom Setup (Conceptual)
           </CardTitle>
           <CardDescription>
@@ -94,8 +95,7 @@ export default function DateTimePluginPage() {
         <CardContent className="space-y-6">
             <div className="space-y-2">
                 <Label htmlFor="custom-time-service" className="flex items-center">
-                    <Globe className="mr-2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
-                    Hypothetical Custom Time Service
+                    <Globe className="mr-2 h-4 w-4 text-muted-foreground " />
                 </Label>
                 <select disabled aria-label="Select option">
                     <selectTrigger id="custom-time-service" aria-label="Select option">
@@ -110,7 +110,7 @@ export default function DateTimePluginPage() {
             </div>
             <div className="space-y-2">
                 <Label htmlFor="custom-time-api-key" className="flex items-center">
-                    <KeyRound className="mr-2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                    <KeyRound className="mr-2 h-4 w-4 text-muted-foreground " />
                     API Key (for selected custom service)
                 </Label>
                 <input id="custom-time-api-key" placeholder="Enter API key for the selected service" disabled />
@@ -120,7 +120,7 @@ export default function DateTimePluginPage() {
                 <input id="custom-time-endpoint" placeholder="Enter custom API endpoint if needed" disabled />
             </div>
             <Alert variant="default" className="bg-muted/30">
-                <Info className="h-4 w-4 !text-accent-foreground sm:w-auto md:w-full" />
+                <Info className="h-4 w-4 !text-accent-foreground " />
                 <AlertTitle className="font-semibold text-accent-foreground text-sm md:text-base lg:text-lg">Developer Note</AlertTitle>
                 <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
                 This section is conceptual. Integrating a new time service would require updating Karen's core tools (`src/ai/tools/core-tools.ts`) to make calls to the new API, handle its specific response format, and manage the API key securely.
@@ -128,13 +128,13 @@ export default function DateTimePluginPage() {
             </Alert>
         </CardContent>
         <CardFooter className="flex justify-end">
-            <button disabled aria-label="Button">Save Custom Time Service Settings</Button>
+            <Button disabled >Save Custom Time Service Settings</Button>
         </CardFooter>
       </Card>
 
 
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>Note on Location Accuracy</AlertTitle>
         <AlertDescription>
           Free time services like `timeapi.io` and `worldtimeapi.org` are convenient but may not always perfectly resolve all location name variations. For the most robust experience with a wide range of locations, dedicated geolocation and time zone APIs (often requiring API keys) are typically used in production systems.

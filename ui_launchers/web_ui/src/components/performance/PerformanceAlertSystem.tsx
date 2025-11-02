@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,47 +10,17 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+
 /**
  * Performance Alert System
  * Manages threshold-based notifications and escalation procedures
  */
-'use client';
 
-
-
-
-
-
-
-
-
-
-
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-
-  AlertTriangle, 
-  Bell, 
-  BellOff, 
-  CheckCircle, 
-  Clock, 
-  Mail, 
-  MessageSquare, 
-  Settings, 
-  Trash2,
-  X
-} from 'lucide-react';
+import { } from '@/components/ui/dialog';
+import { } from 'lucide-react';
 
   performanceMonitor, 
-  PerformanceAlert, 
-  PerformanceThresholds 
-} from '@/services/performance-monitor';
+import { } from '@/services/performance-monitor';
 interface AlertRule {
   id: string;
   name: string;
@@ -92,7 +64,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
       delay: 15,
       recipients: [],
     },
-  });
+
   // Load alerts and rules
   useEffect(() => {
     const loadData = () => {
@@ -113,7 +85,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
         handleAlertNotification(alert, matchingRule);
       }
       onAlert?.(alert);
-    });
+
     // Load default alert rules
     setAlertRules([
       {
@@ -160,7 +132,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
         new Notification(`Performance ${alert.type}`, {
           body: alert.message,
           icon: '/favicon.ico',
-        });
+
       }
     }
     if (rule.notifications.email) {
@@ -205,7 +177,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
       enabled: true,
       notifications: { email: false, push: true, slack: false },
       escalation: { enabled: false, delay: 15, recipients: [] },
-    });
+
   };
   const updateAlertRule = (id: string, updates: Partial<AlertRule>) => {
     setAlertRules(prev => prev.map(rule => 
@@ -228,9 +200,9 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
   };
   const getAlertIcon = (type: 'warning' | 'critical') => {
     return type === 'critical' ? (
-      <AlertTriangle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
+      <AlertTriangle className="h-4 w-4 text-red-500 " />
     ) : (
-      <AlertTriangle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />
+      <AlertTriangle className="h-4 w-4 text-yellow-500 " />
     );
   };
   const formatTimestamp = (timestamp: number) => {
@@ -256,26 +228,22 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
         <div>
           <h3 className="text-2xl font-bold tracking-tight">Performance Alerts</h3>
           <p className="text-muted-foreground">
-            Monitor and manage performance alerts and notifications
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <button variant="outline" onClick={requestNotificationPermission} aria-label="Button">
-            <Bell className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Enable Notifications
+          <Button variant="outline" onClick={requestNotificationPermission} >
+            <Bell className="h-4 w-4 mr-2 " />
           </Button>
           <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
             <DialogTrigger asChild>
-              <button variant="outline" aria-label="Button">
-                <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Configure Rules
+              <Button variant="outline" >
+                <Settings className="h-4 w-4 mr-2 " />
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl sm:w-auto md:w-full">
+            <DialogContent className="max-w-2xl ">
               <DialogHeader>
                 <DialogTitle>Alert Rules Configuration</DialogTitle>
                 <DialogDescription>
-                  Configure performance alert rules and notification settings
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-6">
@@ -291,7 +259,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
                         <input
                           id="rule-name"
                           value={newRule.name || ''}
-                          onChange={(e) = aria-label="Input"> setNewRule(prev => ({ ...prev, name: e.target.value }))}
+                          onChange={(e) => setNewRule(prev => ({ ...prev, name: e.target.value }))}
                           placeholder="Enter rule name"
                         />
                       </div>
@@ -301,7 +269,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
                           id="rule-metric"
                           className="w-full p-2 border rounded-md sm:p-4 md:p-6"
                           value={newRule.metric || 'lcp'}
-                          onChange={(e) = aria-label="Select option"> setNewRule(prev => ({ ...prev, metric: e.target.value }))}
+                          onChange={(e) => setNewRule(prev => ({ ...prev, metric: e.target.value }))}
                         >
                           <option value="lcp">Largest Contentful Paint</option>
                           <option value="fid">First Input Delay</option>
@@ -320,7 +288,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
                           id="rule-threshold"
                           type="number"
                           value={newRule.threshold || 0}
-                          onChange={(e) = aria-label="Input"> setNewRule(prev => ({ ...prev, threshold: Number(e.target.value) }))}
+                          onChange={(e) => setNewRule(prev => ({ ...prev, threshold: Number(e.target.value) }))}
                         />
                       </div>
                       <div>
@@ -329,15 +297,14 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
                           id="rule-type"
                           className="w-full p-2 border rounded-md sm:p-4 md:p-6"
                           value={newRule.type || 'warning'}
-                          onChange={(e) = aria-label="Select option"> setNewRule(prev => ({ ...prev, type: e.target.value as 'warning' | 'critical' }))}
+                          onChange={(e) => setNewRule(prev => ({ ...prev, type: e.target.value as 'warning' | 'critical' }))}
                         >
                           <option value="warning">Warning</option>
                           <option value="critical">Critical</option>
                         </select>
                       </div>
                     </div>
-                    <button onClick={addAlertRule} className="w-full" aria-label="Button">
-                      Add Rule
+                    <Button onClick={addAlertRule} className="w-full" >
                     </Button>
                   </CardContent>
                 </Card>
@@ -365,12 +332,12 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
                                 checked={rule.enabled}
                                 onCheckedChange={(enabled) => updateAlertRule(rule.id, { enabled })}
                               />
-                              <button
+                              <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() = aria-label="Button"> deleteAlertRule(rule.id)}
+                                onClick={() => deleteAlertRule(rule.id)}
                               >
-                                <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
+                                <Trash2 className="h-4 w-4 " />
                               </Button>
                             </div>
                           </div>
@@ -389,7 +356,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Active Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <AlertTriangle className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{alerts.length}</div>
@@ -401,7 +368,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Alert Rules</CardTitle>
-            <Settings className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Settings className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{alertRules.length}</div>
@@ -413,7 +380,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Last Alert</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Clock className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -432,12 +399,10 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
             <div>
               <CardTitle>Recent Alerts</CardTitle>
               <CardDescription>
-                Performance alerts and notifications
               </CardDescription>
             </div>
             {alerts.length > 0 && (
-              <button variant="outline" onClick={clearAllAlerts} aria-label="Button">
-                Clear All
+              <Button variant="outline" onClick={clearAllAlerts} >
               </Button>
             )}
           </div>
@@ -445,7 +410,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
         <CardContent>
           {alerts.length === 0 ? (
             <div className="text-center py-8">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 sm:w-auto md:w-full" />
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 " />
               <h3 className="text-lg font-medium">No Active Alerts</h3>
               <p className="text-muted-foreground">
                 Your application is performing well!
@@ -475,12 +440,12 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
                           </AlertDescription>
                         </div>
                       </div>
-                      <button
+                      <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() = aria-label="Button"> dismissAlert(alert.id)}
+                        onClick={() => dismissAlert(alert.id)}
                       >
-                        <X className="h-4 w-4 sm:w-auto md:w-full" />
+                        <X className="h-4 w-4 " />
                       </Button>
                     </div>
                   </Alert>

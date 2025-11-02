@@ -82,7 +82,6 @@ export class MemoryCache<T> {
       } else {
         this.cache.delete(key);
       }
-    });
 
     return validKeys;
   }
@@ -106,7 +105,6 @@ export class MemoryCache<T> {
         this.cache.delete(key);
         cleaned++;
       }
-    });
 
     return cleaned;
   }

@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 /**
@@ -22,7 +21,6 @@ vi.mock('@/contexts/AuthContext', async () => {
     ...actual,
     useAuth: vi.fn(),
   };
-});
 
 vi.mock('@/hooks/useRole', () => ({
   useRole: vi.fn(),
@@ -32,7 +30,6 @@ vi.mock('@/hooks/useRole', () => ({
   useIsSuperAdmin: vi.fn(),
 }));
 
-  TestAuthProvider,
   renderWithProviders,
   renderWithSuperAdmin,
   renderWithAdmin,
@@ -47,20 +44,20 @@ vi.mock('@/hooks/useRole', () => ({
   createMockAuthContext,
   resetAllMocks,
   cleanupTestEnvironment
-} from '../test-providers';
+import { } from '../test-providers';
 
   setupAuthAndRoleMocks,
   mockScenarios,
   createTestMocks,
   resetHookMocks,
   cleanupHookMocks
-} from '../hook-mocks';
+import { } from '../hook-mocks';
 
   setupAuthTestEnvironment,
   setupTimerMocks,
   waitForAsync,
   flushPromises
-} from '../test-setup';
+import { } from '../test-setup';
 
 
 
@@ -112,7 +109,6 @@ const ComplexAuthComponent: React.FC = () => {
           <span data-testid="user-id">ID: {user?.userId}</span>
         </div>
         <button onClick={handleLogout} data-testid="logout-button">
-          Logout
         </button>
       </header>
 
@@ -216,13 +212,11 @@ describe('Test Providers Integration', () => {
   beforeEach(() => {
     resetAllMocks();
     resetHookMocks();
-  });
 
   afterEach(() => {
     cleanup();
     cleanupTestEnvironment();
     cleanupHookMocks();
-  });
 
   describe('Provider and Hook Mock Integration', () => {
     it('should work with TestAuthProvider and hook mocks together', () => {
@@ -241,7 +235,6 @@ describe('Test Providers Integration', () => {
       expect(screen.getByTestId('super-admin-section')).toBeInTheDocument();
       expect(screen.getByTestId('admin-section')).toBeInTheDocument();
       expect(screen.getByTestId('user-management-section')).toBeInTheDocument();
-    });
 
     it('should handle provider override with hook mocks', () => {
       // Setup hook mocks for admin
@@ -256,7 +249,6 @@ describe('Test Providers Integration', () => {
 
       expect(screen.getByTestId('dashboard')).toBeInTheDocument();
       expect(screen.getByTestId('super-admin-section')).toBeInTheDocument();
-    });
 
     it('should work with renderWithProviders and hook mocks', () => {
       // Setup hook mocks
@@ -264,13 +256,11 @@ describe('Test Providers Integration', () => {
 
       renderWithProviders(<ComplexAuthComponent />, {
         testScenario: 'admin'
-      });
 
       expect(screen.getByTestId('dashboard')).toBeInTheDocument();
       expect(screen.getByTestId('admin-section')).toBeInTheDocument();
       expect(screen.queryByTestId('super-admin-section')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Comprehensive Role and Permission Testing', () => {
     it('should test super admin with all permissions', () => {
@@ -294,7 +284,6 @@ describe('Test Providers Integration', () => {
       // Capabilities
       expect(screen.getByTestId('can-manage-users')).toHaveTextContent('true');
       expect(screen.getByTestId('can-manage-admins')).toHaveTextContent('true');
-    });
 
     it('should test admin with limited permissions', () => {
       renderWithAdmin(<ComplexAuthComponent />);
@@ -317,7 +306,6 @@ describe('Test Providers Integration', () => {
       // Capabilities
       expect(screen.getByTestId('can-manage-users')).toHaveTextContent('true');
       expect(screen.getByTestId('can-manage-admins')).toHaveTextContent('false');
-    });
 
     it('should test regular user with no special permissions', () => {
       renderWithUser(<ComplexAuthComponent />);
@@ -340,7 +328,6 @@ describe('Test Providers Integration', () => {
       // Capabilities
       expect(screen.getByTestId('can-manage-users')).toHaveTextContent('false');
       expect(screen.getByTestId('can-manage-admins')).toHaveTextContent('false');
-    });
 
     it('should test unauthenticated user', () => {
       renderWithUnauthenticated(<ComplexAuthComponent />);
@@ -348,8 +335,7 @@ describe('Test Providers Integration', () => {
       // Should show login form
       expect(screen.getByTestId('login-form')).toBeInTheDocument();
       expect(screen.queryByTestId('dashboard')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Authentication Flow Testing', () => {
     it('should handle login flow', async () => {
@@ -377,17 +363,14 @@ describe('Test Providers Integration', () => {
 
       expect(screen.getByTestId('dashboard')).toBeInTheDocument();
       expect(screen.getByText('Welcome, superadmin@example.com')).toBeInTheDocument();
-    });
 
     it('should handle login error', async () => {
       // Setup error scenario
       const errorAuth = createMockAuthContext(null, false, {
         login: vi.fn().mockRejectedValue(new Error('Invalid credentials'))
-      });
 
       renderWithProviders(<ComplexAuthComponent />, {
         authValue: errorAuth
-      });
 
       expect(screen.getByTestId('login-form')).toBeInTheDocument();
 
@@ -398,18 +381,15 @@ describe('Test Providers Integration', () => {
       // Wait for error
       await waitFor(() => {
         expect(screen.getByTestId('error-message')).toHaveTextContent('Invalid credentials');
-      });
-    });
+
 
     it('should handle logout flow', () => {
       const mockLogout = vi.fn();
       const authContext = createMockAuthContext(mockSuperAdminUser, true, {
         logout: mockLogout
-      });
 
       renderWithProviders(<ComplexAuthComponent />, {
         authValue: authContext
-      });
 
       expect(screen.getByTestId('dashboard')).toBeInTheDocument();
 
@@ -418,19 +398,16 @@ describe('Test Providers Integration', () => {
       fireEvent.click(logoutButton);
 
       expect(mockLogout).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Async Authentication Testing', () => {
     it('should handle async auth check', async () => {
       const mockCheckAuth = vi.fn().mockResolvedValue(true);
       const authContext = createMockAuthContext(mockSuperAdminUser, true, {
         checkAuth: mockCheckAuth
-      });
 
       renderWithProviders(<AsyncAuthComponent />, {
         authValue: authContext
-      });
 
       expect(screen.getByTestId('current-auth-status')).toHaveTextContent('true');
 
@@ -444,20 +421,16 @@ describe('Test Providers Integration', () => {
       // Wait for result
       await waitFor(() => {
         expect(screen.getByTestId('auth-check-result')).toHaveTextContent('true');
-      });
 
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     it('should handle async auth check error', async () => {
       const mockCheckAuth = vi.fn().mockRejectedValue(new Error('Auth check failed'));
       const authContext = createMockAuthContext(mockSuperAdminUser, true, {
         checkAuth: mockCheckAuth
-      });
 
       renderWithProviders(<AsyncAuthComponent />, {
         authValue: authContext
-      });
 
       // Click check auth button
       const checkButton = screen.getByTestId('check-auth-button');
@@ -466,11 +439,9 @@ describe('Test Providers Integration', () => {
       // Wait for error result
       await waitFor(() => {
         expect(screen.getByTestId('auth-check-result')).toHaveTextContent('false');
-      });
 
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Batch Scenario Testing', () => {
     it('should run all scenarios with batch testing', () => {
@@ -480,7 +451,6 @@ describe('Test Providers Integration', () => {
         try {
           renderWithProviders(<ComplexAuthComponent />, {
             authValue: authContext
-          });
 
           // Basic validation that component renders
           const isAuthenticated = authContext.isAuthenticated;
@@ -496,12 +466,10 @@ describe('Test Providers Integration', () => {
         } finally {
           cleanup();
         }
-      });
 
       // All scenarios should pass
       expect(testResults.every(result => result.success)).toBe(true);
       expect(testResults).toHaveLength(4); // Default scenarios
-    });
 
     it('should test all predefined scenarios individually', () => {
       Object.keys(authTestScenarios).forEach(scenarioName => {
@@ -515,28 +483,24 @@ describe('Test Providers Integration', () => {
         }
 
         cleanup();
-      });
-    });
-  });
+
+
 
   describe('Test Isolation Verification', () => {
     it('should isolate tests properly - test 1', () => {
       renderWithSuperAdmin(<ComplexAuthComponent />);
       expect(screen.getByTestId('super-admin-section')).toBeInTheDocument();
-    });
 
     it('should isolate tests properly - test 2', () => {
       // Should not be affected by previous test
       renderWithUser(<ComplexAuthComponent />);
       expect(screen.queryByTestId('super-admin-section')).not.toBeInTheDocument();
-    });
 
     it('should isolate tests properly - test 3', () => {
       // Should not be affected by previous tests
       renderWithUnauthenticated(<ComplexAuthComponent />);
       expect(screen.getByTestId('login-form')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Complex Integration Scenarios', () => {
     it('should handle multiple provider instances', () => {
@@ -563,7 +527,6 @@ describe('Test Providers Integration', () => {
 
       expect(provider1.querySelector('[data-testid="super-admin-section"]')).toBeInTheDocument();
       expect(provider2.querySelector('[data-testid="super-admin-section"]')).not.toBeInTheDocument();
-    });
 
     it('should handle provider with custom auth context', () => {
       const customAuth = createMockAuthContext(mockAdminUser, true, {
@@ -572,16 +535,13 @@ describe('Test Providers Integration', () => {
           if (permission === 'special_permission') return true;
           return mockAdminUser.permissions?.includes(permission) || false;
         })
-      });
 
       renderWithProviders(<ComplexAuthComponent />, {
         authValue: customAuth
-      });
 
       expect(screen.getByTestId('dashboard')).toBeInTheDocument();
       expect(screen.getByTestId('admin-section')).toBeInTheDocument();
       expect(screen.queryByTestId('super-admin-section')).not.toBeInTheDocument();
-    });
 
     it('should handle mixed provider and hook mock setup', () => {
       // Setup hook mocks
@@ -591,18 +551,15 @@ describe('Test Providers Integration', () => {
         authOverrides: {
           hasRole: vi.fn((role) => role === 'super_admin')
         }
-      });
 
       // Use provider with different scenario
       renderWithProviders(<ComplexAuthComponent />, {
         testScenario: 'admin' // This should take precedence
-      });
 
       expect(screen.getByTestId('dashboard')).toBeInTheDocument();
       // Provider scenario should win
       expect(screen.getByTestId('user-role')).toHaveTextContent('Role: admin');
-    });
-  });
+
 
   describe('Performance and Memory Testing', () => {
     it('should not leak memory with multiple renders', () => {
@@ -617,7 +574,6 @@ describe('Test Providers Integration', () => {
       expect(() => {
         renderWithUser(<ComplexAuthComponent />);
       }).not.toThrow();
-    });
 
     it('should handle rapid scenario switching', () => {
       const scenarios = ['super_admin', 'admin', 'user', 'unauthenticated'] as const;
@@ -625,7 +581,6 @@ describe('Test Providers Integration', () => {
       scenarios.forEach(scenario => {
         const { unmount } = renderWithProviders(<ComplexAuthComponent />, {
           testScenario: scenario
-        });
 
         if (scenario === 'unauthenticated') {
           expect(screen.getByTestId('login-form')).toBeInTheDocument();
@@ -634,9 +589,8 @@ describe('Test Providers Integration', () => {
         }
 
         unmount();
-      });
-    });
-  });
+
+
 
   describe('Error Handling Integration', () => {
     it('should handle provider errors gracefully', () => {
@@ -648,14 +602,12 @@ describe('Test Providers Integration', () => {
           </TestAuthProvider>
         );
       }).not.toThrow();
-    });
 
     it('should handle missing context gracefully', () => {
       // Component without provider should handle missing context
       expect(() => {
         render(<ComplexAuthComponent />);
       }).not.toThrow();
-    });
 
     it('should handle malformed auth context', () => {
       const malformedAuth = {
@@ -667,8 +619,7 @@ describe('Test Providers Integration', () => {
       expect(() => {
         renderWithProviders(<ComplexAuthComponent />, {
           authValue: malformedAuth
-        });
+
       }).not.toThrow();
-    });
-  });
-});
+
+

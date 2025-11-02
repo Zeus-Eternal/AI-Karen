@@ -83,7 +83,6 @@ export const DEFAULT_TEMPLATES = {
       </div>
     `,
     text_content: `
-Administrator Invitation
 Hello {{full_name}},
 You have been invited to join {{system_name}} as an administrator by {{invited_by_name}}.
 To accept this invitation and set up your account, please visit:

@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import { EnhancedBadge, EnhancedBadgeGroup } from '../badge';
@@ -18,7 +19,6 @@ describe('EnhancedBadge', () => {
     expect(badge).toBeInTheDocument();
     expect(badge).toHaveClass('inline-flex', 'items-center');
     expect(screen.getByText('Default Badge')).toBeInTheDocument();
-  });
 
   it('should apply variant classes correctly', () => {
     const { rerender } = render(<EnhancedBadge variant="destructive" data-testid="badge">Error</EnhancedBadge>);
@@ -37,7 +37,6 @@ describe('EnhancedBadge', () => {
     rerender(<EnhancedBadge variant="ghost" data-testid="badge">Ghost</EnhancedBadge>);
     badge = screen.getByTestId('badge');
     expect(badge).toHaveClass('border-transparent', 'bg-transparent');
-  });
 
   it('should apply size classes correctly', () => {
     const { rerender } = render(<EnhancedBadge size="sm" data-testid="badge">Small</EnhancedBadge>);
@@ -48,7 +47,6 @@ describe('EnhancedBadge', () => {
     rerender(<EnhancedBadge size="lg" data-testid="badge">Large</EnhancedBadge>);
     badge = screen.getByTestId('badge');
     expect(badge).toHaveClass('px-[var(--space-md)]', 'py-[var(--space-xs)]');
-  });
 
   it('should render with left and right icons', () => {
     const LeftIcon = () => <span data-testid="left-icon">←</span>;
@@ -59,13 +57,11 @@ describe('EnhancedBadge', () => {
         leftIcon={<LeftIcon />} 
         rightIcon={<RightIcon />}
       >
-        Badge with icons
       </EnhancedBadge>
     );
     
     expect(screen.getByTestId('left-icon')).toBeInTheDocument();
     expect(screen.getByTestId('right-icon')).toBeInTheDocument();
-  });
 
   it('should render with dot indicator', () => {
     render(<EnhancedBadge dot data-testid="badge">Badge with dot</EnhancedBadge>);
@@ -74,7 +70,6 @@ describe('EnhancedBadge', () => {
     const dot = badge.querySelector('span[aria-hidden="true"]');
     expect(dot).toBeInTheDocument();
     expect(dot).toHaveClass('h-2', 'w-2', 'rounded-full');
-  });
 
   it('should render with custom dot color', () => {
     render(<EnhancedBadge dotColor="#ff0000" data-testid="badge">Badge with red dot</EnhancedBadge>);
@@ -83,13 +78,11 @@ describe('EnhancedBadge', () => {
     const dot = badge.querySelector('span[aria-hidden="true"]');
     expect(dot).toBeInTheDocument();
     expect(dot).toHaveStyle({ backgroundColor: '#ff0000' });
-  });
 
   it('should handle interactive state', () => {
     const handleClick = vi.fn();
     render(
       <EnhancedBadge onClick={handleClick} interactive data-testid="badge">
-        Interactive Badge
       </EnhancedBadge>
     );
     
@@ -100,13 +93,11 @@ describe('EnhancedBadge', () => {
     
     fireEvent.click(badge);
     expect(handleClick).toHaveBeenCalledTimes(1);
-  });
 
   it('should handle keyboard interaction', () => {
     const handleClick = vi.fn();
     render(
       <EnhancedBadge onClick={handleClick} data-testid="badge">
-        Keyboard Badge
       </EnhancedBadge>
     );
     
@@ -119,13 +110,11 @@ describe('EnhancedBadge', () => {
     // Test Space key
     fireEvent.keyDown(badge, { key: ' ' });
     expect(handleClick).toHaveBeenCalledTimes(2);
-  });
 
   it('should render removable badge', () => {
     const handleRemove = vi.fn();
     render(
       <EnhancedBadge removable onRemove={handleRemove}>
-        Removable Badge
       </EnhancedBadge>
     );
     
@@ -134,7 +123,6 @@ describe('EnhancedBadge', () => {
     
     fireEvent.click(removeButton);
     expect(handleRemove).toHaveBeenCalledTimes(1);
-  });
 
   it('should prevent event propagation on remove', () => {
     const handleClick = vi.fn();
@@ -142,7 +130,6 @@ describe('EnhancedBadge', () => {
     
     render(
       <EnhancedBadge onClick={handleClick} removable onRemove={handleRemove}>
-        Removable Badge
       </EnhancedBadge>
     );
     
@@ -151,7 +138,6 @@ describe('EnhancedBadge', () => {
     
     expect(handleRemove).toHaveBeenCalledTimes(1);
     expect(handleClick).not.toHaveBeenCalled();
-  });
 
   it('should apply design token classes', () => {
     render(<EnhancedBadge data-testid="badge">Token Badge</EnhancedBadge>);
@@ -162,20 +148,17 @@ describe('EnhancedBadge', () => {
     expect(badge).toHaveClass('text-[var(--text-xs)]');
     expect(badge).toHaveClass('[transition-duration:var(--duration-fast)]');
     expect(badge).toHaveClass('bg-[var(--color-primary-500)]');
-  });
 
   it('should truncate long text', () => {
     render(
       <EnhancedBadge data-testid="badge">
-        This is a very long badge text that should be truncated
       </EnhancedBadge>
     );
     
     const badge = screen.getByTestId('badge');
     const textSpan = badge.querySelector('span.truncate');
     expect(textSpan).toBeInTheDocument();
-  });
-});
+
 
 describe('EnhancedBadgeGroup', () => {
   it('should render with default props', () => {
@@ -188,7 +171,6 @@ describe('EnhancedBadgeGroup', () => {
     
     expect(screen.getByText('Badge 1')).toBeInTheDocument();
     expect(screen.getByText('Badge 2')).toBeInTheDocument();
-  });
 
   it('should apply spacing classes correctly', () => {
     const { rerender } = render(
@@ -208,7 +190,6 @@ describe('EnhancedBadgeGroup', () => {
     
     group = screen.getByTestId('badge-group');
     expect(group).toHaveClass('gap-[var(--space-md)]');
-  });
 
   it('should handle wrap property', () => {
     const { rerender } = render(
@@ -228,7 +209,6 @@ describe('EnhancedBadgeGroup', () => {
     
     group = screen.getByTestId('badge-group');
     expect(group).toHaveClass('flex-wrap');
-  });
 
   it('should apply custom className', () => {
     render(
@@ -239,5 +219,4 @@ describe('EnhancedBadgeGroup', () => {
     
     const group = screen.getByTestId('badge-group');
     expect(group).toHaveClass('custom-class');
-  });
-});
+

@@ -11,7 +11,6 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
 import { useToast } from '@/hooks/use-toast';
 /**
  * Comprehensive Provider Configuration Interface
@@ -30,34 +29,9 @@ import { useToast } from '@/hooks/use-toast';
 
 
 
-  Plus, 
-  Settings, 
-  Shield, 
-  CheckCircle, 
-  AlertTriangle, 
-  XCircle,
-  Eye,
-  EyeOff,
-  TestTube,
-  Save,
-  Trash2,
-  Copy,
-  RefreshCw,
-  Cloud,
-  Server,
-  Cpu,
-  Activity,
-  Lock,
-  Unlock,
-  Info
-} from 'lucide-react';
+import { } from 'lucide-react';
 
-  ProviderConfig, 
-  ProviderType, 
-  ProviderHealth, 
-  ProviderConfigField,
-  ValidationRule 
-} from '@/types/providers';
+import { } from '@/types/providers';
 
 interface ProviderConfigInterfaceProps {
   onProviderSaved?: (provider: ProviderConfig) => void;
@@ -236,7 +210,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         title: 'Error',
         description: 'Failed to load provider configurations',
         variant: 'destructive'
-      });
+
     } finally {
       setLoading(false);
     }
@@ -260,7 +234,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         errors.push({
           field: field.name,
           message: `${field.label} is required`
-        });
+
         return;
       }
       // Type-specific validation
@@ -271,20 +245,20 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
               errors.push({
                 field: field.name,
                 message: `${field.label} must be a number`
-              });
+
             } else if (field.validation) {
               const num = Number(value);
               if (field.validation.min !== undefined && num < field.validation.min) {
                 errors.push({
                   field: field.name,
                   message: `${field.label} must be at least ${field.validation.min}`
-                });
+
               }
               if (field.validation.max !== undefined && num > field.validation.max) {
                 errors.push({
                   field: field.name,
                   message: `${field.label} must be at most ${field.validation.max}`
-                });
+
               }
             }
             break;
@@ -295,7 +269,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
               errors.push({
                 field: field.name,
                 message: `${field.label} must be a valid URL`
-              });
+
             }
             break;
           case 'string':
@@ -304,25 +278,25 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                 errors.push({
                   field: field.name,
                   message: `${field.label} must be at least ${field.validation.minLength} characters`
-                });
+
               }
               if (field.validation.maxLength && value.length > field.validation.maxLength) {
                 errors.push({
                   field: field.name,
                   message: `${field.label} must be at most ${field.validation.maxLength} characters`
-                });
+
               }
               if (field.validation.pattern && !new RegExp(field.validation.pattern).test(value)) {
                 errors.push({
                   field: field.name,
                   message: `${field.label} format is invalid`
-                });
+
               }
             }
             break;
         }
       }
-    });
+
     // Custom validation rules
     type.configSchema.validation.forEach(rule => {
       const value = data[rule.field];
@@ -332,7 +306,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
             errors.push({
               field: rule.field,
               message: rule.message
-            });
+
           }
           break;
         case 'pattern':
@@ -340,11 +314,11 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
             errors.push({
               field: rule.field,
               message: rule.message
-            });
+
           }
           break;
       }
-    });
+
     return errors;
   };
   const handleFieldChange = (fieldName: string, value: any) => {
@@ -364,7 +338,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         title: 'Validation Error',
         description: 'Please fix the form errors before testing',
         variant: 'destructive'
-      });
+
       return;
     }
     setTesting(true);
@@ -377,34 +351,34 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           type: selectedType.id,
           configuration: formData
         })
-      });
+
       const result = await response.json();
       setTestResult({
         success: response.ok,
         message: result.message || (response.ok ? 'Connection successful' : 'Connection failed')
-      });
+
       if (response.ok) {
         toast({
           title: 'Test Successful',
           description: 'Provider connection is working correctly'
-        });
+
       } else {
         toast({
           title: 'Test Failed',
           description: result.message || 'Failed to connect to provider',
           variant: 'destructive'
-        });
+
       }
     } catch (error) {
       setTestResult({
         success: false,
         message: 'Network error occurred during testing'
-      });
+
       toast({
         title: 'Test Error',
         description: 'Failed to test provider connection',
         variant: 'destructive'
-      });
+
     } finally {
       setTesting(false);
     }
@@ -418,7 +392,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         title: 'Validation Error',
         description: 'Please fix the form errors before saving',
         variant: 'destructive'
-      });
+
       return;
     }
     setSaving(true);
@@ -448,7 +422,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         method: selectedProvider ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(providerData)
-      });
+
       if (!response.ok) throw new Error('Failed to save provider');
       const savedProvider = await response.json();
       if (selectedProvider) {
@@ -460,7 +434,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       toast({
         title: 'Provider Saved',
         description: `${savedProvider.name} has been saved successfully`
-      });
+
       // Reset form
       setSelectedProvider(null);
       setSelectedType(null);
@@ -472,7 +446,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         title: 'Save Error',
         description: 'Failed to save provider configuration',
         variant: 'destructive'
-      });
+
     } finally {
       setSaving(false);
     }
@@ -482,7 +456,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     try {
       const response = await fetch(`/api/providers/${provider.id}`, {
         method: 'DELETE'
-      });
+
       if (!response.ok) throw new Error('Failed to delete provider');
       setProviders(prev => prev.filter(p => p.id !== provider.id));
       onProviderDeleted?.(provider.id);
@@ -494,13 +468,13 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       toast({
         title: 'Provider Deleted',
         description: `${provider.name} has been deleted`
-      });
+
     } catch (error) {
       toast({
         title: 'Delete Error',
         description: 'Failed to delete provider',
         variant: 'destructive'
-      });
+
     }
   };
   const handleEdit = (provider: ProviderConfig) => {
@@ -513,7 +487,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       ...provider.credentials,
       name: provider.name,
       enabled: provider.enabled
-    });
+
     setValidationErrors([]);
     setTestResult(null);
   };
@@ -529,7 +503,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       if (field.default !== undefined) {
         defaultData[field.name] = field.default;
       }
-    });
+
     setFormData(defaultData);
     setValidationErrors([]);
     setTestResult(null);
@@ -545,19 +519,19 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           <Label htmlFor={field.name} className="flex items-center gap-2">
             {field.label}
             {field.required && <span className="text-red-500">*</span>}
-            {field.sensitive && <Lock className="w-3 h-3 sm:w-auto md:w-full" />}
+            {field.sensitive && <Lock className="w-3 h-3 " />}
           </Label>
           {field.sensitive && (
-            <button
+            <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() = aria-label="Button"> setShowSensitive(prev => ({
+              onClick={() => setShowSensitive(prev => ({
                 ...prev,
                 [field.name]: !prev[field.name]
               }))}
             >
-              {isVisible ? <EyeOff className="w-4 h-4 sm:w-auto md:w-full" /> : <Eye className="w-4 h-4 sm:w-auto md:w-full" />}
+              {isVisible ? <EyeOff className="w-4 h-4 " /> : <Eye className="w-4 h-4 " />}
             </Button>
           )}
         </div>
@@ -589,7 +563,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           <textarea
             id={field.name}
             value={value}
-            onChange={(e) = aria-label="Textarea"> handleFieldChange(field.name, e.target.value)}
+            onChange={(e) => handleFieldChange(field.name, e.target.value)}
             placeholder={field.description}
             className={error ? 'border-red-500' : ''}
           />
@@ -598,7 +572,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
             id={field.name}
             type={field.sensitive && !isVisible ? 'password' : field.type === 'number' ? 'number' : 'text'}
             value={value}
-            onChange={(e) = aria-label="Input"> handleFieldChange(field.name, e.target.value)}
+            onChange={(e) => handleFieldChange(field.name, e.target.value)}
             placeholder={field.description}
             className={error ? 'border-red-500' : ''}
           />
@@ -608,7 +582,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         )}
         {error && (
           <p className="text-xs text-red-600 flex items-center gap-1 sm:text-sm md:text-base">
-            <AlertTriangle className="w-3 h-3 sm:w-auto md:w-full" />
+            <AlertTriangle className="w-3 h-3 " />
             {error.message}
           </p>
         )}
@@ -616,16 +590,16 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     );
   };
   const getHealthIcon = (health?: ProviderHealth) => {
-    if (!health) return <Activity className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />;
+    if (!health) return <Activity className="w-4 h-4 text-gray-400 " />;
     switch (health.status) {
       case 'healthy':
-        return <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle className="w-4 h-4 text-green-600 " />;
       case 'degraded':
-        return <AlertTriangle className="w-4 h-4 text-yellow-600 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="w-4 h-4 text-yellow-600 " />;
       case 'unhealthy':
-        return <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />;
+        return <XCircle className="w-4 h-4 text-red-600 " />;
       default:
-        return <Activity className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />;
+        return <Activity className="w-4 h-4 text-gray-400 " />;
     }
   };
   const getHealthBadge = (health?: ProviderHealth) => {
@@ -647,7 +621,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       <Card className={className}>
         <CardContent className="flex items-center justify-center p-8 sm:p-4 md:p-6">
           <div className="text-center space-y-2">
-            <Settings className="w-8 h-8 animate-spin mx-auto text-blue-500 sm:w-auto md:w-full" />
+            <Settings className="w-8 h-8 animate-spin mx-auto text-blue-500 " />
             <div>Loading provider configurations...</div>
           </div>
         </CardContent>
@@ -660,11 +634,9 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5 sm:w-auto md:w-full" />
-            Provider Configuration
+            <Settings className="w-5 h-5 " />
           </CardTitle>
           <CardDescription>
-            Manage AI provider connections and credentials
           </CardDescription>
         </CardHeader>
       </Card>
@@ -702,9 +674,9 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {type?.category === 'cloud' && <Cloud className="w-3 h-3 sm:w-auto md:w-full" />}
-                        {type?.category === 'local' && <Server className="w-3 h-3 sm:w-auto md:w-full" />}
-                        {type?.category === 'custom' && <Cpu className="w-3 h-3 sm:w-auto md:w-full" />}
+                        {type?.category === 'cloud' && <Cloud className="w-3 h-3 " />}
+                        {type?.category === 'local' && <Server className="w-3 h-3 " />}
+                        {type?.category === 'custom' && <Cpu className="w-3 h-3 " />}
                         <span className="text-xs text-gray-600 sm:text-sm md:text-base">{type?.name}</span>
                       </div>
                       {getHealthBadge(health)}
@@ -726,7 +698,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
               })}
               {providers.length === 0 && (
                 <div className="text-center py-6 text-gray-500">
-                  <Settings className="w-8 h-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                  <Settings className="w-8 h-8 mx-auto mb-2 opacity-50 " />
                   <div>No providers configured</div>
                   <div className="text-xs sm:text-sm md:text-base">Add a provider to get started</div>
                 </div>
@@ -737,17 +709,16 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Plus className="w-4 h-4 sm:w-auto md:w-full" />
-                Add Provider
+                <Plus className="w-4 h-4 " />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {PROVIDER_TYPES.map(type => (
-                <button
+                <Button
                   key={type.id}
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() = aria-label="Button"> handleNewProvider(type)}
+                  onClick={() => handleNewProvider(type)}
                 >
                   <span className="mr-2 text-lg">{type.icon}</span>
                   <div className="text-left">
@@ -776,13 +747,12 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                     <CardDescription>{selectedType.description}</CardDescription>
                   </div>
                   {selectedProvider && (
-                    <button
+                    <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() = aria-label="Button"> handleDelete(selectedProvider)}
+                      onClick={() => handleDelete(selectedProvider)}
                     >
-                      <Trash2 className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                      Delete
+                      <Trash2 className="w-4 h-4 mr-2 " />
                     </Button>
                   )}
                 </div>
@@ -802,7 +772,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                         <input
                           id="name"
                           value={formData.name || ''}
-                          onChange={(e) = aria-label="Input"> handleFieldChange('name', e.target.value)}
+                          onChange={(e) => handleFieldChange('name', e.target.value)}
                           placeholder="Enter a name for this provider"
                         />
                       </div>
@@ -823,26 +793,25 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                     {/* Test Connection */}
                     <div className="space-y-4">
                       <div className="flex items-center gap-2">
-                        <button
+                        <Button
                           onClick={handleTestConnection}
                           disabled={testing}
                           variant="outline"
-                         aria-label="Button">
+                         >
                           {testing ? (
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin " />
                           ) : (
-                            <TestTube className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
+                            <TestTube className="w-4 h-4 mr-2 " />
                           )}
-                          Test Connection
                         </Button>
                       </div>
                       {testResult && (
                         <Alert className={testResult.success ? 'border-green-500' : 'border-red-500'}>
                           <div className="flex items-center gap-2">
                             {testResult.success ? (
-                              <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
+                              <CheckCircle className="w-4 h-4 text-green-600 " />
                             ) : (
-                              <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />
+                              <XCircle className="w-4 h-4 text-red-600 " />
                             )}
                             <AlertDescription>{testResult.message}</AlertDescription>
                           </div>
@@ -851,21 +820,20 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                     </div>
                     {/* Save Button */}
                     <div className="flex justify-end gap-2">
-                      <button
+                      <Button
                         variant="outline"
-                        onClick={() = aria-label="Button"> {
+                        onClick={() => {
                           setSelectedProvider(null);
                           setSelectedType(null);
                           setFormData({});
                         }}
                       >
-                        Cancel
                       </Button>
                       <button onClick={handleSave} disabled={saving} aria-label="Button">
                         {saving ? (
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin " />
                         ) : (
-                          <Save className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
+                          <Save className="w-4 h-4 mr-2 " />
                         )}
                         {selectedProvider ? 'Update' : 'Save'} Provider
                       </Button>
@@ -876,7 +844,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                       <ProviderHealthDisplay health={providerHealth[selectedProvider.id]} />
                     ) : (
                       <div className="text-center py-8 text-gray-500">
-                        <Activity className="w-8 h-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                        <Activity className="w-8 h-8 mx-auto mb-2 opacity-50 " />
                         <div>No health data available</div>
                         <div className="text-xs sm:text-sm md:text-base">Save the provider to see health metrics</div>
                       </div>
@@ -888,7 +856,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                       <div className="grid gap-2 sm:grid-cols-2">
                         {selectedType.supportedModels.map(model => (
                           <div key={model} className="p-2 border rounded flex items-center gap-2 sm:p-4 md:p-6">
-                            <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
+                            <CheckCircle className="w-4 h-4 text-green-600 " />
                             <span className="font-mono text-sm md:text-base lg:text-lg">{model}</span>
                           </div>
                         ))}
@@ -911,10 +879,9 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           ) : (
             <Card>
               <CardContent className="text-center py-12">
-                <Settings className="w-12 h-12 mx-auto mb-4 text-gray-400 sm:w-auto md:w-full" />
+                <Settings className="w-12 h-12 mx-auto mb-4 text-gray-400 " />
                 <h3 className="text-lg font-medium mb-2">Select a Provider</h3>
                 <p className="text-gray-600 mb-4">
-                  Choose a provider from the list to configure or add a new one
                 </p>
               </CardContent>
             </Card>
@@ -975,7 +942,7 @@ const ProviderHealthDisplay: React.FC<{ health: ProviderHealth }> = ({ health })
           <div className="space-y-2">
             {health.issues.map(issue => (
               <Alert key={issue.id} className="border-red-200">
-                <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
+                <AlertTriangle className="w-4 h-4 " />
                 <AlertDescription>
                   <div className="flex items-center justify-between">
                     <span>{issue.message}</span>

@@ -97,7 +97,6 @@ export const createAriaLive = (
   'aria-live': level,
   'aria-atomic': atomic,
   'aria-relevant': relevant,
-});
 
 /**
  * Create ARIA attributes for interactive elements
@@ -193,7 +192,6 @@ export const createModalAria = (
 ): AriaLabelProps & { 'aria-modal'?: boolean } => ({
   ...createAriaLabel(undefined, labelledBy, describedBy),
   'aria-modal': modal,
-});
 
 /**
  * Create ARIA attributes for loading states
@@ -206,7 +204,6 @@ export const createLoadingAria = (
   'aria-busy': busy,
   'aria-label': label,
   'aria-live': live,
-});
 
 /**
  * Merge multiple ARIA prop objects

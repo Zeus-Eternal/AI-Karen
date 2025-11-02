@@ -10,13 +10,7 @@
 import { DatabaseClient, getDatabaseClient } from './client';
 import { DatabasePerformanceMonitor } from '@/lib/performance/admin-performance-monitor';
 import { UserCache, UserListCache, AdminCacheManager } from '@/lib/cache/admin-cache';
-import type { 
-  User, 
-  UserListFilter, 
-  PaginationParams, 
-  PaginatedResponse,
-  BulkOperationResult 
-} from '@/types/admin';
+import type {  User, UserListFilter, PaginationParams, PaginatedResponse, BulkOperationResult } from '@/types/admin';
 
 export class QueryOptimizer {
   constructor(private db: DatabaseClient) {}
@@ -142,7 +136,7 @@ export class QueryOptimizer {
       // Invalidate caches for updated users
       userIds.forEach(userId => {
         AdminCacheManager.invalidateUserCaches(userId);
-      });
+
       UserListCache.invalidateAll();
 
       return {
@@ -299,12 +293,10 @@ export class QueryOptimizer {
           user.tenant_id || 'default',
           true // is_active
         );
-      });
 
       const query = `
         INSERT INTO auth_users (email, full_name, role, tenant_id, is_active, created_at, updated_at)
         VALUES ${placeholders.join(', ')}
-        RETURNING user_id, email
       `;
 
       const result = await this.db.query(query, values);
@@ -371,7 +363,6 @@ export class QueryOptimizer {
           user_id, email, full_name, role, roles, tenant_id, preferences,
           is_verified, is_active, created_at, updated_at, last_login_at,
           failed_login_attempts, locked_until, two_factor_enabled, two_factor_secret
-         FROM auth_users 
          WHERE user_id = $1`,
         [userId]
       );

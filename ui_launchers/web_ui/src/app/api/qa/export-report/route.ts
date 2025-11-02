@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         headers: {
           'Content-Disposition': `attachment; filename="qa-report-${new Date().toISOString().split('T')[0]}.json"`
         }
-      });
+
     }
     if (format === 'pdf') {
       // Generate PDF report
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/pdf',
           'Content-Disposition': `attachment; filename="qa-report-${new Date().toISOString().split('T')[0]}.pdf"`
         }
-      });
+
     }
     if (format === 'html') {
       const htmlContent = generateHtmlReport(reportData, includeCharts);
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'text/html',
           'Content-Disposition': `attachment; filename="qa-report-${new Date().toISOString().split('T')[0]}.html"`
         }
-      });
+
     }
     return NextResponse.json({ error: 'Unsupported format' }, { status: 400 });
   } catch (error) {
@@ -67,7 +67,6 @@ async function generatePdfReport(reportData: any, includeCharts: boolean): Promi
   // This would typically use a library like puppeteer or jsPDF
   // For now, return a simple text-based PDF placeholder
   const textContent = `
-Quality Assurance Report
 Generated: ${new Date(reportData.timestamp).toLocaleString()}
 Overall Quality Score: ${reportData.summary.overallScore}%
 Quality Gates Passed: ${reportData.summary.passedGates}/${reportData.summary.totalGates}

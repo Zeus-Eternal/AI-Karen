@@ -58,7 +58,7 @@ class PerformanceTestRunner {
         encoding: 'utf8',
         cwd: process.cwd(),
         timeout: 60000, // 1 minute timeout
-      });
+
       const duration = Date.now() - startTime;
       // Parse test results (simplified)
       const passed = !output.includes('FAILED') && !output.includes('Error');
@@ -67,7 +67,7 @@ class PerformanceTestRunner {
         duration,
         passed,
         metrics: this.extractMetrics(output),
-      });
+
       console.log(`✅ ${name}: ${passed ? 'PASSED' : 'FAILED'} (${duration}ms)\n`);
     } catch (error) {
       const duration = Date.now() - this.startTime;
@@ -76,7 +76,7 @@ class PerformanceTestRunner {
         duration,
         passed: false,
         error: error instanceof Error ? error.message : String(error),
-      });
+
       console.log(`❌ ${name}: FAILED (${duration}ms)`);
     }
   }
@@ -190,25 +190,25 @@ class PerformanceTestRunner {
         markdown += `- **Metrics:**\n`;
         Object.entries(result.metrics).forEach(([key, value]) => {
           markdown += `  - ${key}: ${value}\n`;
-        });
+
       }
       if (result.error) {
         markdown += `- **Error:** ${result.error}\n`;
       }
       markdown += `\n`;
-    });
+
     // Recommendations
     markdown += `## Recommendations\n\n`;
     recommendations.forEach((rec, index) => {
       markdown += `${index + 1}. ${rec}\n`;
-    });
+
     return markdown;
   }
   private displaySummary(report: PerformanceReport): void {
     console.log('=' .repeat(50));
     if (report.recommendations.length > 0) {
       report.recommendations.forEach((rec, index) => {
-      });
+
     }
   }
 }
@@ -221,6 +221,6 @@ if (require.main === module) {
     })
     .catch((error) => {
       process.exit(1);
-    });
+
 }
 export { PerformanceTestRunner, type PerformanceReport };

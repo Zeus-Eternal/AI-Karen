@@ -142,7 +142,7 @@ export const useSystemHealth = (options: UseSystemHealthOptions = {}) => {
             type: 'performance',
             message: `High response time: ${health.performance.averageResponseTime}ms`,
             severity: 'high' as const
-          });
+
         }
         
         if (health.errors.errorRate > defaultConfig.alertThresholds.errorRate) {
@@ -150,7 +150,7 @@ export const useSystemHealth = (options: UseSystemHealthOptions = {}) => {
             type: 'errors',
             message: `High error rate: ${health.errors.errorRate.toFixed(1)}%`,
             severity: 'medium' as const
-          });
+
         }
         
         if (health.authentication.successRate < (100 - defaultConfig.alertThresholds.authFailureRate)) {
@@ -158,7 +158,7 @@ export const useSystemHealth = (options: UseSystemHealthOptions = {}) => {
             type: 'authentication',
             message: `Low auth success rate: ${health.authentication.successRate.toFixed(1)}%`,
             severity: 'high' as const
-          });
+
         }
         
         alerts.forEach(alert => options.onAlert!(alert));

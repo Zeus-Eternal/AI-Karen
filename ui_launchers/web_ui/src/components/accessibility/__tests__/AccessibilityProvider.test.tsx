@@ -50,9 +50,9 @@ function TestComponent() {
       <div data-testid="color-blindness">{colorBlindnessFilter}</div>
       
       <button onClick={toggleHighContrast} aria-label="Button">Toggle High Contrast</button>
-      <button onClick={() = aria-label="Button"> announceMessage('Test message')}>Announce</button>
-      <button onClick={() = aria-label="Button"> setTextScale(1.5)}>Set Text Scale</button>
-      <button onClick={() = aria-label="Button"> setColorBlindnessFilter('protanopia')}>Set Color Blindness</button>
+      <button onClick={() => announceMessage('Test message')}>Announce</button>
+      <button onClick={() => setTextScale(1.5)}>Set Text Scale</button>
+      <button onClick={() => setColorBlindnessFilter('protanopia')}>Set Color Blindness</button>
     </div>
   );
 }
@@ -82,8 +82,7 @@ describe('AccessibilityEnhancementsProvider', () => {
         setAttribute: jest.fn(),
       },
       writable: true,
-    });
-  });
+
 
   it('provides accessibility enhancement context', () => {
     render(
@@ -96,7 +95,6 @@ describe('AccessibilityEnhancementsProvider', () => {
     expect(screen.getByTestId('focus-ring')).toHaveTextContent('true');
     expect(screen.getByTestId('text-scale')).toHaveTextContent('1');
     expect(screen.getByTestId('color-blindness')).toHaveTextContent('none');
-  });
 
   it('handles high contrast toggle', async () => {
     render(
@@ -111,7 +109,6 @@ describe('AccessibilityEnhancementsProvider', () => {
     // The actual toggle would be handled by the mocked useAccessibility hook
     // This test verifies the component structure is correct
     expect(toggleButton).toBeInTheDocument();
-  });
 
   it('handles text scale changes', async () => {
     render(
@@ -125,8 +122,7 @@ describe('AccessibilityEnhancementsProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('text-scale')).toHaveTextContent('1.5');
-    });
-  });
+
 
   it('handles color blindness filter changes', async () => {
     render(
@@ -140,8 +136,7 @@ describe('AccessibilityEnhancementsProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('color-blindness')).toHaveTextContent('protanopia');
-    });
-  });
+
 
   it('handles announcements', () => {
     render(
@@ -155,7 +150,6 @@ describe('AccessibilityEnhancementsProvider', () => {
 
     // The announcement would be handled by the mocked announce function
     expect(announceButton).toBeInTheDocument();
-  });
 
   it('applies CSS custom properties for text scaling', async () => {
     render(
@@ -172,8 +166,7 @@ describe('AccessibilityEnhancementsProvider', () => {
         '--accessibility-text-scale',
         '1.5'
       );
-    });
-  });
+
 
   it('applies color blindness filter classes', async () => {
     render(
@@ -189,8 +182,7 @@ describe('AccessibilityEnhancementsProvider', () => {
       expect(document.documentElement.classList.add).toHaveBeenCalledWith(
         'color-blindness-protanopia'
       );
-    });
-  });
+
 
   it('throws error when used outside provider', () => {
     // Suppress console.error for this test
@@ -201,5 +193,4 @@ describe('AccessibilityEnhancementsProvider', () => {
     }).toThrow('useAccessibilityEnhancements must be used within an AccessibilityEnhancementsProvider');
 
     consoleSpy.mockRestore();
-  });
-});
+

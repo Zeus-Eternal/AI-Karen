@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { ComponentType, ReactNode } from 'react';
 import { retryMechanism, RetryConfig } from '@/utils/retry-mechanisms';
 import { RetryCard, LoadingRetry } from './retry-components';
@@ -36,7 +37,7 @@ export function withRetry<P extends object>(
       isRetrying: false,
       attempt: 0,
       hasRetried: false,
-    });
+
     const retryOperation = React.useCallback(async () => {
       setState(prev => ({ 
         ...prev, 
@@ -135,7 +136,7 @@ export function useAsyncRetry<T>(
     isLoading: false,
     isRetrying: false,
     attempt: 0,
-  });
+
   const execute = React.useCallback(async () => {
     setState(prev => ({ 
       ...prev, 
@@ -193,7 +194,7 @@ export function useAsyncRetry<T>(
       isLoading: false,
       isRetrying: false,
       attempt: 0,
-    });
+
   }, []);
   React.useEffect(() => {
     if (options.retryOnMount) {

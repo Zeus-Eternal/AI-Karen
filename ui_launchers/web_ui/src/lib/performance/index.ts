@@ -8,7 +8,6 @@
  */
 // HTTP Connection Pool
 export {
-  HttpConnectionPool,
   getHttpConnectionPool,
   initializeHttpConnectionPool,
   shutdownHttpConnectionPool,
@@ -16,10 +15,9 @@ export {
   type ConnectionMetrics,
   type PooledConnection,
   type QueuedRequest,
-} from './http-connection-pool';
+import { } from './http-connection-pool';
 // Request/Response Cache
 export {
-  RequestResponseCache,
   getRequestResponseCache,
   initializeRequestResponseCache,
   shutdownRequestResponseCache,
@@ -27,10 +25,9 @@ export {
   type CacheEntry,
   type CacheMetrics,
   type CacheOptions,
-} from './request-response-cache';
+import { } from './request-response-cache';
 // Database Query Optimizer
 export {
-  DatabaseQueryOptimizer,
   getDatabaseQueryOptimizer,
   initializeDatabaseQueryOptimizer,
   shutdownDatabaseQueryOptimizer,
@@ -39,17 +36,16 @@ export {
   type QueryCacheEntry,
   type PreparedStatement,
   type QueryPlan,
-} from './database-query-optimizer';
+import { } from './database-query-optimizer';
 // Performance Optimizer (Main Integration)
 export {
-  PerformanceOptimizer,
   getPerformanceOptimizer,
   initializePerformanceOptimizer,
   shutdownPerformanceOptimizer,
   type PerformanceConfig,
   type PerformanceMetrics,
   type OptimizedRequestOptions,
-} from './performance-optimizer';
+import { } from './performance-optimizer';
 // Utility functions for performance optimization
 export const PerformanceUtils = {
   /**
@@ -80,7 +76,7 @@ export const PerformanceUtils = {
       responseCache: config?.responseCache || {},
       queryOptimizer: config?.queryOptimizer || {},
       enableMetrics: true,
-    });
+
   },
   /**
    * Shutdown all performance optimization components
@@ -179,5 +175,4 @@ export const PerformanceUtils = {
 };
 // Default export for convenience
 export default {
-  PerformanceUtils,
 };

@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,57 +10,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { 
 import { webUIConfig } from '@/lib/config';
 /**
  * Endpoint Status Dashboard Component
  * Displays real-time endpoint connectivity status and diagnostic information
  */
-'use client';
 
-
-
-
-
-
-
-
-
-
-
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
-  Server, 
-  TrendingUp,
-  XCircle,
-  RefreshCw,
-  Zap,
-  Globe,
-  Shield,
-  Download,
-  Play,
-  Pause,
-  RotateCcw,
-  Eye,
-  EyeOff,
-  Copy,
-  ExternalLink
-} from 'lucide-react';
+import { } from 'lucide-react';
 
   getHealthMonitor, 
   type HealthMetrics, 
   type Alert as HealthAlert 
-} from '@/lib/health-monitor';
+import { } from '@/lib/health-monitor';
 
   getDiagnosticLogger, 
   type DiagnosticInfo 
-} from '@/lib/diagnostics';
+import { } from '@/lib/diagnostics';
 
   getNetworkDiagnostics, 
   type ComprehensiveNetworkReport 
-} from '@/lib/network-diagnostics';
+import { } from '@/lib/network-diagnostics';
 
 interface EndpointStatusDashboardProps {
   className?: string;
@@ -85,10 +56,10 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
     const unsubscribeMetrics = healthMonitor.onMetricsUpdate((newMetrics) => {
       setMetrics(newMetrics);
       setLastUpdate(new Date().toLocaleTimeString());
-    });
+
     const unsubscribeLogs = diagnosticLogger.onLog((newLog) => {
       setDiagnosticLogs(prev => [newLog, ...prev.slice(0, 49)]);
-    });
+
     // Start monitoring if not already started
     if (!healthMonitor.getStatus().isMonitoring) {
       healthMonitor.start();
@@ -157,32 +128,32 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
   };
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
-      case 'degraded': return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
-      case 'error': return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
-      default: return <Clock className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
+      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-600 " />;
+      case 'degraded': return <AlertTriangle className="h-4 w-4 text-yellow-600 " />;
+      case 'error': return <XCircle className="h-4 w-4 text-red-600 " />;
+      default: return <Clock className="h-4 w-4 text-gray-600 " />;
     }
   };
   const getLogIcon = (category: string) => {
     switch (category) {
-      case 'network': return <Globe className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'cors': return <Shield className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'auth': return <Shield className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'api': return <Server className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'health': return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
-      default: return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'network': return <Globe className="h-4 w-4 " />;
+      case 'cors': return <Shield className="h-4 w-4 " />;
+      case 'auth': return <Shield className="h-4 w-4 " />;
+      case 'api': return <Server className="h-4 w-4 " />;
+      case 'health': return <Activity className="h-4 w-4 " />;
+      default: return <Activity className="h-4 w-4 " />;
     }
   };
   const filteredLogs = diagnosticLogs.filter(log => {
     if (logFilter === 'all') return true;
     if (logFilter === 'error') return log.level === 'error';
     return log.category === logFilter;
-  });
+
   if (!metrics) {
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 sm:w-auto md:w-full" />
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 " />
           <p>Loading endpoint status...</p>
         </div>
       </div>
@@ -202,26 +173,25 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
           <Badge variant={isMonitoring ? 'default' : 'secondary'}>
             {isMonitoring ? 'Monitoring Active' : 'Monitoring Stopped'}
           </Badge>
-          <button
+          <Button
             variant="outline"
             size="sm"
             onClick={handleToggleMonitoring}
-           aria-label="Button">
-            {isMonitoring ? <Pause className="h-4 w-4 sm:w-auto md:w-full" /> : <Play className="h-4 w-4 sm:w-auto md:w-full" />}
+           >
+            {isMonitoring ? <Pause className="h-4 w-4 " /> : <Play className="h-4 w-4 " />}
             {isMonitoring ? 'Stop' : 'Start'}
           </Button>
-          <button
+          <Button
             variant="outline"
             size="sm"
             onClick={handleRunComprehensiveDiagnostics}
             disabled={isRunningDiagnostics}
-           aria-label="Button">
+           >
             {isRunningDiagnostics ? (
-              <RefreshCw className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+              <RefreshCw className="h-4 w-4 animate-spin " />
             ) : (
-              <Activity className="h-4 w-4 sm:w-auto md:w-full" />
+              <Activity className="h-4 w-4 " />
             )}
-            Run Diagnostics
           </Button>
         </div>
       </div>
@@ -229,8 +199,7 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Server className="h-5 w-5 sm:w-auto md:w-full" />
-            Current Configuration
+            <Server className="h-5 w-5 " />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -241,12 +210,12 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                 <code className="bg-muted px-2 py-1 rounded text-xs sm:text-sm md:text-base">
                   {webUIConfig.backendUrl}
                 </code>
-                <button
+                <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() = aria-label="Button"> handleCopyEndpointUrl(webUIConfig.backendUrl)}
+                  onClick={() => handleCopyEndpointUrl(webUIConfig.backendUrl)}
                 >
-                  <Copy className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Copy className="h-3 w-3 " />
                 </Button>
               </div>
             </div>
@@ -270,12 +239,12 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                 {webUIConfig.fallbackBackendUrls.map((url, index) => (
                   <div key={index} className="flex items-center gap-1">
                     <code className="bg-muted px-2 py-1 rounded text-xs sm:text-sm md:text-base">{url}</code>
-                    <button
+                    <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() = aria-label="Button"> handleCopyEndpointUrl(url)}
+                      onClick={() => handleCopyEndpointUrl(url)}
                     >
-                      <Copy className="h-3 w-3 sm:w-auto md:w-full" />
+                      <Copy className="h-3 w-3 " />
                     </Button>
                   </div>
                 ))}
@@ -287,7 +256,7 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
       {/* Network Report Summary */}
       {networkReport && (
         <Alert>
-          <Activity className="h-4 w-4 sm:w-auto md:w-full" />
+          <Activity className="h-4 w-4 " />
           <AlertDescription>
             <div className="flex items-center justify-between">
               <span>
@@ -308,7 +277,6 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
         <TabsList>
           <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
           <TabsTrigger value="diagnostics">
-            Diagnostics
             {filteredLogs.filter(log => log.level === 'error').length > 0 && (
               <Badge variant="destructive" className="ml-1 text-xs sm:text-sm md:text-base">
                 {filteredLogs.filter(log => log.level === 'error').length}
@@ -332,12 +300,12 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                       <Badge variant={result.status === 'healthy' ? 'default' : 'destructive'}>
                         {result.status}
                       </Badge>
-                      <button
+                      <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() = aria-label="Button"> setSelectedEndpoint(selectedEndpoint === endpoint ? '' : endpoint)}
+                        onClick={() => setSelectedEndpoint(selectedEndpoint === endpoint ? '' : endpoint)}
                       >
-                        {selectedEndpoint === endpoint ? <EyeOff className="h-3 w-3 sm:w-auto md:w-full" /> : <Eye className="h-3 w-3 sm:w-auto md:w-full" />}
+                        {selectedEndpoint === endpoint ? <EyeOff className="h-3 w-3 " /> : <Eye className="h-3 w-3 " />}
                       </Button>
                     </div>
                   </div>
@@ -367,19 +335,19 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
+                      <Button
                         variant="outline"
                         size="sm"
-                        onClick={() = aria-label="Button"> handleCopyEndpointUrl(endpoint)}
+                        onClick={() => handleCopyEndpointUrl(endpoint)}
                       >
-                        <Copy className="h-3 w-3 sm:w-auto md:w-full" />
+                        <Copy className="h-3 w-3 " />
                       </Button>
-                      <button
+                      <Button
                         variant="outline"
                         size="sm"
-                        onClick={() = aria-label="Button"> window.open(endpoint, '_blank')}
+                        onClick={() => window.open(endpoint, '_blank')}
                       >
-                        <ExternalLink className="h-3 w-3 sm:w-auto md:w-full" />
+                        <ExternalLink className="h-3 w-3 " />
                       </Button>
                     </div>
                   </div>
@@ -412,7 +380,7 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
               <Label>Filter:</Label>
               <select 
                 value={logFilter} 
-                onChange={(e) = aria-label="Select option"> setLogFilter(e.target.value as any)}
+                onChange={(e) => setLogFilter(e.target.value as any)}
                 className="px-3 py-1 border rounded text-sm md:text-base lg:text-lg"
               >
                 <option value="all">All Logs</option>
@@ -422,21 +390,20 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setShowDetailedLogs(!showDetailedLogs)}
+                onClick={() => setShowDetailedLogs(!showDetailedLogs)}
               >
-                {showDetailedLogs ? <EyeOff className="h-4 w-4 sm:w-auto md:w-full" /> : <Eye className="h-4 w-4 sm:w-auto md:w-full" />}
+                {showDetailedLogs ? <EyeOff className="h-4 w-4 " /> : <Eye className="h-4 w-4 " />}
                 {showDetailedLogs ? 'Hide Details' : 'Show Details'}
               </Button>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={handleExportDiagnostics}
-               aria-label="Button">
-                <Download className="h-4 w-4 sm:w-auto md:w-full" />
-                Export
+               >
+                <Download className="h-4 w-4 " />
               </Button>
             </div>
           </div>
@@ -445,7 +412,7 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
               <Card>
                 <CardContent className="flex items-center justify-center py-8">
                   <div className="text-center">
-                    <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2 sm:w-auto md:w-full" />
+                    <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2 " />
                     <p className="text-muted-foreground">No diagnostic logs found</p>
                   </div>
                 </CardContent>
@@ -497,7 +464,6 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                               {log.details && (
                                 <details className="text-xs sm:text-sm md:text-base">
                                   <summary className="cursor-pointer text-muted-foreground">
-                                    Show Details
                                   </summary>
                                   <pre className="mt-1 p-2 bg-muted rounded overflow-auto sm:p-4 md:p-6">
                                     {JSON.stringify(log.details, null, 2)}
@@ -551,7 +517,7 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                 <input
                   placeholder="Enter endpoint URL (e.g., /api/health or full URL)"
                   value={customEndpoint}
-                  onChange={(e) = aria-label="Input"> setCustomEndpoint(e.target.value)}
+                  onChange={(e) => setCustomEndpoint(e.target.value)}
                   className="flex-1"
                 />
                 <button
@@ -559,20 +525,19 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                   disabled={!customEndpoint.trim() || isRunningDiagnostics}
                  aria-label="Button">
                   {isRunningDiagnostics ? (
-                    <RefreshCw className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                    <RefreshCw className="h-4 w-4 animate-spin " />
                   ) : (
-                    <Play className="h-4 w-4 sm:w-auto md:w-full" />
+                    <Play className="h-4 w-4 " />
                   )}
-                  Test
                 </Button>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {['/api/health', '/api/auth/status', '/api/ai/conversation-processing', '/api/memory/query'].map((endpoint) => (
-                  <button
+                  <Button
                     key={endpoint}
                     variant="outline"
                     size="sm"
-                    onClick={() = aria-label="Button"> setCustomEndpoint(endpoint)}
+                    onClick={() => setCustomEndpoint(endpoint)}
                   >
                     {endpoint}
                   </Button>
@@ -660,15 +625,14 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
             <Card>
               <CardContent className="flex items-center justify-center py-8">
                 <div className="text-center">
-                  <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2 sm:w-auto md:w-full" />
+                  <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2 " />
                   <p className="text-muted-foreground mb-4">No diagnostic report available</p>
                   <button onClick={handleRunComprehensiveDiagnostics} disabled={isRunningDiagnostics} aria-label="Button">
                     {isRunningDiagnostics ? (
-                      <RefreshCw className="h-4 w-4 animate-spin mr-2 sm:w-auto md:w-full" />
+                      <RefreshCw className="h-4 w-4 animate-spin mr-2 " />
                     ) : (
-                      <Activity className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                      <Activity className="h-4 w-4 mr-2 " />
                     )}
-                    Run Comprehensive Diagnostics
                   </Button>
                 </div>
               </CardContent>

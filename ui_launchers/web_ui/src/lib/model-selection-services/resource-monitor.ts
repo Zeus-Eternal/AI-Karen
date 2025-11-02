@@ -5,14 +5,7 @@
 import type { Model } from "../model-utils";
 import { getKarenBackend } from "../karen-backend";
 import { BaseModelService } from "./base-service";
-import { 
-  SystemResourceInfo, 
-  ResourceLoadabilityCheck, 
-  ModelResourceUsage, 
-  ResourceUsageHistoryEntry,
-  ResourceRecommendations,
-  ModelRecommendation
-} from "./types";
+import {  SystemResourceInfo, ResourceLoadabilityCheck, ModelResourceUsage, ResourceUsageHistoryEntry, ResourceRecommendations, ModelRecommendation } from "./types";
 
 export class ResourceMonitor extends BaseModelService {
   /**
@@ -266,7 +259,7 @@ export class ResourceMonitor extends BaseModelService {
           model_name: typedEntry.model_id, // Will be enhanced with actual name by caller
           efficiency_score: efficiencyScore,
         };
-      });
+
     } catch (error) {
       this.logError('Failed to get resource usage history:', error);
       return [];
@@ -314,7 +307,7 @@ export class ResourceMonitor extends BaseModelService {
         model_name: model.name,
         reason,
         resource_fit: resourceFit
-      });
+
     }
 
     // Generate optimization tips

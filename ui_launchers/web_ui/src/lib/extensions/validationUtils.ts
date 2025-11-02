@@ -1,12 +1,6 @@
 // Validation utility functions for extension management
 
-import type { 
-  ExtensionBase, 
-  ExtensionSetting, 
-  ExtensionManifest,
-  ExtensionPermissions,
-  ResourceLimits 
-} from '../../extensions/types';
+import type {  ExtensionBase, ExtensionSetting, ExtensionManifest, ExtensionPermissions, ResourceLimits } from '../../extensions/types';
 
 /**
  * Validates extension manifest structure

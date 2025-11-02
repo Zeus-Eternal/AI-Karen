@@ -39,15 +39,13 @@ describe('useSystemHealth', () => {
           ok: true,
           status: 200,
           json: () => Promise.resolve({ status: 'healthy' })
-        });
+
       }
       return Promise.reject(new Error('Not found'));
-    });
-  });
+
 
   afterEach(() => {
     jest.useRealTimers();
-  });
 
   describe('Initial State', () => {
     it('should start with loading state', () => {
@@ -57,19 +55,16 @@ describe('useSystemHealth', () => {
       expect(result.current.systemHealth).toBe(null);
       expect(result.current.error).toBe(null);
       expect(result.current.lastUpdate).toBe(null);
-    });
 
     it('should load system health on mount', async () => {
       const { result } = renderHook(() => useSystemHealth());
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       expect(result.current.systemHealth).not.toBe(null);
       expect(result.current.lastUpdate).not.toBe(null);
-    });
-  });
+
 
   describe('Configuration', () => {
     it('should use default configuration', async () => {
@@ -85,9 +80,8 @@ describe('useSystemHealth', () => {
             errorRate: 5,
             authFailureRate: 15
           }
-        });
-      });
-    });
+
+
 
     it('should merge custom configuration', async () => {
       const customConfig = {
@@ -107,9 +101,8 @@ describe('useSystemHealth', () => {
         expect(result.current.config.refreshInterval).toBe(10000);
         expect(result.current.config.alertThresholds.responseTime).toBe(3000);
         expect(result.current.config.enableRealTimeUpdates).toBe(true); // Default value
-      });
-    });
-  });
+
+
 
   describe('Health Status Methods', () => {
     it('should return correct health status', async () => {
@@ -117,33 +110,27 @@ describe('useSystemHealth', () => {
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       const status = result.current.getHealthStatus();
       expect(['healthy', 'degraded', 'critical']).toContain(status);
-    });
 
     it('should return component status', async () => {
       const { result } = renderHook(() => useSystemHealth());
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       const backendStatus = result.current.getComponentStatus('backend');
       expect(['healthy', 'degraded', 'failed']).toContain(backendStatus);
-    });
 
     it('should determine if system is healthy', async () => {
       const { result } = renderHook(() => useSystemHealth());
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       const isHealthy = result.current.isHealthy();
       expect(typeof isHealthy).toBe('boolean');
-    });
 
     it('should detect alerts', async () => {
       const { result } = renderHook(() => useSystemHealth({
@@ -158,12 +145,10 @@ describe('useSystemHealth', () => {
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       const hasAlerts = result.current.hasAlerts();
       expect(typeof hasAlerts).toBe('boolean');
-    });
-  });
+
 
   describe('Manual Refresh', () => {
     it('should refresh health data manually', async () => {
@@ -171,21 +156,18 @@ describe('useSystemHealth', () => {
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       const initialUpdate = result.current.lastUpdate;
       
       // Wait a bit to ensure timestamp difference
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 10));
         result.current.refreshHealth();
-      });
-      
+
       await waitFor(() => {
         expect(result.current.lastUpdate).not.toEqual(initialUpdate);
-      });
-    });
-  });
+
+
 
   describe('Auto Refresh', () => {
     it('should auto-refresh at configured intervals', async () => {
@@ -200,20 +182,17 @@ describe('useSystemHealth', () => {
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       // Clear initial call
       onHealthChange.mockClear();
       
       // Fast-forward time to trigger auto-refresh
       act(() => {
         jest.advanceTimersByTime(1000);
-      });
-      
+
       await waitFor(() => {
         expect(onHealthChange).toHaveBeenCalled();
-      });
-    });
+
 
     it('should not auto-refresh when disabled', async () => {
       const onHealthChange = jest.fn();
@@ -230,20 +209,17 @@ describe('useSystemHealth', () => {
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       // Clear initial call
       onHealthChange.mockClear();
       
       // Fast-forward time
       act(() => {
         jest.advanceTimersByTime(2000);
-      });
-      
+
       // Should not have been called again
       expect(onHealthChange).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('Alert Callbacks', () => {
     it('should trigger alerts for high response time', async () => {
@@ -255,8 +231,7 @@ describe('useSystemHealth', () => {
         averageTime: 6000, // High response time
         p95Time: 8000,
         p99Time: 10000
-      });
-      
+
       const { result } = renderHook(() => 
         useSystemHealth({
           config: {
@@ -272,8 +247,7 @@ describe('useSystemHealth', () => {
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       expect(onAlert).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'performance',
@@ -281,7 +255,6 @@ describe('useSystemHealth', () => {
           message: expect.stringContaining('High response time')
         })
       );
-    });
 
     it('should trigger alerts for high error rate', async () => {
       const onAlert = jest.fn();
@@ -301,8 +274,7 @@ describe('useSystemHealth', () => {
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       // Should trigger error rate alert (mock generates random error rate)
       const alertCalls = onAlert.mock.calls.filter(call => 
         call[0].type === 'errors'
@@ -319,8 +291,7 @@ describe('useSystemHealth', () => {
           })
         );
       }
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle health check failures', async () => {
@@ -331,8 +302,7 @@ describe('useSystemHealth', () => {
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       expect(loggingModule.connectivityLogger.logError).toHaveBeenCalledWith(
         'Failed to check system health',
         expect.any(Error),
@@ -340,7 +310,6 @@ describe('useSystemHealth', () => {
       );
       
       expect(result.current.error).toBeInstanceOf(Error);
-    });
 
     it('should return unknown status when no health data', () => {
       const { result } = renderHook(() => useSystemHealth());
@@ -350,8 +319,7 @@ describe('useSystemHealth', () => {
       expect(result.current.getComponentStatus('backend')).toBe('unknown');
       expect(result.current.isHealthy()).toBe(false);
       expect(result.current.hasAlerts()).toBe(false);
-    });
-  });
+
 
   describe('Health Change Callback', () => {
     it('should call onHealthChange when health updates', async () => {
@@ -363,8 +331,7 @@ describe('useSystemHealth', () => {
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       expect(onHealthChange).toHaveBeenCalled();
       
       const healthData = onHealthChange.mock.calls[0][0];
@@ -373,8 +340,7 @@ describe('useSystemHealth', () => {
       expect(healthData).toHaveProperty('performance');
       expect(healthData).toHaveProperty('errors');
       expect(healthData).toHaveProperty('authentication');
-    });
-  });
+
 
   describe('Integration with Performance Tracker', () => {
     it('should use real performance data when available', async () => {
@@ -391,10 +357,8 @@ describe('useSystemHealth', () => {
       
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
-      });
-      
+
       expect(result.current.systemHealth?.performance.requestCount).toBe(500);
       expect(result.current.systemHealth?.performance.averageResponseTime).toBe(1500);
-    });
-  });
-});
+
+

@@ -111,11 +111,9 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => (
 describe('AG-UI Components', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('ConversationGrid', () => {
     const mockConversations: ConversationRow[] = [
@@ -152,7 +150,6 @@ describe('AG-UI Components', () => {
       expect(screen.getByTestId('ag-grid')).toBeInTheDocument();
       expect(screen.getByTestId('ag-grid')).toHaveAttribute('data-row-count', '2');
       expect(screen.getByText('Conversations (2)')).toBeInTheDocument();
-    });
 
     it('handles conversation selection', async () => {
       const mockOnSelect = vi.fn();
@@ -177,8 +174,7 @@ describe('AG-UI Components', () => {
           }),
           expect.objectContaining({ userId: mockUser.userId })
         );
-      });
-    });
+
 
     it('filters conversations based on search text', async () => {
       const user = userEvent.setup();
@@ -193,7 +189,6 @@ describe('AG-UI Components', () => {
 
       // The filtering logic would be tested in the actual component
       expect(searchInput).toHaveValue('Test Conversation 1');
-    });
 
     it('handles refresh action', async () => {
       const mockOnRefresh = vi.fn();
@@ -212,7 +207,6 @@ describe('AG-UI Components', () => {
       await user.click(refreshButton);
 
       expect(mockOnRefresh).toHaveBeenCalled();
-    });
 
     it('registers grid hooks on mount', () => {
       render(
@@ -231,8 +225,7 @@ describe('AG-UI Components', () => {
         'rowSelected',
         expect.any(Function)
       );
-    });
-  });
+
 
   describe('ChatAnalyticsChart', () => {
     const mockAnalyticsData: ChatAnalyticsData[] = [
@@ -266,7 +259,6 @@ describe('AG-UI Components', () => {
       expect(screen.getByTestId('ag-charts')).toBeInTheDocument();
       expect(screen.getByTestId('ag-charts-data-points')).toHaveTextContent('2');
       expect(screen.getByText('Chat Analytics')).toBeInTheDocument();
-    });
 
     it('handles metric selection change', async () => {
       const user = userEvent.setup();
@@ -279,7 +271,6 @@ describe('AG-UI Components', () => {
       // Test would involve interacting with the metric selector
       // This is a simplified test since Select components need special handling
       expect(screen.getByText('Chat Analytics')).toBeInTheDocument();
-    });
 
     it('handles timeframe changes', async () => {
       const mockOnTimeframeChange = vi.fn();
@@ -294,7 +285,6 @@ describe('AG-UI Components', () => {
 
       // The timeframe change would be tested with proper Select component interaction
       expect(screen.getByTestId('ag-charts')).toBeInTheDocument();
-    });
 
     it('registers chart hooks on mount', () => {
       render(
@@ -313,7 +303,6 @@ describe('AG-UI Components', () => {
         'seriesClick',
         expect.any(Function)
       );
-    });
 
     it('displays summary statistics', () => {
       render(
@@ -324,8 +313,7 @@ describe('AG-UI Components', () => {
 
       // Summary stats would be calculated and displayed
       expect(screen.getByText('Chat Analytics')).toBeInTheDocument();
-    });
-  });
+
 
   describe('MemoryGrid', () => {
     const mockMemories: MemoryRow[] = [
@@ -367,7 +355,6 @@ describe('AG-UI Components', () => {
       expect(screen.getByTestId('ag-grid')).toBeInTheDocument();
       expect(screen.getByTestId('ag-grid')).toHaveAttribute('data-row-count', '2');
       expect(screen.getByText('Memory Management (2)')).toBeInTheDocument();
-    });
 
     it('handles memory creation', async () => {
       const mockOnCreate = vi.fn();
@@ -386,7 +373,6 @@ describe('AG-UI Components', () => {
       await user.click(addButton);
 
       expect(screen.getByText('Create New Memory')).toBeInTheDocument();
-    });
 
     it('handles memory search', async () => {
       const user = userEvent.setup();
@@ -400,7 +386,6 @@ describe('AG-UI Components', () => {
       await user.type(searchInput, 'TypeScript');
 
       expect(searchInput).toHaveValue('TypeScript');
-    });
 
     it('registers grid hooks on mount', () => {
       render(
@@ -419,8 +404,7 @@ describe('AG-UI Components', () => {
         'rowSelected',
         expect.any(Function)
       );
-    });
-  });
+
 
   describe('ChatInterface', () => {
     it('renders with tabs by default', () => {
@@ -433,7 +417,6 @@ describe('AG-UI Components', () => {
       expect(screen.getByRole('tab', { name: /chat/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /history/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /analytics/i })).toBeInTheDocument();
-    });
 
     it('renders without tabs when showTabs is false', () => {
       render(
@@ -443,7 +426,6 @@ describe('AG-UI Components', () => {
       );
 
       expect(screen.queryByRole('tab')).not.toBeInTheDocument();
-    });
 
     it('switches between tabs', async () => {
       const user = userEvent.setup();
@@ -458,7 +440,6 @@ describe('AG-UI Components', () => {
 
       // The tab content would change - this is a simplified test
       expect(analyticsTab).toHaveAttribute('data-state', 'active');
-    });
 
     it('registers chat hooks on mount', () => {
       render(
@@ -479,7 +460,6 @@ describe('AG-UI Components', () => {
         'aiSuggestion',
         expect.any(Function)
       );
-    });
 
     it('handles fullscreen toggle', async () => {
       const user = userEvent.setup();
@@ -494,8 +474,7 @@ describe('AG-UI Components', () => {
 
       // The component would toggle fullscreen class
       expect(fullscreenButton).toBeInTheDocument();
-    });
-  });
+
 
   describe('Hook Integration', () => {
     it('triggers hooks when grid data loads', async () => {
@@ -514,8 +493,7 @@ describe('AG-UI Components', () => {
           }),
           expect.objectContaining({ userId: mockUser.userId })
         );
-      });
-    });
+
 
     it('triggers hooks when chart data loads', async () => {
       render(
@@ -532,8 +510,7 @@ describe('AG-UI Components', () => {
           }),
           expect.objectContaining({ userId: mockUser.userId })
         );
-      });
-    });
+
 
     it('registers hooks with correct parameters', () => {
       render(
@@ -552,8 +529,7 @@ describe('AG-UI Components', () => {
         'rowSelected',
         expect.any(Function)
       );
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('handles grid errors gracefully', () => {
@@ -570,7 +546,6 @@ describe('AG-UI Components', () => {
       expect(screen.getByTestId('ag-grid')).toBeInTheDocument();
       
       consoleSpy.mockRestore();
-    });
 
     it('handles chart errors gracefully', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -584,6 +559,5 @@ describe('AG-UI Components', () => {
       expect(screen.getByTestId('ag-charts')).toBeInTheDocument();
       
       consoleSpy.mockRestore();
-    });
-  });
-});
+
+

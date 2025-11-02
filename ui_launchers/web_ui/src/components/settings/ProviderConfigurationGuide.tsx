@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,22 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import {
-  ChevronDown,
-  ChevronRight,
-  ExternalLink,
-  Copy,
-  CheckCircle2,
-  AlertCircle,
-  Info,
-  Key,
-  Download,
-  Settings,
-  Terminal,
-  FileText,
-  Globe,
-  Shield
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 interface ConfigurationStep {
@@ -313,7 +300,7 @@ export function ProviderConfigurationGuide({
   if (!guide) {
     return (
       <Alert>
-        <Info className="h-4 w-4 sm:w-auto md:w-full" />
+        <Info className="h-4 w-4 " />
         <AlertTitle>Configuration Guide Not Available</AlertTitle>
         <AlertDescription>
           No configuration guide is available for {providerName}. Please refer to the provider's documentation.
@@ -337,7 +324,7 @@ export function ProviderConfigurationGuide({
       toast({
         title: "Configuration Complete",
         description: `${guide.provider_name} has been successfully configured!`,
-      });
+
     }
   };
 
@@ -356,21 +343,21 @@ export function ProviderConfigurationGuide({
     toast({
       title: "Copied to Clipboard",
       description: "Code snippet copied successfully.",
-    });
+
   };
 
   const getStepIcon = (step: ConfigurationStep) => {
     switch (step.type) {
       case 'api_key':
-        return <Key className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Key className="h-4 w-4 " />;
       case 'installation':
-        return <Download className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Download className="h-4 w-4 " />;
       case 'configuration':
-        return <Settings className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Settings className="h-4 w-4 " />;
       case 'verification':
-        return <CheckCircle2 className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <CheckCircle2 className="h-4 w-4 " />;
       default:
-        return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Info className="h-4 w-4 " />;
     }
   };
 
@@ -382,7 +369,7 @@ export function ProviderConfigurationGuide({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 sm:w-auto md:w-full" />
+            <FileText className="h-5 w-5 " />
             {guide.provider_name} Configuration Guide
           </CardTitle>
           <CardDescription>{guide.description}</CardDescription>
@@ -424,7 +411,7 @@ export function ProviderConfigurationGuide({
                 <ul className="space-y-2">
                   {guide.prerequisites.map((prereq, index) => (
                     <li key={index} className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                      <CheckCircle2 className="h-4 w-4 text-green-600 " />
                       <span className="text-sm md:text-base lg:text-lg">{prereq}</span>
                     </li>
                   ))}
@@ -446,7 +433,7 @@ export function ProviderConfigurationGuide({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-2">
-                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium sm:w-auto md:w-full">
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium ">
                               {index + 1}
                             </span>
                             {getStepIcon(step)}
@@ -461,14 +448,14 @@ export function ProviderConfigurationGuide({
                             <Badge variant="outline" className="text-xs sm:text-sm md:text-base">Required</Badge>
                           )}
                           {completedSteps.has(step.id) ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />
+                            <CheckCircle2 className="h-5 w-5 text-green-600 " />
                           ) : (
-                            <AlertCircle className="h-5 w-5 text-gray-400 sm:w-auto md:w-full" />
+                            <AlertCircle className="h-5 w-5 text-gray-400 " />
                           )}
                           {expandedSteps.has(step.id) ? (
-                            <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
+                            <ChevronDown className="h-4 w-4 " />
                           ) : (
-                            <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />
+                            <ChevronRight className="h-4 w-4 " />
                           )}
                         </div>
                       </div>
@@ -500,13 +487,13 @@ export function ProviderConfigurationGuide({
                                 <pre className="bg-muted p-3 rounded-lg text-sm overflow-x-auto md:text-base lg:text-lg">
                                   <code>{snippet.code}</code>
                                 </pre>
-                                <button
+                                <Button
                                   variant="outline"
                                   size="sm"
                                   className="absolute top-2 right-2"
-                                  onClick={() = aria-label="Button"> copyToClipboard(snippet.code)}
+                                  onClick={() => copyToClipboard(snippet.code)}
                                 >
-                                  <Copy className="h-3 w-3 sm:w-auto md:w-full" />
+                                  <Copy className="h-3 w-3 " />
                                 </Button>
                               </div>
                             </div>
@@ -521,13 +508,13 @@ export function ProviderConfigurationGuide({
                           <div className="space-y-1">
                             {step.links.map((link, idx) => (
                               <div key={idx} className="flex items-center gap-2">
-                                <button
+                                <Button
                                   variant="link"
                                   size="sm"
                                   className="p-0 h-auto sm:p-4 md:p-6"
-                                  onClick={() = aria-label="Button"> window.open(link.url, '_blank')}
+                                  onClick={() => window.open(link.url, '_blank')}
                                 >
-                                  <ExternalLink className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
+                                  <ExternalLink className="h-3 w-3 mr-1 " />
                                   {link.title}
                                 </Button>
                                 {link.description && (
@@ -544,7 +531,7 @@ export function ProviderConfigurationGuide({
                       {/* Troubleshooting */}
                       {step.troubleshooting && step.troubleshooting.length > 0 && (
                         <Alert>
-                          <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                          <AlertCircle className="h-4 w-4 " />
                           <AlertTitle>Common Issues</AlertTitle>
                           <AlertDescription>
                             <ul className="list-disc list-inside space-y-1 mt-2">
@@ -558,15 +545,14 @@ export function ProviderConfigurationGuide({
 
                       {/* Mark as Complete Button */}
                       <button
-                        onClick={() = aria-label="Button"> handleStepComplete(step.id)}
+                        onClick={() => handleStepComplete(step.id)}
                         disabled={completedSteps.has(step.id)}
                         variant={completedSteps.has(step.id) ? "outline" : "default"}
                         className="w-full"
                       >
                         {completedSteps.has(step.id) ? (
                           <>
-                            <CheckCircle2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                            Step Completed
+                            <CheckCircle2 className="h-4 w-4 mr-2 " />
                           </>
                         ) : (
                           'Mark as Complete'
@@ -585,7 +571,6 @@ export function ProviderConfigurationGuide({
             <CardHeader>
               <CardTitle>Common Issues & Solutions</CardTitle>
               <CardDescription>
-                Solutions to frequently encountered problems
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -604,7 +589,6 @@ export function ProviderConfigurationGuide({
             <CardHeader>
               <CardTitle>Additional Resources</CardTitle>
               <CardDescription>
-                Helpful links and documentation
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -612,19 +596,18 @@ export function ProviderConfigurationGuide({
                 {guide.additional_resources.map((resource, index) => (
                   <div key={index} className="border rounded-lg p-4 sm:p-4 md:p-6">
                     <div className="flex items-center gap-2 mb-2">
-                      {resource.type === 'documentation' && <FileText className="h-4 w-4 sm:w-auto md:w-full" />}
-                      {resource.type === 'tutorial' && <Terminal className="h-4 w-4 sm:w-auto md:w-full" />}
-                      {resource.type === 'community' && <Globe className="h-4 w-4 sm:w-auto md:w-full" />}
+                      {resource.type === 'documentation' && <FileText className="h-4 w-4 " />}
+                      {resource.type === 'tutorial' && <Terminal className="h-4 w-4 " />}
+                      {resource.type === 'community' && <Globe className="h-4 w-4 " />}
                       <h4 className="font-medium">{resource.title}</h4>
                     </div>
-                    <button
+                    <Button
                       variant="outline"
                       size="sm"
-                      onClick={() = aria-label="Button"> window.open(resource.url, '_blank')}
+                      onClick={() => window.open(resource.url, '_blank')}
                       className="w-full"
                     >
-                      <ExternalLink className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
-                      Open Resource
+                      <ExternalLink className="h-3 w-3 mr-2 " />
                     </Button>
                   </div>
                 ))}

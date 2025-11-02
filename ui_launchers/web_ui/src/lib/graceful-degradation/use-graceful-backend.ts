@@ -3,12 +3,7 @@
  * This integrates with the existing KarenBackendService to handle 4xx/5xx errors
  */
 import React from 'react';
-import { 
-  featureFlagManager, 
-  extensionCache, 
-  useFeatureFlag,
-  type FeatureFlag 
-} from './index';
+import {  featureFlagManager, extensionCache, useFeatureFlag, type FeatureFlag } from './index';
 import { EnhancedBackendService } from './enhanced-backend-service';
 export interface UseGracefulBackendOptions {
   enableCaching?: boolean;
@@ -77,7 +72,7 @@ export function useGracefulBackend<T>(
         maxStaleAge,
         fallbackData,
         serviceName
-      });
+
       setData(result);
       setIsStale(false);
       setIsFromCache(false);
@@ -165,7 +160,7 @@ export function useExtensions(options: UseGracefulBackendOptions = {}) {
     enabled: isEnabled,
     fallbackData: [],
     refetchInterval: 5 * 60 * 1000 // 5 minutes
-  });
+
 }
 export function useBackgroundTasks(options: UseGracefulBackendOptions = {}) {
   const { isEnabled } = useFeatureFlag('backgroundTasks');
@@ -176,7 +171,7 @@ export function useBackgroundTasks(options: UseGracefulBackendOptions = {}) {
     enabled: isEnabled,
     fallbackData: [],
     refetchInterval: 2 * 60 * 1000 // 2 minutes
-  });
+
 }
 export function useModelProviders(options: UseGracefulBackendOptions = {}) {
   const { isEnabled } = useFeatureFlag('modelProviderIntegration');
@@ -187,7 +182,7 @@ export function useModelProviders(options: UseGracefulBackendOptions = {}) {
     enabled: isEnabled,
     fallbackData: [],
     refetchInterval: 10 * 60 * 1000 // 10 minutes
-  });
+
 }
 export function useExtensionHealth(extensionName: string, options: UseGracefulBackendOptions = {}) {
   const { isEnabled } = useFeatureFlag('extensionHealth');
@@ -198,7 +193,7 @@ export function useExtensionHealth(extensionName: string, options: UseGracefulBa
     enabled: isEnabled && !!extensionName,
     fallbackData: { status: 'unknown', message: 'Health check unavailable' },
     refetchInterval: 30 * 1000 // 30 seconds
-  });
+
 }
 // Hook for monitoring overall system health
 export function useSystemHealth() {
@@ -206,7 +201,7 @@ export function useSystemHealth() {
     overallHealth: 'unknown' as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
     services: {} as Record<string, any>,
     lastUpdate: new Date()
-  });
+
   const enhancedService = React.useMemo(() => {
     const originalService = (window as any).karenBackendService;
     return originalService ? new EnhancedBackendService(originalService) : null;
@@ -228,7 +223,7 @@ export function useSystemHealth() {
         overallHealth,
         services: serviceHealth,
         lastUpdate: new Date()
-      });
+
     };
     // Initial update
     updateHealthStatus();
@@ -277,7 +272,7 @@ export function setupGlobalErrorHandling() {
         featureFlagManager.handleServiceError('model-provider', error);
       }
     }
-  });
+
   // Handle fetch errors
   const originalFetch = window.fetch;
   window.fetch = async (...args) => {

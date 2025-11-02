@@ -7,12 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import { NextRequest } from 'next/server';
-import { 
-  getAuditLogger,
-  auditLog,
-  AUDIT_ACTIONS,
-  AUDIT_RESOURCE_TYPES 
-} from '../audit-logger';
+import {  getAuditLogger, auditLog, AUDIT_ACTIONS, AUDIT_RESOURCE_TYPES } from '../audit-logger';
 import { auditFilters, AuditFilterBuilder } from '../audit-filters';
 import { getAuditCleanupManager, auditCleanup } from '../audit-cleanup';
 import { getAuditLogExporter, auditExport } from '../audit-export';
@@ -46,11 +41,9 @@ describe('Audit System Integration', () => {
     } as any;
 
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('Complete User Management Workflow', () => {
     it('should log complete user creation workflow', async () => {
@@ -80,7 +73,6 @@ describe('Audit System Integration', () => {
         details: { email: 'newuser@example.com', role: 'user' },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
 
       // Step 2: Admin promotes user to admin
       const roleChangeAuditId = await auditLog.userRoleChanged(
@@ -100,7 +92,6 @@ describe('Audit System Integration', () => {
         details: { old_role: 'user', new_role: 'admin' },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
 
       // Step 3: User verifies email (system action)
       const emailVerifyAuditId = await auditLogger.log(
@@ -115,7 +106,6 @@ describe('Audit System Integration', () => {
       );
 
       expect(emailVerifyAuditId).toBe('audit-email-verify');
-    });
 
     it('should track authentication flow with audit logs', async () => {
       mockDbUtils.createAuditLog
@@ -134,7 +124,6 @@ describe('Audit System Integration', () => {
         details: { reason: 'invalid_password' },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
 
       // Successful login
       await auditLog.loginSuccessful('user-456', mockRequest);
@@ -147,9 +136,8 @@ describe('Audit System Integration', () => {
         details: {},
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
-  });
+
+
 
   describe('Audit Log Filtering and Search Integration', () => {
     it('should filter and retrieve audit logs for user management', async () => {
@@ -211,7 +199,6 @@ describe('Audit System Integration', () => {
         },
         { page: 1, limit: 50 }
       );
-    });
 
     it('should search audit logs with text and filters', async () => {
       const mockSearchResults = {
@@ -243,8 +230,7 @@ describe('Audit System Integration', () => {
 
       expect(searchResults.data).toHaveLength(1);
       expect(searchResults.data[0].action).toBe(AUDIT_ACTIONS.USER_CREATE);
-    });
-  });
+
 
   describe('Audit Log Export Integration', () => {
     it('should export filtered audit logs to CSV', async () => {
@@ -282,13 +268,11 @@ describe('Audit System Integration', () => {
         format: 'csv',
         filter,
         filename: 'user-actions-export'
-      });
 
       expect(result.success).toBe(true);
       expect(result.recordCount).toBe(1);
       expect(result.filename).toBe('user-actions-export.csv');
       expect(result.fileSize).toBeGreaterThan(0);
-    });
 
     it('should export for compliance requirements', async () => {
       const mockComplianceLogs = {
@@ -321,8 +305,7 @@ describe('Audit System Integration', () => {
 
       expect(result.success).toBe(true);
       expect(result.filename).toContain('sox-audit-export');
-    });
-  });
+
 
   describe('Audit Log Cleanup Integration', () => {
     it('should perform cleanup with retention policies', async () => {
@@ -340,7 +323,6 @@ describe('Audit System Integration', () => {
         })
         .mockResolvedValueOnce({
           rows: [{ logs_to_delete: '200' }]
-        });
 
       // Mock cleanup operation
       mockDb.query
@@ -369,7 +351,6 @@ describe('Audit System Integration', () => {
           resource_type: AUDIT_RESOURCE_TYPES.AUDIT_LOG
         })
       );
-    });
 
     it('should run scheduled cleanup with multiple policies', async () => {
       const cleanupManager = getAuditCleanupManager();
@@ -405,8 +386,7 @@ describe('Audit System Integration', () => {
           })
         })
       );
-    });
-  });
+
 
   describe('Security Event Tracking', () => {
     it('should track and correlate security events', async () => {
@@ -466,9 +446,8 @@ describe('Audit System Integration', () => {
         }),
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
-  });
+
+
 
   describe('Bulk Operations Tracking', () => {
     it('should track bulk user operations with detailed logging', async () => {
@@ -498,7 +477,6 @@ describe('Audit System Integration', () => {
         },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
 
       // Verify export log
       expect(mockDbUtils.createAuditLog).toHaveBeenNthCalledWith(2, {
@@ -512,9 +490,8 @@ describe('Audit System Integration', () => {
         },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
-  });
+
+
 
   describe('System Configuration Tracking', () => {
     it('should track system configuration changes', async () => {
@@ -561,9 +538,8 @@ describe('Audit System Integration', () => {
         details: { old_value: false, new_value: true },
         ip_address: '192.168.1.100',
         user_agent: 'Mozilla/5.0 Test Browser'
-      });
-    });
-  });
+
+
 
   describe('Audit Log Statistics and Reporting', () => {
     it('should generate comprehensive audit statistics', async () => {
@@ -621,7 +597,6 @@ describe('Audit System Integration', () => {
           { date: '2024-01-01', count: 2 },
           { date: '2024-01-02', count: 1 }
         ]
-      });
-    });
-  });
-});
+
+
+

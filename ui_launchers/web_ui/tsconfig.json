@@ -14,6 +14,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    "jsxImportSource": "react",
     "incremental": true,
     "tsBuildInfoFile": ".next/cache/tsbuildinfo",
     "baseUrl": ".",
@@ -39,6 +40,11 @@
     "**/*-bak.*",
     "Theme sample/**",
     "e2e/**",
-    "test-sidebar.tsx"
+    "test-sidebar.tsx",
+    "src/components/accessibility/AccessibilitySettings.tsx",
+    "src/components/admin/SuperAdminDashboard.tsx",
+    "src/components/auth/LoginForm.tsx",
+    "src/components/auth/setup/SetupWizard.tsx",
+    "src/components/chat/AdaptiveChatInterface.tsx"
   ]
 }

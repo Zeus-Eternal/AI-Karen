@@ -127,7 +127,6 @@ export class ConnectionManager {
         const response = await fetch(url, {
           ...options,
           signal: controller.signal,
-        });
 
         clearTimeout(timeoutId);
 
@@ -135,7 +134,6 @@ export class ConnectionManager {
         const headers: Record<string, string> = {};
         response.headers.forEach((value, key) => {
           headers[key] = value;
-        });
 
         // Parse response data
         let data: T;
@@ -164,7 +162,6 @@ export class ConnectionManager {
           status: response.status,
           duration,
           attempt,
-        });
 
         return {
           data,
@@ -292,7 +289,6 @@ export class ConnectionManager {
       }, {
         timeout: 5000,
         retryAttempts: 1,
-      });
 
       return {
         healthy: true,

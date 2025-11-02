@@ -1,47 +1,21 @@
+
+"use client";
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { SourceAttribution as SourceAttributionType } from '@/types/enhanced-chat';
-'use client';
+
+import { } from 'lucide-react';
 
 
+import { } from '@/components/ui/select';
 
 
-
-
-
-  ExternalLink,
-  Database,
-  Globe,
-  FileText,
-  MessageSquare,
-  Brain,
-  Star,
-  Eye,
-  Copy,
-  Filter,
-  Search
-} from 'lucide-react';
-
-
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { } from '@/components/ui/tooltip';
 
 
 interface SourceAttributionProps {
@@ -117,7 +91,6 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
       const matchesType = typeFilter === 'all' || source.type === typeFilter;
       
       return matchesSearch && matchesType;
-    });
 
     // Sort sources
     filtered.sort((a, b) => {
@@ -130,7 +103,6 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
         default:
           return b.relevance - a.relevance;
       }
-    });
 
     return filtered;
   }, [sources, searchQuery, typeFilter, sortBy]);
@@ -153,13 +125,13 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
       toast({
         title: 'Copied',
         description: 'Source information copied to clipboard'
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Copy Failed',
         description: 'Failed to copy source information'
-      });
+
     }
   };
 
@@ -173,13 +145,13 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
             <TooltipProvider key={source.id}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
+                  <Button
                     variant="outline"
                     size="sm"
                     className="h-auto p-2 sm:p-4 md:p-6"
-                    onClick={() = aria-label="Button"> handleSourceClick(source)}
+                    onClick={() => handleSourceClick(source)}
                   >
-                    <Icon className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
+                    <Icon className="h-3 w-3 mr-1 " />
                     <span className="text-xs sm:text-sm md:text-base">{index + 1}</span>
                   </Button>
                 </TooltipTrigger>
@@ -209,7 +181,7 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5 sm:w-auto md:w-full" />
+            <Database className="h-5 w-5 " />
             Source Attribution ({sources.length})
           </CardTitle>
           
@@ -224,20 +196,20 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
         {showFilters && (
           <div className="space-y-3 mt-4">
             <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground " />
               <input
                 placeholder="Search sources..."
                 value={searchQuery}
-                onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 h-9"
               />
             </div>
             
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Filter className="h-4 w-4 text-muted-foreground " />
               
               <select value={typeFilter} onValueChange={setTypeFilter} aria-label="Select option">
-                <selectTrigger className="w-32 h-8 text-xs sm:w-auto md:w-full" aria-label="Select option">
+                <selectTrigger className="w-32 h-8 text-xs " aria-label="Select option">
                   <selectValue />
                 </SelectTrigger>
                 <selectContent aria-label="Select option">
@@ -251,7 +223,7 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
               </Select>
               
               <select value={sortBy} onValueChange={(value) = aria-label="Select option"> setSortBy(value as any)}>
-                <selectTrigger className="w-32 h-8 text-xs sm:w-auto md:w-full" aria-label="Select option">
+                <selectTrigger className="w-32 h-8 text-xs " aria-label="Select option">
                   <selectValue />
                 </SelectTrigger>
                 <selectContent aria-label="Select option">
@@ -270,7 +242,7 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
           <div className="space-y-3 pb-4">
             {filteredAndSortedSources.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <Database className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                <Database className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                 <p className="text-sm md:text-base lg:text-lg">
                   {searchQuery || typeFilter !== 'all' 
                     ? 'No sources match your filters' 
@@ -289,13 +261,13 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
                       <div className="flex items-start gap-3">
                         {/* Source Icon */}
                         <div className="flex-shrink-0 mt-1">
-                          <Icon className="h-5 w-5 text-muted-foreground sm:w-auto md:w-full" />
+                          <Icon className="h-5 w-5 text-muted-foreground " />
                         </div>
 
                         {/* Source Content */}
-                        <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                        <div className="flex-1 min-w-0 ">
                           <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                            <div className="flex-1 min-w-0 ">
                               <h3 className="text-sm font-medium truncate md:text-base lg:text-lg">
                                 {source.title}
                               </h3>
@@ -310,23 +282,23 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
                             </div>
                             
                             <div className="flex items-center gap-1 ml-2">
-                              <button
+                              <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() = aria-label="Button"> copySourceInfo(source)}
-                                className="h-6 w-6 p-0 sm:w-auto md:w-full"
+                                onClick={() => copySourceInfo(source)}
+                                className="h-6 w-6 p-0 "
                               >
-                                <Copy className="h-3 w-3 sm:w-auto md:w-full" />
+                                <Copy className="h-3 w-3 " />
                               </Button>
                               
                               {source.url && (
-                                <button
+                                <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() = aria-label="Button"> handleSourceClick(source)}
-                                  className="h-6 w-6 p-0 sm:w-auto md:w-full"
+                                  onClick={() => handleSourceClick(source)}
+                                  className="h-6 w-6 p-0 "
                                 >
-                                  <ExternalLink className="h-3 w-3 sm:w-auto md:w-full" />
+                                  <ExternalLink className="h-3 w-3 " />
                                 </Button>
                               )}
                             </div>
@@ -342,14 +314,14 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
                           {/* Source Metrics */}
                           <div className="flex items-center gap-4 text-xs sm:text-sm md:text-base">
                             <div className="flex items-center gap-1">
-                              <Star className="h-3 w-3 sm:w-auto md:w-full" />
+                              <Star className="h-3 w-3 " />
                               <span className={`font-medium ${reliabilityColor}`}>
                                 {Math.round(source.reliability * 100)}% reliable
                               </span>
                             </div>
                             
                             <div className="flex items-center gap-1">
-                              <Eye className="h-3 w-3 sm:w-auto md:w-full" />
+                              <Eye className="h-3 w-3 " />
                               <span className="font-medium">
                                 {Math.round(source.relevance * 100)}% relevant
                               </span>
@@ -359,14 +331,13 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
                           {/* Source URL */}
                           {source.url && (
                             <div className="mt-2">
-                              <button
+                              <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-auto p-0 text-xs text-primary hover:underline sm:text-sm md:text-base"
-                                onClick={() = aria-label="Button"> handleSourceClick(source)}
+                                onClick={() => handleSourceClick(source)}
                               >
-                                <ExternalLink className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                                View Source
+                                <ExternalLink className="h-3 w-3 mr-1 " />
                               </Button>
                             </div>
                           )}

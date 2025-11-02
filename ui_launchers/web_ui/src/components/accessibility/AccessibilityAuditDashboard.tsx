@@ -4,7 +4,8 @@
  * Provides comprehensive accessibility monitoring, compliance tracking,
  * and improvement recommendations for the entire application.
  */
-'use client';
+"use client";
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,22 +15,8 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle, 
-  Info, 
-  TrendingUp, 
-  TrendingDown,
-  Eye,
-  Keyboard,
-  Volume2,
-  Palette,
-  FileText,
-  Download,
-  RefreshCw,
-  Settings
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 // Types for accessibility audit data
 interface AccessibilityViolation {
   id: string;
@@ -189,7 +176,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
           'Ensure all form elements have proper labels',
           'Implement proper heading hierarchy'
         ]
-      });
+
     }
     if (metrics.topViolations.some(v => v.impact === 'critical')) {
       recommendations.push({
@@ -199,7 +186,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
         actions: metrics.topViolations
           .filter(v => v.impact === 'critical')
           .map(v => `Fix: ${v.description}`)
-      });
+
     }
     return recommendations;
   };
@@ -221,7 +208,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
     return (
     <ErrorBoundary fallback={<div>Something went wrong in AccessibilityAuditDashboard</div>}>
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 animate-spin sm:w-auto md:w-full" />
+        <RefreshCw className="h-8 w-8 animate-spin " />
         <span className="ml-2">Loading accessibility audit data...</span>
       </div>
     );
@@ -229,7 +216,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
   if (!metrics) {
     return (
       <Alert>
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>No Audit Data Available</AlertTitle>
         <AlertDescription>
           Run your first accessibility audit to see compliance metrics and recommendations.
@@ -244,25 +231,23 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
         <div>
           <h1 className="text-3xl font-bold">Accessibility Audit Dashboard</h1>
           <p className="text-muted-foreground">
-            Monitor compliance, track improvements, and ensure accessibility standards
           </p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             onClick={runFullAudit}
             disabled={auditInProgress}
             variant="outline"
-           aria-label="Button">
+           >
             {auditInProgress ? (
-              <RefreshCw className="h-4 w-4 animate-spin mr-2 sm:w-auto md:w-full" />
+              <RefreshCw className="h-4 w-4 animate-spin mr-2 " />
             ) : (
-              <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+              <RefreshCw className="h-4 w-4 mr-2 " />
             )}
             {auditInProgress ? 'Running Audit...' : 'Run Full Audit'}
           </Button>
-          <button onClick={exportAuditReport} variant="outline" aria-label="Button">
-            <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Export Report
+          <Button onClick={exportAuditReport} variant="outline" >
+            <Download className="h-4 w-4 mr-2 " />
           </Button>
         </div>
       </div>
@@ -271,7 +256,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Overall Score</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <CheckCircle className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.complianceScore.overall}%</div>
@@ -281,7 +266,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Pages Audited</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <FileText className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -296,21 +281,20 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Critical Issues</CardTitle>
-            <XCircle className="h-4 w-4 text-destructive sm:w-auto md:w-full" />
+            <XCircle className="h-4 w-4 text-destructive " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">
               {metrics.topViolations.filter(v => v.impact === 'critical').length}
             </div>
             <p className="text-xs text-muted-foreground mt-2 sm:text-sm md:text-base">
-              Requires immediate attention
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Last Audit</CardTitle>
-            <Info className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Info className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-sm font-medium md:text-base lg:text-lg">
@@ -337,7 +321,6 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
               <CardHeader>
                 <CardTitle>WCAG Compliance Scores</CardTitle>
                 <CardDescription>
-                  Compliance levels for different WCAG standards
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -376,12 +359,11 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
               <CardHeader>
                 <CardTitle>Accessibility Categories</CardTitle>
                 <CardDescription>
-                  Performance across different accessibility areas
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <Eye className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />
+                  <Eye className="h-5 w-5 text-blue-500 " />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium md:text-base lg:text-lg">Visual</span>
@@ -391,7 +373,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Keyboard className="h-5 w-5 text-green-500 sm:w-auto md:w-full" />
+                  <Keyboard className="h-5 w-5 text-green-500 " />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium md:text-base lg:text-lg">Keyboard</span>
@@ -401,7 +383,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Volume2 className="h-5 w-5 text-purple-500 sm:w-auto md:w-full" />
+                  <Volume2 className="h-5 w-5 text-purple-500 " />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium md:text-base lg:text-lg">Screen Reader</span>
@@ -411,7 +393,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Palette className="h-5 w-5 text-orange-500 sm:w-auto md:w-full" />
+                  <Palette className="h-5 w-5 text-orange-500 " />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium md:text-base lg:text-lg">Color & Contrast</span>
@@ -429,7 +411,6 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
             <CardHeader>
               <CardTitle>Top Violations</CardTitle>
               <CardDescription>
-                Most common accessibility issues across your application
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -442,7 +423,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
                           {violation.impact}
                         </Badge>
                       </div>
-                      <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                      <div className="flex-1 min-w-0 ">
                         <h4 className="text-sm font-medium md:text-base lg:text-lg">{violation.description}</h4>
                         <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                           Rule: {violation.ruleId}
@@ -451,8 +432,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
                           <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                             {violation.count} instances
                           </span>
-                          <button size="sm" variant="outline" aria-label="Button">
-                            View Details
+                          <Button size="sm" variant="outline" >
                           </Button>
                         </div>
                       </div>
@@ -468,13 +448,12 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
             <CardHeader>
               <CardTitle>Violation Trends</CardTitle>
               <CardDescription>
-                Track accessibility improvements over time
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-64 flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-2 sm:w-auto md:w-full" />
+                  <TrendingUp className="h-12 w-12 mx-auto mb-2 " />
                   <p>Trend visualization would be implemented here</p>
                   <p className="text-xs sm:text-sm md:text-base">Using a charting library like Recharts or AG-Charts</p>
                 </div>
@@ -486,7 +465,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
           <div className="space-y-4">
             {generateRecommendations().map((rec, index) => (
               <Alert key={index}>
-                <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                <AlertTriangle className="h-4 w-4 " />
                 <AlertTitle className="flex items-center gap-2">
                   {rec.category}
                   <Badge variant={rec.priority === 'critical' ? 'destructive' : 'secondary'}>

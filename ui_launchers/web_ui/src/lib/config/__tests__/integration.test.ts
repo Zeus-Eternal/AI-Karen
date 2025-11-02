@@ -7,15 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { getEnvironmentConfigManager, initializeEnvironmentConfigManager } from '../environment-config-manager';
-import {
-  getBackendBaseUrl,
-  getBackendCandidates,
-  withBackendPath,
-  getTimeoutConfig,
-  getRetryPolicy,
-  getEnvironmentInfo,
-  validateBackendConfiguration,
-} from '../../../app/api/_utils/backend';
+import { getBackendBaseUrl, getBackendCandidates, withBackendPath, getTimeoutConfig, getRetryPolicy, getEnvironmentInfo, validateBackendConfiguration } from '../../../app/api/_utils/backend';
 
 // Mock environment variables
 const mockEnv = (env: Record<string, string>) => {
@@ -29,17 +21,14 @@ const mockEnv = (env: Record<string, string>) => {
 describe('Environment Configuration Manager Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('Backend Utilities Integration', () => {
     it('should integrate with getBackendBaseUrl', () => {
       const restoreEnv = mockEnv({
         KAREN_BACKEND_URL: 'http://test-backend:9000',
-      });
 
       // Initialize new manager to pick up environment changes
       initializeEnvironmentConfigManager();
@@ -48,13 +37,11 @@ describe('Environment Configuration Manager Integration', () => {
       expect(backendUrl).toBe('http://test-backend:9000');
 
       restoreEnv();
-    });
 
     it('should integrate with getBackendCandidates', () => {
       const restoreEnv = mockEnv({
         KAREN_BACKEND_URL: 'http://primary:8000',
         KAREN_FALLBACK_BACKEND_URLS: 'http://fallback1:8000,http://fallback2:8000',
-      });
 
       initializeEnvironmentConfigManager();
       
@@ -64,12 +51,10 @@ describe('Environment Configuration Manager Integration', () => {
       expect(candidates).toContain('http://fallback2:8000');
 
       restoreEnv();
-    });
 
     it('should integrate with withBackendPath', () => {
       const restoreEnv = mockEnv({
         KAREN_BACKEND_URL: 'http://api-server:8080',
-      });
 
       initializeEnvironmentConfigManager();
       
@@ -77,13 +62,11 @@ describe('Environment Configuration Manager Integration', () => {
       expect(fullPath).toBe('http://api-server:8080/api/health');
 
       restoreEnv();
-    });
 
     it('should integrate with getTimeoutConfig', () => {
       const restoreEnv = mockEnv({
         AUTH_TIMEOUT_MS: '60000',
         CONNECTION_TIMEOUT_MS: '45000',
-      });
 
       initializeEnvironmentConfigManager();
       
@@ -92,13 +75,11 @@ describe('Environment Configuration Manager Integration', () => {
       expect(timeouts.connection).toBe(45000);
 
       restoreEnv();
-    });
 
     it('should integrate with getRetryPolicy', () => {
       const restoreEnv = mockEnv({
         MAX_RETRY_ATTEMPTS: '5',
         RETRY_BASE_DELAY_MS: '2000',
-      });
 
       initializeEnvironmentConfigManager();
       
@@ -107,13 +88,11 @@ describe('Environment Configuration Manager Integration', () => {
       expect(retryPolicy.baseDelay).toBe(2000);
 
       restoreEnv();
-    });
 
     it('should integrate with getEnvironmentInfo', () => {
       const restoreEnv = mockEnv({
         DOCKER_CONTAINER: 'true',
         HOSTNAME: 'docker-container-123',
-      });
 
       initializeEnvironmentConfigManager();
       
@@ -122,13 +101,11 @@ describe('Environment Configuration Manager Integration', () => {
       expect(envInfo.isDocker).toBe(true);
 
       restoreEnv();
-    });
 
     it('should integrate with validateBackendConfiguration', () => {
       const restoreEnv = mockEnv({
         KAREN_BACKEND_URL: 'http://valid-backend:8000',
         AUTH_TIMEOUT_MS: '30000',
-      });
 
       initializeEnvironmentConfigManager();
       
@@ -137,8 +114,7 @@ describe('Environment Configuration Manager Integration', () => {
       expect(validation.config.primaryUrl).toBe('http://valid-backend:8000');
 
       restoreEnv();
-    });
-  });
+
 
   describe('Fallback Behavior', () => {
     it('should handle Environment Configuration Manager unavailability gracefully', () => {
@@ -156,15 +132,13 @@ describe('Environment Configuration Manager Integration', () => {
       expect(() => getRetryPolicy()).not.toThrow();
       expect(() => getEnvironmentInfo()).not.toThrow();
       expect(() => validateBackendConfiguration()).not.toThrow();
-    });
-  });
+
 
   describe('Configuration Consistency', () => {
     it('should maintain consistent configuration across multiple calls', () => {
       const restoreEnv = mockEnv({
         KAREN_BACKEND_URL: 'http://consistent-backend:8000',
         AUTH_TIMEOUT_MS: '45000',
-      });
 
       initializeEnvironmentConfigManager();
       
@@ -178,13 +152,11 @@ describe('Environment Configuration Manager Integration', () => {
       expect(timeout1.authentication).toBe(timeout2.authentication);
 
       restoreEnv();
-    });
 
     it('should reflect environment changes after reinitialization', () => {
       // Initial configuration
       const restoreEnv1 = mockEnv({
         KAREN_BACKEND_URL: 'http://initial-backend:8000',
-      });
 
       initializeEnvironmentConfigManager();
       const initialUrl = getBackendBaseUrl();
@@ -195,21 +167,18 @@ describe('Environment Configuration Manager Integration', () => {
       // Changed configuration
       const restoreEnv2 = mockEnv({
         KAREN_BACKEND_URL: 'http://updated-backend:9000',
-      });
 
       initializeEnvironmentConfigManager();
       const updatedUrl = getBackendBaseUrl();
       expect(updatedUrl).toBe('http://updated-backend:9000');
 
       restoreEnv2();
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle invalid URLs gracefully', () => {
       const restoreEnv = mockEnv({
         KAREN_BACKEND_URL: 'invalid-url',
-      });
 
       initializeEnvironmentConfigManager();
       
@@ -218,12 +187,10 @@ describe('Environment Configuration Manager Integration', () => {
       expect(validation.errors.some(error => error.includes('Invalid primary backend URL'))).toBe(true);
 
       restoreEnv();
-    });
 
     it('should handle missing environment variables gracefully', () => {
       const restoreEnv = mockEnv({
         // No backend URL specified
-      });
 
       initializeEnvironmentConfigManager();
       
@@ -236,6 +203,5 @@ describe('Environment Configuration Manager Integration', () => {
       expect(url).toBe('http://localhost:8000'); // Default for local environment
 
       restoreEnv();
-    });
-  });
-});
+
+

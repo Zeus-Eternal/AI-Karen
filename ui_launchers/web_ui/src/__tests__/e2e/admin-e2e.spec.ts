@@ -66,7 +66,6 @@ async function loginAs(page: Page, userType: 'superAdmin' | 'admin' | 'user') {
 test.describe('Admin Management System E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
     await setupDatabase(page);
-  });
 
   test.describe('First-Run Setup Process', () => {
     test('should complete first-run setup successfully', async ({ page }) => {
@@ -101,7 +100,6 @@ test.describe('Admin Management System E2E Tests', () => {
       // Should redirect to super admin dashboard
       await expect(page).toHaveURL('/admin/super');
       await expect(page.locator('h1')).toContainText('Super Admin Dashboard');
-    });
 
     test('should prevent setup access when super admin exists', async ({ page }) => {
       // Create super admin first
@@ -112,7 +110,6 @@ test.describe('Admin Management System E2E Tests', () => {
       
       // Should redirect to login
       await expect(page).toHaveURL('/login');
-    });
 
     test('should validate password requirements', async ({ page }) => {
       await page.goto('/setup');
@@ -130,13 +127,11 @@ test.describe('Admin Management System E2E Tests', () => {
       await page.fill('input[name="password"]', testUsers.superAdmin.password);
       await expect(page.locator('.password-error')).not.toBeVisible();
       await expect(page.locator('.password-strength')).toContainText('Strong');
-    });
-  });
+
 
   test.describe('User Management Workflows', () => {
     test.beforeEach(async ({ page }) => {
       await createSuperAdmin(page);
-    });
 
     test('should create and manage users as admin', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -173,7 +168,6 @@ test.describe('Admin Management System E2E Tests', () => {
       
       // Verify user is deactivated
       await expect(page.locator(`tr:has-text("${testUsers.user.email}")`)).toContainText('Inactive');
-    });
 
     test('should promote and demote users', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -202,7 +196,6 @@ test.describe('Admin Management System E2E Tests', () => {
       
       // Verify demotion
       await expect(page.locator('table')).toContainText('user');
-    });
 
     test('should handle bulk user operations', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -242,8 +235,7 @@ test.describe('Admin Management System E2E Tests', () => {
       for (const user of bulkUsers) {
         await expect(page.locator(`tr:has-text("${user.email}")`)).toContainText('Inactive');
       }
-    });
-  });
+
 
   test.describe('Role-Based Access Control', () => {
     test.beforeEach(async ({ page }) => {
@@ -259,7 +251,6 @@ test.describe('Admin Management System E2E Tests', () => {
       await page.click('button:has-text("Create Admin")');
       
       await page.click('button:has-text("Logout")');
-    });
 
     test('should enforce super admin access restrictions', async ({ page }) => {
       await loginAs(page, 'admin');
@@ -270,7 +261,6 @@ test.describe('Admin Management System E2E Tests', () => {
       // Should redirect to unauthorized page
       await expect(page).toHaveURL('/unauthorized');
       await expect(page.locator('h1')).toContainText('Unauthorized Access');
-    });
 
     test('should enforce admin access restrictions', async ({ page }) => {
       // Create regular user
@@ -293,7 +283,6 @@ test.describe('Admin Management System E2E Tests', () => {
       
       // Should redirect to unauthorized page
       await expect(page).toHaveURL('/unauthorized');
-    });
 
     test('should show appropriate navigation based on role', async ({ page }) => {
       // Test super admin navigation
@@ -312,13 +301,11 @@ test.describe('Admin Management System E2E Tests', () => {
       await expect(page.locator('nav')).toContainText('User Management');
       await expect(page.locator('nav')).not.toContainText('Admin Management');
       await expect(page.locator('nav')).not.toContainText('System Configuration');
-    });
-  });
+
 
   test.describe('Audit Logging', () => {
     test.beforeEach(async ({ page }) => {
       await createSuperAdmin(page);
-    });
 
     test('should log administrative actions', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -346,7 +333,6 @@ test.describe('Admin Management System E2E Tests', () => {
       await expect(page.locator('.audit-details')).toContainText('IP Address');
       await expect(page.locator('.audit-details')).toContainText('User Agent');
       await expect(page.locator('.audit-details')).toContainText('Resource ID');
-    });
 
     test('should filter audit logs correctly', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -384,7 +370,6 @@ test.describe('Admin Management System E2E Tests', () => {
       // Verify both actions are shown
       await expect(page.locator('table')).toContainText('user_created');
       await expect(page.locator('table')).toContainText('user_updated');
-    });
 
     test('should export audit logs', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -408,13 +393,11 @@ test.describe('Admin Management System E2E Tests', () => {
       
       // Verify download
       expect(download.suggestedFilename()).toMatch(/audit-logs-.*\.csv/);
-    });
-  });
+
 
   test.describe('System Configuration', () => {
     test.beforeEach(async ({ page }) => {
       await createSuperAdmin(page);
-    });
 
     test('should update system configuration', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -442,7 +425,6 @@ test.describe('Admin Management System E2E Tests', () => {
       await expect(page.locator('input[name="requireSpecialChars"]')).toBeChecked();
       await expect(page.locator('input[name="sessionTimeout"]')).toHaveValue('20');
       await expect(page.locator('input[name="mfaRequired"]')).toBeChecked();
-    });
 
     test('should validate configuration changes', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -463,13 +445,11 @@ test.describe('Admin Management System E2E Tests', () => {
       
       // Verify validation error
       await expect(page.locator('.error-message')).toContainText('Session timeout must be at least 5 minutes');
-    });
-  });
+
 
   test.describe('Error Handling and Recovery', () => {
     test.beforeEach(async ({ page }) => {
       await createSuperAdmin(page);
-    });
 
     test('should handle network errors gracefully', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -492,7 +472,6 @@ test.describe('Admin Management System E2E Tests', () => {
       // Verify successful retry
       await expect(page.locator('table')).toBeVisible();
       await expect(page.locator('.error-message')).not.toBeVisible();
-    });
 
     test('should handle session expiration', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -503,15 +482,13 @@ test.describe('Admin Management System E2E Tests', () => {
           status: 401,
           contentType: 'application/json',
           body: JSON.stringify({ error: 'Session expired' }),
-        });
-      });
-      
+
+
       await page.click('nav a:has-text("User Management")');
       
       // Should redirect to login
       await expect(page).toHaveURL('/login');
       await expect(page.locator('.error-message')).toContainText('Session expired');
-    });
 
     test('should handle server errors with appropriate messaging', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -522,21 +499,18 @@ test.describe('Admin Management System E2E Tests', () => {
           status: 500,
           contentType: 'application/json',
           body: JSON.stringify({ error: 'Internal server error' }),
-        });
-      });
-      
+
+
       await page.click('nav a:has-text("User Management")');
       
       // Verify appropriate error message
       await expect(page.locator('.error-message')).toContainText('Server error occurred');
       await expect(page.locator('text=Please try again later')).toBeVisible();
-    });
-  });
+
 
   test.describe('Performance and Scalability', () => {
     test.beforeEach(async ({ page }) => {
       await createSuperAdmin(page);
-    });
 
     test('should handle large user lists with pagination', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -560,7 +534,6 @@ test.describe('Admin Management System E2E Tests', () => {
       // Verify page 2 content
       await expect(page.locator('text=Page 2 of')).toBeVisible();
       await expect(userRows).toHaveCount(50);
-    });
 
     test('should load admin interfaces quickly', async ({ page }) => {
       await loginAs(page, 'superAdmin');
@@ -573,6 +546,5 @@ test.describe('Admin Management System E2E Tests', () => {
       
       // Verify reasonable load time (less than 2 seconds)
       expect(loadTime).toBeLessThan(2000);
-    });
-  });
-});
+
+

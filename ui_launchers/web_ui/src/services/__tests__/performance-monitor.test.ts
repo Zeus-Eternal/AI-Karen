@@ -61,20 +61,17 @@ describe('PerformanceMonitor', () => {
       fid: { warning: 80, critical: 200 },
       memoryUsage: { warning: 70, critical: 90 },
       pageLoad: { warning: 2000, critical: 3000 },
-    });
-  });
+
 
   afterEach(() => {
     monitor.destroy();
     vi.clearAllMocks();
-  });
 
   describe('Initialization', () => {
     it('should initialize with default thresholds', () => {
       const defaultMonitor = new PerformanceMonitor();
       expect(defaultMonitor).toBeDefined();
       defaultMonitor.destroy();
-    });
 
     it('should initialize with custom thresholds', () => {
       const customThresholds = {
@@ -85,8 +82,7 @@ describe('PerformanceMonitor', () => {
       const customMonitor = new PerformanceMonitor(customThresholds);
       expect(customMonitor).toBeDefined();
       customMonitor.destroy();
-    });
-  });
+
 
   describe('Metric Recording', () => {
     it('should record page load metrics', () => {
@@ -96,7 +92,6 @@ describe('PerformanceMonitor', () => {
       expect(metrics).toHaveLength(1);
       expect(metrics[0].name).toBe('route-load');
       expect(metrics[0].metadata?.route).toBe('/dashboard');
-    });
 
     it('should record user interaction metrics', () => {
       monitor.trackUserInteraction('button-click', 50, { component: 'submit-btn' });
@@ -106,7 +101,6 @@ describe('PerformanceMonitor', () => {
       expect(metrics[0].value).toBe(50);
       expect(metrics[0].metadata?.action).toBe('button-click');
       expect(metrics[0].metadata?.component).toBe('submit-btn');
-    });
 
     it('should record API call metrics', () => {
       monitor.trackAPICall('/api/users', 250, 200, { method: 'GET' });
@@ -117,8 +111,7 @@ describe('PerformanceMonitor', () => {
       expect(metrics[0].metadata?.endpoint).toBe('/api/users');
       expect(metrics[0].metadata?.status).toBe(200);
       expect(metrics[0].metadata?.success).toBe(true);
-    });
-  });
+
 
   describe('Alert System', () => {
     it('should create alerts when thresholds are exceeded', () => {
@@ -134,7 +127,6 @@ describe('PerformanceMonitor', () => {
           value: 2500,
         })
       );
-    });
 
     it('should create critical alerts for severe threshold violations', () => {
       monitor.onAlert(alertCallback);
@@ -149,7 +141,6 @@ describe('PerformanceMonitor', () => {
           value: 3500,
         })
       );
-    });
 
     it('should not create alerts for values within thresholds', () => {
       monitor.onAlert(alertCallback);
@@ -158,7 +149,6 @@ describe('PerformanceMonitor', () => {
       monitor.trackPageLoad('/fast-page', 1000);
       
       expect(alertCallback).not.toHaveBeenCalled();
-    });
 
     it('should allow unsubscribing from alerts', () => {
       const unsubscribe = monitor.onAlert(alertCallback);
@@ -167,8 +157,7 @@ describe('PerformanceMonitor', () => {
       monitor.trackPageLoad('/slow-page', 2500);
       
       expect(alertCallback).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('Resource Usage Monitoring', () => {
     it('should get current resource usage', () => {
@@ -180,7 +169,6 @@ describe('PerformanceMonitor', () => {
       expect(usage.network.downlink).toBe(10);
       expect(usage.network.effectiveType).toBe('4g');
       expect(usage.network.rtt).toBe(50);
-    });
 
     it('should handle missing performance.memory', () => {
       const originalMemory = global.performance.memory;
@@ -193,7 +181,6 @@ describe('PerformanceMonitor', () => {
       expect(usage.memory.percentage).toBe(0);
       
       (global.performance as any).memory = originalMemory;
-    });
 
     it('should handle missing navigator.connection', () => {
       const originalConnection = global.navigator.connection;
@@ -206,8 +193,7 @@ describe('PerformanceMonitor', () => {
       expect(usage.network.rtt).toBe(0);
       
       (global.navigator as any).connection = originalConnection;
-    });
-  });
+
 
   describe('Web Vitals Integration', () => {
     it('should get Web Vitals metrics', () => {
@@ -221,7 +207,6 @@ describe('PerformanceMonitor', () => {
       expect(vitals.lcp).toBe(2000);
       expect(vitals.fid).toBe(100);
       expect(vitals.cls).toBe(0.1);
-    });
 
     it('should return partial metrics when some are missing', () => {
       monitor['recordMetric']('lcp', 1500);
@@ -231,8 +216,7 @@ describe('PerformanceMonitor', () => {
       expect(vitals.lcp).toBe(1500);
       expect(vitals.fid).toBeUndefined();
       expect(vitals.cls).toBeUndefined();
-    });
-  });
+
 
   describe('Metric Retrieval', () => {
     beforeEach(() => {
@@ -241,36 +225,30 @@ describe('PerformanceMonitor', () => {
       monitor.trackPageLoad('/page2', 1500);
       monitor.trackUserInteraction('click', 50);
       monitor.trackAPICall('/api/test', 200, 200);
-    });
 
     it('should get all metrics when no type specified', () => {
       const metrics = monitor.getMetrics();
       expect(metrics.length).toBeGreaterThanOrEqual(4);
-    });
 
     it('should filter metrics by type', () => {
       const pageLoadMetrics = monitor.getMetrics('route-load');
       expect(pageLoadMetrics).toHaveLength(2);
       expect(pageLoadMetrics.every(m => m.name === 'route-load')).toBe(true);
-    });
 
     it('should limit metrics when limit specified', () => {
       const limitedMetrics = monitor.getMetrics('route-load', 1);
       expect(limitedMetrics).toHaveLength(1);
-    });
 
     it('should return metrics sorted by timestamp (newest first)', () => {
       const metrics = monitor.getMetrics('route-load');
       expect(metrics[0].timestamp).toBeGreaterThanOrEqual(metrics[1].timestamp);
-    });
 
     it('should get latest metrics for specified types', () => {
       const latestMetrics = monitor.getLatestMetrics(['route-load', 'user-interaction']);
       expect(latestMetrics).toHaveLength(2);
       expect(latestMetrics.some(m => m.name === 'route-load')).toBe(true);
       expect(latestMetrics.some(m => m.name === 'user-interaction')).toBe(true);
-    });
-  });
+
 
   describe('Alert Management', () => {
     beforeEach(() => {
@@ -278,25 +256,21 @@ describe('PerformanceMonitor', () => {
       monitor.trackPageLoad('/slow1', 2500); // warning
       monitor.trackPageLoad('/slow2', 3500); // critical
       monitor.trackUserInteraction('slow-click', 250); // critical
-    });
 
     it('should get all alerts', () => {
       const alerts = monitor.getAlerts();
       expect(alerts.length).toBeGreaterThanOrEqual(2);
-    });
 
     it('should limit alerts when limit specified', () => {
       const limitedAlerts = monitor.getAlerts(2);
       expect(limitedAlerts).toHaveLength(2);
-    });
 
     it('should return alerts sorted by timestamp (newest first)', () => {
       const alerts = monitor.getAlerts();
       for (let i = 0; i < alerts.length - 1; i++) {
         expect(alerts[i].timestamp).toBeGreaterThanOrEqual(alerts[i + 1].timestamp);
       }
-    });
-  });
+
 
   describe('Optimization Recommendations', () => {
     it('should provide recommendations for poor LCP', () => {
@@ -304,21 +278,18 @@ describe('PerformanceMonitor', () => {
       
       const recommendations = monitor.getOptimizationRecommendations();
       expect(recommendations.some(r => r.includes('LCP'))).toBe(true);
-    });
 
     it('should provide recommendations for poor FID', () => {
       monitor['recordMetric']('fid', 150);
       
       const recommendations = monitor.getOptimizationRecommendations();
       expect(recommendations.some(r => r.includes('FID'))).toBe(true);
-    });
 
     it('should provide recommendations for poor CLS', () => {
       monitor['recordMetric']('cls', 0.3);
       
       const recommendations = monitor.getOptimizationRecommendations();
       expect(recommendations.some(r => r.includes('CLS'))).toBe(true);
-    });
 
     it('should provide recommendations for high memory usage', () => {
       // Simulate high memory usage
@@ -328,7 +299,6 @@ describe('PerformanceMonitor', () => {
       
       const recommendations = monitor.getOptimizationRecommendations();
       expect(recommendations.some(r => r.includes('memory'))).toBe(true);
-    });
 
     it('should return empty recommendations for good performance', () => {
       monitor['recordMetric']('lcp', 1000);
@@ -338,8 +308,7 @@ describe('PerformanceMonitor', () => {
       
       const recommendations = monitor.getOptimizationRecommendations();
       expect(recommendations).toHaveLength(0);
-    });
-  });
+
 
   describe('Memory Management', () => {
     it('should clear old metrics', () => {
@@ -356,7 +325,6 @@ describe('PerformanceMonitor', () => {
       const metrics = monitor.getMetrics();
       expect(metrics.every(m => m.name !== 'old-metric')).toBe(true);
       expect(metrics.some(m => m.name === 'recent-metric')).toBe(true);
-    });
 
     it('should prevent memory leaks by limiting metrics', () => {
       // Add many metrics to trigger cleanup
@@ -368,7 +336,6 @@ describe('PerformanceMonitor', () => {
       // Should be significantly less than the total added
       expect(metrics.length).toBeLessThan(6000);
       expect(metrics.length).toBeGreaterThan(2000); // But still have a reasonable amount
-    });
 
     it('should prevent memory leaks by limiting alerts', () => {
       // Trigger many alerts
@@ -380,8 +347,7 @@ describe('PerformanceMonitor', () => {
       // Should be significantly less than the total triggered
       expect(alerts.length).toBeLessThan(1200);
       expect(alerts.length).toBeGreaterThan(400); // But still have a reasonable amount
-    });
-  });
+
 
   describe('Cleanup', () => {
     it('should cleanup observers and callbacks on destroy', () => {
@@ -393,8 +359,7 @@ describe('PerformanceMonitor', () => {
       // Should not receive alerts after destroy
       monitor.trackPageLoad('/test', 3000);
       expect(callback).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle PerformanceObserver not being supported', () => {
@@ -407,7 +372,6 @@ describe('PerformanceMonitor', () => {
       }).not.toThrow();
       
       global.PerformanceObserver = originalPO;
-    });
 
     it('should handle performance.now not being available', () => {
       const originalNow = global.performance.now;
@@ -418,6 +382,5 @@ describe('PerformanceMonitor', () => {
       }).not.toThrow();
       
       global.performance.now = originalNow;
-    });
-  });
-});
+
+

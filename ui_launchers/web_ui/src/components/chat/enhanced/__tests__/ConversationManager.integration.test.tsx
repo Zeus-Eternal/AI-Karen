@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ConversationManager from '../ConversationManager';
@@ -112,7 +113,6 @@ describe('ConversationManager Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders conversation manager with all conversations', () => {
     render(
@@ -133,7 +133,6 @@ describe('ConversationManager Integration', () => {
     expect(screen.getByText('React Development Discussion')).toBeInTheDocument();
     expect(screen.getByText('Python Data Analysis')).toBeInTheDocument();
     expect(screen.getByText('General Questions')).toBeInTheDocument();
-  });
 
   it('handles conversation selection', async () => {
     render(
@@ -152,7 +151,6 @@ describe('ConversationManager Integration', () => {
     fireEvent.click(conversationCard!);
 
     expect(mockOnConversationSelect).toHaveBeenCalledWith('conv-1');
-  });
 
   it('filters conversations by search query', async () => {
     render(
@@ -174,10 +172,8 @@ describe('ConversationManager Integration', () => {
       expect(screen.getByText('React Development Discussion')).toBeInTheDocument();
       expect(screen.queryByText('Python Data Analysis')).not.toBeInTheDocument();
       expect(screen.queryByText('General Questions')).not.toBeInTheDocument();
-    });
 
     expect(screen.getByText('1 of 3')).toBeInTheDocument();
-  });
 
   it('filters conversations by status', async () => {
     render(
@@ -204,10 +200,8 @@ describe('ConversationManager Integration', () => {
       expect(screen.getByText('Python Data Analysis')).toBeInTheDocument();
       expect(screen.queryByText('React Development Discussion')).not.toBeInTheDocument();
       expect(screen.queryByText('General Questions')).not.toBeInTheDocument();
-    });
 
     expect(screen.getByText('1 of 3')).toBeInTheDocument();
-  });
 
   it('handles conversation archiving', async () => {
     render(
@@ -231,7 +225,6 @@ describe('ConversationManager Integration', () => {
     fireEvent.click(archiveOption);
 
     expect(mockOnConversationArchive).toHaveBeenCalledWith('conv-1');
-  });
 
   it('handles conversation deletion', async () => {
     render(
@@ -255,7 +248,6 @@ describe('ConversationManager Integration', () => {
     fireEvent.click(deleteOption);
 
     expect(mockOnConversationDelete).toHaveBeenCalledWith('conv-1');
-  });
 
   it('handles conversation sharing', async () => {
     render(
@@ -279,7 +271,6 @@ describe('ConversationManager Integration', () => {
     fireEvent.click(shareOption);
 
     expect(mockOnConversationShare).toHaveBeenCalledWith('conv-1');
-  });
 
   it('handles bulk selection and operations', async () => {
     const mockToast = vi.fn();
@@ -305,7 +296,6 @@ describe('ConversationManager Integration', () => {
     // Actions button should appear
     await waitFor(() => {
       expect(screen.getByText('Actions (2)')).toBeInTheDocument();
-    });
 
     // Click actions dropdown
     const actionsButton = screen.getByText('Actions (2)');
@@ -316,7 +306,6 @@ describe('ConversationManager Integration', () => {
     fireEvent.click(exportOption);
 
     expect(mockOnConversationExport).toHaveBeenCalledWith(['conv-1', 'conv-2']);
-  });
 
   it('displays analytics when provided', async () => {
     render(
@@ -341,8 +330,7 @@ describe('ConversationManager Integration', () => {
       expect(screen.getByText('3')).toBeInTheDocument();
       expect(screen.getByText('Total Messages')).toBeInTheDocument();
       expect(screen.getByText('26')).toBeInTheDocument();
-    });
-  });
+
 
   it('sorts conversations correctly', async () => {
     render(
@@ -371,8 +359,7 @@ describe('ConversationManager Integration', () => {
       expect(conversationTitles[0]).toHaveTextContent('React Development Discussion'); // 15 messages
       expect(conversationTitles[1]).toHaveTextContent('Python Data Analysis'); // 8 messages
       expect(conversationTitles[2]).toHaveTextContent('General Questions'); // 3 messages
-    });
-  });
+
 
   it('displays conversation metadata correctly', () => {
     render(
@@ -392,7 +379,6 @@ describe('ConversationManager Integration', () => {
     expect(screen.getByText('positive')).toBeInTheDocument(); // sentiment
     expect(screen.getByText('15 messages')).toBeInTheDocument(); // message count
     expect(screen.getByText('react')).toBeInTheDocument(); // tags
-  });
 
   it('handles empty state correctly', () => {
     render(
@@ -409,7 +395,6 @@ describe('ConversationManager Integration', () => {
 
     expect(screen.getByText('No conversations yet')).toBeInTheDocument();
     expect(screen.getByText('0 of 0')).toBeInTheDocument();
-  });
 
   it('handles filtered empty state correctly', async () => {
     render(
@@ -430,6 +415,5 @@ describe('ConversationManager Integration', () => {
     await waitFor(() => {
       expect(screen.getByText('No conversations match your filters')).toBeInTheDocument();
       expect(screen.getByText('0 of 3')).toBeInTheDocument();
-    });
-  });
-});
+
+

@@ -1,32 +1,16 @@
+
+"use client";
+import React from 'react';
 import { useState } from 'react';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import {
 import { Badge } from '@/components/ui/badge';
 import { HelpCircle, ExternalLink } from 'lucide-react';
 import { getHelpContent, type HelpContent } from '@/lib/help-content';
-"use client";
 
+import { } from '@/components/ui/tooltip';
 
-
-
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-
-
-
-
+import { } from '@/components/ui/dialog';
 interface HelpTooltipProps {
   helpKey: string;
   category?: 'modelLibrary' | 'llmSettings';
@@ -73,9 +57,8 @@ export function HelpTooltip({
   }, [onClose]);
 
         return (
-          <button variant="link" size="sm" className={`p-0 h-auto text-xs text-muted-foreground ${className}`} aria-label="Button">
+          <Button variant="link" size="sm" className={`p-0 h-auto text-xs text-muted-foreground ${className}`} >
             <HelpCircle className={`${iconSize} mr-1`} />
-            Help
           </Button>
         );
       case 'inline':
@@ -86,11 +69,11 @@ export function HelpTooltip({
         );
       default:
         return (
-          <button 
+          <Button 
             variant="ghost" 
             size="sm" 
             className={`p-1 h-auto w-auto text-muted-foreground hover:text-foreground ${className}`}
-           aria-label="Button">
+           >
             <HelpCircle className={iconSize} />
           </Button>
         );
@@ -107,10 +90,10 @@ export function HelpTooltip({
                 <TriggerComponent />
               </div>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl sm:w-auto md:w-full">
+            <DialogContent className="max-w-2xl ">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <HelpCircle className="h-5 w-5 text-primary sm:w-auto md:w-full" />
+                  <HelpCircle className="h-5 w-5 text-primary " />
                   {helpContent.title}
                 </DialogTitle>
                 <DialogDescription>
@@ -134,7 +117,7 @@ export function HelpTooltip({
                     <div className="flex flex-wrap gap-2">
                       {helpContent.links.map((link, index) => (
                         <Badge key={index} variant="outline" className="gap-1">
-                          <ExternalLink className="h-3 w-3 sm:w-auto md:w-full" />
+                          <ExternalLink className="h-3 w-3 " />
                           <a 
                             href={link.url} 
                             target="_blank" 
@@ -212,13 +195,13 @@ export function QuickHelp({
     <div className={`border rounded-lg p-3 ${className}`}>
       <div className="flex items-center justify-between">
         <h4 className="font-medium text-sm flex items-center gap-2 md:text-base lg:text-lg">
-          <HelpCircle className="h-4 w-4 text-primary sm:w-auto md:w-full" />
+          <HelpCircle className="h-4 w-4 text-primary " />
           {title}
         </h4>
-        <button
+        <Button
           variant="ghost"
           size="sm"
-          onClick={() = aria-label="Button"> setExpanded(!expanded)}
+          onClick={() => setExpanded(!expanded)}
           className="text-xs sm:text-sm md:text-base"
         >
           {expanded ? 'Hide' : 'Show'} Help

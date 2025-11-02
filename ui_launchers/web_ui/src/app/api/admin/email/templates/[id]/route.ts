@@ -6,11 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
-import { 
-  EmailTemplate, 
-  UpdateEmailTemplateRequest,
-  EmailTemplateVariables 
-} from '@/lib/email/types';
+import {  EmailTemplate, UpdateEmailTemplateRequest, EmailTemplateVariables } from '@/lib/email/types';
 import { EmailTemplateManager, TemplateEngine } from '@/lib/email/template-engine';
 import { auditLogger } from '@/lib/audit/audit-logger';
 /**
@@ -115,7 +111,7 @@ export async function PUT(
       success: true, 
       data: updatedTemplate,
       validation: validation.warnings.length > 0 ? { warnings: validation.warnings } : undefined
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to update email template' },

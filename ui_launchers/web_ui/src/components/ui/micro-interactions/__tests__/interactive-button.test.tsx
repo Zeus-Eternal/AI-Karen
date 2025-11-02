@@ -32,7 +32,6 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => (
 describe('InteractiveButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders correctly', () => {
     render(
@@ -42,13 +41,11 @@ describe('InteractiveButton', () => {
     );
     
     expect(screen.getByRole('button', { name: /click me/i })).toBeInTheDocument();
-  });
 
   it('shows loading state correctly', () => {
     render(
       <TestWrapper>
         <InteractiveButton loading loadingText="Loading...">
-          Click me
         </InteractiveButton>
       </TestWrapper>
     );
@@ -56,7 +53,6 @@ describe('InteractiveButton', () => {
     const button = screen.getByRole('button');
     expect(button).toBeDisabled();
     expect(screen.getByText('Loading...')).toBeInTheDocument();
-  });
 
   it('handles click events', async () => {
     const handleClick = vi.fn();
@@ -65,14 +61,12 @@ describe('InteractiveButton', () => {
     render(
       <TestWrapper>
         <InteractiveButton onClick={handleClick}>
-          Click me
         </InteractiveButton>
       </TestWrapper>
     );
     
     await user.click(screen.getByRole('button'));
     expect(handleClick).toHaveBeenCalledTimes(1);
-  });
 
   it('does not trigger click when loading', async () => {
     const handleClick = vi.fn();
@@ -81,14 +75,12 @@ describe('InteractiveButton', () => {
     render(
       <TestWrapper>
         <InteractiveButton loading onClick={handleClick}>
-          Click me
         </InteractiveButton>
       </TestWrapper>
     );
     
     await user.click(screen.getByRole('button'));
     expect(handleClick).not.toHaveBeenCalled();
-  });
 
   it('does not trigger click when disabled', async () => {
     const handleClick = vi.fn();
@@ -97,26 +89,22 @@ describe('InteractiveButton', () => {
     render(
       <TestWrapper>
         <InteractiveButton disabled onClick={handleClick}>
-          Click me
         </InteractiveButton>
       </TestWrapper>
     );
     
     await user.click(screen.getByRole('button'));
     expect(handleClick).not.toHaveBeenCalled();
-  });
 
   it('applies custom className', () => {
     render(
       <TestWrapper>
         <InteractiveButton className="custom-class">
-          Click me
         </InteractiveButton>
       </TestWrapper>
     );
     
     expect(screen.getByRole('button')).toHaveClass('custom-class');
-  });
 
   it('forwards ref correctly', () => {
     const ref = React.createRef<HTMLButtonElement>();
@@ -124,11 +112,9 @@ describe('InteractiveButton', () => {
     render(
       <TestWrapper>
         <InteractiveButton ref={ref}>
-          Click me
         </InteractiveButton>
       </TestWrapper>
     );
     
     expect(ref.current).toBeInstanceOf(HTMLButtonElement);
-  });
-});
+

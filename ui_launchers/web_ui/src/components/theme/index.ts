@@ -1,2 +1,2 @@
-export { ThemeProvider, useTheme } from './ThemeProvider';
-export { ThemeBridge } from './ThemeBridge';
+import { export { ThemeProvider, useTheme } from './ThemeProvider';
+import { export { ThemeBridge } from './ThemeBridge';

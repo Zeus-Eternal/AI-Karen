@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { MicroInteractionProvider } from './micro-interaction-provider';
@@ -49,7 +49,7 @@ export function ComprehensiveMicroInteractionDemo() {
               <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 Modern UI Micro-Interactions
               </h1>
-              <p className="text-xl text-muted-foreground max-w-3xl mx-auto sm:w-auto md:w-full">
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto ">
                 A comprehensive collection of modern micro-interactions, animations, and feedback systems 
                 designed to enhance user experience with smooth, accessible, and delightful interactions.
               </p>
@@ -65,7 +65,6 @@ export function ComprehensiveMicroInteractionDemo() {
                 <div className="text-4xl mb-4">✨</div>
                 <h3 className="text-lg font-semibold mb-2">Micro-Interactions</h3>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                  Smooth hover, focus, and tap animations for all interactive elements
                 </p>
               </InteractiveCard>
 
@@ -78,7 +77,6 @@ export function ComprehensiveMicroInteractionDemo() {
                 <div className="text-4xl mb-4">💀</div>
                 <h3 className="text-lg font-semibold mb-2">Skeleton Loading</h3>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                  Beautiful loading states with shimmer animations
                 </p>
               </InteractiveCard>
 
@@ -104,7 +102,6 @@ export function ComprehensiveMicroInteractionDemo() {
                 <div className="text-4xl mb-4">📳</div>
                 <h3 className="text-lg font-semibold mb-2">Haptic Feedback</h3>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                  Tactile feedback for enhanced mobile experiences
                 </p>
               </InteractiveCard>
             </div>
@@ -120,16 +117,12 @@ export function ComprehensiveMicroInteractionDemo() {
                     <h3 className="text-lg font-medium mb-4">Interactive Buttons</h3>
                     <div className="flex flex-wrap gap-3">
                       <InteractiveButton animationVariant="default">
-                        Default
                       </InteractiveButton>
                       <InteractiveButton animationVariant="bounce" variant="outline">
-                        Bounce
                       </InteractiveButton>
                       <InteractiveButton animationVariant="scale" variant="secondary">
-                        Scale
                       </InteractiveButton>
                       <InteractiveButton animationVariant="slide" variant="ghost">
-                        Slide
                       </InteractiveButton>
                     </div>
                   </div>

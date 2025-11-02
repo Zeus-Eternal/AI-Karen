@@ -6,12 +6,7 @@ import { getKarenBackend } from '@/lib/karen-backend';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { getServiceErrorHandler, createUserFriendlyError } from './errorHandler';
 import { generateUUID } from '@/lib/uuid';
-import type {
-  ChatMessage,
-  KarenSettings,
-  HandleUserMessageResult,
-  AiData
-} from '@/lib/types';
+import type { ChatMessage, KarenSettings, HandleUserMessageResult, AiData } from '@/lib/types';
 export interface ConversationSession {
   conversationId: string;
   sessionId: string;
@@ -83,7 +78,7 @@ export class ChatService {
           },
           tags: [],
           priority: 'normal'
-        });
+
         return {
           conversationId: response.data.conversation.id,
           sessionId: response.data.conversation.session_id || sessionId
@@ -107,7 +102,7 @@ export class ChatService {
           should_auto_play: message.shouldAutoPlay,
           timestamp: message.timestamp.toISOString(),
         },
-      });
+
     } catch (error) {
     }
   }

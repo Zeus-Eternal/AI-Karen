@@ -1,13 +1,13 @@
-export { SetupWizard } from './SetupWizard';
-export { SetupRouteGuard, useSetupRouteAccess, withSetupRouteGuard, FirstRunRedirect } from './SetupRouteGuard';
+import { export { SetupWizard } from './SetupWizard';
+import { export { SetupRouteGuard, useSetupRouteAccess, withSetupRouteGuard, FirstRunRedirect } from './SetupRouteGuard';
 
 // Step components
-export { WelcomeStep } from './steps/WelcomeStep';
-export { AdminDetailsStep } from './steps/AdminDetailsStep';
-export { EmailVerificationStep } from './steps/EmailVerificationStep';
-export { SetupCompleteStep } from './steps/SetupCompleteStep';
+import { export { WelcomeStep } from './steps/WelcomeStep';
+import { export { AdminDetailsStep } from './steps/AdminDetailsStep';
+import { export { EmailVerificationStep } from './steps/EmailVerificationStep';
+import { export { SetupCompleteStep } from './steps/SetupCompleteStep';
 
 // Types
-export type { SetupWizardProps, SetupFormData, SetupStepProps } from './SetupWizard';
-export type { SetupRouteGuardProps } from './SetupRouteGuard';
-export type { SetupCompleteStepProps } from './steps/SetupCompleteStep';
+import { export type { SetupWizardProps, SetupFormData, SetupStepProps } from './SetupWizard';
+import { export type { SetupRouteGuardProps } from './SetupRouteGuard';
+import { export type { SetupCompleteStepProps } from './steps/SetupCompleteStep';

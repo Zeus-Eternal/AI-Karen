@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import MetricWidget from '../MetricWidget';
@@ -67,7 +68,6 @@ describe('MetricWidget', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders metric widget with data', () => {
     render(<MetricWidget {...mockProps} />);
@@ -76,7 +76,6 @@ describe('MetricWidget', () => {
     expect(screen.getByText('CPU Usage')).toBeInTheDocument();
     expect(screen.getByText('+5.2%')).toBeInTheDocument();
     expect(screen.getByText('vs last period')).toBeInTheDocument();
-  });
 
   it('displays threshold indicators', () => {
     render(<MetricWidget {...mockProps} />);
@@ -84,7 +83,6 @@ describe('MetricWidget', () => {
     expect(screen.getByText('Thresholds:')).toBeInTheDocument();
     expect(screen.getByText('70.0%')).toBeInTheDocument();
     expect(screen.getByText('90.0%')).toBeInTheDocument();
-  });
 
   it('shows warning status when value exceeds warning threshold', () => {
     const warningData = {
@@ -99,7 +97,6 @@ describe('MetricWidget', () => {
     
     expect(screen.getByText('Warning')).toBeInTheDocument();
     expect(screen.getByText('75.0%')).toBeInTheDocument();
-  });
 
   it('shows critical status when value exceeds critical threshold', () => {
     const criticalData = {
@@ -114,7 +111,6 @@ describe('MetricWidget', () => {
     
     expect(screen.getByText('Critical')).toBeInTheDocument();
     expect(screen.getByText('95.0%')).toBeInTheDocument();
-  });
 
   it('formats values correctly based on format type', () => {
     const currencyData = {
@@ -130,7 +126,6 @@ describe('MetricWidget', () => {
     render(<MetricWidget {...mockProps} data={currencyData} />);
     
     expect(screen.getByText('$1,234.56')).toBeInTheDocument();
-  });
 
   it('formats bytes correctly', () => {
     const bytesData = {
@@ -146,7 +141,6 @@ describe('MetricWidget', () => {
     render(<MetricWidget {...mockProps} data={bytesData} />);
     
     expect(screen.getByText('1.0 GB')).toBeInTheDocument();
-  });
 
   it('shows trend indicator with correct direction', () => {
     const downTrendData = {
@@ -163,7 +157,6 @@ describe('MetricWidget', () => {
     render(<MetricWidget {...mockProps} data={downTrendData} />);
     
     expect(screen.getByText('-3.1%')).toBeInTheDocument();
-  });
 
   it('handles stable trend', () => {
     const stableTrendData = {
@@ -180,7 +173,6 @@ describe('MetricWidget', () => {
     render(<MetricWidget {...mockProps} data={stableTrendData} />);
     
     expect(screen.getByText('0.0%')).toBeInTheDocument();
-  });
 
   it('renders without trend when trend data is not available', () => {
     const noTrendData = {
@@ -194,7 +186,6 @@ describe('MetricWidget', () => {
     render(<MetricWidget {...mockProps} data={noTrendData} />);
     
     expect(screen.queryByText('vs last period')).not.toBeInTheDocument();
-  });
 
   it('renders without thresholds when threshold data is not available', () => {
     const noThresholdData = {
@@ -208,13 +199,11 @@ describe('MetricWidget', () => {
     render(<MetricWidget {...mockProps} data={noThresholdData} />);
     
     expect(screen.queryByText('Thresholds:')).not.toBeInTheDocument();
-  });
 
   it('shows no data message when data is not available', () => {
     render(<MetricWidget {...mockProps} data={undefined} />);
     
     expect(screen.getByText('No metric data available')).toBeInTheDocument();
-  });
 
   it('handles custom units correctly', () => {
     const customUnitData = {
@@ -230,12 +219,10 @@ describe('MetricWidget', () => {
     render(<MetricWidget {...mockProps} data={customUnitData} />);
     
     expect(screen.getByText('150 req/s')).toBeInTheDocument();
-  });
 
   it('passes props correctly to WidgetBase', () => {
     render(<MetricWidget {...mockProps} />);
     
     const widgetBase = screen.getByTestId('widget-base');
     expect(widgetBase).toBeInTheDocument();
-  });
-});
+

@@ -60,11 +60,11 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       retryDelay: 1000,
       exponentialBackoff: true,
       section: props.section || 'unknown'
-    });
+
     this.analytics = new ErrorAnalytics({
       enabled: props.enableAnalytics !== false,
       section: props.section || 'unknown'
-    });
+
   }
   static getDerivedStateFromError(error: Error): Partial<State> {
     return {
@@ -81,7 +81,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       errorInfo,
       errorReport,
       fallbackMode: this.determineFallbackMode(error, errorInfo)
-    });
+
     // Report error to monitoring services
     await this.reportError(error, errorInfo, errorReport);
     // Track error analytics
@@ -89,7 +89,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       section: this.props.section,
       level: this.props.level || 'component',
       recoveryAttempts: this.state.recoveryAttempts
-    });
+
     // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo, errorReport);
@@ -188,7 +188,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
         section: this.props.section,
         retryCount: this.state.recoveryAttempts,
         level: this.props.level
-      });
+
       // Report to external monitoring services
       await this.reportToMonitoringServices(errorReport);
       // Store for offline analysis
@@ -207,7 +207,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
         },
         extra: errorReport.context,
         fingerprint: [errorReport.message, errorReport.section]
-      });
+
     }
     // Report to custom monitoring endpoint
     const monitoringEndpoint = process.env.NEXT_PUBLIC_ERROR_MONITORING_ENDPOINT;
@@ -220,7 +220,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
             'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ERROR_MONITORING_API_KEY}`
           },
           body: JSON.stringify(errorReport)
-        });
+
       } catch (error) {
       }
     }
@@ -253,7 +253,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       this.setState({ 
         isRecovering: false,
         fallbackMode: 'minimal'
-      });
+
     }
   };
   private async executeRecoveryStrategy(strategy: any) {
@@ -278,7 +278,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       errorReport: null,
       isRecovering: false,
       fallbackMode: 'full'
-    });
+
   };
   private handleRecover = async () => {
     await this.attemptRecovery();

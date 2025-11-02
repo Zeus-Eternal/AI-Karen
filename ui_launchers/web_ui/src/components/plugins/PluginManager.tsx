@@ -1,6 +1,7 @@
+
+"use client";
 import React, { useEffect, useState } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
-import { 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,47 +22,17 @@ import { PluginMarketplace } from './PluginMarketplace';
  * Based on requirements: 5.1, 5.4
  */
 
-"use client";
 
-
-
-  Search, 
-  Filter, 
-  Grid, 
-  List, 
-  Plus, 
-  Settings, 
-  Power, 
-  PowerOff, 
-  Trash2, 
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Download,
-  MoreVertical,
-  Eye,
-  RefreshCw,
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 
 
 
 
 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
+import { } from '@/components/ui/dropdown-menu';
 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
+import { } from '@/components/ui/select';
 
 
 
@@ -168,18 +139,16 @@ const PluginCard: React.FC<PluginCardProps> = ({
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button variant="ghost" size="sm" disabled={loading} aria-label="Button">
-                <MoreVertical className="w-4 h-4 sm:w-auto md:w-full" />
+              <Button variant="ghost" size="sm" disabled={loading} >
+                <MoreVertical className="w-4 h-4 " />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onSelect(plugin)}>
-                <Eye className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                View Details
+                <Eye className="w-4 h-4 mr-2 " />
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onConfigure(plugin)}>
-                <Settings className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                Configure
+                <Settings className="w-4 h-4 mr-2 " />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
@@ -188,13 +157,11 @@ const PluginCard: React.FC<PluginCardProps> = ({
               >
                 {plugin.enabled ? (
                   <>
-                    <PowerOff className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                    Disable
+                    <PowerOff className="w-4 h-4 mr-2 " />
                   </>
                 ) : (
                   <>
-                    <Power className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                    Enable
+                    <Power className="w-4 h-4 mr-2 " />
                   </>
                 )}
               </DropdownMenuItem>
@@ -204,8 +171,7 @@ const PluginCard: React.FC<PluginCardProps> = ({
                 className="text-destructive"
                 disabled={plugin.status === 'installing' || plugin.status === 'updating'}
               >
-                <Trash2 className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                Uninstall
+                <Trash2 className="w-4 h-4 mr-2 " />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -245,7 +211,7 @@ const PluginCard: React.FC<PluginCardProps> = ({
           {plugin.metrics.health.issues.length > 0 && (
             <div className="mt-2">
               <Alert variant="destructive" className="py-2">
-                <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
+                <AlertTriangle className="w-4 h-4 " />
                 <AlertDescription className="text-xs sm:text-sm md:text-base">
                   {plugin.metrics.health.issues[0]}
                   {plugin.metrics.health.issues.length > 1 && 
@@ -261,7 +227,7 @@ const PluginCard: React.FC<PluginCardProps> = ({
         {plugin.lastError && (
           <div className="mt-3">
             <Alert variant="destructive" className="py-2">
-              <XCircle className="w-4 h-4 sm:w-auto md:w-full" />
+              <XCircle className="w-4 h-4 " />
               <AlertDescription className="text-xs sm:text-sm md:text-base">
                 <div className="font-medium">Last Error:</div>
                 <div>{plugin.lastError.message}</div>
@@ -284,30 +250,30 @@ const PluginListSkeleton: React.FC = () => (
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <Skeleton className="h-6 w-32 mb-2 sm:w-auto md:w-full" />
+              <Skeleton className="h-6 w-32 mb-2 " />
               <Skeleton className="h-4 w-full mb-2" />
               <div className="flex gap-4">
-                <Skeleton className="h-3 w-16 sm:w-auto md:w-full" />
-                <Skeleton className="h-3 w-20 sm:w-auto md:w-full" />
-                <Skeleton className="h-3 w-16 sm:w-auto md:w-full" />
+                <Skeleton className="h-3 w-16 " />
+                <Skeleton className="h-3 w-20 " />
+                <Skeleton className="h-3 w-16 " />
               </div>
             </div>
-            <Skeleton className="h-8 w-8 sm:w-auto md:w-full" />
+            <Skeleton className="h-8 w-8 " />
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
-              <Skeleton className="h-3 w-16 mb-1 sm:w-auto md:w-full" />
-              <Skeleton className="h-4 w-12 sm:w-auto md:w-full" />
+              <Skeleton className="h-3 w-16 mb-1 " />
+              <Skeleton className="h-4 w-12 " />
             </div>
             <div>
-              <Skeleton className="h-3 w-16 mb-1 sm:w-auto md:w-full" />
-              <Skeleton className="h-4 w-12 sm:w-auto md:w-full" />
+              <Skeleton className="h-3 w-16 mb-1 " />
+              <Skeleton className="h-4 w-12 " />
             </div>
             <div>
-              <Skeleton className="h-3 w-16 mb-1 sm:w-auto md:w-full" />
-              <Skeleton className="h-4 w-12 sm:w-auto md:w-full" />
+              <Skeleton className="h-3 w-16 mb-1 " />
+              <Skeleton className="h-4 w-12 " />
             </div>
           </div>
           <Skeleton className="h-4 w-full" />
@@ -413,22 +379,18 @@ export const PluginManager: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold">Plugin Manager</h1>
           <p className="text-muted-foreground">
-            Manage and monitor your installed plugins and extensions
           </p>
         </div>
         
         <div className="flex items-center gap-2">
-          <button variant="outline" onClick={handleRefresh} disabled={loading} aria-label="Button">
+          <Button variant="outline" onClick={handleRefresh} disabled={loading} >
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
           </Button>
-          <button variant="outline" onClick={handleBrowseMarketplace} aria-label="Button">
-            <Search className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-            Browse Marketplace
+          <Button variant="outline" onClick={handleBrowseMarketplace} >
+            <Search className="w-4 h-4 mr-2 " />
           </Button>
           <button onClick={handleInstallPlugin} aria-label="Button">
-            <Plus className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-            Install Plugin
+            <Plus className="w-4 h-4 mr-2 " />
           </Button>
         </div>
       </div>
@@ -436,7 +398,7 @@ export const PluginManager: React.FC = () => {
       {/* Error Display */}
       {error && (
         <Alert variant="destructive">
-          <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
+          <AlertTriangle className="w-4 h-4 " />
           <AlertDescription>{typeof error === 'string' ? error : 'An error occurred'}</AlertDescription>
         </Alert>
       )}
@@ -447,11 +409,11 @@ export const PluginManager: React.FC = () => {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex-1 max-w-md">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground " />
                 <input
                   placeholder="Search plugins..."
                   value={searchQuery}
-                  onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -464,7 +426,7 @@ export const PluginManager: React.FC = () => {
                   setFilters({ status: value === 'all' ? undefined : [value as PluginStatus] })
                 }
               >
-                <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+                <selectTrigger className="w-32 " aria-label="Select option">
                   <selectValue placeholder="Status" />
                 </SelectTrigger>
                 <selectContent aria-label="Select option">
@@ -482,7 +444,7 @@ export const PluginManager: React.FC = () => {
                   setSorting(field, order as 'asc' | 'desc');
                 }}
               >
-                <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+                <selectTrigger className="w-40 " aria-label="Select option">
                   <selectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <selectContent aria-label="Select option">
@@ -500,18 +462,18 @@ export const PluginManager: React.FC = () => {
                 <button
                   variant={view === 'list' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() = aria-label="Button"> setView('list')}
+                  onClick={() => setView('list')}
                   className="rounded-r-none"
                 >
-                  <List className="w-4 h-4 sm:w-auto md:w-full" />
+                  <List className="w-4 h-4 " />
                 </Button>
                 <button
                   variant={view === 'grid' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() = aria-label="Button"> setView('grid')}
+                  onClick={() => setView('grid')}
                   className="rounded-l-none"
                 >
-                  <Grid className="w-4 h-4 sm:w-auto md:w-full" />
+                  <Grid className="w-4 h-4 " />
                 </Button>
               </div>
             </div>
@@ -529,21 +491,19 @@ export const PluginManager: React.FC = () => {
               <div className="text-muted-foreground">
                 {searchQuery || Object.keys(filters).length > 0 ? (
                   <>
-                    <Search className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+                    <Search className="w-12 h-12 mx-auto mb-4 opacity-50 " />
                     <h3 className="text-lg font-medium mb-2">No plugins found</h3>
                     <p>Try adjusting your search or filters</p>
                   </>
                 ) : (
                   <>
-                    <Plus className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+                    <Plus className="w-12 h-12 mx-auto mb-4 opacity-50 " />
                     <h3 className="text-lg font-medium mb-2">No plugins installed</h3>
                     <p className="mb-4">Get started by installing your first plugin</p>
                     <div className="flex justify-center gap-2">
-                      <button onClick={handleBrowseMarketplace} aria-label="Button">
-                        Browse Marketplace
+                      <Button onClick={handleBrowseMarketplace} >
                       </Button>
-                      <button variant="outline" onClick={handleInstallPlugin} aria-label="Button">
-                        Install Plugin
+                      <Button variant="outline" onClick={handleInstallPlugin} >
                       </Button>
                     </div>
                   </>
@@ -572,7 +532,7 @@ export const PluginManager: React.FC = () => {
       {/* Plugin Configuration Modal */}
       {configurePlugin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto sm:w-auto md:w-full">
+          <div className="bg-background rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto ">
             <h2 className="text-xl font-semibold mb-4">Configure {configurePlugin.name}</h2>
             <p className="text-muted-foreground mb-6">
               Adjust settings for this plugin. Changes will be applied immediately.
@@ -586,11 +546,9 @@ export const PluginManager: React.FC = () => {
             </div>
             
             <div className="flex justify-end gap-2 mt-6">
-              <button variant="outline" onClick={() = aria-label="Button"> setConfigurePlugin(null)}>
-                Cancel
+              <Button variant="outline" onClick={() => setConfigurePlugin(null)}>
               </Button>
-              <button onClick={() = aria-label="Button"> setConfigurePlugin(null)}>
-                Save Changes
+              <Button onClick={() => setConfigurePlugin(null)}>
               </Button>
             </div>
           </div>

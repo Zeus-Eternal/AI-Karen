@@ -7,10 +7,7 @@
  * 3. First available model (from discovered models)
  */
 
-import {
-  Model,
-  ModelLibraryResponse,
-} from "@/lib/model-utils";
+import { Model, ModelLibraryResponse } from "@/lib/model-utils";
 import { getKarenBackend } from "@/lib/karen-backend";
 import { safeError, safeLog } from "@/lib/safe-console";
 
@@ -112,7 +109,7 @@ export class ModelSelectionService {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(preferences),
-      });
+
       safeLog("ModelSelectionService: Saved user preferences");
     } catch (error) {
       safeError(
@@ -183,7 +180,7 @@ export class ModelSelectionService {
           );
         }
         return false;
-      });
+
     }
 
     // Filter by status (only local/available models, exclude downloading)
@@ -265,7 +262,6 @@ export class ModelSelectionService {
 
       // Finally by size (smaller first for better performance)
       return (a.size || 0) - (b.size || 0);
-    });
 
     let firstAvailableModel = sortedModels[0];
 
@@ -300,7 +296,7 @@ export class ModelSelectionService {
     await this.saveUserPreferences({
       ...preferences,
       lastSelectedModel: modelId,
-    });
+
   }
 
   /**
@@ -311,7 +307,7 @@ export class ModelSelectionService {
     await this.saveUserPreferences({
       ...preferences,
       defaultModel: modelId,
-    });
+
   }
 
   /**
@@ -465,8 +461,7 @@ export class ModelSelectionService {
       if (model.type) {
         categoryData.types.add(model.type);
       }
-    });
-    
+
     const categories = Array.from(categoryMap.entries()).map(([name, data]) => ({
       name,
       count: data.count,
@@ -531,7 +526,7 @@ export class ModelSelectionService {
       } catch (error) {
         safeError('ModelSelectionService: Change listener error:', error);
       }
-    });
+
   }
 
   /**

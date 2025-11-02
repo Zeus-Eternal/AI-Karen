@@ -8,7 +8,7 @@ export async function extensionAPI<T = any>(
       method: req.method,
       headers: { 'Content-Type': 'application/json', ...(req.headers || {}) },
       body: req.data ? JSON.stringify(req.data) : undefined,
-    });
+
     const data = await res.json();
     return { success: res.ok, data };
   } catch (error: any) {

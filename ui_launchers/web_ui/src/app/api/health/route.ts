@@ -485,8 +485,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         'Pragma': 'no-cache',
         'Expires': '0'
       }
-    });
-    
+
   } catch (error) {
     const responseTime = Date.now() - startTime;
     
@@ -523,6 +522,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         'Pragma': 'no-cache',
         'Expires': '0'
       }
-    });
+
   }
 }

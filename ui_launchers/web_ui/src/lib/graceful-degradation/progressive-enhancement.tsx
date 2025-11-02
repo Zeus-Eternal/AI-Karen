@@ -190,7 +190,6 @@ export function ProgressiveFeature({
           return (
             <div className="relative">
               <div className="absolute top-0 right-0 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-bl">
-                Cached Data
               </div>
               {children}
             </div>
@@ -202,7 +201,6 @@ export function ProgressiveFeature({
         return (
           <div className="relative">
             <div className="absolute top-0 right-0 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-bl">
-              Demo Mode
             </div>
             {children}
           </div>
@@ -265,7 +263,7 @@ export function useProgressiveData<T>(
         result = await fetcher.fetchWithCache<T>(options.cacheKey, {
           useStaleOnError: options.useStaleOnError,
           maxStaleAge: options.maxStaleAge
-        });
+
       } else {
         result = await fetchFunction();
       }
@@ -349,7 +347,6 @@ export function ProgressiveDataDisplay<T>({
     enableCaching,
     useStaleOnError: true,
     maxStaleAge: 60 * 60 * 1000 // 1 hour
-  });
 
   if (isLoading && !data) {
     return renderLoading ? renderLoading() : (

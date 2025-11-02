@@ -7,10 +7,10 @@
  * Requirements: 1.1, 1.3, 5.1, 5.4, 5.5
  */
 
-'use client';
+"use client";
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import {
+
   isAuthenticated, 
   getCurrentUser, 
   hasRole, 
@@ -19,7 +19,7 @@ import {
   getSession,
   clearSession,
   type SessionData
-} from '@/lib/auth/session';
+import { } from '@/lib/auth/session';
 
 export interface SessionUser {
   userId: string;

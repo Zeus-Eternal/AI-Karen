@@ -41,14 +41,14 @@ vi.mock('@/lib/auth/session', () => ({
   clearSession: vi.fn(),
 }));
 
-import { 
+
   login as sessionLogin,
   logout as sessionLogout,
   validateSession, 
   clearSession, 
   hasSessionCookie,
   getCurrentUser 
-} from '@/lib/auth/session';
+import { } from '@/lib/auth/session';
 
 const mockLogin = sessionLogin as ReturnType<typeof vi.fn>;
 const mockLogout = sessionLogout as ReturnType<typeof vi.fn>;
@@ -105,7 +105,6 @@ const mockLocation = {
 Object.defineProperty(window, 'location', {
   value: mockLocation,
   writable: true,
-});
 
 // Test component to access auth context
 const TestAuthComponent: React.FC = () => {
@@ -121,18 +120,15 @@ const TestAuthComponent: React.FC = () => {
       </div>
       <button 
         data-testid="test-login" 
-        onClick={() = aria-label="Button"> login({ email: 'test@example.com', password: 'password123' })}
+        onClick={() => login({ email: 'test@example.com', password: 'password123' })}
       >
-        Test Login
       </button>
       <button data-testid="test-logout" onClick={logout} aria-label="Button">
-        Test Logout
       </button>
       <button 
         data-testid="test-check-auth" 
-        onClick={() = aria-label="Button"> checkAuth()}
+        onClick={() => checkAuth()}
       >
-        Check Auth
       </button>
     </div>
   );
@@ -150,11 +146,9 @@ describe('Authentication Flow - Comprehensive Tests', () => {
     mockValidateSession.mockResolvedValue(false);
     mockGetCurrentUser.mockReturnValue(null);
     mockLogout.mockResolvedValue(undefined); // Ensure logout returns a Promise
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Login Flow with Valid Credentials', () => {
     it('should successfully authenticate with valid credentials', async () => {
@@ -167,7 +161,6 @@ describe('Authentication Flow - Comprehensive Tests', () => {
         email: 'test@example.com',
         roles: ['user'],
         tenantId: 'tenant123',
-      });
 
       await act(async () => {
         render(
@@ -175,24 +168,20 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <LoginForm />
           </AuthProvider>
         );
-      });
 
       // Fill in valid credentials
       await act(async () => {
         await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
         await user.type(screen.getByLabelText(/password/i), 'validpassword123');
-      });
 
       // Submit the form
       await act(async () => {
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       // Verify login was called with correct credentials
       await waitFor(() => {
         expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'validpassword123', '');
-      });
-    });
+
 
     it('should set authentication state after successful login', async () => {
       // Mock successful login and user data
@@ -202,7 +191,6 @@ describe('Authentication Flow - Comprehensive Tests', () => {
         email: 'test@example.com',
         roles: ['user'],
         tenantId: 'tenant123',
-      });
 
       await act(async () => {
         render(
@@ -210,7 +198,6 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <TestAuthComponent />
           </AuthProvider>
         );
-      });
 
       // Initially not authenticated
       expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated');
@@ -219,15 +206,13 @@ describe('Authentication Flow - Comprehensive Tests', () => {
       // Trigger login
       await act(async () => {
         fireEvent.click(screen.getByTestId('test-login'));
-      });
 
       // Should be authenticated after login
       await waitFor(() => {
         expect(screen.getByTestId('auth-status')).toHaveTextContent('authenticated');
         expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com');
-      });
-    });
-  });
+
+
 
   describe('Login Flow with Invalid Credentials', () => {
     it('should reject invalid credentials and show error', async () => {
@@ -242,27 +227,22 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <LoginForm />
           </AuthProvider>
         );
-      });
 
       // Fill in invalid credentials
       await act(async () => {
         await user.type(screen.getByLabelText(/email address/i), 'wrong@example.com');
         await user.type(screen.getByLabelText(/password/i), 'wrongpassword');
-      });
 
       // Submit the form
       await act(async () => {
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       // Should show error message
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Should not be authenticated
       expect(mockGetCurrentUser).not.toHaveBeenCalled();
-    });
 
     it('should not set authentication state on failed login', async () => {
       // Mock failed login
@@ -274,7 +254,6 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <TestAuthComponent />
           </AuthProvider>
         );
-      });
 
       // Initially not authenticated
       expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated');
@@ -282,15 +261,13 @@ describe('Authentication Flow - Comprehensive Tests', () => {
       // Trigger failed login
       await act(async () => {
         fireEvent.click(screen.getByTestId('test-login'));
-      });
 
       // Should remain not authenticated
       await waitFor(() => {
         expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated');
         expect(screen.getByTestId('user-email')).toHaveTextContent('no-user');
-      });
-    });
-  });
+
+
 
   describe('Session Persistence Across Page Refresh', () => {
     it('should restore authentication state from valid session cookie', async () => {
@@ -302,7 +279,6 @@ describe('Authentication Flow - Comprehensive Tests', () => {
         email: 'test@example.com',
         roles: ['user'],
         tenantId: 'tenant123',
-      });
 
       await act(async () => {
         render(
@@ -310,16 +286,13 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <TestAuthComponent />
           </AuthProvider>
         );
-      });
 
       // Should automatically authenticate on mount
       await waitFor(() => {
         expect(screen.getByTestId('auth-status')).toHaveTextContent('authenticated');
         expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com');
-      });
 
       expect(mockValidateSession).toHaveBeenCalledTimes(1);
-    });
 
     it('should not authenticate with invalid session cookie', async () => {
       // Mock invalid session cookie
@@ -332,16 +305,13 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <TestAuthComponent />
           </AuthProvider>
         );
-      });
 
       // Should not be authenticated
       await waitFor(() => {
         expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated');
         expect(screen.getByTestId('user-email')).toHaveTextContent('no-user');
-      });
 
       expect(mockValidateSession).toHaveBeenCalledTimes(1);
-    });
 
     it('should not authenticate without session cookie', async () => {
       // Mock no session cookie
@@ -353,18 +323,15 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <TestAuthComponent />
           </AuthProvider>
         );
-      });
 
       // Should not be authenticated
       await waitFor(() => {
         expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated');
         expect(screen.getByTestId('user-email')).toHaveTextContent('no-user');
-      });
 
       // Should still call validation even without cookie (checkAuth always calls validateSession)
       expect(mockValidateSession).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('Logout Flow and State Clearing', () => {
     it('should clear all authentication state on logout', async () => {
@@ -376,7 +343,6 @@ describe('Authentication Flow - Comprehensive Tests', () => {
         email: 'test@example.com',
         roles: ['user'],
         tenantId: 'tenant123',
-      });
 
       await act(async () => {
         render(
@@ -384,17 +350,14 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <TestAuthComponent />
           </AuthProvider>
         );
-      });
 
       // Wait for initial authentication
       await waitFor(() => {
         expect(screen.getByTestId('auth-status')).toHaveTextContent('authenticated');
-      });
 
       // Trigger logout
       await act(async () => {
         fireEvent.click(screen.getByTestId('test-logout'));
-      });
 
       // Should clear authentication state
       expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated');
@@ -405,7 +368,6 @@ describe('Authentication Flow - Comprehensive Tests', () => {
 
       // Should redirect to login
       expect(mockLocation.href).toBe('/login');
-    });
 
     it('should redirect to login immediately after logout', async () => {
       await act(async () => {
@@ -414,17 +376,14 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <TestAuthComponent />
           </AuthProvider>
         );
-      });
 
       // Trigger logout
       await act(async () => {
         fireEvent.click(screen.getByTestId('test-logout'));
-      });
 
       // Should redirect to login
       expect(mockLocation.href).toBe('/login');
-    });
-  });
+
 
   describe('No Authentication Bypass with Multiple Failed Attempts', () => {
     it('should not bypass authentication after multiple failed login attempts', async () => {
@@ -444,18 +403,15 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <LoginForm />
           </AuthProvider>
         );
-      });
 
       // Attempt 1
       await act(async () => {
         await user.type(screen.getByLabelText(/email address/i), 'wrong1@example.com');
         await user.type(screen.getByLabelText(/password/i), 'wrong1');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Clear form and attempt 2
       await act(async () => {
@@ -464,11 +420,9 @@ describe('Authentication Flow - Comprehensive Tests', () => {
         await user.type(screen.getByLabelText(/email address/i), 'wrong2@example.com');
         await user.type(screen.getByLabelText(/password/i), 'wrong2');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Clear form and attempt 3
       await act(async () => {
@@ -477,11 +431,9 @@ describe('Authentication Flow - Comprehensive Tests', () => {
         await user.type(screen.getByLabelText(/email address/i), 'wrong3@example.com');
         await user.type(screen.getByLabelText(/password/i), 'wrong3');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Clear form and attempt 4
       await act(async () => {
@@ -490,11 +442,9 @@ describe('Authentication Flow - Comprehensive Tests', () => {
         await user.type(screen.getByLabelText(/email address/i), 'wrong4@example.com');
         await user.type(screen.getByLabelText(/password/i), 'wrong4');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Clear form and attempt 5
       await act(async () => {
@@ -503,11 +453,9 @@ describe('Authentication Flow - Comprehensive Tests', () => {
         await user.type(screen.getByLabelText(/email address/i), 'wrong5@example.com');
         await user.type(screen.getByLabelText(/password/i), 'wrong5');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Verify all attempts were made (no bypass)
       expect(mockLogin).toHaveBeenCalledTimes(5);
@@ -518,7 +466,6 @@ describe('Authentication Flow - Comprehensive Tests', () => {
       expect(mockLogin).toHaveBeenNthCalledWith(3, 'wrong3@example.com', 'wrong3', '');
       expect(mockLogin).toHaveBeenNthCalledWith(4, 'wrong4@example.com', 'wrong4', '');
       expect(mockLogin).toHaveBeenNthCalledWith(5, 'wrong5@example.com', 'wrong5', '');
-    });
 
     it('should still require valid credentials after failed attempts', async () => {
       const user = userEvent.setup();
@@ -535,7 +482,6 @@ describe('Authentication Flow - Comprehensive Tests', () => {
         email: 'valid@example.com',
         roles: ['user'],
         tenantId: 'tenant123',
-      });
 
       await act(async () => {
         render(
@@ -543,7 +489,6 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <LoginForm />
           </AuthProvider>
         );
-      });
 
       // Three failed attempts
       for (let i = 1; i <= 3; i++) {
@@ -553,11 +498,10 @@ describe('Authentication Flow - Comprehensive Tests', () => {
           await user.type(screen.getByLabelText(/email address/i), `wrong${i}@example.com`);
           await user.type(screen.getByLabelText(/password/i), `wrong${i}`);
           await user.click(screen.getByRole('button', { name: /sign in/i }));
-        });
 
         await waitFor(() => {
           expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-        });
+
       }
 
       // Now try with valid credentials
@@ -567,15 +511,13 @@ describe('Authentication Flow - Comprehensive Tests', () => {
         await user.type(screen.getByLabelText(/email address/i), 'valid@example.com');
         await user.type(screen.getByLabelText(/password/i), 'validpassword');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       // Should succeed with valid credentials
       await waitFor(() => {
         expect(mockLogin).toHaveBeenCalledTimes(4);
         expect(mockLogin).toHaveBeenLastCalledWith('valid@example.com', 'validpassword', '');
-      });
-    });
-  });
+
+
 
   describe('Protected Route Integration', () => {
     it('should allow access to protected content when authenticated', async () => {
@@ -587,7 +529,6 @@ describe('Authentication Flow - Comprehensive Tests', () => {
         email: 'test@example.com',
         roles: ['user'],
         tenantId: 'tenant123',
-      });
 
       await act(async () => {
         render(
@@ -597,16 +538,13 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             </ProtectedRoute>
           </AuthProvider>
         );
-      });
 
       // Should render protected content
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       // Should not redirect
       expect(mockReplace).not.toHaveBeenCalled();
-    });
 
     it('should redirect to login when not authenticated', async () => {
       // Mock unauthenticated state
@@ -621,13 +559,11 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             </ProtectedRoute>
           </AuthProvider>
         );
-      });
 
       // Should redirect to login
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
-    });
+
 
     it('should redirect to login when session validation fails', async () => {
       // Mock session cookie exists but validation fails
@@ -642,14 +578,12 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             </ProtectedRoute>
           </AuthProvider>
         );
-      });
 
       // Should redirect to login
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
-    });
-  });
+
+
 
   describe('Error Handling and Edge Cases', () => {
     it('should handle network errors during authentication check', async () => {
@@ -663,14 +597,12 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <TestAuthComponent />
           </AuthProvider>
         );
-      });
 
       // Should not be authenticated on network error
       await waitFor(() => {
         expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated');
         expect(screen.getByTestId('user-email')).toHaveTextContent('no-user');
-      });
-    });
+
 
     it('should handle logout errors gracefully', async () => {
       // Mock logout error
@@ -682,18 +614,15 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <TestAuthComponent />
           </AuthProvider>
         );
-      });
 
       // Trigger logout
       await act(async () => {
         fireEvent.click(screen.getByTestId('test-logout'));
-      });
 
       // Should still clear local state and redirect
       expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated');
       expect(screen.getByTestId('user-email')).toHaveTextContent('no-user');
       expect(mockLocation.href).toBe('/login');
-    });
 
     it('should clear error when user starts typing in login form', async () => {
       const user = userEvent.setup();
@@ -707,26 +636,21 @@ describe('Authentication Flow - Comprehensive Tests', () => {
             <LoginForm />
           </AuthProvider>
         );
-      });
 
       // Trigger error
       await act(async () => {
         await user.type(screen.getByLabelText(/email address/i), 'wrong@example.com');
         await user.type(screen.getByLabelText(/password/i), 'wrongpassword');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Start typing - error should clear
       await act(async () => {
         await user.type(screen.getByLabelText(/email address/i), 'a');
-      });
 
       // Error should be cleared
       expect(screen.queryByText('Invalid credentials')).not.toBeInTheDocument();
-    });
-  });
-});
+
+

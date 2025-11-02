@@ -54,7 +54,7 @@ export const createQueryClient = () => {
           type: 'error',
           title: 'Operation Failed',
           message: error.message || 'An unexpected error occurred',
-        });
+
       },
       onSuccess: (data, variables, context, mutation) => {
         // Clear any existing mutation errors
@@ -72,7 +72,7 @@ export const createQueryClient = () => {
             type: 'warning',
             title: 'Data Sync Issue',
             message: 'Unable to refresh data. Using cached version.',
-          });
+
         } else {
           // Set global error state for initial fetches
           setError('query', error.message || 'Failed to load data');
@@ -84,7 +84,7 @@ export const createQueryClient = () => {
         clearError('query');
       },
     },
-  });
+
 };
 // Query keys factory for consistent key management
 export const queryKeys = {
@@ -174,7 +174,7 @@ export const prefetchQueries = {
     await queryClient.prefetchQuery({
       queryKey: queryKeys.users.user(userId),
       queryFn: () => fetch(`/api/users/${userId}`).then(res => res.json()),
-    });
+
   },
 };
 // Helper function to set query data optimistically

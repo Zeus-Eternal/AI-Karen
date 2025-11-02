@@ -29,7 +29,6 @@ describe('LoadingSpinner', () => {
     );
     
     expect(screen.getByTestId('spinner')).toBeInTheDocument();
-  });
 
   it('renders dots variant correctly', () => {
     render(
@@ -42,7 +41,6 @@ describe('LoadingSpinner', () => {
     expect(spinner).toBeInTheDocument();
     // Should have 3 dots
     expect(spinner.children).toHaveLength(3);
-  });
 
   it('renders pulse variant correctly', () => {
     render(
@@ -52,7 +50,6 @@ describe('LoadingSpinner', () => {
     );
     
     expect(screen.getByTestId('pulse-spinner')).toBeInTheDocument();
-  });
 
   it('renders bars variant correctly', () => {
     render(
@@ -65,7 +62,6 @@ describe('LoadingSpinner', () => {
     expect(spinner).toBeInTheDocument();
     // Should have 4 bars
     expect(spinner.children).toHaveLength(4);
-  });
 
   it('applies size classes correctly', () => {
     render(
@@ -75,7 +71,6 @@ describe('LoadingSpinner', () => {
     );
     
     expect(screen.getByTestId('large-spinner')).toHaveClass('w-8', 'h-8');
-  });
 
   it('applies color classes correctly', () => {
     render(
@@ -85,7 +80,6 @@ describe('LoadingSpinner', () => {
     );
     
     expect(screen.getByTestId('colored-spinner')).toHaveClass('text-secondary');
-  });
 
   it('applies custom className', () => {
     render(
@@ -95,5 +89,4 @@ describe('LoadingSpinner', () => {
     );
     
     expect(screen.getByTestId('custom-spinner')).toHaveClass('custom-class');
-  });
-});
+

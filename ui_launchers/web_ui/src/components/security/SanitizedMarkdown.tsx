@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
@@ -48,7 +49,7 @@ const configureMarked = (linkTarget: '_blank' | '_self' = '_blank') => {
     gfm: true,
     breaks: true
     // Many options like sanitize, smartLists, smartypants, xhtml were removed in newer versions of marked
-  });
+
 };
 export const SanitizedMarkdown: React.FC<SanitizedMarkdownProps> = ({
   content,
@@ -112,18 +113,18 @@ export const SanitizedMarkdown: React.FC<SanitizedMarkdownProps> = ({
         truncated: content.length > maxLength,
         sanitizedLength: cleanHtml.length,
         removedContent: rawHtml.length - cleanHtml.length > 0
-      });
+
       return cleanHtml;
     } catch (error) {
       track('markdown_sanitization_error', {
         error: error instanceof Error ? error.message : 'Unknown error',
         contentLength: content.length
-      });
+
       // Fallback to plain text
       return DOMPurify.sanitize(content, { 
         ALLOWED_TAGS: [], 
         ALLOWED_ATTR: [] 
-      });
+
     }
   }, [content, allowedTags, allowedAttributes, linkTarget, maxLength, track]);
   if (!sanitizedHtml) {
@@ -145,7 +146,7 @@ export const sanitizeText = (text: string, maxLength: number = 10000): string =>
     ALLOWED_TAGS: [],
     ALLOWED_ATTR: [],
     KEEP_CONTENT: true
-  });
+
 };
 // Utility function for sanitizing URLs
 export const sanitizeUrl = (url: string): string => {

@@ -8,7 +8,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 describe('Session Validation Error Handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Database Connection Retry Logic', () => {
     it('should implement exponential backoff for retries', async () => {
@@ -42,7 +41,6 @@ describe('Session Validation Error Handling', () => {
       expect(delays).toEqual([200, 400]); // 200ms, 400ms (capped at 1000ms)
       
       global.setTimeout = originalSetTimeout;
-    });
 
     it('should handle database connectivity test failures', () => {
       interface DatabaseConnectivityResult {
@@ -68,8 +66,7 @@ describe('Session Validation Error Handling', () => {
       expect(result.error).toBe('Connection timeout');
       expect(result.responseTime).toBeGreaterThan(0);
       expect(result.timestamp).toBeInstanceOf(Date);
-    });
-  });
+
 
   describe('Session State Management', () => {
     it('should handle missing authentication tokens', () => {
@@ -90,7 +87,6 @@ describe('Session Validation Error Handling', () => {
       expect(extractTokenFromRequest({})).toBe(null);
       expect(extractTokenFromRequest({ 'authorization': 'Bearer token123' })).toBe('token123');
       expect(extractTokenFromRequest({ 'cookie': 'auth_token=cookie123; other=value' })).toBe('cookie123');
-    });
 
     it('should validate session response format', () => {
       interface SessionValidationResponse {
@@ -121,8 +117,7 @@ describe('Session Validation Error Handling', () => {
       expect(validResponse.user).toBeTruthy();
       expect(invalidResponse.valid).toBe(false);
       expect(invalidResponse.user).toBe(null);
-    });
-  });
+
 
   describe('Error Response Structure', () => {
     it('should return consistent error response for session validation', () => {
@@ -155,8 +150,7 @@ describe('Session Validation Error Handling', () => {
       expect(errorResponse).toHaveProperty('errorType');
       expect(errorResponse).toHaveProperty('retryable');
       expect(errorResponse).toHaveProperty('timestamp');
-    });
-  });
+
 
   describe('Session Validation Logging', () => {
     it('should log session validation attempts', () => {
@@ -199,8 +193,7 @@ describe('Session Validation Error Handling', () => {
       expect(attempts).toHaveLength(1);
       expect(attempts![0].success).toBe(true);
       expect(attempts![0].responseTime).toBe(150);
-    });
-  });
+
 
   describe('Timeout Configuration', () => {
     it('should use appropriate timeouts for session validation', () => {
@@ -231,6 +224,5 @@ describe('Session Validation Error Handling', () => {
       expect(timeoutManager.getAuthTimeout('validation')).toBe(30000);
       expect(timeoutManager.getAuthTimeout('login')).toBe(45000);
       expect(timeoutManager.getAuthTimeout('refresh')).toBe(31500); // 45000 * 0.7
-    });
-  });
-});
+
+

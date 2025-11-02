@@ -19,7 +19,7 @@ export function FixedModelProviderIntegration() {
     enableCaching: true,
     useStaleOnError: true,
     maxStaleAge: 60 * 60 * 1000 // 1 hour
-  });
+
   const {
     isEnabled,
     showDegradedBanner,
@@ -55,7 +55,6 @@ export function FixedModelProviderIntegration() {
               onClick={forceRetry}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
-              Force Retry
             </button>
           </div>
         </ServiceUnavailable>
@@ -64,15 +63,12 @@ export function FixedModelProviderIntegration() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">
-              Model Providers
               {isStale && (
                 <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                  Cached Data
                 </span>
               )}
               {isFromCache && (
                 <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                  From Cache
                 </span>
               )}
             </h3>
@@ -80,7 +76,6 @@ export function FixedModelProviderIntegration() {
               onClick={refresh}
               className="text-sm text-blue-600 hover:text-blue-700 underline"
             >
-              Refresh
             </button>
           </div>
           <div className="grid gap-4">
@@ -111,7 +106,6 @@ export function FixedModelProviderIntegration() {
       )}
       {providers && providers.length === 0 && (
         <div className="text-center py-8 text-gray-500">
-          No model providers available
         </div>
       )}
     </div>
@@ -164,7 +158,6 @@ export function withGracefulDegradation<P extends object>(
 }
 // Example usage of the wrapper
 const GracefulModelProviderIntegration = withGracefulDegradation(
-  FixedModelProviderIntegration,
   'modelProviderIntegration'
 );
 export { GracefulModelProviderIntegration };
@@ -197,17 +190,7 @@ export function useModelProviderSuggestions() {
 // Example of how to initialize the system in your app
 export function initializeGracefulDegradationInApp() {
   // Import the init function
-  import('./init').then(({ initGracefulDegradation }) => {
-    initGracefulDegradation({
-      enableCaching: true,
-      enableGlobalErrorHandling: true,
-      developmentMode: process.env.NODE_ENV === 'development',
-      logLevel: 'info',
-      featureFlags: {
-        modelProviderIntegration: {
-          enabled: true,
-          fallbackBehavior: 'cache'
-        },
+  import('./init').then(({ initGracefulDegradation }) => { initGracefulDegradation({ enableCaching: true, enableGlobalErrorHandling: true, developmentMode: process.env.NODE_ENV === 'development', logLevel: 'info', featureFlags: { modelProviderIntegration: { enabled: true, fallbackBehavior: 'cache' }, from "@/lib/placeholder";
         extensionSystem: {
           enabled: true,
           fallbackBehavior: 'disable'
@@ -217,6 +200,6 @@ export function initializeGracefulDegradationInApp() {
           fallbackBehavior: 'hide'
         }
       }
-    });
-  });
+
+
 }

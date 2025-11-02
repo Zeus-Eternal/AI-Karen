@@ -6,15 +6,15 @@
  * 
  * Requirements: 7.3, 7.5
  */
-'use client';
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { useRole } from '@/hooks/useRole';
 import { AdminCacheManager } from '@/lib/cache/admin-cache';
-import { 
+
   adminPerformanceMonitor,
-  PerformanceReporter 
-} from '@/lib/performance/admin-performance-monitor';
+import { } from '@/lib/performance/admin-performance-monitor';
 import type { PerformanceReport, CacheStats } from '@/types/admin';
 interface PerformanceDashboardProps {
   className?: string;
@@ -101,7 +101,7 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
     return (
       <div className={`bg-white shadow rounded-lg p-6 ${className}`}>
         <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4 sm:w-auto md:w-full"></div>
+          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4 "></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="h-24 bg-gray-200 rounded"></div>
@@ -122,7 +122,6 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
             onClick={loadPerformanceData}
             className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
            aria-label="Button">
-            Retry
           </button>
         </div>
       </div>
@@ -144,7 +143,7 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
               <input
                 type="checkbox"
                 checked={autoRefresh}
-                onChange={(e) = aria-label="Input"> setAutoRefresh(e.target.checked)}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
                 className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               Auto-refresh
@@ -153,13 +152,11 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
               onClick={loadPerformanceData}
               className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 md:text-base lg:text-lg"
              aria-label="Button">
-              Refresh
             </button>
             <button
               onClick={clearMetrics}
               className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 md:text-base lg:text-lg"
              aria-label="Button">
-              Clear Metrics
             </button>
           </div>
         </div>
@@ -315,20 +312,17 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
             {/* Export Options */}
             <div className="flex items-center justify-between pt-4 border-t border-gray-200">
               <div className="text-sm text-gray-500 md:text-base lg:text-lg">
-                Performance monitoring is active
               </div>
               <div className="flex space-x-2">
                 <button
-                  onClick={() = aria-label="Button"> exportReport('json')}
+                  onClick={() => exportReport('json')}
                   className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 md:text-base lg:text-lg"
                 >
-                  Export JSON
                 </button>
                 <button
-                  onClick={() = aria-label="Button"> exportReport('csv')}
+                  onClick={() => exportReport('csv')}
                   className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 md:text-base lg:text-lg"
                 >
-                  Export CSV
                 </button>
               </div>
             </div>
@@ -340,7 +334,6 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
               onClick={loadPerformanceData}
               className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
              aria-label="Button">
-              Load Data
             </button>
           </div>
         )}

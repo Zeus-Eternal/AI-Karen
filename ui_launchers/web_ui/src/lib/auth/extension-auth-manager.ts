@@ -254,7 +254,7 @@ export class ExtensionAuthManager {
       logger.debug('Hot reload detected in extension auth manager', event);
       // Preserve current authentication state
       this.preserveAuthForHotReload();
-    });
+
   }
 
   /**

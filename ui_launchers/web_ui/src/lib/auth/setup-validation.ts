@@ -369,14 +369,12 @@ export function createSuperAdminValidator(): FormValidator {
   const validator = new FormValidator({
     email: SUPER_ADMIN_EMAIL_RULES,
     password: SUPER_ADMIN_PASSWORD_RULES
-  });
-  
+
   // Add full_name validation rules manually since FormValidator doesn't support it by default
   validator.addValidationRule('full_name' as any, FULL_NAME_RULES[0]);
   FULL_NAME_RULES.slice(1).forEach(rule => {
     validator.addValidationRule('full_name' as any, rule);
-  });
-  
+
   return validator;
 }
 

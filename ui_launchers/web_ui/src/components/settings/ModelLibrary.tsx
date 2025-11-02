@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,26 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Library,
-  Loader2,
-  Cloud,
-  HardDrive,
-  Search,
-  RefreshCw,
-  Download,
-  Info,
-  X,
-  Filter,
-  ArrowUpDown,
-  SortAsc,
-  SortDesc,
-  Settings,
-  CheckCircle,
-  PlayCircle
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
-import { 
+
   errorHandler, 
   handleApiError, 
   handleDownloadError, 
@@ -34,7 +20,7 @@ import {
   showSuccess,
   showInfo,
   showWarning
-} from '@/lib/error-handler';
+import { } from '@/lib/error-handler';
 import { HelpTooltip, HelpSection, QuickHelp } from '@/components/ui/help-tooltip';
 import { ContextualHelp, HelpCallout, QuickStartHelp } from '@/components/ui/contextual-help';
 import { useDownloadStatus } from '@/hooks/use-download-status';
@@ -136,7 +122,7 @@ export default function ModelLibrary() {
     variant: 'default',
     loading: false,
     onConfirm: async () => {},
-  });
+
   // Action loading states
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   // Debounced search query
@@ -236,7 +222,7 @@ export default function ModelLibrary() {
         modelsIsArray: Array.isArray(response?.models),
         modelsLength: response?.models?.length || 0,
         fullResponse: response
-      });
+
       if (response && 'models' in response && Array.isArray(response.models)) {
         setModels(response.models);
       } else {
@@ -353,7 +339,7 @@ export default function ModelLibrary() {
             setConfirmationDialog(prev => ({ ...prev, loading: false }));
           }
         }
-      });
+
       return;
     }
     // For non-destructive actions, execute directly
@@ -367,7 +353,7 @@ export default function ModelLibrary() {
           const response = await backend.makeRequestPublic(`/api/models/download`, {
             method: 'POST',
             body: JSON.stringify({ model_id: modelId })
-          });
+
           if (response && (response as any).task_id) {
             // The download status hook will automatically pick up this task
             showSuccess(
@@ -383,7 +369,7 @@ export default function ModelLibrary() {
         case 'delete':
           await backend.makeRequestPublic(`/api/models/${modelId}`, {
             method: 'DELETE'
-          });
+
           showSuccess("Model Deleted", `${modelName} has been removed from local storage.`);
           break;
         case 'cancel':
@@ -395,7 +381,7 @@ export default function ModelLibrary() {
             // Fallback to direct API call
             await backend.makeRequestPublic(`/api/models/download/${modelId}`, {
               method: 'DELETE'
-            });
+
             showInfo("Download Cancelled", `Download of ${modelName} has been cancelled.`);
           }
           break;
@@ -501,7 +487,7 @@ export default function ModelLibrary() {
       const matchesCapability = filterCapability === 'all' || 
         model.capabilities.includes(filterCapability);
       return matchesSearch && matchesProvider && matchesStatus && matchesSize && matchesCapability;
-    });
+
     // Sort models
     filtered.sort((a, b) => {
       let comparison = 0;
@@ -526,7 +512,7 @@ export default function ModelLibrary() {
           comparison = 0;
       }
       return sortOrder === 'asc' ? comparison : -comparison;
-    });
+
     return filtered;
   }, [modelsWithDownloadStatus, debouncedSearchQuery, filterProvider, filterStatus, filterSize, filterCapability, sortBy, sortOrder]);
   // Group models by provider type
@@ -538,7 +524,7 @@ export default function ModelLibrary() {
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary " />
             <div className="space-y-2">
               <p className="text-lg font-medium">Loading Model Library</p>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -558,8 +544,7 @@ export default function ModelLibrary() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Library className="h-5 w-5 sm:w-auto md:w-full" />
-                Model Library
+                <Library className="h-5 w-5 " />
                 <HelpTooltip helpKey="modelLibrary" />
               </CardTitle>
               <CardDescription>
@@ -567,28 +552,27 @@ export default function ModelLibrary() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={handleRefresh}
                 disabled={refreshing}
-               aria-label="Button">
+               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
               </Button>
               {activeDownloads.length > 0 && (
                 <button
                   variant={showDownloadManager ? "default" : "outline"}
                   size="sm"
-                  onClick={() = aria-label="Button"> setShowDownloadManager(!showDownloadManager)}
+                  onClick={() => setShowDownloadManager(!showDownloadManager)}
                 >
-                  <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                  <Download className="h-4 w-4 mr-2 " />
                   Downloads ({activeDownloads.length})
                 </Button>
               )}
               {stats && (
                 <Badge variant="outline" className="gap-1">
-                  <Library className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Library className="h-3 w-3 " />
                   {stats.localModels} local, {stats.cloudModels} available
                 </Badge>
               )}
@@ -630,7 +614,7 @@ export default function ModelLibrary() {
           <Card>
             <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center gap-2">
-                <Library className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                <Library className="h-4 w-4 text-muted-foreground " />
                 <div>
                   <div className="flex items-center gap-1">
                     <p className="text-sm font-medium md:text-base lg:text-lg">Total Models</p>
@@ -644,7 +628,7 @@ export default function ModelLibrary() {
           <Card>
             <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center gap-2">
-                <HardDrive className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                <HardDrive className="h-4 w-4 text-muted-foreground " />
                 <div>
                   <p className="text-sm font-medium md:text-base lg:text-lg">Local Models</p>
                   <p className="text-2xl font-bold">{stats.localModels}</p>
@@ -655,7 +639,7 @@ export default function ModelLibrary() {
           <Card>
             <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center gap-2">
-                <Cloud className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                <Cloud className="h-4 w-4 text-muted-foreground " />
                 <div>
                   <p className="text-sm font-medium md:text-base lg:text-lg">Available</p>
                   <p className="text-2xl font-bold">{stats.cloudModels}</p>
@@ -666,7 +650,7 @@ export default function ModelLibrary() {
           <Card>
             <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center gap-2">
-                <Download className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                <Download className="h-4 w-4 text-muted-foreground " />
                 <div>
                   <p className="text-sm font-medium md:text-base lg:text-lg">Downloading</p>
                   <p className="text-2xl font-bold">{stats.downloadingModels}</p>
@@ -681,24 +665,22 @@ export default function ModelLibrary() {
         <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Settings className="h-5 w-5 text-primary sm:w-auto md:w-full" />
+              <Settings className="h-5 w-5 text-primary " />
               <div>
                 <h3 className="font-medium">Provider Configuration</h3>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                  Configure providers and check model compatibility in LLM Settings
                 </p>
               </div>
             </div>
-            <button
+            <Button
               variant="outline"
-              onClick={() = aria-label="Button"> {
+              onClick={() => {
                 // Navigate back to LLM Settings
                 window.dispatchEvent(new CustomEvent('navigate-to-llm-settings'));
               }}
               className="gap-2"
             >
-              <Settings className="h-4 w-4 sm:w-auto md:w-full" />
-              LLM Settings
+              <Settings className="h-4 w-4 " />
             </Button>
           </div>
         </CardContent>
@@ -707,11 +689,9 @@ export default function ModelLibrary() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 sm:w-auto md:w-full" />
-            Integration Status
+            <CheckCircle className="h-5 w-5 " />
           </CardTitle>
           <CardDescription>
-            Current integration status between Model Library and LLM providers
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -720,11 +700,10 @@ export default function ModelLibrary() {
               <h4 className="font-medium text-sm md:text-base lg:text-lg">Local Models Ready</h4>
               <div className="flex items-center gap-2">
                 <Badge variant="default" className="gap-1">
-                  <HardDrive className="h-3 w-3 sm:w-auto md:w-full" />
+                  <HardDrive className="h-3 w-3 " />
                   {localModels.length} models
                 </Badge>
                 <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                  Available for immediate use
                 </span>
               </div>
             </div>
@@ -732,42 +711,39 @@ export default function ModelLibrary() {
               <h4 className="font-medium text-sm md:text-base lg:text-lg">Download Queue</h4>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="gap-1">
-                  <Download className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Download className="h-3 w-3 " />
                   {downloadingModels.length} downloading
                 </Badge>
                 <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                  Models being prepared
                 </span>
               </div>
             </div>
           </div>
           {/* Quick Actions */}
           <div className="flex flex-wrap gap-2 pt-2 border-t">
-            <button
+            <Button
               variant="outline"
               size="sm"
-              onClick={() = aria-label="Button"> {
+              onClick={() => {
                 window.dispatchEvent(new CustomEvent('navigate-to-llm-settings'));
               }}
               className="gap-2"
             >
-              <Settings className="h-4 w-4 sm:w-auto md:w-full" />
-              Configure Providers
+              <Settings className="h-4 w-4 " />
             </Button>
-            <button
+            <Button
               variant="outline"
               size="sm"
-              onClick={() = aria-label="Button"> {
+              onClick={() => {
                 // Test workflow integration
                 toast({
                   title: "Integration Test",
                   description: "Testing Model Library integration with LLM Settings...",
-                });
+
               }}
               className="gap-2"
             >
-              <PlayCircle className="h-4 w-4 sm:w-auto md:w-full" />
-              Test Integration
+              <PlayCircle className="h-4 w-4 " />
             </Button>
           </div>
         </CardContent>
@@ -780,21 +756,21 @@ export default function ModelLibrary() {
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground " />
                   <input
                     placeholder="Search models by name, description, tags, or capabilities..."
                     value={searchQuery}
-                    onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
                   />
                   {searchQuery && (
-                    <button
+                    <Button
                       variant="ghost"
                       size="sm"
-                      className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 sm:w-auto md:w-full"
-                      onClick={() = aria-label="Button"> setSearchQuery('')}
+                      className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 "
+                      onClick={() => setSearchQuery('')}
                     >
-                      <X className="h-3 w-3 sm:w-auto md:w-full" />
+                      <X className="h-3 w-3 " />
                     </Button>
                   )}
                 </div>
@@ -813,13 +789,13 @@ export default function ModelLibrary() {
                   <selectItem value="status" aria-label="Select option">Status</SelectItem>
                 </SelectContent>
               </Select>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                 className="gap-1"
               >
-                {sortOrder === 'asc' ? <SortAsc className="h-3 w-3 sm:w-auto md:w-full" /> : <SortDesc className="h-3 w-3 sm:w-auto md:w-full" />}
+                {sortOrder === 'asc' ? <SortAsc className="h-3 w-3 " /> : <SortDesc className="h-3 w-3 " />}
               </Button>
             </div>
           </div>
@@ -874,13 +850,13 @@ export default function ModelLibrary() {
               </SelectContent>
             </Select>
             {getActiveFilterCount() > 0 && (
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={clearAllFilters}
                 className="gap-1"
-               aria-label="Button">
-                <X className="h-3 w-3 sm:w-auto md:w-full" />
+               >
+                <X className="h-3 w-3 " />
                 Clear ({getActiveFilterCount()})
               </Button>
             )}
@@ -890,71 +866,71 @@ export default function ModelLibrary() {
             <div className="flex flex-wrap gap-2">
               {searchQuery && (
                 <Badge variant="secondary" className="gap-1">
-                  <Search className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Search className="h-3 w-3 " />
                   Search: "{searchQuery}"
-                  <button
+                  <Button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-1 sm:w-auto md:w-full"
-                    onClick={() = aria-label="Button"> setSearchQuery('')}
+                    className="h-4 w-4 p-0 ml-1 "
+                    onClick={() => setSearchQuery('')}
                   >
-                    <X className="h-2 w-2 sm:w-auto md:w-full" />
+                    <X className="h-2 w-2 " />
                   </Button>
                 </Badge>
               )}
               {filterProvider !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  <Filter className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Filter className="h-3 w-3 " />
                   Provider: {filterProvider}
-                  <button
+                  <Button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-1 sm:w-auto md:w-full"
-                    onClick={() = aria-label="Button"> setFilterProvider('all')}
+                    className="h-4 w-4 p-0 ml-1 "
+                    onClick={() => setFilterProvider('all')}
                   >
-                    <X className="h-2 w-2 sm:w-auto md:w-full" />
+                    <X className="h-2 w-2 " />
                   </Button>
                 </Badge>
               )}
               {filterStatus !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  <Filter className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Filter className="h-3 w-3 " />
                   Status: {filterStatus}
-                  <button
+                  <Button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-1 sm:w-auto md:w-full"
-                    onClick={() = aria-label="Button"> setFilterStatus('all')}
+                    className="h-4 w-4 p-0 ml-1 "
+                    onClick={() => setFilterStatus('all')}
                   >
-                    <X className="h-2 w-2 sm:w-auto md:w-full" />
+                    <X className="h-2 w-2 " />
                   </Button>
                 </Badge>
               )}
               {filterSize !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  <Filter className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Filter className="h-3 w-3 " />
                   Size: {filterSize}
-                  <button
+                  <Button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-1 sm:w-auto md:w-full"
-                    onClick={() = aria-label="Button"> setFilterSize('all')}
+                    className="h-4 w-4 p-0 ml-1 "
+                    onClick={() => setFilterSize('all')}
                   >
-                    <X className="h-2 w-2 sm:w-auto md:w-full" />
+                    <X className="h-2 w-2 " />
                   </Button>
                 </Badge>
               )}
               {filterCapability !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  <Filter className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Filter className="h-3 w-3 " />
                   Capability: {filterCapability}
-                  <button
+                  <Button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-1 sm:w-auto md:w-full"
-                    onClick={() = aria-label="Button"> setFilterCapability('all')}
+                    className="h-4 w-4 p-0 ml-1 "
+                    onClick={() => setFilterCapability('all')}
                   >
-                    <X className="h-2 w-2 sm:w-auto md:w-full" />
+                    <X className="h-2 w-2 " />
                   </Button>
                 </Badge>
               )}
@@ -986,12 +962,11 @@ export default function ModelLibrary() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <HardDrive className="h-5 w-5 sm:w-auto md:w-full" />
+                <HardDrive className="h-5 w-5 " />
                 Local Models ({localModels.length})
                 <HelpTooltip helpKey="storageManagement" variant="inline" size="sm" />
               </CardTitle>
               <CardDescription>
-                Models downloaded and available locally
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1021,12 +996,11 @@ export default function ModelLibrary() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Download className="h-5 w-5 sm:w-auto md:w-full" />
+                <Download className="h-5 w-5 " />
                 Downloading Models ({downloadingModels.length})
                 <HelpTooltip helpKey="downloadProcess" variant="inline" size="sm" />
               </CardTitle>
               <CardDescription>
-                Models currently being downloaded
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1045,11 +1019,10 @@ export default function ModelLibrary() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Cloud className="h-5 w-5 sm:w-auto md:w-full" />
+                <Cloud className="h-5 w-5 " />
                 Available Models ({cloudModels.length})
               </CardTitle>
               <CardDescription>
-                Models available for download from remote repositories
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1067,7 +1040,7 @@ export default function ModelLibrary() {
         {filteredAndSortedModels.length === 0 && !loading && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Library className="h-12 w-12 text-muted-foreground mb-4 sm:w-auto md:w-full" />
+              <Library className="h-12 w-12 text-muted-foreground mb-4 " />
               <h3 className="text-lg font-medium mb-2">No Models Found</h3>
               <p className="text-muted-foreground mb-4">
                 {getActiveFilterCount() > 0 
@@ -1076,13 +1049,11 @@ export default function ModelLibrary() {
                 }
               </p>
               {getActiveFilterCount() > 0 ? (
-                <button variant="outline" onClick={clearAllFilters} aria-label="Button">
-                  Clear All Filters
+                <Button variant="outline" onClick={clearAllFilters} >
                 </Button>
               ) : (
-                <button variant="outline" onClick={handleRefresh} disabled={refreshing} aria-label="Button">
+                <Button variant="outline" onClick={handleRefresh} disabled={refreshing} >
                   <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                  Refresh Library
                 </Button>
               )}
             </CardContent>

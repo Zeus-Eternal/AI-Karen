@@ -11,7 +11,6 @@ jest.mock('@/lib/model-selection-service', () => ({
 describe('/api/models/image/parameters/[model_id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
 
   describe('GET - Image Model Parameters', () => {
     it('should return Stable Diffusion model parameters', async () => {
@@ -60,7 +59,6 @@ describe('/api/models/image/parameters/[model_id]', () => {
       expect(data.limitations.memory_requirement_mb).toBeGreaterThan(0);
       
       expect(response.headers.get('X-Model-Provider')).toBe('stable-diffusion');
-    });
 
     it('should return Flux model parameters with higher resolution support', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -91,7 +89,6 @@ describe('/api/models/image/parameters/[model_id]', () => {
       expect(fluxPreset).toBeDefined();
       expect(fluxPreset.parameters.width).toBe(1024);
       expect(fluxPreset.parameters.height).toBe(1024);
-    });
 
     it('should return SDXL model parameters with higher resolution defaults', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -116,7 +113,6 @@ describe('/api/models/image/parameters/[model_id]', () => {
       expect(data.parameters.height.default).toBe(1024);
       expect(data.parameters.width.max).toBe(1536); // SDXL max
       expect(data.limitations.memory_requirement_mb).toBe(6000); // Higher memory for SDXL
-    });
 
     it('should return error for missing model_id', async () => {
       const request = new NextRequest('http://localhost:3000/api/models/image/parameters/');
@@ -125,7 +121,6 @@ describe('/api/models/image/parameters/[model_id]', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing model_id parameter');
-    });
 
     it('should return error for non-existent model', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -138,7 +133,6 @@ describe('/api/models/image/parameters/[model_id]', () => {
 
       expect(response.status).toBe(404);
       expect(data.error).toBe('Model not found');
-    });
 
     it('should return error for non-image model', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -159,7 +153,6 @@ describe('/api/models/image/parameters/[model_id]', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Model does not support image generation');
-    });
 
     it('should set appropriate cache headers', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -180,7 +173,6 @@ describe('/api/models/image/parameters/[model_id]', () => {
       expect(response.headers.get('Cache-Control')).toBe('public, max-age=3600');
       expect(response.headers.get('X-Model-Provider')).toBe('stable-diffusion');
       expect(response.headers.get('X-Model-Type')).toBe('image_generation');
-    });
 
     it('should handle service errors gracefully', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -196,6 +188,5 @@ describe('/api/models/image/parameters/[model_id]', () => {
       expect(response.status).toBe(500);
       expect(data.error).toBe('Failed to fetch model parameters');
       expect(data.message).toBe('Service unavailable');
-    });
-  });
-});
+
+

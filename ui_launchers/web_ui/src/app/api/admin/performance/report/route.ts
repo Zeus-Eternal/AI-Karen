@@ -8,10 +8,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth, type AdminAuthContext } from '@/lib/middleware/admin-auth';
-import {
-  adminPerformanceMonitor,
-  PerformanceReporter,
-} from '@/lib/performance/admin-performance-monitor';
+import { adminPerformanceMonitor, PerformanceReporter } from '@/lib/performance/admin-performance-monitor';
 import { getQueryOptimizer } from '@/lib/database/query-optimizer';
 import type { PerformanceReport } from '@/types/admin';
 async function handleGET(request: NextRequest, _context: AdminAuthContext) {
@@ -43,13 +40,13 @@ async function handleGET(request: NextRequest, _context: AdminAuthContext) {
           'Content-Type': 'text/csv',
           'Content-Disposition': 'attachment; filename="admin-performance-report.csv"'
         }
-      });
+
     }
     return NextResponse.json({
       success: true,
       data: report,
       timestamp: new Date().toISOString()
-    });
+
   } catch (error) {
     return NextResponse.json(
       {
@@ -76,7 +73,7 @@ async function handlePOST(request: NextRequest, context: AdminAuthContext) {
       success: true,
       message: 'Performance report received',
       timestamp: new Date().toISOString()
-    });
+
   } catch (error) {
     return NextResponse.json(
       {
@@ -98,7 +95,7 @@ async function handleDELETE(request: NextRequest, context: AdminAuthContext) {
       success: true,
       message: 'Performance metrics cleared',
       timestamp: new Date().toISOString()
-    });
+
   } catch (error) {
     return NextResponse.json(
       {

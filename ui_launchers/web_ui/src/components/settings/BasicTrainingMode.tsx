@@ -5,20 +5,8 @@ import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { 
-  Play, 
-  Square, 
-  RefreshCw, 
-  Save, 
-  RotateCcw, 
-  Clock, 
-  Cpu, 
-  HardDrive,
-  AlertTriangle,
-  CheckCircle,
-  Info,
-  Trash2
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 interface BasicTrainingPreset {
   name: string;
@@ -154,7 +142,7 @@ const BasicTrainingMode: React.FC = () => {
           preset_name: selectedPreset.name,
           custom_description: customDescription
         })
-      });
+
       const jobData = response as any;
       setCurrentJob(jobData.job_id);
       setProgress(null);
@@ -172,7 +160,7 @@ const BasicTrainingMode: React.FC = () => {
     try {
       await getKarenBackend().makeRequestPublic(`/api/basic-training/cancel/${currentJob}`, {
         method: 'POST'
-      });
+
       setCurrentJob(null);
       setProgress(null);
     } catch (err: any) {
@@ -186,7 +174,7 @@ const BasicTrainingMode: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description })
-      });
+
       loadBackups();
     } catch (err: any) {
       setError(err.message || 'Failed to create backup');
@@ -201,7 +189,7 @@ const BasicTrainingMode: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ backup_id: backupId })
-      });
+
       alert('System restored successfully');
     } catch (err: any) {
       setError(err.message || 'Failed to restore backup');
@@ -217,7 +205,7 @@ const BasicTrainingMode: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ preserve_user_data: preserveUserData })
-      });
+
       alert('System reset to factory defaults');
     } catch (err: any) {
       setError(err.message || 'Failed to reset system');
@@ -230,7 +218,7 @@ const BasicTrainingMode: React.FC = () => {
     try {
       await getKarenBackend().makeRequestPublic(`/api/basic-training/backup/${backupId}`, {
         method: 'DELETE'
-      });
+
       loadBackups();
     } catch (err: any) {
       setError(err.message || 'Failed to delete backup');
@@ -258,7 +246,7 @@ const BasicTrainingMode: React.FC = () => {
       </div>
       {error && (
         <Alert className="border-red-200 bg-red-50">
-          <AlertTriangle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
+          <AlertTriangle className="h-4 w-4 text-red-600 " />
           <AlertDescription className="text-red-800">{error}</AlertDescription>
         </Alert>
       )}
@@ -274,7 +262,6 @@ const BasicTrainingMode: React.FC = () => {
             <CardHeader>
               <CardTitle>Training Configuration</CardTitle>
               <CardDescription>
-                Configure your training job with automatic parameter selection
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -284,7 +271,7 @@ const BasicTrainingMode: React.FC = () => {
                   <input
                     type="text"
                     value={modelId}
-                    onChange={(e) = aria-label="Input"> setModelId(e.target.value)}
+                    onChange={(e) => setModelId(e.target.value)}
                     placeholder="e.g., microsoft/DialoGPT-medium"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -294,7 +281,7 @@ const BasicTrainingMode: React.FC = () => {
                   <input
                     type="text"
                     value={datasetId}
-                    onChange={(e) = aria-label="Input"> setDatasetId(e.target.value)}
+                    onChange={(e) => setDatasetId(e.target.value)}
                     placeholder="e.g., my-training-dataset"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -305,7 +292,7 @@ const BasicTrainingMode: React.FC = () => {
                 <input
                   type="text"
                   value={customDescription}
-                  onChange={(e) = aria-label="Input"> setCustomDescription(e.target.value)}
+                  onChange={(e) => setCustomDescription(e.target.value)}
                   placeholder="Describe your training goal..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -317,7 +304,6 @@ const BasicTrainingMode: React.FC = () => {
             <CardHeader>
               <CardTitle>Training Presets</CardTitle>
               <CardDescription>
-                Choose a preset optimized for your hardware and use case
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -341,15 +327,15 @@ const BasicTrainingMode: React.FC = () => {
                     <p className="text-sm text-gray-600 mb-3 md:text-base lg:text-lg">{preset.description}</p>
                     <div className="space-y-2 text-xs sm:text-sm md:text-base">
                       <div className="flex items-center gap-2">
-                        <Clock className="h-3 w-3 sm:w-auto md:w-full" />
+                        <Clock className="h-3 w-3 " />
                         <span>{preset.estimated_time}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <HardDrive className="h-3 w-3 sm:w-auto md:w-full" />
+                        <HardDrive className="h-3 w-3 " />
                         <span>{preset.memory_requirements_gb}GB RAM</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Cpu className="h-3 w-3 sm:w-auto md:w-full" />
+                        <Cpu className="h-3 w-3 " />
                         <span>{preset.num_epochs} epochs, {preset.training_type}</span>
                       </div>
                     </div>
@@ -376,13 +362,12 @@ const BasicTrainingMode: React.FC = () => {
                  aria-label="Button">
                   {loading ? (
                     <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin " />
                       Starting Training...
                     </>
                   ) : (
                     <>
-                      <Play className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                      Start Training
+                      <Play className="mr-2 h-4 w-4 " />
                     </>
                   )}
                 </Button>
@@ -398,7 +383,7 @@ const BasicTrainingMode: React.FC = () => {
                 <CardTitle className="flex items-center gap-2">
                   Training Progress: {progress.model_name}
                   {progress.status === 'Training completed!' && (
-                    <CheckCircle className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />
+                    <CheckCircle className="h-5 w-5 text-green-600 " />
                   )}
                 </CardTitle>
                 <CardDescription>{progress.status_message}</CardDescription>
@@ -459,7 +444,7 @@ const BasicTrainingMode: React.FC = () => {
                 )}
                 {progress.warnings.length > 0 && (
                   <Alert className="border-yellow-200 bg-yellow-50">
-                    <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
+                    <AlertTriangle className="h-4 w-4 text-yellow-600 " />
                     <AlertDescription>
                       <div className="space-y-1">
                         {progress.warnings.map((warning, index) => (
@@ -471,7 +456,7 @@ const BasicTrainingMode: React.FC = () => {
                 )}
                 {progress.recommendations.length > 0 && (
                   <Alert className="border-blue-200 bg-blue-50">
-                    <Info className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />
+                    <Info className="h-4 w-4 text-blue-600 " />
                     <AlertDescription>
                       <div className="space-y-1">
                         {progress.recommendations.map((rec, index) => (
@@ -482,9 +467,8 @@ const BasicTrainingMode: React.FC = () => {
                   </Alert>
                 )}
                 {currentJob && progress.status === 'Training in progress' && (
-                  <button onClick={cancelTraining} variant="destructive" className="w-full" aria-label="Button">
-                    <Square className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                    Cancel Training
+                  <Button onClick={cancelTraining} variant="destructive" className="w-full" >
+                    <Square className="mr-2 h-4 w-4 " />
                   </Button>
                 )}
               </CardContent>
@@ -497,9 +481,9 @@ const BasicTrainingMode: React.FC = () => {
                 <CardTitle className="flex items-center gap-2">
                   Training Results: {result.model_name}
                   {result.success ? (
-                    <CheckCircle className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />
+                    <CheckCircle className="h-5 w-5 text-green-600 " />
                   ) : (
-                    <AlertTriangle className="h-5 w-5 text-red-600 sm:w-auto md:w-full" />
+                    <AlertTriangle className="h-5 w-5 text-red-600 " />
                   )}
                 </CardTitle>
                 <CardDescription>Training completed in {result.training_time}</CardDescription>
@@ -569,18 +553,15 @@ const BasicTrainingMode: React.FC = () => {
             <CardHeader>
               <CardTitle>System Backup & Reset</CardTitle>
               <CardDescription>
-                Create backups and restore system configurations
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
                 <button onClick={createBackup} className="flex-1" aria-label="Button">
-                  <Save className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                  Create Backup
+                  <Save className="mr-2 h-4 w-4 " />
                 </Button>
-                <button onClick={resetToDefaults} variant="destructive" className="flex-1" aria-label="Button">
-                  <RotateCcw className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                  Reset to Defaults
+                <Button onClick={resetToDefaults} variant="destructive" className="flex-1" >
+                  <RotateCcw className="mr-2 h-4 w-4 " />
                 </Button>
               </div>
             </CardContent>
@@ -590,7 +571,6 @@ const BasicTrainingMode: React.FC = () => {
             <CardHeader>
               <CardTitle>Available Backups</CardTitle>
               <CardDescription>
-                Manage your system configuration backups
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -607,18 +587,17 @@ const BasicTrainingMode: React.FC = () => {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           size="sm"
-                          onClick={() = aria-label="Button"> restoreBackup(backup.backup_id)}
+                          onClick={() => restoreBackup(backup.backup_id)}
                         >
-                          Restore
                         </Button>
-                        <button
+                        <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() = aria-label="Button"> deleteBackup(backup.backup_id)}
+                          onClick={() => deleteBackup(backup.backup_id)}
                         >
-                          <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
+                          <Trash2 className="h-4 w-4 " />
                         </Button>
                       </div>
                     </div>

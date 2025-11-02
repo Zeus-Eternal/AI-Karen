@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-
+import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,7 +61,6 @@ export default function UnauthorizedPage() {
           <div className="flex flex-col gap-2">
             <Button onClick={handleGoBack} variant="outline" className="w-full">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Go Back
             </Button>
             
             <Link href={getRedirectPath()} className="w-full">
@@ -69,12 +68,10 @@ export default function UnauthorizedPage() {
                 {!isAuthenticated ? (
                   <>
                     <LogIn className="mr-2 h-4 w-4" />
-                    Sign In
                   </>
                 ) : (
                   <>
                     <Home className="mr-2 h-4 w-4" />
-                    Go to Dashboard
                   </>
                 )}
               </Button>

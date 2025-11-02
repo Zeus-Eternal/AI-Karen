@@ -11,7 +11,6 @@ describe('ErrorCategorizer', () => {
 
   beforeEach(() => {
     categorizer = ErrorCategorizer.getInstance();
-  });
 
   describe('Network Error Categorization', () => {
     it('should categorize connection refused errors', () => {
@@ -24,7 +23,6 @@ describe('ErrorCategorizer', () => {
       expect(result.maxRetries).toBe(3);
       expect(result.backoffStrategy).toBe('exponential');
       expect(result.userMessage).toContain('Unable to connect to server');
-    });
 
     it('should categorize network timeout errors', () => {
       const error = new Error('ETIMEDOUT: Network timeout');
@@ -33,7 +31,6 @@ describe('ErrorCategorizer', () => {
       expect(result.category).toBe(ErrorCategory.NETWORK);
       expect(result.retryable).toBe(true);
       expect(result.fallbackAction).toBe('USE_FALLBACK_BACKEND');
-    });
 
     it('should categorize fetch failures', () => {
       const error = new Error('fetch failed: NetworkError');
@@ -42,8 +39,7 @@ describe('ErrorCategorizer', () => {
       expect(result.category).toBe(ErrorCategory.NETWORK);
       expect(result.severity).toBe(ErrorSeverity.HIGH);
       expect(result.retryable).toBe(true);
-    });
-  });
+
 
   describe('Authentication Error Categorization', () => {
     it('should categorize unauthorized errors', () => {
@@ -55,7 +51,6 @@ describe('ErrorCategorizer', () => {
       expect(result.retryable).toBe(false);
       expect(result.maxRetries).toBe(0);
       expect(result.userMessage).toContain('Invalid username or password');
-    });
 
     it('should categorize session expired errors', () => {
       const error = new Error('Session expired');
@@ -66,7 +61,6 @@ describe('ErrorCategorizer', () => {
       expect(result.maxRetries).toBe(1);
       expect(result.fallbackAction).toBe('REFRESH_SESSION');
       expect(result.userMessage).toContain('session has expired');
-    });
 
     it('should categorize authentication timeout errors', () => {
       const error = new Error('Authentication timeout');
@@ -76,8 +70,7 @@ describe('ErrorCategorizer', () => {
       expect(result.retryable).toBe(true);
       expect(result.maxRetries).toBe(2);
       expect(result.userMessage).toContain('Request timed out');
-    });
-  });
+
 
   describe('Database Error Categorization', () => {
     it('should categorize database connection errors', () => {
@@ -90,7 +83,6 @@ describe('ErrorCategorizer', () => {
       expect(result.maxRetries).toBe(5);
       expect(result.backoffStrategy).toBe('linear');
       expect(result.fallbackAction).toBe('ENABLE_DEGRADED_MODE');
-    });
 
     it('should categorize constraint violation errors', () => {
       const error = new Error('Constraint violation: duplicate key');
@@ -100,8 +92,7 @@ describe('ErrorCategorizer', () => {
       expect(result.severity).toBe(ErrorSeverity.MEDIUM);
       expect(result.retryable).toBe(false);
       expect(result.maxRetries).toBe(0);
-    });
-  });
+
 
   describe('Configuration Error Categorization', () => {
     it('should categorize invalid URL errors', () => {
@@ -112,7 +103,6 @@ describe('ErrorCategorizer', () => {
       expect(result.severity).toBe(ErrorSeverity.CRITICAL);
       expect(result.retryable).toBe(false);
       expect(result.userMessage).toContain('System configuration error');
-    });
 
     it('should categorize missing environment errors', () => {
       const error = new Error('Missing environment variable');
@@ -120,8 +110,7 @@ describe('ErrorCategorizer', () => {
 
       expect(result.category).toBe(ErrorCategory.CONFIGURATION);
       expect(result.retryable).toBe(false);
-    });
-  });
+
 
   describe('Timeout Error Categorization', () => {
     it('should categorize general timeout errors', () => {
@@ -133,8 +122,7 @@ describe('ErrorCategorizer', () => {
       expect(result.retryable).toBe(true);
       expect(result.maxRetries).toBe(3);
       expect(result.backoffStrategy).toBe('exponential');
-    });
-  });
+
 
   describe('Validation Error Categorization', () => {
     it('should categorize validation errors', () => {
@@ -145,7 +133,6 @@ describe('ErrorCategorizer', () => {
       expect(result.severity).toBe(ErrorSeverity.LOW);
       expect(result.retryable).toBe(false);
       expect(result.userMessage).toContain('Invalid format detected');
-    });
 
     it('should categorize bad request errors', () => {
       const error = new Error('400 Bad Request');
@@ -153,8 +140,7 @@ describe('ErrorCategorizer', () => {
 
       expect(result.category).toBe(ErrorCategory.VALIDATION);
       expect(result.retryable).toBe(false);
-    });
-  });
+
 
   describe('Unknown Error Categorization', () => {
     it('should categorize unknown errors', () => {
@@ -165,8 +151,7 @@ describe('ErrorCategorizer', () => {
       expect(result.severity).toBe(ErrorSeverity.MEDIUM);
       expect(result.retryable).toBe(false);
       expect(result.userMessage).toContain('unexpected error occurred');
-    });
-  });
+
 
   describe('Error Code Generation', () => {
     it('should generate unique error codes', () => {
@@ -180,8 +165,7 @@ describe('ErrorCategorizer', () => {
       expect(result2.code).toBeDefined();
       expect(result1.code).not.toBe(result2.code);
       expect(result1.code).toMatch(/^[A-Z_0-9]+$/);
-    });
-  });
+
 
   describe('Correlation ID Generation', () => {
     it('should generate unique correlation IDs', () => {
@@ -195,8 +179,7 @@ describe('ErrorCategorizer', () => {
       expect(result2.correlationId).toBeDefined();
       expect(result1.correlationId).not.toBe(result2.correlationId);
       expect(result1.correlationId).toMatch(/^corr_[a-z0-9_]+$/);
-    });
-  });
+
 
   describe('Context Handling', () => {
     it('should include context in categorized error', () => {
@@ -207,7 +190,6 @@ describe('ErrorCategorizer', () => {
 
       expect(result.context).toMatchObject(context);
       expect(result.context?.originalError).toBe('Error');
-    });
 
     it('should handle string errors', () => {
       const error = 'String error message';
@@ -215,8 +197,7 @@ describe('ErrorCategorizer', () => {
 
       expect(result.message).toBe(error);
       expect(result.context?.originalError).toBe('StringError');
-    });
-  });
+
 
   describe('Retry Logic', () => {
     it('should determine if error should be retried', () => {
@@ -229,8 +210,7 @@ describe('ErrorCategorizer', () => {
       expect(categorizer.shouldRetry(retryableResult, 0)).toBe(true);
       expect(categorizer.shouldRetry(retryableResult, 3)).toBe(false); // Max retries reached
       expect(categorizer.shouldRetry(nonRetryableResult, 0)).toBe(false);
-    });
-  });
+
 
   describe('Retry Delay Calculation', () => {
     it('should calculate exponential backoff delay', () => {
@@ -244,7 +224,6 @@ describe('ErrorCategorizer', () => {
       expect(delay1).toBe(1000);
       expect(delay2).toBe(2000);
       expect(delay3).toBe(4000);
-    });
 
     it('should calculate linear backoff delay', () => {
       const error = new Error('Database connection failed');
@@ -257,7 +236,6 @@ describe('ErrorCategorizer', () => {
       expect(delay1).toBe(1000);
       expect(delay2).toBe(2000);
       expect(delay3).toBe(3000);
-    });
 
     it('should calculate fixed delay', () => {
       const error = new Error('401 Unauthorized');
@@ -268,7 +246,6 @@ describe('ErrorCategorizer', () => {
 
       expect(delay1).toBe(1000);
       expect(delay2).toBe(1000);
-    });
 
     it('should cap maximum delay', () => {
       const error = new Error('ECONNREFUSED');
@@ -276,8 +253,7 @@ describe('ErrorCategorizer', () => {
       
       const delay = categorizer.calculateRetryDelay(result, 10, 1000);
       expect(delay).toBeLessThanOrEqual(30000); // Max 30 seconds for exponential
-    });
-  });
+
 
   describe('Severity Assessment', () => {
     it('should get correct severity levels', () => {
@@ -285,7 +261,6 @@ describe('ErrorCategorizer', () => {
       expect(categorizer.getSeverityLevel(ErrorSeverity.MEDIUM)).toBe(2);
       expect(categorizer.getSeverityLevel(ErrorSeverity.HIGH)).toBe(3);
       expect(categorizer.getSeverityLevel(ErrorSeverity.CRITICAL)).toBe(4);
-    });
 
     it('should identify errors requiring immediate attention', () => {
       const criticalError = new Error('Database connection failed');
@@ -299,6 +274,5 @@ describe('ErrorCategorizer', () => {
       expect(categorizer.requiresImmediateAttention(criticalResult)).toBe(true);
       expect(categorizer.requiresImmediateAttention(configResult)).toBe(true);
       expect(categorizer.requiresImmediateAttention(lowResult)).toBe(false);
-    });
-  });
-});
+
+

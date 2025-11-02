@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import MultimodalFileUpload from '../MultimodalFileUpload';
@@ -40,7 +41,6 @@ describe('MultimodalFileUpload', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders upload area with correct text', () => {
     render(
@@ -54,7 +54,6 @@ describe('MultimodalFileUpload', () => {
     expect(screen.getByText('Support for images, documents, code files, and more')).toBeInTheDocument();
     expect(screen.getByText('Max 10MB')).toBeInTheDocument();
     expect(screen.getByText('Up to 5 files')).toBeInTheDocument();
-  });
 
   it('handles file selection through input', async () => {
     render(
@@ -74,7 +73,6 @@ describe('MultimodalFileUpload', () => {
     Object.defineProperty(fileInput, 'files', {
       value: [file],
       writable: false,
-    });
 
     // Trigger change event
     fireEvent.change(fileInput);
@@ -92,7 +90,6 @@ describe('MultimodalFileUpload', () => {
         ])
       );
     }, { timeout: 3000 });
-  });
 
   it('validates file size limits', async () => {
     const mockToast = vi.fn();
@@ -113,7 +110,6 @@ describe('MultimodalFileUpload', () => {
     Object.defineProperty(fileInput, 'files', {
       value: [largeFile],
       writable: false,
-    });
 
     fireEvent.change(fileInput);
 
@@ -122,9 +118,8 @@ describe('MultimodalFileUpload', () => {
         variant: 'destructive',
         title: 'File Upload Error',
         description: expect.stringContaining('File size exceeds 1MB limit')
-      });
-    });
-  });
+
+
 
   it('validates maximum file count', async () => {
     const mockToast = vi.fn();
@@ -149,7 +144,6 @@ describe('MultimodalFileUpload', () => {
     Object.defineProperty(fileInput, 'files', {
       value: files,
       writable: false,
-    });
 
     fireEvent.change(fileInput);
 
@@ -158,9 +152,8 @@ describe('MultimodalFileUpload', () => {
         variant: 'destructive',
         title: 'File Upload Error',
         description: expect.stringContaining('Maximum 2 files allowed')
-      });
-    });
-  });
+
+
 
   it('detects file types correctly', async () => {
     render(
@@ -177,7 +170,6 @@ describe('MultimodalFileUpload', () => {
     Object.defineProperty(fileInput, 'files', {
       value: [imageFile, codeFile],
       writable: false,
-    });
 
     fireEvent.change(fileInput);
 
@@ -195,7 +187,6 @@ describe('MultimodalFileUpload', () => {
         ])
       );
     }, { timeout: 3000 });
-  });
 
   it('handles drag and drop', async () => {
     render(
@@ -229,7 +220,6 @@ describe('MultimodalFileUpload', () => {
         ])
       );
     }, { timeout: 3000 });
-  });
 
   it('shows upload progress', async () => {
     render(
@@ -244,14 +234,12 @@ describe('MultimodalFileUpload', () => {
     Object.defineProperty(fileInput, 'files', {
       value: [file],
       writable: false,
-    });
 
     fireEvent.change(fileInput);
 
     // Should show uploading status
     await waitFor(() => {
       expect(screen.getByText('Uploading...')).toBeInTheDocument();
-    });
 
     // Should show analyzing status
     await waitFor(() => {
@@ -262,7 +250,6 @@ describe('MultimodalFileUpload', () => {
     await waitFor(() => {
       expect(screen.getByText('Complete')).toBeInTheDocument();
     }, { timeout: 3000 });
-  });
 
   it('displays uploaded files with metadata', async () => {
     render(
@@ -277,7 +264,6 @@ describe('MultimodalFileUpload', () => {
     Object.defineProperty(fileInput, 'files', {
       value: [file],
       writable: false,
-    });
 
     fireEvent.change(fileInput);
 
@@ -286,7 +272,6 @@ describe('MultimodalFileUpload', () => {
       expect(screen.getByText('test.txt')).toBeInTheDocument();
       expect(screen.getByText('document')).toBeInTheDocument();
     }, { timeout: 3000 });
-  });
 
   it('handles file removal', async () => {
     render(
@@ -301,7 +286,6 @@ describe('MultimodalFileUpload', () => {
     Object.defineProperty(fileInput, 'files', {
       value: [file],
       writable: false,
-    });
 
     fireEvent.change(fileInput);
 
@@ -315,7 +299,6 @@ describe('MultimodalFileUpload', () => {
     fireEvent.click(removeButton);
 
     expect(mockOnFileRemoved).toHaveBeenCalled();
-  });
 
   it('handles image files with dimension extraction', async () => {
     render(
@@ -331,7 +314,6 @@ describe('MultimodalFileUpload', () => {
     Object.defineProperty(fileInput, 'files', {
       value: [imageFile],
       writable: false,
-    });
 
     fireEvent.change(fileInput);
 
@@ -348,7 +330,6 @@ describe('MultimodalFileUpload', () => {
         ])
       );
     }, { timeout: 3000 });
-  });
 
   it('validates accepted file types', async () => {
     const mockToast = vi.fn();
@@ -367,7 +348,6 @@ describe('MultimodalFileUpload', () => {
     Object.defineProperty(fileInput, 'files', {
       value: [textFile],
       writable: false,
-    });
 
     fireEvent.change(fileInput);
 
@@ -376,7 +356,6 @@ describe('MultimodalFileUpload', () => {
         variant: 'destructive',
         title: 'File Upload Error',
         description: expect.stringContaining('File type not supported')
-      });
-    });
-  });
-});
+
+
+

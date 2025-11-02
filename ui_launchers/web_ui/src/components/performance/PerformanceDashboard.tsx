@@ -6,7 +6,8 @@
  * 
  * Requirements: 1.4, 4.4
  */
-'use client';
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card } from '../ui/card';
@@ -60,7 +61,7 @@ export function PerformanceDashboard() {
         overall: { requestThroughput: 0, averageResponseTime: 0, errorRate: 0, uptime: 0 },
         timestamp: new Date().toISOString(),
         error: 'Failed to load metrics',
-      });
+
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +128,6 @@ export function PerformanceDashboard() {
     return (
       <div className="p-6 sm:p-4 md:p-6">
         <div className="text-center text-gray-500">
-          Failed to load performance metrics
         </div>
       </div>
     );
@@ -143,21 +143,19 @@ export function PerformanceDashboard() {
           </p>
         </div>
         <div className="flex space-x-2">
-          <button
+          <Button
             variant="outline"
-            onClick={() = aria-label="Button"> setAutoRefresh(!autoRefresh)}
+            onClick={() => setAutoRefresh(!autoRefresh)}
             className={autoRefresh ? 'bg-green-50 border-green-200' : ''}
           >
             {autoRefresh ? 'Auto-refresh On' : 'Auto-refresh Off'}
           </Button>
-          <button variant="outline" onClick={fetchMetrics} aria-label="Button">
-            Refresh
+          <Button variant="outline" onClick={fetchMetrics} >
           </Button>
-          <button variant="outline" onClick={handleAutoOptimize} aria-label="Button">
+          <Button variant="outline" onClick={handleAutoOptimize} >
             Auto-optimize
           </Button>
-          <button variant="outline" onClick={handleClearCaches} aria-label="Button">
-            Clear Caches
+          <Button variant="outline" onClick={handleClearCaches} >
           </Button>
         </div>
       </div>
@@ -226,7 +224,6 @@ export function PerformanceDashboard() {
               <p className="text-xs text-gray-500 sm:text-sm md:text-base">duration</p>
             </div>
             <Badge className="bg-green-100 text-green-800">
-              Running
             </Badge>
           </div>
         </Card>
@@ -307,7 +304,7 @@ export function PerformanceDashboard() {
           <div className="space-y-2">
             {recommendations.map((recommendation, index) => (
               <div key={index} className="flex items-start space-x-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0 sm:w-auto md:w-full"></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0 "></div>
                 <p className="text-sm text-gray-700 md:text-base lg:text-lg">{recommendation}</p>
               </div>
             ))}

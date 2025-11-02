@@ -1,6 +1,7 @@
 
 "use client";
 
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Database, Info, AlertTriangle, MessageSquare } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,7 +16,7 @@ export default function DatabaseConnectorPluginPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3">
-        <Database className="h-8 w-8 text-primary sm:w-auto md:w-full" />
+        <Database className="h-8 w-8 text-primary " />
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Item Details Lookup (Simulated Database)</h2>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -25,7 +26,7 @@ export default function DatabaseConnectorPluginPage() {
       </div>
 
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>Simulated Functionality & How to Use</AlertTitle>
         <AlertDescription>
           <p>The "Item Details Lookup" feature currently uses a **mocked (simulated) tool**. It does not connect to a live external database.</p>
@@ -51,7 +52,7 @@ export default function DatabaseConnectorPluginPage() {
         <CardContent>
           <div className="space-y-2">
             <div className="flex items-center">
-              <MessageSquare className="mr-2 h-5 w-5 text-muted-foreground sm:w-auto md:w-full" />
+              <MessageSquare className="mr-2 h-5 w-5 text-muted-foreground " />
               <p className="text-sm md:text-base lg:text-lg">
                 **Interaction Method:** Natural Language Query via Chat
               </p>
@@ -64,7 +65,7 @@ export default function DatabaseConnectorPluginPage() {
       </Card>
 
       <Alert>
-        <Info className="h-4 w-4 sm:w-auto md:w-full" />
+        <Info className="h-4 w-4 " />
         <AlertTitle>Future Enhancements</AlertTitle>
         <AlertDescription>
           A future version of this plugin could potentially allow connections to live external SQL databases, offer schema exploration, and provide more advanced data interaction methods. For now, the functionality is limited to the simulated examples accessible via chat.

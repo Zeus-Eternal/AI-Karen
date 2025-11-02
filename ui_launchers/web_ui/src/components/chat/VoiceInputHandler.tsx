@@ -108,7 +108,7 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
           title: "Voice input error",
           description: errorMessage,
           variant: "destructive",
-        });
+
       };
       
       recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -154,7 +154,7 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
         title: "Voice input not supported",
         description: "Your browser doesn't support speech recognition",
         variant: "destructive",
-      });
+
       return;
     }
     
@@ -188,7 +188,7 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
         size="sm"
         onClick={isRecording ? handleStop : handleStart}
         disabled={!isSupported || isProcessing}
-        className="h-8 w-8 p-0 sm:w-auto md:w-full"
+        className="h-8 w-8 p-0 "
         title={
           !isSupported 
             ? "Voice input not supported" 
@@ -198,23 +198,23 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
         }
       >
         {isProcessing ? (
-          <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+          <Loader2 className="h-4 w-4 animate-spin " />
         ) : isRecording ? (
-          <Square className="h-4 w-4 sm:w-auto md:w-full" />
+          <Square className="h-4 w-4 " />
         ) : (
-          <Mic className="h-4 w-4 sm:w-auto md:w-full" />
+          <Mic className="h-4 w-4 " />
         )}
       </Button>
 
       {isRecording && (
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse sm:w-auto md:w-full" />
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse " />
             <span className="text-xs text-muted-foreground sm:text-sm md:text-base">Recording...</span>
           </div>
           
           {transcript && (
-            <Badge variant="outline" className="text-xs max-w-32 truncate sm:w-auto md:w-full">
+            <Badge variant="outline" className="text-xs max-w-32 truncate ">
               {transcript}
             </Badge>
           )}
@@ -229,7 +229,6 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
 
       {!isSupported && (
         <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
-          Not supported
         </Badge>
       )}
     </div>

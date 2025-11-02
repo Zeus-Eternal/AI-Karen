@@ -4,33 +4,23 @@
  * Provides a comprehensive interface for configuring extension settings,
  * permissions, and advanced options.
  */
-'use client';
+"use client";
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
-import { 
-  Settings, 
-  Save, 
-  RotateCcw, 
-  Shield, 
-  Database, 
-  Globe, 
-  Key, 
-  AlertTriangle,
-  CheckCircle,
-  Info,
-  Eye,
-  EyeOff,
-  Plus,
-  Minus,
-  Copy,
-  RefreshCw,
-  FileText,
-  Code,
-  Zap
-} from 'lucide-react';
+
+import { Settings, Shield, Eye, EyeOff, Info, Database, Globe, Key, RefreshCw, RotateCcw, Save, AlertTriangle, Copy, FileText, Code, Zap } from 'lucide-react';
+
+interface SettingFieldProps {
+  setting: ExtensionSetting;
+  showSensitive: boolean;
+  onChange: (value: any) => void;
+  onToggleSensitive: () => void;
+}
+
 interface ExtensionSetting {
   key: string;
   label: string;
@@ -66,7 +56,167 @@ interface ExtensionConfigurationPanelProps {
   onReset?: () => Promise<void>;
   onPermissionChange?: (permission: string, granted: boolean) => Promise<void>;
 }
-export default function ExtensionConfigurationPanel({
+
+// Helper functions
+function SettingField({ setting, showSensitive, onChange, onToggleSensitive }: SettingFieldProps) {
+  const renderInput = () => {
+    switch (setting.type) {
+      case 'string':
+      case 'password':
+        return (
+          <div className="relative">
+            <input
+              type={setting.type === 'password' && !showSensitive ? 'password' : 'text'}
+              value={setting.value || ''}
+              onChange={(e) => onChange(e.target.value)}
+              disabled={setting.readonly}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+              placeholder={setting.defaultValue}
+            />
+            {setting.sensitive && (
+              <Button
+                type="button"
+                onClick={onToggleSensitive}
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+              >
+                {showSensitive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            )}
+          </div>
+        );
+      case 'number':
+        return (
+          <input
+            type="number"
+            value={setting.value || ''}
+            onChange={(e) => onChange(Number(e.target.value))}
+            disabled={setting.readonly}
+            min={setting.validation?.min}
+            max={setting.validation?.max}
+            step={setting.validation?.step}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+          />
+        );
+      case 'boolean':
+        return (
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={setting.value || false}
+              onChange={(e) => onChange(e.target.checked)}
+              disabled={setting.readonly}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <span className="ml-2 text-sm text-gray-700 md:text-base lg:text-lg">
+              {setting.value ? 'Enabled' : 'Disabled'}
+            </span>
+          </label>
+        );
+      case 'select':
+        return (
+          <select
+            value={setting.value || ''}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={setting.readonly}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+          >
+            {setting.validation?.options?.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium text-gray-700 md:text-base lg:text-lg">
+          {setting.label}
+          {setting.validation?.required && (
+            <span className="text-red-500 ml-1">*</span>
+          )}
+        </label>
+        {setting.sensitive && (
+          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
+            <Shield className="h-2 w-2 mr-1" />
+            Sensitive
+          </Badge>
+        )}
+      </div>
+      {setting.description && (
+        <p className="text-xs text-gray-500 sm:text-sm md:text-base">{setting.description}</p>
+      )}
+      {renderInput()}
+      {setting.value !== setting.defaultValue && (
+        <div className="flex items-center gap-1 text-xs text-blue-600 sm:text-sm md:text-base">
+          <Info className="h-3 w-3" />
+          <span>Modified from default: {JSON.stringify(setting.defaultValue)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface PermissionFieldProps {
+  permission: ExtensionPermission;
+  onChange: (granted: boolean) => void;
+}
+
+function PermissionField({ permission, onChange }: PermissionFieldProps) {
+  return (
+    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg sm:p-4 md:p-6">
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <h4 className="font-medium text-gray-900">{permission.label}</h4>
+          {permission.required && (
+            <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">Required</Badge>
+          )}
+        </div>
+        <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">{permission.description}</p>
+      </div>
+      <div className="flex items-center gap-3">
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            checked={permission.granted}
+            onChange={(e) => onChange(e.target.checked)}
+            disabled={permission.required}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <span className="ml-2 text-sm text-gray-700 md:text-base lg:text-lg">
+            {permission.granted ? 'Granted' : 'Denied'}
+          </span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function getCategoryIcon(category: string) {
+  switch (category) {
+    case 'filesystem':
+      return <Database className="h-4 w-4" />;
+    case 'network':
+      return <Globe className="h-4 w-4" />;
+    case 'system':
+      return <Settings className="h-4 w-4" />;
+    case 'data':
+      return <Shield className="h-4 w-4" />;
+    case 'api':
+      return <Key className="h-4 w-4" />;
+    default:
+      return <Settings className="h-4 w-4" />;
+  }
+}
+
+export function ExtensionConfigurationPanel({
   extensionId,
   extensionName,
   className,
@@ -316,7 +466,7 @@ export default function ExtensionConfigurationPanel({
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4 sm:w-auto md:w-full" />
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4 " />
           <p className="text-gray-600">Loading configuration...</p>
         </div>
       </div>
@@ -332,26 +482,26 @@ export default function ExtensionConfigurationPanel({
         </div>
         <div className="flex gap-2">
           {hasChanges && (
-            <button
+            <Button
               variant="outline"
               onClick={handleReset}
               className="flex items-center gap-2"
-             aria-label="Button">
-              <RotateCcw className="h-4 w-4 sm:w-auto md:w-full" />
-              Reset
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset Changes
             </Button>
           )}
-          <button
+          <Button
             onClick={handleSave}
             disabled={!hasChanges || saving}
             className="flex items-center gap-2"
-           aria-label="Button">
+          >
             {saving ? (
-              <RefreshCw className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+              <RefreshCw className="h-4 w-4 animate-spin" />
             ) : (
-              <Save className="h-4 w-4 sm:w-auto md:w-full" />
+              <Save className="h-4 w-4" />
             )}
-            Save Changes
+            {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </div>
@@ -360,7 +510,7 @@ export default function ExtensionConfigurationPanel({
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 text-red-500 mr-3 sm:w-auto md:w-full" />
+              <AlertTriangle className="h-5 w-5 text-red-500 mr-3 " />
               <div>
                 <h3 className="font-semibold text-red-800">Configuration Error</h3>
                 <p className="text-red-700">{error}</p>
@@ -428,7 +578,6 @@ export default function ExtensionConfigurationPanel({
             <CardHeader>
               <CardTitle>Advanced Configuration</CardTitle>
               <CardDescription>
-                Advanced settings and debugging options
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -439,12 +588,12 @@ export default function ExtensionConfigurationPanel({
                     <code className="flex-1 px-3 py-2 bg-gray-100 rounded text-sm font-mono md:text-base lg:text-lg">
                       {extensionId}
                     </code>
-                    <button
+                    <Button
                       size="sm"
                       variant="outline"
-                      onClick={() = aria-label="Button"> navigator.clipboard.writeText(extensionId)}
+                      onClick={() => navigator.clipboard.writeText(extensionId)}
                     >
-                      <Copy className="h-3 w-3 sm:w-auto md:w-full" />
+                      <Copy className="h-3 w-3 " />
                     </Button>
                   </div>
                 </div>
@@ -454,12 +603,12 @@ export default function ExtensionConfigurationPanel({
                     <code className="flex-1 px-3 py-2 bg-gray-100 rounded text-sm font-mono md:text-base lg:text-lg">
                       /extensions/{extensionId}/config
                     </code>
-                    <button
+                    <Button
                       size="sm"
                       variant="outline"
-                      onClick={() = aria-label="Button"> navigator.clipboard.writeText(`/extensions/${extensionId}/config`)}
+                      onClick={() => navigator.clipboard.writeText(`/extensions/${extensionId}/config`)}
                     >
-                      <Copy className="h-3 w-3 sm:w-auto md:w-full" />
+                      <Copy className="h-3 w-3 " />
                     </Button>
                   </div>
                 </div>
@@ -467,17 +616,14 @@ export default function ExtensionConfigurationPanel({
               <div className="pt-4 border-t border-gray-200">
                 <h4 className="font-medium mb-3">Debug Actions</h4>
                 <div className="flex gap-2">
-                  <button variant="outline" size="sm" aria-label="Button">
-                    <FileText className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                    Export Config
+                  <Button variant="outline" size="sm" >
+                    <FileText className="h-3 w-3 mr-1 " />
                   </Button>
-                  <button variant="outline" size="sm" aria-label="Button">
-                    <Code className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                    View Schema
+                  <Button variant="outline" size="sm" >
+                    <Code className="h-3 w-3 mr-1 " />
                   </Button>
-                  <button variant="outline" size="sm" aria-label="Button">
-                    <Zap className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                    Test Connection
+                  <Button variant="outline" size="sm" >
+                    <Zap className="h-3 w-3 mr-1 " />
                   </Button>
                 </div>
               </div>
@@ -487,216 +633,4 @@ export default function ExtensionConfigurationPanel({
       </Tabs>
     </div>
   );
-}
-interface SettingFieldProps {
-  setting: ExtensionSetting;
-  showSensitive: boolean;
-  onChange: (value: any) => void;
-  onToggleSensitive: () => void;
-}
-function SettingField({ setting, showSensitive, onChange, onToggleSensitive }: SettingFieldProps) {
-  const renderInput = () => {
-    switch (setting.type) {
-      case 'string':
-      case 'password':
-        return (
-          <div className="relative">
-            <input
-              type={setting.type === 'password' && !showSensitive ? 'password' : 'text'}
-              value={setting.value || ''}
-              onChange={(e) = aria-label="Input"> onChange(e.target.value)}
-              disabled={setting.readonly}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-              placeholder={setting.defaultValue}
-            />
-            {setting.sensitive && (
-              <button
-                type="button"
-                onClick={onToggleSensitive}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-               aria-label="Button">
-                {showSensitive ? <EyeOff className="h-4 w-4 sm:w-auto md:w-full" /> : <Eye className="h-4 w-4 sm:w-auto md:w-full" />}
-              </button>
-            )}
-          </div>
-        );
-      case 'number':
-        return (
-          <input
-            type="number"
-            value={setting.value || ''}
-            onChange={(e) = aria-label="Input"> onChange(Number(e.target.value))}
-            disabled={setting.readonly}
-            min={setting.validation?.min}
-            max={setting.validation?.max}
-            step={setting.validation?.step}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-          />
-        );
-      case 'boolean':
-        return (
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={setting.value || false}
-              onChange={(e) = aria-label="Input"> onChange(e.target.checked)}
-              disabled={setting.readonly}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded sm:w-auto md:w-full"
-            />
-            <span className="ml-2 text-sm text-gray-700 md:text-base lg:text-lg">
-              {setting.value ? 'Enabled' : 'Disabled'}
-            </span>
-          </label>
-        );
-      case 'select':
-        return (
-          <select
-            value={setting.value || ''}
-            onChange={(e) = aria-label="Select option"> onChange(e.target.value)}
-            disabled={setting.readonly}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-          >
-            {setting.validation?.options?.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        );
-      case 'array':
-        return (
-          <div className="space-y-2">
-            {(setting.value || []).map((item: string, index: number) => (
-              <div key={index} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={item}
-                  onChange={(e) = aria-label="Input"> {
-                    const newArray = [...(setting.value || [])];
-                    newArray[index] = e.target.value;
-                    onChange(newArray);
-                  }}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <button
-                  size="sm"
-                  variant="outline"
-                  onClick={() = aria-label="Button"> {
-                    const newArray = [...(setting.value || [])];
-                    newArray.splice(index, 1);
-                    onChange(newArray);
-                  }}
-                >
-                  <Minus className="h-3 w-3 sm:w-auto md:w-full" />
-                </Button>
-              </div>
-            ))}
-            <button
-              size="sm"
-              variant="outline"
-              onClick={() = aria-label="Button"> onChange([...(setting.value || []), ''])}
-              className="flex items-center gap-1"
-            >
-              <Plus className="h-3 w-3 sm:w-auto md:w-full" />
-              Add Item
-            </Button>
-          </div>
-        );
-      case 'json':
-        return (
-          <textarea
-            value={JSON.stringify(setting.value, null, 2)}
-            onChange={(e) = aria-label="Textarea"> {
-              try {
-                onChange(JSON.parse(e.target.value));
-              } catch {
-                // Invalid JSON, don't update
-              }
-            }}
-            disabled={setting.readonly}
-            rows={6}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm disabled:bg-gray-100 md:text-base lg:text-lg"
-          />
-        );
-      default:
-        return null;
-    }
-  };
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700 md:text-base lg:text-lg">
-          {setting.label}
-          {setting.validation?.required && (
-            <span className="text-red-500 ml-1">*</span>
-          )}
-        </label>
-        {setting.sensitive && (
-          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-            <Shield className="h-2 w-2 mr-1 sm:w-auto md:w-full" />
-            Sensitive
-          </Badge>
-        )}
-      </div>
-      {setting.description && (
-        <p className="text-xs text-gray-500 sm:text-sm md:text-base">{setting.description}</p>
-      )}
-      {renderInput()}
-      {setting.value !== setting.defaultValue && (
-        <div className="flex items-center gap-1 text-xs text-blue-600 sm:text-sm md:text-base">
-          <Info className="h-3 w-3 sm:w-auto md:w-full" />
-          <span>Modified from default: {JSON.stringify(setting.defaultValue)}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-interface PermissionFieldProps {
-  permission: ExtensionPermission;
-  onChange: (granted: boolean) => void;
-}
-function PermissionField({ permission, onChange }: PermissionFieldProps) {
-  return (
-    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg sm:p-4 md:p-6">
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <h4 className="font-medium text-gray-900">{permission.label}</h4>
-          {permission.required && (
-            <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">Required</Badge>
-          )}
-        </div>
-        <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">{permission.description}</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            checked={permission.granted}
-            onChange={(e) = aria-label="Input"> onChange(e.target.checked)}
-            disabled={permission.required}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded sm:w-auto md:w-full"
-          />
-          <span className="ml-2 text-sm text-gray-700 md:text-base lg:text-lg">
-            {permission.granted ? 'Granted' : 'Denied'}
-          </span>
-        </label>
-      </div>
-    </div>
-  );
-}
-function getCategoryIcon(category: string) {
-  switch (category) {
-    case 'filesystem':
-      return <Database className="h-4 w-4 sm:w-auto md:w-full" />;
-    case 'network':
-      return <Globe className="h-4 w-4 sm:w-auto md:w-full" />;
-    case 'system':
-      return <Settings className="h-4 w-4 sm:w-auto md:w-full" />;
-    case 'data':
-      return <Shield className="h-4 w-4 sm:w-auto md:w-full" />;
-    case 'api':
-      return <Key className="h-4 w-4 sm:w-auto md:w-full" />;
-    default:
-      return <Settings className="h-4 w-4 sm:w-auto md:w-full" />;
-  }
 }

@@ -2,12 +2,7 @@
  * Initialization script for graceful degradation system
  * This should be called early in the application lifecycle
  */
-import { 
-  featureFlagManager,
-  extensionCache,
-  initializeGracefulDegradation,
-  defaultGracefulDegradationConfig
-} from './index';
+import {  featureFlagManager, extensionCache, initializeGracefulDegradation, defaultGracefulDegradationConfig } from './index';
 import { setupGlobalErrorHandling } from './use-graceful-backend';
 export interface GracefulDegradationConfig {
   enableCaching?: boolean;
@@ -47,9 +42,9 @@ export function initGracefulDegradation(config: GracefulDegradationConfig = {}) 
         if (flagConfig.fallbackBehavior) {
           featureFlagManager.updateFlag(flagName, {
             fallbackBehavior: flagConfig.fallbackBehavior
-          });
+
         }
-      });
+
     }
     // Set up cache cleanup
     if (finalConfig.enableCaching !== false) {
@@ -77,7 +72,7 @@ function enableDevelopmentMode() {
   // Enable all features in development
   featureFlagManager.getAllFlags().forEach(flag => {
     featureFlagManager.setFlag(flag.name, true);
-  });
+
   // Add development helpers to window object
   (window as any).gracefulDegradation = {
     featureFlagManager,
@@ -119,7 +114,7 @@ function setupPeriodicHealthChecks() {
         if (flag.fallbackBehavior === 'cache' || flag.fallbackBehavior === 'disable') {
           attemptServiceRecovery(flag.name);
         }
-      });
+
     }
   }, 2 * 60 * 1000); // 2 minutes
 }
@@ -207,7 +202,7 @@ if (typeof window !== 'undefined' && !isInitialized) {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       initGracefulDegradation();
-    });
+
   } else {
     // DOM is already ready
     setTimeout(() => {

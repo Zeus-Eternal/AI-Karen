@@ -7,16 +7,7 @@
  * Requirements: 4.1, 4.2, 4.3
  */
 
-import { 
-  testDatabaseAuthentication,
-  testDatabaseConnectivity,
-  testAuthenticationWithDatabaseValidation,
-  validateTestCredentials,
-  createTestSession,
-  cleanupTestSession,
-  DatabaseAuthTestSuite,
-  TEST_CREDENTIALS,
-} from '@/test-utils/auth-test-utils';
+import {  testDatabaseAuthentication, testDatabaseConnectivity, testAuthenticationWithDatabaseValidation, validateTestCredentials, createTestSession, cleanupTestSession, DatabaseAuthTestSuite, TEST_CREDENTIALS } from '@/test-utils/auth-test-utils';
 import { getConnectionManager, initializeConnectionManager } from '@/lib/connection/connection-manager';
 import { getEnvironmentConfigManager } from '@/lib/config/index';
 
@@ -24,18 +15,15 @@ import { getEnvironmentConfigManager } from '@/lib/config/index';
 beforeAll(() => {
   // Initialize connection manager in test mode
   initializeConnectionManager(true);
-});
 
 beforeEach(() => {
   // Reset connection manager statistics
   const connectionManager = getConnectionManager();
   connectionManager.resetStatistics();
-});
 
 afterEach(async () => {
   // Clean up any test sessions
   await cleanupTestSession();
-});
 
 describe('Database Authentication Integration', () => {
   describe('Database Connectivity', () => {
@@ -46,7 +34,6 @@ describe('Database Authentication Integration', () => {
         isConnected: expect.any(Boolean),
         responseTime: expect.any(Number),
         timestamp: expect.any(Date),
-      });
 
       if (!result.isConnected) {
         console.warn('Database connectivity test failed:', result.error);
@@ -69,7 +56,6 @@ describe('Database Authentication Integration', () => {
         expect(typeof result.error).toBe('string');
       }
     }, 35000);
-  });
 
   describe('Test Credentials Authentication', () => {
     it('should authenticate with admin@example.com/password123 credentials', async () => {
@@ -84,7 +70,6 @@ describe('Database Authentication Integration', () => {
           responseTime: expect.any(Number),
           timestamp: expect.any(Date),
         }),
-      });
 
       if (result.success) {
         expect(result.user).toMatchObject({
@@ -93,7 +78,6 @@ describe('Database Authentication Integration', () => {
           roles: expect.any(Array),
           tenant_id: expect.any(String),
           role: expect.any(String),
-        });
 
         // Verify admin privileges
         expect(['admin', 'super_admin']).toContain(result.user.role);
@@ -131,7 +115,6 @@ describe('Database Authentication Integration', () => {
         responseTime: expect.any(Number),
         retryCount: expect.any(Number),
         databaseConnectivity: expect.any(Object),
-      });
 
       if (!result.success) {
         expect(result.error).toBeDefined();
@@ -142,7 +125,6 @@ describe('Database Authentication Integration', () => {
         expect(result.error.length).toBeGreaterThan(10);
       }
     }, 50000);
-  });
 
   describe('Session Management', () => {
     it('should create and validate test session', async () => {
@@ -155,7 +137,6 @@ describe('Database Authentication Integration', () => {
           roles: expect.any(Array),
           tenantId: expect.any(String),
           role: expect.any(String),
-        });
 
         // Verify session is valid by testing connectivity
         const connectivityResult = await testDatabaseConnectivity();
@@ -175,7 +156,6 @@ describe('Database Authentication Integration', () => {
         await expect(cleanupTestSession()).resolves.not.toThrow();
       }
     }, 50000);
-  });
 
   describe('Credential Validation', () => {
     it('should validate test credentials against database', async () => {
@@ -184,7 +164,6 @@ describe('Database Authentication Integration', () => {
       expect(validation).toMatchObject({
         valid: expect.any(Boolean),
         message: expect.any(String),
-      });
 
       if (validation.valid) {
         expect(validation.message).toContain('admin@example.com');
@@ -195,7 +174,6 @@ describe('Database Authentication Integration', () => {
         expect(validation.message).toContain('failed');
       }
     }, 50000);
-  });
 
   describe('Error Handling', () => {
     it('should provide proper error messages for database connection failures', async () => {
@@ -226,7 +204,6 @@ describe('Database Authentication Integration', () => {
         expect(typeof result.error).toBe('string');
       }
     }, 35000);
-  });
 
   describe('Performance and Reliability', () => {
     it('should complete authentication within timeout limits', async () => {
@@ -261,11 +238,10 @@ describe('Database Authentication Integration', () => {
             success: expect.any(Boolean),
             responseTime: expect.any(Number),
             databaseConnectivity: expect.any(Object),
-          });
+
         }
-      });
+
     }, 60000);
-  });
 
   describe('Test Suite Integration', () => {
     it('should run complete test suite and generate report', async () => {
@@ -285,8 +261,7 @@ describe('Database Authentication Integration', () => {
         failedTests: expect.any(Number),
         averageResponseTime: expect.any(Number),
         databaseConnectivityStatus: expect.any(Boolean),
-      });
-      
+
       expect(report.successfulTests + report.failedTests).toBe(report.totalTests);
       expect(report.averageResponseTime).toBeGreaterThan(0);
     }, 60000);
@@ -305,8 +280,7 @@ describe('Database Authentication Integration', () => {
       const report = testSuite.generateTestReport();
       expect(report.totalTests).toBe(0);
     }, 30000);
-  });
-});
+
 
 describe('Environment Configuration Integration', () => {
   it('should have proper backend configuration for database authentication', () => {
@@ -319,11 +293,9 @@ describe('Environment Configuration Integration', () => {
       timeout: expect.any(Number),
       retryAttempts: expect.any(Number),
       healthCheckInterval: expect.any(Number),
-    });
-    
+
     // Timeout should be sufficient for database operations
     expect(config.timeout).toBeGreaterThanOrEqual(30000);
-  });
 
   it('should have valid health check URL', () => {
     const configManager = getEnvironmentConfigManager();
@@ -332,5 +304,4 @@ describe('Environment Configuration Integration', () => {
     expect(healthUrl).toBeDefined();
     expect(typeof healthUrl).toBe('string');
     expect(healthUrl.length).toBeGreaterThan(0);
-  });
-});
+

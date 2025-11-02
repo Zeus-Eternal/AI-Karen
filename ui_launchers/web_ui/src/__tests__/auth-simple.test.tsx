@@ -4,6 +4,7 @@
  * Basic tests to verify authentication functionality works
  */
 
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 
@@ -22,7 +23,7 @@ vi.mock('@/lib/auth/session', () => ({
   isAuthenticated: vi.fn(),
 }));
 
-import { 
+
   login,
   logout,
   validateSession, 
@@ -34,7 +35,7 @@ import {
   isSessionValid,
   hasRole,
   isAuthenticated
-} from '@/lib/auth/session';
+import { } from '@/lib/auth/session';
 
 const mockLogin = login as ReturnType<typeof vi.fn>;
 const mockLogout = logout as ReturnType<typeof vi.fn>;
@@ -51,7 +52,6 @@ const mockIsAuthenticated = isAuthenticated as ReturnType<typeof vi.fn>;
 describe('Simple Authentication Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Session Functions', () => {
     it('should call login with correct parameters', async () => {
@@ -60,7 +60,6 @@ describe('Simple Authentication Tests', () => {
       await login('test@example.com', 'password123');
       
       expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123');
-    });
 
     it('should call logout', async () => {
       mockLogout.mockResolvedValueOnce(undefined);
@@ -68,7 +67,6 @@ describe('Simple Authentication Tests', () => {
       await logout();
       
       expect(mockLogout).toHaveBeenCalledTimes(1);
-    });
 
     it('should validate session', async () => {
       mockValidateSession.mockResolvedValueOnce(true);
@@ -77,7 +75,6 @@ describe('Simple Authentication Tests', () => {
       
       expect(result).toBe(true);
       expect(mockValidateSession).toHaveBeenCalledTimes(1);
-    });
 
     it('should check session cookie', () => {
       mockHasSessionCookie.mockReturnValue(true);
@@ -86,7 +83,6 @@ describe('Simple Authentication Tests', () => {
       
       expect(result).toBe(true);
       expect(mockHasSessionCookie).toHaveBeenCalledTimes(1);
-    });
 
     it('should get current user', () => {
       const mockUser = {
@@ -102,7 +98,6 @@ describe('Simple Authentication Tests', () => {
       
       expect(result).toEqual(mockUser);
       expect(mockGetCurrentUser).toHaveBeenCalledTimes(1);
-    });
 
     it('should manage session state', () => {
       const mockUser = {
@@ -124,7 +119,6 @@ describe('Simple Authentication Tests', () => {
       // Clear session
       clearSession();
       expect(mockClearSession).toHaveBeenCalledTimes(1);
-    });
 
     it('should check authentication status', () => {
       mockIsAuthenticated.mockReturnValue(true);
@@ -133,7 +127,6 @@ describe('Simple Authentication Tests', () => {
       
       expect(result).toBe(true);
       expect(mockIsAuthenticated).toHaveBeenCalledTimes(1);
-    });
 
     it('should check user roles', () => {
       mockHasRole.mockReturnValue(true);
@@ -142,7 +135,6 @@ describe('Simple Authentication Tests', () => {
       
       expect(result).toBe(true);
       expect(mockHasRole).toHaveBeenCalledWith('admin');
-    });
 
     it('should validate session state', () => {
       mockIsSessionValid.mockReturnValue(true);
@@ -151,28 +143,24 @@ describe('Simple Authentication Tests', () => {
       
       expect(result).toBe(true);
       expect(mockIsSessionValid).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle login errors', async () => {
       mockLogin.mockRejectedValueOnce(new Error('Invalid credentials'));
       
       await expect(login('wrong@example.com', 'wrongpassword')).rejects.toThrow('Invalid credentials');
-    });
 
     it('should handle logout errors', async () => {
       mockLogout.mockRejectedValueOnce(new Error('Logout failed'));
       
       await expect(logout()).rejects.toThrow('Logout failed');
-    });
 
     it('should handle validation errors', async () => {
       mockValidateSession.mockRejectedValueOnce(new Error('Network error'));
       
       await expect(validateSession()).rejects.toThrow('Network error');
-    });
-  });
+
 
   describe('Authentication Flow Requirements', () => {
     it('should support login with valid credentials (Requirement 1.1)', async () => {
@@ -181,13 +169,11 @@ describe('Simple Authentication Tests', () => {
       await login('test@example.com', 'validpassword123');
       
       expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'validpassword123');
-    });
 
     it('should support login rejection with invalid credentials (Requirement 1.2)', async () => {
       mockLogin.mockRejectedValueOnce(new Error('Invalid credentials'));
       
       await expect(login('wrong@example.com', 'wrongpassword')).rejects.toThrow('Invalid credentials');
-    });
 
     it('should support session persistence check (Requirement 2.1)', () => {
       mockHasSessionCookie.mockReturnValue(true);
@@ -195,7 +181,6 @@ describe('Simple Authentication Tests', () => {
       const result = hasSessionCookie();
       
       expect(result).toBe(true);
-    });
 
     it('should support session validation (Requirement 2.2)', async () => {
       mockValidateSession.mockResolvedValueOnce(true);
@@ -203,7 +188,6 @@ describe('Simple Authentication Tests', () => {
       const result = await validateSession();
       
       expect(result).toBe(true);
-    });
 
     it('should prevent authentication bypass (Requirement 1.5)', async () => {
       // Multiple failed attempts should each call the login function
@@ -226,6 +210,5 @@ describe('Simple Authentication Tests', () => {
       expect(mockLogin).toHaveBeenNthCalledWith(1, 'wrong1@example.com', 'wrong1');
       expect(mockLogin).toHaveBeenNthCalledWith(2, 'wrong2@example.com', 'wrong2');
       expect(mockLogin).toHaveBeenNthCalledWith(3, 'wrong3@example.com', 'wrong3');
-    });
-  });
-});
+
+

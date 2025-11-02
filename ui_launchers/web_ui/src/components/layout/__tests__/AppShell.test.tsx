@@ -22,7 +22,6 @@ const mockLocalStorage = {
 
 Object.defineProperty(window, 'localStorage', {
   value: mockLocalStorage,
-});
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -37,7 +36,6 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
-});
 
 // Test component that uses AppShell context
 const TestComponent: React.FC = () => {
@@ -58,13 +56,10 @@ const TestComponent: React.FC = () => {
       <div data-testid="is-mobile">{isMobile.toString()}</div>
       <div data-testid="is-tablet">{isTablet.toString()}</div>
       <button data-testid="toggle-sidebar" onClick={toggleSidebar} aria-label="Button">
-        Toggle
       </button>
       <button data-testid="close-sidebar" onClick={closeSidebar} aria-label="Button">
-        Close
       </button>
       <button data-testid="open-sidebar" onClick={openSidebar} aria-label="Button">
-        Open
       </button>
     </div>
   );
@@ -93,8 +88,7 @@ describe('AppShell', () => {
       writable: true,
       configurable: true,
       value: 1024,
-    });
-  });
+
 
   describe('Basic Rendering', () => {
     it('renders all sections correctly', () => {
@@ -104,7 +98,6 @@ describe('AppShell', () => {
       expect(screen.getByTestId('header')).toBeInTheDocument();
       expect(screen.getByTestId('footer')).toBeInTheDocument();
       expect(screen.getByRole('main')).toBeInTheDocument();
-    });
 
     it('applies correct ARIA labels', () => {
       renderAppShell();
@@ -112,8 +105,7 @@ describe('AppShell', () => {
       const sidebar = screen.getByLabelText('Main navigation');
       expect(sidebar).toBeInTheDocument();
       expect(sidebar.tagName).toBe('ASIDE');
-    });
-  });
+
 
   describe('Responsive Behavior', () => {
     it('detects mobile viewport correctly', async () => {
@@ -122,7 +114,6 @@ describe('AppShell', () => {
         writable: true,
         configurable: true,
         value: 600,
-      });
 
       renderAppShell({ sidebarBreakpoint: 768 });
 
@@ -131,8 +122,7 @@ describe('AppShell', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('is-mobile')).toHaveTextContent('true');
-      });
-    });
+
 
     it('detects tablet viewport correctly', async () => {
       // Set tablet viewport
@@ -140,12 +130,10 @@ describe('AppShell', () => {
         writable: true,
         configurable: true,
         value: 900,
-      });
 
       renderAppShell({ 
         sidebarBreakpoint: 768, 
         tabletBreakpoint: 1024 
-      });
 
       // Trigger resize event
       fireEvent.resize(window);
@@ -153,8 +141,7 @@ describe('AppShell', () => {
       await waitFor(() => {
         expect(screen.getByTestId('is-tablet')).toHaveTextContent('true');
         expect(screen.getByTestId('is-mobile')).toHaveTextContent('false');
-      });
-    });
+
 
     it('auto-closes sidebar when resizing from desktop to mobile', async () => {
       renderAppShell({ defaultSidebarOpen: true });
@@ -167,16 +154,14 @@ describe('AppShell', () => {
         writable: true,
         configurable: true,
         value: 600,
-      });
 
       fireEvent.resize(window);
 
       await waitFor(() => {
         expect(screen.getByTestId('is-mobile')).toHaveTextContent('true');
         expect(screen.getByTestId('sidebar-open')).toHaveTextContent('false');
-      });
-    });
-  });
+
+
 
   describe('Sidebar State Management', () => {
     it('toggles sidebar correctly on desktop', async () => {
@@ -195,7 +180,6 @@ describe('AppShell', () => {
       // Toggle back to expanded
       await user.click(toggleButton);
       expect(screen.getByTestId('sidebar-collapsed')).toHaveTextContent('false');
-    });
 
     it('toggles sidebar correctly on mobile', async () => {
       const user = userEvent.setup();
@@ -205,7 +189,6 @@ describe('AppShell', () => {
         writable: true,
         configurable: true,
         value: 600,
-      });
 
       renderAppShell({ defaultSidebarOpen: false });
 
@@ -214,7 +197,6 @@ describe('AppShell', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('is-mobile')).toHaveTextContent('true');
-      });
 
       const toggleButton = screen.getByTestId('toggle-sidebar');
       
@@ -228,7 +210,6 @@ describe('AppShell', () => {
       // Toggle back to closed
       await user.click(toggleButton);
       expect(screen.getByTestId('sidebar-open')).toHaveTextContent('false');
-    });
 
     it('persists sidebar state to localStorage', async () => {
       const user = userEvent.setup();
@@ -241,21 +222,18 @@ describe('AppShell', () => {
         'appshell-sidebar-collapsed',
         'true'
       );
-    });
 
     it('loads sidebar state from localStorage', () => {
       mockLocalStorage.getItem.mockImplementation((key) => {
         if (key === 'appshell-sidebar-open') return 'false';
         if (key === 'appshell-sidebar-collapsed') return 'true';
         return null;
-      });
 
       renderAppShell({ persistSidebarState: true });
 
       expect(screen.getByTestId('sidebar-open')).toHaveTextContent('false');
       expect(screen.getByTestId('sidebar-collapsed')).toHaveTextContent('true');
-    });
-  });
+
 
   describe('Keyboard Navigation', () => {
     it('toggles sidebar with Ctrl+B', async () => {
@@ -269,7 +247,6 @@ describe('AppShell', () => {
       await user.keyboard('{Control>}b{/Control}');
 
       expect(screen.getByTestId('sidebar-collapsed')).toHaveTextContent('true');
-    });
 
     it('toggles sidebar with Cmd+B on Mac', async () => {
       const user = userEvent.setup();
@@ -282,7 +259,6 @@ describe('AppShell', () => {
       await user.keyboard('{Meta>}b{/Meta}');
 
       expect(screen.getByTestId('sidebar-collapsed')).toHaveTextContent('true');
-    });
 
     it('closes sidebar with Escape on mobile', async () => {
       const user = userEvent.setup();
@@ -292,25 +268,21 @@ describe('AppShell', () => {
         writable: true,
         configurable: true,
         value: 600,
-      });
 
       renderAppShell({ 
         defaultSidebarOpen: true,
         enableKeyboardShortcuts: true 
-      });
 
       // Trigger resize to set mobile state
       fireEvent.resize(window);
 
       await waitFor(() => {
         expect(screen.getByTestId('is-mobile')).toHaveTextContent('true');
-      });
 
       // Press Escape
       await user.keyboard('{Escape}');
 
       expect(screen.getByTestId('sidebar-open')).toHaveTextContent('false');
-    });
 
     it('focuses sidebar with Alt+S', async () => {
       const user = userEvent.setup();
@@ -326,13 +298,11 @@ describe('AppShell', () => {
       vi.spyOn(document, 'querySelector').mockImplementation((selector) => {
         if (selector === '[role="navigation"]') return mockSidebar;
         return null;
-      });
 
       // Press Alt+S
       await user.keyboard('{Alt>}s{/Alt}');
 
       expect(mockSidebar.focus).toHaveBeenCalled();
-    });
 
     it('focuses main content with Alt+M', async () => {
       const user = userEvent.setup();
@@ -348,13 +318,11 @@ describe('AppShell', () => {
       vi.spyOn(document, 'querySelector').mockImplementation((selector) => {
         if (selector === 'main') return mockMain;
         return null;
-      });
 
       // Press Alt+M
       await user.keyboard('{Alt>}m{/Alt}');
 
       expect(mockMain.focus).toHaveBeenCalled();
-    });
 
     it('ignores keyboard shortcuts when typing in inputs', async () => {
       const user = userEvent.setup();
@@ -376,19 +344,16 @@ describe('AppShell', () => {
 
       // Cleanup
       document.body.removeChild(input);
-    });
-  });
+
 
   describe('Context API', () => {
     it('provides correct context values', () => {
       renderAppShell({
         defaultSidebarOpen: true,
         defaultSidebarCollapsed: false,
-      });
 
       expect(screen.getByTestId('sidebar-open')).toHaveTextContent('true');
       expect(screen.getByTestId('sidebar-collapsed')).toHaveTextContent('false');
-    });
 
     it('throws error when used outside provider', () => {
       // Suppress console.error for this test
@@ -399,8 +364,7 @@ describe('AppShell', () => {
       }).toThrow('useAppShell must be used within an AppShell');
 
       consoleSpy.mockRestore();
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('has proper semantic structure', () => {
@@ -410,7 +374,6 @@ describe('AppShell', () => {
       expect(screen.getByRole('banner')).toBeInTheDocument(); // header
       expect(screen.getByRole('main')).toBeInTheDocument(); // main
       expect(screen.getByRole('contentinfo')).toBeInTheDocument(); // footer
-    });
 
     it('provides skip links functionality', async () => {
       const user = userEvent.setup();
@@ -419,8 +382,7 @@ describe('AppShell', () => {
       // Test that main content is focusable
       const main = screen.getByRole('main');
       expect(main).toHaveAttribute('tabIndex', '-1');
-    });
-  });
+
 
   describe('Mobile Overlay', () => {
     it('shows overlay when sidebar is open on mobile', async () => {
@@ -431,7 +393,6 @@ describe('AppShell', () => {
         writable: true,
         configurable: true,
         value: 600,
-      });
 
       renderAppShell({ defaultSidebarOpen: false });
 
@@ -440,7 +401,6 @@ describe('AppShell', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('is-mobile')).toHaveTextContent('true');
-      });
 
       // Open sidebar manually
       const openButton = screen.getByTestId('open-sidebar');
@@ -448,12 +408,10 @@ describe('AppShell', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('sidebar-open')).toHaveTextContent('true');
-      });
 
       // Check for overlay (it should be present)
       const overlay = document.querySelector('.fixed.inset-0');
       expect(overlay).toBeInTheDocument();
-    });
 
     it('closes sidebar when clicking overlay', async () => {
       const user = userEvent.setup();
@@ -463,7 +421,6 @@ describe('AppShell', () => {
         writable: true,
         configurable: true,
         value: 600,
-      });
 
       renderAppShell({ defaultSidebarOpen: false });
 
@@ -472,7 +429,6 @@ describe('AppShell', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('is-mobile')).toHaveTextContent('true');
-      });
 
       // Open sidebar manually
       const openButton = screen.getByTestId('open-sidebar');
@@ -480,7 +436,6 @@ describe('AppShell', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('sidebar-open')).toHaveTextContent('true');
-      });
 
       // Click overlay
       const overlay = document.querySelector('.fixed.inset-0');
@@ -488,6 +443,5 @@ describe('AppShell', () => {
         await user.click(overlay);
         expect(screen.getByTestId('sidebar-open')).toHaveTextContent('false');
       }
-    });
-  });
-});
+
+

@@ -15,5 +15,4 @@ describe('useExtensions', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(global.fetch).toHaveBeenCalled();
     expect(result.current.extensions).toEqual([]);
-  });
-});
+

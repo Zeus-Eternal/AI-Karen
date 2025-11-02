@@ -8,13 +8,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { 
-  DatabasePerformanceMonitor,
-  ApiPerformanceMonitor,
-  ComponentPerformanceMonitor,
-  PerformanceReporter,
-  adminPerformanceMonitor
-} from '@/lib/performance/admin-performance-monitor';
+import {  DatabasePerformanceMonitor, ApiPerformanceMonitor, ComponentPerformanceMonitor, PerformanceReporter, adminPerformanceMonitor } from '@/lib/performance/admin-performance-monitor';
 import { QueryOptimizer, getQueryOptimizer } from '@/lib/database/query-optimizer';
 import { AdminCacheManager, UserListCache, UserCache } from '@/lib/cache/admin-cache';
 import type { UserListFilter, PaginationParams } from '@/types/admin';
@@ -36,17 +30,14 @@ describe('Admin Performance Tests', () => {
       reportInterval: 1000,
       enableConsoleReports: false,
       enableRemoteReporting: false
-    });
-  });
+
 
   afterAll(() => {
     adminPerformanceMonitor.stopMonitoring();
-  });
 
   beforeEach(() => {
     vi.clearAllMocks();
     AdminCacheManager.clearAll();
-  });
 
   describe('Database Query Performance', () => {
     it('should track database query performance', async () => {
@@ -61,7 +52,6 @@ describe('Admin Performance Tests', () => {
       expect(metric.name).toBe('test_query');
       expect(metric.duration).toBeGreaterThan(40);
       expect(metric.duration).toBeLessThan(100);
-    });
 
     it('should identify slow database queries', async () => {
       const endQuery = DatabasePerformanceMonitor.startQuery('slow_query', 'SELECT * FROM large_table');
@@ -74,7 +64,6 @@ describe('Admin Performance Tests', () => {
       const slowQueries = DatabasePerformanceMonitor.getSlowQueries(1000);
       expect(slowQueries).toHaveLength(1);
       expect(slowQueries[0].name).toBe('slow_query');
-    });
 
     it('should optimize user search queries', async () => {
       const mockUsers = Array.from({ length: 100 }, (_, i) => ({
@@ -102,7 +91,6 @@ describe('Admin Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(100); // Should be fast
       expect(result.data).toHaveLength(20);
       expect(result.pagination.total).toBe(100);
-    });
 
     it('should handle bulk operations efficiently', async () => {
       mockDbClient.query.mockImplementation((query: string) => {
@@ -113,7 +101,6 @@ describe('Admin Performance Tests', () => {
           return Promise.resolve({ rows: [{ updated_count: 50 }] });
         }
         return Promise.resolve({ rows: [] });
-      });
 
       const userIds = Array.from({ length: 50 }, (_, i) => `user-${i}`);
       const updates = { is_active: false };
@@ -125,8 +112,7 @@ describe('Admin Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(200); // Bulk operations should be fast
       expect(result.success).toBe(true);
       expect(result.updatedCount).toBe(50);
-    });
-  });
+
 
   describe('API Performance', () => {
     it('should track API response times', async () => {
@@ -142,7 +128,6 @@ describe('Admin Performance Tests', () => {
       expect(metric.duration).toBeGreaterThan(90);
       expect(metric.metadata.statusCode).toBe(200);
       expect(metric.metadata.responseSize).toBe(1024);
-    });
 
     it('should identify slow API requests', async () => {
       const endRequest = ApiPerformanceMonitor.startRequest('/api/admin/slow-endpoint', 'POST');
@@ -155,7 +140,6 @@ describe('Admin Performance Tests', () => {
       const slowRequests = ApiPerformanceMonitor.getSlowRequests(2000);
       expect(slowRequests).toHaveLength(1);
       expect(slowRequests[0].name).toBe('POST /api/admin/slow-endpoint');
-    });
 
     it('should handle concurrent API requests efficiently', async () => {
       const requests = Array.from({ length: 10 }, (_, i) => {
@@ -165,8 +149,7 @@ describe('Admin Performance Tests', () => {
             const metric = endRequest(200);
             resolve(metric);
           }, Math.random() * 100);
-        });
-      });
+
 
       const startTime = performance.now();
       await Promise.all(requests);
@@ -177,8 +160,7 @@ describe('Admin Performance Tests', () => {
       
       const apiMetrics = ApiPerformanceMonitor.getApiMetrics();
       expect(apiMetrics.length).toBeGreaterThanOrEqual(10);
-    });
-  });
+
 
   describe('Component Render Performance', () => {
     it('should track component render times', async () => {
@@ -192,7 +174,6 @@ describe('Admin Performance Tests', () => {
       expect(metric.type).toBe('component_render');
       expect(metric.name).toBe('UserManagementTable');
       expect(metric.duration).toBeGreaterThan(40);
-    });
 
     it('should identify slow component renders', async () => {
       const endRender = ComponentPerformanceMonitor.startRender('SlowComponent');
@@ -205,8 +186,7 @@ describe('Admin Performance Tests', () => {
       const slowRenders = ComponentPerformanceMonitor.getSlowRenders(100);
       expect(slowRenders).toHaveLength(1);
       expect(slowRenders[0].name).toBe('SlowComponent');
-    });
-  });
+
 
   describe('Cache Performance', () => {
     it('should improve performance with caching', async () => {
@@ -226,7 +206,6 @@ describe('Admin Performance Tests', () => {
       expect(cached1).toEqual(testData);
       expect(cached2).toEqual(testData);
       expect(endTime2 - startTime2).toBeLessThan(endTime1 - startTime1);
-    });
 
     it('should handle cache invalidation correctly', async () => {
       const testData = { user_id: 'test-user', email: 'test@example.com' } as any;
@@ -236,7 +215,6 @@ describe('Admin Performance Tests', () => {
       
       UserCache.invalidate('test-user');
       expect(await UserCache.get('test-user')).toBeNull();
-    });
 
     it('should provide cache statistics', () => {
       const testData = { user_id: 'test-user', email: 'test@example.com' } as any;
@@ -246,8 +224,7 @@ describe('Admin Performance Tests', () => {
       expect(stats.size).toBeGreaterThan(0);
       expect(stats.maxSize).toBeGreaterThan(0);
       expect(typeof stats.ttl).toBe('number');
-    });
-  });
+
 
   describe('Performance Reporting', () => {
     it('should generate comprehensive performance reports', async () => {
@@ -271,7 +248,6 @@ describe('Admin Performance Tests', () => {
       expect(report.api.requestCount).toBeGreaterThan(0);
       expect(report.components.renderCount).toBeGreaterThan(0);
       expect(Array.isArray(report.recommendations)).toBe(true);
-    });
 
     it('should export metrics in different formats', async () => {
       // Generate test metric
@@ -288,8 +264,7 @@ describe('Admin Performance Tests', () => {
       expect(typeof csvExport).toBe('string');
       expect(csvExport).toContain('Type,Name,Duration');
       expect(csvExport).toContain('export_test');
-    });
-  });
+
 
   describe('Load Testing', () => {
     it('should handle high user list pagination load', async () => {
@@ -312,7 +287,6 @@ describe('Admin Performance Tests', () => {
         const filters: UserListFilter = {};
         const pagination: PaginationParams = { page: i + 1, limit: 50 };
         return queryOptimizer.searchUsersOptimized(filters, pagination);
-      });
 
       const startTime = performance.now();
       const results = await Promise.all(requests);
@@ -322,8 +296,7 @@ describe('Admin Performance Tests', () => {
       expect(results).toHaveLength(20);
       results.forEach(result => {
         expect(result.data).toHaveLength(50);
-      });
-    });
+
 
     it('should handle bulk operations under load', async () => {
       mockDbClient.query.mockImplementation((query: string) => {
@@ -334,12 +307,10 @@ describe('Admin Performance Tests', () => {
           return Promise.resolve({ rows: [{ updated_count: 100 }] });
         }
         return Promise.resolve({ rows: [] });
-      });
 
       const bulkOperations = Array.from({ length: 5 }, async (_, i) => {
         const userIds = Array.from({ length: 100 }, (_, j) => `user-${i}-${j}`);
         return queryOptimizer.bulkUpdateUsers(userIds, { is_active: false }, 'admin-user');
-      });
 
       const startTime = performance.now();
       const results = await Promise.all(bulkOperations);
@@ -350,9 +321,8 @@ describe('Admin Performance Tests', () => {
       results.forEach(result => {
         expect(result.success).toBe(true);
         expect(result.updatedCount).toBe(100);
-      });
-    });
-  });
+
+
 
   describe('Memory Usage', () => {
     it('should monitor memory usage during operations', () => {
@@ -377,14 +347,13 @@ describe('Admin Performance Tests', () => {
           locked_until: null,
           two_factor_enabled: false,
           two_factor_secret: null
-        });
+
       }
       
       const finalMemory = AdminCacheManager.getMemoryUsage();
       
       expect(finalMemory.users).toBeGreaterThan(initialMemory.users);
       expect(finalMemory.total).toBeGreaterThan(initialMemory.total);
-    });
 
     it('should clean up memory when caches are cleared', () => {
       // Add data to caches
@@ -406,7 +375,7 @@ describe('Admin Performance Tests', () => {
           locked_until: null,
           two_factor_enabled: false,
           two_factor_secret: null
-        });
+
       }
       
       const beforeClear = AdminCacheManager.getMemoryUsage();
@@ -414,6 +383,5 @@ describe('Admin Performance Tests', () => {
       const afterClear = AdminCacheManager.getMemoryUsage();
       
       expect(afterClear.total).toBeLessThan(beforeClear.total);
-    });
-  });
-});
+
+

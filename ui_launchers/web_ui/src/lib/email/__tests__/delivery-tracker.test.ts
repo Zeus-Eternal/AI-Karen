@@ -29,11 +29,9 @@ describe('DeliveryStatusManager', () => {
     // Mock console methods to avoid test output
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('recordDeliveryStatus', () => {
     it('should record delivery status', async () => {
@@ -42,7 +40,6 @@ describe('DeliveryStatusManager', () => {
       const statuses = deliveryManager.getDeliveryStatus('test-message-1');
       expect(statuses).toHaveLength(1);
       expect(statuses[0]).toEqual(mockDeliveryStatus);
-    });
 
     it('should maintain multiple statuses for same message', async () => {
       const status1 = { ...mockDeliveryStatus, status: 'sent' as const };
@@ -56,7 +53,6 @@ describe('DeliveryStatusManager', () => {
       const statuses = deliveryManager.getDeliveryStatus('test-message-1');
       expect(statuses).toHaveLength(3);
       expect(statuses.map(s => s.status)).toEqual(['sent', 'delivered', 'opened']);
-    });
 
     it('should limit status history to 10 entries', async () => {
       // Add 15 statuses
@@ -70,8 +66,7 @@ describe('DeliveryStatusManager', () => {
 
       const statuses = deliveryManager.getDeliveryStatus('test-message-1');
       expect(statuses).toHaveLength(10);
-    });
-  });
+
 
   describe('getLatestDeliveryStatus', () => {
     it('should return latest delivery status', async () => {
@@ -83,13 +78,11 @@ describe('DeliveryStatusManager', () => {
 
       const latest = deliveryManager.getLatestDeliveryStatus('test-message-1');
       expect(latest?.status).toBe('delivered');
-    });
 
     it('should return null for non-existent message', () => {
       const latest = deliveryManager.getLatestDeliveryStatus('non-existent');
       expect(latest).toBeNull();
-    });
-  });
+
 
   describe('processWebhook', () => {
     let mockWebhook: EmailWebhook;
@@ -110,7 +103,6 @@ describe('DeliveryStatusManager', () => {
         processed: false,
         created_at: new Date(),
       };
-    });
 
     it('should process valid webhook', async () => {
       await deliveryManager.processWebhook(mockWebhook);
@@ -121,13 +113,11 @@ describe('DeliveryStatusManager', () => {
       const statuses = deliveryManager.getDeliveryStatus('test-message-1');
       expect(statuses).toHaveLength(1);
       expect(statuses[0].status).toBe('delivered');
-    });
 
     it('should reject invalid webhook', async () => {
       const invalidWebhook = { ...mockWebhook, message_id: '' };
 
       await expect(deliveryManager.processWebhook(invalidWebhook)).rejects.toThrow('Invalid webhook data');
-    });
 
     it('should call registered webhook handler', async () => {
       const mockHandler = vi.fn().mockResolvedValue(undefined);
@@ -136,8 +126,7 @@ describe('DeliveryStatusManager', () => {
       await deliveryManager.processWebhook(mockWebhook);
 
       expect(mockHandler).toHaveBeenCalledWith(mockWebhook);
-    });
-  });
+
 
   describe('getDeliveryStatistics', () => {
     it('should return delivery statistics', async () => {
@@ -154,8 +143,7 @@ describe('DeliveryStatusManager', () => {
         click_rate: 12,
         by_template: expect.any(Array),
         by_day: expect.any(Array),
-      });
-    });
+
 
     it('should accept date range filters', async () => {
       const startDate = new Date('2023-01-01');
@@ -165,15 +153,13 @@ describe('DeliveryStatusManager', () => {
 
       expect(stats).toBeDefined();
       // In a real implementation, this would filter by date range
-    });
 
     it('should accept template filter', async () => {
       const stats = await deliveryManager.getDeliveryStatistics(undefined, undefined, 'template-1');
 
       expect(stats).toBeDefined();
       // In a real implementation, this would filter by template
-    });
-  });
+
 
   describe('cleanupOldStatuses', () => {
     it('should clean up old delivery statuses', async () => {
@@ -198,9 +184,8 @@ describe('DeliveryStatusManager', () => {
       expect(cleanedCount).toBe(1);
       expect(deliveryManager.getDeliveryStatus('test-message-1')).toHaveLength(0);
       expect(deliveryManager.getDeliveryStatus('recent-message')).toHaveLength(1);
-    });
-  });
-});
+
+
 
 describe('WebhookHandler', () => {
   let webhookHandler: WebhookHandler;
@@ -213,11 +198,9 @@ describe('WebhookHandler', () => {
     // Mock console methods
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('processIncomingWebhook', () => {
     it('should process SendGrid webhook', async () => {
@@ -246,7 +229,6 @@ describe('WebhookHandler', () => {
           data,
         })
       );
-    });
 
     it('should process SES webhook', async () => {
       const data = {
@@ -271,7 +253,6 @@ describe('WebhookHandler', () => {
           email: 'test@example.com',
         })
       );
-    });
 
     it('should process Mailgun webhook', async () => {
       const data = {
@@ -294,7 +275,6 @@ describe('WebhookHandler', () => {
           email: 'test@example.com',
         })
       );
-    });
 
     it('should process Postmark webhook', async () => {
       const data = {
@@ -317,7 +297,6 @@ describe('WebhookHandler', () => {
           email: 'test@example.com',
         })
       );
-    });
 
     it('should handle webhook processing errors', async () => {
       const data = {
@@ -334,9 +313,8 @@ describe('WebhookHandler', () => {
       await expect(
         webhookHandler.processIncomingWebhook('sendgrid', 'delivered', data, headers)
       ).rejects.toThrow('Processing failed');
-    });
-  });
-});
+
+
 
 describe('RetryManager', () => {
   let retryManager: RetryManager;
@@ -348,11 +326,9 @@ describe('RetryManager', () => {
 
     // Mock console methods
     vi.spyOn(console, 'log').mockImplementation(() => {});
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('processRetryQueue', () => {
     it('should process retry queue', async () => {
@@ -385,7 +361,6 @@ describe('RetryManager', () => {
       // Should not retry the second message (permanent failure - bounced)
       expect(markForRetrySpy).toHaveBeenCalledTimes(1);
       expect(markForRetrySpy).toHaveBeenCalledWith('msg-1');
-    });
 
     it('should not retry messages with too many attempts', async () => {
       const mockFailedDeliveries = [
@@ -404,7 +379,6 @@ describe('RetryManager', () => {
       await retryManager.processRetryQueue();
 
       expect(markForRetrySpy).not.toHaveBeenCalled();
-    });
 
     it('should not retry permanent failures', async () => {
       const mockFailedDeliveries = [
@@ -430,7 +404,6 @@ describe('RetryManager', () => {
       await retryManager.processRetryQueue();
 
       expect(markForRetrySpy).not.toHaveBeenCalled();
-    });
 
     it('should respect exponential backoff timing', async () => {
       const mockFailedDeliveries = [
@@ -450,6 +423,5 @@ describe('RetryManager', () => {
 
       // Should not retry because not enough time has passed (need 2 hours, only 0.5 hours passed)
       expect(markForRetrySpy).not.toHaveBeenCalled();
-    });
-  });
-});
+
+

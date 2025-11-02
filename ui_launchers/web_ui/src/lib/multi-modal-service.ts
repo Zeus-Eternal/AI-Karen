@@ -136,7 +136,6 @@ class MultiModalService {
       status: "local",
       pricing: { model: "free" },
       limits: { maxResolution: "1024x1024" },
-    });
 
     // OpenAI DALL-E
     this.providers.set("dalle-3", {
@@ -147,7 +146,6 @@ class MultiModalService {
       status: "api-key-required",
       pricing: { model: "pay-per-use", cost: "$0.04-0.08 per image" },
       limits: { maxResolution: "1024x1024", dailyLimit: 50 },
-    });
 
     // Midjourney (via API)
     this.providers.set("midjourney", {
@@ -158,7 +156,6 @@ class MultiModalService {
       status: "api-key-required",
       pricing: { model: "subscription" },
       limits: { dailyLimit: 200 },
-    });
 
     // GPT-4 Vision
     this.providers.set("gpt4-vision", {
@@ -168,7 +165,6 @@ class MultiModalService {
       capabilities: ["image-to-text", "image-analysis", "ocr"],
       status: "api-key-required",
       pricing: { model: "pay-per-use" },
-    });
 
     // ElevenLabs TTS
     this.providers.set("elevenlabs-tts", {
@@ -178,7 +174,6 @@ class MultiModalService {
       capabilities: ["text-to-speech", "voice-cloning", "multilingual"],
       status: "api-key-required",
       pricing: { model: "credits" },
-    });
 
     // RunwayML Video
     this.providers.set("runway-video", {
@@ -189,7 +184,7 @@ class MultiModalService {
       status: "api-key-required",
       pricing: { model: "credits" },
       limits: { maxDuration: 4, maxResolution: "1280x768" },
-    });
+
   }
 
   /**
@@ -454,7 +449,7 @@ class MultiModalService {
       const karenBackend = getKarenBackend();
       await karenBackend.makeRequestPublic(`/api/multimodal/cancel/${id}`, {
         method: "POST",
-      });
+
       generation.status = "failed";
       generation.error = "Cancelled by user";
       return true;

@@ -1,42 +1,26 @@
+
+"use client";
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
 import { Progress } from '@/components/ui/progress';
 /**
  * Endpoint Status Indicator Component
  * Compact status indicator for endpoint connectivity with real-time updates
  */
 
-'use client';
+
+import { } from '@/components/ui/popover';
 
 
-
-
-
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from '@/components/ui/popover';
-
-
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
-  XCircle,
-  Zap,
-  TrendingUp,
-  RefreshCw,
-  ExternalLink
-} from 'lucide-react';
+import { } from 'lucide-react';
 
   getHealthMonitor, 
   type HealthMetrics 
-} from '@/lib/health-monitor';
+import { } from '@/lib/health-monitor';
 
   getDiagnosticLogger 
-} from '@/lib/diagnostics';
+import { } from '@/lib/diagnostics';
 
 interface EndpointStatusIndicatorProps {
   className?: string;
@@ -72,7 +56,6 @@ export function EndpointStatusIndicator({
     const unsubscribeMetrics = healthMonitor.onMetricsUpdate((newMetrics) => {
       setMetrics(newMetrics);
       setLastUpdate(new Date().toLocaleTimeString());
-    });
 
     const unsubscribeLogs = diagnosticLogger.onLog((newLog) => {
       if (newLog.level === 'error' && newLog.category === 'network') {
@@ -82,7 +65,6 @@ export function EndpointStatusIndicator({
           setRecentErrors(prev => Math.max(0, prev - 1));
         }, 5 * 60 * 1000);
       }
-    });
 
     return () => {
       unsubscribeMetrics();
@@ -111,13 +93,13 @@ export function EndpointStatusIndicator({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle className="h-4 w-4 text-green-600 " />;
       case 'degraded':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600 " />;
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+        return <XCircle className="h-4 w-4 text-red-600 " />;
       default:
-        return <Clock className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
+        return <Clock className="h-4 w-4 text-gray-600 " />;
     }
   };
 
@@ -168,7 +150,7 @@ export function EndpointStatusIndicator({
       <div className={`flex items-center gap-1 ${className}`}>
         {getStatusIcon(overallStatus)}
         {recentErrors > 0 && (
-          <Badge variant="destructive" className="text-xs px-1 py-0 h-4 min-w-4 sm:w-auto md:w-full">
+          <Badge variant="destructive" className="text-xs px-1 py-0 h-4 min-w-4 ">
             {recentErrors}
           </Badge>
         )}
@@ -195,7 +177,7 @@ export function EndpointStatusIndicator({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button variant="ghost" size="sm" className={`gap-2 ${className}`} aria-label="Button">
+        <Button variant="ghost" size="sm" className={`gap-2 ${className}`} >
           {getStatusIcon(overallStatus)}
           <Badge variant={getStatusColor(overallStatus)}>
             {getStatusText(overallStatus)}
@@ -207,7 +189,7 @@ export function EndpointStatusIndicator({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 sm:w-auto md:w-full" align="end">
+      <PopoverContent className="w-80 " align="end">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold">Endpoint Status</h4>
@@ -224,7 +206,7 @@ export function EndpointStatusIndicator({
               {/* Quick Stats */}
               <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <TrendingUp className="h-4 w-4 text-muted-foreground " />
                   <div>
                     <div className="font-medium">Error Rate</div>
                     <div className="text-muted-foreground">
@@ -233,7 +215,7 @@ export function EndpointStatusIndicator({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Zap className="h-4 w-4 text-muted-foreground " />
                   <div>
                     <div className="font-medium">Response Time</div>
                     <div className="text-muted-foreground">
@@ -256,7 +238,7 @@ export function EndpointStatusIndicator({
               <div className="space-y-2 max-h-32 overflow-y-auto">
                 {Object.entries(metrics.endpoints).map(([endpoint, result]) => (
                   <div key={endpoint} className="flex items-center justify-between text-xs sm:text-sm md:text-base">
-                    <div className="flex items-center gap-2 flex-1 min-w-0 sm:w-auto md:w-full">
+                    <div className="flex items-center gap-2 flex-1 min-w-0 ">
                       {getStatusIcon(result.status)}
                       <span className="truncate" title={endpoint}>
                         {endpoint.split('/').pop() || endpoint}
@@ -264,13 +246,13 @@ export function EndpointStatusIndicator({
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <span>{result.responseTime}ms</span>
-                      <button
+                      <Button
                         variant="ghost"
                         size="sm"
-                        className="h-4 w-4 p-0 sm:w-auto md:w-full"
-                        onClick={() = aria-label="Button"> window.open(endpoint, '_blank')}
+                        className="h-4 w-4 p-0 "
+                        onClick={() => window.open(endpoint, '_blank')}
                       >
-                        <ExternalLink className="h-3 w-3 sm:w-auto md:w-full" />
+                        <ExternalLink className="h-3 w-3 " />
                       </Button>
                     </div>
                   </div>
@@ -318,7 +300,7 @@ export function EndpointStatusIndicator({
           {!metrics && (
             <div className="flex items-center justify-center py-4">
               <div className="text-center">
-                <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground sm:w-auto md:w-full" />
+                <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground " />
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading status...</p>
               </div>
             </div>

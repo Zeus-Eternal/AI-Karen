@@ -103,7 +103,7 @@ export class QualityMetricsCollector {
         cwd: this.projectRoot,
         encoding: 'utf8',
         stdio: 'pipe'
-      });
+
       const coverageData = JSON.parse(coverageOutput);
       // Extract coverage data from different test types
       const unitCoverage = this.extractCoverageFromReport('coverage/unit/coverage-summary.json');
@@ -164,7 +164,7 @@ export class QualityMetricsCollector {
         cwd: this.projectRoot,
         encoding: 'utf8',
         stdio: 'pipe'
-      });
+
       const testData = JSON.parse(testOutput);
       const results = {
         total: testData.numTotalTests || 0,
@@ -278,7 +278,7 @@ export class QualityMetricsCollector {
         cwd: this.projectRoot,
         encoding: 'utf8',
         stdio: 'pipe'
-      });
+
       const a11yData = JSON.parse(a11yOutput);
       const accessibility = {
         score: Math.round(a11yData.score || 0),
@@ -308,7 +308,7 @@ export class QualityMetricsCollector {
         cwd: this.projectRoot,
         encoding: 'utf8',
         stdio: 'pipe'
-      });
+
       const auditData = JSON.parse(auditOutput);
       const vulnerabilities = {
         critical: auditData.metadata?.vulnerabilities?.critical || 0,
@@ -587,6 +587,6 @@ export class QualityMetricsCollector {
     this.metricsCache.set(key, {
       data,
       timestamp: Date.now()
-    });
+
   }
 }

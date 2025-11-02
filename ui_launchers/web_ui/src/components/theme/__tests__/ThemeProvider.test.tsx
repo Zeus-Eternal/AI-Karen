@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { act } from '@testing-library/react';
 import { ThemeProvider, useTheme } from '../ThemeProvider';
@@ -21,7 +22,6 @@ const localStorageMock = {
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
-});
 
 // Mock matchMedia
 const matchMediaMock = vi.fn().mockImplementation(query => ({
@@ -37,7 +37,6 @@ const matchMediaMock = vi.fn().mockImplementation(query => ({
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: matchMediaMock,
-});
 
 // Test component that uses the theme
 const TestComponent = () => {
@@ -49,20 +48,15 @@ const TestComponent = () => {
       <div data-testid="resolved-theme">{resolvedTheme}</div>
       <div data-testid="density">{density}</div>
       <div data-testid="is-system">{isSystemTheme.toString()}</div>
-      <button onClick={() = aria-label="Button"> setTheme('light')} data-testid="set-light">
-        Set Light
+      <button onClick={() => setTheme('light')} data-testid="set-light">
       </button>
-      <button onClick={() = aria-label="Button"> setTheme('dark')} data-testid="set-dark">
-        Set Dark
+      <button onClick={() => setTheme('dark')} data-testid="set-dark">
       </button>
-      <button onClick={() = aria-label="Button"> setTheme('system')} data-testid="set-system">
-        Set System
+      <button onClick={() => setTheme('system')} data-testid="set-system">
       </button>
-      <button onClick={() = aria-label="Button"> setDensity('compact')} data-testid="set-compact">
-        Set Compact
+      <button onClick={() => setDensity('compact')} data-testid="set-compact">
       </button>
-      <button onClick={() = aria-label="Button"> setDensity('spacious')} data-testid="set-spacious">
-        Set Spacious
+      <button onClick={() => setDensity('spacious')} data-testid="set-spacious">
       </button>
     </div>
   );
@@ -75,7 +69,6 @@ describe('ThemeProvider', () => {
     document.documentElement.className = '';
     document.documentElement.style.colorScheme = '';
     useUIStore.getState().resetUIState();
-  });
 
   it('should render children when mounted', async () => {
     render(
@@ -86,8 +79,7 @@ describe('ThemeProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('theme')).toBeInTheDocument();
-    });
-  });
+
 
   it('should use default theme and density', async () => {
     render(
@@ -100,8 +92,7 @@ describe('ThemeProvider', () => {
       expect(screen.getByTestId('theme')).toHaveTextContent('system');
       expect(screen.getByTestId('density')).toHaveTextContent('comfortable');
       expect(screen.getByTestId('is-system')).toHaveTextContent('true');
-    });
-  });
+
 
   it('should use custom default theme and density', async () => {
     render(
@@ -114,15 +105,13 @@ describe('ThemeProvider', () => {
       expect(screen.getByTestId('theme')).toHaveTextContent('light');
       expect(screen.getByTestId('density')).toHaveTextContent('compact');
       expect(screen.getByTestId('resolved-theme')).toHaveTextContent('light');
-    });
-  });
+
 
   it('should load theme from localStorage', async () => {
     localStorageMock.getItem.mockImplementation((key) => {
       if (key === 'ui-theme') return 'dark';
       if (key === 'ui-theme-density') return 'spacious';
       return null;
-    });
 
     render(
       <ThemeProvider>
@@ -134,8 +123,7 @@ describe('ThemeProvider', () => {
       expect(screen.getByTestId('theme')).toHaveTextContent('dark');
       expect(screen.getByTestId('density')).toHaveTextContent('spacious');
       expect(screen.getByTestId('resolved-theme')).toHaveTextContent('dark');
-    });
-  });
+
 
   it('should change theme and save to localStorage', async () => {
     render(
@@ -146,18 +134,15 @@ describe('ThemeProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('theme')).toBeInTheDocument();
-    });
 
     act(() => {
       fireEvent.click(screen.getByTestId('set-light'));
-    });
 
     await waitFor(() => {
       expect(screen.getByTestId('theme')).toHaveTextContent('light');
       expect(screen.getByTestId('resolved-theme')).toHaveTextContent('light');
       expect(localStorageMock.setItem).toHaveBeenCalledWith('ui-theme', 'light');
-    });
-  });
+
 
   it('should change density and save to localStorage', async () => {
     render(
@@ -168,17 +153,14 @@ describe('ThemeProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('density')).toBeInTheDocument();
-    });
 
     act(() => {
       fireEvent.click(screen.getByTestId('set-compact'));
-    });
 
     await waitFor(() => {
       expect(screen.getByTestId('density')).toHaveTextContent('compact');
       expect(localStorageMock.setItem).toHaveBeenCalledWith('ui-theme-density', 'compact');
-    });
-  });
+
 
   it('should apply theme classes to document element', async () => {
     render(
@@ -190,18 +172,15 @@ describe('ThemeProvider', () => {
     await waitFor(() => {
       expect(document.documentElement.classList.contains('dark')).toBe(true);
       expect(document.documentElement.style.colorScheme).toBe('dark');
-    });
 
     act(() => {
       fireEvent.click(screen.getByTestId('set-light'));
-    });
 
     await waitFor(() => {
       expect(document.documentElement.classList.contains('light')).toBe(true);
       expect(document.documentElement.classList.contains('dark')).toBe(false);
       expect(document.documentElement.style.colorScheme).toBe('light');
-    });
-  });
+
 
   it('should apply density classes to document element', async () => {
     render(
@@ -212,17 +191,14 @@ describe('ThemeProvider', () => {
 
     await waitFor(() => {
       expect(document.documentElement.classList.contains('density-compact')).toBe(true);
-    });
 
     act(() => {
       fireEvent.click(screen.getByTestId('set-spacious'));
-    });
 
     await waitFor(() => {
       expect(document.documentElement.classList.contains('density-spacious')).toBe(true);
       expect(document.documentElement.classList.contains('density-compact')).toBe(false);
-    });
-  });
+
 
   it('should handle system theme preference', async () => {
     matchMediaMock.mockImplementation(query => ({
@@ -246,8 +222,7 @@ describe('ThemeProvider', () => {
       expect(screen.getByTestId('theme')).toHaveTextContent('system');
       expect(screen.getByTestId('resolved-theme')).toHaveTextContent('dark');
       expect(screen.getByTestId('is-system')).toHaveTextContent('true');
-    });
-  });
+
 
   it('should handle system theme preference change', async () => {
     let mediaQueryCallback: ((e: MediaQueryListEvent) => void) | null = null;
@@ -275,7 +250,6 @@ describe('ThemeProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('resolved-theme')).toHaveTextContent('dark');
-    });
 
     // Simulate system theme change to light
     if (mediaQueryCallback) {
@@ -292,13 +266,12 @@ describe('ThemeProvider', () => {
         }));
         
         mediaQueryCallback({ matches: false } as MediaQueryListEvent);
-      });
+
     }
 
     await waitFor(() => {
       expect(screen.getByTestId('resolved-theme')).toHaveTextContent('light');
-    });
-  });
+
 
   it('should use custom storage key', async () => {
     const customKey = 'custom-theme-key';
@@ -311,16 +284,13 @@ describe('ThemeProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('theme')).toBeInTheDocument();
-    });
 
     act(() => {
       fireEvent.click(screen.getByTestId('set-dark'));
-    });
 
     await waitFor(() => {
       expect(localStorageMock.setItem).toHaveBeenCalledWith(customKey, 'dark');
-    });
-  });
+
 
   it('should inject CSS design tokens', async () => {
     render(
@@ -334,8 +304,7 @@ describe('ThemeProvider', () => {
       expect(styleElement).toBeInTheDocument();
       expect(styleElement?.textContent).toContain(':root');
       expect(styleElement?.textContent).toContain('--color-primary-500');
-    });
-  });
+
 
   it('should throw error when useTheme is used outside provider', () => {
     const TestComponentWithoutProvider = () => {
@@ -351,7 +320,6 @@ describe('ThemeProvider', () => {
     }).toThrow('useTheme must be used within a ThemeProvider');
 
     consoleSpy.mockRestore();
-  });
 
   it('should disable transitions when disableTransitionOnChange is true', async () => {
     render(
@@ -362,11 +330,9 @@ describe('ThemeProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('theme')).toBeInTheDocument();
-    });
 
     act(() => {
       fireEvent.click(screen.getByTestId('set-light'));
-    });
 
     // Check that disable-transitions class is temporarily added
     expect(document.documentElement.classList.contains('disable-transitions')).toBe(true);
@@ -375,5 +341,4 @@ describe('ThemeProvider', () => {
     await waitFor(() => {
       expect(document.documentElement.classList.contains('disable-transitions')).toBe(false);
     }, { timeout: 200 });
-  });
-});
+

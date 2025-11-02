@@ -51,7 +51,7 @@ async function checkDegradedMode(): Promise<boolean> {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
       signal: AbortSignal.timeout(3000)
-    });
+
     if (response.ok) {
       const data = await response.json();
       return data.is_active || data.degraded_mode;
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       url: request.url,
       method: request.method,
       headers: Object.fromEntries(request.headers.entries())
-    });
+
   }
   try {
     // Get authorization header from the request
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
         messageCount: body.messages ? body.messages.length : 0,
         hasStream: body.stream !== undefined,
         bodyPreview: JSON.stringify(body).substring(0, 500) + (JSON.stringify(body).length > 500 ? '...' : '')
-      });
+
     }
     // Check if we should use fallback mode
     const isDegraded = await checkDegradedMode();
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
         console.log('🔍 ChatRuntime API: Authorization header found', {
           hasAuth: true,
           authPrefix: authorization.substring(0, 20) + '...'
-        });
+
       }
     } else if (isVerboseLogging) {
     }
@@ -110,12 +110,11 @@ export async function POST(request: NextRequest) {
         console.log('🔍 ChatRuntime API: Cookie header found', {
           hasCookie: true,
           cookiePrefix: cookie.substring(0, 50) + (cookie.length > 50 ? '...' : '')
-        });
+
       }
     } else if (isVerboseLogging) {
     }
     if (isVerboseLogging) {
-      });
     }
     try {
       const response = await fetch(backendUrl, {
@@ -123,7 +122,7 @@ export async function POST(request: NextRequest) {
         headers,
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(isDegraded ? 10000 : 60000), // Shorter timeout in degraded mode
-      });
+
       if (isVerboseLogging) {
         console.log('🔍 ChatRuntime API: Backend response received', {
           status: response.status,
@@ -131,7 +130,7 @@ export async function POST(request: NextRequest) {
           headers: Object.fromEntries(response.headers.entries()),
           ok: response.ok,
           url: response.url
-        });
+
       }
       const data = await response.json();
       if (isVerboseLogging) {
@@ -142,7 +141,7 @@ export async function POST(request: NextRequest) {
           hasError: !!data.error,
           error: data.error,
           dataPreview: JSON.stringify(data).substring(0, 500) + (JSON.stringify(data).length > 500 ? '...' : '')
-        });
+
       }
       // Return the backend response with appropriate status
       return NextResponse.json(data, {
@@ -152,7 +151,7 @@ export async function POST(request: NextRequest) {
           'Pragma': 'no-cache',
           'Expires': '0'
         }
-      });
+
     } catch (backendError) {
       // Use fallback response when backend is unavailable
       const userMessage = body.messages?.[body.messages.length - 1]?.content || body.message || '';
@@ -166,7 +165,7 @@ export async function POST(request: NextRequest) {
           'Pragma': 'no-cache',
           'Expires': '0'
         }
-      });
+
     }
   } catch (error) {
     // Return fallback response even for parsing errors
@@ -181,7 +180,7 @@ export async function POST(request: NextRequest) {
           'Pragma': 'no-cache',
           'Expires': '0'
         }
-      });
+
     } catch (fallbackError) {
       // Last resort: return JSON error
       const errorResponse = {

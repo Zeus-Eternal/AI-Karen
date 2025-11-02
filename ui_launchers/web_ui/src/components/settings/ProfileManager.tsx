@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -82,16 +83,14 @@ export default function ProfileManager({
                 {activeProfile?.id === p.id ? (
                   <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Active</span>
                 ) : (
-                  <button size="sm" variant="secondary" onClick={() = aria-label="Button"> setActiveProfile(p)}>
-                    Activate
+                  <Button size="sm" variant="secondary" onClick={() => setActiveProfile(p)}>
                   </Button>
                 )}
               </li>
             ))}
           </ul>
         )}
-        <button size="sm" onClick={handleCreate} disabled={creating} aria-label="Button">
-          Add Profile
+        <Button size="sm" onClick={handleCreate} disabled={creating} >
         </Button>
       </CardContent>
     </Card>

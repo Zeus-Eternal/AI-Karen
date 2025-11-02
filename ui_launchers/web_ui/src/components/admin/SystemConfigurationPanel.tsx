@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * System Configuration Panel Component
@@ -17,16 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Save, 
-  RotateCcw, 
-  Shield, 
-  Clock, 
-  Key, 
-  Mail,
-  AlertTriangle,
-  Info
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 
 interface SystemConfig {
   // Password Policy
@@ -122,7 +114,7 @@ export default function SystemConfigurationPanel() {
         title: 'Error',
         description: 'Failed to load system configuration',
         variant: 'destructive'
-      });
+
     } finally {
       setLoading(false);
     }
@@ -142,13 +134,12 @@ export default function SystemConfigurationPanel() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(config)
-      });
 
       if (response.ok) {
         toast({
           title: 'Success',
           description: 'System configuration saved successfully'
-        });
+
         setHasChanges(false);
       } else {
         const error = await response.json();
@@ -159,7 +150,7 @@ export default function SystemConfigurationPanel() {
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to save configuration',
         variant: 'destructive'
-      });
+
     } finally {
       setSaving(false);
     }
@@ -175,7 +166,7 @@ export default function SystemConfigurationPanel() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary "></div>
         <span className="ml-2">Loading configuration...</span>
       </div>
     );
@@ -192,19 +183,18 @@ export default function SystemConfigurationPanel() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             variant="outline"
             onClick={handleResetToDefaults}
             disabled={saving}
-           aria-label="Button">
-            <RotateCcw className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-            Reset to Defaults
+           >
+            <RotateCcw className="mr-2 h-4 w-4 " />
           </Button>
           <button
             onClick={handleSaveConfiguration}
             disabled={!hasChanges || saving}
            aria-label="Button">
-            <Save className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
+            <Save className="mr-2 h-4 w-4 " />
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
@@ -212,7 +202,7 @@ export default function SystemConfigurationPanel() {
 
       {hasChanges && (
         <div className="flex items-center gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg sm:p-4 md:p-6">
-          <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
+          <AlertTriangle className="h-4 w-4 text-yellow-600 " />
           <span className="text-sm text-yellow-800 md:text-base lg:text-lg">
             You have unsaved changes. Don't forget to save your configuration.
           </span>
@@ -224,11 +214,9 @@ export default function SystemConfigurationPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5 sm:w-auto md:w-full" />
-              Password Policy
+              <Key className="h-5 w-5 " />
             </CardTitle>
             <CardDescription>
-              Configure password requirements and security policies
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -240,7 +228,7 @@ export default function SystemConfigurationPanel() {
                 min="8"
                 max="128"
                 value={config.passwordMinLength}
-                onChange={(e) = aria-label="Input"> handleConfigChange('passwordMinLength', parseInt(e.target.value))}
+                onChange={(e) => handleConfigChange('passwordMinLength', parseInt(e.target.value))}
               />
             </div>
 
@@ -292,10 +280,9 @@ export default function SystemConfigurationPanel() {
                 min="0"
                 max="365"
                 value={config.passwordExpirationDays}
-                onChange={(e) = aria-label="Input"> handleConfigChange('passwordExpirationDays', parseInt(e.target.value))}
+                onChange={(e) => handleConfigChange('passwordExpirationDays', parseInt(e.target.value))}
               />
               <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-                Set to 0 to disable password expiration
               </p>
             </div>
 
@@ -307,10 +294,9 @@ export default function SystemConfigurationPanel() {
                 min="0"
                 max="24"
                 value={config.passwordHistoryCount}
-                onChange={(e) = aria-label="Input"> handleConfigChange('passwordHistoryCount', parseInt(e.target.value))}
+                onChange={(e) => handleConfigChange('passwordHistoryCount', parseInt(e.target.value))}
               />
               <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-                Number of previous passwords to remember
               </p>
             </div>
           </CardContent>
@@ -320,11 +306,9 @@ export default function SystemConfigurationPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 sm:w-auto md:w-full" />
-              Session Settings
+              <Clock className="h-5 w-5 " />
             </CardTitle>
             <CardDescription>
-              Configure session timeouts and behavior
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -336,7 +320,7 @@ export default function SystemConfigurationPanel() {
                 min="5"
                 max="1440"
                 value={config.sessionTimeoutMinutes}
-                onChange={(e) = aria-label="Input"> handleConfigChange('sessionTimeoutMinutes', parseInt(e.target.value))}
+                onChange={(e) => handleConfigChange('sessionTimeoutMinutes', parseInt(e.target.value))}
               />
             </div>
 
@@ -348,7 +332,7 @@ export default function SystemConfigurationPanel() {
                 min="5"
                 max="480"
                 value={config.adminSessionTimeoutMinutes}
-                onChange={(e) = aria-label="Input"> handleConfigChange('adminSessionTimeoutMinutes', parseInt(e.target.value))}
+                onChange={(e) => handleConfigChange('adminSessionTimeoutMinutes', parseInt(e.target.value))}
               />
             </div>
 
@@ -360,7 +344,7 @@ export default function SystemConfigurationPanel() {
                 min="1"
                 max="10"
                 value={config.maxConcurrentSessions}
-                onChange={(e) = aria-label="Input"> handleConfigChange('maxConcurrentSessions', parseInt(e.target.value))}
+                onChange={(e) => handleConfigChange('maxConcurrentSessions', parseInt(e.target.value))}
               />
             </div>
 
@@ -379,11 +363,9 @@ export default function SystemConfigurationPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 sm:w-auto md:w-full" />
-              Security Settings
+              <Shield className="h-5 w-5 " />
             </CardTitle>
             <CardDescription>
-              Configure authentication and security policies
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -395,7 +377,7 @@ export default function SystemConfigurationPanel() {
                 min="3"
                 max="10"
                 value={config.maxLoginAttempts}
-                onChange={(e) = aria-label="Input"> handleConfigChange('maxLoginAttempts', parseInt(e.target.value))}
+                onChange={(e) => handleConfigChange('maxLoginAttempts', parseInt(e.target.value))}
               />
             </div>
 
@@ -407,7 +389,7 @@ export default function SystemConfigurationPanel() {
                 min="1"
                 max="1440"
                 value={config.lockoutDurationMinutes}
-                onChange={(e) = aria-label="Input"> handleConfigChange('lockoutDurationMinutes', parseInt(e.target.value))}
+                onChange={(e) => handleConfigChange('lockoutDurationMinutes', parseInt(e.target.value))}
               />
             </div>
 
@@ -435,7 +417,7 @@ export default function SystemConfigurationPanel() {
                 id="allowedIpRanges"
                 placeholder="192.168.1.0/24&#10;10.0.0.0/8"
                 value={config.allowedIpRanges}
-                onChange={(e) = aria-label="Textarea"> handleConfigChange('allowedIpRanges', e.target.value)}
+                onChange={(e) => handleConfigChange('allowedIpRanges', e.target.value)}
                 rows={3}
               />
               <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
@@ -449,11 +431,9 @@ export default function SystemConfigurationPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5 sm:w-auto md:w-full" />
-              Email Settings
+              <Mail className="h-5 w-5 " />
             </CardTitle>
             <CardDescription>
-              Configure email notifications and templates
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -473,7 +453,7 @@ export default function SystemConfigurationPanel() {
                 type="email"
                 placeholder="noreply@example.com"
                 value={config.emailFromAddress}
-                onChange={(e) = aria-label="Input"> handleConfigChange('emailFromAddress', e.target.value)}
+                onChange={(e) => handleConfigChange('emailFromAddress', e.target.value)}
               />
             </div>
 
@@ -483,7 +463,7 @@ export default function SystemConfigurationPanel() {
                 id="emailFromName"
                 placeholder="System Administrator"
                 value={config.emailFromName}
-                onChange={(e) = aria-label="Input"> handleConfigChange('emailFromName', e.target.value)}
+                onChange={(e) => handleConfigChange('emailFromName', e.target.value)}
               />
             </div>
 
@@ -493,7 +473,7 @@ export default function SystemConfigurationPanel() {
                 id="emailSignature"
                 placeholder="Best regards,&#10;The Admin Team"
                 value={config.emailSignature}
-                onChange={(e) = aria-label="Textarea"> handleConfigChange('emailSignature', e.target.value)}
+                onChange={(e) => handleConfigChange('emailSignature', e.target.value)}
                 rows={3}
               />
             </div>
@@ -504,11 +484,9 @@ export default function SystemConfigurationPanel() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5 sm:w-auto md:w-full" />
-              General Settings
+              <Info className="h-5 w-5 " />
             </CardTitle>
             <CardDescription>
-              Configure general system settings and features
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -519,7 +497,7 @@ export default function SystemConfigurationPanel() {
                   id="systemName"
                   placeholder="Admin Management System"
                   value={config.systemName}
-                  onChange={(e) = aria-label="Input"> handleConfigChange('systemName', e.target.value)}
+                  onChange={(e) => handleConfigChange('systemName', e.target.value)}
                 />
               </div>
 
@@ -529,7 +507,7 @@ export default function SystemConfigurationPanel() {
                   id="systemDescription"
                   placeholder="Secure administrative interface"
                   value={config.systemDescription}
-                  onChange={(e) = aria-label="Input"> handleConfigChange('systemDescription', e.target.value)}
+                  onChange={(e) => handleConfigChange('systemDescription', e.target.value)}
                 />
               </div>
             </div>
@@ -570,7 +548,7 @@ export default function SystemConfigurationPanel() {
                   id="maintenanceMessage"
                   placeholder="System is currently under maintenance..."
                   value={config.maintenanceMessage}
-                  onChange={(e) = aria-label="Textarea"> handleConfigChange('maintenanceMessage', e.target.value)}
+                  onChange={(e) => handleConfigChange('maintenanceMessage', e.target.value)}
                   rows={2}
                 />
               </div>

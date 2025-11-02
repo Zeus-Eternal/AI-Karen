@@ -93,7 +93,6 @@ class NetworkDiagnostics {
         },
         body,
         signal: controller.signal,
-      });
 
       clearTimeout(timeoutId);
       const responseTime = Date.now() - startTime;
@@ -102,7 +101,6 @@ class NetworkDiagnostics {
       const responseHeaders: Record<string, string> = {};
       response.headers.forEach((value, key) => {
         responseHeaders[key] = value;
-      });
 
       const diagnostic: NetworkDiagnostic = {
         endpoint: fullUrl,
@@ -178,7 +176,6 @@ class NetworkDiagnostics {
           'Access-Control-Request-Method': 'POST',
           'Access-Control-Request-Headers': 'Content-Type',
         },
-      });
 
       corsInfo.preflightStatus = preflightResponse.status;
       corsInfo.preflightRequired = true;
@@ -261,8 +258,7 @@ class NetworkDiagnostics {
         endpoint: `${fallbackUrl}/api/health`,
         method: 'GET',
         expectedStatus: 200,
-      });
-    });
+
 
     // Run all tests
     const testResults: NetworkTestResult[] = [];
@@ -295,7 +291,6 @@ class NetworkDiagnostics {
           success,
           diagnostic,
           recommendations,
-        });
 
       } catch (error) {
         // Create a failed diagnostic for the test
@@ -314,7 +309,7 @@ class NetworkDiagnostics {
           success: false,
           diagnostic,
           recommendations: ['Test execution failed', 'Check network connectivity'],
-        });
+
       }
     }
 
@@ -352,7 +347,6 @@ class NetworkDiagnostics {
       duration: Date.now() - startTime,
       overallStatus,
       summary: report.summary,
-    });
 
     return report;
   }
@@ -494,7 +488,7 @@ class NetworkDiagnostics {
             endpoint: healthCheck.endpoint,
             status: healthCheck.status,
             error: healthCheck.error,
-          });
+
         }
       } catch (error) {
         this.logger.log('error', 'network', 'Network monitoring failed', undefined, undefined, undefined, error as Error);

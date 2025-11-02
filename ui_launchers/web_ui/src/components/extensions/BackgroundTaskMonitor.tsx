@@ -4,7 +4,7 @@
  * Real-time monitoring of extension background tasks
  */
 
-'use client';
+"use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useExtensionTaskMonitoring, useExtensionTasks } from '@/lib/extensions/hooks';
@@ -12,18 +12,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+
 import { 
-  Play, 
-  Pause, 
-  Square, 
   RefreshCw, 
-  Clock, 
+  Activity, 
   CheckCircle, 
+  Timer, 
+  Calendar, 
+  Clock, 
   XCircle, 
-  AlertCircle,
-  Activity,
-  Calendar,
-  Timer
+  AlertCircle 
 } from 'lucide-react';
 
 interface BackgroundTaskMonitorProps {
@@ -71,13 +69,12 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
             }
           </p>
         </div>
-        <button
+        <Button
           variant="outline"
-          onClick={() = aria-label="Button"> window.location.reload()}
+          onClick={() => window.location.reload()}
           className="flex items-center gap-2"
         >
-          <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
-          Refresh
+          <RefreshCw className="h-4 w-4 " />
         </Button>
       </div>
 
@@ -86,7 +83,7 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Active Tasks</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Activity className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{taskData.totalActiveTasks}</div>
@@ -99,7 +96,7 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Success Rate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <CheckCircle className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -117,7 +114,7 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Avg Duration</CardTitle>
-            <Timer className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Timer className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{taskStats.avgDuration}s</div>
@@ -130,12 +127,12 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Extensions</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Calendar className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{taskData.extensionsWithTasks}</div>
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              With background tasks
+              With active tasks
             </p>
           </CardContent>
         </Card>
@@ -314,7 +311,7 @@ function TaskExecutionHistory({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <RefreshCw className="h-6 w-6 animate-spin text-blue-600 mr-2 sm:w-auto md:w-full" />
+        <RefreshCw className="h-6 w-6 animate-spin text-blue-600 mr-2 " />
         <span>Loading task history...</span>
       </div>
     );
@@ -324,7 +321,7 @@ function TaskExecutionHistory({
     return (
       <Card>
         <CardContent className="text-center py-8">
-          <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4 sm:w-auto md:w-full" />
+          <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4 " />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Task History</h3>
           <p className="text-gray-600">
             {extensionId 
@@ -356,9 +353,9 @@ function TaskExecutionHistory({
                 }
                 className="flex items-center gap-1"
               >
-                {execution.status === 'completed' && <CheckCircle className="h-3 w-3 sm:w-auto md:w-full" />}
-                {execution.status === 'failed' && <XCircle className="h-3 w-3 sm:w-auto md:w-full" />}
-                {execution.status === 'running' && <RefreshCw className="h-3 w-3 animate-spin sm:w-auto md:w-full" />}
+                {execution.status === 'completed' && <CheckCircle className="h-3 w-3 " />}
+                {execution.status === 'failed' && <XCircle className="h-3 w-3 " />}
+                {execution.status === 'running' && <RefreshCw className="h-3 w-3 animate-spin " />}
                 {execution.status}
               </Badge>
             </div>
@@ -398,8 +395,7 @@ function TaskExecutionHistory({
             {execution.error && (
               <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md sm:p-4 md:p-6">
                 <div className="flex items-center gap-2 text-red-800 font-medium mb-1">
-                  <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
-                  Error
+                  <AlertCircle className="h-4 w-4 " />
                 </div>
                 <p className="text-red-700 text-sm md:text-base lg:text-lg">{execution.error}</p>
               </div>

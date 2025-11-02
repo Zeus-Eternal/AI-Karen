@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { SuperAdminRoute } from '../SuperAdminRoute';
 
@@ -31,7 +32,6 @@ describe('Enhanced SuperAdminRoute', () => {
     const protectedRoute = screen.getByTestId('protected-route');
     expect(protectedRoute).toHaveAttribute('data-required-role', 'super_admin');
     expect(screen.getByText('Super Admin Content')).toBeInTheDocument();
-  });
 
   it('wraps content with NavigationLayout by default', () => {
     render(
@@ -42,7 +42,6 @@ describe('Enhanced SuperAdminRoute', () => {
 
     expect(screen.getByTestId('navigation-layout')).toBeInTheDocument();
     expect(screen.getByText('Super Admin Content')).toBeInTheDocument();
-  });
 
   it('can disable navigation layout', () => {
     render(
@@ -53,7 +52,6 @@ describe('Enhanced SuperAdminRoute', () => {
 
     expect(screen.queryByTestId('navigation-layout')).not.toBeInTheDocument();
     expect(screen.getByText('Super Admin Content')).toBeInTheDocument();
-  });
 
   it('passes through breadcrumbs setting', () => {
     render(
@@ -64,7 +62,6 @@ describe('Enhanced SuperAdminRoute', () => {
 
     const navigationLayout = screen.getByTestId('navigation-layout');
     expect(navigationLayout).toHaveAttribute('data-show-breadcrumbs', 'false');
-  });
 
   it('uses custom loading message', () => {
     render(
@@ -75,7 +72,6 @@ describe('Enhanced SuperAdminRoute', () => {
 
     const protectedRoute = screen.getByTestId('protected-route');
     expect(protectedRoute).toHaveAttribute('data-loading-message', 'Loading super admin panel...');
-  });
 
   it('passes through all ProtectedRoute props', () => {
     const fallback = <div>Access Denied</div>;
@@ -92,7 +88,6 @@ describe('Enhanced SuperAdminRoute', () => {
 
     // The ProtectedRoute should receive these props
     expect(screen.getByTestId('protected-route')).toBeInTheDocument();
-  });
 
   it('shows breadcrumbs by default', () => {
     render(
@@ -103,7 +98,6 @@ describe('Enhanced SuperAdminRoute', () => {
 
     const navigationLayout = screen.getByTestId('navigation-layout');
     expect(navigationLayout).toHaveAttribute('data-show-breadcrumbs', 'true');
-  });
 
   it('uses default super admin loading message', () => {
     render(
@@ -114,5 +108,4 @@ describe('Enhanced SuperAdminRoute', () => {
 
     const protectedRoute = screen.getByTestId('protected-route');
     expect(protectedRoute).toHaveAttribute('data-loading-message', 'Loading super admin interface...');
-  });
-});
+

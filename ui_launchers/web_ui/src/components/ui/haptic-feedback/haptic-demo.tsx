@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { HapticProvider } from './haptic-provider';
@@ -35,7 +35,7 @@ function HapticDemoContent() {
   };
 
   return (
-    <div className="p-8 space-y-8 max-w-6xl mx-auto sm:w-auto md:w-full">
+    <div className="p-8 space-y-8 max-w-6xl mx-auto ">
       <h1 className="text-3xl font-bold">Haptic Feedback Demo</h1>
       
       {/* Support Status */}
@@ -77,7 +77,7 @@ function HapticDemoContent() {
             </label>
             <select
               value={selectedPattern}
-              onChange={(e) = aria-label="Select option"> setSelectedPattern(e.target.value as HapticPattern)}
+              onChange={(e) => setSelectedPattern(e.target.value as HapticPattern)}
               className="w-full max-w-xs p-2 border rounded-md sm:p-4 md:p-6"
               onFocus={handleInputFocus}
             >
@@ -110,22 +110,16 @@ function HapticDemoContent() {
           <h3 className="text-lg font-medium">Buttons with Haptic Feedback</h3>
           <div className="flex flex-wrap gap-4">
             <HapticButton hapticPattern="light">
-              Light Touch
             </HapticButton>
             <HapticButton hapticPattern="medium">
-              Medium Press
             </HapticButton>
             <HapticButton hapticPattern="heavy">
-              Heavy Impact
             </HapticButton>
             <HapticButton hapticPattern="success">
-              Success Action
             </HapticButton>
             <HapticButton hapticPattern="warning">
-              Warning Action
             </HapticButton>
             <HapticButton hapticPattern="error">
-              Error Action
             </HapticButton>
           </div>
         </div>
@@ -139,7 +133,7 @@ function HapticDemoContent() {
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) = aria-label="Input"> setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 onFocus={handleInputFocus}
                 className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent sm:p-4 md:p-6"
                 placeholder="Enter your name"
@@ -150,7 +144,7 @@ function HapticDemoContent() {
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) = aria-label="Input"> setFormData(prev => ({ ...prev, email: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 onFocus={handleInputFocus}
                 className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent sm:p-4 md:p-6"
                 placeholder="Enter your email"
@@ -160,7 +154,6 @@ function HapticDemoContent() {
               type="submit"
               hapticPattern="success"
             >
-              Submit Form
             </HapticButton>
             <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
               Try submitting with empty fields to feel error feedback, or with valid data for success feedback.

@@ -43,20 +43,20 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
     // Get users created in different time periods
     const usersCreatedTodayResult = await adminUtils.getUsersWithRoleFilter({ 
       created_after: today 
-    });
+
     const usersCreatedToday = usersCreatedTodayResult.pagination.total;
     const usersCreatedThisWeekResult = await adminUtils.getUsersWithRoleFilter({ 
       created_after: weekAgo 
-    });
+
     const usersCreatedThisWeek = usersCreatedThisWeekResult.pagination.total;
     const usersCreatedThisMonthResult = await adminUtils.getUsersWithRoleFilter({ 
       created_after: monthAgo 
-    });
+
     const usersCreatedThisMonth = usersCreatedThisMonthResult.pagination.total;
     // Get users who logged in today
     const lastLoginTodayResult = await adminUtils.getUsersWithRoleFilter({ 
       last_login_after: today 
-    });
+
     const lastLoginToday = lastLoginTodayResult.pagination.total;
     // Get users with 2FA enabled
     const twoFactorEnabledResult = await adminUtils.getUsersWithRoleFilter({});
@@ -96,4 +96,3 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});

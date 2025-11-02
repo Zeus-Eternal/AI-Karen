@@ -6,7 +6,8 @@
  * 
  * Requirements: 4.1, 4.2, 7.3, 7.4
  */
-'use client';
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { useRole } from '@/hooks/useRole';
@@ -81,48 +82,44 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
     <div className="border-b border-gray-200 mb-6">
       <nav className="-mb-px flex space-x-8">
         <button
-          onClick={() = aria-label="Button"> setCurrentView('overview')}
+          onClick={() => setCurrentView('overview')}
           className={`py-2 px-1 border-b-2 font-medium text-sm ${
             currentView === 'overview'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          Overview
         </button>
         <button
-          onClick={() = aria-label="Button"> setCurrentView('users')}
+          onClick={() => setCurrentView('users')}
           className={`py-2 px-1 border-b-2 font-medium text-sm ${
             currentView === 'users'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          User Management
         </button>
         <button
-          onClick={() = aria-label="Button"> setCurrentView('create-user')}
+          onClick={() => setCurrentView('create-user')}
           className={`py-2 px-1 border-b-2 font-medium text-sm ${
             currentView === 'create-user'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          Create User
         </button>
         <button
-          onClick={() = aria-label="Button"> setCurrentView('activity')}
+          onClick={() => setCurrentView('activity')}
           className={`py-2 px-1 border-b-2 font-medium text-sm ${
             currentView === 'activity'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          Activity Monitor
         </button>
         {selectedUsers.length > 0 && (
           <button
-            onClick={() = aria-label="Button"> setCurrentView('bulk-operations')}
+            onClick={() => setCurrentView('bulk-operations')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               currentView === 'bulk-operations'
                 ? 'border-blue-500 text-blue-600'
@@ -215,21 +212,21 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
         <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            onClick={() = aria-label="Button"> setCurrentView('create-user')}
+            onClick={() => setCurrentView('create-user')}
             className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-left sm:p-4 md:p-6"
           >
             <h4 className="font-medium text-gray-900">Create New User</h4>
             <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">Add a new user account</p>
           </button>
           <button
-            onClick={() = aria-label="Button"> setCurrentView('users')}
+            onClick={() => setCurrentView('users')}
             className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-left sm:p-4 md:p-6"
           >
             <h4 className="font-medium text-gray-900">Manage Users</h4>
             <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">View and edit user accounts</p>
           </button>
           <button
-            onClick={() = aria-label="Button"> setCurrentView('activity')}
+            onClick={() => setCurrentView('activity')}
             className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-left sm:p-4 md:p-6"
           >
             <h4 className="font-medium text-gray-900">View Activity</h4>
@@ -270,7 +267,7 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 sm:w-auto md:w-full"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 "></div>
       </div>
     );
   }
@@ -288,7 +285,6 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
                 onClick={loadDashboardData}
                 className="mt-2 text-sm text-red-600 hover:text-red-800 underline md:text-base lg:text-lg"
                aria-label="Button">
-                Try again
               </button>
             </div>
           )}

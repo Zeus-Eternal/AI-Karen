@@ -11,11 +11,7 @@ import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import { getAuditLogger, auditLog } from '@/lib/audit/audit-logger';
 import { AuditSearchParser, auditPagination } from '@/lib/audit/audit-filters';
 import { getAuditLogExporter } from '@/lib/audit/audit-export';
-import type { 
-  AdminApiResponse, 
-  AuditLogFilter, 
-  PaginationParams
-} from '@/types/admin';
+import type {  AdminApiResponse, AuditLogFilter, PaginationParams } from '@/types/admin';
 /**
  * GET /api/admin/system/audit-logs - Get audit logs with filtering
  */
@@ -134,7 +130,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});
+
 /**
  * POST /api/admin/system/audit-logs - Advanced audit log operations
  */
@@ -165,7 +161,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           return NextResponse.json({
             success: true,
             data: searchResult
-          });
+
         }
       case 'stats':
         {
@@ -177,7 +173,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           return NextResponse.json({
             success: true,
             data: stats
-          });
+
         }
       case 'export':
         {
@@ -203,7 +199,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             filter: exportFilter,
             ...export_options,
             maxRecords: 10000 // Limit exports to 10k records
-          });
+
           if (!exportResult.success) {
             return NextResponse.json({
               success: false,
@@ -231,7 +227,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
                 format: exportFormat
               }
             }
-          });
+
         }
       case 'user_activity':
         {
@@ -245,7 +241,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           return NextResponse.json({
             success: true,
             data: userLogs
-          });
+
         }
       case 'recent':
         {
@@ -254,7 +250,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           return NextResponse.json({
             success: true,
             data: recentLogs
-          });
+
         }
       case 'compliance_export':
         {
@@ -310,7 +306,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
                 compliance_type
               }
             }
-          });
+
         }
       default:
         return NextResponse.json({
@@ -332,4 +328,3 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});

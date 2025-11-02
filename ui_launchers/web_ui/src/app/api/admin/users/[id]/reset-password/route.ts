@@ -70,7 +70,7 @@ export async function POST(
         },
         ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
         user_agent: request.headers.get('user-agent') || undefined
-      });
+
       // In a real implementation, you would:
       // 1. Store the reset token in the database with expiration
       // 2. Send an email with the reset link

@@ -3,6 +3,7 @@
  */
 
 
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
@@ -42,8 +43,7 @@ describe('SuperAdminRoute Component', () => {
         search: '',
       },
       writable: true,
-    });
-    
+
     // Mock sessionStorage
     Object.defineProperty(window, 'sessionStorage', {
       value: {
@@ -52,8 +52,7 @@ describe('SuperAdminRoute Component', () => {
         removeItem: vi.fn(),
       },
       writable: true,
-    });
-  });
+
 
   it('should render children for authenticated super admin', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(true);
@@ -67,7 +66,6 @@ describe('SuperAdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     render(
       <SuperAdminRoute>
@@ -77,13 +75,11 @@ describe('SuperAdminRoute Component', () => {
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     await waitFor(() => {
       expect(screen.getByText('Super Admin Content')).toBeInTheDocument();
     }, { timeout: 3000 });
     expect(mockReplace).not.toHaveBeenCalled();
-  });
 
   it('should redirect to login for unauthenticated user', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(false);
@@ -97,7 +93,6 @@ describe('SuperAdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     await act(async () => {
       render(
@@ -105,15 +100,12 @@ describe('SuperAdminRoute Component', () => {
           <div>Super Admin Content</div>
         </SuperAdminRoute>
       );
-    });
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     expect(screen.queryByText('Super Admin Content')).not.toBeInTheDocument();
     expect(mockReplace).toHaveBeenCalledWith('/login');
-  });
 
   it('should redirect to unauthorized for regular admin', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(true);
@@ -127,7 +119,6 @@ describe('SuperAdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     render(
       <SuperAdminRoute>
@@ -137,11 +128,9 @@ describe('SuperAdminRoute Component', () => {
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     expect(screen.queryByText('Super Admin Content')).not.toBeInTheDocument();
     expect(mockReplace).toHaveBeenCalledWith('/unauthorized');
-  });
 
   it('should redirect to unauthorized for regular user', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(true);
@@ -155,7 +144,6 @@ describe('SuperAdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     render(
       <SuperAdminRoute>
@@ -165,11 +153,9 @@ describe('SuperAdminRoute Component', () => {
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     expect(screen.queryByText('Super Admin Content')).not.toBeInTheDocument();
     expect(mockReplace).toHaveBeenCalledWith('/unauthorized');
-  });
 
   it('should check permission requirement', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(true);
@@ -183,7 +169,6 @@ describe('SuperAdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     render(
       <SuperAdminRoute requiredPermission="special_permission">
@@ -193,11 +178,9 @@ describe('SuperAdminRoute Component', () => {
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     expect(screen.queryByText('Special Content')).not.toBeInTheDocument();
     expect(mockReplace).toHaveBeenCalledWith('/unauthorized');
-  });
 
   it('should render fallback when provided and access denied', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(true);
@@ -211,7 +194,6 @@ describe('SuperAdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     render(
       <SuperAdminRoute fallback={<div>Super Admin Access Required</div>}>
@@ -221,14 +203,12 @@ describe('SuperAdminRoute Component', () => {
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     await waitFor(() => {
       expect(screen.getByText('Super Admin Access Required')).toBeInTheDocument();
-    });
+
     expect(screen.queryByText('Super Admin Content')).not.toBeInTheDocument();
     expect(mockReplace).not.toHaveBeenCalled();
-  });
 
   it('should use custom redirect path', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(true);
@@ -242,7 +222,6 @@ describe('SuperAdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     render(
       <SuperAdminRoute redirectTo="/custom-forbidden">
@@ -252,8 +231,6 @@ describe('SuperAdminRoute Component', () => {
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     expect(mockReplace).toHaveBeenCalledWith('/custom-forbidden');
-  });
-});
+

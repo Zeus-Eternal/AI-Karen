@@ -57,11 +57,9 @@ beforeEach(() => {
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
-});
 
 afterEach(() => {
   vi.restoreAllMocks();
-});
 
 // Test component that uses AuthContext
 const TestComponent: React.FC = () => {
@@ -75,7 +73,6 @@ const TestComponent: React.FC = () => {
       <div data-testid="user-email">{auth.user?.email || 'none'}</div>
       <div data-testid="user-role">{auth.user?.role || 'none'}</div>
       <button onClick={() => auth.login({ email: 'test@example.com', password: 'password' })}>
-        Login
       </button>
       <button onClick={() => auth.logout()}>Logout</button>
       <button onClick={() => auth.refreshSession()}>Refresh</button>
@@ -99,7 +96,6 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('loading')).toHaveTextContent('false');
       expect(screen.getByTestId('error')).toHaveTextContent('none');
       expect(screen.getByTestId('user-email')).toHaveTextContent('none');
-    });
 
     it('should check authentication on mount', async () => {
       mockSession.hasSessionCookie.mockReturnValue(true);
@@ -115,7 +111,6 @@ describe('AuthContext', () => {
         },
         duration: 100,
         retryCount: 0,
-      });
 
       render(
         <AuthProvider>
@@ -127,9 +122,8 @@ describe('AuthContext', () => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
         expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com');
         expect(screen.getByTestId('user-role')).toHaveTextContent('user');
-      });
-    });
-  });
+
+
 
   describe('Login Functionality', () => {
     it('should handle successful login', async () => {
@@ -144,7 +138,6 @@ describe('AuthContext', () => {
         },
         duration: 200,
         retryCount: 1,
-      });
 
       render(
         <AuthProvider>
@@ -154,14 +147,12 @@ describe('AuthContext', () => {
 
       await act(async () => {
         screen.getByText('Login').click();
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
         expect(screen.getByTestId('user-email')).toHaveTextContent('admin@example.com');
         expect(screen.getByTestId('user-role')).toHaveTextContent('admin');
         expect(screen.getByTestId('error')).toHaveTextContent('none');
-      });
 
       expect(mockConnectionManager.makeRequest).toHaveBeenCalledWith(
         '/api/auth/login',
@@ -178,7 +169,6 @@ describe('AuthContext', () => {
           exponentialBackoff: true,
         })
       );
-    });
 
     it('should handle login with TOTP code', async () => {
       mockConnectionManager.makeRequest.mockResolvedValue({
@@ -192,7 +182,6 @@ describe('AuthContext', () => {
         },
         duration: 150,
         retryCount: 0,
-      });
 
       const { rerender } = render(
         <AuthProvider>
@@ -211,7 +200,6 @@ describe('AuthContext', () => {
               totp_code: '123456'
             })}
           >
-            Login with TOTP
           </button>
         );
       };
@@ -224,7 +212,6 @@ describe('AuthContext', () => {
 
       await act(async () => {
         screen.getByText('Login with TOTP').click();
-      });
 
       expect(mockConnectionManager.makeRequest).toHaveBeenCalledWith(
         '/api/auth/login',
@@ -237,7 +224,6 @@ describe('AuthContext', () => {
         }),
         expect.any(Object)
       );
-    });
 
     it('should handle network errors during login', async () => {
       const networkError = new ConnectionError(
@@ -257,15 +243,13 @@ describe('AuthContext', () => {
 
       await act(async () => {
         screen.getByText('Login').click();
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
         expect(screen.getByTestId('error')).toHaveTextContent(
           'Unable to connect to server. Please check your internet connection and try again.'
         );
-      });
-    });
+
 
     it('should handle authentication timeout errors', async () => {
       const timeoutError = new ConnectionError(
@@ -285,14 +269,12 @@ describe('AuthContext', () => {
 
       await act(async () => {
         screen.getByText('Login').click();
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId('error')).toHaveTextContent(
           'Login is taking longer than expected. Please wait or try again.'
         );
-      });
-    });
+
 
     it('should handle HTTP 401 errors', async () => {
       const authError = new ConnectionError(
@@ -314,14 +296,12 @@ describe('AuthContext', () => {
 
       await act(async () => {
         screen.getByText('Login').click();
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId('error')).toHaveTextContent(
           'Invalid email or password. Please try again.'
         );
-      });
-    });
+
 
     it('should handle circuit breaker errors', async () => {
       const circuitError = new ConnectionError(
@@ -341,15 +321,13 @@ describe('AuthContext', () => {
 
       await act(async () => {
         screen.getByText('Login').click();
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId('error')).toHaveTextContent(
           'Authentication service is temporarily unavailable. Please try again in a few moments.'
         );
-      });
-    });
-  });
+
+
 
   describe('Session Management', () => {
     it('should refresh session successfully', async () => {
@@ -365,7 +343,6 @@ describe('AuthContext', () => {
         },
         duration: 100,
         retryCount: 0,
-      });
 
       // Session refresh
       mockSession.hasSessionCookie.mockReturnValue(true);
@@ -381,7 +358,6 @@ describe('AuthContext', () => {
         },
         duration: 50,
         retryCount: 0,
-      });
 
       render(
         <AuthProvider>
@@ -392,16 +368,13 @@ describe('AuthContext', () => {
       // Login first
       await act(async () => {
         screen.getByText('Login').click();
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
-      });
 
       // Refresh session
       await act(async () => {
         screen.getByText('Refresh').click();
-      });
 
       expect(mockConnectionManager.makeRequest).toHaveBeenCalledWith(
         '/api/auth/validate-session',
@@ -413,7 +386,6 @@ describe('AuthContext', () => {
           exponentialBackoff: false,
         })
       );
-    });
 
     it('should handle logout properly', async () => {
       // Initial login
@@ -428,7 +400,6 @@ describe('AuthContext', () => {
         },
         duration: 100,
         retryCount: 0,
-      });
 
       render(
         <AuthProvider>
@@ -439,23 +410,19 @@ describe('AuthContext', () => {
       // Login first
       await act(async () => {
         screen.getByText('Login').click();
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
-      });
 
       // Logout
       await act(async () => {
         screen.getByText('Logout').click();
-      });
 
       expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
       expect(screen.getByTestId('user-email')).toHaveTextContent('none');
       expect(mockSession.logout).toHaveBeenCalled();
       expect(window.location.href).toBe('/login');
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should clear errors when requested', async () => {
@@ -477,19 +444,15 @@ describe('AuthContext', () => {
       // Trigger error
       await act(async () => {
         screen.getByText('Login').click();
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId('error')).not.toHaveTextContent('none');
-      });
 
       // Clear error
       await act(async () => {
         screen.getByText('Clear Error').click();
-      });
 
       expect(screen.getByTestId('error')).toHaveTextContent('none');
-    });
 
     it('should not show non-retryable errors in state', async () => {
       const nonRetryableError = new ConnectionError(
@@ -511,9 +474,8 @@ describe('AuthContext', () => {
       // Wait for initial auth check to complete
       await waitFor(() => {
         expect(screen.getByTestId('error')).toHaveTextContent('none');
-      });
-    });
-  });
+
+
 
   describe('Role and Permission Checking', () => {
     it('should correctly identify user roles', async () => {
@@ -528,7 +490,6 @@ describe('AuthContext', () => {
         },
         duration: 100,
         retryCount: 0,
-      });
 
       const RoleTestComponent: React.FC = () => {
         const auth = useAuth();
@@ -554,12 +515,10 @@ describe('AuthContext', () => {
       await act(async () => {
         // Simulate login by directly calling the login method
         // This is a bit complex in this test setup, so we'll verify the role logic separately
-      });
 
       // For now, let's test the role determination logic directly
       // This would be better tested in integration tests
-    });
-  });
+
 
   describe('Context Provider', () => {
     it('should throw error when useAuth is used outside provider', () => {
@@ -571,7 +530,6 @@ describe('AuthContext', () => {
       }).toThrow('useAuth must be used within an AuthProvider');
       
       consoleSpy.mockRestore();
-    });
 
     it('should provide context value correctly', () => {
       render(
@@ -584,6 +542,5 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('loading')).toBeInTheDocument();
       expect(screen.getByTestId('error')).toBeInTheDocument();
-    });
-  });
-});
+
+

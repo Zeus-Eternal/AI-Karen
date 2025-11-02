@@ -1,9 +1,8 @@
-import * as React from "react"
-import { render, screen } from "@testing-library/react"
-import { describe, it, expect } from "vitest"
-import { useForm } from "react-hook-form"
-import { Form } from "../form"
-
+import * as React from "react";
+import { render, screen } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+import { useForm } from "react-hook-form";
+import { Form } from "../form";
 // Test wrapper component
 const TestFormWrapper = ({ children }: { children: React.ReactNode }) => {
   const methods = useForm()

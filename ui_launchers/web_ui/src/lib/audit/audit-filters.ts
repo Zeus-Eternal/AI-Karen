@@ -271,8 +271,7 @@ export class AuditSearchParser {
         const value = transform ? transform(match[1]) : match[1];
         (filters as any)[key] = value;
         textSearch = textSearch.replace(match[0], '').trim();
-      });
-    });
+
 
     // Generate suggestions based on partial input
     if (query.includes('user:')) {
@@ -317,8 +316,8 @@ export class AuditSearchParser {
           if (action.toLowerCase().includes(actionPrefix)) {
             suggestions.push(`action:${action}`);
           }
-        });
-      });
+
+
     }
 
     // Resource type suggestions
@@ -328,7 +327,7 @@ export class AuditSearchParser {
         if (category.value.toLowerCase().includes(resourcePrefix)) {
           suggestions.push(`resource:${category.value}`);
         }
-      });
+
     }
 
     return suggestions.slice(0, 10); // Limit to 10 suggestions

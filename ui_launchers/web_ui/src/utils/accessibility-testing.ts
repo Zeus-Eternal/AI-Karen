@@ -236,7 +236,6 @@ export function testKeyboardAccessibility(
     if (!hasOutline && !hasBoxShadow && !hasCustomFocus) {
       missingFocusIndicators.push(`${element.tagName.toLowerCase()}[${index}]`);
     }
-  });
 
   return {
     allReachable: unreachableElements.length === 0,
@@ -268,7 +267,6 @@ export function testScreenReaderAccessibility(
     if (!ariaLabel && !ariaLabelledBy && !hasLabel) {
       missingLabels.push(`${control.tagName.toLowerCase()}[${index}]`);
     }
-  });
 
   // Check images for alt text
   const images = container.querySelectorAll('img');
@@ -280,7 +278,6 @@ export function testScreenReaderAccessibility(
     if (!altText && !ariaLabel && role !== 'presentation' && role !== 'none') {
       missingLabels.push(`img[${index}]`);
     }
-  });
 
   // Check ARIA usage
   const elementsWithAria = container.querySelectorAll('[aria-*]');
@@ -296,10 +293,9 @@ export function testScreenReaderAccessibility(
           if (!container.querySelector(`#${id}`)) {
             ariaIssues.push(`${element.tagName.toLowerCase()}[${index}] references non-existent ID: ${id}`);
           }
-        });
+
       }
-    });
-  });
+
 
   // Check landmark structure
   const mainLandmarks = container.querySelectorAll('main, [role="main"]');
@@ -410,10 +406,9 @@ export function validateAriaAttributes(element: Element): string[] {
           if (id && !document.getElementById(id)) {
             issues.push(`${name} references non-existent ID: ${id}`);
           }
-        });
+
         break;
     }
-  });
 
   return issues;
 }
@@ -441,7 +436,6 @@ function getRelativeLuminance({ r, g, b }: { r: number; g: number; b: number }):
   const [rs, gs, bs] = [r, g, b].map(c => {
     c = c / 255;
     return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  });
 
   return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
 }
@@ -468,7 +462,7 @@ export function generateAccessibilityReportSummary(report: AccessibilityReport):
       reportText += `   Help: ${violation.help}\n`;
       reportText += `   More info: ${violation.helpUrl}\n`;
       reportText += `   Affected elements: ${violation.nodes.length}\n\n`;
-    });
+
   }
 
   return reportText;

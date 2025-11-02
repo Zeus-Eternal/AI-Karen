@@ -222,12 +222,10 @@ describe('MemoryNetworkGraph', () => {
       if (typeof mock === 'function') {
         mock.mockClear?.();
       }
-    });
-  });
+
 
   afterEach(() => {
     vi.clearAllTimers();
-  });
 
   describe('Component Rendering', () => {
     it('renders the network graph container', async () => {
@@ -238,8 +236,7 @@ describe('MemoryNetworkGraph', () => {
       
       await waitFor(() => {
         expect(screen.queryByText('Loading network...')).not.toBeInTheDocument();
-      });
-    });
+
 
     it('renders control buttons', async () => {
       render(<MemoryNetworkGraph {...defaultProps} />);
@@ -250,8 +247,7 @@ describe('MemoryNetworkGraph', () => {
         expect(screen.getByTestId('reset-icon')).toBeInTheDocument();
         expect(screen.getByTestId('play-icon')).toBeInTheDocument();
         expect(screen.getByTestId('maximize-icon')).toBeInTheDocument();
-      });
-    });
+
 
     it('renders search and filter controls', async () => {
       render(<MemoryNetworkGraph {...defaultProps} />);
@@ -260,8 +256,7 @@ describe('MemoryNetworkGraph', () => {
         expect(screen.getByPlaceholderText('Search nodes...')).toBeInTheDocument();
         expect(screen.getByText('Min Confidence:')).toBeInTheDocument();
         expect(screen.getByText('Color by:')).toBeInTheDocument();
-      });
-    });
+
 
     it('renders network statistics', async () => {
       render(<MemoryNetworkGraph {...defaultProps} />);
@@ -272,8 +267,7 @@ describe('MemoryNetworkGraph', () => {
         expect(screen.getByText(/Edges:/)).toBeInTheDocument();
         expect(screen.getByText(/Clusters:/)).toBeInTheDocument();
         expect(screen.getByText(/Density:/)).toBeInTheDocument();
-      });
-    });
+
 
     it('renders SVG element with correct dimensions', async () => {
       render(<MemoryNetworkGraph {...defaultProps} />);
@@ -282,9 +276,8 @@ describe('MemoryNetworkGraph', () => {
         const svg = screen.getByRole('img', { hidden: true }); // SVG has implicit img role
         expect(svg).toHaveAttribute('width', '800');
         expect(svg).toHaveAttribute('height', '600');
-      });
-    });
-  });
+
+
 
   describe('Data Loading', () => {
     it('loads network data on mount', async () => {
@@ -292,8 +285,7 @@ describe('MemoryNetworkGraph', () => {
       
       await waitFor(() => {
         expect(mockMemoryService.getMemoryStats).toHaveBeenCalledWith('test-user-123');
-      });
-    });
+
 
     it('handles loading state correctly', async () => {
       // Make the service call hang to test loading state
@@ -305,7 +297,6 @@ describe('MemoryNetworkGraph', () => {
       
       expect(screen.getByText('Loading network...')).toBeInTheDocument();
       expect(screen.getByRole('status', { hidden: true })).toBeInTheDocument(); // Loading spinner
-    });
 
     it('handles service errors gracefully', async () => {
       const errorMessage = 'Failed to load network data';
@@ -316,8 +307,7 @@ describe('MemoryNetworkGraph', () => {
       await waitFor(() => {
         expect(screen.getByText('Network Error')).toBeInTheDocument();
         expect(screen.getByText(errorMessage)).toBeInTheDocument();
-      });
-    });
+
 
     it('allows retry after error', async () => {
       mockMemoryService.getMemoryStats
@@ -328,16 +318,14 @@ describe('MemoryNetworkGraph', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Network Error')).toBeInTheDocument();
-      });
 
       const retryButton = screen.getByText('Retry');
       fireEvent.click(retryButton);
 
       await waitFor(() => {
         expect(screen.getByText('Network Statistics')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('D3 Integration', () => {
     it('initializes D3 simulation', async () => {
@@ -346,8 +334,7 @@ describe('MemoryNetworkGraph', () => {
       await waitFor(() => {
         expect(mockD3.forceSimulation).toHaveBeenCalled();
         expect(mockD3.select).toHaveBeenCalled();
-      });
-    });
+
 
     it('sets up force layout correctly', async () => {
       render(<MemoryNetworkGraph {...defaultProps} />);
@@ -357,25 +344,22 @@ describe('MemoryNetworkGraph', () => {
         expect(mockD3.forceManyBody).toHaveBeenCalled();
         expect(mockD3.forceCenter).toHaveBeenCalled();
         expect(mockD3.forceCollide).toHaveBeenCalled();
-      });
-    });
+
 
     it('sets up zoom behavior', async () => {
       render(<MemoryNetworkGraph {...defaultProps} />);
       
       await waitFor(() => {
         expect(mockD3.zoom).toHaveBeenCalled();
-      });
-    });
+
 
     it('sets up drag behavior', async () => {
       render(<MemoryNetworkGraph {...defaultProps} />);
       
       await waitFor(() => {
         expect(mockD3.drag).toHaveBeenCalled();
-      });
-    });
-  });
+
+
 
   describe('User Interactions', () => {
     it('handles zoom in button click', async () => {
@@ -385,7 +369,6 @@ describe('MemoryNetworkGraph', () => {
       await waitFor(() => {
         const zoomInButton = screen.getByTestId('zoom-in-icon').closest('button');
         expect(zoomInButton).toBeInTheDocument();
-      });
 
       const zoomInButton = screen.getByTestId('zoom-in-icon').closest('button');
       if (zoomInButton) {
@@ -393,7 +376,6 @@ describe('MemoryNetworkGraph', () => {
         // D3 zoom behavior would be called
         expect(mockD3.select).toHaveBeenCalled();
       }
-    });
 
     it('handles zoom out button click', async () => {
       const user = userEvent.setup();
@@ -405,8 +387,7 @@ describe('MemoryNetworkGraph', () => {
           await user.click(zoomOutButton);
           expect(mockD3.select).toHaveBeenCalled();
         }
-      });
-    });
+
 
     it('handles reset button click', async () => {
       const user = userEvent.setup();
@@ -418,8 +399,7 @@ describe('MemoryNetworkGraph', () => {
           await user.click(resetButton);
           expect(mockD3.select).toHaveBeenCalled();
         }
-      });
-    });
+
 
     it('toggles play/pause state', async () => {
       const user = userEvent.setup();
@@ -427,7 +407,6 @@ describe('MemoryNetworkGraph', () => {
       
       await waitFor(() => {
         expect(screen.getByTestId('pause-icon')).toBeInTheDocument();
-      });
 
       const playPauseButton = screen.getByTestId('pause-icon').closest('button');
       if (playPauseButton) {
@@ -435,9 +414,8 @@ describe('MemoryNetworkGraph', () => {
         
         await waitFor(() => {
           expect(screen.getByTestId('play-icon')).toBeInTheDocument();
-        });
+
       }
-    });
 
     it('toggles fullscreen mode', async () => {
       const user = userEvent.setup();
@@ -450,11 +428,10 @@ describe('MemoryNetworkGraph', () => {
           
           await waitFor(() => {
             expect(screen.getByTestId('minimize-icon')).toBeInTheDocument();
-          });
+
         }
-      });
-    });
-  });
+
+
 
   describe('Search and Filtering', () => {
     it('updates search query', async () => {
@@ -464,13 +441,11 @@ describe('MemoryNetworkGraph', () => {
       await waitFor(() => {
         const searchInput = screen.getByPlaceholderText('Search nodes...');
         expect(searchInput).toBeInTheDocument();
-      });
 
       const searchInput = screen.getByPlaceholderText('Search nodes...');
       await user.type(searchInput, 'test query');
       
       expect(searchInput).toHaveValue('test query');
-    });
 
     it('updates confidence filter', async () => {
       const user = userEvent.setup();
@@ -479,13 +454,11 @@ describe('MemoryNetworkGraph', () => {
       await waitFor(() => {
         const confidenceSlider = screen.getByDisplayValue('0');
         expect(confidenceSlider).toBeInTheDocument();
-      });
 
       const confidenceSlider = screen.getByDisplayValue('0');
       fireEvent.change(confidenceSlider, { target: { value: '0.5' } });
       
       expect(confidenceSlider).toHaveValue('0.5');
-    });
 
     it('changes color scheme', async () => {
       const user = userEvent.setup();
@@ -494,14 +467,12 @@ describe('MemoryNetworkGraph', () => {
       await waitFor(() => {
         const colorSelect = screen.getByDisplayValue('Cluster');
         expect(colorSelect).toBeInTheDocument();
-      });
 
       const colorSelect = screen.getByDisplayValue('Cluster');
       await user.selectOptions(colorSelect, 'type');
       
       expect(colorSelect).toHaveValue('type');
-    });
-  });
+
 
   describe('Node Interactions', () => {
     it('calls onNodeSelect when provided', async () => {
@@ -510,12 +481,10 @@ describe('MemoryNetworkGraph', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Network Statistics')).toBeInTheDocument();
-      });
 
       // Node selection would be handled by D3 event handlers
       // We can test that the callback is properly set up
       expect(onNodeSelect).toBeDefined();
-    });
 
     it('calls onNodeDoubleClick when provided', async () => {
       const onNodeDoubleClick = vi.fn();
@@ -523,10 +492,8 @@ describe('MemoryNetworkGraph', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Network Statistics')).toBeInTheDocument();
-      });
 
       expect(onNodeDoubleClick).toBeDefined();
-    });
 
     it('calls onClusterSelect when provided', async () => {
       const onClusterSelect = vi.fn();
@@ -534,11 +501,9 @@ describe('MemoryNetworkGraph', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Network Statistics')).toBeInTheDocument();
-      });
 
       expect(onClusterSelect).toBeDefined();
-    });
-  });
+
 
   describe('Performance', () => {
     it('limits node count for performance', async () => {
@@ -553,11 +518,9 @@ describe('MemoryNetworkGraph', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Network Statistics')).toBeInTheDocument();
-      });
 
       // Should limit to 100 nodes for performance
       expect(mockD3.forceSimulation).toHaveBeenCalled();
-    });
 
     it('handles empty data gracefully', async () => {
       const emptyStats: MemoryStats = {
@@ -575,9 +538,8 @@ describe('MemoryNetworkGraph', () => {
       await waitFor(() => {
         expect(screen.getByText('Network Statistics')).toBeInTheDocument();
         expect(screen.getByText('Nodes: 0 / 0')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Responsive Design', () => {
     it('adapts to specified dimensions', () => {
@@ -585,7 +547,6 @@ describe('MemoryNetworkGraph', () => {
       
       const container = screen.getByRole('img', { hidden: true }).parentElement;
       expect(container).toHaveStyle({ width: '1000px', height: '700px' });
-    });
 
     it('handles fullscreen mode correctly', async () => {
       const user = userEvent.setup();
@@ -599,9 +560,8 @@ describe('MemoryNetworkGraph', () => {
           const container = screen.getByRole('img', { hidden: true }).parentElement;
           expect(container).toHaveClass('fixed', 'inset-0', 'z-50');
         }
-      });
-    });
-  });
+
+
 
   describe('Accessibility', () => {
     it('supports keyboard navigation', async () => {
@@ -611,13 +571,11 @@ describe('MemoryNetworkGraph', () => {
       await waitFor(() => {
         const searchInput = screen.getByPlaceholderText('Search nodes...');
         expect(searchInput).toBeInTheDocument();
-      });
 
       // Should be able to tab to controls
       await user.tab();
       const firstButton = screen.getAllByTestId('button')[0];
       expect(firstButton).toHaveFocus();
-    });
 
     it('has proper ARIA labels and roles', async () => {
       render(<MemoryNetworkGraph {...defaultProps} />);
@@ -625,9 +583,8 @@ describe('MemoryNetworkGraph', () => {
       await waitFor(() => {
         const svg = screen.getByRole('img', { hidden: true });
         expect(svg).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Memory Management', () => {
     it('cleans up simulation on unmount', async () => {
@@ -635,26 +592,22 @@ describe('MemoryNetworkGraph', () => {
       
       await waitFor(() => {
         expect(mockD3.forceSimulation).toHaveBeenCalled();
-      });
 
       unmount();
       
       // Simulation should be stopped on unmount
       expect(mockSimulation.stop).toHaveBeenCalled();
-    });
 
     it('handles component updates correctly', async () => {
       const { rerender } = render(<MemoryNetworkGraph {...defaultProps} />);
       
       await waitFor(() => {
         expect(mockD3.forceSimulation).toHaveBeenCalled();
-      });
 
       // Update props
       rerender(<MemoryNetworkGraph {...defaultProps} width={900} />);
       
       // Should handle prop updates
       expect(mockD3.forceSimulation).toHaveBeenCalled();
-    });
-  });
-});
+
+

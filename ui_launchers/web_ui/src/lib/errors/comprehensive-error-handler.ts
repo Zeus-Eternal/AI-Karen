@@ -109,7 +109,7 @@ export class ComprehensiveErrorHandler {
         const handlingResult = await this.handleError(lastError, {
           ...options,
           context: { ...options.context, attempt, maxAttempts }
-        });
+
         // If this is the last attempt or retry is not recommended, throw
         if (attempt === maxAttempts - 1 || !handlingResult.shouldRetry) {
           throw lastError;
@@ -213,7 +213,7 @@ export class ComprehensiveErrorHandler {
         listener(error);
       } catch (listenerError) {
       }
-    });
+
   }
   /**
    * Utility function to create a delay

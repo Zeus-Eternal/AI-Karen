@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Super Admin Dashboard Page
@@ -8,6 +8,7 @@
  */
 
 
+import React from 'react';
 import { SuperAdminRoute } from '@/components/auth/SuperAdminRoute';
 import SuperAdminDashboard from '@/components/admin/SuperAdminDashboard';
 

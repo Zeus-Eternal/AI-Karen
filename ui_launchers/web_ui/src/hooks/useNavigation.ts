@@ -92,7 +92,7 @@ export const useNavigation = () => {
         label,
         path: currentPath,
         isActive: currentPath === pathname,
-      });
+
     }
     return items;
   }, [pathname]);

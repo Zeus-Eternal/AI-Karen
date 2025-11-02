@@ -28,14 +28,13 @@ const MessageActions: React.FC<MessageActionsProps> = ({
       {actions.map(({ id, label, icon: Icon }) => (
         <Tooltip key={id}>
           <TooltipTrigger asChild>
-            <button
+            <Button
               type="button"
               size="icon"
               variant="ghost"
-              className="h-8 w-8 sm:w-auto md:w-full"
-              onClick={() = aria-label="Button"> onAction(messageId, id)}
-            >
-              <Icon className="h-4 w-4 sm:w-auto md:w-full" />
+              className="h-8 w-8"
+              onClick={() => onAction(messageId, id)}>
+              <Icon className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>{label}</TooltipContent>

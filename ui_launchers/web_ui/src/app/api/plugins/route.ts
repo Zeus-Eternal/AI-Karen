@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       signal: controller.signal,
-    });
+
     clearTimeout(timeoutId);
     if (!response.ok) {
       throw new Error(`Backend responded with status: ${response.status}`);

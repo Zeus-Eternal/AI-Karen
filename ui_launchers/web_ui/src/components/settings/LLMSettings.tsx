@@ -1,3 +1,6 @@
+
+"use client";
+import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -5,7 +8,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import {
 import { getKarenBackend } from '@/lib/karen-backend';
 import { useAuth } from '@/contexts/AuthContext';
 import { handleApiError } from '@/lib/error-handler';
@@ -18,31 +20,8 @@ import ModelLibraryIntegrationTest from './ModelLibraryIntegrationTest';
 import { HelpTooltip, HelpSection, QuickHelp } from '@/components/ui/help-tooltip';
 import ProviderNotificationSystem from './ProviderNotificationSystem';
 import { useProviderNotifications } from '@/hooks/useProviderNotifications';
-"use client";
 
-
-
-
-
-
-
-
-  Brain,
-  AlertCircle,
-  Loader2,
-  Cloud,
-  Database,
-  Users,
-  Activity,
-  RefreshCw,
-  Library,
-  Download,
-  HardDrive,
-  CheckCircle
-} from 'lucide-react';
-
-
-
+import { 
   fetchProviderDiscovery,
   listLlamaModels,
   listTransformersModels,
@@ -175,6 +154,7 @@ export default function LLMSettings() {
     realTimeUpdates: true,
     autoToast: true
   });
+
   // Load settings and preferences on mount, but wait for auth
   useEffect(() => {
     // Only load settings if authenticated or in development mode
@@ -362,6 +342,7 @@ export default function LLMSettings() {
     created_at: undefined,
     updated_at: undefined,
   });
+
   const loadProviderStats = async () => {
     try {
       const response = await backend.makeRequestPublic<ProviderStats>('/api/providers/stats');
@@ -518,7 +499,7 @@ export default function LLMSettings() {
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary " />
             <div className="space-y-2">
               <p className="text-lg font-medium">Loading LLM Settings</p>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -540,28 +521,26 @@ export default function LLMSettings() {
             <HelpTooltip helpKey="llmSettings" category="llmSettings" />
           </div>
           <p className="text-muted-foreground">
-            Manage language model providers, profiles, and model library
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             variant="outline"
             size="sm"
             onClick={handleRefresh}
             disabled={refreshing}
-           aria-label="Button">
+           >
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
           </Button>
           {providerStats && (
             <Badge variant="outline" className="gap-1">
-              <Activity className="h-3 w-3 sm:w-auto md:w-full" />
+              <Activity className="h-3 w-3 " />
               {providerStats.healthy_providers}/{providerStats.total_providers} healthy
             </Badge>
           )}
           {activeProfile && (
             <Badge variant="secondary" className="gap-1">
-              <Brain className="h-3 w-3 sm:w-auto md:w-full" />
+              <Brain className="h-3 w-3 " />
               {activeProfile.name}
             </Badge>
           )}
@@ -570,17 +549,16 @@ export default function LLMSettings() {
       {/* System Status Alerts */}
       {degradedMode && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+          <AlertCircle className="h-4 w-4 " />
           <AlertTitle>Degraded Mode Active</AlertTitle>
           <AlertDescription>
             System is running with limited functionality. Core helper models are being used as fallback.
-            <button 
+            <Button 
               variant="outline" 
               size="sm" 
               className="ml-2"
               onClick={handleRetryFullMode}
-             aria-label="Button">
-              Retry Full Mode
+             >
             </Button>
           </AlertDescription>
         </Alert>
@@ -589,23 +567,19 @@ export default function LLMSettings() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="providers" className="flex items-center gap-2">
-            <Cloud className="h-4 w-4 sm:w-auto md:w-full" />
-            Providers
+            <Cloud className="h-4 w-4 " />
             <HelpTooltip helpKey="providerManagement" category="llmSettings" variant="inline" size="sm" />
           </TabsTrigger>
           <TabsTrigger value="models" className="flex items-center gap-2">
-            <Database className="h-4 w-4 sm:w-auto md:w-full" />
-            Model Library
+            <Database className="h-4 w-4 " />
             <HelpTooltip helpKey="modelBrowser" category="llmSettings" variant="inline" size="sm" />
           </TabsTrigger>
           <TabsTrigger value="profiles" className="flex items-center gap-2">
-            <Users className="h-4 w-4 sm:w-auto md:w-full" />
-            Profiles
+            <Users className="h-4 w-4 " />
             <HelpTooltip helpKey="profileManagement" category="llmSettings" variant="inline" size="sm" />
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Activity className="h-4 w-4 sm:w-auto md:w-full" />
-            Notifications
+            <Activity className="h-4 w-4 " />
             {(unreadCount > 0 || criticalCount > 0) && (
               <Badge variant="destructive" className="text-xs ml-1 sm:text-sm md:text-base">
                 {criticalCount > 0 ? criticalCount : unreadCount}
@@ -629,45 +603,39 @@ export default function LLMSettings() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      <Library className="h-5 w-5 sm:w-auto md:w-full" />
-                      Model Library Integration
+                      <Library className="h-5 w-5 " />
                     </CardTitle>
                     <CardDescription>
-                      Discover, download, and manage models for your configured providers
                     </CardDescription>
                   </div>
                   <button
-                    onClick={() = aria-label="Button"> {
+                    onClick={() => {
                       window.dispatchEvent(new CustomEvent('navigate-to-model-library'));
                     }}
                     className="gap-2"
                   >
-                    <Library className="h-4 w-4 sm:w-auto md:w-full" />
-                    Open Model Library
+                    <Library className="h-4 w-4 " />
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
-                    <Download className="h-8 w-8 mx-auto mb-2 text-primary sm:w-auto md:w-full" />
+                    <Download className="h-8 w-8 mx-auto mb-2 text-primary " />
                     <h3 className="font-medium">Discover Models</h3>
                     <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                      Browse available models from various providers
                     </p>
                   </div>
                   <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
-                    <HardDrive className="h-8 w-8 mx-auto mb-2 text-primary sm:w-auto md:w-full" />
+                    <HardDrive className="h-8 w-8 mx-auto mb-2 text-primary " />
                     <h3 className="font-medium">Download & Manage</h3>
                     <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                      Download models locally and manage storage
                     </p>
                   </div>
                   <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
-                    <CheckCircle className="h-8 w-8 mx-auto mb-2 text-primary sm:w-auto md:w-full" />
+                    <CheckCircle className="h-8 w-8 mx-auto mb-2 text-primary " />
                     <h3 className="font-medium">Auto-Configure</h3>
                     <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                      Automatically configure providers with compatible models
                     </p>
                   </div>
                 </div>
@@ -679,7 +647,7 @@ export default function LLMSettings() {
                       <span>Healthy Providers: {providerStats.healthy_providers}/{providerStats.total_providers}</span>
                     </div>
                     <Badge variant="outline" className="gap-1">
-                      <Activity className="h-3 w-3 sm:w-auto md:w-full" />
+                      <Activity className="h-3 w-3 " />
                       {providerStats.degraded_mode ? 'Degraded Mode' : 'Full Mode'}
                     </Badge>
                   </div>

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Loading Components with Next.js Consistency
@@ -141,7 +141,7 @@ const PageLoading: React.FC<{ message?: string }> = ({
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
             className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full sm:p-4 md:p-6"
           >
-            <Sparkles className="h-8 w-8 text-blue-600 dark:text-blue-400 sm:w-auto md:w-full" />
+            <Sparkles className="h-8 w-8 text-blue-600 dark:text-blue-400 " />
           </motion.div>
           
           <div className="text-center">
@@ -149,7 +149,6 @@ const PageLoading: React.FC<{ message?: string }> = ({
               {message}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 md:text-base lg:text-lg">
-              Please wait while we prepare your experience
             </p>
           </div>
           
@@ -167,7 +166,7 @@ const PageLoading: React.FC<{ message?: string }> = ({
                   delay,
                   ease: "easeInOut"
                 }}
-                className="w-2 h-2 rounded-full bg-blue-500 sm:w-auto md:w-full"
+                className="w-2 h-2 rounded-full bg-blue-500 "
               />
             ))}
           </div>
@@ -190,7 +189,7 @@ const ComponentLoading: React.FC<{
   if (variant === 'inline') {
     return (
       <div className="flex items-center gap-2 p-2 sm:p-4 md:p-6">
-        <Loader2 className="h-4 w-4 animate-spin text-blue-500 sm:w-auto md:w-full" />
+        <Loader2 className="h-4 w-4 animate-spin text-blue-500 " />
         <span className="text-sm text-gray-600 dark:text-gray-400 md:text-base lg:text-lg">
           {message}
         </span>
@@ -202,7 +201,7 @@ const ComponentLoading: React.FC<{
     return (
       <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10">
         <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-500 sm:w-auto md:w-full" />
+          <Loader2 className="h-6 w-6 animate-spin text-blue-500 " />
           <span className="text-sm text-gray-600 dark:text-gray-400 md:text-base lg:text-lg">
             {message}
           </span>
@@ -215,7 +214,7 @@ const ComponentLoading: React.FC<{
     <Card className="w-full">
       <CardContent className="p-6 sm:p-4 md:p-6">
         <div className="flex items-center justify-center gap-3">
-          <Loader2 className="h-5 w-5 animate-spin text-blue-500 sm:w-auto md:w-full" />
+          <Loader2 className="h-5 w-5 animate-spin text-blue-500 " />
           <span className="text-gray-600 dark:text-gray-400">
             {message}
           </span>
@@ -230,8 +229,8 @@ const ComponentLoading: React.FC<{
  */
 const ChatLoading: React.FC = () => (
   <div className="flex gap-3 mb-6">
-    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow-sm sm:w-auto md:w-full">
-      <Bot className="h-4 w-4 sm:w-auto md:w-full" />
+    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow-sm ">
+      <Bot className="h-4 w-4 " />
     </div>
     <div className="flex-1">
       <div className="inline-block p-4 rounded-2xl bg-white border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700 sm:p-4 md:p-6">
@@ -241,7 +240,7 @@ const ChatLoading: React.FC = () => (
               key={index}
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ repeat: Infinity, duration: 1.5, delay }}
-              className="w-2 h-2 bg-emerald-500 rounded-full sm:w-auto md:w-full"
+              className="w-2 h-2 bg-emerald-500 rounded-full "
             />
           ))}
           <span className="text-sm text-gray-500 ml-2 md:text-base lg:text-lg">AI is thinking...</span>
@@ -336,11 +335,6 @@ function useLoadingState(initialState = false) {
 
 // Export all components
 export {
-  Loading as default,
-  PageLoading,
-  ComponentLoading,
-  ChatLoading,
   withLoading,
-  SuspenseWrapper,
   useLoadingState
 };

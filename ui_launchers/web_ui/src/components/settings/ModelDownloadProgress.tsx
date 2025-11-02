@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -6,24 +7,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from "@/hooks/use-toast";
-import { 
+
   handleApiError, 
   handleDownloadError,
   formatFileSize,
   formatSpeed,
   formatDuration
-} from '@/lib/error-handler';
-import {
-  Loader2,
-  X,
-  Pause,
-  Play,
-  AlertCircle,
-  Download,
-  CheckCircle,
-  Clock,
-  HardDrive
-} from 'lucide-react';
+import { } from '@/lib/error-handler';
+
+import { } from 'lucide-react';
 interface DownloadTask {
   id: string;
   modelId: string;
@@ -78,52 +70,46 @@ export default function ModelDownloadProgress({
   const getStatusIcon = () => {
     switch (task.status) {
       case 'downloading':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500 sm:w-auto md:w-full" />;
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500 " />;
       case 'paused':
-        return <Pause className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
+        return <Pause className="h-4 w-4 text-yellow-500 " />;
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
+        return <CheckCircle className="h-4 w-4 text-green-500 " />;
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-4 w-4 text-red-500 " />;
       case 'cancelled':
-        return <X className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
+        return <X className="h-4 w-4 text-gray-500 " />;
       case 'pending':
-        return <Clock className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
+        return <Clock className="h-4 w-4 text-gray-500 " />;
       default:
-        return <Download className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Download className="h-4 w-4 " />;
     }
   };
   const getStatusBadge = () => {
     switch (task.status) {
       case 'downloading':
         return <Badge variant="default" className="gap-1">
-          <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
-          Downloading
+          <Loader2 className="h-3 w-3 animate-spin " />
         </Badge>;
       case 'paused':
         return <Badge variant="secondary" className="gap-1">
-          <Pause className="h-3 w-3 sm:w-auto md:w-full" />
-          Paused
+          <Pause className="h-3 w-3 " />
         </Badge>;
       case 'completed':
         return <Badge variant="default" className="gap-1 bg-green-500 hover:bg-green-600">
-          <CheckCircle className="h-3 w-3 sm:w-auto md:w-full" />
-          Completed
+          <CheckCircle className="h-3 w-3 " />
         </Badge>;
       case 'error':
         return <Badge variant="destructive" className="gap-1">
-          <AlertCircle className="h-3 w-3 sm:w-auto md:w-full" />
-          Error
+          <AlertCircle className="h-3 w-3 " />
         </Badge>;
       case 'cancelled':
         return <Badge variant="outline" className="gap-1">
-          <X className="h-3 w-3 sm:w-auto md:w-full" />
-          Cancelled
+          <X className="h-3 w-3 " />
         </Badge>;
       case 'pending':
         return <Badge variant="outline" className="gap-1">
-          <Clock className="h-3 w-3 sm:w-auto md:w-full" />
-          Pending
+          <Clock className="h-3 w-3 " />
         </Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
@@ -135,34 +121,32 @@ export default function ModelDownloadProgress({
         return (
           <div className="flex gap-2">
             {onPause && (
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> handleAction('pause', onPause)}
+                onClick={() => handleAction('pause', onPause)}
                 disabled={actionLoading === 'pause'}
                 className="gap-1"
               >
                 {actionLoading === 'pause' ? (
-                  <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-3 w-3 animate-spin " />
                 ) : (
-                  <Pause className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Pause className="h-3 w-3 " />
                 )}
-                Pause
               </Button>
             )}
-            <button
+            <Button
               variant="destructive"
               size="sm"
-              onClick={() = aria-label="Button"> handleAction('cancel', onCancel)}
+              onClick={() => handleAction('cancel', onCancel)}
               disabled={actionLoading === 'cancel'}
               className="gap-1"
             >
               {actionLoading === 'cancel' ? (
-                <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
+                <Loader2 className="h-3 w-3 animate-spin " />
               ) : (
-                <X className="h-3 w-3 sm:w-auto md:w-full" />
+                <X className="h-3 w-3 " />
               )}
-              Cancel
             </Button>
           </div>
         );
@@ -170,34 +154,32 @@ export default function ModelDownloadProgress({
         return (
           <div className="flex gap-2">
             {onResume && (
-              <button
+              <Button
                 variant="default"
                 size="sm"
-                onClick={() = aria-label="Button"> handleAction('resume', onResume)}
+                onClick={() => handleAction('resume', onResume)}
                 disabled={actionLoading === 'resume'}
                 className="gap-1"
               >
                 {actionLoading === 'resume' ? (
-                  <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-3 w-3 animate-spin " />
                 ) : (
-                  <Play className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Play className="h-3 w-3 " />
                 )}
-                Resume
               </Button>
             )}
-            <button
+            <Button
               variant="destructive"
               size="sm"
-              onClick={() = aria-label="Button"> handleAction('cancel', onCancel)}
+              onClick={() => handleAction('cancel', onCancel)}
               disabled={actionLoading === 'cancel'}
               className="gap-1"
             >
               {actionLoading === 'cancel' ? (
-                <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
+                <Loader2 className="h-3 w-3 animate-spin " />
               ) : (
-                <X className="h-3 w-3 sm:w-auto md:w-full" />
+                <X className="h-3 w-3 " />
               )}
-              Cancel
             </Button>
           </div>
         );
@@ -205,52 +187,49 @@ export default function ModelDownloadProgress({
         return (
           <div className="flex gap-2">
             {onRetry && (
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> handleAction('retry', onRetry)}
+                onClick={() => handleAction('retry', onRetry)}
                 disabled={actionLoading === 'retry'}
                 className="gap-1"
               >
                 {actionLoading === 'retry' ? (
-                  <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-3 w-3 animate-spin " />
                 ) : (
-                  <Download className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Download className="h-3 w-3 " />
                 )}
-                Retry
               </Button>
             )}
-            <button
+            <Button
               variant="destructive"
               size="sm"
-              onClick={() = aria-label="Button"> handleAction('cancel', onCancel)}
+              onClick={() => handleAction('cancel', onCancel)}
               disabled={actionLoading === 'cancel'}
               className="gap-1"
             >
               {actionLoading === 'cancel' ? (
-                <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
+                <Loader2 className="h-3 w-3 animate-spin " />
               ) : (
-                <X className="h-3 w-3 sm:w-auto md:w-full" />
+                <X className="h-3 w-3 " />
               )}
-              Remove
             </Button>
           </div>
         );
       case 'completed':
         return (
-          <button
+          <Button
             variant="outline"
             size="sm"
-            onClick={() = aria-label="Button"> handleAction('remove', onCancel)}
+            onClick={() => handleAction('remove', onCancel)}
             disabled={actionLoading === 'remove'}
             className="gap-1"
           >
             {actionLoading === 'remove' ? (
-              <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
+              <Loader2 className="h-3 w-3 animate-spin " />
             ) : (
-              <X className="h-3 w-3 sm:w-auto md:w-full" />
+              <X className="h-3 w-3 " />
             )}
-            Remove
           </Button>
         );
       default:
@@ -293,7 +272,7 @@ export default function ModelDownloadProgress({
         )}
         {task.status === 'error' && task.error && (
           <Alert variant="destructive" className="mt-2">
-            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+            <AlertCircle className="h-4 w-4 " />
             <AlertDescription className="text-sm md:text-base lg:text-lg">
               {task.error}
             </AlertDescription>
@@ -307,13 +286,12 @@ export default function ModelDownloadProgress({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+          <div className="flex-1 min-w-0 ">
             <CardTitle className="text-base leading-tight truncate flex items-center gap-2">
               {getStatusIcon()}
               {task.modelName}
             </CardTitle>
             <CardDescription className="text-sm mt-1 md:text-base lg:text-lg">
-              Model download task
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -360,14 +338,14 @@ export default function ModelDownloadProgress({
         {/* Completed Status */}
         {task.status === 'completed' && (
           <div className="flex items-center gap-2 text-sm text-green-600 md:text-base lg:text-lg">
-            <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
+            <CheckCircle className="h-4 w-4 " />
             <span>Download completed successfully</span>
           </div>
         )}
         {/* Error Alert */}
         {task.status === 'error' && task.error && (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+            <AlertCircle className="h-4 w-4 " />
             <AlertDescription>
               {task.error}
             </AlertDescription>
@@ -376,7 +354,7 @@ export default function ModelDownloadProgress({
         {/* Cancelled Status */}
         {task.status === 'cancelled' && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground md:text-base lg:text-lg">
-            <X className="h-4 w-4 sm:w-auto md:w-full" />
+            <X className="h-4 w-4 " />
             <span>Download was cancelled</span>
           </div>
         )}

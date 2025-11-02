@@ -18,7 +18,6 @@ describe('WorkflowValidator', () => {
       createdBy: 'test-user',
       status: 'draft'
     }
-  });
 
   describe('basic validation', () => {
     it('should fail validation for empty workflow', async () => {
@@ -29,7 +28,6 @@ describe('WorkflowValidator', () => {
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].type).toBe('missing_connection');
       expect(result.errors[0].message).toContain('at least one node');
-    });
 
     it('should pass validation for single node workflow', async () => {
       const workflow = createBasicWorkflow();
@@ -49,8 +47,7 @@ describe('WorkflowValidator', () => {
       
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
-    });
-  });
+
 
   describe('connection validation', () => {
     it('should warn about disconnected nodes', async () => {
@@ -85,7 +82,6 @@ describe('WorkflowValidator', () => {
       expect(result.valid).toBe(false);
       expect(result.warnings.length).toBeGreaterThan(0);
       expect(result.warnings.some(w => w.message.includes('not connected'))).toBe(true);
-    });
 
     it('should validate required input connections', async () => {
       const workflow = createBasicWorkflow();
@@ -119,8 +115,7 @@ describe('WorkflowValidator', () => {
       expect(result.valid).toBe(false);
       expect(result.errors.some(e => e.type === 'missing_connection')).toBe(true);
       expect(result.errors.some(e => e.message.includes('Required input'))).toBe(true);
-    });
-  });
+
 
   describe('circular dependency detection', () => {
     it('should detect simple circular dependencies', async () => {
@@ -170,7 +165,6 @@ describe('WorkflowValidator', () => {
       
       expect(result.valid).toBe(false);
       expect(result.errors.some(e => e.type === 'circular_dependency')).toBe(true);
-    });
 
     it('should detect complex circular dependencies', async () => {
       const workflow = createBasicWorkflow();
@@ -237,8 +231,7 @@ describe('WorkflowValidator', () => {
       
       expect(result.valid).toBe(false);
       expect(result.errors.some(e => e.type === 'circular_dependency')).toBe(true);
-    });
-  });
+
 
   describe('type compatibility validation', () => {
     it('should validate compatible types', async () => {
@@ -280,7 +273,6 @@ describe('WorkflowValidator', () => {
       const result = await WorkflowValidator.validate(workflow);
       
       expect(result.errors.some(e => e.type === 'type_mismatch')).toBe(false);
-    });
 
     it('should detect type mismatches', async () => {
       const workflow = createBasicWorkflow();
@@ -322,7 +314,6 @@ describe('WorkflowValidator', () => {
       
       expect(result.valid).toBe(false);
       expect(result.errors.some(e => e.type === 'type_mismatch')).toBe(true);
-    });
 
     it('should allow any type to accept any input', async () => {
       const workflow = createBasicWorkflow();
@@ -363,8 +354,7 @@ describe('WorkflowValidator', () => {
       const result = await WorkflowValidator.validate(workflow);
       
       expect(result.errors.some(e => e.type === 'type_mismatch')).toBe(false);
-    });
-  });
+
 
   describe('performance warnings', () => {
     it('should warn about large workflows', async () => {
@@ -382,15 +372,14 @@ describe('WorkflowValidator', () => {
             inputs: [],
             outputs: []
           }
-        });
+
       }
 
       const result = await WorkflowValidator.validate(workflow);
       
       expect(result.warnings.some(w => w.type === 'performance')).toBe(true);
       expect(result.warnings.some(w => w.message.includes('Large workflow'))).toBe(true);
-    });
-  });
+
 
   describe('best practice warnings', () => {
     it('should warn about missing input nodes', async () => {
@@ -423,7 +412,6 @@ describe('WorkflowValidator', () => {
       const result = await WorkflowValidator.validate(workflow);
       
       expect(result.warnings.some(w => w.message.includes('no input nodes'))).toBe(true);
-    });
 
     it('should warn about missing output nodes', async () => {
       const workflow = createBasicWorkflow();
@@ -455,6 +443,5 @@ describe('WorkflowValidator', () => {
       const result = await WorkflowValidator.validate(workflow);
       
       expect(result.warnings.some(w => w.message.includes('no output nodes'))).toBe(true);
-    });
-  });
-});
+
+

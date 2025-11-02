@@ -112,7 +112,7 @@ class PerformanceMonitor {
         success,
         size,
         error,
-      });
+
     }
   }
 
@@ -130,7 +130,7 @@ class PerformanceMonitor {
         severity,
         timestamp: new Date().toISOString(),
         metrics: metric,
-      });
+
     }
 
     // Check for performance degradation (if we have enough data)
@@ -151,7 +151,7 @@ class PerformanceMonitor {
             severity: 'medium',
             timestamp: new Date().toISOString(),
             metrics: this.getStats(),
-          });
+
         }
       }
     }
@@ -170,7 +170,7 @@ class PerformanceMonitor {
           severity: 'high',
           timestamp: new Date().toISOString(),
           metrics: this.getStats(),
-        });
+
       }
     }
   }
@@ -182,9 +182,7 @@ class PerformanceMonitor {
     // Use the performance alert service for graceful handling
     if (typeof window !== 'undefined') {
       // Only import and use the alert service in browser environment
-      import('./performance-alert-service').then(({ performanceAlertService }) => {
-        performanceAlertService.handleAlert(alert);
-      }).catch(error => {
+      import('./performance-alert-service').then(({ performanceAlertService }) => { performanceAlertService.handleAlert(alert); }).catch(error => { from "@/lib/placeholder";
         // Fallback to console logging if alert service fails
         safeWarn('Performance alert service unavailable, falling back to console:', error);
         const logLevel = alert.severity === 'high' ? 'warn' : 'info';
@@ -192,8 +190,8 @@ class PerformanceMonitor {
           type: alert.type,
           severity: alert.severity,
           endpoint: (alert.metrics as any)?.endpoint || 'unknown'
-        });
-      });
+
+
     } else {
       // Server-side: just log without the alert service
       const logLevel = alert.severity === 'high' ? 'warn' : 'info';
@@ -201,7 +199,7 @@ class PerformanceMonitor {
         type: alert.type,
         severity: alert.severity,
         endpoint: (alert.metrics as any)?.endpoint || 'unknown'
-      });
+
     }
 
     // Notify alert listeners
@@ -211,7 +209,7 @@ class PerformanceMonitor {
       } catch (error) {
         safeError('Error in performance alert listener:', error);
       }
-    });
+
   }
 
   /**
@@ -224,7 +222,7 @@ class PerformanceMonitor {
       } catch (error) {
         safeError('Error in performance metrics listener:', error);
       }
-    });
+
   }
 
   /**
@@ -290,7 +288,6 @@ class PerformanceMonitor {
       if (metric.timestamp > endpointStats[key].lastRequest) {
         endpointStats[key].lastRequest = metric.timestamp;
       }
-    });
 
     // Transform endpoint stats
     const transformedEndpointStats: Record<string, any> = {};
@@ -301,7 +298,6 @@ class PerformanceMonitor {
         errorRate: stats.errors / stats.count,
         lastRequest: stats.lastRequest,
       };
-    });
 
     return {
       totalRequests: this.metrics.length,
@@ -334,7 +330,7 @@ class PerformanceMonitor {
       const endpointMatch = metric.endpoint === endpoint;
       const methodMatch = !method || metric.method === method;
       return endpointMatch && methodMatch;
-    });
+
   }
 
   /**

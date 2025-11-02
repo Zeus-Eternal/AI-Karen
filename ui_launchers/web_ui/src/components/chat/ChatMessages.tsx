@@ -1,1 +1,1 @@
-export { ChatMessages } from "@/components/ChatInterface/components/ChatMessages";
+import { export { ChatMessages } from "@/components/ChatInterface/components/ChatMessages";

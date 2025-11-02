@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       offset,
       severity: severity as any,
       resolved: resolved === 'true' ? true : resolved === 'false' ? false : undefined
-    });
+
     return NextResponse.json(alerts);
   } catch (error) {
     return NextResponse.json(

@@ -52,15 +52,15 @@ const NetworkChart: React.FC<{
       positions.set(node.id, {
         x: Math.random() * (width - 100) + 50,
         y: Math.random() * (height - 100) + 50
-      });
-    });
+
+
     // Simple force simulation (simplified)
     for (let iteration = 0; iteration < 50; iteration++) {
       const forces = new Map<string, { fx: number; fy: number }>();
       // Initialize forces
       nodes.forEach(node => {
         forces.set(node.id, { fx: 0, fy: 0 });
-      });
+
       // Repulsion between all nodes
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
@@ -104,7 +104,7 @@ const NetworkChart: React.FC<{
             force2.fy -= fy;
           }
         }
-      });
+
       // Apply forces
       nodes.forEach(node => {
         const pos = positions.get(node.id)!;
@@ -114,7 +114,7 @@ const NetworkChart: React.FC<{
         // Keep within bounds
         pos.x = Math.max(node.size, Math.min(width - node.size, pos.x));
         pos.y = Math.max(node.size, Math.min(height - node.size, pos.y));
-      });
+
     }
     return positions;
   }, [width, height]);
@@ -154,7 +154,7 @@ const NetworkChart: React.FC<{
         ctx.textAlign = 'center';
         ctx.fillText(edge.label, midX, midY);
       }
-    });
+
     // Draw nodes
     data.nodes.forEach(node => {
       const pos = positions.get(node.id);
@@ -177,7 +177,7 @@ const NetworkChart: React.FC<{
       ctx.fillStyle = '#666';
       ctx.font = '10px Arial';
       ctx.fillText(`${Math.round(node.confidence * 100)}%`, pos.x, pos.y + node.size + 28);
-    });
+
   }, [data, selectedNode, calculateLayout, width, height]);
   // Handle canvas clicks
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -270,7 +270,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
           tenant_id: tenantId,
           max_nodes: maxNodes
         })
-      });
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -326,7 +326,6 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             cursor: 'pointer'
           }}
          aria-label="Button">
-          Retry
         </button>
       </div>
     );
@@ -346,7 +345,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         <label style={{ fontWeight: 'bold' }}>Filter by Cluster:</label>
         <select
           value={selectedCluster || ''}
-          onChange={(e) = aria-label="Select option"> setSelectedCluster(e.target.value || null)}
+          onChange={(e) => setSelectedCluster(e.target.value || null)}
           style={{
             padding: '4px 8px',
             borderRadius: '4px',

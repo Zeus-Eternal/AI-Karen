@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { Skeleton } from './skeleton';
@@ -19,7 +19,7 @@ export function SkeletonDemo() {
 
   return (
     <MicroInteractionProvider>
-      <div className="p-8 space-y-8 max-w-6xl mx-auto sm:w-auto md:w-full">
+      <div className="p-8 space-y-8 max-w-6xl mx-auto ">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Skeleton Loading States Demo</h1>
           <InteractiveButton onClick={toggleSkeletons}>
@@ -135,7 +135,7 @@ export function SkeletonDemo() {
                     <img 
                       src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop" 
                       alt="Avatar" 
-                      className="w-10 h-10 rounded-full sm:w-auto md:w-full"
+                      className="w-10 h-10 rounded-full "
                     />
                     <div>
                       <h3 className="text-lg font-semibold">Sample Card Title</h3>
@@ -148,10 +148,8 @@ export function SkeletonDemo() {
                   <div className="flex justify-between items-center pt-4">
                     <div className="flex space-x-2">
                       <button className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm md:text-base lg:text-lg" aria-label="Button">
-                        Action
                       </button>
                       <button className="px-3 py-1 border border-input rounded-md text-sm md:text-base lg:text-lg" aria-label="Button">
-                        Secondary
                       </button>
                     </div>
                     <span className="text-sm text-muted-foreground md:text-base lg:text-lg">2 min read</span>
@@ -163,7 +161,7 @@ export function SkeletonDemo() {
                     <img 
                       src="https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop" 
                       alt="Avatar" 
-                      className="w-10 h-10 rounded-full sm:w-auto md:w-full"
+                      className="w-10 h-10 rounded-full "
                     />
                     <div>
                       <h3 className="text-lg font-semibold">Another Card</h3>

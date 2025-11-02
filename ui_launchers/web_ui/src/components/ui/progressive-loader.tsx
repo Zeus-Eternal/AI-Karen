@@ -202,7 +202,7 @@ export function ProgressiveLoader<T>({
   // Default loading component
   const defaultLoadingComponent = (
     <div className="flex items-center justify-center py-4">
-      <Loader2 className="h-4 w-4 animate-spin mr-2 sm:w-auto md:w-full" />
+      <Loader2 className="h-4 w-4 animate-spin mr-2 " />
       <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading...</span>
     </div>
   );
@@ -210,13 +210,12 @@ export function ProgressiveLoader<T>({
   // Default error component
   const defaultErrorComponent = (error: Error, retry: () => void) => (
     <div className="flex flex-col items-center justify-center py-8 text-center">
-      <AlertCircle className="h-8 w-8 text-red-500 mb-2 sm:w-auto md:w-full" />
+      <AlertCircle className="h-8 w-8 text-red-500 mb-2 " />
       <p className="text-sm text-red-600 mb-4 md:text-base lg:text-lg">{error.message}</p>
       <button
         onClick={retry}
         className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
        aria-label="Button">
-        Try Again
       </button>
     </div>
   );
@@ -278,7 +277,6 @@ export function ProgressiveLoader<T>({
       {/* No more items indicator */}
       {!hasMore && items.length > 0 && (
         <div className="text-xs text-muted-foreground text-center py-2 sm:text-sm md:text-base">
-          All items loaded
         </div>
       )}
     </div>

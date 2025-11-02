@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,7 +18,7 @@ export default function SignupPage() {
     email: '',
     password: '',
     confirmPassword: '',
-  });
+
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -47,10 +48,8 @@ export default function SignupPage() {
           </div>
           <div className="space-y-2">
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-              Join AI Karen
             </CardTitle>
             <CardDescription className="text-base text-muted-foreground">
-              Create your account to get started
             </CardDescription>
           </div>
         </CardHeader>
@@ -140,14 +139,12 @@ export default function SignupPage() {
                   href="/login" 
                   className="text-primary hover:text-primary/80 font-medium transition-colors duration-200 hover:underline"
                 >
-                  Sign in to your account
                 </a>
               </p>
             </div>
             
             <div className="text-center">
               <p className="text-xs text-muted-foreground/70">
-                By creating an account, you agree to our terms of service
               </p>
             </div>
           </div>

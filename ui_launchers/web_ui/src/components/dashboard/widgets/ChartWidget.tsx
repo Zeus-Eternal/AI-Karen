@@ -1,25 +1,14 @@
-'use client';
+"use client";
+
 import React, { useMemo, useCallback } from 'react';
 import { AgCharts } from 'ag-charts-react';
 import { AgChartOptions } from 'ag-charts-community';
 import { WidgetBase } from '../WidgetBase';
 import { Button } from '@/components/ui/button';
-import { 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCcw, 
-  Download,
-  TrendingUp,
-  BarChart3,
-  Activity
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
+import { } from 'lucide-react';
+
+import { } from '@/components/ui/dropdown-menu';
 import type { WidgetProps, ChartData } from '@/types/dashboard';
 interface ChartWidgetProps extends WidgetProps {
   data?: {
@@ -33,13 +22,13 @@ interface ChartWidgetProps extends WidgetProps {
 const getChartTypeIcon = (type: string) => {
   switch (type) {
     case 'line':
-      return <TrendingUp className="h-3 w-3 sm:w-auto md:w-full" />;
+      return <TrendingUp className="h-3 w-3 " />;
     case 'bar':
-      return <BarChart3 className="h-3 w-3 sm:w-auto md:w-full" />;
+      return <BarChart3 className="h-3 w-3 " />;
     case 'area':
-      return <Activity className="h-3 w-3 sm:w-auto md:w-full" />;
+      return <Activity className="h-3 w-3 " />;
     default:
-      return <TrendingUp className="h-3 w-3 sm:w-auto md:w-full" />;
+      return <TrendingUp className="h-3 w-3 " />;
   }
 };
 export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
@@ -94,7 +83,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
             },
           };
       }
-    });
+
     return {
       data: transformedData,
       series,
@@ -167,7 +156,6 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
     return (
       <WidgetBase {...props}>
         <div className="flex items-center justify-center h-full text-muted-foreground">
-          No chart data available
         </div>
       </WidgetBase>
     );
@@ -182,75 +170,69 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
         {/* Chart Type Selector */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
+            <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm sm:w-auto md:w-full"
-             aria-label="Button">
+              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm "
+             >
               {getChartTypeIcon(widgetData.data.series[0]?.type || 'line')}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32 sm:w-auto md:w-full">
+          <DropdownMenuContent align="end" className="w-32 ">
             <DropdownMenuItem onClick={() => handleChangeChartType('line')}>
-              <TrendingUp className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
-              Line
+              <TrendingUp className="h-3 w-3 mr-2 " />
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleChangeChartType('bar')}>
-              <BarChart3 className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
-              Bar
+              <BarChart3 className="h-3 w-3 mr-2 " />
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleChangeChartType('area')}>
-              <Activity className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
-              Area
+              <Activity className="h-3 w-3 mr-2 " />
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         {/* Zoom Controls */}
-        <button
+        <Button
           variant="ghost"
           size="sm"
           onClick={handleZoomIn}
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm sm:w-auto md:w-full"
-         aria-label="Button">
-          <ZoomIn className="h-3 w-3 sm:w-auto md:w-full" />
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm "
+         >
+          <ZoomIn className="h-3 w-3 " />
         </Button>
-        <button
+        <Button
           variant="ghost"
           size="sm"
           onClick={handleZoomOut}
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm sm:w-auto md:w-full"
-         aria-label="Button">
-          <ZoomOut className="h-3 w-3 sm:w-auto md:w-full" />
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm "
+         >
+          <ZoomOut className="h-3 w-3 " />
         </Button>
-        <button
+        <Button
           variant="ghost"
           size="sm"
           onClick={handleResetZoom}
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm sm:w-auto md:w-full"
-         aria-label="Button">
-          <RotateCcw className="h-3 w-3 sm:w-auto md:w-full" />
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm "
+         >
+          <RotateCcw className="h-3 w-3 " />
         </Button>
         {/* Export Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
+            <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm sm:w-auto md:w-full"
-             aria-label="Button">
-              <Download className="h-3 w-3 sm:w-auto md:w-full" />
+              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm "
+             >
+              <Download className="h-3 w-3 " />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32 sm:w-auto md:w-full">
+          <DropdownMenuContent align="end" className="w-32 ">
             <DropdownMenuItem onClick={() => handleExport('png')}>
-              Export PNG
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleExport('svg')}>
-              Export SVG
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => handleExport('pdf')}>
-              Export PDF
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -22,7 +22,6 @@ const localStorageMock = {
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
-});
 
 // Mock matchMedia
 const matchMediaMock = vi.fn().mockImplementation(query => ({
@@ -38,7 +37,6 @@ const matchMediaMock = vi.fn().mockImplementation(query => ({
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: matchMediaMock,
-});
 
 const ThemeWrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider>{children}</ThemeProvider>
@@ -49,7 +47,6 @@ describe('ThemeSwitcher', () => {
     vi.clearAllMocks();
     localStorageMock.getItem.mockReturnValue(null);
     useUIStore.getState().resetUIState();
-  });
 
   describe('buttons variant', () => {
     it('should render theme buttons', async () => {
@@ -63,8 +60,7 @@ describe('ThemeSwitcher', () => {
         expect(screen.getByLabelText('Switch to light theme')).toBeInTheDocument();
         expect(screen.getByLabelText('Switch to dark theme')).toBeInTheDocument();
         expect(screen.getByLabelText('Switch to system theme')).toBeInTheDocument();
-      });
-    });
+
 
     it('should switch themes when buttons are clicked', async () => {
       render(
@@ -76,15 +72,13 @@ describe('ThemeSwitcher', () => {
       await waitFor(() => {
         const lightButton = screen.getByLabelText('Switch to light theme');
         expect(lightButton).toBeInTheDocument();
-      });
 
       const lightButton = screen.getByLabelText('Switch to light theme');
       fireEvent.click(lightButton);
 
       await waitFor(() => {
         expect(localStorageMock.setItem).toHaveBeenCalledWith('ui-theme', 'light');
-      });
-    });
+
 
     it('should show density control when enabled', async () => {
       render(
@@ -95,9 +89,8 @@ describe('ThemeSwitcher', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('dropdown variant', () => {
     it('should render theme dropdown', async () => {
@@ -109,8 +102,7 @@ describe('ThemeSwitcher', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
-      });
-    });
+
 
     it('should show density dropdown when enabled', async () => {
       render(
@@ -122,9 +114,8 @@ describe('ThemeSwitcher', () => {
       await waitFor(() => {
         const dropdowns = screen.getAllByRole('combobox');
         expect(dropdowns).toHaveLength(2);
-      });
-    });
-  });
+
+
 
   describe('card variant', () => {
     it('should render theme card', async () => {
@@ -137,8 +128,7 @@ describe('ThemeSwitcher', () => {
       await waitFor(() => {
         expect(screen.getByText('Theme Settings')).toBeInTheDocument();
         expect(screen.getByText('Theme')).toBeInTheDocument();
-      });
-    });
+
 
     it('should show density controls in card when enabled', async () => {
       render(
@@ -150,8 +140,7 @@ describe('ThemeSwitcher', () => {
       await waitFor(() => {
         expect(screen.getByText('Theme Settings')).toBeInTheDocument();
         expect(screen.getByText('Density')).toBeInTheDocument();
-      });
-    });
+
 
     it('should show current theme status', async () => {
       render(
@@ -162,9 +151,8 @@ describe('ThemeSwitcher', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Current:.*theme/)).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('size variants', () => {
     it('should apply size classes correctly', async () => {
@@ -178,8 +166,7 @@ describe('ThemeSwitcher', () => {
         const buttons = screen.getAllByRole('button');
         buttons.forEach(button => {
           expect(button).toHaveClass('h-8', 'w-8');
-        });
-      });
+
 
       rerender(
         <ThemeWrapper>
@@ -191,10 +178,9 @@ describe('ThemeSwitcher', () => {
         const buttons = screen.getAllByRole('button');
         buttons.forEach(button => {
           expect(button).toHaveClass('h-12', 'w-12');
-        });
-      });
-    });
-  });
+
+
+
 
   it('should apply custom className', async () => {
     render(
@@ -206,15 +192,13 @@ describe('ThemeSwitcher', () => {
     await waitFor(() => {
       const switcher = screen.getByTestId('theme-switcher');
       expect(switcher).toHaveClass('custom-class');
-    });
-  });
-});
+
+
 
 describe('ThemeToggle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMock.getItem.mockReturnValue(null);
-  });
 
   it('should render toggle button', async () => {
     render(
@@ -227,8 +211,7 @@ describe('ThemeToggle', () => {
       const button = screen.getByRole('button');
       expect(button).toBeInTheDocument();
       expect(button).toHaveAttribute('aria-label');
-    });
-  });
+
 
   it('should toggle between light and dark themes', async () => {
     render(
@@ -240,15 +223,13 @@ describe('ThemeToggle', () => {
     await waitFor(() => {
       const button = screen.getByRole('button');
       expect(button).toBeInTheDocument();
-    });
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
 
     await waitFor(() => {
       expect(localStorageMock.setItem).toHaveBeenCalled();
-    });
-  });
+
 
   it('should apply size classes correctly', async () => {
     const { rerender } = render(
@@ -260,7 +241,6 @@ describe('ThemeToggle', () => {
     await waitFor(() => {
       const button = screen.getByRole('button');
       expect(button).toHaveClass('h-8', 'w-8');
-    });
 
     rerender(
       <ThemeWrapper>
@@ -271,8 +251,7 @@ describe('ThemeToggle', () => {
     await waitFor(() => {
       const button = screen.getByRole('button');
       expect(button).toHaveClass('h-12', 'w-12');
-    });
-  });
+
 
   it('should apply custom className', async () => {
     render(
@@ -284,8 +263,7 @@ describe('ThemeToggle', () => {
     await waitFor(() => {
       const button = screen.getByRole('button');
       expect(button).toHaveClass('custom-toggle');
-    });
-  });
+
 
   it('should have proper accessibility attributes', async () => {
     render(
@@ -298,6 +276,5 @@ describe('ThemeToggle', () => {
       const button = screen.getByRole('button');
       expect(button).toHaveAttribute('aria-label');
       expect(button).toHaveAttribute('title');
-    });
-  });
-});
+
+

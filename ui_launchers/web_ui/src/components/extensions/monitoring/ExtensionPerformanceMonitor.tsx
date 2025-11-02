@@ -1,55 +1,24 @@
+
+"use client";
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
-import { 
+
 /**
  * Extension Performance Monitor Component
  * 
  * Comprehensive performance monitoring dashboard for extensions including
  * real-time metrics, resource usage tracking, and performance analytics.
  */
-'use client';
-
-
-
-
-
 
   useExtensionStatuses, 
   useExtensionPerformance, 
   useExtensionTaskMonitoring 
-} from '../../../lib/extensions/hooks';
+import { } from '../../../lib/extensions/hooks';
 
-  Activity, 
-  Zap, 
-  Database, 
-  Globe, 
-  Clock, 
-  TrendingUp, 
-  TrendingDown, 
-  AlertTriangle,
-  CheckCircle,
-  RefreshCw,
-  BarChart3,
-  PieChart,
-  LineChart,
-  Monitor,
-  Cpu,
-  HardDrive,
-  Wifi,
-  Timer,
-  Target,
-  Gauge,
-  Settings,
-  Download,
-  Filter,
-  Calendar,
-  ArrowUp,
-  ArrowDown,
-  Minus
-} from 'lucide-react';
+import { } from 'lucide-react';
 interface PerformanceMetric {
   name: string;
   value: number;
@@ -76,7 +45,7 @@ interface ExtensionPerformanceMonitorProps {
   className?: string;
   extensionId?: string; // If provided, show metrics for specific extension
 }
-export default function ExtensionPerformanceMonitor({
+export function ExtensionPerformanceMonitor({
   className,
   extensionId
 }: ExtensionPerformanceMonitorProps) {
@@ -211,7 +180,7 @@ export default function ExtensionPerformanceMonitor({
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4 sm:w-auto md:w-full" />
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4 " />
           <p className="text-gray-600">Loading performance monitor...</p>
         </div>
       </div>
@@ -233,7 +202,7 @@ export default function ExtensionPerformanceMonitor({
         <div className="flex gap-2">
           <select
             value={timeRange}
-            onChange={(e) = aria-label="Select option"> setTimeRange(e.target.value as any)}
+            onChange={(e) => setTimeRange(e.target.value as any)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="1h">Last Hour</option>
@@ -241,21 +210,19 @@ export default function ExtensionPerformanceMonitor({
             <option value="24h">Last 24 Hours</option>
             <option value="7d">Last 7 Days</option>
           </select>
-          <button
+          <Button
             variant="outline"
-            onClick={() = aria-label="Button"> setAutoRefresh(!autoRefresh)}
+            onClick={() => setAutoRefresh(!autoRefresh)}
             className={`flex items-center gap-2 ${autoRefresh ? 'text-green-600' : 'text-gray-600'}`}
           >
             <RefreshCw className={`h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
-            Auto Refresh
           </Button>
-          <button
+          <Button
             variant="outline"
             onClick={handleExportMetrics}
             className="flex items-center gap-2"
-           aria-label="Button">
-            <Download className="h-4 w-4 sm:w-auto md:w-full" />
-            Export
+           >
+            <Download className="h-4 w-4 " />
           </Button>
         </div>
       </div>
@@ -264,7 +231,7 @@ export default function ExtensionPerformanceMonitor({
         <Card className="border-yellow-200 bg-yellow-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-yellow-800">
-              <AlertTriangle className="h-5 w-5 sm:w-auto md:w-full" />
+              <AlertTriangle className="h-5 w-5 " />
               Performance Alerts ({alerts.length})
             </CardTitle>
           </CardHeader>
@@ -307,20 +274,16 @@ export default function ExtensionPerformanceMonitor({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">
-            <Monitor className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Overview
+            <Monitor className="h-4 w-4 mr-2 " />
           </TabsTrigger>
           <TabsTrigger value="resources">
-            <Gauge className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Resources
+            <Gauge className="h-4 w-4 mr-2 " />
           </TabsTrigger>
           <TabsTrigger value="extensions">
-            <Activity className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Extensions
+            <Activity className="h-4 w-4 mr-2 " />
           </TabsTrigger>
           <TabsTrigger value="analytics">
-            <BarChart3 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Analytics
+            <BarChart3 className="h-4 w-4 mr-2 " />
           </TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-6">
@@ -369,13 +332,13 @@ function MetricCard({ metric }: MetricCardProps) {
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'up':
-        return <TrendingUp className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
+        return <TrendingUp className="h-4 w-4 text-red-500 " />;
       case 'down':
-        return <TrendingDown className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
+        return <TrendingDown className="h-4 w-4 text-green-500 " />;
       case 'stable':
-        return <Minus className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
+        return <Minus className="h-4 w-4 text-gray-500 " />;
       default:
-        return <Minus className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
+        return <Minus className="h-4 w-4 text-gray-500 " />;
     }
   };
   return (
@@ -460,7 +423,7 @@ function OverviewPanel({ metrics, statuses, taskData }: any) {
         <CardContent>
           <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
             <div className="text-center">
-              <LineChart className="h-12 w-12 text-gray-400 mx-auto mb-4 sm:w-auto md:w-full" />
+              <LineChart className="h-12 w-12 text-gray-400 mx-auto mb-4 " />
               <p className="text-gray-600">Performance trends chart would be rendered here</p>
               <p className="text-sm text-gray-500 md:text-base lg:text-lg">Integration with charting library needed</p>
             </div>
@@ -483,17 +446,17 @@ function ResourcesPanel({ statuses, selectedMetric, onMetricChange }: any) {
         <CardContent>
           <div className="flex gap-2 mb-4">
             {resourceMetrics.map(metric => (
-              <button
+              <Button
                 key={metric}
                 variant={selectedMetric === metric ? 'default' : 'outline'}
                 size="sm"
-                onClick={() = aria-label="Button"> onMetricChange(metric)}
+                onClick={() => onMetricChange(metric)}
                 className="capitalize"
               >
-                {metric === 'cpu' && <Cpu className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
-                {metric === 'memory' && <Database className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
-                {metric === 'network' && <Wifi className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
-                {metric === 'storage' && <HardDrive className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
+                {metric === 'cpu' && <Cpu className="h-3 w-3 mr-1" />}
+                {metric === 'memory' && <Database className="h-3 w-3 mr-1" />}
+                {metric === 'network' && <Wifi className="h-3 w-3 mr-1" />}
+                {metric === 'storage' && <HardDrive className="h-3 w-3 mr-1" />}
                 {metric}
               </Button>
             ))}
@@ -519,7 +482,7 @@ function ResourcesPanel({ statuses, selectedMetric, onMetricChange }: any) {
                     {selectedMetric === 'network' && `${status.resources.network.toFixed(1)} KB/s`}
                     {selectedMetric === 'storage' && `${Math.round(status.resources.storage)}MB`}
                   </div>
-                  <div className="w-24 bg-gray-200 rounded-full h-2 mt-1 sm:w-auto md:w-full">
+                  <div className="w-24 bg-gray-200 rounded-full h-2 mt-1 ">
                     <div 
                       className={`h-2 rounded-full ${
                         selectedMetric === 'cpu' && status.resources.cpu > 80 ? 'bg-red-500' :
@@ -597,9 +560,9 @@ function ExtensionsPanel({ statuses }: any) {
                     </td>
                     <td className="text-center py-2">
                       {status.health.status === 'healthy' ? (
-                        <CheckCircle className="h-4 w-4 text-green-500 mx-auto sm:w-auto md:w-full" />
+                        <CheckCircle className="h-4 w-4 text-green-500 mx-auto " />
                       ) : (
-                        <AlertTriangle className="h-4 w-4 text-yellow-500 mx-auto sm:w-auto md:w-full" />
+                        <AlertTriangle className="h-4 w-4 text-yellow-500 mx-auto " />
                       )}
                     </td>
                   </tr>
@@ -625,7 +588,7 @@ function AnalyticsPanel({ metrics, timeRange }: any) {
           <CardContent>
             <div className="h-48 flex items-center justify-center bg-gray-50 rounded-lg">
               <div className="text-center">
-                <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-4 sm:w-auto md:w-full" />
+                <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-4 " />
                 <p className="text-gray-600">Resource distribution chart</p>
                 <p className="text-sm text-gray-500 md:text-base lg:text-lg">Pie chart would be rendered here</p>
               </div>
@@ -640,7 +603,7 @@ function AnalyticsPanel({ metrics, timeRange }: any) {
           <CardContent>
             <div className="h-48 flex items-center justify-center bg-gray-50 rounded-lg">
               <div className="text-center">
-                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4 sm:w-auto md:w-full" />
+                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4 " />
                 <p className="text-gray-600">Performance trends chart</p>
                 <p className="text-sm text-gray-500 md:text-base lg:text-lg">Bar chart would be rendered here</p>
               </div>
@@ -657,7 +620,7 @@ function AnalyticsPanel({ metrics, timeRange }: any) {
         <CardContent>
           <div className="space-y-4">
             <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg sm:p-4 md:p-6">
-              <Target className="h-5 w-5 text-blue-600 mt-0.5 sm:w-auto md:w-full" />
+              <Target className="h-5 w-5 text-blue-600 mt-0.5 " />
               <div>
                 <h4 className="font-medium text-blue-900">Optimization Opportunity</h4>
                 <p className="text-sm text-blue-800 md:text-base lg:text-lg">
@@ -667,7 +630,7 @@ function AnalyticsPanel({ metrics, timeRange }: any) {
               </div>
             </div>
             <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg sm:p-4 md:p-6">
-              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 sm:w-auto md:w-full" />
+              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 " />
               <div>
                 <h4 className="font-medium text-green-900">Good Performance</h4>
                 <p className="text-sm text-green-800 md:text-base lg:text-lg">
@@ -677,7 +640,7 @@ function AnalyticsPanel({ metrics, timeRange }: any) {
               </div>
             </div>
             <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg sm:p-4 md:p-6">
-              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 sm:w-auto md:w-full" />
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 " />
               <div>
                 <h4 className="font-medium text-yellow-900">Resource Alert</h4>
                 <p className="text-sm text-yellow-800 md:text-base lg:text-lg">

@@ -1,47 +1,24 @@
+
+"use client";
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from 'next-themes';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment, AttachmentAnalysis } from '@/types/enhanced-chat';
-'use client';
+
+import { } from 'lucide-react';
 
 
 
 
 
-
-
-  File,
-  Image,
-  Code,
-  FileText,
-  Download,
-  Eye,
-  X,
-  Maximize2,
-  Copy,
-  Search,
-  Zap
-} from 'lucide-react';
-
-
-
-
-
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-
+import { } from '@/components/ui/dialog';
 interface FilePreviewProps {
   attachment: Attachment;
   onClose?: () => void;
@@ -123,13 +100,13 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
       toast({
         title: 'Analysis Complete',
         description: 'File has been analyzed successfully'
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Analysis Failed',
         description: 'Failed to analyze file content'
-      });
+
     } finally {
       setIsAnalyzing(false);
     }
@@ -141,13 +118,13 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
       toast({
         title: 'Copied',
         description: 'Content copied to clipboard'
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Copy Failed',
         description: 'Failed to copy to clipboard'
-      });
+
     }
   };
   // Format file size
@@ -201,13 +178,12 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               {fileContent.split('\n').length} lines
             </span>
           </div>
-          <button
+          <Button
             variant="outline"
             size="sm"
-            onClick={() = aria-label="Button"> copyToClipboard(fileContent)}
+            onClick={() => copyToClipboard(fileContent)}
           >
-            <Copy className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Copy
+            <Copy className="h-4 w-4 mr-2 " />
           </Button>
         </div>
         <Card>
@@ -237,13 +213,12 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Badge variant="outline">{attachment.mimeType}</Badge>
-        <button
+        <Button
           variant="outline"
           size="sm"
-          onClick={() = aria-label="Button"> copyToClipboard(fileContent)}
+          onClick={() => copyToClipboard(fileContent)}
         >
-          <Copy className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-          Copy
+          <Copy className="h-4 w-4 mr-2 " />
         </Button>
       </div>
       <Card>
@@ -264,13 +239,12 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
     if (!analysis) {
       return (
         <div className="text-center py-8">
-          <Search className="h-8 w-8 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+          <Search className="h-8 w-8 mx-auto mb-4 opacity-50 " />
           <p className="text-sm text-muted-foreground mb-4 md:text-base lg:text-lg">
-            No analysis available for this file
           </p>
           {onAnalyze && (
             <button onClick={handleAnalyze} disabled={isAnalyzing} aria-label="Button">
-              <Zap className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+              <Zap className="h-4 w-4 mr-2 " />
               {isAnalyzing ? 'Analyzing...' : 'Analyze File'}
             </Button>
           )}
@@ -350,14 +324,14 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
     return (
       <Dialog>
         <DialogTrigger asChild>
-          <button variant="ghost" size="sm" aria-label="Button">
-            <Eye className="h-4 w-4 sm:w-auto md:w-full" />
+          <Button variant="ghost" size="sm" >
+            <Eye className="h-4 w-4 " />
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-4xl max-h-[80vh] sm:w-auto md:w-full">
+        <DialogContent className="max-w-4xl max-h-[80vh] ">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <File className="h-5 w-5 sm:w-auto md:w-full" />
+              <File className="h-5 w-5 " />
               {attachment.name}
             </DialogTitle>
           </DialogHeader>
@@ -371,7 +345,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <File className="h-5 w-5 sm:w-auto md:w-full" />
+            <File className="h-5 w-5 " />
             {attachment.name}
           </CardTitle>
           <div className="flex items-center gap-2">
@@ -379,21 +353,21 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
             <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
               {formatFileSize(attachment.size)}
             </span>
-            <button
+            <Button
               variant="outline"
               size="sm"
-              onClick={() = aria-label="Button"> {
+              onClick={() => {
                 const a = document.createElement('a');
                 a.href = attachment.url;
                 a.download = attachment.name;
                 a.click();
               }}
             >
-              <Download className="h-4 w-4 sm:w-auto md:w-full" />
+              <Download className="h-4 w-4 " />
             </Button>
             {onClose && (
-              <button variant="ghost" size="sm" onClick={onClose} aria-label="Button">
-                <X className="h-4 w-4 sm:w-auto md:w-full" />
+              <Button variant="ghost" size="sm" onClick={onClose} >
+                <X className="h-4 w-4 " />
               </Button>
             )}
           </div>
@@ -410,7 +384,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               <ScrollArea className="h-full">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-32">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary "></div>
                   </div>
                 ) : (
                   <>
@@ -419,7 +393,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
                     {attachment.type === 'document' && renderDocumentPreview()}
                     {(attachment.type === 'video' || attachment.type === 'audio') && (
                       <div className="text-center py-8">
-                        <File className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+                        <File className="h-12 w-12 mx-auto mb-4 opacity-50 " />
                         <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                           Preview not available for {attachment.type} files
                         </p>

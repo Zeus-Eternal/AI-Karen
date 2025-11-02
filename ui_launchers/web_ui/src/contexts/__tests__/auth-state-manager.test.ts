@@ -6,8 +6,7 @@ beforeEach(() => {
   vi.stubGlobal('sessionStorage', {
     getItem: vi.fn().mockReturnValue(null),
     setItem: vi.fn(),
-  });
-});
+
 
 describe('AuthStateManager', () => {
   it('should update and persist state', () => {
@@ -15,7 +14,6 @@ describe('AuthStateManager', () => {
     authStateManager.updateState(snapshot);
     expect(authStateManager.getState()).toEqual(snapshot);
     expect(sessionStorage.setItem).toHaveBeenCalled();
-  });
 
   it('should notify subscribers on state change', () => {
     const listener = vi.fn();
@@ -24,5 +22,4 @@ describe('AuthStateManager', () => {
     authStateManager.updateState(snapshot);
     expect(listener).toHaveBeenCalledWith(snapshot);
     unsubscribe();
-  });
-});
+

@@ -53,17 +53,14 @@ beforeEach(() => {
   (useAuth as jest.Mock).mockReturnValue({
     isAuthenticated: true,
     hasRole: mockHasRole,
-  });
-  
+
   jest.clearAllMocks();
-});
 
 describe('NavigationLayout', () => {
   it('renders children without navigation for unauthenticated users', () => {
     (useAuth as jest.Mock).mockReturnValue({
       isAuthenticated: false,
       hasRole: mockHasRole,
-    });
 
     render(
       <NavigationLayout>
@@ -74,7 +71,6 @@ describe('NavigationLayout', () => {
     expect(screen.getByText('Test Content')).toBeInTheDocument();
     expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument();
     expect(screen.queryByTestId('auth-header')).not.toBeInTheDocument();
-  });
 
   it('renders simple layout for regular users', () => {
     mockHasRole.mockReturnValue(false);
@@ -90,7 +86,6 @@ describe('NavigationLayout', () => {
     expect(screen.getByTestId('role-nav-header')).toBeInTheDocument();
     expect(screen.getByTestId('auth-header')).toBeInTheDocument();
     expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument();
-  });
 
   it('renders full layout with sidebar for admin users', () => {
     mockHasRole.mockImplementation((role: string) => role === 'admin');
@@ -107,7 +102,6 @@ describe('NavigationLayout', () => {
     expect(screen.getByTestId('sidebar-content')).toBeInTheDocument();
     expect(screen.getByTestId('role-nav-sidebar')).toBeInTheDocument();
     expect(screen.getByTestId('sidebar-trigger')).toBeInTheDocument();
-  });
 
   it('shows admin badge for admin users', () => {
     mockHasRole.mockImplementation((role: string) => role === 'admin');
@@ -120,7 +114,6 @@ describe('NavigationLayout', () => {
 
     expect(screen.getByText('Admin')).toBeInTheDocument();
     expect(screen.queryByText('Super Admin')).not.toBeInTheDocument();
-  });
 
   it('shows super admin badge for super admin users', () => {
     mockHasRole.mockImplementation((role: string) => role === 'super_admin');
@@ -132,7 +125,6 @@ describe('NavigationLayout', () => {
     );
 
     expect(screen.getByText('Super Admin')).toBeInTheDocument();
-  });
 
   it('hides breadcrumbs when showBreadcrumbs is false', () => {
     mockHasRole.mockImplementation((role: string) => role === 'admin');
@@ -144,7 +136,6 @@ describe('NavigationLayout', () => {
     );
 
     expect(screen.queryByTestId('admin-breadcrumbs')).not.toBeInTheDocument();
-  });
 
   it('shows breadcrumbs by default for admin users', () => {
     mockHasRole.mockImplementation((role: string) => role === 'admin');
@@ -156,7 +147,6 @@ describe('NavigationLayout', () => {
     );
 
     expect(screen.getByTestId('admin-breadcrumbs')).toBeInTheDocument();
-  });
 
   it('hides sidebar when showSidebar is false', () => {
     mockHasRole.mockImplementation((role: string) => role === 'admin');
@@ -169,7 +159,6 @@ describe('NavigationLayout', () => {
 
     expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument();
     expect(screen.getByTestId('role-nav-header')).toBeInTheDocument();
-  });
 
   it('applies custom className', () => {
     mockHasRole.mockImplementation((role: string) => role === 'admin');
@@ -181,5 +170,4 @@ describe('NavigationLayout', () => {
     );
 
     expect(container.firstChild).toHaveClass('custom-class');
-  });
-});
+

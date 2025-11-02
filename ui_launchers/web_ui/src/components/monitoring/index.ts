@@ -3,8 +3,8 @@
  */
 
 export * from './types';
-export { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
-export { PerformanceMetricsDisplay } from './PerformanceMetricsDisplay';
-export { ErrorRateDisplay } from './ErrorRateDisplay';
-export { AuthenticationMetricsDisplay } from './AuthenticationMetricsDisplay';
-export { RealTimeMonitoringDashboard } from './RealTimeMonitoringDashboard';
+import { export { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
+import { export { PerformanceMetricsDisplay } from './PerformanceMetricsDisplay';
+import { export { ErrorRateDisplay } from './ErrorRateDisplay';
+import { export { AuthenticationMetricsDisplay } from './AuthenticationMetricsDisplay';
+import { export { RealTimeMonitoringDashboard } from './RealTimeMonitoringDashboard';

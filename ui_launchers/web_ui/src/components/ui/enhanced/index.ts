@@ -9,29 +9,21 @@
 
 // Button components
 export {
-  ButtonEnhanced,
   buttonVariants,
   type ButtonProps,
-} from './button-enhanced';
+import { } from './button-enhanced';
 
 // Card components
 export {
-  CardEnhanced,
-  CardHeaderEnhanced,
-  CardFooterEnhanced,
-  CardTitleEnhanced,
-  CardDescriptionEnhanced,
-  CardContentEnhanced,
   cardVariants,
   type CardProps,
   type CardHeaderProps,
   type CardContentProps,
   type CardFooterProps,
-} from './card-enhanced';
+import { } from './card-enhanced';
 
 // Input components
 export {
-  InputEnhanced,
   inputVariants,
   type InputEnhancedProps,
-} from './input-enhanced';
+import { } from './input-enhanced';

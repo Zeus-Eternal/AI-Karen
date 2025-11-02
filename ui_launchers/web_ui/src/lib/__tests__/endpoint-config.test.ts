@@ -61,14 +61,12 @@ describe('ConfigManager', () => {
     
     // Clear any existing singleton
     (getConfigManager as any).configManager = null;
-  });
 
   afterEach(() => {
     // Restore original globals
     global.process = originalProcess;
     global.window = originalWindow;
     vi.clearAllMocks();
-  });
 
   describe('Configuration Loading', () => {
     it('should load default configuration when no environment variables are set', () => {
@@ -83,7 +81,6 @@ describe('ConfigManager', () => {
       expect(configuration.healthCheckEnabled).toBe(true);
       expect(configuration.healthCheckInterval).toBe(30000);
       expect(configuration.healthCheckTimeout).toBe(5000);
-    });
 
     it('should load configuration from environment variables', () => {
       const config = new ConfigManager();
@@ -97,7 +94,6 @@ describe('ConfigManager', () => {
       expect(configuration.healthCheckEnabled).toBe(true);
       expect(configuration.healthCheckInterval).toBe(30000);
       expect(configuration.healthCheckTimeout).toBe(5000);
-    });
 
     it('should parse boolean environment variables correctly', () => {
       global.process.env.KAREN_HEALTH_CHECK_ENABLED = 'false';
@@ -106,7 +102,6 @@ describe('ConfigManager', () => {
       const configuration = config.getConfiguration();
 
       expect(configuration.healthCheckEnabled).toBe(false);
-    });
 
     it('should parse number environment variables correctly', () => {
       global.process.env.KAREN_HEALTH_CHECK_INTERVAL = '60000';
@@ -117,7 +112,6 @@ describe('ConfigManager', () => {
 
       expect(configuration.healthCheckInterval).toBe(60000);
       expect(configuration.healthCheckTimeout).toBe(10000);
-    });
 
     it('should handle invalid number environment variables with defaults', () => {
       global.process.env.KAREN_HEALTH_CHECK_INTERVAL = 'invalid';
@@ -128,7 +122,6 @@ describe('ConfigManager', () => {
 
       expect(configuration.healthCheckInterval).toBe(30000);
       expect(configuration.healthCheckTimeout).toBe(5000);
-    });
 
     it('should generate default fallback URLs when not provided', () => {
       global.process.env.KAREN_FALLBACK_BACKEND_URLS = '';
@@ -139,8 +132,7 @@ describe('ConfigManager', () => {
 
       expect(configuration.fallbackUrls).toContain('http://localhost:8000');
       expect(configuration.fallbackUrls).toContain('http://127.0.0.1:8000');
-    });
-  });
+
 
   describe('Environment Detection', () => {
     it('should detect localhost environment correctly', () => {
@@ -153,7 +145,6 @@ describe('ConfigManager', () => {
       expect(envInfo.environment).toBe('local');
       expect(envInfo.isDocker).toBe(false);
       expect(envInfo.isExternal).toBe(false);
-    });
 
     it('should detect Docker environment correctly', () => {
       global.process.env.DOCKER_CONTAINER = 'true';
@@ -164,7 +155,6 @@ describe('ConfigManager', () => {
       expect(envInfo.networkMode).toBe('container');
       expect(envInfo.environment).toBe('docker');
       expect(envInfo.isDocker).toBe(true);
-    });
 
     it('should detect external IP environment correctly', () => {
       global.window.location.hostname = '10.105.235.209';
@@ -174,7 +164,6 @@ describe('ConfigManager', () => {
 
       expect(envInfo.networkMode).toBe('external');
       expect(envInfo.isExternal).toBe(true);
-    });
 
     it('should detect Docker environment from hostname', () => {
       global.window.location.hostname = 'docker-container-123';
@@ -184,7 +173,6 @@ describe('ConfigManager', () => {
 
       expect(envInfo.networkMode).toBe('container');
       expect(envInfo.environment).toBe('docker');
-    });
 
     it('should detect external environment from non-localhost hostname', () => {
       global.window.location.hostname = 'example.com';
@@ -194,8 +182,7 @@ describe('ConfigManager', () => {
 
       expect(envInfo.networkMode).toBe('external');
       expect(envInfo.isExternal).toBe(true);
-    });
-  });
+
 
   describe('Backend URL Adjustment', () => {
     it('should adjust backend URL for container environment', () => {
@@ -206,7 +193,6 @@ describe('ConfigManager', () => {
       const config = new ConfigManager();
       
       expect(config.getBackendUrl()).toBe('http://backend-service:9000');
-    });
 
     it('should adjust backend URL for external environment', () => {
       global.window.location.hostname = '10.105.235.209';
@@ -216,7 +202,6 @@ describe('ConfigManager', () => {
       const config = new ConfigManager();
       
       expect(config.getBackendUrl()).toBe('http://10.105.235.209:8000');
-    });
 
     it('should use current hostname for external environment when no external host is configured', () => {
       global.window.location.hostname = '192.168.1.100';
@@ -226,7 +211,6 @@ describe('ConfigManager', () => {
       const config = new ConfigManager();
       
       expect(config.getBackendUrl()).toBe('http://192.168.1.100:8000');
-    });
 
     it('should keep localhost configuration for localhost environment', () => {
       global.window.location.hostname = 'localhost';
@@ -234,8 +218,7 @@ describe('ConfigManager', () => {
       const config = new ConfigManager();
       
       expect(config.getBackendUrl()).toBe('http://localhost:8000');
-    });
-  });
+
 
   describe('Endpoint Methods', () => {
     it('should return correct endpoint URLs', () => {
@@ -247,15 +230,13 @@ describe('ConfigManager', () => {
       expect(config.getMemoryEndpoint()).toBe('http://localhost:8000/api/memory');
       expect(config.getPluginsEndpoint()).toBe('http://localhost:8000/api/plugins');
       expect(config.getHealthEndpoint()).toBe('http://localhost:8000/health');
-    });
 
     it('should return fallback URLs', () => {
       const config = new ConfigManager();
       const fallbackUrls = config.getFallbackUrls();
 
       expect(fallbackUrls).toEqual(['http://127.0.0.1:8000', 'http://localhost:8000']);
-    });
-  });
+
 
   describe('Endpoint Validation', () => {
     it('should validate endpoints successfully', async () => {
@@ -263,7 +244,6 @@ describe('ConfigManager', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-      });
 
       const config = new ConfigManager();
       const results = await config.validateEndpoints();
@@ -278,7 +258,6 @@ describe('ConfigManager', () => {
           headers: { 'Accept': 'application/json' },
         })
       );
-    });
 
     it('should handle validation failures', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
@@ -288,21 +267,18 @@ describe('ConfigManager', () => {
 
       expect(results[0].isValid).toBe(false);
       expect(results[0].error).toBe('Network error');
-    });
 
     it('should handle HTTP error responses', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-      });
 
       const config = new ConfigManager();
       const results = await config.validateEndpoints();
 
       expect(results[0].isValid).toBe(false);
       expect(results[0].error).toBe('HTTP 500: Internal Server Error');
-    });
 
     it('should handle timeout errors', async () => {
       const abortError = new Error('AbortError');
@@ -314,14 +290,12 @@ describe('ConfigManager', () => {
 
       expect(results[0].isValid).toBe(false);
       expect(results[0].error).toBe('Request timeout');
-    });
 
     it('should cache validation results', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
         statusText: 'OK',
-      });
 
       const config = new ConfigManager();
       
@@ -333,8 +307,7 @@ describe('ConfigManager', () => {
 
       // Should only call fetch once per endpoint due to caching
       expect(mockFetch).toHaveBeenCalledTimes(3); // primary + 2 fallbacks
-    });
-  });
+
 
   describe('Configuration Updates', () => {
     it('should update configuration correctly', () => {
@@ -343,12 +316,10 @@ describe('ConfigManager', () => {
       config.updateConfiguration({
         backendUrl: 'http://new-backend:8000',
         healthCheckInterval: 60000,
-      });
 
       const configuration = config.getConfiguration();
       expect(configuration.backendUrl).toBe('http://new-backend:8000');
       expect(configuration.healthCheckInterval).toBe(60000);
-    });
 
     it('should clear validation cache when configuration changes', () => {
       const config = new ConfigManager();
@@ -360,7 +331,6 @@ describe('ConfigManager', () => {
       
       const stats = config.getValidationCacheStats();
       expect(stats.size).toBe(0);
-    });
 
     it('should re-detect environment when backend URL changes', () => {
       const config = new ConfigManager();
@@ -370,8 +340,7 @@ describe('ConfigManager', () => {
       // Should trigger environment re-detection
       const envInfo = config.getEnvironmentInfo();
       expect(envInfo).toBeDefined();
-    });
-  });
+
 
   describe('Validation Cache', () => {
     it('should provide cache statistics', () => {
@@ -381,7 +350,6 @@ describe('ConfigManager', () => {
       expect(stats).toHaveProperty('size');
       expect(stats).toHaveProperty('keys');
       expect(Array.isArray(stats.keys)).toBe(true);
-    });
 
     it('should clear validation cache', () => {
       const config = new ConfigManager();
@@ -390,8 +358,7 @@ describe('ConfigManager', () => {
       
       const stats = config.getValidationCacheStats();
       expect(stats.size).toBe(0);
-    });
-  });
+
 
   describe('Singleton Pattern', () => {
     it('should return the same instance from getConfigManager', () => {
@@ -399,15 +366,13 @@ describe('ConfigManager', () => {
       const instance2 = getConfigManager();
 
       expect(instance1).toBe(instance2);
-    });
 
     it('should create new instance with initializeConfigManager', () => {
       const instance1 = getConfigManager();
       const instance2 = initializeConfigManager();
 
       expect(instance1).not.toBe(instance2);
-    });
-  });
+
 
   describe('Server Environment', () => {
     it('should handle server environment without window object', () => {
@@ -418,7 +383,6 @@ describe('ConfigManager', () => {
 
       expect(envInfo.networkMode).toBe('localhost');
       expect(envInfo.environment).toBe('local');
-    });
 
     it('should handle server environment without process object', () => {
       global.process = undefined as any;
@@ -428,6 +392,5 @@ describe('ConfigManager', () => {
 
       expect(configuration.backendUrl).toBe('http://localhost:8000');
       expect(configuration.environment).toBe('local');
-    });
-  });
-});
+
+

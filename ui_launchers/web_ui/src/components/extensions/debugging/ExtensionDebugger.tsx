@@ -4,38 +4,34 @@
  * Comprehensive debugging and diagnostic tools for extensions including
  * logs, metrics, performance monitoring, and troubleshooting utilities.
  */
-'use client';
+"use client";
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
+
 import { 
-  Bug, 
+  RefreshCw, 
+  Square, 
+  Play, 
   FileText, 
+  BarChart3, 
   Activity, 
+  Bug, 
   AlertTriangle, 
   Info, 
-  CheckCircle,
-  RefreshCw,
-  Download,
-  Search,
-  Filter,
-  Clock,
-  Zap,
-  Database,
-  Globe,
-  Terminal,
-  BarChart3,
-  TrendingUp,
-  TrendingDown,
-  Pause,
-  Play,
-  Square,
-  Trash2,
-  Copy,
-  ExternalLink,
-  Settings
+  Download, 
+  Trash2, 
+  Search, 
+  Copy, 
+  TrendingUp, 
+  TrendingDown, 
+  CheckCircle, 
+  Terminal, 
+  Settings, 
+  ExternalLink 
 } from 'lucide-react';
 interface LogEntry {
   id: string;
@@ -68,7 +64,7 @@ interface ExtensionDebuggerProps {
   extensionName: string;
   className?: string;
 }
-export default function ExtensionDebugger({
+export function ExtensionDebugger({
   extensionId,
   extensionName,
   className
@@ -84,6 +80,7 @@ export default function ExtensionDebugger({
     search: '',
     source: 'all'
   });
+
   // Load debugging data
   useEffect(() => {
     loadDebuggingData();
@@ -136,8 +133,8 @@ export default function ExtensionDebugger({
           metadata: { taskId: 'daily-sync', duration: 2.5, recordsProcessed: 150 }
         }
       ];
-      // 
-      const [] = Array.from({ length: 30 }, (_, i) => ({
+      // Sample metrics data
+      const sampleMetrics = Array.from({ length: 30 }, (_, i) => ({
         timestamp: new Date(Date.now() - (29 - i) * 60000).toISOString(),
         cpu: Math.random() * 50 + 10,
         memory: Math.random() * 200 + 100,
@@ -185,6 +182,7 @@ export default function ExtensionDebugger({
       setMetrics(sampleMetrics);
       setPerformanceProfile(sampleProfile);
     } catch (error) {
+      console.error('Failed to load debugging data:', error);
     } finally {
       setLoading(false);
     }
@@ -231,7 +229,7 @@ export default function ExtensionDebugger({
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4 sm:w-auto md:w-full" />
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4 " />
           <p className="text-gray-600">Loading debugging tools...</p>
         </div>
       </div>
@@ -246,21 +244,20 @@ export default function ExtensionDebugger({
           <p className="text-gray-600 mt-1">Debug and monitor {extensionName}</p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             variant="outline"
             onClick={toggleStreaming}
             className={`flex items-center gap-2 ${streaming ? 'text-red-600' : 'text-green-600'}`}
-           aria-label="Button">
-            {streaming ? <Square className="h-4 w-4 sm:w-auto md:w-full" /> : <Play className="h-4 w-4 sm:w-auto md:w-full" />}
+          >
+            {streaming ? <Square className="h-4 w-4 " /> : <Play className="h-4 w-4 " />}
             {streaming ? 'Stop' : 'Start'} Live Monitoring
           </Button>
-          <button
+          <Button
             variant="outline"
             onClick={loadDebuggingData}
             className="flex items-center gap-2"
-           aria-label="Button">
-            <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
-            Refresh
+          >
+            <RefreshCw className="h-4 w-4 " />
           </Button>
         </div>
       </div>
@@ -268,20 +265,17 @@ export default function ExtensionDebugger({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="logs">
-            <FileText className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+            <FileText className="h-4 w-4 mr-2 " />
             Logs ({filteredLogs.length})
           </TabsTrigger>
           <TabsTrigger value="metrics">
-            <BarChart3 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Metrics
+            <BarChart3 className="h-4 w-4 mr-2 " />
           </TabsTrigger>
           <TabsTrigger value="performance">
-            <Activity className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Performance
+            <Activity className="h-4 w-4 mr-2 " />
           </TabsTrigger>
           <TabsTrigger value="diagnostics">
-            <Bug className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Diagnostics
+            <Bug className="h-4 w-4 mr-2 " />
           </TabsTrigger>
         </TabsList>
         <TabsContent value="logs" className="space-y-4">
@@ -335,15 +329,15 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
   const getLevelIcon = (level: string) => {
     switch (level) {
       case 'error':
-        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 " />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 " />;
       case 'info':
-        return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Info className="h-4 w-4 " />;
       case 'debug':
-        return <Bug className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Bug className="h-4 w-4 " />;
       default:
-        return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Info className="h-4 w-4 " />;
     }
   };
   return (
@@ -354,12 +348,12 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
           <div className="flex items-center justify-between">
             <CardTitle>Log Viewer</CardTitle>
             <div className="flex gap-2">
-              <button size="sm" variant="outline" onClick={onExport} aria-label="Button">
-                <Download className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
+              <Button size="sm" variant="outline" onClick={onExport}>
+                <Download className="h-3 w-3 mr-1" />
                 Export
               </Button>
-              <button size="sm" variant="outline" onClick={onClear} aria-label="Button">
-                <Trash2 className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
+              <Button size="sm" variant="outline" onClick={onClear}>
+                <Trash2 className="h-3 w-3 mr-1" />
                 Clear
               </Button>
             </div>
@@ -368,18 +362,18 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
         <CardContent>
           <div className="flex gap-4 items-center">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:w-auto md:w-full" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 " />
               <input
                 type="text"
                 placeholder="Search logs..."
                 value={filter.search}
-                onChange={(e) = aria-label="Input"> onFilterChange({ ...filter, search: e.target.value })}
+                onChange={(e) => onFilterChange({ ...filter, search: e.target.value })}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <select
               value={filter.level}
-              onChange={(e) = aria-label="Select option"> onFilterChange({ ...filter, level: e.target.value })}
+              onChange={(e) => onFilterChange({ ...filter, level: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Levels</option>
@@ -390,7 +384,7 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
             </select>
             <select
               value={filter.source}
-              onChange={(e) = aria-label="Select option"> onFilterChange({ ...filter, source: e.target.value })}
+              onChange={(e) => onFilterChange({ ...filter, source: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Sources</option>
@@ -401,8 +395,8 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
           </div>
           {streaming && (
             <div className="mt-3 flex items-center gap-2 text-sm text-green-600 md:text-base lg:text-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse sm:w-auto md:w-full"></div>
-              Live monitoring active
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              Live streaming enabled
             </div>
           )}
         </CardContent>
@@ -413,7 +407,7 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
           <div className="max-h-96 overflow-y-auto">
             {logs.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4 sm:w-auto md:w-full" />
+                <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4 " />
                 <p>No log entries found</p>
               </div>
             ) : (
@@ -453,7 +447,7 @@ function LogEntry({ log }: { log: LogEntry }) {
             {log.level}
           </Badge>
         </div>
-        <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+        <div className="flex-1 min-w-0 ">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-mono text-gray-500 md:text-base lg:text-lg">
               {new Date(log.timestamp).toLocaleTimeString()}
@@ -464,10 +458,10 @@ function LogEntry({ log }: { log: LogEntry }) {
           </div>
           <p className="text-sm text-gray-900 mb-2 md:text-base lg:text-lg">{log.message}</p>
           {(log.metadata || log.stackTrace) && (
-            <button
+            <Button
               size="sm"
               variant="ghost"
-              onClick={() = aria-label="Button"> setExpanded(!expanded)}
+              onClick={() => setExpanded(!expanded)}
               className="text-xs sm:text-sm md:text-base"
             >
               {expanded ? 'Hide' : 'Show'} Details
@@ -494,12 +488,12 @@ function LogEntry({ log }: { log: LogEntry }) {
             </div>
           )}
         </div>
-        <button
+        <Button
           size="sm"
           variant="ghost"
-          onClick={() = aria-label="Button"> navigator.clipboard.writeText(JSON.stringify(log, null, 2))}
+          onClick={() => navigator.clipboard.writeText(JSON.stringify(log, null, 2))}
         >
-          <Copy className="h-3 w-3 sm:w-auto md:w-full" />
+          <Copy className="h-3 w-3 " />
         </Button>
       </div>
     </div>
@@ -518,7 +512,7 @@ function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
           <CardContent>
             <div className="text-2xl font-bold">{latestMetrics?.cpu.toFixed(1)}%</div>
             <div className="flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1 sm:w-auto md:w-full" />
+              <TrendingUp className="h-3 w-3 text-green-500 mr-1 " />
               <span className="text-xs text-green-600 sm:text-sm md:text-base">Normal</span>
             </div>
           </CardContent>
@@ -530,7 +524,7 @@ function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
           <CardContent>
             <div className="text-2xl font-bold">{Math.round(latestMetrics?.memory || 0)}MB</div>
             <div className="flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-yellow-500 mr-1 sm:w-auto md:w-full" />
+              <TrendingUp className="h-3 w-3 text-yellow-500 mr-1 " />
               <span className="text-xs text-yellow-600 sm:text-sm md:text-base">Moderate</span>
             </div>
           </CardContent>
@@ -542,7 +536,7 @@ function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
           <CardContent>
             <div className="text-2xl font-bold">{Math.round(latestMetrics?.network || 0)} KB/s</div>
             <div className="flex items-center mt-1">
-              <TrendingDown className="h-3 w-3 text-green-500 mr-1 sm:w-auto md:w-full" />
+              <TrendingDown className="h-3 w-3 text-green-500 mr-1 " />
               <span className="text-xs text-green-600 sm:text-sm md:text-base">Low</span>
             </div>
           </CardContent>
@@ -554,7 +548,7 @@ function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
           <CardContent>
             <div className="text-2xl font-bold">{latestMetrics?.requests || 0}</div>
             <div className="flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-blue-500 mr-1 sm:w-auto md:w-full" />
+              <TrendingUp className="h-3 w-3 text-blue-500 mr-1 " />
               <span className="text-xs text-blue-600 sm:text-sm md:text-base">Active</span>
             </div>
           </CardContent>
@@ -566,7 +560,7 @@ function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
           <CardContent>
             <div className="text-2xl font-bold">{latestMetrics?.errors || 0}</div>
             <div className="flex items-center mt-1">
-              <CheckCircle className="h-3 w-3 text-green-500 mr-1 sm:w-auto md:w-full" />
+              <CheckCircle className="h-3 w-3 text-green-500 mr-1 " />
               <span className="text-xs text-green-600 sm:text-sm md:text-base">Good</span>
             </div>
           </CardContent>
@@ -578,7 +572,7 @@ function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
           <CardContent>
             <div className="text-2xl font-bold">{Math.round(latestMetrics?.responseTime || 0)}ms</div>
             <div className="flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1 sm:w-auto md:w-full" />
+              <TrendingUp className="h-3 w-3 text-green-500 mr-1 " />
               <span className="text-xs text-green-600 sm:text-sm md:text-base">Fast</span>
             </div>
           </CardContent>
@@ -593,7 +587,7 @@ function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
         <CardContent>
           <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
             <div className="text-center">
-              <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4 sm:w-auto md:w-full" />
+              <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4 " />
               <p className="text-gray-600">Metrics chart would be rendered here</p>
               <p className="text-sm text-gray-500 md:text-base lg:text-lg">Integration with charting library needed</p>
             </div>
@@ -651,6 +645,7 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
     configuration: 'valid',
     connectivity: 'connected'
   });
+
   const runDiagnostics = useCallback(async () => {
     // Simulate running diagnostics
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -688,16 +683,16 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
       case 'granted':
       case 'valid':
       case 'connected':
-        return <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <CheckCircle className="h-4 w-4 " />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 " />;
       case 'missing':
       case 'denied':
       case 'invalid':
       case 'disconnected':
-        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 " />;
       default:
-        return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Info className="h-4 w-4 " />;
     }
   };
   return (
@@ -709,8 +704,8 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
               <CardTitle>System Diagnostics</CardTitle>
               <CardDescription>Check extension health and configuration</CardDescription>
             </div>
-            <button onClick={runDiagnostics} aria-label="Button">
-              <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+            <Button onClick={runDiagnostics}>
+              <RefreshCw className="h-4 w-4 mr-2" />
               Run Diagnostics
             </Button>
           </div>
@@ -749,20 +744,20 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button variant="outline" className="justify-start" aria-label="Button">
-              <Terminal className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Open Extension Console
+            <Button variant="outline" className="justify-start">
+              <Terminal className="h-4 w-4 mr-2" />
+              Open Console
             </Button>
-            <button variant="outline" className="justify-start" aria-label="Button">
-              <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Reset Configuration
+            <Button variant="outline" className="justify-start">
+              <Settings className="h-4 w-4 mr-2" />
+              Reset Config
             </Button>
-            <button variant="outline" className="justify-start" aria-label="Button">
-              <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+            <Button variant="outline" className="justify-start">
+              <RefreshCw className="h-4 w-4 mr-2" />
               Restart Extension
             </Button>
-            <button variant="outline" className="justify-start" aria-label="Button">
-              <ExternalLink className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+            <Button variant="outline" className="justify-start">
+              <ExternalLink className="h-4 w-4 mr-2" />
               View Documentation
             </Button>
           </div>

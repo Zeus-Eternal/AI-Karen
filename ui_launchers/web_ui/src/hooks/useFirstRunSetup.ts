@@ -33,7 +33,7 @@ export function useFirstRunSetup(): UseFirstRunSetupReturn {
     isFirstRun: false,
     setupCompleted: false,
     error: null
-  });
+
   /**
    * Check if this is the first run by calling the API
    */
@@ -46,7 +46,7 @@ export function useFirstRunSetup(): UseFirstRunSetupReturn {
           'Content-Type': 'application/json',
         },
         cache: 'no-cache'
-      });
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -159,7 +159,7 @@ export function useSetupCompletion() {
   const [completionState, setCompletionState] = useState({
     isCompleting: false,
     completionError: null as string | null
-  });
+
   const completeSetup = useCallback(async (userData: any) => {
     setCompletionState({ isCompleting: true, completionError: null });
     try {
@@ -171,7 +171,7 @@ export function useSetupCompletion() {
       setCompletionState({ 
         isCompleting: false, 
         completionError: error instanceof Error ? error.message : 'Setup completion failed'
-      });
+
       return false;
     }
   }, []);

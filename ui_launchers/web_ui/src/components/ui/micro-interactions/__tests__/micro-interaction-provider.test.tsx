@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import { MicroInteractionProvider, useMicroInteractions } from '../micro-interaction-provider';
 import { vi } from 'vitest';
@@ -16,7 +17,6 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
-});
 
 const TestComponent = () => {
   const { reducedMotion, enableHaptics, animationDuration, updateConfig } = useMicroInteractions();
@@ -27,10 +27,9 @@ const TestComponent = () => {
       <div data-testid="enable-haptics">{enableHaptics.toString()}</div>
       <div data-testid="animation-duration">{animationDuration}</div>
       <button 
-        onClick={() = aria-label="Button"> updateConfig({ enableHaptics: false })}
+        onClick={() => updateConfig({ enableHaptics: false })}
         data-testid="update-config"
       >
-        Update Config
       </button>
     </div>
   );
@@ -39,7 +38,6 @@ const TestComponent = () => {
 describe('MicroInteractionProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('provides default configuration', () => {
     render(
@@ -51,7 +49,6 @@ describe('MicroInteractionProvider', () => {
     expect(screen.getByTestId('reduced-motion')).toHaveTextContent('false');
     expect(screen.getByTestId('enable-haptics')).toHaveTextContent('true');
     expect(screen.getByTestId('animation-duration')).toHaveTextContent('normal');
-  });
 
   it('accepts custom default configuration', () => {
     render(
@@ -62,7 +59,6 @@ describe('MicroInteractionProvider', () => {
     
     expect(screen.getByTestId('enable-haptics')).toHaveTextContent('false');
     expect(screen.getByTestId('animation-duration')).toHaveTextContent('fast');
-  });
 
   it('updates configuration when updateConfig is called', () => {
     render(
@@ -75,10 +71,8 @@ describe('MicroInteractionProvider', () => {
     
     act(() => {
       screen.getByTestId('update-config').click();
-    });
-    
+
     expect(screen.getByTestId('enable-haptics')).toHaveTextContent('false');
-  });
 
   it('detects reduced motion preference', () => {
     // Mock matchMedia to return reduced motion preference
@@ -100,7 +94,6 @@ describe('MicroInteractionProvider', () => {
     );
     
     expect(screen.getByTestId('reduced-motion')).toHaveTextContent('true');
-  });
 
   it('throws error when used outside provider', () => {
     // Suppress console.error for this test
@@ -111,5 +104,4 @@ describe('MicroInteractionProvider', () => {
     }).toThrow('useMicroInteractions must be used within a MicroInteractionProvider');
     
     consoleSpy.mockRestore();
-  });
-});
+

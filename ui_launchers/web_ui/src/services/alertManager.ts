@@ -5,22 +5,8 @@
  * rate limiting, prioritization, and user preference management.
  */
 import { toast } from '@/hooks/use-toast';
-import type {
-  KarenAlert,
-  AlertSettings,
-  AlertHistory,
-  StoredAlert,
-  AlertMetrics,
-  AlertResult,
-  AlertType,
-  AlertVariant,
-  AlertPriority,
-  ErrorRecoveryConfig,
-} from '@/types/karen-alerts';
-import {
-  DEFAULT_ALERT_SETTINGS,
-  DEFAULT_ERROR_RECOVERY_CONFIG,
-} from '@/types/karen-alerts';
+import type { KarenAlert, AlertSettings, AlertHistory, StoredAlert, AlertMetrics, AlertResult, AlertType, AlertVariant, AlertPriority, ErrorRecoveryConfig } from '@/types/karen-alerts';
+import { DEFAULT_ALERT_SETTINGS, DEFAULT_ERROR_RECOVERY_CONFIG } from '@/types/karen-alerts';
 // Storage keys for persistence
 const ALERT_SETTINGS_KEY = 'karen-alert-settings';
 const ALERT_HISTORY_KEY = 'karen-alert-history';
@@ -262,7 +248,7 @@ class AlertManager {
       priority: 'normal',
       source: 'user-action',
       ...options,
-    });
+
   }
   public async showError(title: string, message: string, options?: Partial<KarenAlert>): Promise<AlertResult> {
     return this.showAlert({
@@ -274,7 +260,7 @@ class AlertManager {
       priority: 'high',
       source: 'system',
       ...options,
-    });
+
   }
   public async showWarning(title: string, message: string, options?: Partial<KarenAlert>): Promise<AlertResult> {
     return this.showAlert({
@@ -286,7 +272,7 @@ class AlertManager {
       priority: 'normal',
       source: 'system',
       ...options,
-    });
+
   }
   public async showInfo(title: string, message: string, options?: Partial<KarenAlert>): Promise<AlertResult> {
     return this.showAlert({
@@ -298,7 +284,7 @@ class AlertManager {
       priority: 'low',
       source: 'system',
       ...options,
-    });
+
   }
   // Private methods
   private generateAlertId(): string {
@@ -371,7 +357,7 @@ class AlertManager {
       description: alert.message,
       variant: alert.variant === 'karen-error' ? 'destructive' : 'default',
       duration,
-    });
+
     // Store the toast instance for dismissal
     this.toastInstances.set(alert.id, toastInstance);
     // Auto-dismiss after duration
@@ -449,7 +435,7 @@ class AlertManager {
           listener.callback(data);
         } catch (error) {
         }
-      });
+
   }
   private cleanupExpiredHistory(): void {
     if (!this.history.alerts || !Array.isArray(this.history.alerts)) {

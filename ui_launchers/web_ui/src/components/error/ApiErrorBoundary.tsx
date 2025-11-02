@@ -2,7 +2,8 @@
  * API Error Boundary - Specialized error boundary for API-related errors
  * Provides intelligent retry logic and graceful degradation for API failures
  */
-'use client';
+"use client";
+
 import React, { Component, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Wifi, WifiOff, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -159,7 +160,7 @@ export class ApiErrorBoundary extends Component<ApiErrorBoundaryProps, ApiErrorB
     this.setState({ 
       nextRetryTime,
       isRetrying: true,
-    });
+
     const timeout = setTimeout(() => {
       this.handleRetry();
     }, delay);
@@ -261,7 +262,7 @@ export class ApiErrorBoundary extends Component<ApiErrorBoundaryProps, ApiErrorB
         <Card className={`w-full max-w-2xl border-2 ${this.getSeverityColor(severity)}`}>
           <CardHeader>
             <div className="flex items-center space-x-3">
-              <AlertTriangle className="h-8 w-8 text-destructive sm:w-auto md:w-full" />
+              <AlertTriangle className="h-8 w-8 text-destructive " />
               <div className="flex-1">
                 <CardTitle className="text-xl">API Connection Error</CardTitle>
                 <CardDescription className="flex items-center space-x-2 mt-1">
@@ -272,9 +273,9 @@ export class ApiErrorBoundary extends Component<ApiErrorBoundaryProps, ApiErrorB
                   {this.props.showNetworkStatus && (
                     <div className="flex items-center space-x-1">
                       {isOnline ? (
-                        <Wifi className="h-3 w-3 text-green-500 sm:w-auto md:w-full" />
+                        <Wifi className="h-3 w-3 text-green-500 " />
                       ) : (
-                        <WifiOff className="h-3 w-3 text-red-500 sm:w-auto md:w-full" />
+                        <WifiOff className="h-3 w-3 text-red-500 " />
                       )}
                       <span className="text-xs sm:text-sm md:text-base">
                         {isOnline ? 'Online' : 'Offline'}
@@ -288,7 +289,7 @@ export class ApiErrorBoundary extends Component<ApiErrorBoundaryProps, ApiErrorB
           <CardContent className="space-y-4">
             {/* Error Details */}
             <Alert>
-              <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+              <AlertCircle className="h-4 w-4 " />
               <AlertTitle>Error Details</AlertTitle>
               <AlertDescription className="mt-2 space-y-1">
                 <p className="font-medium">{error.message}</p>
@@ -314,7 +315,7 @@ export class ApiErrorBoundary extends Component<ApiErrorBoundaryProps, ApiErrorB
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                   <span className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 sm:w-auto md:w-full" />
+                    <Clock className="h-4 w-4 " />
                     <span>Auto-retrying...</span>
                   </span>
                   <span>{Math.round(retryProgress)}%</span>
@@ -329,32 +330,30 @@ export class ApiErrorBoundary extends Component<ApiErrorBoundaryProps, ApiErrorB
                   onClick={this.handleManualRetry} 
                   className="flex items-center gap-2"
                  aria-label="Button">
-                  <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
-                  Retry Now
+                  <RefreshCw className="h-4 w-4 " />
                 </Button>
               )}
               {canRetry && (
-                <button
+                <Button
                   variant="outline"
                   onClick={this.handleToggleAutoRetry}
                   className="flex items-center gap-2"
-                 aria-label="Button">
+                 >
                   {autoRetryEnabled ? 'Disable' : 'Enable'} Auto-retry
                 </Button>
               )}
-              <button
+              <Button
                 variant="outline"
-                onClick={() = aria-label="Button"> window.location.reload()}
+                onClick={() => window.location.reload()}
                 className="flex items-center gap-2"
               >
-                <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
-                Reload Page
+                <RefreshCw className="h-4 w-4 " />
               </Button>
             </div>
             {/* Offline Mode Notice */}
             {!isOnline && this.props.enableOfflineMode && (
               <Alert className="bg-yellow-50 border-yellow-200">
-                <WifiOff className="h-4 w-4 sm:w-auto md:w-full" />
+                <WifiOff className="h-4 w-4 " />
                 <AlertTitle>Offline Mode</AlertTitle>
                 <AlertDescription>
                   You're currently offline. Some features may be limited. 
@@ -365,7 +364,7 @@ export class ApiErrorBoundary extends Component<ApiErrorBoundaryProps, ApiErrorB
             {/* Max Retries Reached */}
             {retryCount >= maxRetries && (
               <Alert className="bg-red-50 border-red-200">
-                <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                <AlertTriangle className="h-4 w-4 " />
                 <AlertTitle>Maximum Retries Reached</AlertTitle>
                 <AlertDescription>
                   Unable to establish connection after {maxRetries} attempts. 
@@ -376,7 +375,6 @@ export class ApiErrorBoundary extends Component<ApiErrorBoundaryProps, ApiErrorB
             {/* Help Text */}
             <div className="text-center text-sm text-muted-foreground pt-2 border-t md:text-base lg:text-lg">
               <p>
-                If this problem persists, please check your network connection 
                 or contact support with error code: <code className="bg-muted px-1 rounded">{error.name}</code>
               </p>
             </div>

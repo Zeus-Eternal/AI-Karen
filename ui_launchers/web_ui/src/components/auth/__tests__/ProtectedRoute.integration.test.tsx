@@ -47,7 +47,6 @@ const ProtectedContent = () => (
 describe('ProtectedRoute Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Authentication State Handling', () => {
     it('should show loading state while checking authentication', async () => {
@@ -55,7 +54,7 @@ describe('ProtectedRoute Integration Tests', () => {
       let resolveAuth: (value: any) => void;
       const authPromise = new Promise((resolve) => {
         resolveAuth = resolve;
-      });
+
       mockAuthService.getCurrentUser.mockReturnValue(authPromise);
 
       renderWithAuthProvider(
@@ -77,13 +76,11 @@ describe('ProtectedRoute Integration Tests', () => {
         tenant_id: 'test-tenant',
         two_factor_enabled: false,
         preferences: {},
-      });
 
       // Wait for authentication to complete
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
-    });
+
 
     it('should show LoginForm when user is not authenticated', async () => {
       mockAuthService.getCurrentUser.mockRejectedValue(new Error('Not authenticated'));
@@ -97,11 +94,9 @@ describe('ProtectedRoute Integration Tests', () => {
       // Wait for authentication check to complete
       await waitFor(() => {
         expect(screen.getByTestId('login-form')).toBeInTheDocument();
-      });
 
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
       expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
-    });
 
     it('should show protected content when user is authenticated', async () => {
       const mockUser = {
@@ -135,11 +130,9 @@ describe('ProtectedRoute Integration Tests', () => {
       // Wait for authentication check to complete
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       expect(screen.queryByTestId('login-form')).not.toBeInTheDocument();
       expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
-    });
 
     it('should show custom fallback when provided and user is not authenticated', async () => {
       mockAuthService.getCurrentUser.mockRejectedValue(new Error('Not authenticated'));
@@ -157,12 +150,10 @@ describe('ProtectedRoute Integration Tests', () => {
       // Wait for authentication check to complete
       await waitFor(() => {
         expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-      });
 
       expect(screen.queryByTestId('login-form')).not.toBeInTheDocument();
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Authentication State Transitions', () => {
     it('should transition from loading to login form when authentication fails', async () => {
@@ -180,11 +171,9 @@ describe('ProtectedRoute Integration Tests', () => {
       // Wait for transition to login form
       await waitFor(() => {
         expect(screen.getByTestId('login-form')).toBeInTheDocument();
-      });
 
       expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
 
     it('should transition from loading to protected content when authentication succeeds', async () => {
       const mockUser = {
@@ -221,12 +210,10 @@ describe('ProtectedRoute Integration Tests', () => {
       // Wait for transition to protected content
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
       expect(screen.queryByTestId('login-form')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle authentication service errors gracefully', async () => {
@@ -242,10 +229,8 @@ describe('ProtectedRoute Integration Tests', () => {
       // Should fall back to login form on any authentication error
       await waitFor(() => {
         expect(screen.getByTestId('login-form')).toBeInTheDocument();
-      });
 
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
 
     it('should handle malformed user data gracefully', async () => {
       // Mock invalid user data by rejecting with an error
@@ -260,9 +245,7 @@ describe('ProtectedRoute Integration Tests', () => {
       // Should treat invalid user data as unauthenticated
       await waitFor(() => {
         expect(screen.getByTestId('login-form')).toBeInTheDocument();
-      });
 
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
-  });
-});
+
+

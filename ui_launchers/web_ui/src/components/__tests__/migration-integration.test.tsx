@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SanitizedMarkdown } from '../security/SanitizedMarkdown';
@@ -33,7 +34,6 @@ describe('Migration Integration Tests', () => {
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(screen.getByText('test')).toBeInTheDocument();
     expect(screen.getByText('link')).toBeInTheDocument();
-  });
 
   it('RBACGuard allows access for authenticated users', () => {
     render(
@@ -43,7 +43,6 @@ describe('Migration Integration Tests', () => {
     );
     
     expect(screen.getByText('Protected Content')).toBeInTheDocument();
-  });
 
   it('ErrorToast displays error messages', () => {
     render(
@@ -55,7 +54,6 @@ describe('Migration Integration Tests', () => {
     );
     
     expect(screen.getByText('Test error message')).toBeInTheDocument();
-  });
 
   it('Components can be used together', () => {
     render(
@@ -73,8 +71,7 @@ describe('Migration Integration Tests', () => {
     
     expect(screen.getByText('Protected Content')).toBeInTheDocument();
     expect(screen.getByText('Info message')).toBeInTheDocument();
-  });
-});
+
 
 describe('Telemetry Integration', () => {
   it('components use telemetry without errors', () => {
@@ -87,5 +84,4 @@ describe('Telemetry Integration', () => {
         </div>
       );
     }).not.toThrow();
-  });
-});
+

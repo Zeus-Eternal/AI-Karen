@@ -20,12 +20,10 @@ describe('HttpConnectionPool', () => {
       maxConnectionsPerHost: 2,
       connectionTimeout: 1000,
       enableKeepAlive: true,
-    });
-  });
+
 
   afterEach(async () => {
     await connectionPool.shutdown();
-  });
 
   describe('Basic Functionality', () => {
     it('should create connection pool with correct configuration', () => {
@@ -35,7 +33,6 @@ describe('HttpConnectionPool', () => {
       expect(config.maxConnectionsPerHost).toBe(2);
       expect(config.connectionTimeout).toBe(1000);
       expect(config.enableKeepAlive).toBe(true);
-    });
 
     it('should make successful HTTP requests', async () => {
       const mockResponse = {
@@ -59,7 +56,6 @@ describe('HttpConnectionPool', () => {
           signal: expect.any(AbortSignal),
         })
       );
-    });
 
     it('should handle request failures', async () => {
       (global.fetch as any).mockRejectedValue(new Error('Network error'));
@@ -67,8 +63,7 @@ describe('HttpConnectionPool', () => {
       await expect(
         connectionPool.request('https://api.example.com/fail')
       ).rejects.toThrow('Network error');
-    });
-  });
+
 
   describe('Connection Pooling', () => {
     it('should reuse connections for the same host', async () => {
@@ -91,7 +86,6 @@ describe('HttpConnectionPool', () => {
       
       expect(metrics.connectionReuse).toBeGreaterThan(0);
       expect(metrics.totalConnections).toBeLessThan(3);
-    });
 
     it('should respect connection limits per host', async () => {
       const mockResponse = {
@@ -115,8 +109,7 @@ describe('HttpConnectionPool', () => {
       
       // Should not exceed maxConnectionsPerHost (2)
       expect(metrics.totalConnections).toBeLessThanOrEqual(2);
-    });
-  });
+
 
   describe('Keep-Alive Headers', () => {
     it('should add keep-alive headers when enabled', async () => {
@@ -145,8 +138,7 @@ describe('HttpConnectionPool', () => {
       
       expect(headers.get('Connection')).toBe('keep-alive');
       expect(headers.get('Keep-Alive')).toContain('timeout=');
-    });
-  });
+
 
   describe('Metrics and Monitoring', () => {
     it('should track connection metrics', async () => {
@@ -170,7 +162,6 @@ describe('HttpConnectionPool', () => {
       expect(metrics.connectionCreations).toBeGreaterThan(0);
       expect(metrics.connectionReuse).toBeGreaterThan(0);
       expect(typeof metrics.averageConnectionTime).toBe('number');
-    });
 
     it('should track request queue metrics', async () => {
       // Mock slow responses to create queue
@@ -198,8 +189,7 @@ describe('HttpConnectionPool', () => {
       }, 50);
 
       await Promise.all(promises);
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle timeout errors', async () => {
@@ -208,14 +198,12 @@ describe('HttpConnectionPool', () => {
 
       const shortTimeoutPool = new HttpConnectionPool({
         connectionTimeout: 100, // Very short timeout
-      });
 
       await expect(
         shortTimeoutPool.request('https://api.example.com/timeout')
       ).rejects.toThrow();
 
       await shortTimeoutPool.shutdown();
-    });
 
     it('should handle network errors gracefully', async () => {
       (global.fetch as any).mockRejectedValue(new Error('ECONNREFUSED'));
@@ -226,14 +214,12 @@ describe('HttpConnectionPool', () => {
 
       const metrics = connectionPool.getMetrics();
       expect(metrics.connectionTimeouts).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('Cleanup and Shutdown', () => {
     it('should cleanup expired connections', async () => {
       const shortIdlePool = new HttpConnectionPool({
         maxIdleTime: 100, // Very short idle time
-      });
 
       const mockResponse = {
         ok: true,
@@ -257,7 +243,6 @@ describe('HttpConnectionPool', () => {
       expect(metrics.idleConnections).toBe(0);
 
       await shortIdlePool.shutdown();
-    });
 
     it('should shutdown gracefully', async () => {
       const mockResponse = {
@@ -279,6 +264,5 @@ describe('HttpConnectionPool', () => {
 
       const metrics = connectionPool.getMetrics();
       expect(metrics.totalConnections).toBe(0);
-    });
-  });
-});
+
+

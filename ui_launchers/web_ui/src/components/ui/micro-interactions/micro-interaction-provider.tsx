@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { MicroInteractionConfig } from './types';
@@ -31,7 +31,6 @@ export function MicroInteractionProvider({
     enableHaptics: true,
     animationDuration: 'normal',
     ...defaultConfig
-  });
 
   useEffect(() => {
     // Check for reduced motion preference

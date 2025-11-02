@@ -1,6 +1,7 @@
 
 "use client";
 
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ export default function DatabaseConnectorPluginPage() { // Renamed component fun
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3">
-        <Database className="h-8 w-8 text-primary sm:w-auto md:w-full" />
+        <Database className="h-8 w-8 text-primary " />
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Database Connector Plugin (Conceptual)</h2>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -34,7 +35,7 @@ export default function DatabaseConnectorPluginPage() { // Renamed component fun
       </div>
 
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>Conceptual Demonstration & Mocked Functionality</AlertTitle>
         <AlertDescription>
           The UI elements on this page are for demonstration purposes and are **not currently functional**.
@@ -81,7 +82,7 @@ export default function DatabaseConnectorPluginPage() { // Renamed component fun
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <button disabled aria-label="Button">Connect to Database</Button>
+          <Button disabled >Connect to Database</Button>
         </CardFooter>
       </Card>
 
@@ -98,7 +99,7 @@ export default function DatabaseConnectorPluginPage() { // Renamed component fun
         <CardContent>
           <ResponsiveCardGrid className="md:grid-cols-3">
           <div className="md:col-span-1 space-y-3">
-            <h4 className="font-medium text-sm flex items-center md:text-base lg:text-lg"><TableIcon className="mr-2 h-4 w-4 sm:w-auto md:w-full"/>Discovered Tables</h4>
+            <h4 className="font-medium text-sm flex items-center md:text-base lg:text-lg"><TableIcon className="mr-2 h-4 w-4 "/>Discovered Tables</h4>
             <div className="h-48 border rounded-md p-3 bg-muted/50 overflow-y-auto sm:p-4 md:p-6">
               <p className="text-xs text-muted-foreground italic sm:text-sm md:text-base"> (Table list would appear here)</p>
               <ul className="mt-2 space-y-1">
@@ -129,9 +130,9 @@ export default function DatabaseConnectorPluginPage() { // Renamed component fun
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <Label htmlFor="nlq-query" className="flex items-center mb-1"><MessageSquare className="mr-2 h-4 w-4 sm:w-auto md:w-full"/>Natural Language Query (via Chat with Karen)</Label>
+            <Label htmlFor="nlq-query" className="flex items-center mb-1"><MessageSquare className="mr-2 h-4 w-4 "/>Natural Language Query (via Chat with Karen)</Label>
             <textarea id="nlq-query" placeholder="Ask Karen in the chat, e.g., 'Show me details for item_id 123 from the main_items table'" rows={3} disabled />
-            <button className="mt-2" disabled aria-label="Button">Run Query (Use Chat Instead)</Button>
+            <Button className="mt-2" disabled >Run Query (Use Chat Instead)</Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
@@ -148,17 +149,17 @@ export default function DatabaseConnectorPluginPage() { // Renamed component fun
               </Select>
             </div>
             <div className="flex space-x-2 flex-wrap gap-2">
-              <button variant="outline" disabled aria-label="Button"><TableIcon className="mr-1.5 h-4 w-4 sm:w-auto md:w-full"/>View Data</Button>
-              <button variant="outline" disabled aria-label="Button"><PlusSquare className="mr-1.5 h-4 w-4 sm:w-auto md:w-full"/>Add Row</Button>
-              <button variant="outline" disabled aria-label="Button"><Edit3 className="mr-1.5 h-4 w-4 sm:w-auto md:w-full"/>Edit Selected</Button>
-              <button variant="destructive" disabled aria-label="Button"><Trash2 className="mr-1.5 h-4 w-4 sm:w-auto md:w-full"/>Delete Selected</Button>
+              <Button variant="outline" disabled ><TableIcon className="mr-1.5 h-4 w-4 "/>View Data</Button>
+              <Button variant="outline" disabled ><PlusSquare className="mr-1.5 h-4 w-4 "/>Add Row</Button>
+              <Button variant="outline" disabled ><Edit3 className="mr-1.5 h-4 w-4 "/>Edit Selected</Button>
+              <Button variant="destructive" disabled ><Trash2 className="mr-1.5 h-4 w-4 "/>Delete Selected</Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
       <Alert>
-        <Info className="h-4 w-4 sm:w-auto md:w-full" />
+        <Info className="h-4 w-4 " />
         <AlertTitle>How to Use This Conceptual Plugin</AlertTitle>
         <AlertDescription>
           Currently, you can interact with the conceptual "Database Query" tool by asking Karen AI directly in the main chat interface. For instance, try asking:

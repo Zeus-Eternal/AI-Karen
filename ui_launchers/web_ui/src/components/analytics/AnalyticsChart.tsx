@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AgCharts } from 'ag-charts-react';
 import { AgChartOptions } from 'ag-charts-community';
@@ -7,20 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Activity, 
-  Clock, 
-  MessageSquare, 
-  Zap, 
-  Users, 
-  Brain,
-  BarChart3,
-  LineChart,
-  PieChart,
-  RefreshCw
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -259,13 +248,13 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
       toast({
         title: 'Analytics Refreshed',
         description: 'Analytics data has been updated successfully.'
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Refresh Failed',
         description: 'Failed to refresh analytics data. Please try again.'
-      });
+
     } finally {
       setIsLoading(false);
     }
@@ -307,7 +296,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
   }) => (
     <div className="flex items-center space-x-3 p-4 bg-muted/50 rounded-lg border sm:p-4 md:p-6">
       <div className="p-3 bg-primary/10 rounded-lg sm:p-4 md:p-6">
-        <Icon className="h-5 w-5 text-primary sm:w-auto md:w-full" />
+        <Icon className="h-5 w-5 text-primary " />
       </div>
       <div className="flex-1">
         <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">{title}</p>
@@ -318,7 +307,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
               variant={change >= 0 ? 'default' : 'destructive'} 
               className="text-xs sm:text-sm md:text-base"
             >
-              {change >= 0 ? <TrendingUp className="h-3 w-3 mr-1 sm:w-auto md:w-full" /> : <TrendingDown className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
+              {change >= 0 ? <TrendingUp className="h-3 w-3 mr-1 " /> : <TrendingDown className="h-3 w-3 mr-1 " />}
               {Math.abs(change).toFixed(1)}%
             </Badge>
           )}
@@ -331,18 +320,16 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-6 w-6 sm:w-auto md:w-full" />
-            Enhanced Analytics Dashboard
+            <BarChart3 className="h-6 w-6 " />
           </CardTitle>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={isLoading}
-             aria-label="Button">
+             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
             </Button>
           </div>
         </div>
@@ -387,7 +374,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
           </Tabs>
           <div className="flex items-center gap-2">
             <select value={selectedMetric} onValueChange={(value) = aria-label="Select option"> setSelectedMetric(value as MetricType)}>
-              <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-40 " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
@@ -400,34 +387,31 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
               </SelectContent>
             </Select>
             <select value={chartType} onValueChange={(value) = aria-label="Select option"> setChartType(value as ChartType)}>
-              <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-32 " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
                 <selectItem value="line" aria-label="Select option">
                   <div className="flex items-center gap-2">
-                    <LineChart className="h-4 w-4 sm:w-auto md:w-full" />
-                    Line
+                    <LineChart className="h-4 w-4 " />
                   </div>
                 </SelectItem>
                 <selectItem value="bar" aria-label="Select option">
                   <div className="flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 sm:w-auto md:w-full" />
-                    Bar
+                    <BarChart3 className="h-4 w-4 " />
                   </div>
                 </SelectItem>
                 <selectItem value="area" aria-label="Select option">Area</SelectItem>
                 {/* Column maps to bar in Ag Charts; omit separate option */}
                 <selectItem value="pie" aria-label="Select option">
                   <div className="flex items-center gap-2">
-                    <PieChart className="h-4 w-4 sm:w-auto md:w-full" />
-                    Pie
+                    <PieChart className="h-4 w-4 " />
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
             <select value={timeframe} onValueChange={onTimeframeChange} aria-label="Select option">
-              <selectTrigger className="w-24 sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-24 " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">

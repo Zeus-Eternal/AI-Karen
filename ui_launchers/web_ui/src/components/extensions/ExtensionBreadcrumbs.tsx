@@ -29,7 +29,7 @@ export default function ExtensionBreadcrumbs() {
         <React.Fragment key={crumb.id}>
           <button
             className="hover:underline"
-            onClick={() = aria-label="Button"> handleClick(idx)}
+            onClick={() => handleClick(idx)}
             type="button"
           >
             {crumb.name}

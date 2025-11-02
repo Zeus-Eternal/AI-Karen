@@ -60,18 +60,18 @@ export class WebSocketService {
       if (this.connectionState === 'disconnected') {
         this.connect();
       }
-    });
+
     window.addEventListener('offline', () => {
       const { setOnline, setConnectionQuality } = useAppStore.getState();
       setOnline(false);
       setConnectionQuality('offline');
-    });
+
     // Listen for visibility changes to manage connection
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && this.connectionState === 'disconnected') {
         this.connect();
       }
-    });
+
   }
   // Connect to WebSocket
   public connect(): Promise<void> {
@@ -118,7 +118,7 @@ export class WebSocketService {
         this.setConnectionState('error');
         reject(error);
       }
-    });
+
   }
   // Disconnect from WebSocket
   public disconnect(): void {
@@ -195,7 +195,7 @@ export class WebSocketService {
             callback(message.data);
           } catch (error) {
           }
-        });
+
       }
       // Handle specific message types
       this.handleSpecificMessage(message);
@@ -211,7 +211,7 @@ export class WebSocketService {
           type: message.data.type || 'info',
           title: message.data.title,
           message: message.data.message,
-        });
+
         break;
       case 'system.health':
         // Invalidate system health queries
@@ -267,7 +267,7 @@ export class WebSocketService {
       console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
       this.connect().catch(() => {
         // Reconnection failed, will be handled by onclose
-      });
+
     }, delay);
   }
   // Start heartbeat

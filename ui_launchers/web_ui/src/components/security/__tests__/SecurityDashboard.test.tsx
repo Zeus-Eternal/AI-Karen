@@ -17,7 +17,6 @@ function createWrapper() {
       queries: { retry: false },
       mutations: { retry: false },
     },
-  });
 
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
@@ -53,7 +52,6 @@ describe('SecurityDashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseRBAC.mockReturnValue(mockRBACContext);
-  });
 
   it('renders security dashboard when user has permission', () => {
     mockRBACContext.hasPermission.mockReturnValue(true);
@@ -62,7 +60,6 @@ describe('SecurityDashboard', () => {
       reason: 'Permission granted',
       appliedRules: [],
       restrictions: []
-    });
 
     const Wrapper = createWrapper();
     render(
@@ -73,7 +70,6 @@ describe('SecurityDashboard', () => {
 
     expect(screen.getByText('Security Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Monitor security metrics, threats, and compliance status')).toBeInTheDocument();
-  });
 
   it('does not render when user lacks permission', () => {
     mockRBACContext.hasPermission.mockReturnValue(false);
@@ -82,7 +78,6 @@ describe('SecurityDashboard', () => {
       reason: 'Permission denied',
       appliedRules: [],
       restrictions: []
-    });
 
     const Wrapper = createWrapper();
     render(
@@ -92,7 +87,6 @@ describe('SecurityDashboard', () => {
     );
 
     expect(screen.queryByText('Security Dashboard')).not.toBeInTheDocument();
-  });
 
   it('renders navigation tabs when data is loaded', async () => {
     mockRBACContext.hasPermission.mockReturnValue(true);
@@ -101,7 +95,6 @@ describe('SecurityDashboard', () => {
       reason: 'Permission granted',
       appliedRules: [],
       restrictions: []
-    });
 
     // Mock the API calls to return data immediately
     const mockQueryClient = new QueryClient({
@@ -111,7 +104,6 @@ describe('SecurityDashboard', () => {
           staleTime: Infinity,
         },
       },
-    });
 
     // Pre-populate the cache with mock data
     mockQueryClient.setQueryData(['security', 'metrics', '24h'], {
@@ -128,7 +120,6 @@ describe('SecurityDashboard', () => {
         dataProtection: 'warning',
         networkSecurity: 'healthy'
       }
-    });
 
     const Wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={mockQueryClient}>
@@ -151,7 +142,6 @@ describe('SecurityDashboard', () => {
     expect(screen.getByRole('tab', { name: 'Compliance' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Incidents' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Evil Mode' })).toBeInTheDocument();
-  });
 
   it('shows loading state initially', () => {
     mockRBACContext.hasPermission.mockReturnValue(true);
@@ -160,7 +150,6 @@ describe('SecurityDashboard', () => {
       reason: 'Permission granted',
       appliedRules: [],
       restrictions: []
-    });
 
     const Wrapper = createWrapper();
     render(
@@ -171,7 +160,6 @@ describe('SecurityDashboard', () => {
 
     // Should show loading spinner
     expect(document.querySelector('.animate-spin')).toBeInTheDocument();
-  });
 
   it('renders timeframe selector', () => {
     mockRBACContext.hasPermission.mockReturnValue(true);
@@ -180,7 +168,6 @@ describe('SecurityDashboard', () => {
       reason: 'Permission granted',
       appliedRules: [],
       restrictions: []
-    });
 
     const Wrapper = createWrapper();
     render(
@@ -191,5 +178,4 @@ describe('SecurityDashboard', () => {
 
     // Should have timeframe selector
     expect(screen.getByRole('combobox')).toBeInTheDocument();
-  });
-});
+

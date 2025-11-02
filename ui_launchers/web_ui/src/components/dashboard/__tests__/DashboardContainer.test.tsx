@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { DashboardContainer } from '../DashboardContainer';
@@ -60,8 +61,7 @@ vi.mock('../WidgetBase', () => ({
       <div>{config.title}</div>
       {children}
       {onRemove && (
-        <button onClick={() = aria-label="Button"> onRemove()} data-testid={`remove-${config.id}`}>
-          Remove
+        <button onClick={() => onRemove()} data-testid={`remove-${config.id}`}>
         </button>
       )}
     </div>
@@ -138,7 +138,6 @@ describe('DashboardContainer', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders dashboard with title and description', () => {
     render(
@@ -150,7 +149,6 @@ describe('DashboardContainer', () => {
 
     expect(screen.getByText('Test Dashboard')).toBeInTheDocument();
     expect(screen.getByText('A test dashboard')).toBeInTheDocument();
-  });
 
   it('renders all widgets', () => {
     render(
@@ -164,7 +162,6 @@ describe('DashboardContainer', () => {
     expect(screen.getByTestId('widget-widget-2')).toBeInTheDocument();
     expect(screen.getByText('CPU Usage')).toBeInTheDocument();
     expect(screen.getByText('System Status')).toBeInTheDocument();
-  });
 
   it('shows empty state when no widgets', () => {
     const emptyConfig = { ...mockDashboardConfig, widgets: [] };
@@ -178,7 +175,6 @@ describe('DashboardContainer', () => {
 
     expect(screen.getByText('No widgets added')).toBeInTheDocument();
     expect(screen.getByText('Add widgets to start building your dashboard')).toBeInTheDocument();
-  });
 
   it('toggles edit mode', () => {
     render(
@@ -196,7 +192,6 @@ describe('DashboardContainer', () => {
     // Widgets should be in editing mode
     expect(screen.getByTestId('widget-widget-1')).toHaveAttribute('data-editing', 'true');
     expect(screen.getByTestId('widget-widget-2')).toHaveAttribute('data-editing', 'true');
-  });
 
   it('shows add widget button in edit mode', () => {
     render(
@@ -208,7 +203,6 @@ describe('DashboardContainer', () => {
     );
 
     expect(screen.getByText('Add Widget')).toBeInTheDocument();
-  });
 
   it('removes widget when remove button is clicked', () => {
     render(
@@ -225,8 +219,7 @@ describe('DashboardContainer', () => {
       ...mockDashboardConfig,
       widgets: [mockDashboardConfig.widgets[1]], // Only second widget remains
       updatedAt: expect.any(Date)
-    });
-  });
+
 
   it('changes layout when layout option is selected', () => {
     render(
@@ -243,8 +236,7 @@ describe('DashboardContainer', () => {
     expect(mockOnConfigChange).toHaveBeenCalledWith({
       ...mockDashboardConfig,
       layout: 'masonry'
-    });
-  });
+
 
   it('applies correct layout classes', () => {
     const { rerender } = render(
@@ -277,7 +269,6 @@ describe('DashboardContainer', () => {
 
     layoutContainer = screen.getByTestId('sortable-context').querySelector('div');
     expect(layoutContainer).toHaveClass('flex');
-  });
 
   it('renders draggable widgets in edit mode', () => {
     render(
@@ -290,7 +281,6 @@ describe('DashboardContainer', () => {
 
     expect(screen.getByTestId('draggable-widget-1')).toBeInTheDocument();
     expect(screen.getByTestId('draggable-widget-2')).toBeInTheDocument();
-  });
 
   it('renders non-draggable widgets in view mode', () => {
     render(
@@ -305,7 +295,6 @@ describe('DashboardContainer', () => {
     expect(screen.queryByTestId('draggable-widget-2')).not.toBeInTheDocument();
     expect(screen.getByTestId('widget-widget-1')).toBeInTheDocument();
     expect(screen.getByTestId('widget-widget-2')).toBeInTheDocument();
-  });
 
   it('handles unknown widget types gracefully', async () => {
     const configWithUnknownWidget = {
@@ -338,7 +327,6 @@ describe('DashboardContainer', () => {
     );
 
     expect(screen.getByTestId('widget-unknown-widget')).toBeInTheDocument();
-  });
 
   it('updates dashboard config when widget is added', async () => {
     const WidgetRegistry = await import('../WidgetRegistry');
@@ -367,7 +355,6 @@ describe('DashboardContainer', () => {
           })
         ]),
         updatedAt: expect.any(Date)
-      });
-    });
-  });
-});
+
+
+

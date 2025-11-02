@@ -10,12 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  getActionRegistry, 
-  type SuggestedAction, 
-  type ActionResult, 
-  type ActionHandler 
-} from '@/services/actionMapper';
+import {  getActionRegistry, type SuggestedAction, type ActionResult, type ActionHandler } from '@/services/actionMapper';
 
 interface UseActionRegistryOptions {
   autoToast?: boolean;
@@ -85,7 +80,7 @@ export function useActionRegistry(options: UseActionRegistryOptions = {}): UseAc
             title: 'Action Completed',
             description: result.message,
             duration: 3000
-          });
+
         }
         
         onActionCompleteRef.current?.(type, result);
@@ -99,7 +94,7 @@ export function useActionRegistry(options: UseActionRegistryOptions = {}): UseAc
             title: 'Action Failed',
             description: errorMessage,
             duration: 5000
-          });
+
         }
         
         onActionErrorRef.current?.(type, errorMessage);
@@ -116,7 +111,7 @@ export function useActionRegistry(options: UseActionRegistryOptions = {}): UseAc
           title: 'Action Error',
           description: errorMessage,
           duration: 5000
-        });
+
       }
       
       onActionErrorRef.current?.(type, errorMessage);
@@ -146,20 +141,20 @@ export function useActionRegistry(options: UseActionRegistryOptions = {}): UseAc
             title: 'All Actions Completed',
             description: `Successfully completed ${successCount} actions`,
             duration: 3000
-          });
+
         } else if (successCount > 0) {
           toast({
             title: 'Partial Success',
             description: `${successCount} actions completed, ${failureCount} failed`,
             duration: 4000
-          });
+
         } else {
           toast({
             variant: 'destructive',
             title: 'All Actions Failed',
             description: `${failureCount} actions failed`,
             duration: 5000
-          });
+
         }
       }
       
@@ -174,7 +169,7 @@ export function useActionRegistry(options: UseActionRegistryOptions = {}): UseAc
           title: 'Actions Error',
           description: errorMessage,
           duration: 5000
-        });
+
       }
       
       return [];
@@ -297,6 +292,4 @@ export function useActionSuggestions(
 
 // Export types
 export type {
-  UseActionRegistryOptions,
-  UseActionRegistryReturn
 };

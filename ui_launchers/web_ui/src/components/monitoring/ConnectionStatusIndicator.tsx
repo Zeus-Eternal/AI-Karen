@@ -125,7 +125,7 @@ export const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps>
               
               <div className="flex justify-between items-center text-sm md:text-base lg:text-lg">
                 <span className="text-muted-foreground">Endpoint:</span>
-                <span className="font-mono text-xs truncate max-w-32 sm:w-auto md:w-full" title={status.endpoint}>
+                <span className="font-mono text-xs truncate max-w-32 " title={status.endpoint}>
                   {status.endpoint}
                 </span>
               </div>

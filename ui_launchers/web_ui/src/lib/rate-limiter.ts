@@ -26,9 +26,9 @@ class RateLimiter {
         reject,
         request,
         timestamp: Date.now(),
-      });
+
       this.processQueue();
-    });
+
   }
   private async processQueue() {
     if (this.processing || this.queue.length === 0) {
@@ -76,10 +76,9 @@ export const errorAnalysisRateLimiter = new RateLimiter({
   maxRequests: 25, // Stay under the 30/minute limit
   windowMs: 60 * 1000, // 1 minute
   retryAfterMs: 5000, // 5 seconds
-});
+
 // Create a general API rate limiter
 export const apiRateLimiter = new RateLimiter({
   maxRequests: 50,
   windowMs: 60 * 1000,
   retryAfterMs: 2000,
-});

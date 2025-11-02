@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       const switchResult = await modelSelectionService.switchModel(to_model_id, {
         preserveContext: preserve_context,
         forceSwitch: false
-      });
+
       const switchTime = Date.now() - startTime;
       if (switchResult.success) {
         // Calculate capability changes
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
             'X-From-Provider': sourceModel?.provider || 'unknown',
             'X-To-Provider': targetModel.provider
           }
-        });
+
       } else {
         return NextResponse.json(
           {

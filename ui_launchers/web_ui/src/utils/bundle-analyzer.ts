@@ -107,7 +107,6 @@ export class BundleAnalyzer {
           warnings.push(chunkViolation);
         }
       }
-    });
 
     // Check individual assets
     stats.assets.forEach(asset => {
@@ -119,7 +118,6 @@ export class BundleAnalyzer {
           warnings.push(assetViolation);
         }
       }
-    });
 
     return {
       stats,
@@ -283,13 +281,11 @@ export class BundleAnalyzer {
       if (violation.severity === 'error') {
         score -= 20;
       }
-    });
 
     warnings.forEach(warning => {
       if (warning.severity === 'warning') {
         score -= 10;
       }
-    });
 
     // Bonus points for good practices
     const hasGoodChunkSplitting = stats.chunks.length > 3 && stats.chunks.length < 10;

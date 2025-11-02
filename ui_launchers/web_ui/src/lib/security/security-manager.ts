@@ -98,7 +98,7 @@ export class SecurityManager {
               identifier
             },
             severity: 'high'
-          });
+
         }
       } catch (error) {
       }
@@ -115,7 +115,7 @@ export class SecurityManager {
           threshold_exceeded: true
         },
         severity: 'medium'
-      });
+
     }
     return delay;
   }
@@ -134,7 +134,7 @@ export class SecurityManager {
     await this.adminUtils.updateUser(userId, {
       locked_until: lockedUntil,
       failed_login_attempts: (await this.adminUtils.getUserWithRole(userId))?.failed_login_attempts || 0
-    });
+
     // Log audit event
     await this.adminUtils.createAuditLog({
       user_id: userId,
@@ -146,7 +146,7 @@ export class SecurityManager {
         duration_ms: durationMs,
         reason: 'excessive_failed_attempts'
       }
-    });
+
   }
   /**
    * Unlock user account
@@ -155,7 +155,7 @@ export class SecurityManager {
     await this.adminUtils.updateUser(userId, {
       locked_until: undefined,
       failed_login_attempts: 0
-    });
+
     // Log audit event
     await this.adminUtils.createAuditLog({
       user_id: userId,
@@ -166,7 +166,7 @@ export class SecurityManager {
         unlocked_at: new Date().toISOString(),
         reason: 'lock_period_expired'
       }
-    });
+
   }
   /**
    * Check if MFA is required for user
@@ -209,7 +209,7 @@ export class SecurityManager {
           enforcement_action: 'login_blocked'
         },
         severity: 'medium'
-      });
+
     }
     return { required, enabled };
   }
@@ -278,7 +278,7 @@ export class SecurityManager {
       },
       ip_address: ipAddress,
       user_agent: userAgent
-    });
+
     return session;
   }
   /**
@@ -300,7 +300,7 @@ export class SecurityManager {
           session_duration: Date.now() - session.created_at.getTime(),
           termination_reason: 'manual'
         }
-      });
+
       userSessions.splice(sessionIndex, 1);
       activeSessions.set(userId, userSessions);
     }
@@ -344,7 +344,7 @@ export class SecurityManager {
       },
       ip_address: event.ip_address,
       user_agent: event.user_agent
-    });
+
     // Send notifications for high/critical severity events
     if (event.severity === 'high' || event.severity === 'critical') {
       await this.notifySecurityTeam(securityEvent);
@@ -377,7 +377,7 @@ export class SecurityManager {
             original_severity: event.severity,
             resolution_time: Date.now() - event.created_at.getTime()
           }
-        });
+
         break;
       }
     }
@@ -404,7 +404,7 @@ export class SecurityManager {
             expired_sessions: sessions.length - validSessions.length,
             remaining_sessions: validSessions.length
           }
-        });
+
       }
     }
     // Clean up old security events (keep last 30 days)

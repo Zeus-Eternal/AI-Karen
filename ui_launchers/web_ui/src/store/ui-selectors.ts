@@ -5,7 +5,6 @@ export const selectSidebarState = (state: UIStore) => ({
   collapsed: state.sidebarCollapsed,
   toggle: state.toggleSidebar,
   setCollapsed: state.setSidebarCollapsed,
-});
 
 export const selectRightPanelState = (state: UIStore) => ({
   view: state.rightPanelView,
@@ -13,19 +12,16 @@ export const selectRightPanelState = (state: UIStore) => ({
   setView: state.setRightPanelView,
   toggle: state.toggleRightPanel,
   setCollapsed: state.setRightPanelCollapsed,
-});
 
 // Theme selectors
 export const selectThemeState = (state: UIStore) => ({
   theme: state.theme,
   setTheme: state.setTheme,
-});
 
 // Animation selectors
 export const selectAnimationState = (state: UIStore) => ({
   reducedMotion: state.reducedMotion,
   setReducedMotion: state.setReducedMotion,
-});
 
 // Panel selectors
 export const selectPanelState = (panelId: string) => (state: UIStore) => ({
@@ -35,7 +31,6 @@ export const selectPanelState = (panelId: string) => (state: UIStore) => ({
   closePanel: () => state.closePanel(panelId),
   togglePanel: () => state.togglePanel(panelId),
   setPanelSize: (size: number) => state.setPanelSize(panelId, size),
-});
 
 // Modal selectors
 export const selectModalState = (modalId: string) => (state: UIStore) => ({
@@ -43,20 +38,17 @@ export const selectModalState = (modalId: string) => (state: UIStore) => ({
   openModal: (data?: any) => state.openModal(modalId, data),
   closeModal: () => state.closeModal(modalId),
   toggleModal: (data?: any) => state.toggleModal(modalId, data),
-});
 
 // Loading selectors
 export const selectLoadingState = (key: string) => (state: UIStore) => ({
   loading: state.loadingStates[key] || false,
   setLoading: (loading: boolean) => state.setLoading(key, loading),
-});
 
 // Error selectors
 export const selectErrorState = (key: string) => (state: UIStore) => ({
   error: state.errors[key] || null,
   setError: (error: string | null) => state.setError(key, error),
   clearError: () => state.clearError(key),
-});
 
 // Combined selectors for common use cases
 export const selectLayoutState = (state: UIStore) => ({
@@ -72,14 +64,12 @@ export const selectLayoutState = (state: UIStore) => ({
     toggle: state.toggleRightPanel,
     setCollapsed: state.setRightPanelCollapsed,
   },
-});
 
 export const selectPreferencesState = (state: UIStore) => ({
   theme: state.theme,
   reducedMotion: state.reducedMotion,
   setTheme: state.setTheme,
   setReducedMotion: state.setReducedMotion,
-});
 
 // Utility selectors
 export const selectAllErrors = (state: UIStore) => state.errors;

@@ -5,5 +5,4 @@ describe('useNavigation Hook Integration', () => {
   it('exports useNavigation hook correctly', () => {
     expect(useNavigation).toBeDefined();
     expect(typeof useNavigation).toBe('function');
-  });
-});
+

@@ -151,7 +151,6 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
           type: 'tag',
           values: ['wcag2a', 'wcag2aa'],
         },
-      });
 
       return this.processAxeResults(results, performance.now() - startTime);
     } catch (error) {
@@ -172,7 +171,6 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
           type: 'tag',
           values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'best-practice'],
         },
-      });
 
       return this.processAxeResults(results, performance.now() - startTime);
     } catch (error) {
@@ -216,7 +214,6 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       if (htmlElement.tabIndex > 0) {
         focusOrderIssues.push(`Element has positive tabindex: ${this.getElementSelector(htmlElement)}`);
       }
-    });
 
     // Test focus traps
     const focusTraps = this.container.querySelectorAll('[data-focus-trap="true"]');
@@ -228,7 +225,6 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       if (focusableInTrap.length === 0) {
         trapIssues.push(`Focus trap has no focusable elements: ${this.getElementSelector(trapElement)}`);
       }
-    });
 
     // Test skip links
     const skipLinks = this.container.querySelectorAll('.skip-links a, [href^="#"]');
@@ -240,7 +236,6 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
           skipLinkIssues.push(`Skip link target not found: ${href}`);
         }
       }
-    });
 
     return {
       passed: unreachableElements.length === 0 && focusOrderIssues.length === 0 && trapIssues.length === 0 && skipLinkIssues.length === 0,
@@ -269,7 +264,6 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       if (!this.hasAccessibleName(element)) {
         missingLabels.push(this.getElementSelector(element));
       }
-    });
 
     // Test images
     const images = this.container.querySelectorAll('img');
@@ -281,14 +275,12 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       if (!altText && !ariaLabel && role !== 'presentation' && role !== 'none') {
         missingLabels.push(this.getElementSelector(img));
       }
-    });
 
     // Test ARIA usage
     const elementsWithAria = this.container.querySelectorAll('[aria-*]');
     elementsWithAria.forEach((element) => {
       const issues = this.validateAriaAttributes(element as HTMLElement);
       ariaIssues.push(...issues);
-    });
 
     // Test landmark structure
     const mainLandmarks = this.container.querySelectorAll('main, [role="main"]');
@@ -307,7 +299,6 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
         headingStructureIssues.push(`Heading level skipped: h${level} after h${previousLevel}`);
       }
       previousLevel = level;
-    });
 
     // Test live regions
     const liveRegions = this.container.querySelectorAll('[aria-live]');
@@ -316,7 +307,6 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       if (!['polite', 'assertive', 'off'].includes(politeness || '')) {
         liveRegionIssues.push(`Invalid aria-live value: ${politeness}`);
       }
-    });
 
     return {
       passed: missingLabels.length === 0 && ariaIssues.length === 0 && landmarkIssues.length === 0 && headingStructureIssues.length === 0 && liveRegionIssues.length === 0,
@@ -360,7 +350,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
               ratio,
               required: requiredRatio,
               level: 'AA',
-            });
+
           }
           
           totalRatio += ratio;
@@ -369,7 +359,6 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
           // Skip elements with invalid colors
         }
       }
-    });
 
     return {
       passed: failedElements.length === 0,
@@ -402,8 +391,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
         element: this.getElementSelector(trapElement),
         working: issues.length === 0,
         issues,
-      });
-    });
+
 
     // Test focus indicators
     const focusableElements = this.container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
@@ -419,8 +407,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
         element: this.getElementSelector(htmlElement),
         visible: hasVisibleFocus,
         contrast: 0, // Would need more complex calculation
-      });
-    });
+
 
     return {
       passed: focusTraps.every(trap => trap.working) && focusIndicators.every(indicator => indicator.visible),
@@ -460,10 +447,9 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
             if (!this.container.querySelector(`#${id}`)) {
               brokenReferences.push(`${this.getElementSelector(htmlElement)} references non-existent ID: ${id}`);
             }
-          });
+
         }
-      });
-    });
+
 
     return {
       passed: invalidAttributes.length === 0 && missingAttributes.length === 0 && incorrectRoles.length === 0 && brokenReferences.length === 0,
@@ -534,7 +520,6 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
         default:
           recommendations.push(`Address ${violation.id}: ${violation.help}`);
       }
-    });
 
     return [...new Set(recommendations)]; // Remove duplicates
   }
@@ -580,7 +565,6 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
           }
           break;
       }
-    });
 
     return issues;
   }
@@ -646,14 +630,14 @@ export async function generateAccessibilityReport(element?: Element | Document):
       report += `${index + 1}. ${violation.description} (${violation.impact})\n`;
       report += `   Elements: ${violation.elements.length}\n`;
       report += `   Help: ${violation.help}\n\n`;
-    });
+
   }
 
   if (basic.recommendations.length > 0) {
     report += 'Recommendations:\n';
     basic.recommendations.forEach((rec, index) => {
       report += `${index + 1}. ${rec}\n`;
-    });
+
   }
 
   return report;

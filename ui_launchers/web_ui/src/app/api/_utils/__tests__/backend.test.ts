@@ -5,23 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
-import {
-  getBackendBaseUrl,
-  getBackendCandidates,
-  withBackendPath,
-  getTimeoutConfig,
-  getRetryPolicy,
-  getEnvironmentInfo,
-  validateBackendConfiguration,
-  makeBackendRequest,
-  apiRequest,
-  apiGet,
-  apiPost,
-  apiPut,
-  apiDelete,
-  checkBackendHealth,
-  getConnectionStatus,
-} from '../backend';
+import { getBackendBaseUrl, getBackendCandidates, withBackendPath, getTimeoutConfig, getRetryPolicy, getEnvironmentInfo, validateBackendConfiguration, makeBackendRequest, apiRequest, apiGet, apiPost, apiPut, apiDelete, checkBackendHealth, getConnectionStatus } from '../backend';
 
 // Mock dependencies
 vi.mock('../../../../lib/config', () => ({
@@ -131,28 +115,23 @@ describe('Backend Utilities', () => {
 
     (getEnvironmentConfigManager as Mock).mockReturnValue(mockConfigManager);
     (getConnectionManager as Mock).mockReturnValue(mockConnectionManager);
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('getBackendBaseUrl', () => {
     it('should return primary URL from config manager', () => {
       const url = getBackendBaseUrl();
       expect(url).toBe('http://localhost:8000');
       expect(mockConfigManager.getBackendConfig).toHaveBeenCalled();
-    });
 
     it('should fallback to legacy implementation when config manager fails', () => {
       (getEnvironmentConfigManager as Mock).mockImplementation(() => {
         throw new Error('Config manager not available');
-      });
 
       const url = getBackendBaseUrl();
       expect(url).toMatch(/^http:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0):8000$/);
-    });
-  });
+
 
   describe('getBackendCandidates', () => {
     it('should return all candidate URLs from config manager', () => {
@@ -163,41 +142,34 @@ describe('Backend Utilities', () => {
         'http://0.0.0.0:8000',
       ]);
       expect(mockConfigManager.getAllCandidateUrls).toHaveBeenCalled();
-    });
 
     it('should include additional URLs', () => {
       const additional = ['http://custom:8000'];
       const candidates = getBackendCandidates(additional);
       expect(candidates).toContain('http://custom:8000');
-    });
 
     it('should fallback to legacy implementation when config manager fails', () => {
       (getEnvironmentConfigManager as Mock).mockImplementation(() => {
         throw new Error('Config manager not available');
-      });
 
       const candidates = getBackendCandidates();
       expect(Array.isArray(candidates)).toBe(true);
       expect(candidates.length).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('withBackendPath', () => {
     it('should join path with base URL', () => {
       const result = withBackendPath('/api/test');
       expect(result).toBe('http://localhost:8000/api/test');
-    });
 
     it('should handle path without leading slash', () => {
       const result = withBackendPath('api/test');
       expect(result).toBe('http://localhost:8000/api/test');
-    });
 
     it('should use custom base URL', () => {
       const result = withBackendPath('/api/test', 'http://custom:9000');
       expect(result).toBe('http://custom:9000/api/test');
-    });
-  });
+
 
   describe('Configuration functions', () => {
     it('should return timeout config from config manager', () => {
@@ -207,8 +179,7 @@ describe('Backend Utilities', () => {
         authentication: 45000,
         sessionValidation: 30000,
         healthCheck: 10000,
-      });
-    });
+
 
     it('should return retry policy from config manager', () => {
       const policy = getRetryPolicy();
@@ -218,8 +189,7 @@ describe('Backend Utilities', () => {
         maxDelay: 10000,
         exponentialBase: 2,
         jitterEnabled: true,
-      });
-    });
+
 
     it('should return environment info from config manager', () => {
       const info = getEnvironmentInfo();
@@ -228,15 +198,13 @@ describe('Backend Utilities', () => {
         networkMode: 'localhost',
         isDocker: false,
         isProduction: false,
-      });
-    });
+
 
     it('should validate backend configuration', () => {
       const validation = validateBackendConfiguration();
       expect(validation.isValid).toBe(true);
       expect(validation.errors).toEqual([]);
-    });
-  });
+
 
   describe('makeBackendRequest', () => {
     it('should make successful request using connection manager', async () => {
@@ -259,7 +227,6 @@ describe('Backend Utilities', () => {
         {},
         {}
       );
-    });
 
     it('should try fallback URLs on retryable errors', async () => {
       const error = new ConnectionError(
@@ -287,7 +254,6 @@ describe('Backend Utilities', () => {
       const result = await makeBackendRequest('/api/test');
       expect(result).toEqual(mockResponse);
       expect(mockConnectionManager.makeRequest).toHaveBeenCalledTimes(2);
-    });
 
     it('should throw error if all fallbacks fail', async () => {
       const error = new ConnectionError(
@@ -301,8 +267,7 @@ describe('Backend Utilities', () => {
       mockConnectionManager.makeRequest.mockRejectedValue(error);
 
       await expect(makeBackendRequest('/api/test')).rejects.toThrow('Network error');
-    });
-  });
+
 
   describe('API convenience functions', () => {
     beforeEach(() => {
@@ -314,8 +279,7 @@ describe('Backend Utilities', () => {
         url: 'http://localhost:8000/api/test',
         duration: 100,
         retryCount: 0,
-      });
-    });
+
 
     it('should make GET request', async () => {
       const result = await apiGet('/api/test');
@@ -328,7 +292,6 @@ describe('Backend Utilities', () => {
         },
         {}
       );
-    });
 
     it('should make POST request with body', async () => {
       const body = { name: 'test' };
@@ -343,7 +306,6 @@ describe('Backend Utilities', () => {
         },
         {}
       );
-    });
 
     it('should make PUT request with body', async () => {
       const body = { name: 'updated' };
@@ -358,7 +320,6 @@ describe('Backend Utilities', () => {
         },
         {}
       );
-    });
 
     it('should make DELETE request', async () => {
       const result = await apiDelete('/api/test');
@@ -371,7 +332,6 @@ describe('Backend Utilities', () => {
         },
         {}
       );
-    });
 
     it('should handle custom headers', async () => {
       const headers = { Authorization: 'Bearer token' };
@@ -384,8 +344,7 @@ describe('Backend Utilities', () => {
         },
         {}
       );
-    });
-  });
+
 
   describe('Health and status functions', () => {
     it('should check backend health', async () => {
@@ -394,21 +353,18 @@ describe('Backend Utilities', () => {
       const result = await checkBackendHealth();
       expect(result).toBe(true);
       expect(mockConnectionManager.healthCheck).toHaveBeenCalled();
-    });
 
     it('should get connection status', () => {
       const status = getConnectionStatus();
       expect(status.isHealthy).toBe(true);
       expect(status.totalRequests).toBe(10);
       expect(mockConnectionManager.getConnectionStatus).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Error handling', () => {
     it('should handle config manager errors gracefully', () => {
       (getEnvironmentConfigManager as Mock).mockImplementation(() => {
         throw new Error('Config manager failed');
-      });
 
       const config = getTimeoutConfig();
       expect(config).toEqual({
@@ -416,17 +372,14 @@ describe('Backend Utilities', () => {
         authentication: 45000,
         sessionValidation: 30000,
         healthCheck: 10000,
-      });
-    });
+
 
     it('should handle validation errors gracefully', () => {
       (getEnvironmentConfigManager as Mock).mockImplementation(() => {
         throw new Error('Config manager failed');
-      });
 
       const validation = validateBackendConfiguration();
       expect(validation.isValid).toBe(false);
       expect(validation.errors).toContain('Error: Config manager failed');
-    });
-  });
-});
+
+

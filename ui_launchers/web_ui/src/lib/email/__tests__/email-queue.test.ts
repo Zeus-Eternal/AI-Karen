@@ -51,12 +51,10 @@ describe('EmailQueueManager', () => {
     // Stop any existing processing
     queueManager.stopProcessing();
     queueManager.clearQueue();
-  });
 
   afterEach(() => {
     queueManager.stopProcessing();
     vi.clearAllMocks();
-  });
 
   describe('addToQueue', () => {
     it('should add message to queue', async () => {
@@ -64,7 +62,6 @@ describe('EmailQueueManager', () => {
       
       const stats = queueManager.getQueueStats();
       expect(stats.total).toBe(1);
-    });
 
     it('should maintain priority order', async () => {
       const lowPriorityMessage = { ...mockMessage, id: 'low', priority: 'low' as const };
@@ -79,7 +76,6 @@ describe('EmailQueueManager', () => {
       expect(items[0].id).toBe('urgent');
       expect(items[1].id).toBe('high');
       expect(items[2].id).toBe('low');
-    });
 
     it('should handle scheduled messages', async () => {
       const scheduledMessage = {
@@ -91,8 +87,7 @@ describe('EmailQueueManager', () => {
       
       const items = queueManager.getQueueItems();
       expect(items[0].nextRetryAt).toEqual(scheduledMessage.scheduled_at);
-    });
-  });
+
 
   describe('addBulkToQueue', () => {
     it('should add multiple messages to queue', async () => {
@@ -111,7 +106,6 @@ describe('EmailQueueManager', () => {
 
       const stats = queueManager.getQueueStats();
       expect(stats.total).toBe(3);
-    });
 
     it('should handle partial failures in bulk add', async () => {
       const messages = [
@@ -126,8 +120,7 @@ describe('EmailQueueManager', () => {
       expect(result.queued_count).toBe(2);
       expect(result.failed_count).toBe(1);
       expect(result.errors).toHaveLength(1);
-    });
-  });
+
 
   describe('getQueueStats', () => {
     beforeEach(async () => {
@@ -141,7 +134,6 @@ describe('EmailQueueManager', () => {
       for (const message of messages) {
         await queueManager.addToQueue(message);
       }
-    });
 
     it('should return correct queue statistics', () => {
       const stats = queueManager.getQueueStats();
@@ -153,13 +145,11 @@ describe('EmailQueueManager', () => {
       expect(stats.byStatus.queued).toBe(4);
       expect(stats.oldestItem).toBeInstanceOf(Date);
       expect(stats.rateLimitRemaining).toBe(60);
-    });
-  });
+
 
   describe('getQueueItems', () => {
     beforeEach(async () => {
       await queueManager.addToQueue(mockMessage);
-    });
 
     it('should return queue items with correct format', () => {
       const items = queueManager.getQueueItems();
@@ -174,9 +164,8 @@ describe('EmailQueueManager', () => {
         attempts: 0,
         nextRetryAt: expect.any(Date),
         lastError: undefined,
-      });
-    });
-  });
+
+
 
   describe('retryFailedItems', () => {
     it('should retry failed items within retry limit', async () => {
@@ -194,7 +183,6 @@ describe('EmailQueueManager', () => {
 
       expect(retriedCount).toBe(1);
       expect(queue[0].message.status).toBe('queued');
-    });
 
     it('should not retry items that exceeded max retries', async () => {
       await queueManager.addToQueue(mockMessage);
@@ -208,14 +196,12 @@ describe('EmailQueueManager', () => {
 
       expect(retriedCount).toBe(0);
       expect(queue[0].message.status).toBe('failed');
-    });
-  });
+
 
   describe('clearQueue', () => {
     beforeEach(async () => {
       await queueManager.addToQueue(mockMessage);
       await queueManager.addToQueue({ ...mockMessage, id: 'msg2' });
-    });
 
     it('should clear all items from queue', () => {
       expect(queueManager.getQueueStats().total).toBe(2);
@@ -223,8 +209,7 @@ describe('EmailQueueManager', () => {
       queueManager.clearQueue();
       
       expect(queueManager.getQueueStats().total).toBe(0);
-    });
-  });
+
 
   describe('updateConfig', () => {
     it('should update queue configuration', () => {
@@ -240,8 +225,7 @@ describe('EmailQueueManager', () => {
       expect(config.max_retries).toBe(5);
       expect(config.batch_size).toBe(20);
       expect(config.retry_delay_minutes).toBe(5); // Should preserve existing values
-    });
-  });
+
 
   describe('processing', () => {
     it('should start and stop processing', () => {
@@ -254,9 +238,8 @@ describe('EmailQueueManager', () => {
       queueManager.stopProcessing();
       expect((queueManager as any).processing).toBe(false);
       expect((queueManager as any).processingInterval).toBe(null);
-    });
-  });
-});
+
+
 
 describe('BulkEmailProcessor', () => {
   let bulkProcessor: BulkEmailProcessor;
@@ -301,12 +284,10 @@ describe('BulkEmailProcessor', () => {
       queued_count: 2,
       failed_count: 0,
       errors: [],
-    });
-  });
+
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('processBulkOperation', () => {
     it('should process bulk operation successfully', async () => {
@@ -318,7 +299,6 @@ describe('BulkEmailProcessor', () => {
       expect(mockOperation.sent_count).toBe(2);
       expect(mockOperation.failed_count).toBe(0);
       expect(queueManager.addBulkToQueue).toHaveBeenCalled();
-    });
 
     it('should handle partial failures in bulk operation', async () => {
       // Mock partial failure
@@ -327,7 +307,6 @@ describe('BulkEmailProcessor', () => {
         queued_count: 1,
         failed_count: 1,
         errors: ['user2@example.com: Invalid email'],
-      });
 
       await bulkProcessor.processBulkOperation(mockOperation);
 
@@ -337,7 +316,6 @@ describe('BulkEmailProcessor', () => {
       expect(mockOperation.recipients[0].status).toBe('sent');
       expect(mockOperation.recipients[1].status).toBe('failed');
       expect(mockOperation.recipients[1].error_message).toBe('user2@example.com: Invalid email');
-    });
 
     it('should handle operation failure', async () => {
       // Mock queue manager failure
@@ -348,7 +326,6 @@ describe('BulkEmailProcessor', () => {
       expect(mockOperation.status).toBe('failed');
       expect(mockOperation.error_message).toBe('Queue error');
       expect(mockOperation.completed_at).toBeInstanceOf(Date);
-    });
 
     it('should process in batches with delay', async () => {
       // Create operation with many recipients and small batch size
@@ -371,7 +348,6 @@ describe('BulkEmailProcessor', () => {
       expect(endTime - startTime).toBeGreaterThan(100);
       expect(queueManager.addBulkToQueue).toHaveBeenCalledTimes(3);
       expect(largeOperation.status).toBe('completed');
-    });
 
     it('should skip recipients that are not pending', async () => {
       mockOperation.recipients[1].status = 'sent'; // Already processed
@@ -382,6 +358,5 @@ describe('BulkEmailProcessor', () => {
       const addBulkCall = vi.mocked(queueManager.addBulkToQueue).mock.calls[0];
       expect(addBulkCall[0]).toHaveLength(1);
       expect(addBulkCall[0][0].to).toBe('user1@example.com');
-    });
-  });
-});
+
+

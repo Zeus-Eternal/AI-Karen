@@ -26,8 +26,8 @@ const MessageBubbleComponent = ({ message }: MessageBubbleProps) => {
   return (
     <div className={`flex items-start gap-3 my-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
-        <Avatar className="h-10 w-10 self-start shrink-0 flex items-center justify-center bg-muted rounded-full sm:w-auto md:w-full">
-          <Bot className="h-5 w-5 text-primary sm:w-auto md:w-full" aria-hidden="true" />
+        <Avatar className="h-10 w-10 self-start shrink-0 flex items-center justify-center bg-muted rounded-full ">
+          <Bot className="h-5 w-5 text-primary " aria-hidden="true" />
         </Avatar>
       )}
       <Card className={`max-w-xl shadow-md rounded-xl ${isUser ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
@@ -52,8 +52,8 @@ const MessageBubbleComponent = ({ message }: MessageBubbleProps) => {
         </CardContent>
       </Card>
       {isUser && (
-        <Avatar className="h-10 w-10 self-start shrink-0 flex items-center justify-center bg-muted rounded-full sm:w-auto md:w-full">
-          <User className="h-5 w-5 text-secondary sm:w-auto md:w-full" aria-hidden="true" />
+        <Avatar className="h-10 w-10 self-start shrink-0 flex items-center justify-center bg-muted rounded-full ">
+          <User className="h-5 w-5 text-secondary " aria-hidden="true" />
         </Avatar>
       )}
     </div>

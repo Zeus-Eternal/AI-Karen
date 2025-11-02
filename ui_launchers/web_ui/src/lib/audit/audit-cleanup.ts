@@ -137,12 +137,10 @@ export class AuditCleanupManager {
     }
 
     const statsQuery = `
-      SELECT 
         COUNT(*) as total_logs,
         MIN(timestamp) as oldest_log_date,
         MAX(timestamp) as newest_log_date,
         pg_size_pretty(pg_total_relation_size('audit_logs')) as table_size
-      FROM audit_logs
       ${whereClause}
     `;
 
@@ -155,7 +153,6 @@ export class AuditCleanupManager {
 
     const deleteCountQuery = `
       SELECT COUNT(*) as logs_to_delete
-      FROM audit_logs
       WHERE timestamp < $1
     `;
 
@@ -208,7 +205,6 @@ export class AuditCleanupManager {
       // First, count how many logs will be affected
       const countQuery = `
         SELECT COUNT(*) as count
-        FROM audit_logs
         WHERE ${whereClause}
       `;
 
@@ -226,7 +222,6 @@ export class AuditCleanupManager {
 
       // Perform the actual deletion
       const deleteQuery = `
-        DELETE FROM audit_logs
         WHERE ${whereClause}
       `;
 
@@ -285,7 +280,7 @@ export class AuditCleanupManager {
       results.push({
         ...result,
         policy_applied: policy.name
-      });
+
     }
 
     return results;
@@ -329,13 +324,10 @@ export class AuditCleanupManager {
       // Move logs to archive table
       const archiveQuery = `
         WITH archived_logs AS (
-          DELETE FROM audit_logs
           WHERE ${whereClause}
           RETURNING *
         )
-        INSERT INTO audit_logs_archive 
         SELECT *, NOW() as archived_at
-        FROM archived_logs
       `;
 
       const result = await this.db.query(archiveQuery, queryParams);
@@ -422,12 +414,10 @@ export class AuditCleanupManager {
   }> {
     try {
       const statsQuery = `
-        SELECT 
           COUNT(*) as total_archived,
           MIN(timestamp) as oldest_archived,
           MAX(timestamp) as newest_archived,
           pg_size_pretty(pg_total_relation_size('audit_logs_archive')) as archive_size
-        FROM audit_logs_archive
       `;
 
       const result = await this.db.query(statsQuery);

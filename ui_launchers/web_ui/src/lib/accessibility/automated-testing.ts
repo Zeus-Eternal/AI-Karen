@@ -219,7 +219,7 @@ export class AutomatedAccessibilityTester {
       // Inject axe-core into the page
       await page.addScriptTag({
         url: 'https://unpkg.com/axe-core@4.10.2/axe.min.js'
-      });
+
       // Run axe analysis in the page context
       const runOptions = {
         runOnly: {
@@ -280,7 +280,7 @@ export class AutomatedAccessibilityTester {
       if (Array.isArray(baselineData)) {
         baselineData.forEach((result: AccessibilityTestResult) => {
           this.baselineResults.set(result.url, result);
-        });
+
       }
     } catch (error) {
     }
@@ -343,7 +343,7 @@ export class AutomatedAccessibilityTester {
             impact: (violation.impact as string) || 'unknown',
             newViolations: currentCount - baselineCount,
             previousViolations: baselineCount
-          });
+
         }
       }
     }
@@ -358,7 +358,7 @@ export class AutomatedAccessibilityTester {
             description: violation.description,
             impact: (violation.impact as string) || 'unknown',
             fixedViolations: baselineCount - currentCount
-          });
+
         }
       }
     }

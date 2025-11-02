@@ -47,7 +47,7 @@ function createStreamingFallbackResponse(message: string): ReadableStream {
       };
       sendChunk();
     }
-  });
+
 }
 async function checkDegradedMode(): Promise<boolean> {
   try {
@@ -55,7 +55,7 @@ async function checkDegradedMode(): Promise<boolean> {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
       signal: AbortSignal.timeout(3000)
-    });
+
     if (response.ok) {
       const data = await response.json();
       return data.is_active || data.degraded_mode;
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         headers,
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(isDegraded ? 10000 : 120000), // Shorter timeout in degraded mode
-      });
+
       // For streaming responses, we need to handle differently
       if (response.headers.get('content-type')?.includes('text/event-stream') || 
           response.headers.get('content-type')?.includes('text/plain')) {
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           },
-        });
+
       }
       // For non-streaming responses, parse as JSON
       const data = await response.json();
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
           'Pragma': 'no-cache',
           'Expires': '0'
         }
-      });
+
     } catch (backendError) {
       // Use fallback response when backend is unavailable
       const userMessage = body.messages?.[body.messages.length - 1]?.content || body.message || '';
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
           'Access-Control-Allow-Methods': 'POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
-      });
+
     }
   } catch (error) {
     // Return fallback response even for parsing errors
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
           'Access-Control-Allow-Methods': 'POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
-      });
+
     } catch (fallbackError) {
       // Last resort: return JSON error
       return Response.json(
@@ -171,5 +171,5 @@ export async function OPTIONS() {
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
-  });
+
 }

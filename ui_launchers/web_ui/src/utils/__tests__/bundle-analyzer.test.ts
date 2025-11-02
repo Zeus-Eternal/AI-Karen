@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { 
-  BundleAnalyzer, 
-  DEFAULT_BUNDLE_BUDGETS, 
-  BUNDLE_BUDGETS,
-  createBundleAnalyzer 
-} from '../bundle-analyzer';
+import {  BundleAnalyzer, DEFAULT_BUNDLE_BUDGETS, BUNDLE_BUDGETS, createBundleAnalyzer } from '../bundle-analyzer';
 
 describe('BundleAnalyzer', () => {
   const mockStats = {
@@ -82,7 +77,6 @@ describe('BundleAnalyzer', () => {
       expect(result.violations).toHaveLength(0);
       expect(result.warnings).toHaveLength(0);
       expect(result.score).toBeGreaterThan(90);
-    });
 
     it('should detect bundle size violations', () => {
       const largeStats = {
@@ -98,7 +92,6 @@ describe('BundleAnalyzer', () => {
       expect(result.violations[0].severity).toBe('error');
       expect(result.violations[0].actual).toBe(300 * 1024);
       expect(result.violations[0].budget).toBe(250 * 1024);
-    });
 
     it('should detect chunk size violations', () => {
       const analyzer = new BundleAnalyzer();
@@ -108,7 +101,6 @@ describe('BundleAnalyzer', () => {
       expect(chunkViolations).toHaveLength(1);
       expect(chunkViolations[0].target).toBe('vendor');
       expect(chunkViolations[0].actual).toBe(120 * 1024);
-    });
 
     it('should detect asset size violations', () => {
       const analyzer = new BundleAnalyzer();
@@ -118,7 +110,6 @@ describe('BundleAnalyzer', () => {
       expect(assetViolations).toHaveLength(1);
       expect(assetViolations[0].target).toBe('vendor.js');
       expect(assetViolations[0].actual).toBe(120 * 1024);
-    });
 
     it('should generate warnings for approaching budget limits', () => {
       const warningStats = {
@@ -146,7 +137,6 @@ describe('BundleAnalyzer', () => {
 
       expect(result.warnings.length).toBeGreaterThan(0);
       expect(result.warnings.every(w => w.severity === 'warning')).toBe(true);
-    });
 
     it('should provide recommendations', () => {
       const analyzer = new BundleAnalyzer();
@@ -155,7 +145,6 @@ describe('BundleAnalyzer', () => {
       expect(result.recommendations).toBeInstanceOf(Array);
       expect(result.recommendations.length).toBeGreaterThan(0);
       expect(result.recommendations.some(r => r.includes('code splitting'))).toBe(true);
-    });
 
     it('should calculate performance score', () => {
       const analyzer = new BundleAnalyzer();
@@ -166,8 +155,7 @@ describe('BundleAnalyzer', () => {
       
       // Should have lower score due to violations
       expect(result.score).toBeLessThan(80);
-    });
-  });
+
 
   describe('custom budgets', () => {
     it('should use mobile budgets', () => {
@@ -178,7 +166,6 @@ describe('BundleAnalyzer', () => {
       const bundleViolations = result.violations.filter(v => v.type === 'bundle-size');
       expect(bundleViolations).toHaveLength(1);
       expect(bundleViolations[0].budget).toBe(BUNDLE_BUDGETS.mobile.maxBundleSize);
-    });
 
     it('should use desktop budgets', () => {
       const desktopAnalyzer = createBundleAnalyzer('desktop');
@@ -187,7 +174,6 @@ describe('BundleAnalyzer', () => {
       // 200KB should be within desktop budget of 300KB
       const bundleViolations = result.violations.filter(v => v.type === 'bundle-size');
       expect(bundleViolations).toHaveLength(0);
-    });
 
     it('should use enterprise budgets', () => {
       const enterpriseAnalyzer = createBundleAnalyzer('enterprise');
@@ -196,8 +182,7 @@ describe('BundleAnalyzer', () => {
       // 200KB should be well within enterprise budget of 500KB
       const bundleViolations = result.violations.filter(v => v.type === 'bundle-size');
       expect(bundleViolations).toHaveLength(0);
-    });
-  });
+
 
   describe('edge cases', () => {
     it('should handle empty stats', () => {
@@ -215,7 +200,6 @@ describe('BundleAnalyzer', () => {
       expect(result.violations).toHaveLength(0);
       expect(result.warnings).toHaveLength(0);
       expect(result.score).toBe(100);
-    });
 
     it('should handle very large bundles', () => {
       const hugeStats = {
@@ -243,7 +227,6 @@ describe('BundleAnalyzer', () => {
 
       expect(result.violations.length).toBeGreaterThan(0);
       expect(result.score).toBeLessThan(50);
-    });
 
     it('should provide good gzip ratio bonus', () => {
       const goodGzipStats = {
@@ -271,6 +254,5 @@ describe('BundleAnalyzer', () => {
       const result = analyzer.analyzeBundleStats(goodGzipStats);
 
       expect(result.score).toBeGreaterThan(95);
-    });
-  });
-});
+
+

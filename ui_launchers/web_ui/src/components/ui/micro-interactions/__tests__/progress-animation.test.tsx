@@ -32,7 +32,6 @@ describe('ProgressAnimation', () => {
     );
     
     expect(screen.getByTestId('progress')).toBeInTheDocument();
-  });
 
   it('renders circular progress correctly', () => {
     render(
@@ -48,7 +47,6 @@ describe('ProgressAnimation', () => {
     const progress = screen.getByTestId('circular-progress');
     expect(progress).toBeInTheDocument();
     expect(progress.querySelector('svg')).toBeInTheDocument();
-  });
 
   it('renders dots progress correctly', () => {
     render(
@@ -65,7 +63,6 @@ describe('ProgressAnimation', () => {
     expect(progress).toBeInTheDocument();
     // Should have 10 dots
     expect(progress.children).toHaveLength(10);
-  });
 
   it('shows percentage when enabled', () => {
     render(
@@ -79,7 +76,6 @@ describe('ProgressAnimation', () => {
     );
     
     expect(screen.getByText('65%')).toBeInTheDocument();
-  });
 
   it('shows percentage for circular variant', () => {
     render(
@@ -94,7 +90,6 @@ describe('ProgressAnimation', () => {
     );
     
     expect(screen.getByText('80%')).toBeInTheDocument();
-  });
 
   it('clamps progress values correctly', () => {
     render(
@@ -109,7 +104,6 @@ describe('ProgressAnimation', () => {
     
     // Should clamp to 100%
     expect(screen.getByText('100%')).toBeInTheDocument();
-  });
 
   it('handles negative progress values', () => {
     render(
@@ -124,7 +118,6 @@ describe('ProgressAnimation', () => {
     
     // Should clamp to 0%
     expect(screen.getByText('0%')).toBeInTheDocument();
-  });
 
   it('applies custom className', () => {
     render(
@@ -138,7 +131,6 @@ describe('ProgressAnimation', () => {
     );
     
     expect(screen.getByTestId('custom-progress')).toHaveClass('custom-class');
-  });
 
   it('applies size classes correctly', () => {
     render(
@@ -153,5 +145,4 @@ describe('ProgressAnimation', () => {
     
     const progressBar = screen.getByTestId('large-progress').querySelector('.bg-muted');
     expect(progressBar).toHaveClass('h-4');
-  });
-});
+

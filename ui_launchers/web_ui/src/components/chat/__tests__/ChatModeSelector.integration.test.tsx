@@ -4,6 +4,7 @@
  */
 
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect } from 'vitest';
 import ChatModeSelector, { ChatMode } from '../ChatModeSelector';
@@ -89,20 +90,17 @@ describe('ChatModeSelector Integration', () => {
     expect(screen.getByTestId('card')).toBeInTheDocument();
     expect(screen.getByTestId('card-title')).toBeInTheDocument();
     expect(screen.getByTestId('card-description')).toBeInTheDocument();
-  });
 
   it('displays the component title and description', () => {
     render(<ChatModeSelector {...mockProps} />);
     
     expect(screen.getByText('Chat Mode & Model Selection')).toBeInTheDocument();
     expect(screen.getByText('Switch between different chat modes and models')).toBeInTheDocument();
-  });
 
   it('shows mode selection section', () => {
     render(<ChatModeSelector {...mockProps} />);
     
     expect(screen.getByText('Chat Mode')).toBeInTheDocument();
-  });
 
   it('displays mode buttons', () => {
     render(<ChatModeSelector {...mockProps} />);
@@ -110,27 +108,23 @@ describe('ChatModeSelector Integration', () => {
     expect(screen.getByText('Text Generation')).toBeInTheDocument();
     expect(screen.getByText('Image Generation')).toBeInTheDocument();
     expect(screen.getByText('Multi-modal')).toBeInTheDocument();
-  });
 
   it('shows model selection section', () => {
     render(<ChatModeSelector {...mockProps} />);
     
     expect(screen.getByText(/Model for/)).toBeInTheDocument();
     expect(screen.getByTestId('select')).toBeInTheDocument();
-  });
 
   it('displays current mode badge', () => {
     render(<ChatModeSelector {...mockProps} />);
     
     const badges = screen.getAllByTestId('badge');
     expect(badges.length).toBeGreaterThan(0);
-  });
 
   it('shows separator between sections', () => {
     render(<ChatModeSelector {...mockProps} />);
     
     expect(screen.getByTestId('separator')).toBeInTheDocument();
-  });
 
   it('handles disabled state', () => {
     render(<ChatModeSelector {...mockProps} disabled={true} />);
@@ -138,6 +132,5 @@ describe('ChatModeSelector Integration', () => {
     const buttons = screen.getAllByTestId('button');
     buttons.forEach(button => {
       expect(button).toBeDisabled();
-    });
-  });
-});
+
+

@@ -82,7 +82,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           tenant_id: tenantId,
           timeframe_days: 30
         })
-      });
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -135,7 +135,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
             updated_at: new Date().toISOString()
           }
         })
-      });
+
       if (!response.ok) {
         throw new Error(`Failed to save memory: ${response.statusText}`);
       }
@@ -163,7 +163,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           tenant_id: tenantId,
           memory_id: memoryId
         })
-      });
+
       if (!response.ok) {
         throw new Error(`Failed to delete memory: ${response.statusText}`);
       }
@@ -193,7 +193,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
         const newFilters = {...prev};
         delete newFilters.search_results;
         return newFilters;
-      });
+
       return;
     }
     try {
@@ -210,7 +210,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           filters: filters,
           limit: 50
         })
-      });
+
       if (!response.ok) {
         throw new Error(`Search failed: ${response.statusText}`);
       }
@@ -248,7 +248,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
             enabled: true,
           },
         }],
-      });
+
     }
     // Confidence distribution bar chart
     if (analytics.confidence_distribution) {
@@ -270,7 +270,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           xKey: 'range',
           yKey: 'count',
         }],
-      });
+
     }
     // Access patterns line chart
     if (analytics.access_patterns) {
@@ -298,7 +298,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
             enabled: true,
           },
         }],
-      });
+
     }
     return charts;
   }, [analytics]);
@@ -349,7 +349,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           }}>
             <span>{error}</span>
             <button 
-              onClick={() = aria-label="Button"> setError(null)}
+              onClick={() => setError(null)}
               style={{
                 background: 'none',
                 border: 'none',
@@ -376,31 +376,28 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           {/* View mode selector */}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
-              onClick={() = aria-label="Button"> setViewMode('grid')}
+              onClick={() => setViewMode('grid')}
               style={{
                 ...viewModeButtonStyles.base,
                 ...(viewMode === 'grid' ? viewModeButtonStyles.active : viewModeButtonStyles.inactive)
               }}
             >
-              Grid View
             </button>
             <button
-              onClick={() = aria-label="Button"> setViewMode('network')}
+              onClick={() => setViewMode('network')}
               style={{
                 ...viewModeButtonStyles.base,
                 ...(viewMode === 'network' ? viewModeButtonStyles.active : viewModeButtonStyles.inactive)
               }}
             >
-              Network View
             </button>
             <button
-              onClick={() = aria-label="Button"> setViewMode('analytics')}
+              onClick={() => setViewMode('analytics')}
               style={{
                 ...viewModeButtonStyles.base,
                 ...(viewMode === 'analytics' ? viewModeButtonStyles.active : viewModeButtonStyles.inactive)
               }}
             >
-              Analytics
             </button>
           </div>
           {/* Search and action buttons */}
@@ -418,7 +415,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
                 type="text"
                 placeholder="Search memories..."
                 value={searchQuery}
-                onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 style={{
                   padding: '8px 12px',
@@ -442,7 +439,6 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
                   whiteSpace: 'nowrap'
                 }}
                aria-label="Button">
-                Search
               </button>
             </div>
             <button
@@ -457,7 +453,6 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
                 whiteSpace: 'nowrap'
               }}
              aria-label="Button">
-              New Memory
             </button>
           </div>
         </div>

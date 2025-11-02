@@ -6,18 +6,13 @@
  * 
  * Requirements: 7.3, 7.5
  */
-'use client';
+"use client";
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { useRole } from '@/hooks/useRole';
 import { UserListCache, AdminCacheManager } from '@/lib/cache/admin-cache';
-import type { 
-  User, 
-  UserListFilter, 
-  PaginationParams, 
-  PaginatedResponse,
-  AdminApiResponse 
-} from '@/types/admin';
+import type {  User, UserListFilter, PaginationParams, PaginatedResponse, AdminApiResponse } from '@/types/admin';
 interface VirtualizedUserTableProps {
   selectedUsers: string[];
   onSelectionChange: (userIds: string[]) => void;
@@ -53,7 +48,7 @@ const columns: TableColumn[] = [
       <input
         type="checkbox"
         checked={value}
-        onChange={(e) = aria-label="Input"> helpers.onSelect?.(user.user_id, e.target.checked)}
+        onChange={(e) => helpers.onSelect?.(user.user_id, e.target.checked)}
         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
       />
     )
@@ -119,13 +114,12 @@ const columns: TableColumn[] = [
     render: (user, value, helpers) => (
       <div className="flex space-x-2">
         <button
-          onClick={() = aria-label="Button"> helpers.onEdit?.(user)}
+          onClick={() => helpers.onEdit?.(user)}
           className="text-blue-600 hover:text-blue-800 text-sm md:text-base lg:text-lg"
         >
-          Edit
         </button>
         <button
-          onClick={() = aria-label="Button"> helpers.onToggleStatus?.(user)}
+          onClick={() => helpers.onToggleStatus?.(user)}
           className={`text-sm ${
             user.is_active ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'
           }`}
@@ -227,7 +221,7 @@ export function VirtualizedUserTable({
     limit: 100, // Larger page size for virtual scrolling
     sort_by: 'created_at',
     sort_order: 'desc'
-  });
+
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -288,7 +282,7 @@ export function VirtualizedUserTable({
             params.append(key, value.toString());
           }
         }
-      });
+
       const response = await fetch(`/api/admin/users?${params.toString()}`);
       if (!response.ok) {
         throw new Error(`Failed to load users: ${response.statusText}`);
@@ -373,7 +367,7 @@ export function VirtualizedUserTable({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !user.is_active })
-      });
+
       if (!response.ok) {
         throw new Error('Failed to update user status');
       }
@@ -404,7 +398,7 @@ export function VirtualizedUserTable({
       <div className={`bg-white shadow rounded-lg ${className}`}>
         <div className="p-6 sm:p-4 md:p-6">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/4 mb-4 sm:w-auto md:w-full"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/4 mb-4 "></div>
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="h-4 bg-gray-200 rounded"></div>
@@ -423,10 +417,9 @@ export function VirtualizedUserTable({
             <p className="font-medium">Error loading users</p>
             <p className="text-sm mt-1 md:text-base lg:text-lg">{error}</p>
             <button
-              onClick={() = aria-label="Button"> loadUsers()}
+              onClick={() => loadUsers()}
               className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
             >
-              Retry
             </button>
           </div>
         </div>
@@ -454,7 +447,6 @@ export function VirtualizedUserTable({
                 onChange={(e) => handleSelectAll(e.target.checked)}
                 className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              Select All
             </label>
             {selectedUsers.length > 0 && (
               <span className="text-sm text-blue-600 font-medium md:text-base lg:text-lg">
@@ -474,7 +466,7 @@ export function VirtualizedUserTable({
           >
             {column.sortable ? (
               <button
-                onClick={() = aria-label="Button"> handleSort(column.key as keyof User)}
+                onClick={() => handleSort(column.key as keyof User)}
                 className="flex items-center space-x-1 hover:text-gray-700"
               >
                 <span>{column.label}</span>
@@ -516,7 +508,6 @@ export function VirtualizedUserTable({
       {/* No More Data Indicator */}
       {!hasNextPage && users.length > 0 && (
         <div className="px-6 py-4 border-t border-gray-200 text-center text-sm text-gray-500 md:text-base lg:text-lg">
-          All users loaded
         </div>
       )}
       {/* Edit User Modal */}
@@ -529,16 +520,14 @@ export function VirtualizedUserTable({
             </p>
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() = aria-label="Button"> setEditingUser(null)}
+                onClick={() => setEditingUser(null)}
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
               >
-                Cancel
               </button>
               <button
                 onClick={handleUserUpdated}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                aria-label="Button">
-                Save Changes
               </button>
             </div>
           </div>

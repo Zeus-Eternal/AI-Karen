@@ -34,13 +34,11 @@ describe('PreferencesService Integration', () => {
     (getKarenBackend as Mock).mockReturnValue(mockBackend);
     
     service = new PreferencesService();
-  });
 
   afterEach(async () => {
     if (service) {
       await service.shutdown();
     }
-  });
 
   describe('Real-world Usage Scenarios', () => {
     it('should handle complete user preference workflow', async () => {
@@ -71,7 +69,6 @@ describe('PreferencesService Integration', () => {
         .mockResolvedValueOnce(undefined); // saveUserPreferences
 
       await expect(service.updateLastSelectedModel('gpt-4')).resolves.not.toThrow();
-    });
 
     it('should handle system configuration integration', async () => {
       // Mock system config
@@ -85,7 +82,6 @@ describe('PreferencesService Integration', () => {
       const cachedConfig = await service.getDefaultModelConfig();
       expect(cachedConfig).toEqual(config);
       expect(mockBackend.makeRequestPublic).toHaveBeenCalledTimes(1);
-    });
 
     it('should handle preference validation in real scenarios', async () => {
       // Test various invalid preference scenarios
@@ -112,7 +108,6 @@ describe('PreferencesService Integration', () => {
       mockBackend.makeRequestPublic.mockResolvedValue(undefined);
       await expect(service.saveUserPreferences(validPrefs))
         .resolves.not.toThrow();
-    });
 
     it('should handle error recovery gracefully', async () => {
       // Simulate backend errors
@@ -129,7 +124,6 @@ describe('PreferencesService Integration', () => {
       // Save should throw since it's a critical operation
       await expect(service.saveUserPreferences({ preferLocal: true }))
         .rejects.toThrow();
-    });
 
     it('should handle concurrent operations correctly', async () => {
       const mockPrefs = {
@@ -152,15 +146,13 @@ describe('PreferencesService Integration', () => {
       const expectedResult = service.mergeWithDefaults(mockPrefs);
       results.forEach(result => {
         expect(result).toEqual(expectedResult);
-      });
 
       // All calls should succeed
       expect(results).toHaveLength(3);
       results.forEach(result => {
         expect(result.lastSelectedModel).toBe('concurrent-model');
         expect(result.preferLocal).toBe(true);
-      });
-    });
+
 
     it('should handle preference merging correctly', async () => {
       // Test partial preferences are merged with defaults
@@ -177,8 +169,7 @@ describe('PreferencesService Integration', () => {
         preferredProviders: [],
         preferLocal: false,
         autoSelectFallback: true
-      });
-    });
+
 
     it('should provide useful service statistics', async () => {
       // Load some data
@@ -197,8 +188,7 @@ describe('PreferencesService Integration', () => {
       expect(stats.hasUserPreferences).toBe(true);
       expect(stats.hasDefaultConfig).toBe(true);
       expect(stats.config).toBeDefined();
-    });
-  });
+
 
   describe('Performance and Caching', () => {
     it('should cache preferences efficiently', async () => {
@@ -208,7 +198,6 @@ describe('PreferencesService Integration', () => {
       
       mockBackend.makeRequestPublic.mockResolvedValue({
         lastSelectedModel: 'cached-model'
-      });
 
       // First call - should hit backend
       await freshService.getUserPreferences();
@@ -220,13 +209,11 @@ describe('PreferencesService Integration', () => {
       expect(mockBackend.makeRequestPublic).toHaveBeenCalledTimes(1);
       
       await freshService.shutdown();
-    });
 
     it('should invalidate cache appropriately', async () => {
       // Load initial data
       mockBackend.makeRequestPublic.mockResolvedValueOnce({
         lastSelectedModel: 'initial'
-      });
 
       await service.getUserPreferences();
 
@@ -236,11 +223,9 @@ describe('PreferencesService Integration', () => {
       // Next call should hit backend again
       mockBackend.makeRequestPublic.mockResolvedValueOnce({
         lastSelectedModel: 'after-clear'
-      });
 
       const result = await service.getUserPreferences();
       expect(result.lastSelectedModel).toBe('after-clear');
       expect(mockBackend.makeRequestPublic).toHaveBeenCalledTimes(2);
-    });
-  });
-});
+
+

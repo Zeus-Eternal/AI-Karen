@@ -1,6 +1,7 @@
 
 "use client";
 
+import React from 'react';
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
@@ -36,7 +37,7 @@ export default function GmailPluginPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3">
-        <Mail className="h-8 w-8 text-red-600 sm:w-auto md:w-full" />
+        <Mail className="h-8 w-8 text-red-600 " />
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Gmail Integration</h2>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -49,12 +50,11 @@ export default function GmailPluginPage() {
 
       <Alert variant="destructive">
         Karen can check unread messages or compose new ones on your behalf.
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>About Gmail Integration</AlertTitle>
         <AlertDescription>
           <p>
             When the backend has a valid <code>GMAIL_API_TOKEN</code> configured,
-            Karen can access your Gmail to list unread messages and create
             drafts. Without it, these actions are simulated for demo purposes.
           </p>
           <p className="mt-2">You can try the features via chat:</p>
@@ -76,16 +76,16 @@ export default function GmailPluginPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="gmail-user">Gmail Username</Label>
-            <input id="gmail-user" value={username} onChange={(e) = aria-label="Input"> setUsername(e.target.value)} />
+            <input id="gmail-user" value={username} onChange={(e) => setUsername(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="gmail-pass" className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-primary/80 sm:w-auto md:w-full"/>App Password</Label>
-            <input id="gmail-pass" type="password" value={appPassword} onChange={(e) = aria-label="Input"> setAppPassword(e.target.value)} />
+            <Label htmlFor="gmail-pass" className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-primary/80 "/>App Password</Label>
+            <input id="gmail-pass" type="password" value={appPassword} onChange={(e) => setAppPassword(e.target.value)} />
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Use a Gmail app password for SMTP/IMAP access.</p>
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <button onClick={saveCreds} aria-label="Button">Save Credentials</Button>
+          <Button onClick={saveCreds} >Save Credentials</Button>
         </CardFooter>
       </Card>
 
@@ -103,14 +103,14 @@ export default function GmailPluginPage() {
           <ResponsiveCardGrid>
           <div className="p-3 border rounded-md bg-muted/30 sm:p-4 md:p-6">
             <div className="flex items-center mb-1">
-              <Inbox className="mr-2 h-4 w-4 text-primary/80 sm:w-auto md:w-full"/>
+              <Inbox className="mr-2 h-4 w-4 text-primary/80 "/>
               <h4 className="font-medium text-sm md:text-base lg:text-lg">Check Unread Emails</h4>
             </div>
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Ask Karen: "Check my unread emails."</p>
           </div>
           <div className="p-3 border rounded-md bg-muted/30 sm:p-4 md:p-6">
              <div className="flex items-center mb-1">
-              <Send className="mr-2 h-4 w-4 text-primary/80 sm:w-auto md:w-full"/>
+              <Send className="mr-2 h-4 w-4 text-primary/80 "/>
               <h4 className="font-medium text-sm md:text-base lg:text-lg">Compose New Email</h4>
             </div>
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Ask Karen: "Compose an email to..."</p>
@@ -125,7 +125,7 @@ export default function GmailPluginPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center">
-            <Zap className="mr-2 h-5 w-5 text-primary/80 sm:w-auto md:w-full" />
+            <Zap className="mr-2 h-5 w-5 text-primary/80 " />
             Premium Automations (Conceptual)
           </CardTitle>
           <CardDescription>
@@ -149,7 +149,7 @@ export default function GmailPluginPage() {
             <input id="email-check-frequency" type="text" placeholder="e.g., Every 30 minutes, Hourly" disabled />
           </div>
            <Alert variant="default" className="bg-background">
-            <Info className="h-4 w-4 sm:w-auto md:w-full" />
+            <Info className="h-4 w-4 " />
             <AlertTitle className="text-sm font-semibold md:text-base lg:text-lg">Future Feature</AlertTitle>
             <AlertDescription className="text-xs sm:text-sm md:text-base">
               This automation section is a placeholder. Implementing background tasks for Gmail requires dedicated backend services for scheduling, secure authentication (OAuth refresh tokens), and email processing logic.
@@ -157,7 +157,7 @@ export default function GmailPluginPage() {
           </Alert>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <button disabled aria-label="Button">Save Gmail Automations</Button>
+          <Button disabled >Save Gmail Automations</Button>
         </CardFooter>
       </Card>
       
@@ -184,7 +184,7 @@ export default function GmailPluginPage() {
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <button disabled aria-label="Button">Save Gmail Settings</Button>
+          <Button disabled >Save Gmail Settings</Button>
         </CardFooter>
       </Card>
     </div>

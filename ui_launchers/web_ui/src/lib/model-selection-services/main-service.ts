@@ -8,19 +8,7 @@ import { ModelHealthMonitor } from "./health-monitor";
 import { ResourceMonitor } from "./resource-monitor";
 import { ModelScanner } from "./model-scanner";
 import { BaseModelService } from "./base-service";
-import { 
-  ModelSelectionPreferences,
-  ModelSelectionResult,
-  ModelRegistry,
-  ModelCategories,
-  DirectoryWatchOptions,
-  FileSystemChangeEvent,
-  SelectOptimalModelOptions,
-  ModelSwitchOptions,
-  ModelSwitchResult,
-  ModelsByTypeOptions,
-  ModelSelectionStats
-} from "./types";
+import {  ModelSelectionPreferences, ModelSelectionResult, ModelRegistry, ModelCategories, DirectoryWatchOptions, FileSystemChangeEvent, SelectOptimalModelOptions, ModelSwitchOptions, ModelSwitchResult, ModelsByTypeOptions, ModelSelectionStats } from "./types";
 export class ModelSelectionService extends BaseModelService {
   private static instance: ModelSelectionService;
   // Modular services
@@ -246,7 +234,7 @@ export class ModelSelectionService extends BaseModelService {
       model.capabilities?.forEach(capability => {
         if (!categories.byCapability[capability]) categories.byCapability[capability] = [];
         categories.byCapability[capability].push(model);
-      });
+
       // By status
       if (!categories.byStatus[model.status]) categories.byStatus[model.status] = [];
       categories.byStatus[model.status].push(model);
@@ -254,7 +242,7 @@ export class ModelSelectionService extends BaseModelService {
       const healthStatus = model.health?.is_healthy ? 'healthy' : 'unhealthy';
       if (!categories.byHealth[healthStatus]) categories.byHealth[healthStatus] = [];
       categories.byHealth[healthStatus].push(model);
-    });
+
     return {
       models,
       categories,
@@ -304,7 +292,7 @@ export class ModelSelectionService extends BaseModelService {
           default:
             return 0;
         }
-      });
+
     }
     return models;
   }
@@ -417,7 +405,7 @@ export class ModelSelectionService extends BaseModelService {
             listener(event);
           } catch (error) {
           }
-        });
+
       }
     }
   }

@@ -50,6 +50,7 @@ export const useChatSettings = (
       model: persistedModel,
     };
   });
+
   const hasInitializedModel = useRef(false);
   const initialModelRef = useRef(initialSettings.model);
 

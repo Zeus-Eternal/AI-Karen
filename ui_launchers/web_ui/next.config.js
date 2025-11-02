@@ -16,8 +16,8 @@ const nextConfig = {
   
   // Explicitly set the root directory to prevent Next.js from looking at parent directories
   experimental: {
-    removeConsole: process.env.NODE_ENV === 'production',
     // Other experimental features can go here
+    swcPlugins: [],
   },
   
   // Cross-origin configuration handled in headers
@@ -42,9 +42,7 @@ const nextConfig = {
   // Disable source maps for faster builds
   productionBrowserSourceMaps: false,
   
-  // Performance optimizations
-  swcMinify: true, // Use faster SWC minifier
-  optimizeFonts: false, // Disable font optimization for speed
+  // Performance optimizations - swcMinify and optimizeFonts are now default in Next.js 15
   
   // Compiler optimizations
   compiler: {

@@ -17,11 +17,10 @@ export async function GET(request: NextRequest) {
         directory,
         message: `Directory ${directory} not found`,
         scan_time: new Date().toISOString()
-      });
+
     }
     // Read directory contents
     const entries = await fs.readdir(fullPath, { withFileTypes: true });
-    });
     // Process entries (both files and directories)
     const models = [];
     for (const entry of entries) {
@@ -62,7 +61,7 @@ export async function GET(request: NextRequest) {
           modified: entryStats.mtime.toISOString(),
           type: modelType,
           config
-        });
+
       } catch (entryError) {
       }
     }

@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect } from 'vitest';
 
 /**
@@ -46,7 +47,7 @@ describe('ModelSelector Integration - STATUS_PRIORITY Verification', () => {
 
       return (a.name || "").localeCompare(b.name || "", undefined, {
         sensitivity: "base",
-      });
+
     };
 
     const sortedModels = [...testModels].sort(sortByStatusThenName);
@@ -58,7 +59,6 @@ describe('ModelSelector Integration - STATUS_PRIORITY Verification', () => {
     expect(sortedModels[3].status).toBe('incompatible'); // priority 3
     expect(sortedModels[4].status).toBe('error');        // priority 4
     expect(sortedModels[5].status).toBe('unknown');      // priority 99 (default)
-  });
 
   it('should handle default priority fallback for unknown statuses', () => {
     // Test that unknown statuses use the default priority (99)
@@ -88,7 +88,7 @@ describe('ModelSelector Integration - STATUS_PRIORITY Verification', () => {
 
       return (a.name || "").localeCompare(b.name || "", undefined, {
         sensitivity: "base",
-      });
+
     };
 
     const sortedModels = [...testModels].sort(sortByStatusThenName);
@@ -100,7 +100,6 @@ describe('ModelSelector Integration - STATUS_PRIORITY Verification', () => {
     // Unknown statuses should come last (using default priority 99)
     expect(sortedModels[2].status).toBe('another-unknown'); // alphabetically first of unknowns
     expect(sortedModels[3].status).toBe('weird-status');    // alphabetically second of unknowns
-  });
 
   it('should verify status badge variant mapping', () => {
     // Test the status badge variant mapping that should be used in the component
@@ -130,7 +129,6 @@ describe('ModelSelector Integration - STATUS_PRIORITY Verification', () => {
     
     // Test unknown status (should use default variant)
     expect(getStatusBadgeVariant('unknown')).toBe('outline');
-  });
 
   it('should verify model filtering preserves priority-based sorting', () => {
     // Test that filtered models maintain correct priority-based sorting
@@ -167,7 +165,7 @@ describe('ModelSelector Integration - STATUS_PRIORITY Verification', () => {
 
       return (a.name || "").localeCompare(b.name || "", undefined, {
         sensitivity: "base",
-      });
+
     };
 
     const sortedFilteredModels = [...filteredModels].sort(sortByStatusThenName);
@@ -180,7 +178,6 @@ describe('ModelSelector Integration - STATUS_PRIORITY Verification', () => {
     
     // Error model should not be in the filtered results
     expect(sortedFilteredModels.find(m => m.status === 'error')).toBeUndefined();
-  });
 
   it('should verify priority-based model selection logic', () => {
     // Test the model selection logic that uses STATUS_PRIORITY for choosing preferred models
@@ -220,7 +217,6 @@ describe('ModelSelector Integration - STATUS_PRIORITY Verification', () => {
       } else {
         preferred.set(selectorValue, model);
       }
-    });
 
     const result = Array.from(preferred.values());
 
@@ -231,8 +227,7 @@ describe('ModelSelector Integration - STATUS_PRIORITY Verification', () => {
     // Should prefer downloading over error for model-b
     const modelB = result.find(m => m.name === 'model-b');
     expect(modelB?.status).toBe('downloading');
-  });
-});
+
 
 // Summary test that validates all requirements are met
 describe('ModelSelector Requirements Validation', () => {
@@ -264,5 +259,4 @@ describe('ModelSelector Requirements Validation', () => {
 
     // All requirements are satisfied
     expect(true).toBe(true);
-  });
-});
+

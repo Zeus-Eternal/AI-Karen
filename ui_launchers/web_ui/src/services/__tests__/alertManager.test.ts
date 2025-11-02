@@ -15,7 +15,6 @@ const localStorageMock = {
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
-});
 
 // Mock toast
 vi.mock('@/hooks/use-toast', () => ({
@@ -32,12 +31,10 @@ describe('AlertManager', () => {
     localStorageMock.getItem.mockClear();
     localStorageMock.setItem.mockClear();
     vi.clearAllMocks();
-  });
 
   describe('Initialization', () => {
     test('should initialize successfully', async () => {
       await expect(alertManager.initialize()).resolves.not.toThrow();
-    });
 
     test('should load settings from localStorage', async () => {
       const mockSettings = {
@@ -64,7 +61,6 @@ describe('AlertManager', () => {
       expect(settings.maxConcurrentAlerts).toBe(2);
       expect(settings.enableSounds).toBe(true);
       expect(settings.position).toBe('top-left');
-    });
 
     test('should use default settings when localStorage is empty', async () => {
       localStorageMock.getItem.mockReturnValue(null);
@@ -75,13 +71,11 @@ describe('AlertManager', () => {
       expect(settings.maxConcurrentAlerts).toBe(3);
       expect(settings.enableAnimations).toBe(true);
       expect(settings.position).toBe('top-right');
-    });
-  });
+
 
   describe('Alert Management', () => {
     beforeEach(async () => {
       await alertManager.initialize();
-    });
 
     test('should show alert successfully', async () => {
       const alertData: Omit<KarenAlert, 'id' | 'timestamp'> = {
@@ -98,7 +92,6 @@ describe('AlertManager', () => {
       expect(result.success).toBe(true);
       expect(result.alertId).toBeDefined();
       expect(result.error).toBeUndefined();
-    });
 
     test('should respect rate limiting', async () => {
       const alertData: Omit<KarenAlert, 'id' | 'timestamp'> = {
@@ -120,13 +113,11 @@ describe('AlertManager', () => {
       const result = await alertManager.showAlert(alertData);
       expect(result.success).toBe(false);
       expect(result.error).toBe('Rate limit exceeded');
-    });
 
     test('should respect category settings', async () => {
       // Disable performance alerts
       await alertManager.updateSettings({
         categories: { performance: false, health: true, system: true, validation: true },
-      });
 
       const alertData: Omit<KarenAlert, 'id' | 'timestamp'> = {
         type: 'performance',
@@ -140,7 +131,6 @@ describe('AlertManager', () => {
       const result = await alertManager.showAlert(alertData);
       expect(result.success).toBe(false);
       expect(result.error).toBe('Alert category disabled');
-    });
 
     test('should prioritize alerts correctly', async () => {
       const lowPriorityAlert: Omit<KarenAlert, 'id' | 'timestamp'> = {
@@ -171,7 +161,6 @@ describe('AlertManager', () => {
       if (queuedAlerts.length > 0) {
         expect(queuedAlerts[0].priority).toBe('high');
       }
-    });
 
     test('should dismiss alert successfully', async () => {
       const alertData: Omit<KarenAlert, 'id' | 'timestamp'> = {
@@ -189,45 +178,37 @@ describe('AlertManager', () => {
       const dismissResult = await alertManager.dismissAlert(showResult.alertId);
       expect(dismissResult.success).toBe(true);
       expect(dismissResult.alertId).toBe(showResult.alertId);
-    });
 
     test('should handle dismiss of non-existent alert', async () => {
       const result = await alertManager.dismissAlert('non-existent-id');
       expect(result.success).toBe(false);
       expect(result.error).toBe('Alert not found');
-    });
-  });
+
 
   describe('Convenience Methods', () => {
     beforeEach(async () => {
       await alertManager.initialize();
-    });
 
     test('should show success alert', async () => {
       const result = await alertManager.showSuccess('Success!', 'Operation completed');
       expect(result.success).toBe(true);
-    });
 
     test('should show error alert', async () => {
       const result = await alertManager.showError('Error!', 'Something went wrong');
       expect(result.success).toBe(true);
-    });
 
     test('should show warning alert', async () => {
       const result = await alertManager.showWarning('Warning!', 'Please be careful');
       expect(result.success).toBe(true);
-    });
 
     test('should show info alert', async () => {
       const result = await alertManager.showInfo('Info', 'Here is some information');
       expect(result.success).toBe(true);
-    });
-  });
+
 
   describe('Settings Management', () => {
     beforeEach(async () => {
       await alertManager.initialize();
-    });
 
     test('should update settings successfully', async () => {
       const newSettings: Partial<AlertSettings> = {
@@ -243,7 +224,6 @@ describe('AlertManager', () => {
       expect(settings.maxConcurrentAlerts).toBe(5);
       expect(settings.enableSounds).toBe(true);
       expect(settings.position).toBe('bottom-left');
-    });
 
     test('should persist settings to localStorage', async () => {
       const newSettings: Partial<AlertSettings> = {
@@ -256,13 +236,11 @@ describe('AlertManager', () => {
         'karen-alert-settings',
         expect.stringContaining('"maxConcurrentAlerts":4')
       );
-    });
-  });
+
 
   describe('Event System', () => {
     beforeEach(async () => {
       await alertManager.initialize();
-    });
 
     test('should emit alert-shown event', async () => {
       const eventListener = vi.fn();
@@ -285,7 +263,6 @@ describe('AlertManager', () => {
       }));
 
       unsubscribe();
-    });
 
     test('should emit alert-dismissed event', async () => {
       const eventListener = vi.fn();
@@ -308,7 +285,6 @@ describe('AlertManager', () => {
       }));
 
       unsubscribe();
-    });
 
     test('should unsubscribe event listeners', async () => {
       const eventListener = vi.fn();
@@ -330,13 +306,11 @@ describe('AlertManager', () => {
       
       // Event listener should not have been called
       expect(eventListener).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('Queue Management', () => {
     beforeEach(async () => {
       await alertManager.initialize();
-    });
 
     test('should get queued alerts', async () => {
       const alertData: Omit<KarenAlert, 'id' | 'timestamp'> = {
@@ -352,7 +326,6 @@ describe('AlertManager', () => {
       const queuedAlerts = alertManager.getQueuedAlerts();
       
       expect(Array.isArray(queuedAlerts)).toBe(true);
-    });
 
     test('should clear queue', async () => {
       const alertData: Omit<KarenAlert, 'id' | 'timestamp'> = {
@@ -369,8 +342,7 @@ describe('AlertManager', () => {
       
       const queuedAlerts = alertManager.getQueuedAlerts();
       expect(queuedAlerts).toHaveLength(0);
-    });
-  });
+
 
   describe('Metrics and History', () => {
     test('should track metrics', async () => {
@@ -404,7 +376,6 @@ describe('AlertManager', () => {
       const updatedMetrics = freshAlertManager.getMetrics();
       expect(updatedMetrics.totalShown).toBe(initialTotalShown + 1);
       expect(updatedMetrics.categoryBreakdown.info).toBe(initialInfoCount + 1);
-    });
 
     test('should maintain history', async () => {
       // Clear localStorage for this test
@@ -431,6 +402,5 @@ describe('AlertManager', () => {
       // Check that history was updated
       const updatedHistory = freshAlertManager.getHistory();
       expect(updatedHistory.alerts.length).toBeGreaterThan(initialHistoryLength);
-    });
-  });
-});
+
+

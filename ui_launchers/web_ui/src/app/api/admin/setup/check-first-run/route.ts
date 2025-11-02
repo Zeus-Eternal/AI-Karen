@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         'Pragma': 'no-cache',
         'Expires': '0'
       }
-    });
+
   } catch (error) {
     return NextResponse.json({
       success: false,

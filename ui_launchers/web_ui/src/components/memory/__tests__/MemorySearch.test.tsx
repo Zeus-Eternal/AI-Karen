@@ -175,12 +175,10 @@ describe('MemorySearch', () => {
       memories: mockMemories,
       totalFound: mockMemories.length,
       searchTime: 45
-    });
-  });
+
 
   afterEach(() => {
     vi.clearAllTimers();
-  });
 
   describe('Component Rendering', () => {
     it('renders the search interface correctly', () => {
@@ -190,14 +188,12 @@ describe('MemorySearch', () => {
       expect(screen.getByPlaceholderText('Search memories semantically...')).toBeInTheDocument();
       expect(screen.getByText('Search')).toBeInTheDocument();
       expect(screen.getByText('Filters')).toBeInTheDocument();
-    });
 
     it('renders with initial query if provided', () => {
       render(<MemorySearch {...defaultProps} initialQuery="test query" />);
       
       const input = screen.getByTestId('input');
       expect(input).toHaveValue('test query');
-    });
 
     it('renders tabs for results, history, and saved searches', () => {
       render(<MemorySearch {...defaultProps} />);
@@ -205,15 +201,13 @@ describe('MemorySearch', () => {
       expect(screen.getByText('Results')).toBeInTheDocument();
       expect(screen.getByText(/History/)).toBeInTheDocument();
       expect(screen.getByText(/Saved/)).toBeInTheDocument();
-    });
 
     it('shows empty state when no search has been performed', () => {
       render(<MemorySearch {...defaultProps} />);
       
       expect(screen.getByText('Start searching')).toBeInTheDocument();
       expect(screen.getByText('Enter a search query to find relevant memories')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Search Functionality', () => {
     it('performs search when search button is clicked', async () => {
@@ -234,8 +228,7 @@ describe('MemorySearch', () => {
             tenantId: 'test-tenant'
           })
         );
-      });
-    });
+
 
     it('performs search when Enter key is pressed', async () => {
       const user = userEvent.setup();
@@ -253,8 +246,7 @@ describe('MemorySearch', () => {
             userId: 'test-user-123'
           })
         );
-      });
-    });
+
 
     it('does not search with empty query', async () => {
       const user = userEvent.setup();
@@ -265,7 +257,6 @@ describe('MemorySearch', () => {
       
       await user.click(searchButton);
       expect(mockMemoryService.searchMemories).not.toHaveBeenCalled();
-    });
 
     it('displays search results correctly', async () => {
       const user = userEvent.setup();
@@ -279,8 +270,7 @@ describe('MemorySearch', () => {
         expect(screen.getByText('JavaScript function to handle async operations')).toBeInTheDocument();
         expect(screen.getByText('React hooks best practices and patterns')).toBeInTheDocument();
         expect(screen.getByText('Personal note about project preferences')).toBeInTheDocument();
-      });
-    });
+
 
     it('displays search statistics', async () => {
       const user = userEvent.setup();
@@ -292,8 +282,7 @@ describe('MemorySearch', () => {
       
       await waitFor(() => {
         expect(screen.getByText('3 results in 45ms')).toBeInTheDocument();
-      });
-    });
+
 
     it('highlights search terms in results', async () => {
       const user = userEvent.setup();
@@ -306,9 +295,8 @@ describe('MemorySearch', () => {
       await waitFor(() => {
         const highlightedText = screen.getByText('JavaScript');
         expect(highlightedText.tagName).toBe('MARK');
-      });
-    });
-  });
+
+
 
   describe('Search Suggestions', () => {
     it('shows suggestions when typing in search input', async () => {
@@ -322,7 +310,6 @@ describe('MemorySearch', () => {
       // Suggestions would be shown in a real implementation
       // This tests the structure is in place
       expect(input).toHaveFocus();
-    });
 
     it('hides suggestions when Escape is pressed', async () => {
       const user = userEvent.setup();
@@ -334,7 +321,6 @@ describe('MemorySearch', () => {
       
       // Suggestions should be hidden
       expect(input).toHaveValue('test');
-    });
 
     it('clears search input when X button is clicked', async () => {
       const user = userEvent.setup();
@@ -348,8 +334,7 @@ describe('MemorySearch', () => {
         await user.click(clearButton);
         expect(input).toHaveValue('');
       }
-    });
-  });
+
 
   describe('Filtering', () => {
     it('toggles filter panel when filter button is clicked', async () => {
@@ -362,7 +347,6 @@ describe('MemorySearch', () => {
       // Filter panel should be visible
       expect(screen.getByText('Tags')).toBeInTheDocument();
       expect(screen.getByText('Sort By')).toBeInTheDocument();
-    });
 
     it('applies tag filters correctly', async () => {
       const user = userEvent.setup();
@@ -375,15 +359,13 @@ describe('MemorySearch', () => {
       
       await waitFor(() => {
         expect(screen.getByText('3 results in 45ms')).toBeInTheDocument();
-      });
-      
+
       // Open filters
       const filterButton = screen.getByText('Filters');
       await user.click(filterButton);
       
       // Tag filters would be available after search
       expect(screen.getByText('Tags')).toBeInTheDocument();
-    });
 
     it('changes sort order correctly', async () => {
       const user = userEvent.setup();
@@ -396,7 +378,6 @@ describe('MemorySearch', () => {
       await user.selectOptions(sortSelect, 'date');
       
       expect(sortSelect).toHaveValue('date');
-    });
 
     it('clears all filters when clear button is clicked', async () => {
       const user = userEvent.setup();
@@ -411,8 +392,7 @@ describe('MemorySearch', () => {
       // Filters should be reset to defaults
       const sortSelect = screen.getByDisplayValue('Relevance');
       expect(sortSelect).toHaveValue('relevance');
-    });
-  });
+
 
   describe('Memory Selection', () => {
     it('calls onMemorySelect when memory is clicked', async () => {
@@ -431,8 +411,7 @@ describe('MemorySearch', () => {
           fireEvent.click(memoryCard);
           expect(onMemorySelect).toHaveBeenCalledWith(mockMemories[0]);
         }
-      });
-    });
+
 
     it('highlights selected memory', async () => {
       const user = userEvent.setup();
@@ -448,9 +427,8 @@ describe('MemorySearch', () => {
           fireEvent.click(memoryCard);
           expect(memoryCard).toHaveClass('ring-2 ring-blue-500');
         }
-      });
-    });
-  });
+
+
 
   describe('Search History', () => {
     it('displays search history tab', async () => {
@@ -458,15 +436,13 @@ describe('MemorySearch', () => {
       
       const historyTab = screen.getByText(/History/);
       expect(historyTab).toBeInTheDocument();
-    });
 
     it('shows empty state for search history', () => {
       render(<MemorySearch {...defaultProps} />);
       
       // History would be empty initially
       expect(screen.getByTestId('tabs')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Saved Searches', () => {
     it('displays saved searches tab', () => {
@@ -474,7 +450,6 @@ describe('MemorySearch', () => {
       
       const savedTab = screen.getByText(/Saved/);
       expect(savedTab).toBeInTheDocument();
-    });
 
     it('shows save button when query is entered', async () => {
       const user = userEvent.setup();
@@ -484,7 +459,6 @@ describe('MemorySearch', () => {
       await user.type(input, 'test query');
       
       expect(screen.getByText('Save')).toBeInTheDocument();
-    });
 
     it('prompts for name when save button is clicked', async () => {
       const user = userEvent.setup();
@@ -503,8 +477,7 @@ describe('MemorySearch', () => {
       expect(mockPrompt).toHaveBeenCalledWith('Enter a name for this search:');
       
       mockPrompt.mockRestore();
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('displays error message when search fails', async () => {
@@ -520,8 +493,7 @@ describe('MemorySearch', () => {
       await waitFor(() => {
         expect(screen.getByText('Search Error')).toBeInTheDocument();
         expect(screen.getByText('Search failed')).toBeInTheDocument();
-      });
-    });
+
 
     it('allows retry after error', async () => {
       const user = userEvent.setup();
@@ -531,8 +503,7 @@ describe('MemorySearch', () => {
           memories: mockMemories,
           totalFound: mockMemories.length,
           searchTime: 45
-        });
-      
+
       render(<MemorySearch {...defaultProps} />);
       
       const input = screen.getByTestId('input');
@@ -541,16 +512,14 @@ describe('MemorySearch', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Search Error')).toBeInTheDocument();
-      });
-      
+
       const retryButton = screen.getByText('Try Again');
       await user.click(retryButton);
       
       await waitFor(() => {
         expect(screen.getByText('3 results in 45ms')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Loading States', () => {
     it('shows loading state during search', async () => {
@@ -568,7 +537,6 @@ describe('MemorySearch', () => {
       await user.keyboard('{Enter}');
       
       expect(screen.getByText('Searching...')).toBeInTheDocument();
-    });
 
     it('shows loading skeleton for results', async () => {
       const user = userEvent.setup();
@@ -585,8 +553,7 @@ describe('MemorySearch', () => {
       
       // Should show loading skeleton
       expect(screen.getByText('Searching...')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('supports keyboard navigation', async () => {
@@ -603,15 +570,13 @@ describe('MemorySearch', () => {
       await user.tab();
       const searchButton = screen.getByText('Search');
       expect(searchButton).toHaveFocus();
-    });
 
     it('has proper ARIA labels', () => {
       render(<MemorySearch {...defaultProps} />);
       
       const input = screen.getByTestId('input');
       expect(input).toHaveAttribute('placeholder', 'Search memories semantically...');
-    });
-  });
+
 
   describe('Responsive Design', () => {
     it('adapts to specified height', () => {
@@ -620,8 +585,7 @@ describe('MemorySearch', () => {
       const container = screen.getByTestId('input').closest('div');
       // The container should have the specified height
       expect(container).toBeInTheDocument();
-    });
-  });
+
 
   describe('Callbacks', () => {
     it('calls onSearchComplete when search finishes', async () => {
@@ -642,7 +606,6 @@ describe('MemorySearch', () => {
             searchTime: 45
           })
         );
-      });
-    });
-  });
-});
+
+
+

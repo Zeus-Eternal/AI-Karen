@@ -60,7 +60,6 @@ describe('ExtensionAuthManager', () => {
         }),
       },
       writable: true,
-    });
 
     // Mock window.location
     Object.defineProperty(window, 'location', {
@@ -70,17 +69,14 @@ describe('ExtensionAuthManager', () => {
         search: '',
       },
       writable: true,
-    });
 
     // Mock process.env
     process.env.NODE_ENV = 'test';
 
     authManager = new ExtensionAuthManager();
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Token Storage', () => {
     it('should store and retrieve access tokens securely', () => {
@@ -90,7 +86,6 @@ describe('ExtensionAuthManager', () => {
       const retrievedToken = authManager['tokenStorage'].getAccessToken();
       
       expect(retrievedToken).toBe(testToken);
-    });
 
     it('should store and retrieve refresh tokens securely', () => {
       const accessToken = 'test-access-token';
@@ -100,7 +95,6 @@ describe('ExtensionAuthManager', () => {
       const retrievedRefreshToken = authManager['tokenStorage'].getRefreshToken();
       
       expect(retrievedRefreshToken).toBe(refreshToken);
-    });
 
     it('should clear tokens when requested', () => {
       authManager['tokenStorage'].setTokens('access-token', 'refresh-token');
@@ -108,8 +102,7 @@ describe('ExtensionAuthManager', () => {
       
       expect(authManager['tokenStorage'].getAccessToken()).toBeNull();
       expect(authManager['tokenStorage'].getRefreshToken()).toBeNull();
-    });
-  });
+
 
   describe('Authentication Headers', () => {
     it('should return headers with Bearer token when authenticated', async () => {
@@ -122,7 +115,6 @@ describe('ExtensionAuthManager', () => {
       expect(headers['Content-Type']).toBe('application/json');
       expect(headers['Accept']).toBe('application/json');
       expect(headers['X-Client-Type']).toBe('extension-integration');
-    });
 
     it('should include development mode headers in development', async () => {
       process.env.NODE_ENV = 'development';
@@ -131,15 +123,13 @@ describe('ExtensionAuthManager', () => {
       
       expect(headers['X-Development-Mode']).toBe('true');
       expect(headers['X-Skip-Auth']).toBe('dev');
-    });
 
     it('should return headers without token when not authenticated', async () => {
       const headers = await authManager.getAuthHeaders();
       
       expect(headers['Authorization']).toBeUndefined();
       expect(headers['Content-Type']).toBe('application/json');
-    });
-  });
+
 
   describe('Token Expiration', () => {
     it('should detect tokens expiring soon', () => {
@@ -152,7 +142,6 @@ describe('ExtensionAuthManager', () => {
       const isExpiring = authManager['tokenStorage'].isTokenExpiringSoon(token);
       
       expect(isExpiring).toBe(true);
-    });
 
     it('should not detect fresh tokens as expiring', () => {
       // Create a token that expires in 10 minutes
@@ -164,7 +153,6 @@ describe('ExtensionAuthManager', () => {
       const isExpiring = authManager['tokenStorage'].isTokenExpiringSoon(token);
       
       expect(isExpiring).toBe(false);
-    });
 
     it('should handle malformed tokens gracefully', () => {
       const malformedToken = 'not-a-valid-jwt-token';
@@ -172,8 +160,7 @@ describe('ExtensionAuthManager', () => {
       const isExpiring = authManager['tokenStorage'].isTokenExpiringSoon(malformedToken);
       
       expect(isExpiring).toBe(true); // Should assume expired if can't parse
-    });
-  });
+
 
   describe('Authentication State', () => {
     it('should initialize with unauthenticated state', () => {
@@ -182,7 +169,6 @@ describe('ExtensionAuthManager', () => {
       expect(authState.isAuthenticated).toBe(false);
       expect(authState.isRefreshing).toBe(false);
       expect(authState.failureCount).toBe(0);
-    });
 
     it('should update authentication state when tokens are set', () => {
       // Create a fresh token
@@ -196,7 +182,6 @@ describe('ExtensionAuthManager', () => {
       
       const authState = authManager.getAuthState();
       expect(authState.isAuthenticated).toBe(true);
-    });
 
     it('should clear authentication state', () => {
       authManager['tokenStorage'].setTokens('test-token');
@@ -205,8 +190,7 @@ describe('ExtensionAuthManager', () => {
       const authState = authManager.getAuthState();
       expect(authState.isAuthenticated).toBe(false);
       expect(authManager['tokenStorage'].getAccessToken()).toBeNull();
-    });
-  });
+
 
   describe('Development Mode Detection', () => {
     it('should detect development mode from NODE_ENV', () => {
@@ -215,7 +199,6 @@ describe('ExtensionAuthManager', () => {
       const isDev = authManager['isDevelopmentMode']();
       
       expect(isDev).toBe(true);
-    });
 
     it('should detect development mode from localhost hostname', () => {
       process.env.NODE_ENV = 'production';
@@ -224,7 +207,6 @@ describe('ExtensionAuthManager', () => {
       const isDev = authManager['isDevelopmentMode']();
       
       expect(isDev).toBe(true);
-    });
 
     it('should detect development mode from query parameter', () => {
       process.env.NODE_ENV = 'production';
@@ -234,7 +216,6 @@ describe('ExtensionAuthManager', () => {
       const isDev = authManager['isDevelopmentMode']();
       
       expect(isDev).toBe(true);
-    });
 
     it('should not detect development mode in production', () => {
       process.env.NODE_ENV = 'production';
@@ -244,8 +225,7 @@ describe('ExtensionAuthManager', () => {
       const isDev = authManager['isDevelopmentMode']();
       
       expect(isDev).toBe(false);
-    });
-  });
+
 
   describe('Global Instance', () => {
     it('should return the same instance when called multiple times', () => {
@@ -253,12 +233,10 @@ describe('ExtensionAuthManager', () => {
       const instance2 = getExtensionAuthManager();
       
       expect(instance1).toBe(instance2);
-    });
 
     it('should be an instance of ExtensionAuthManager', () => {
       const instance = getExtensionAuthManager();
       
       expect(instance).toBeInstanceOf(ExtensionAuthManager);
-    });
-  });
-});
+
+

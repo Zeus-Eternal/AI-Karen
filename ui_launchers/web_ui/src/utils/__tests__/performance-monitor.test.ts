@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { 
-  PerformanceMonitor, 
-  checkPerformanceBudget,
-  PERFORMANCE_THRESHOLDS 
-} from '../performance-monitor';
+import {  PerformanceMonitor, checkPerformanceBudget, PERFORMANCE_THRESHOLDS } from '../performance-monitor';
 
 // Mock performance API
 const mockPerformance = {
@@ -24,17 +20,14 @@ mockPerformanceObserver.prototype.disconnect = vi.fn();
 Object.defineProperty(global, 'performance', {
   writable: true,
   value: mockPerformance,
-});
 
 Object.defineProperty(global, 'PerformanceObserver', {
   writable: true,
   value: mockPerformanceObserver,
-});
 
 Object.defineProperty(global, 'requestAnimationFrame', {
   writable: true,
   value: vi.fn((callback) => setTimeout(callback, 16)),
-});
 
 describe('PerformanceMonitor', () => {
   let monitor: PerformanceMonitor;
@@ -44,16 +37,13 @@ describe('PerformanceMonitor', () => {
     vi.clearAllMocks();
     reportCallback = vi.fn();
     monitor = new PerformanceMonitor(reportCallback);
-  });
 
   afterEach(() => {
     monitor.stopMonitoring();
-  });
 
   describe('basic functionality', () => {
     it('should create a performance monitor instance', () => {
       expect(monitor).toBeInstanceOf(PerformanceMonitor);
-    });
 
     it('should start and stop monitoring', () => {
       monitor.startMonitoring();
@@ -61,7 +51,6 @@ describe('PerformanceMonitor', () => {
 
       monitor.stopMonitoring();
       expect(mockPerformanceObserver.prototype.disconnect).toHaveBeenCalled();
-    });
 
     it('should not start monitoring multiple times', () => {
       monitor.startMonitoring();
@@ -69,8 +58,7 @@ describe('PerformanceMonitor', () => {
       
       // Should only create observers once
       expect(mockPerformanceObserver).toHaveBeenCalledTimes(4); // 4 different entry types
-    });
-  });
+
 
   describe('metric recording', () => {
     it('should record custom metrics', () => {
@@ -81,7 +69,6 @@ describe('PerformanceMonitor', () => {
       expect(metrics[0].name).toBe('test-metric');
       expect(metrics[0].value).toBe(100);
       expect(metrics[0].metadata).toEqual({ type: 'test' });
-    });
 
     it('should call report callback when recording metrics', () => {
       monitor.recordMetric('callback-test', 50);
@@ -90,8 +77,7 @@ describe('PerformanceMonitor', () => {
         name: 'callback-test',
         value: 50,
         timestamp: expect.any(Number),
-      });
-    });
+
 
     it('should store multiple metrics with the same name', () => {
       monitor.recordMetric('multi-metric', 100);
@@ -101,8 +87,7 @@ describe('PerformanceMonitor', () => {
       const metrics = monitor.getMetricsByName('multi-metric');
       expect(metrics).toHaveLength(3);
       expect(metrics.map(m => m.value)).toEqual([100, 200, 300]);
-    });
-  });
+
 
   describe('function measurement', () => {
     it('should measure synchronous function execution', () => {
@@ -119,7 +104,6 @@ describe('PerformanceMonitor', () => {
       const metrics = monitor.getMetricsByName('sync-test');
       expect(metrics).toHaveLength(1);
       expect(metrics[0].value).toBe(100);
-    });
 
     it('should measure asynchronous function execution', async () => {
       mockPerformance.now
@@ -129,7 +113,6 @@ describe('PerformanceMonitor', () => {
       const asyncFn = vi.fn(async () => {
         await new Promise(resolve => setTimeout(resolve, 10));
         return 'async-result';
-      });
 
       const result = await monitor.measureAsyncFunction('async-test', asyncFn);
       
@@ -139,8 +122,7 @@ describe('PerformanceMonitor', () => {
       const metrics = monitor.getMetricsByName('async-test');
       expect(metrics).toHaveLength(1);
       expect(metrics[0].value).toBe(150);
-    });
-  });
+
 
   describe('performance marks and measures', () => {
     it('should create performance marks and measures', () => {
@@ -158,7 +140,6 @@ describe('PerformanceMonitor', () => {
       const metrics = monitor.getMetricsByName('mark-test');
       expect(metrics).toHaveLength(1);
       expect(metrics[0].value).toBe(100); // from mock getEntriesByName
-    });
 
     it('should clean up marks and measures', () => {
       monitor.startMeasure('cleanup-test');
@@ -167,8 +148,7 @@ describe('PerformanceMonitor', () => {
       expect(mockPerformance.clearMarks).toHaveBeenCalledWith('cleanup-test-start');
       expect(mockPerformance.clearMarks).toHaveBeenCalledWith('cleanup-test-end');
       expect(mockPerformance.clearMeasures).toHaveBeenCalledWith('cleanup-test-measure');
-    });
-  });
+
 
   describe('performance summary', () => {
     beforeEach(() => {
@@ -208,8 +188,7 @@ describe('PerformanceMonitor', () => {
           ];
         }
         return [];
-      });
-    });
+
 
     it('should generate performance summary', () => {
       monitor.recordMetric('test-metric-1', 100);
@@ -231,8 +210,7 @@ describe('PerformanceMonitor', () => {
         avg: 150,
         p95: 200,
         latest: expect.objectContaining({ value: 200 }),
-      });
-    });
+
 
     it('should summarize resource timing', () => {
       const summary = monitor.getPerformanceSummary();
@@ -244,8 +222,7 @@ describe('PerformanceMonitor', () => {
         totalSize: 1024,
         totalLoadTime: 200,
         avgLoadTime: 200,
-      });
-    });
+
 
     it('should summarize navigation timing', () => {
       const summary = monitor.getPerformanceSummary();
@@ -257,9 +234,8 @@ describe('PerformanceMonitor', () => {
         ttfb: 90, // 200 - 110
         domContentLoaded: 1500,
         loadComplete: 2000,
-      });
-    });
-  });
+
+
 
   describe('percentile calculation', () => {
     it('should calculate percentiles correctly', () => {
@@ -268,8 +244,7 @@ describe('PerformanceMonitor', () => {
       // Add metrics to test percentile calculation
       values.forEach(value => {
         monitor.recordMetric('percentile-test', value);
-      });
-      
+
       const summary = monitor.getPerformanceSummary();
       const metricSummary = summary.customMetrics['percentile-test'];
       
@@ -277,9 +252,8 @@ describe('PerformanceMonitor', () => {
       expect(metricSummary.min).toBe(10);
       expect(metricSummary.max).toBe(100);
       expect(metricSummary.avg).toBe(55);
-    });
-  });
-});
+
+
 
 describe('checkPerformanceBudget', () => {
   it('should check Web Vitals budget correctly', () => {
@@ -291,20 +265,17 @@ describe('checkPerformanceBudget', () => {
       withinBudget: true,
       rating: 'good',
       threshold: PERFORMANCE_THRESHOLDS.LCP,
-    });
-    
+
     expect(checkPerformanceBudget(poorLCP)).toEqual({
       withinBudget: false,
       rating: 'poor',
       threshold: PERFORMANCE_THRESHOLDS.LCP,
-    });
-    
+
     expect(checkPerformanceBudget(warningLCP)).toEqual({
       withinBudget: false,
       rating: 'needs-improvement',
       threshold: PERFORMANCE_THRESHOLDS.LCP,
-    });
-  });
+
 
   it('should handle unknown metrics', () => {
     const unknownMetric = { name: 'unknown-metric', value: 100 };
@@ -313,8 +284,7 @@ describe('checkPerformanceBudget', () => {
       withinBudget: true,
       rating: 'good',
       threshold: null,
-    });
-  });
+
 
   it('should check custom metric budgets', () => {
     const goodAnimation = { name: 'ANIMATION_FRAME_TIME', value: 10 };
@@ -324,15 +294,13 @@ describe('checkPerformanceBudget', () => {
       withinBudget: true,
       rating: 'good',
       threshold: PERFORMANCE_THRESHOLDS.ANIMATION_FRAME_TIME,
-    });
-    
+
     expect(checkPerformanceBudget(poorAnimation)).toEqual({
       withinBudget: false,
       rating: 'poor',
       threshold: PERFORMANCE_THRESHOLDS.ANIMATION_FRAME_TIME,
-    });
-  });
-});
+
+
 
 describe('PERFORMANCE_THRESHOLDS', () => {
   it('should have correct threshold values', () => {
@@ -341,11 +309,9 @@ describe('PERFORMANCE_THRESHOLDS', () => {
     expect(PERFORMANCE_THRESHOLDS.CLS).toEqual({ good: 0.1, poor: 0.25 });
     expect(PERFORMANCE_THRESHOLDS.FCP).toEqual({ good: 1800, poor: 3000 });
     expect(PERFORMANCE_THRESHOLDS.TTFB).toEqual({ good: 800, poor: 1800 });
-  });
 
   it('should have custom thresholds', () => {
     expect(PERFORMANCE_THRESHOLDS.ANIMATION_FRAME_TIME).toEqual({ good: 16, poor: 32 });
     expect(PERFORMANCE_THRESHOLDS.BUNDLE_LOAD_TIME).toEqual({ good: 1000, poor: 3000 });
     expect(PERFORMANCE_THRESHOLDS.ROUTE_CHANGE_TIME).toEqual({ good: 200, poor: 500 });
-  });
-});
+

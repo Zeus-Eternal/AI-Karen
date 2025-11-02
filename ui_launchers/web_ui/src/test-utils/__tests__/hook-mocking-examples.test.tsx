@@ -9,7 +9,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { 
+
   setupAuthAndRoleMocks,
   mockScenarios,
   createTestMocks,
@@ -21,7 +21,7 @@ import {
   mockSuperAdminUser,
   mockAdminUser,
   mockRegularUser
-} from '../test-providers';
+import { } from '../test-providers';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 
@@ -50,11 +50,9 @@ const TestComponent: React.FC = () => {
 describe('Hook Mocking Strategy Examples', () => {
   beforeEach(() => {
     resetHookMocks();
-  });
 
   afterEach(() => {
     cleanupHookMocks();
-  });
 
   describe('Basic Mock Scenarios', () => {
     it('should work with super admin scenario', () => {
@@ -73,7 +71,6 @@ describe('Hook Mocking Strategy Examples', () => {
       expect(screen.getByTestId('can-manage-users')).toHaveTextContent('true');
       expect(screen.getByTestId('has-super-admin-role')).toHaveTextContent('true');
       expect(screen.getByTestId('has-user-management-permission')).toHaveTextContent('true');
-    });
 
     it('should work with admin scenario', () => {
       const { authContext, roleReturn } = mockScenarios.admin();
@@ -91,7 +88,6 @@ describe('Hook Mocking Strategy Examples', () => {
       expect(screen.getByTestId('can-manage-users')).toHaveTextContent('true');
       expect(screen.getByTestId('has-super-admin-role')).toHaveTextContent('false');
       expect(screen.getByTestId('has-user-management-permission')).toHaveTextContent('true');
-    });
 
     it('should work with regular user scenario', () => {
       const { authContext, roleReturn } = mockScenarios.user();
@@ -109,7 +105,6 @@ describe('Hook Mocking Strategy Examples', () => {
       expect(screen.getByTestId('can-manage-users')).toHaveTextContent('false');
       expect(screen.getByTestId('has-super-admin-role')).toHaveTextContent('false');
       expect(screen.getByTestId('has-user-management-permission')).toHaveTextContent('false');
-    });
 
     it('should work with unauthenticated scenario', () => {
       const { authContext, roleReturn } = mockScenarios.unauthenticated();
@@ -121,8 +116,7 @@ describe('Hook Mocking Strategy Examples', () => {
 
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
       expect(screen.queryByTestId('authenticated')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Custom Mock Creation', () => {
     it('should work with custom test mocks', () => {
@@ -135,7 +129,6 @@ describe('Hook Mocking Strategy Examples', () => {
         roleOverrides: {
           canManageUsers: false // Override specific role behavior
         }
-      });
 
       // Validate that mocks are consistent
       expect(validateMockSetup(authContext, roleReturn)).toBe(true);
@@ -146,18 +139,15 @@ describe('Hook Mocking Strategy Examples', () => {
       expect(screen.getByTestId('user-email')).toHaveTextContent('superadmin@example.com');
       expect(screen.getByTestId('can-manage-users')).toHaveTextContent('false'); // Overridden
       expect(screen.getByTestId('has-user-management-permission')).toHaveTextContent('false'); // Custom permission logic
-    });
 
     it('should work with renderWithProviders integration', () => {
       renderWithProviders(<TestComponent />, {
         testScenario: 'super_admin'
-      });
 
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('user-email')).toHaveTextContent('superadmin@example.com');
       expect(screen.getByTestId('user-role')).toHaveTextContent('super_admin');
-    });
-  });
+
 
   describe('Error Scenarios', () => {
     it('should handle authentication errors', () => {
@@ -169,7 +159,6 @@ describe('Hook Mocking Strategy Examples', () => {
       render(<TestComponent />);
 
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
 
     it('should handle session expired scenario', () => {
       const { authContext, roleReturn } = mockScenarios.sessionExpired();
@@ -180,8 +169,7 @@ describe('Hook Mocking Strategy Examples', () => {
       render(<TestComponent />);
 
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Mock Validation and Debugging', () => {
     it('should validate mock consistency', () => {
@@ -199,15 +187,13 @@ describe('Hook Mocking Strategy Examples', () => {
       expect(vi.isMockFunction(authContext.hasPermission)).toBe(true);
       expect(vi.isMockFunction(roleReturn.hasRole)).toBe(true);
       expect(vi.isMockFunction(roleReturn.hasPermission)).toBe(true);
-    });
 
     it('should detect inconsistent mocks', () => {
       const { authContext } = mockScenarios.superAdmin();
       const { roleReturn } = mockScenarios.user(); // Inconsistent role return
       
       expect(validateMockSetup(authContext, roleReturn)).toBe(false);
-    });
-  });
+
 
   describe('Hook Isolation', () => {
     it('should properly isolate tests', () => {
@@ -224,8 +210,7 @@ describe('Hook Mocking Strategy Examples', () => {
       const { authContext: userAuth } = mockScenarios.user();
       render(<TestComponent />);
       expect(screen.getByTestId('user-role')).toHaveTextContent('user');
-    });
-  });
+
 
   describe('Advanced Mock Patterns', () => {
     it('should support dynamic mock behavior', () => {
@@ -240,7 +225,6 @@ describe('Hook Mocking Strategy Examples', () => {
             return currentUser.role === role || currentUser.roles.includes(role);
           })
         }
-      });
 
       render(<TestComponent />);
       expect(screen.getByTestId('user-role')).toHaveTextContent('user');
@@ -248,7 +232,6 @@ describe('Hook Mocking Strategy Examples', () => {
       // Change user and verify behavior changes
       currentUser = mockSuperAdminUser;
       expect(authContext.hasRole('super_admin')).toBe(true);
-    });
 
     it('should support async mock behavior', async () => {
       const { authContext } = createTestMocks({
@@ -262,14 +245,12 @@ describe('Hook Mocking Strategy Examples', () => {
             return Promise.resolve();
           })
         }
-      });
 
       // Test async behavior
       await expect(authContext.checkAuth()).resolves.toBe(true);
       await expect(authContext.login({ email: 'test@example.com', password: 'password' })).resolves.toBeUndefined();
-    });
-  });
-});
+
+
 
 // Example of a more complex component test using the new mocking strategy
 describe('Complex Component Example', () => {
@@ -281,7 +262,6 @@ describe('Complex Component Example', () => {
       return (
         <div data-testid="login-form">
           <button onClick={() => login({ email: 'test@example.com', password: 'password' })}>
-            Login
           </button>
         </div>
       );
@@ -313,11 +293,9 @@ describe('Complex Component Example', () => {
 
   beforeEach(() => {
     resetHookMocks();
-  });
 
   afterEach(() => {
     cleanupHookMocks();
-  });
 
   it('should handle complete authentication flow', async () => {
     // Start with unauthenticated state
@@ -334,8 +312,7 @@ describe('Complex Component Example', () => {
     expect(unauthContext.login).toHaveBeenCalledWith({
       email: 'test@example.com',
       password: 'password'
-    });
-    
+
     // Switch to authenticated state
     const { authContext: authContext } = mockScenarios.superAdmin();
     
@@ -353,7 +330,6 @@ describe('Complex Component Example', () => {
     logoutButton.click();
     
     expect(authContext.logout).toHaveBeenCalled();
-  });
 
   it('should show appropriate UI for different user roles', () => {
     // Test admin user
@@ -365,7 +341,6 @@ describe('Complex Component Example', () => {
     expect(screen.queryByTestId('admin-management')).not.toBeInTheDocument();
     expect(screen.getByTestId('admin-panel')).toBeInTheDocument();
     expect(screen.queryByTestId('super-admin-panel')).not.toBeInTheDocument();
-  });
 
   it('should show minimal UI for regular users', () => {
     // Test regular user
@@ -377,5 +352,4 @@ describe('Complex Component Example', () => {
     expect(screen.queryByTestId('admin-management')).not.toBeInTheDocument();
     expect(screen.queryByTestId('admin-panel')).not.toBeInTheDocument();
     expect(screen.queryByTestId('super-admin-panel')).not.toBeInTheDocument();
-  });
-});
+

@@ -14,6 +14,7 @@
  */
 
 
+import React from 'react';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { resetRouterMocks } from '@/test-utils/router-mocks';
@@ -47,7 +48,6 @@ const mockLocation = {
 Object.defineProperty(window, 'location', {
   value: mockLocation,
   writable: true,
-});
 
 // Mock document.cookie
 let mockCookies = '';
@@ -56,7 +56,6 @@ Object.defineProperty(document, 'cookie', {
   set: (value: string) => {
     mockCookies = value;
   },
-});
 
 // Mock users data for testing
 const mockUsers: User[] = [
@@ -127,11 +126,9 @@ describe('Admin Management System Integration Tests', () => {
     mockCookies = '';
     mockLocation.pathname = '/';
     mockLocation.href = 'http://localhost:3000';
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('First-Run Setup Process', () => {
     it('should complete first-run setup process from start to finish', async () => {
@@ -153,7 +150,6 @@ describe('Admin Management System Integration Tests', () => {
               role: 'super_admin' 
             } 
           }),
-        });
 
       render(
         <AuthProvider>
@@ -170,7 +166,6 @@ describe('Admin Management System Integration Tests', () => {
       // Step 2: Admin details form
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      });
 
       const emailInput = screen.getByLabelText(/email/i);
       const usernameInput = screen.getByLabelText(/username/i);
@@ -188,13 +183,11 @@ describe('Admin Management System Integration Tests', () => {
       // Step 3: Setup completion
       await waitFor(() => {
         expect(screen.getByText(/setup complete/i)).toBeInTheDocument();
-      });
 
       // Verify API calls were made correctly
       expect(mockFetch).toHaveBeenCalledWith('/api/admin/setup/check-first-run', {
         method: 'GET',
         credentials: 'include',
-      });
 
       expect(mockFetch).toHaveBeenCalledWith('/api/admin/setup/create-super-admin', {
         method: 'POST',
@@ -205,15 +198,13 @@ describe('Admin Management System Integration Tests', () => {
           username: 'superadmin',
           password: 'SuperSecure123!@#',
         }),
-      });
-    });
+
 
     it('should prevent access to setup when super admin already exists', async () => {
       // Mock API response indicating super admin exists
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ hasSuperAdmin: true }),
-      });
 
       render(
         <AuthProvider>
@@ -223,8 +214,7 @@ describe('Admin Management System Integration Tests', () => {
 
       await waitFor(() => {
         expect(mockLocation.replace).toHaveBeenCalledWith('/login');
-      });
-    });
+
 
     it('should validate password strength during setup', async () => {
       const user = userEvent.setup();
@@ -232,7 +222,6 @@ describe('Admin Management System Integration Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ hasSuperAdmin: false }),
-      });
 
       render(
         <AuthProvider>
@@ -246,7 +235,6 @@ describe('Admin Management System Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-      });
 
       const passwordInput = screen.getByLabelText(/^password$/i);
       
@@ -255,7 +243,6 @@ describe('Admin Management System Integration Tests', () => {
       
       await waitFor(() => {
         expect(screen.getByText(/password must be at least 12 characters/i)).toBeInTheDocument();
-      });
 
       // Test strong password
       await user.clear(passwordInput);
@@ -263,9 +250,8 @@ describe('Admin Management System Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.queryByText(/password must be at least 12 characters/i)).not.toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('User Promotion and Demotion Workflows', () => {
     it('should promote user to admin successfully', async () => {
@@ -289,7 +275,6 @@ describe('Admin Management System Integration Tests', () => {
             success: true, 
             user: { ...mockUsers[0], role: 'admin' } 
           }),
-        });
 
       render(
         <AuthProvider>
@@ -302,7 +287,6 @@ describe('Admin Management System Integration Tests', () => {
       // Wait for component to load
       await waitFor(() => {
         expect(screen.getByText(/admin management/i)).toBeInTheDocument();
-      });
 
       // Find and click promote button for user1
       const promoteButton = screen.getByRole('button', { name: /promote.*user1/i });
@@ -317,9 +301,8 @@ describe('Admin Management System Integration Tests', () => {
         expect(mockFetch).toHaveBeenCalledWith('/api/admin/admins/promote/1', {
           method: 'POST',
           credentials: 'include',
-        });
-      });
-    });
+
+
 
     it('should demote admin to user successfully', async () => {
       const user = userEvent.setup();
@@ -342,7 +325,6 @@ describe('Admin Management System Integration Tests', () => {
             success: true, 
             user: { ...mockUsers[1], role: 'user' } 
           }),
-        });
 
       render(
         <AuthProvider>
@@ -354,7 +336,6 @@ describe('Admin Management System Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/admin management/i)).toBeInTheDocument();
-      });
 
       // Find and click demote button for admin
       const demoteButton = screen.getByRole('button', { name: /demote.*admin/i });
@@ -369,9 +350,8 @@ describe('Admin Management System Integration Tests', () => {
         expect(mockFetch).toHaveBeenCalledWith('/api/admin/admins/demote/2', {
           method: 'POST',
           credentials: 'include',
-        });
-      });
-    });
+
+
 
     it('should prevent regular admin from promoting users', async () => {
       // Mock session validation for regular admin
@@ -380,7 +360,6 @@ describe('Admin Management System Integration Tests', () => {
         json: async () => ({ 
           user: { id: '2', role: 'admin', email: 'admin@example.com' } 
         }),
-      });
 
       render(
         <AuthProvider>
@@ -392,13 +371,11 @@ describe('Admin Management System Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/user management/i)).toBeInTheDocument();
-      });
 
       // Verify promote/demote buttons are not present for regular admin
       expect(screen.queryByRole('button', { name: /promote/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /demote/i })).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Bulk User Operations', () => {
     it('should handle bulk user operations with large datasets', async () => {
@@ -441,7 +418,6 @@ describe('Admin Management System Integration Tests', () => {
             processed: 100,
             errors: [] 
           }),
-        });
 
       render(
         <AuthProvider>
@@ -453,7 +429,6 @@ describe('Admin Management System Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/bulk operations/i)).toBeInTheDocument();
-      });
 
       // Select multiple users
       const selectAllCheckbox = screen.getByRole('checkbox', { name: /select all/i });
@@ -473,7 +448,6 @@ describe('Admin Management System Integration Tests', () => {
       // Verify progress indicator appears
       await waitFor(() => {
         expect(screen.getByRole('progressbar')).toBeInTheDocument();
-      });
 
       // Verify API call was made
       await waitFor(() => {
@@ -485,9 +459,8 @@ describe('Admin Management System Integration Tests', () => {
             action: 'deactivate',
             userIds: expect.any(Array),
           }),
-        });
-      });
-    });
+
+
 
     it('should handle bulk import with CSV validation', async () => {
       const user = userEvent.setup();
@@ -515,7 +488,6 @@ invalid-email,newuser3,user`;
             imported: 2,
             errors: [{ row: 3, error: 'Invalid email format' }]
           }),
-        });
 
       render(
         <AuthProvider>
@@ -527,7 +499,6 @@ invalid-email,newuser3,user`;
 
       await waitFor(() => {
         expect(screen.getByText(/import users/i)).toBeInTheDocument();
-      });
 
       // Upload CSV file
       const fileInput = screen.getByLabelText(/upload csv/i);
@@ -541,8 +512,7 @@ invalid-email,newuser3,user`;
       await waitFor(() => {
         expect(screen.getByText(/2 users imported successfully/i)).toBeInTheDocument();
         expect(screen.getByText(/1 error/i)).toBeInTheDocument();
-      });
-    });
+
 
     it('should allow cancellation of long-running bulk operations', async () => {
       const user = userEvent.setup();
@@ -561,7 +531,7 @@ invalid-email,newuser3,user`;
               resolve({
                 ok: true,
                 json: async () => ({ success: true, processed: 500 }),
-              });
+
             }, 5000); // Long operation
           })
         );
@@ -576,7 +546,6 @@ invalid-email,newuser3,user`;
 
       await waitFor(() => {
         expect(screen.getByText(/bulk operations/i)).toBeInTheDocument();
-      });
 
       // Start bulk operation
       const bulkActionButton = screen.getByRole('button', { name: /bulk actions/i });
@@ -588,7 +557,6 @@ invalid-email,newuser3,user`;
       // Wait for progress indicator
       await waitFor(() => {
         expect(screen.getByRole('progressbar')).toBeInTheDocument();
-      });
 
       // Cancel operation
       const cancelButton = screen.getByRole('button', { name: /cancel/i });
@@ -598,9 +566,8 @@ invalid-email,newuser3,user`;
       await waitFor(() => {
         expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
         expect(screen.getByText(/operation cancelled/i)).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Audit Logging Validation', () => {
     it('should log all administrative actions correctly', async () => {
@@ -620,7 +587,6 @@ invalid-email,newuser3,user`;
             logs: mockAuditLogs,
             total: mockAuditLogs.length,
           }),
-        });
 
       render(
         <AuthProvider>
@@ -632,7 +598,6 @@ invalid-email,newuser3,user`;
 
       await waitFor(() => {
         expect(screen.getByText(/audit logs/i)).toBeInTheDocument();
-      });
 
       // Verify audit logs are displayed
       expect(screen.getByText(/user_created/i)).toBeInTheDocument();
@@ -650,8 +615,7 @@ invalid-email,newuser3,user`;
       await waitFor(() => {
         expect(screen.getByText(/user_promoted/i)).toBeInTheDocument();
         expect(screen.queryByText(/user_created/i)).not.toBeInTheDocument();
-      });
-    });
+
 
     it('should track IP addresses and user agents in audit logs', async () => {
       const user = userEvent.setup();
@@ -669,7 +633,6 @@ invalid-email,newuser3,user`;
             logs: mockAuditLogs,
             total: mockAuditLogs.length,
           }),
-        });
 
       render(
         <AuthProvider>
@@ -681,7 +644,6 @@ invalid-email,newuser3,user`;
 
       await waitFor(() => {
         expect(screen.getByText(/audit logs/i)).toBeInTheDocument();
-      });
 
       // Click on a log entry to view details
       const logEntry = screen.getByText(/user_created/i);
@@ -691,8 +653,7 @@ invalid-email,newuser3,user`;
       await waitFor(() => {
         expect(screen.getByText(/127\.0\.0\.1/)).toBeInTheDocument();
         expect(screen.getByText(/test-agent/)).toBeInTheDocument();
-      });
-    });
+
 
     it('should support audit log export for compliance', async () => {
       const user = userEvent.setup();
@@ -718,7 +679,6 @@ invalid-email,newuser3,user`;
         .mockResolvedValueOnce({
           ok: true,
           blob: async () => new Blob(['audit,log,data'], { type: 'text/csv' }),
-        });
 
       render(
         <AuthProvider>
@@ -730,7 +690,6 @@ invalid-email,newuser3,user`;
 
       await waitFor(() => {
         expect(screen.getByText(/audit logs/i)).toBeInTheDocument();
-      });
 
       // Click export button
       const exportButton = screen.getByRole('button', { name: /export/i });
@@ -746,10 +705,9 @@ invalid-email,newuser3,user`;
             filters: expect.any(Object),
             format: 'csv',
           }),
-        });
-      });
-    });
-  });
+
+
+
 
   describe('Role-Based Access Control', () => {
     it('should enforce super admin access restrictions', async () => {
@@ -759,7 +717,6 @@ invalid-email,newuser3,user`;
         json: async () => ({ 
           user: { id: '2', role: 'admin', email: 'admin@example.com' } 
         }),
-      });
 
       render(
         <AuthProvider>
@@ -772,8 +729,7 @@ invalid-email,newuser3,user`;
       // Should redirect to unauthorized page
       await waitFor(() => {
         expect(mockLocation.replace).toHaveBeenCalledWith('/unauthorized');
-      });
-    });
+
 
     it('should enforce admin access restrictions', async () => {
       // Test unauthorized access to admin routes
@@ -782,7 +738,6 @@ invalid-email,newuser3,user`;
         json: async () => ({ 
           user: { id: '1', role: 'user', email: 'user@example.com' } 
         }),
-      });
 
       render(
         <AuthProvider>
@@ -795,8 +750,7 @@ invalid-email,newuser3,user`;
       // Should redirect to unauthorized page
       await waitFor(() => {
         expect(mockLocation.replace).toHaveBeenCalledWith('/unauthorized');
-      });
-    });
+
 
     it('should allow proper role transitions', async () => {
       const user = userEvent.setup();
@@ -812,7 +766,6 @@ invalid-email,newuser3,user`;
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ users: mockUsers }),
-        });
 
       const { rerender } = render(
         <AuthProvider>
@@ -824,7 +777,6 @@ invalid-email,newuser3,user`;
 
       await waitFor(() => {
         expect(screen.getByText(/super admin dashboard/i)).toBeInTheDocument();
-      });
 
       // Simulate role change to admin
       mockFetch.mockResolvedValueOnce({
@@ -832,7 +784,6 @@ invalid-email,newuser3,user`;
         json: async () => ({ 
           user: { id: '3', role: 'admin', email: 'superadmin@example.com' } 
         }),
-      });
 
       rerender(
         <AuthProvider>
@@ -844,8 +795,7 @@ invalid-email,newuser3,user`;
 
       await waitFor(() => {
         expect(screen.getByText(/user management/i)).toBeInTheDocument();
-      });
-    });
+
 
     it('should validate API endpoint permissions', async () => {
       // Test API endpoint access with insufficient permissions
@@ -860,18 +810,15 @@ invalid-email,newuser3,user`;
           ok: false,
           status: 403,
           json: async () => ({ error: 'Insufficient permissions' }),
-        });
 
       // Attempt to access admin API as regular user
       const response = await fetch('/api/admin/users', {
         method: 'GET',
         credentials: 'include',
-      });
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(403);
-    });
-  });
+
 
   describe('End-to-End Admin User Journeys', () => {
     it('should complete full admin user creation journey', async () => {
@@ -906,7 +853,6 @@ invalid-email,newuser3,user`;
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ success: true }),
-        });
 
       render(
         <AuthProvider>
@@ -918,7 +864,6 @@ invalid-email,newuser3,user`;
 
       await waitFor(() => {
         expect(screen.getByText(/user management/i)).toBeInTheDocument();
-      });
 
       // Click create user button
       const createUserButton = screen.getByRole('button', { name: /create user/i });
@@ -927,7 +872,6 @@ invalid-email,newuser3,user`;
       // Fill out user creation form
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      });
 
       const emailInput = screen.getByLabelText(/email/i);
       const usernameInput = screen.getByLabelText(/username/i);
@@ -950,8 +894,7 @@ invalid-email,newuser3,user`;
             username: 'newuser',
             sendWelcomeEmail: true,
           }),
-        });
-      });
+
 
       // Verify success message
       expect(screen.getByText(/user created successfully/i)).toBeInTheDocument();
@@ -971,9 +914,8 @@ invalid-email,newuser3,user`;
             template: 'welcome',
             data: expect.any(Object),
           }),
-        });
-      });
-    });
+
+
 
     it('should complete full system configuration journey', async () => {
       const user = userEvent.setup();
@@ -999,7 +941,6 @@ invalid-email,newuser3,user`;
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ success: true }),
-        });
 
       render(
         <AuthProvider>
@@ -1011,7 +952,6 @@ invalid-email,newuser3,user`;
 
       await waitFor(() => {
         expect(screen.getByText(/system configuration/i)).toBeInTheDocument();
-      });
 
       // Navigate to system configuration
       const configTab = screen.getByRole('tab', { name: /system configuration/i });
@@ -1041,12 +981,10 @@ invalid-email,newuser3,user`;
             sessionTimeout: 30,
             mfaRequired: true,
           }),
-        });
-      });
+
 
       // Verify success message
       expect(screen.getByText(/configuration saved successfully/i)).toBeInTheDocument();
-    });
 
     it('should handle error scenarios gracefully throughout user journeys', async () => {
       const user = userEvent.setup();
@@ -1063,7 +1001,6 @@ invalid-email,newuser3,user`;
           ok: false,
           status: 500,
           json: async () => ({ error: 'Internal server error' }),
-        });
 
       render(
         <AuthProvider>
@@ -1076,7 +1013,6 @@ invalid-email,newuser3,user`;
       // Wait for error to be displayed
       await waitFor(() => {
         expect(screen.getByText(/failed to load users/i)).toBeInTheDocument();
-      });
 
       // Click retry button
       const retryButton = screen.getByRole('button', { name: /retry/i });
@@ -1085,7 +1021,6 @@ invalid-email,newuser3,user`;
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ users: mockUsers }),
-      });
 
       await user.click(retryButton);
 
@@ -1093,7 +1028,6 @@ invalid-email,newuser3,user`;
       await waitFor(() => {
         expect(screen.getByText(/user management/i)).toBeInTheDocument();
         expect(screen.queryByText(/failed to load users/i)).not.toBeInTheDocument();
-      });
-    });
-  });
-});
+
+
+

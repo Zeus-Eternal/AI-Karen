@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,74 +9,20 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+
 /**
  * Performance Analytics Dashboard
  * Comprehensive performance analysis with bottleneck identification and optimization recommendations
  */
 
-'use client';
 
+import { } from '@/components/ui/dialog';
+import { } from 'recharts';
 
-
-
-
-
-
-
-
-
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  ScatterChart,
-  Scatter,
-  Treemap,
-  Cell
-} from 'recharts';
-
-  Activity, 
-  AlertTriangle, 
-  BarChart3, 
-  Bug, 
-  CheckCircle, 
-  Clock, 
-  Code, 
-  Cpu, 
-  Eye, 
-  Lightbulb, 
-  MemoryStick, 
-  Network, 
-  Play, 
-  Settings, 
-  TrendingDown, 
-  TrendingUp, 
-  Zap,
-  Target,
-  GitCompare
-} from 'lucide-react';
+import { } from 'lucide-react';
 
   performanceProfiler, 
-  PerformanceProfile, 
-  Bottleneck, 
-  OptimizationSuggestion, 
-  PerformanceComparison, 
-  RegressionTest 
-} from '@/services/performance-profiler';
+import { } from '@/services/performance-profiler';
 
 interface PerformanceAnalyticsDashboardProps {
   refreshInterval?: number;
@@ -146,22 +94,22 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
 
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case 'critical': return <AlertTriangle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
-      case 'high': return <AlertTriangle className="h-4 w-4 text-orange-500 sm:w-auto md:w-full" />;
-      case 'medium': return <Activity className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
-      case 'low': return <Activity className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />;
-      default: return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'critical': return <AlertTriangle className="h-4 w-4 text-red-500 " />;
+      case 'high': return <AlertTriangle className="h-4 w-4 text-orange-500 " />;
+      case 'medium': return <Activity className="h-4 w-4 text-yellow-500 " />;
+      case 'low': return <Activity className="h-4 w-4 text-blue-500 " />;
+      default: return <Activity className="h-4 w-4 " />;
     }
   };
 
   const getBottleneckIcon = (type: string) => {
     switch (type) {
-      case 'cpu': return <Cpu className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'memory': return <MemoryStick className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'network': return <Network className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'render': return <Eye className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'javascript': return <Code className="h-4 w-4 sm:w-auto md:w-full" />;
-      default: return <Bug className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'cpu': return <Cpu className="h-4 w-4 " />;
+      case 'memory': return <MemoryStick className="h-4 w-4 " />;
+      case 'network': return <Network className="h-4 w-4 " />;
+      case 'render': return <Eye className="h-4 w-4 " />;
+      case 'javascript': return <Code className="h-4 w-4 " />;
+      default: return <Bug className="h-4 w-4 " />;
     }
   };
 
@@ -191,14 +139,13 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
         count: 1,
         totalImpact: bottleneck.impact,
         avgImpact: bottleneck.impact,
-      });
+
     }
     return acc;
   }, [] as Array<{ type: string; count: number; totalImpact: number; avgImpact: number }>);
 
   bottleneckDistributionData.forEach(item => {
     item.avgImpact = item.totalImpact / item.count;
-  });
 
   const suggestionImpactData = suggestions.map(suggestion => ({
     title: suggestion.title.substring(0, 30),
@@ -215,7 +162,6 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Performance Analytics</h2>
           <p className="text-muted-foreground">
-            Detailed performance profiling and bottleneck analysis
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -223,17 +169,15 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
             variant={isProfilerEnabled ? "default" : "outline"}
             onClick={handleToggleProfiler}
            aria-label="Button">
-            <Activity className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+            <Activity className="h-4 w-4 mr-2 " />
             {isProfilerEnabled ? 'Profiler On' : 'Profiler Off'}
           </Button>
           {showAdvancedFeatures && (
             <>
-              <button variant="outline" onClick={handleRunComparison} aria-label="Button">
-                <GitCompare className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Compare
+              <Button variant="outline" onClick={handleRunComparison} >
+                <GitCompare className="h-4 w-4 mr-2 " />
               </Button>
-              <button variant="outline" onClick={handleClearData} aria-label="Button">
-                Clear Data
+              <Button variant="outline" onClick={handleClearData} >
               </Button>
             </>
           )}
@@ -245,7 +189,7 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Total Profiles</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <BarChart3 className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{profiles.length}</div>
@@ -258,7 +202,7 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Active Bottlenecks</CardTitle>
-            <Bug className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Bug className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{bottlenecks.length}</div>
@@ -271,7 +215,7 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Optimization Ideas</CardTitle>
-            <Lightbulb className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Lightbulb className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{suggestions.length}</div>
@@ -284,7 +228,7 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Regression Tests</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Target className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{regressionTests.length}</div>
@@ -311,7 +255,6 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
               <CardHeader>
                 <CardTitle>Performance Timeline</CardTitle>
                 <CardDescription>
-                  Recent performance profiles and execution times
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -349,7 +292,6 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
               <CardHeader>
                 <CardTitle>Profile Details</CardTitle>
                 <CardDescription>
-                  Click on a profile in the timeline to see details
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -364,10 +306,9 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
                     
                     {selectedProfile.bottleneck && (
                       <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                        <AlertTriangle className="h-4 w-4 " />
                         <AlertTitle>Performance Bottleneck</AlertTitle>
                         <AlertDescription>
-                          This operation is identified as a performance bottleneck
                         </AlertDescription>
                       </Alert>
                     )}
@@ -386,7 +327,6 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    Select a profile from the timeline to view details
                   </div>
                 )}
               </CardContent>
@@ -400,7 +340,6 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
               <CardHeader>
                 <CardTitle>Bottleneck Distribution</CardTitle>
                 <CardDescription>
-                  Types and frequency of performance bottlenecks
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -463,7 +402,7 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
                     
                     {bottlenecks.filter(b => b.priority === 'critical' || b.priority === 'high').length === 0 && (
                       <div className="text-center py-8">
-                        <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 sm:w-auto md:w-full" />
+                        <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 " />
                         <h3 className="text-lg font-medium">No Critical Bottlenecks</h3>
                         <p className="text-muted-foreground">
                           Your application is performing well!
@@ -483,7 +422,6 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
               <CardHeader>
                 <CardTitle>Optimization Impact vs Effort</CardTitle>
                 <CardDescription>
-                  Prioritize optimizations by impact and implementation effort
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -518,7 +456,6 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
               <CardHeader>
                 <CardTitle>Top Optimization Suggestions</CardTitle>
                 <CardDescription>
-                  Recommended performance improvements
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -559,16 +496,14 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
                         {suggestion.codeExample && (
                           <Dialog>
                             <DialogTrigger asChild>
-                              <button variant="outline" size="sm" className="mt-2" aria-label="Button">
-                                <Code className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                                View Code Example
+                              <Button variant="outline" size="sm" className="mt-2" >
+                                <Code className="h-4 w-4 mr-2 " />
                               </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-2xl sm:w-auto md:w-full">
+                            <DialogContent className="max-w-2xl ">
                               <DialogHeader>
                                 <DialogTitle>{suggestion.title}</DialogTitle>
                                 <DialogDescription>
-                                  Code example for implementing this optimization
                                 </DialogDescription>
                               </DialogHeader>
                               <pre className="bg-gray-100 p-4 rounded-md overflow-x-auto text-sm md:text-base lg:text-lg">
@@ -582,7 +517,7 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
                     
                     {suggestions.length === 0 && (
                       <div className="text-center py-8">
-                        <Zap className="h-12 w-12 text-blue-500 mx-auto mb-4 sm:w-auto md:w-full" />
+                        <Zap className="h-12 w-12 text-blue-500 mx-auto mb-4 " />
                         <h3 className="text-lg font-medium">No Suggestions Available</h3>
                         <p className="text-muted-foreground">
                           Run some operations to generate optimization suggestions.
@@ -608,14 +543,13 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
               <CardContent>
                 {comparisons.length === 0 ? (
                   <div className="text-center py-8">
-                    <GitCompare className="h-12 w-12 text-gray-400 mx-auto mb-4 sm:w-auto md:w-full" />
+                    <GitCompare className="h-12 w-12 text-gray-400 mx-auto mb-4 " />
                     <h3 className="text-lg font-medium">No Comparisons Available</h3>
                     <p className="text-muted-foreground mb-4">
                       Run a comparison to analyze performance changes over time.
                     </p>
                     <button onClick={handleRunComparison} aria-label="Button">
-                      <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Run Comparison
+                      <Play className="h-4 w-4 mr-2 " />
                     </Button>
                   </div>
                 ) : (
@@ -627,13 +561,11 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
                           <div className="flex items-center space-x-2">
                             {comparison.regression ? (
                               <Badge variant="destructive">
-                                <TrendingDown className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                                Regression
+                                <TrendingDown className="h-3 w-3 mr-1 " />
                               </Badge>
                             ) : (
                               <Badge variant="default">
-                                <TrendingUp className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                                Improvement
+                                <TrendingUp className="h-3 w-3 mr-1 " />
                               </Badge>
                             )}
                             <span className="text-lg font-bold">
@@ -679,13 +611,12 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
               <CardHeader>
                 <CardTitle>Regression Tests</CardTitle>
                 <CardDescription>
-                  Continuous monitoring for performance regressions
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {regressionTests.length === 0 ? (
                   <div className="text-center py-8">
-                    <Target className="h-12 w-12 text-gray-400 mx-auto mb-4 sm:w-auto md:w-full" />
+                    <Target className="h-12 w-12 text-gray-400 mx-auto mb-4 " />
                     <h3 className="text-lg font-medium">No Regression Tests</h3>
                     <p className="text-muted-foreground">
                       Set up regression tests to monitor performance over time.
@@ -704,15 +635,15 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
                                 test.status === 'warning' ? 'secondary' : 'destructive'
                               }
                             >
-                              {test.status === 'pass' && <CheckCircle className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
-                              {test.status === 'warning' && <Clock className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
-                              {test.status === 'fail' && <AlertTriangle className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
+                              {test.status === 'pass' && <CheckCircle className="h-3 w-3 mr-1 " />}
+                              {test.status === 'warning' && <Clock className="h-3 w-3 mr-1 " />}
+                              {test.status === 'fail' && <AlertTriangle className="h-3 w-3 mr-1 " />}
                               {test.status}
                             </Badge>
                             <Badge variant="outline">
-                              {test.trend === 'improving' && <TrendingUp className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
-                              {test.trend === 'degrading' && <TrendingDown className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
-                              {test.trend === 'stable' && <Activity className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
+                              {test.trend === 'improving' && <TrendingUp className="h-3 w-3 mr-1 " />}
+                              {test.trend === 'degrading' && <TrendingDown className="h-3 w-3 mr-1 " />}
+                              {test.trend === 'stable' && <Activity className="h-3 w-3 mr-1 " />}
                               {test.trend}
                             </Badge>
                           </div>

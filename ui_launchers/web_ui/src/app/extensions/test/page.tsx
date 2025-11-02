@@ -1,5 +1,6 @@
+
+"use client";
 import React, { useState } from 'react';
-import { 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,9 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  * Test page to verify extension integration is working
  */
 
-'use client';
-
-
 
   useExtensionStatuses, 
   useExtensionRoutes, 
@@ -19,17 +17,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
   useExtensionHealth,
   useExtensionPerformance,
   useExtensionTaskMonitoring
-} from '@/lib/extensions/hooks';
+import { } from '@/lib/extensions/hooks';
 
 
 
 
-  ExtensionMarketplace,
-  ExtensionManager,
-  ExtensionConfigurationPanel,
-  ExtensionDebugger,
-  ExtensionPerformanceMonitor
-} from '@/components/extensions';
+import { } from '@/components/extensions';
 
 export default function ExtensionTestPage() {
   const [activeTab, setActiveTab] = useState('statuses');

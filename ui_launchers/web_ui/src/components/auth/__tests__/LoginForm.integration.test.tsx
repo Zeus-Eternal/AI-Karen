@@ -50,7 +50,7 @@ vi.mock('@/components/ui/form-field', () => ({
         id={name}
         name={name}
         value={value}
-        onChange={(e) = aria-label="Input"> onValueChange(e.target.value)}
+        onChange={(e) => onValueChange(e.target.value)}
         {...props}
       />
     </div>
@@ -74,7 +74,6 @@ describe('LoginForm Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthService.getCurrentUser.mockRejectedValue(new Error('Not authenticated'));
-  });
 
   describe('AuthContext Integration', () => {
     it('should integrate with AuthContext and call login method', async () => {
@@ -106,9 +105,8 @@ describe('LoginForm Integration Tests', () => {
         expect(mockAuthService.login).toHaveBeenCalledWith({
           email: 'test@example.com',
           password: 'password123',
-        });
-      });
-    });
+
+
 
     it('should handle authentication errors from AuthContext', async () => {
       const user = userEvent.setup();
@@ -130,8 +128,7 @@ describe('LoginForm Integration Tests', () => {
       // Verify error is displayed
       await waitFor(() => {
         expect(screen.getByText(errorMessage)).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle 2FA requirement from AuthContext', async () => {
       const user = userEvent.setup();
@@ -153,8 +150,7 @@ describe('LoginForm Integration Tests', () => {
       // Verify 2FA field appears
       await waitFor(() => {
         expect(screen.getByLabelText(/two-factor/i)).toBeInTheDocument();
-      });
-    });
+
 
     it('should call onSuccess callback after successful login', async () => {
       const user = userEvent.setup();
@@ -184,15 +180,13 @@ describe('LoginForm Integration Tests', () => {
       // Verify onSuccess was called
       await waitFor(() => {
         expect(onSuccess).toHaveBeenCalled();
-      });
-    });
+
 
     it('should show loading state during authentication', async () => {
       const user = userEvent.setup();
       let resolveLogin: (value: any) => void;
       const loginPromise = new Promise((resolve) => {
         resolveLogin = resolve;
-      });
 
       mockAuthService.login.mockReturnValue(loginPromise);
 
@@ -219,14 +213,12 @@ describe('LoginForm Integration Tests', () => {
         tenant_id: 'test-tenant',
         two_factor_enabled: false,
         preferences: {},
-      });
 
       // Wait for loading to complete
       await waitFor(() => {
         expect(screen.queryByText(/signing in/i)).not.toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Form Validation Integration', () => {
     it('should integrate with form validation system', async () => {
@@ -243,8 +235,7 @@ describe('LoginForm Integration Tests', () => {
       await user.type(passwordInput, 'test123');
 
       expect(screen.getByTestId('password-strength')).toBeInTheDocument();
-    });
-  });
+
 
   describe('2FA Flow Integration', () => {
     it('should handle complete 2FA authentication flow', async () => {
@@ -260,7 +251,6 @@ describe('LoginForm Integration Tests', () => {
           tenant_id: 'test-tenant',
           two_factor_enabled: true,
           preferences: {},
-        });
 
       renderWithAuthProvider(<LoginForm />);
 
@@ -276,7 +266,6 @@ describe('LoginForm Integration Tests', () => {
       // Wait for 2FA field to appear
       await waitFor(() => {
         expect(screen.getByLabelText(/two-factor/i)).toBeInTheDocument();
-      });
 
       // Enter 2FA code and submit
       const totpInput = screen.getByLabelText(/two-factor/i);
@@ -291,8 +280,7 @@ describe('LoginForm Integration Tests', () => {
           email: 'test@example.com',
           password: 'password123',
           totp_code: '123456',
-        });
-      });
-    });
-  });
-});
+
+
+
+

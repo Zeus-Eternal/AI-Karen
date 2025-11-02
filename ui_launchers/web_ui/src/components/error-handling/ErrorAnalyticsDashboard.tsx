@@ -6,20 +6,8 @@
  */
 import React, { useState, useEffect, useMemo } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
-import { 
-  AlertTriangle, 
-  TrendingUp, 
-  TrendingDown, 
-  Clock, 
-  CheckCircle, 
-  XCircle,
-  BarChart3,
-  PieChart,
-  Activity,
-  Filter,
-  Download,
-  RefreshCw
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -90,7 +78,7 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
     <ErrorBoundary fallback={<div>Something went wrong in ErrorAnalyticsDashboard</div>}>
       <div className="flex items-center justify-center h-64">
         <div className="flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 animate-spin sm:w-auto md:w-full" />
+          <RefreshCw className="w-4 h-4 animate-spin " />
           <span>Loading analytics...</span>
         </div>
       </div>
@@ -101,7 +89,7 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
       <Card>
         <CardContent className="flex items-center justify-center h-64">
           <div className="text-center">
-            <AlertTriangle className="w-8 h-8 text-muted-foreground mx-auto mb-2 sm:w-auto md:w-full" />
+            <AlertTriangle className="w-8 h-8 text-muted-foreground mx-auto mb-2 " />
             <p className="text-muted-foreground">No analytics data available</p>
           </div>
         </CardContent>
@@ -115,28 +103,25 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
         <div>
           <h2 className="text-2xl font-bold">Error Analytics Dashboard</h2>
           <p className="text-muted-foreground">
-            Monitor error trends, resolution rates, and performance impact
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button variant="outline" size="sm" onClick={fetchReport} disabled={loading} aria-label="Button">
+          <Button variant="outline" size="sm" onClick={fetchReport} disabled={loading} >
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
           </Button>
-          <button variant="outline" size="sm" onClick={handleExportReport} aria-label="Button">
-            <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-            Export
+          <Button variant="outline" size="sm" onClick={handleExportReport} >
+            <Download className="w-4 h-4 mr-2 " />
           </Button>
         </div>
       </div>
       {/* Filters */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 sm:w-auto md:w-full" />
+          <Filter className="w-4 h-4 " />
           <span className="text-sm font-medium md:text-base lg:text-lg">Filters:</span>
         </div>
         <select value={timeRange} onValueChange={(value: any) = aria-label="Select option"> setTimeRange(value)}>
-          <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+          <selectTrigger className="w-32 " aria-label="Select option">
             <selectValue />
           </SelectTrigger>
           <selectContent aria-label="Select option">
@@ -147,7 +132,7 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
           </SelectContent>
         </Select>
         <select value={selectedSeverity} onValueChange={setSelectedSeverity} aria-label="Select option">
-          <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+          <selectTrigger className="w-32 " aria-label="Select option">
             <selectValue />
           </SelectTrigger>
           <selectContent aria-label="Select option">
@@ -164,7 +149,7 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Total Errors</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <AlertTriangle className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{report.summary.totalErrors.toLocaleString()}</div>
@@ -176,7 +161,7 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Resolution Rate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <CheckCircle className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -191,28 +176,26 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Avg Resolution Time</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Clock className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {Math.round(report.summary.averageResolutionTime / 1000)}s
             </div>
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              Average time to resolve
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Critical Errors</CardTitle>
-            <XCircle className="h-4 w-4 text-destructive sm:w-auto md:w-full" />
+            <XCircle className="h-4 w-4 text-destructive " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">
               {report.summary.criticalErrors}
             </div>
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              Require immediate attention
             </p>
           </CardContent>
         </Card>
@@ -221,20 +204,16 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
       <Tabs defaultValue="trends" className="space-y-4">
         <TabsList>
           <TabsTrigger value="trends">
-            <TrendingUp className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-            Trends
+            <TrendingUp className="w-4 h-4 mr-2 " />
           </TabsTrigger>
           <TabsTrigger value="errors">
-            <BarChart3 className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-            Top Errors
+            <BarChart3 className="w-4 h-4 mr-2 " />
           </TabsTrigger>
           <TabsTrigger value="sections">
-            <PieChart className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-            By Section
+            <PieChart className="w-4 h-4 mr-2 " />
           </TabsTrigger>
           <TabsTrigger value="performance">
-            <Activity className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-            Performance Impact
+            <Activity className="w-4 h-4 mr-2 " />
           </TabsTrigger>
         </TabsList>
         <TabsContent value="trends" className="space-y-4">
@@ -242,7 +221,6 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
             <CardHeader>
               <CardTitle>Error Trends</CardTitle>
               <CardDescription>
-                Error frequency and resolution patterns over time
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -267,7 +245,7 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
                         </div>
                         <Progress 
                           value={trend.resolutionRate * 100} 
-                          className="w-20 sm:w-auto md:w-full"
+                          className="w-20 "
                         />
                       </div>
                     </div>
@@ -275,7 +253,6 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  No trend data available
                 </div>
               )}
             </CardContent>
@@ -286,14 +263,13 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
             <CardHeader>
               <CardTitle>Top Errors</CardTitle>
               <CardDescription>
-                Most frequent errors and their resolution status
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {filteredData?.topErrors.map((error, index) => (
                   <div key={index} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
-                    <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                    <div className="flex-1 min-w-0 ">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant={
                           error.severity === 'critical' ? 'destructive' :
@@ -332,7 +308,6 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
             <CardHeader>
               <CardTitle>Errors by Section</CardTitle>
               <CardDescription>
-                Error distribution and resolution rates across application sections
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -351,7 +326,7 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
                       </div>
                       <Progress 
                         value={data.resolutionRate * 100} 
-                        className="w-24 mt-1 sm:w-auto md:w-full"
+                        className="w-24 mt-1 "
                       />
                     </div>
                   </div>
@@ -371,7 +346,6 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
                   {(report.performanceImpact.averageMemoryIncrease / 1024 / 1024).toFixed(1)}MB
                 </div>
                 <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  Average memory increase per error
                 </p>
               </CardContent>
             </Card>
@@ -384,7 +358,6 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
                   {report.performanceImpact.averageRenderDelay.toFixed(0)}ms
                 </div>
                 <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  Average render delay
                 </p>
               </CardContent>
             </Card>

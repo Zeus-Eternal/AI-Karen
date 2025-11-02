@@ -201,8 +201,7 @@ function processResponsiveValue<T>(
           result[`--grid-${breakpoint}`] = processedValue;
         }
       }
-    });
-    
+
     return result;
   }
   
@@ -254,7 +253,7 @@ function generateGridStyles(props: GridStyleProps): React.CSSProperties {
     } else {
       Object.entries(columnsValue).forEach(([key, value]) => {
         (styles as any)[key] = value;
-      });
+
     }
   }
   
@@ -269,7 +268,7 @@ function generateGridStyles(props: GridStyleProps): React.CSSProperties {
     } else {
       Object.entries(rowsValue).forEach(([key, value]) => {
         (styles as any)[key] = value;
-      });
+
     }
   }
   
@@ -281,7 +280,7 @@ function generateGridStyles(props: GridStyleProps): React.CSSProperties {
     } else {
       Object.entries(gapValue).forEach(([key, value]) => {
         (styles as any)[key] = value;
-      });
+
     }
   }
   
@@ -391,8 +390,7 @@ export const GridContainer = React.forwardRef<HTMLDivElement, GridContainerProps
       maxHeight,
       containerQueries,
       containerName,
-    });
-    
+
     // Combine styles
     const combinedStyles = {
       ...gridStyles,

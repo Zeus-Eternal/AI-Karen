@@ -16,9 +16,7 @@ vi.mock('@/contexts/AuthContext', async () => {
     ...actual,
     useAuth: vi.fn(),
   };
-});
-import {
-  TestAuthProvider,
+
   renderWithProviders,
   createMockAuthContext,
   mockSuperAdminUser,
@@ -54,7 +52,7 @@ import {
   createTestCredentialsWithMFA,
   resetAllMocks,
   cleanupTestEnvironment
-} from '../test-providers';
+import { } from '../test-providers';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Test component that uses the AuthContext
@@ -83,12 +81,10 @@ const TestAuthComponent: React.FC = () => {
 describe('TestAuthProvider', () => {
   beforeEach(() => {
     resetAllMocks();
-  });
 
   afterEach(() => {
     cleanup();
     cleanupTestEnvironment();
-  });
 
   describe('Basic Provider Functionality', () => {
     it('should provide AuthContext to child components', () => {
@@ -100,7 +96,6 @@ describe('TestAuthProvider', () => {
 
       // Should render unauthenticated by default
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
 
     it('should provide authenticated context when user is provided', () => {
       render(
@@ -112,12 +107,10 @@ describe('TestAuthProvider', () => {
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('user-email')).toHaveTextContent('superadmin@example.com');
       expect(screen.getByTestId('user-role')).toHaveTextContent('super_admin');
-    });
 
     it('should accept custom authValue overrides', () => {
       const customAuthValue = createMockAuthContext(mockAdminUser, true, {
         hasPermission: vi.fn(() => false) // Override to always return false
-      });
 
       render(
         <TestAuthProvider authValue={customAuthValue}>
@@ -127,8 +120,7 @@ describe('TestAuthProvider', () => {
 
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('has-user-management')).toHaveTextContent('false');
-    });
-  });
+
 
   describe('Test Scenario Support', () => {
     it('should support super_admin test scenario', () => {
@@ -142,7 +134,6 @@ describe('TestAuthProvider', () => {
       expect(screen.getByTestId('user-email')).toHaveTextContent('superadmin@example.com');
       expect(screen.getByTestId('is-super-admin')).toHaveTextContent('true');
       expect(screen.getByTestId('has-admin-management')).toHaveTextContent('true');
-    });
 
     it('should support admin test scenario', () => {
       render(
@@ -157,7 +148,6 @@ describe('TestAuthProvider', () => {
       expect(screen.getByTestId('is-super-admin')).toHaveTextContent('false');
       expect(screen.getByTestId('has-user-management')).toHaveTextContent('true');
       expect(screen.getByTestId('has-admin-management')).toHaveTextContent('false');
-    });
 
     it('should support user test scenario', () => {
       render(
@@ -170,7 +160,6 @@ describe('TestAuthProvider', () => {
       expect(screen.getByTestId('user-email')).toHaveTextContent('user@example.com');
       expect(screen.getByTestId('is-admin')).toHaveTextContent('false');
       expect(screen.getByTestId('has-user-management')).toHaveTextContent('false');
-    });
 
     it('should support unauthenticated test scenario', () => {
       render(
@@ -180,7 +169,6 @@ describe('TestAuthProvider', () => {
       );
 
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
 
     it('should support authenticated test scenario with default user', () => {
       render(
@@ -191,8 +179,7 @@ describe('TestAuthProvider', () => {
 
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('user-email')).toHaveTextContent('user@example.com');
-    });
-  });
+
 
   describe('Custom User and Authentication State', () => {
     it('should override scenario with explicit user and isAuthenticated props', () => {
@@ -209,7 +196,6 @@ describe('TestAuthProvider', () => {
       // Should use explicit props over scenario
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('user-email')).toHaveTextContent('superadmin@example.com');
-    });
 
     it('should handle null user correctly', () => {
       render(
@@ -219,7 +205,6 @@ describe('TestAuthProvider', () => {
       );
 
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
 
     it('should handle inconsistent user and authentication state', () => {
       render(
@@ -230,18 +215,15 @@ describe('TestAuthProvider', () => {
 
       // Should respect isAuthenticated prop
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
-  });
-});
+
+
 
 describe('Mock Utilities', () => {
   beforeEach(() => {
     resetAllMocks();
-  });
 
   afterEach(() => {
     cleanupTestEnvironment();
-  });
 
   describe('createMockAuthContext', () => {
     it('should create valid AuthContext with default values', () => {
@@ -256,21 +238,18 @@ describe('Mock Utilities', () => {
       expect(typeof authContext.hasPermission).toBe('function');
       expect(typeof authContext.isAdmin).toBe('function');
       expect(typeof authContext.isSuperAdmin).toBe('function');
-    });
 
     it('should create AuthContext with provided user and authentication state', () => {
       const authContext = createMockAuthContext(mockSuperAdminUser, true);
 
       expect(authContext.user).toEqual(mockSuperAdminUser);
       expect(authContext.isAuthenticated).toBe(true);
-    });
 
     it('should apply overrides correctly', () => {
       const customLogin = vi.fn();
       const authContext = createMockAuthContext(null, false, { login: customLogin });
 
       expect(authContext.login).toBe(customLogin);
-    });
 
     it('should have realistic role checking behavior', () => {
       const authContext = createMockAuthContext(mockSuperAdminUser, true);
@@ -278,7 +257,6 @@ describe('Mock Utilities', () => {
       expect(authContext.hasRole('super_admin')).toBe(true);
       expect(authContext.hasRole('admin')).toBe(false);
       expect(authContext.hasRole('user')).toBe(false);
-    });
 
     it('should have realistic permission checking behavior', () => {
       const authContext = createMockAuthContext(mockSuperAdminUser, true);
@@ -286,7 +264,6 @@ describe('Mock Utilities', () => {
       expect(authContext.hasPermission('user_management')).toBe(true);
       expect(authContext.hasPermission('admin_management')).toBe(true);
       expect(authContext.hasPermission('nonexistent_permission')).toBe(false);
-    });
 
     it('should handle users without explicit permissions', () => {
       const userWithoutPermissions = { ...mockRegularUser, permissions: undefined };
@@ -294,8 +271,7 @@ describe('Mock Utilities', () => {
 
       // Should fall back to role-based permissions
       expect(authContext.hasPermission('user_management')).toBe(false);
-    });
-  });
+
 
   describe('Predefined Auth Context Creators', () => {
     it('should create super admin context correctly', () => {
@@ -306,7 +282,6 @@ describe('Mock Utilities', () => {
       expect(authContext.isSuperAdmin()).toBe(true);
       expect(authContext.isAdmin()).toBe(true);
       expect(authContext.hasPermission('admin_management')).toBe(true);
-    });
 
     it('should create admin context correctly', () => {
       const authContext = createAdminAuthContext();
@@ -317,7 +292,6 @@ describe('Mock Utilities', () => {
       expect(authContext.isAdmin()).toBe(true);
       expect(authContext.hasPermission('user_management')).toBe(true);
       expect(authContext.hasPermission('admin_management')).toBe(false);
-    });
 
     it('should create user context correctly', () => {
       const authContext = createUserAuthContext();
@@ -327,7 +301,6 @@ describe('Mock Utilities', () => {
       expect(authContext.isSuperAdmin()).toBe(false);
       expect(authContext.isAdmin()).toBe(false);
       expect(authContext.hasPermission('user_management')).toBe(false);
-    });
 
     it('should create unauthenticated context correctly', () => {
       const authContext = createUnauthenticatedAuthContext();
@@ -337,7 +310,6 @@ describe('Mock Utilities', () => {
       expect(authContext.isSuperAdmin()).toBe(false);
       expect(authContext.isAdmin()).toBe(false);
       expect(authContext.hasPermission('user_management')).toBe(false);
-    });
 
     it('should create auth error context correctly', () => {
       const errorMessage = 'Custom auth error';
@@ -347,7 +319,6 @@ describe('Mock Utilities', () => {
       expect(authContext.isAuthenticated).toBe(false);
       expect(authContext.login).rejects.toThrow(errorMessage);
       expect(authContext.checkAuth).rejects.toThrow(errorMessage);
-    });
 
     it('should create loading context correctly', () => {
       const authContext = createLoadingAuthContext();
@@ -357,8 +328,7 @@ describe('Mock Utilities', () => {
       // checkAuth should never resolve (loading state)
       const checkAuthPromise = authContext.checkAuth();
       expect(checkAuthPromise).toBeInstanceOf(Promise);
-    });
-  });
+
 
   describe('Mock User Data', () => {
     it('should have complete and realistic mock users', () => {
@@ -371,8 +341,7 @@ describe('Mock Utilities', () => {
         expect(user.roles).toBeInstanceOf(Array);
         expect(user.role).toBeDefined();
         expect(user.permissions).toBeInstanceOf(Array);
-      });
-    });
+
 
     it('should have unique user IDs', () => {
       const users = [mockSuperAdminUser, mockAdminUser, mockRegularUser];
@@ -380,7 +349,6 @@ describe('Mock Utilities', () => {
       const uniqueIds = new Set(userIds);
       
       expect(uniqueIds.size).toBe(userIds.length);
-    });
 
     it('should have appropriate permissions for each role', () => {
       expect(mockSuperAdminUser.permissions).toContain('admin_management');
@@ -391,7 +359,6 @@ describe('Mock Utilities', () => {
       expect(mockAdminUser.permissions).not.toContain('admin_management');
 
       expect(mockRegularUser.permissions).toHaveLength(0);
-    });
 
     it('should have consistent role and roles fields', () => {
       expect(mockSuperAdminUser.role).toBe('super_admin');
@@ -402,36 +369,30 @@ describe('Mock Utilities', () => {
 
       expect(mockRegularUser.role).toBe('user');
       expect(mockRegularUser.roles).toContain('user');
-    });
 
     it('should support users with multiple roles', () => {
       expect(mockUserWithMultipleRoles.roles).toContain('user');
       expect(mockUserWithMultipleRoles.roles).toContain('admin');
       expect(mockUserWithMultipleRoles.role).toBe('admin'); // Primary role
-    });
 
     it('should support users with custom permissions', () => {
       expect(mockUserWithCustomPermissions.permissions).toContain('custom_permission');
       expect(mockUserWithCustomPermissions.permissions).toContain('special_access');
-    });
-  });
-});
+
+
 
 describe('Render Utilities', () => {
   beforeEach(() => {
     resetAllMocks();
-  });
 
   afterEach(() => {
     cleanup();
     cleanupTestEnvironment();
-  });
 
   describe('renderWithProviders', () => {
     it('should render with default unauthenticated state', () => {
       renderWithProviders(<TestAuthComponent />);
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
 
     it('should render with provided auth values', () => {
       const authValue = createMockAuthContext(mockSuperAdminUser, true);
@@ -439,14 +400,12 @@ describe('Render Utilities', () => {
 
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('user-email')).toHaveTextContent('superadmin@example.com');
-    });
 
     it('should render with test scenarios', () => {
       renderWithProviders(<TestAuthComponent />, { testScenario: 'super_admin' });
 
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('is-super-admin')).toHaveTextContent('true');
-    });
 
     it('should support additional provider options', () => {
       const additionalWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -458,12 +417,10 @@ describe('Render Utilities', () => {
         providerOptions: {
           additionalWrappers: [additionalWrapper]
         }
-      });
 
       expect(screen.getByTestId('additional-wrapper')).toBeInTheDocument();
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Convenience Render Functions', () => {
     it('should render with super admin', () => {
@@ -471,7 +428,6 @@ describe('Render Utilities', () => {
 
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('is-super-admin')).toHaveTextContent('true');
-    });
 
     it('should render with admin', () => {
       renderWithAdmin(<TestAuthComponent />);
@@ -479,20 +435,17 @@ describe('Render Utilities', () => {
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('is-admin')).toHaveTextContent('true');
       expect(screen.getByTestId('is-super-admin')).toHaveTextContent('false');
-    });
 
     it('should render with user', () => {
       renderWithUser(<TestAuthComponent />);
 
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('is-admin')).toHaveTextContent('false');
-    });
 
     it('should render with unauthenticated', () => {
       renderWithUnauthenticated(<TestAuthComponent />);
 
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
 
     it('should render with custom auth', () => {
       const customAuth = createMockAuthContext(mockAdminUser, true);
@@ -500,25 +453,21 @@ describe('Render Utilities', () => {
 
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('user-email')).toHaveTextContent('admin@example.com');
-    });
 
     it('should render with auth error', () => {
       renderWithAuthError(<TestAuthComponent />, 'Custom error message');
 
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
-  });
-});
+
+
 
 describe('Auth Test Scenarios', () => {
   beforeEach(() => {
     resetAllMocks();
-  });
 
   afterEach(() => {
     cleanup();
     cleanupTestEnvironment();
-  });
 
   describe('Predefined Scenarios', () => {
     it('should have all expected scenarios', () => {
@@ -529,8 +478,7 @@ describe('Auth Test Scenarios', () => {
 
       expectedScenarios.forEach(scenario => {
         expect(authTestScenarios).toHaveProperty(scenario);
-      });
-    });
+
 
     it('should create auth context from scenario', () => {
       const superAdminContext = createAuthContextFromScenario('superAdmin');
@@ -540,14 +488,12 @@ describe('Auth Test Scenarios', () => {
       const unauthContext = createAuthContextFromScenario('unauthenticated');
       expect(unauthContext.user).toBeNull();
       expect(unauthContext.isAuthenticated).toBe(false);
-    });
 
     it('should render with auth scenario', () => {
       renderWithAuthScenario(<TestAuthComponent />, 'superAdmin');
 
       expect(screen.getByTestId('authenticated')).toBeInTheDocument();
       expect(screen.getByTestId('is-super-admin')).toHaveTextContent('true');
-    });
 
     it('should run batch scenario tests', () => {
       const testResults: Array<{ scenario: string; passed: boolean }> = [];
@@ -556,15 +502,13 @@ describe('Auth Test Scenarios', () => {
         testResults.push({
           scenario: scenarioName,
           passed: validateAuthContext(authContext)
-        });
-      });
+
 
       expect(testResults).toHaveLength(4); // Default scenarios
       testResults.forEach(result => {
         expect(result.passed).toBe(true);
-      });
-    });
-  });
+
+
 
   describe('Permission Testing Utilities', () => {
     it('should create permission test matrix', () => {
@@ -577,8 +521,7 @@ describe('Auth Test Scenarios', () => {
         expect(item).toHaveProperty('superAdminShouldHave');
         expect(item).toHaveProperty('adminShouldHave');
         expect(item).toHaveProperty('userShouldHave');
-      });
-    });
+
 
     it('should test permission matrix correctly', () => {
       const permissions = ['user_management', 'admin_management'];
@@ -598,24 +541,20 @@ describe('Auth Test Scenarios', () => {
       const userContext = createUserAuthContext();
       const userResults = testPermissionMatrix(userContext, matrix);
       expect(userResults.every(r => r.passed)).toBe(true);
-    });
-  });
-});
+
+
 
 describe('Validation Utilities', () => {
   beforeEach(() => {
     resetAllMocks();
-  });
 
   afterEach(() => {
     cleanupTestEnvironment();
-  });
 
   describe('validateAuthContext', () => {
     it('should validate complete auth context', () => {
       const authContext = createMockAuthContext(mockSuperAdminUser, true);
       expect(validateAuthContext(authContext)).toBe(true);
-    });
 
     it('should reject incomplete auth context', () => {
       const incompleteContext = {
@@ -625,20 +564,17 @@ describe('Validation Utilities', () => {
       } as any;
 
       expect(validateAuthContext(incompleteContext)).toBe(false);
-    });
 
     it('should validate auth context with null user', () => {
       const authContext = createMockAuthContext(null, false);
       expect(validateAuthContext(authContext)).toBe(true);
-    });
-  });
+
 
   describe('validateUser', () => {
     it('should validate complete user object', () => {
       expect(validateUser(mockSuperAdminUser)).toBe(true);
       expect(validateUser(mockAdminUser)).toBe(true);
       expect(validateUser(mockRegularUser)).toBe(true);
-    });
 
     it('should reject incomplete user object', () => {
       const incompleteUser = {
@@ -648,18 +584,15 @@ describe('Validation Utilities', () => {
       } as any;
 
       expect(validateUser(incompleteUser)).toBe(false);
-    });
-  });
-});
+
+
 
 describe('Test Data Factories', () => {
   beforeEach(() => {
     resetAllMocks();
-  });
 
   afterEach(() => {
     cleanupTestEnvironment();
-  });
 
   describe('User Factories', () => {
     it('should create test user with defaults', () => {
@@ -670,17 +603,14 @@ describe('Test Data Factories', () => {
       expect(user.role).toBe('user');
       expect(user.roles).toEqual(['user']);
       expect(user.permissions).toEqual([]);
-    });
 
     it('should create test user with overrides', () => {
       const user = createTestUser({
         email: 'custom@example.com',
         role: 'admin'
-      });
 
       expect(user.email).toBe('custom@example.com');
       expect(user.role).toBe('admin');
-    });
 
     it('should create test super admin', () => {
       const user = createTestSuperAdmin();
@@ -689,7 +619,6 @@ describe('Test Data Factories', () => {
       expect(user.email).toBe('superadmin@example.com');
       expect(user.role).toBe('super_admin');
       expect(user.permissions).toContain('admin_management');
-    });
 
     it('should create test admin', () => {
       const user = createTestAdmin();
@@ -699,8 +628,7 @@ describe('Test Data Factories', () => {
       expect(user.role).toBe('admin');
       expect(user.permissions).toContain('user_management');
       expect(user.permissions).not.toContain('admin_management');
-    });
-  });
+
 
   describe('Credential Factories', () => {
     it('should create test credentials', () => {
@@ -708,16 +636,13 @@ describe('Test Data Factories', () => {
 
       expect(credentials.email).toBe('test@example.com');
       expect(credentials.password).toBe('testpassword123');
-    });
 
     it('should create test credentials with overrides', () => {
       const credentials = createTestCredentials({
         email: 'custom@example.com'
-      });
 
       expect(credentials.email).toBe('custom@example.com');
       expect(credentials.password).toBe('testpassword123');
-    });
 
     it('should create test credentials with MFA', () => {
       const credentials = createTestCredentialsWithMFA();
@@ -725,9 +650,8 @@ describe('Test Data Factories', () => {
       expect(credentials.email).toBe('test@example.com');
       expect(credentials.password).toBe('testpassword123');
       expect(credentials.totp_code).toBe('123456');
-    });
-  });
-});
+
+
 
 describe('Test Isolation and Cleanup', () => {
   describe('Mock Reset and Cleanup', () => {
@@ -738,7 +662,6 @@ describe('Test Isolation and Cleanup', () => {
 
       resetAllMocks();
       expect(mockFn).not.toHaveBeenCalled();
-    });
 
     it('should cleanup test environment', () => {
       // Set some test data
@@ -753,27 +676,23 @@ describe('Test Isolation and Cleanup', () => {
         expect(window.localStorage.getItem('test-key')).toBeNull();
         expect(window.sessionStorage.getItem('test-key')).toBeNull();
       }
-    });
-  });
+
 
   describe('Test Isolation Between Tests', () => {
     it('should isolate test state - first test', () => {
       renderWithProviders(<TestAuthComponent />, { testScenario: 'super_admin' });
       expect(screen.getByTestId('is-super-admin')).toHaveTextContent('true');
-    });
 
     it('should isolate test state - second test', () => {
       // This test should not be affected by the previous test
       renderWithProviders(<TestAuthComponent />, { testScenario: 'user' });
       expect(screen.getByTestId('is-admin')).toHaveTextContent('false');
-    });
 
     it('should isolate test state - third test', () => {
       // This test should also be isolated
       renderWithProviders(<TestAuthComponent />, { testScenario: 'unauthenticated' });
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Provider State Isolation', () => {
     it('should not leak state between provider instances', () => {
@@ -788,7 +707,6 @@ describe('Test Isolation and Cleanup', () => {
       // Second provider instance should be independent
       renderWithProviders(<TestAuthComponent />, { testScenario: 'user' });
       expect(screen.getByTestId('is-admin')).toHaveTextContent('false');
-    });
 
     it('should handle multiple simultaneous provider instances', () => {
       const TestMultipleProviders: React.FC = () => (
@@ -814,19 +732,16 @@ describe('Test Isolation and Cleanup', () => {
 
       expect(provider1.querySelector('[data-testid="is-super-admin"]')).toHaveTextContent('true');
       expect(provider2.querySelector('[data-testid="is-admin"]')).toHaveTextContent('false');
-    });
-  });
-});
+
+
 
 describe('Error Handling and Edge Cases', () => {
   beforeEach(() => {
     resetAllMocks();
-  });
 
   afterEach(() => {
     cleanup();
     cleanupTestEnvironment();
-  });
 
   describe('Invalid Props Handling', () => {
     it('should handle undefined user gracefully', () => {
@@ -837,7 +752,6 @@ describe('Error Handling and Edge Cases', () => {
       );
 
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
 
     it('should handle invalid test scenario gracefully', () => {
       render(
@@ -848,8 +762,7 @@ describe('Error Handling and Edge Cases', () => {
 
       // Should fall back to default behavior
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Mock Function Error Scenarios', () => {
     it('should handle auth context with error functions', () => {
@@ -859,7 +772,6 @@ describe('Error Handling and Edge Cases', () => {
       
       expect(screen.getByTestId('unauthenticated')).toBeInTheDocument();
       expect(errorContext.login).rejects.toThrow('Test error');
-    });
 
     it('should handle loading auth context', () => {
       const loadingContext = createLoadingAuthContext();
@@ -871,8 +783,7 @@ describe('Error Handling and Edge Cases', () => {
       // checkAuth should return a promise that never resolves
       const checkAuthPromise = loadingContext.checkAuth();
       expect(checkAuthPromise).toBeInstanceOf(Promise);
-    });
-  });
+
 
   describe('Memory Leaks Prevention', () => {
     it('should not retain references after cleanup', () => {
@@ -891,6 +802,5 @@ describe('Error Handling and Edge Cases', () => {
       
       // Context should still be accessible but isolated
       expect(authContext.user).toEqual(mockSuperAdminUser);
-    });
-  });
-});
+
+

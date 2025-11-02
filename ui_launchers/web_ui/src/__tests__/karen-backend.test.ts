@@ -14,19 +14,16 @@ describe('KarenBackendService session handling', () => {
     vi.restoreAllMocks();
     // jsdom provides localStorage
     localStorage.clear();
-  });
 
   afterEach(() => {
     global.fetch = originalFetch;
     window.location = originalLocation;
-  });
 
   it('initializes and persists session id', () => {
     const first = initializeSessionId();
     const second = initializeSessionId();
     expect(first).toBe(second);
     expect(localStorage.getItem(SESSION_ID_KEY)).toBe(first);
-  });
 
   it('appends session_id to memory requests', async () => {
     localStorage.setItem(SESSION_ID_KEY, 'session-xyz');
@@ -46,7 +43,6 @@ describe('KarenBackendService session handling', () => {
     expect(body.session_id).toBe('session-xyz');
     const headers = fetchMock.mock.calls[0][1]!.headers as Record<string, string>;
     expect(headers['X-Correlation-ID']).toBeTruthy();
-  });
 
   it('retries auth on 401 and redirects when unauthorized', async () => {
     const service = new KarenBackendService({ baseUrl: 'http://test' });
@@ -67,7 +63,6 @@ describe('KarenBackendService session handling', () => {
     await expect(service.makeRequestPublic('/api/test')).rejects.toBeInstanceOf(Error);
     expect(fetchMock).toHaveBeenNthCalledWith(2, 'http://test/api/auth/me', expect.any(Object));
     expect(assignMock).toHaveBeenCalledWith('/login');
-  });
 
   it('returns cached plugins when service unavailable', async () => {
     const service = new KarenBackendService({ baseUrl: 'http://test' });
@@ -97,5 +92,4 @@ describe('KarenBackendService session handling', () => {
     expect(second).toEqual([{ name: 'p1' }]);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-});
+

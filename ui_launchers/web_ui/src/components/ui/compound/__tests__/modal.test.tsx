@@ -1,8 +1,7 @@
-import * as React from "react"
-import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, vi } from "vitest"
-import { Modal } from "../modal"
-
+import * as React from "react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { Modal } from "../modal";
 describe("Modal Compound Component", () => {
   it("should render modal with all compound parts", () => {
     render(

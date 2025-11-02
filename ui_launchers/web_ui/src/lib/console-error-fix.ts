@@ -67,10 +67,10 @@ export function initializeConsoleErrorFix() {
         filename: event.filename,
         lineno: event.lineno,
         colno: event.colno,
-      });
+
       return false;
     }
-  });
+
   // Add unhandled promise rejection handler
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
@@ -85,9 +85,9 @@ export function initializeConsoleErrorFix() {
       originalConsoleError('[SAFE] Prevented console interceptor promise rejection:', {
         reason: reason?.message || reason,
         stack: reason?.stack,
-      });
+
     }
-  });
+
 }
 // Auto-initialize in browser environment
 if (typeof window !== 'undefined') {

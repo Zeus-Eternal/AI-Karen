@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,21 +9,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
-import {
-  Bell,
-  BellOff,
-  CheckCircle2,
-  AlertCircle,
-  AlertTriangle,
-  Info,
-  X,
-  Settings,
-  Activity,
-  Zap,
-  Shield,
-  RefreshCw,
-  Clock
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 interface NotificationSettings {
   provider_status_changes: boolean;
   fallback_notifications: boolean;
@@ -66,7 +55,7 @@ export function ProviderNotificationSystem({
     performance_alerts: false,
     error_notifications: true,
     maintenance_notifications: true
-  });
+
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const { toast } = useToast();
@@ -159,13 +148,13 @@ export function ProviderNotificationSystem({
       toast({
         title: "Settings Saved",
         description: "Notification preferences have been updated.",
-      });
+
     } catch (error) {
       toast({
         title: "Save Failed",
         description: "Could not save notification settings.",
         variant: "destructive",
-      });
+
     }
   }, [toast]);
   const markAsRead = (notificationId: string) => {
@@ -209,29 +198,29 @@ export function ProviderNotificationSystem({
     toast({
       title: "Notifications Cleared",
       description: "All notifications have been dismissed.",
-    });
+
   };
   const getNotificationIcon = (type: string, priority: string) => {
     if (priority === 'critical') {
-      return <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+      return <AlertCircle className="h-4 w-4 text-red-600 " />;
     }
     switch (type) {
       case 'status_change':
-        return <Activity className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />;
+        return <Activity className="h-4 w-4 text-blue-600 " />;
       case 'fallback':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600 " />;
       case 'recovery':
-        return <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600 " />;
       case 'system_health':
-        return <Shield className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+        return <Shield className="h-4 w-4 text-red-600 " />;
       case 'performance':
-        return <Zap className="h-4 w-4 text-orange-600 sm:w-auto md:w-full" />;
+        return <Zap className="h-4 w-4 text-orange-600 " />;
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-4 w-4 text-red-600 " />;
       case 'maintenance':
-        return <Settings className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
+        return <Settings className="h-4 w-4 text-gray-600 " />;
       default:
-        return <Info className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />;
+        return <Info className="h-4 w-4 text-blue-600 " />;
     }
   };
   const getPriorityColor = (priority: string) => {
@@ -253,7 +242,7 @@ export function ProviderNotificationSystem({
       <Card>
         <CardContent className="flex items-center justify-center py-8">
           <div className="text-center space-y-2">
-            <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+            <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary " />
             <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading notifications...</p>
           </div>
         </CardContent>
@@ -267,7 +256,7 @@ export function ProviderNotificationSystem({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5 sm:w-auto md:w-full" />
+              <Bell className="h-5 w-5 " />
               <CardTitle>Provider Notifications</CardTitle>
               {unreadCount > 0 && (
                 <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
@@ -276,20 +265,19 @@ export function ProviderNotificationSystem({
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setShowSettings(!showSettings)}
+                onClick={() => setShowSettings(!showSettings)}
               >
-                <Settings className="h-4 w-4 sm:w-auto md:w-full" />
+                <Settings className="h-4 w-4 " />
               </Button>
               {activeNotifications.length > 0 && (
-                <button
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={clearAllNotifications}
-                 aria-label="Button">
-                  Clear All
+                 >
                 </Button>
               )}
             </div>
@@ -302,7 +290,6 @@ export function ProviderNotificationSystem({
           <CardHeader>
             <CardTitle className="text-lg">Notification Settings</CardTitle>
             <CardDescription>
-              Configure which types of notifications you want to receive
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -332,7 +319,7 @@ export function ProviderNotificationSystem({
           <Card>
             <CardContent className="flex items-center justify-center py-8">
               <div className="text-center space-y-2">
-                <BellOff className="h-8 w-8 mx-auto text-muted-foreground sm:w-auto md:w-full" />
+                <BellOff className="h-8 w-8 mx-auto text-muted-foreground " />
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">No notifications</p>
                 <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   You'll see provider status updates and alerts here
@@ -368,17 +355,17 @@ export function ProviderNotificationSystem({
                         {notification.message}
                       </CardDescription>
                       <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground sm:text-sm md:text-base">
-                        <Clock className="h-3 w-3 sm:w-auto md:w-full" />
+                        <Clock className="h-3 w-3 " />
                         <span>{new Date(notification.timestamp).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
-                  <button
+                  <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() = aria-label="Button"> dismissNotification(notification.id)}
+                    onClick={() => dismissNotification(notification.id)}
                   >
-                    <X className="h-4 w-4 sm:w-auto md:w-full" />
+                    <X className="h-4 w-4 " />
                   </Button>
                 </div>
               </CardHeader>
@@ -387,11 +374,11 @@ export function ProviderNotificationSystem({
                 <CardContent className="pt-0">
                   <div className="flex flex-wrap gap-2">
                     {notification.actions.map((action) => (
-                      <button
+                      <Button
                         key={action.id}
                         variant={action.variant || 'default'}
                         size="sm"
-                        onClick={() = aria-label="Button"> handleNotificationAction(notification.id, action.id)}
+                        onClick={() => handleNotificationAction(notification.id, action.id)}
                       >
                         {action.label}
                       </Button>
@@ -420,8 +407,7 @@ export function ProviderNotificationSystem({
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-4 w-4 sm:w-auto md:w-full" />
-            System Status Summary
+            <Activity className="h-4 w-4 " />
           </CardTitle>
         </CardHeader>
         <CardContent>

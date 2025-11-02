@@ -18,7 +18,6 @@ const mockPerformance = {
 Object.defineProperty(global, 'performance', {
   value: mockPerformance,
   writable: true,
-});
 
 // Mock PerformanceObserver
 global.PerformanceObserver = vi.fn().mockImplementation((callback) => ({
@@ -39,18 +38,15 @@ vi.mock('web-vitals', () => ({
 describe('Performance System', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('Performance Monitor', () => {
     it('should initialize performance monitoring', () => {
       performanceMonitor.init();
       
       expect(PerformanceObserver).toHaveBeenCalled();
-    });
 
     it('should track Core Web Vitals', async () => {
       const vitalsCallback = vi.fn();
@@ -70,7 +66,6 @@ describe('Performance System', () => {
           TTFB: expect.any(Number),
         })
       );
-    });
 
     it('should measure custom performance metrics', () => {
       performanceMonitor.startMeasure('component-render');
@@ -83,7 +78,6 @@ describe('Performance System', () => {
         'component-render-start',
         'component-render-end'
       );
-    });
 
     it('should track navigation timing', () => {
       // Mock navigation timing
@@ -92,7 +86,6 @@ describe('Performance System', () => {
           type: 1, // TYPE_RELOAD
         },
         writable: true,
-      });
 
       Object.defineProperty(performance, 'timing', {
         value: {
@@ -101,7 +94,6 @@ describe('Performance System', () => {
           loadEventEnd: 3000,
         },
         writable: true,
-      });
 
       const timing = performanceMonitor.getNavigationTiming();
       
@@ -109,8 +101,7 @@ describe('Performance System', () => {
         domContentLoaded: 1000,
         loadComplete: 2000,
         navigationType: 'reload',
-      });
-    });
+
 
     it('should track resource loading performance', () => {
       const mockResources = [
@@ -139,8 +130,7 @@ describe('Performance System', () => {
         name: 'https://example.com/script.js',
         duration: 200,
         size: 50000,
-      });
-    });
+
 
     it('should detect performance issues', () => {
       const issues = performanceMonitor.detectIssues({
@@ -149,14 +139,12 @@ describe('Performance System', () => {
         FCP: 4000, // Poor
         LCP: 5000, // Poor
         TTFB: 1000, // Poor
-      });
 
       expect(issues).toContain('High Cumulative Layout Shift');
       expect(issues).toContain('Slow First Input Delay');
       expect(issues).toContain('Slow First Contentful Paint');
       expect(issues).toContain('Slow Largest Contentful Paint');
       expect(issues).toContain('Slow Time to First Byte');
-    });
 
     it('should generate performance report', () => {
       const mockVitals = {
@@ -175,8 +163,7 @@ describe('Performance System', () => {
         issues: [],
         recommendations: expect.any(Array),
         timestamp: expect.any(Number),
-      });
-    });
+
 
     it('should handle performance budget alerts', () => {
       const alertCallback = vi.fn();
@@ -185,8 +172,7 @@ describe('Performance System', () => {
         LCP: 2500,
         FID: 100,
         CLS: 0.1,
-      });
-      
+
       performanceMonitor.onBudgetExceeded(alertCallback);
       
       // Simulate budget exceeded
@@ -194,16 +180,14 @@ describe('Performance System', () => {
         LCP: 3000, // Exceeds budget
         FID: 50,
         CLS: 0.05,
-      });
-      
+
       expect(alertCallback).toHaveBeenCalledWith({
         metric: 'LCP',
         value: 3000,
         budget: 2500,
         exceeded: 500,
-      });
-    });
-  });
+
+
 
   describe('Bundle Analyzer', () => {
     it('should analyze bundle composition', () => {
@@ -229,8 +213,7 @@ describe('Performance System', () => {
         largestModules: expect.any(Array),
         duplicates: expect.any(Array),
         recommendations: expect.any(Array),
-      });
-    });
+
 
     it('should detect duplicate modules', () => {
       const mockStats = {
@@ -257,8 +240,7 @@ describe('Performance System', () => {
         module: 'lodash',
         occurrences: 3,
         totalSize: 90000,
-      });
-    });
+
 
     it('should suggest optimizations', () => {
       const analysis = {
@@ -277,7 +259,6 @@ describe('Performance System', () => {
       expect(recommendations).toContain('Consider code splitting for large bundle');
       expect(recommendations).toContain('Replace lodash with tree-shakable alternatives');
       expect(recommendations).toContain('Deduplicate react module');
-    });
 
     it('should track bundle size over time', () => {
       bundleAnalyzer.recordSize('main', 100000);
@@ -288,8 +269,7 @@ describe('Performance System', () => {
       expect(history).toEqual({
         main: [{ size: 100000, timestamp: expect.any(Number) }],
         vendor: [{ size: 200000, timestamp: expect.any(Number) }],
-      });
-    });
+
 
     it('should detect size regressions', () => {
       bundleAnalyzer.recordSize('main', 100000);
@@ -303,9 +283,8 @@ describe('Performance System', () => {
         currentSize: 150000,
         increase: 50000,
         percentIncrease: 50,
-      });
-    });
-  });
+
+
 
   describe('Animation Performance', () => {
     it('should monitor frame rate', () => {
@@ -323,11 +302,9 @@ describe('Performance System', () => {
 
       mockFrames.forEach(frame => {
         animationPerformance.recordFrame(frame.timestamp);
-      });
 
       const fps = animationPerformance.getCurrentFPS();
       expect(fps).toBeCloseTo(60, 1);
-    });
 
     it('should detect frame drops', () => {
       const dropCallback = vi.fn();
@@ -342,15 +319,13 @@ describe('Performance System', () => {
         expectedTime: 16.67,
         actualTime: 50,
         droppedFrames: 2,
-      });
-    });
+
 
     it('should measure animation smoothness', () => {
       const frames = [0, 16.67, 33.33, 50, 66.67, 83.33, 100];
       
       frames.forEach(timestamp => {
         animationPerformance.recordFrame(timestamp);
-      });
 
       const smoothness = animationPerformance.getSmoothness();
       
@@ -359,8 +334,7 @@ describe('Performance System', () => {
         frameDrops: expect.any(Number),
         jankScore: expect.any(Number),
         smoothnessScore: expect.any(Number),
-      });
-    });
+
 
     it('should optimize animation performance', () => {
       const element = document.createElement('div');
@@ -369,7 +343,6 @@ describe('Performance System', () => {
       
       expect(element.style.willChange).toBe('transform, opacity');
       expect(element.style.transform).toBe('translateZ(0)');
-    });
 
     it('should provide performance recommendations', () => {
       const metrics = {
@@ -383,7 +356,6 @@ describe('Performance System', () => {
       expect(recommendations).toContain('Use transform and opacity for animations');
       expect(recommendations).toContain('Reduce animation complexity');
       expect(recommendations).toContain('Consider using will-change property');
-    });
 
     it('should handle reduced motion preferences', () => {
       // Mock reduced motion preference
@@ -393,13 +365,11 @@ describe('Performance System', () => {
           addEventListener: vi.fn(),
           removeEventListener: vi.fn(),
         }),
-      });
 
       const shouldAnimate = animationPerformance.shouldAnimate();
       
       expect(shouldAnimate).toBe(false);
-    });
-  });
+
 
   describe('Performance Integration', () => {
     it('should coordinate all performance systems', () => {
@@ -419,8 +389,7 @@ describe('Performance System', () => {
           bundle: expect.any(Number),
           animation: expect.any(Number),
         },
-      });
-    });
+
 
     it('should generate comprehensive performance report', () => {
       const report = performanceMonitor.generateComprehensiveReport();
@@ -433,8 +402,7 @@ describe('Performance System', () => {
         issues: expect.any(Array),
         recommendations: expect.any(Array),
         score: expect.any(Number),
-      });
-    });
+
 
     it('should handle performance monitoring lifecycle', () => {
       performanceMonitor.start();
@@ -444,8 +412,7 @@ describe('Performance System', () => {
       performanceMonitor.stop();
       
       expect(performanceMonitor.isMonitoring()).toBe(false);
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle missing Performance API gracefully', () => {
@@ -458,7 +425,6 @@ describe('Performance System', () => {
       }).not.toThrow();
       
       global.performance = originalPerformance;
-    });
 
     it('should handle PerformanceObserver errors', () => {
       const mockObserver = {
@@ -473,7 +439,6 @@ describe('Performance System', () => {
       expect(() => {
         performanceMonitor.init();
       }).not.toThrow();
-    });
 
     it('should provide fallback metrics when APIs are unavailable', () => {
       const originalPerformance = global.performance;
@@ -486,9 +451,7 @@ describe('Performance System', () => {
         domContentLoaded: 0,
         loadComplete: 0,
         navigationType: 'unknown',
-      });
-      
+
       global.performance = originalPerformance;
-    });
-  });
-});
+
+

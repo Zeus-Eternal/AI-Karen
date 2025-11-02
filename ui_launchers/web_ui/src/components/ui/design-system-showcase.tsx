@@ -5,9 +5,9 @@
  * Based on requirements: 1.1, 1.2, 1.3, 11.4
  */
 
-'use client';
+"use client";
 
-
+import React from 'react';
 import { Button } from './button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card';
 import { Badge } from './badge';
@@ -23,7 +23,6 @@ export function DesignSystemShowcase() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[var(--text-3xl)] font-bold text-[var(--color-neutral-900)] mb-[var(--space-xs)]">
-            Design System Showcase
           </h1>
           <p className="text-[var(--text-base)] text-[var(--color-neutral-600)]">
             Current theme: <Badge variant="outline">{theme}</Badge> 
@@ -40,20 +39,18 @@ export function DesignSystemShowcase() {
         <CardHeader>
           <CardTitle>Color System</CardTitle>
           <CardDescription>
-            Primary, secondary, neutral, and semantic color scales
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-[var(--space-md)]">
           {/* Primary Colors */}
           <div>
             <h3 className="text-[var(--text-sm)] font-medium mb-[var(--space-xs)] text-[var(--color-neutral-700)] md:text-base lg:text-lg">
-              Primary Colors
             </h3>
             <div className="flex gap-[var(--space-xs)]">
               {[50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((step) => (
                 <div
                   key={step}
-                  className="w-8 h-8 rounded-[var(--radius-sm)] border border-[var(--color-neutral-200)] sm:w-auto md:w-full"
+                  className="w-8 h-8 rounded-[var(--radius-sm)] border border-[var(--color-neutral-200)] "
                   style={{ backgroundColor: `var(--color-primary-${step})` }}
                   title={`Primary ${step}`}
                 />
@@ -64,33 +61,32 @@ export function DesignSystemShowcase() {
           {/* Semantic Colors */}
           <div>
             <h3 className="text-[var(--text-sm)] font-medium mb-[var(--space-xs)] text-[var(--color-neutral-700)] md:text-base lg:text-lg">
-              Semantic Colors
             </h3>
             <div className="flex gap-[var(--space-sm)]">
               <div className="flex items-center gap-[var(--space-xs)]">
                 <div
-                  className="w-6 h-6 rounded-[var(--radius-sm)] sm:w-auto md:w-full"
+                  className="w-6 h-6 rounded-[var(--radius-sm)] "
                   style={{ backgroundColor: 'var(--color-success-500)' }}
                 />
                 <span className="text-[var(--text-sm)] md:text-base lg:text-lg">Success</span>
               </div>
               <div className="flex items-center gap-[var(--space-xs)]">
                 <div
-                  className="w-6 h-6 rounded-[var(--radius-sm)] sm:w-auto md:w-full"
+                  className="w-6 h-6 rounded-[var(--radius-sm)] "
                   style={{ backgroundColor: 'var(--color-warning-500)' }}
                 />
                 <span className="text-[var(--text-sm)] md:text-base lg:text-lg">Warning</span>
               </div>
               <div className="flex items-center gap-[var(--space-xs)]">
                 <div
-                  className="w-6 h-6 rounded-[var(--radius-sm)] sm:w-auto md:w-full"
+                  className="w-6 h-6 rounded-[var(--radius-sm)] "
                   style={{ backgroundColor: 'var(--color-error-500)' }}
                 />
                 <span className="text-[var(--text-sm)] md:text-base lg:text-lg">Error</span>
               </div>
               <div className="flex items-center gap-[var(--space-xs)]">
                 <div
-                  className="w-6 h-6 rounded-[var(--radius-sm)] sm:w-auto md:w-full"
+                  className="w-6 h-6 rounded-[var(--radius-sm)] "
                   style={{ backgroundColor: 'var(--color-info-500)' }}
                 />
                 <span className="text-[var(--text-sm)] md:text-base lg:text-lg">Info</span>
@@ -105,7 +101,6 @@ export function DesignSystemShowcase() {
         <CardHeader>
           <CardTitle>Typography Scale</CardTitle>
           <CardDescription>
-            Fluid typography system with consistent line heights
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-[var(--space-sm)]">
@@ -135,14 +130,13 @@ export function DesignSystemShowcase() {
         <CardHeader>
           <CardTitle>Spacing System</CardTitle>
           <CardDescription>
-            Mathematical progression spacing scale
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-[var(--space-xs)]">
             {['xs', 'sm', 'md', 'lg', 'xl', '2xl'].map((size) => (
               <div key={size} className="flex items-center gap-[var(--space-md)]">
-                <div className="w-16 text-[var(--text-sm)] text-[var(--color-neutral-600)] sm:w-auto md:w-full">
+                <div className="w-16 text-[var(--text-sm)] text-[var(--color-neutral-600)] ">
                   {size}
                 </div>
                 <div
@@ -163,29 +157,26 @@ export function DesignSystemShowcase() {
         <CardHeader>
           <CardTitle>Component Showcase</CardTitle>
           <CardDescription>
-            UI components using the design token system
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-[var(--space-lg)]">
           {/* Buttons */}
           <div>
             <h3 className="text-[var(--text-sm)] font-medium mb-[var(--space-sm)] text-[var(--color-neutral-700)] md:text-base lg:text-lg">
-              Buttons
             </h3>
             <div className="flex flex-wrap gap-[var(--space-sm)]">
-              <button variant="default" aria-label="Button">Default</Button>
-              <button variant="secondary" aria-label="Button">Secondary</Button>
-              <button variant="destructive" aria-label="Button">Destructive</Button>
-              <button variant="outline" aria-label="Button">Outline</Button>
-              <button variant="ghost" aria-label="Button">Ghost</Button>
-              <button variant="link" aria-label="Button">Link</Button>
+              <Button variant="default" >Default</Button>
+              <Button variant="secondary" >Secondary</Button>
+              <Button variant="destructive" >Destructive</Button>
+              <Button variant="outline" >Outline</Button>
+              <Button variant="ghost" >Ghost</Button>
+              <Button variant="link" >Link</Button>
             </div>
           </div>
 
           {/* Badges */}
           <div>
             <h3 className="text-[var(--text-sm)] font-medium mb-[var(--space-sm)] text-[var(--color-neutral-700)] md:text-base lg:text-lg">
-              Badges
             </h3>
             <div className="flex flex-wrap gap-[var(--space-sm)]">
               <Badge variant="default">Default</Badge>
@@ -198,14 +189,12 @@ export function DesignSystemShowcase() {
           {/* Cards */}
           <div>
             <h3 className="text-[var(--text-sm)] font-medium mb-[var(--space-sm)] text-[var(--color-neutral-700)] md:text-base lg:text-lg">
-              Cards
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-[var(--space-md)]">
               <Card>
                 <CardHeader>
                   <CardTitle>Standard Card</CardTitle>
                   <CardDescription>
-                    A card with header, content, and consistent spacing
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -219,7 +208,6 @@ export function DesignSystemShowcase() {
                 <CardHeader>
                   <CardTitle>Glass Card</CardTitle>
                   <CardDescription>
-                    A card with backdrop blur effect
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -238,7 +226,6 @@ export function DesignSystemShowcase() {
         <CardHeader>
           <CardTitle>Shadow System</CardTitle>
           <CardDescription>
-            Layered shadow system for depth and hierarchy
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -246,7 +233,7 @@ export function DesignSystemShowcase() {
             {['xs', 'sm', 'md', 'lg'].map((size) => (
               <div key={size} className="text-center">
                 <div
-                  className="w-16 h-16 bg-[var(--color-neutral-50)] rounded-[var(--radius-lg)] mx-auto mb-[var(--space-xs)] sm:w-auto md:w-full"
+                  className="w-16 h-16 bg-[var(--color-neutral-50)] rounded-[var(--radius-lg)] mx-auto mb-[var(--space-xs)] "
                   style={{ boxShadow: `var(--shadow-${size})` }}
                 />
                 <div className="text-[var(--text-xs)] text-[var(--color-neutral-600)] sm:text-sm md:text-base">
@@ -263,7 +250,6 @@ export function DesignSystemShowcase() {
         <CardHeader>
           <CardTitle>Border Radius System</CardTitle>
           <CardDescription>
-            Consistent border radius scale for UI elements
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -271,7 +257,7 @@ export function DesignSystemShowcase() {
             {['none', 'xs', 'sm', 'md', 'lg', 'xl'].map((size) => (
               <div key={size} className="text-center">
                 <div
-                  className="w-12 h-12 bg-[var(--color-primary-200)] mx-auto mb-[var(--space-xs)] sm:w-auto md:w-full"
+                  className="w-12 h-12 bg-[var(--color-primary-200)] mx-auto mb-[var(--space-xs)] "
                   style={{ borderRadius: `var(--radius-${size})` }}
                 />
                 <div className="text-[var(--text-xs)] text-[var(--color-neutral-600)] sm:text-sm md:text-base">

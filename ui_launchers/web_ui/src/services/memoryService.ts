@@ -143,7 +143,6 @@ export class MemoryService {
         sessionId: options.sessionId,
         topK: options.maxMemories || 5,
         similarityThreshold: options.minSimilarity || 0.7,
-      });
 
       // Build context summary
       const contextSummary = this.generateContextSummary(memories);
@@ -227,7 +226,6 @@ export class MemoryService {
         timeRange: filters.dateRange,
         topK: filters.maxResults || 20,
         similarityThreshold: filters.minSimilarity || 0.5,
-      });
 
       // Additional filtering by content type if specified
       let filteredMemories = memories;
@@ -273,7 +271,7 @@ export class MemoryService {
         tags,
         topK: options.limit || 50,
         similarityThreshold: 0.1, // Low threshold since we're filtering by tags
-      });
+
     } catch (error) {
       safeError('MemoryService: Failed to get memories by tags:', error);
       return [];
@@ -292,7 +290,6 @@ export class MemoryService {
           ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
         },
         body: JSON.stringify({ user_id: userId }),
-      });
 
       if (response.ok) {
         // Clear caches
@@ -326,7 +323,6 @@ export class MemoryService {
           tags,
           user_id: userId 
         }),
-      });
 
       if (response.ok) {
         // Clear caches

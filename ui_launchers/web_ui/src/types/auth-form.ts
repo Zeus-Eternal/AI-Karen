@@ -1,11 +1,4 @@
-import type {
-    LoginCredentials,
-    ValidationErrors,
-    AuthenticationState,
-    FeedbackMessage,
-    ValidationRule,
-    ValidationConfig
-} from './auth';
+import type { LoginCredentials, ValidationErrors, AuthenticationState, FeedbackMessage, ValidationRule, ValidationConfig } from './auth';
 
 /**
  * Types and interfaces for authentication form management
@@ -213,7 +206,6 @@ export const createInitialFieldState = (): FormFieldState => ({
     touched: false,
     focused: false,
     validating: false
-});
 
 /**
  * Initial form state
@@ -227,7 +219,6 @@ export const createInitialFormState = (): AuthFormState => ({
     isSubmitting: false,
     isValid: false,
     submitAttempted: false
-});
 
 /**
  * Initial submission state
@@ -237,7 +228,6 @@ export const createInitialSubmissionState = (): FormSubmissionState => ({
     canSubmit: true,
     submitCount: 0,
     cooldownPeriod: 1000
-});
 
 /**
  * Form reducer for state management
@@ -317,14 +307,12 @@ export function formReducer(state: AuthFormState, action: FormAction): AuthFormS
             // Clear all errors first
             Object.keys(updatedFields).forEach(field => {
                 updatedFields[field as FormFieldType].error = null;
-            });
 
             // Set new errors
             Object.entries(action.errors).forEach(([field, error]) => {
                 if (updatedFields[field as FormFieldType]) {
                     updatedFields[field as FormFieldType].error = error || null;
                 }
-            });
 
             return {
                 ...state,
@@ -336,7 +324,6 @@ export function formReducer(state: AuthFormState, action: FormAction): AuthFormS
             const clearedFields = { ...state.fields };
             Object.keys(clearedFields).forEach(field => {
                 clearedFields[field as FormFieldType].error = null;
-            });
 
             return {
                 ...state,

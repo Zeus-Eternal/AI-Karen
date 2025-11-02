@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { PageTransition } from './page-transition';
@@ -69,7 +69,7 @@ export function TransitionDemo() {
   return (
     <MicroInteractionProvider>
       <TransitionProvider>
-        <div className="p-8 space-y-8 max-w-6xl mx-auto sm:w-auto md:w-full">
+        <div className="p-8 space-y-8 max-w-6xl mx-auto ">
           <h1 className="text-3xl font-bold">Page Transitions Demo</h1>
           
           {/* Transition Variant Selector */}
@@ -121,13 +121,13 @@ export function TransitionDemo() {
                   
                   <div className="mt-8 space-y-4">
                     <div className="flex justify-center space-x-4">
-                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center sm:w-auto md:w-full">
+                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center ">
                         <span className="text-2xl">📄</span>
                       </div>
-                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center sm:w-auto md:w-full">
+                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center ">
                         <span className="text-2xl">🎨</span>
                       </div>
-                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center sm:w-auto md:w-full">
+                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center ">
                         <span className="text-2xl">⚡</span>
                       </div>
                     </div>

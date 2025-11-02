@@ -1,22 +1,12 @@
-'use client';
+"use client";
+
 import React, { useState, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  MoreVertical, 
-  RefreshCw, 
-  Settings, 
-  X, 
-  AlertTriangle,
-  Loader2 
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
+import { } from 'lucide-react';
+
+import { } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { WidgetProps, WidgetData } from '@/types/dashboard';
 export interface WidgetBaseProps extends WidgetProps {
@@ -78,18 +68,17 @@ export const WidgetBase: React.FC<WidgetBaseProps> = ({
     if (error) {
       return (
         <div className="flex flex-col items-center justify-center h-full text-center p-4 sm:p-4 md:p-6">
-          <AlertTriangle className="h-8 w-8 text-destructive mb-2 sm:w-auto md:w-full" />
+          <AlertTriangle className="h-8 w-8 text-destructive mb-2 " />
           <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">Widget Error</p>
           <p className="text-xs text-muted-foreground sm:text-sm md:text-base">{error}</p>
           {onRefresh && (
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               className="mt-2"
-             aria-label="Button">
-              <RefreshCw className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-              Retry
+             >
+              <RefreshCw className="h-3 w-3 mr-1 " />
             </Button>
           )}
         </div>
@@ -98,7 +87,7 @@ export const WidgetBase: React.FC<WidgetBaseProps> = ({
     if (loading || isRefreshing) {
       return (
         <div className="flex items-center justify-center h-full">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground sm:w-auto md:w-full" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground " />
         </div>
       );
     }
@@ -120,13 +109,13 @@ export const WidgetBase: React.FC<WidgetBaseProps> = ({
         <div className="flex items-center gap-1">
           {/* Refresh Button */}
           {onRefresh && (
-            <button
+            <Button
               variant="ghost"
               size="sm"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="h-6 w-6 p-0 sm:w-auto md:w-full"
-             aria-label="Button">
+              className="h-6 w-6 p-0 "
+             >
               <RefreshCw className={cn(
                 "h-3 w-3",
                 isRefreshing && "animate-spin"
@@ -136,25 +125,23 @@ export const WidgetBase: React.FC<WidgetBaseProps> = ({
           {/* Widget Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
+              <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 sm:w-auto md:w-full"
-               aria-label="Button">
-                <MoreVertical className="h-3 w-3 sm:w-auto md:w-full" />
+                className="h-6 w-6 p-0 "
+               >
+                <MoreVertical className="h-3 w-3 " />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40 sm:w-auto md:w-full">
+            <DropdownMenuContent align="end" className="w-40 ">
               {onRefresh && (
                 <DropdownMenuItem onClick={handleRefresh} disabled={isRefreshing}>
-                  <RefreshCw className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
-                  Refresh
+                  <RefreshCw className="h-3 w-3 mr-2 " />
                 </DropdownMenuItem>
               )}
               {onConfigChange && (
                 <DropdownMenuItem onClick={handleConfigChange}>
-                  <Settings className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
-                  Configure
+                  <Settings className="h-3 w-3 mr-2 " />
                 </DropdownMenuItem>
               )}
               {(onRefresh || onConfigChange) && onRemove && (
@@ -165,8 +152,7 @@ export const WidgetBase: React.FC<WidgetBaseProps> = ({
                   onClick={handleRemove}
                   className="text-destructive focus:text-destructive"
                 >
-                  <X className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
-                  Remove
+                  <X className="h-3 w-3 mr-2 " />
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

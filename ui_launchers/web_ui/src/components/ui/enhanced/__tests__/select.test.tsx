@@ -6,15 +6,12 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { 
-  EnhancedSelect, 
-  EnhancedSelectItem, 
-  EnhancedSelectLabel,
-  EnhancedSelectSeparator 
-} from '../select';
+
+import { } from '../select';
 
 describe('EnhancedSelect', () => {
   const defaultProps = {
@@ -33,7 +30,6 @@ describe('EnhancedSelect', () => {
     const trigger = screen.getByRole('combobox');
     expect(trigger).toBeInTheDocument();
     expect(trigger).toHaveClass('flex', 'h-10', 'w-full');
-  });
 
   it('should render with label', () => {
     render(
@@ -42,7 +38,6 @@ describe('EnhancedSelect', () => {
     
     expect(screen.getByText('Select an option')).toBeInTheDocument();
     expect(screen.getByRole('combobox')).toHaveAccessibleName('Select an option');
-  });
 
   it('should render with required indicator', () => {
     render(
@@ -51,7 +46,6 @@ describe('EnhancedSelect', () => {
     
     expect(screen.getByText('*')).toBeInTheDocument();
     expect(screen.getByText('*')).toHaveAttribute('aria-label', 'required');
-  });
 
   it('should render with helper text', () => {
     render(
@@ -59,7 +53,6 @@ describe('EnhancedSelect', () => {
     );
     
     expect(screen.getByText('Choose your preferred option')).toBeInTheDocument();
-  });
 
   it('should render with error text', () => {
     render(
@@ -72,7 +65,6 @@ describe('EnhancedSelect', () => {
     
     const trigger = screen.getByRole('combobox');
     expect(trigger).toHaveAttribute('aria-invalid', 'true');
-  });
 
   it('should apply size variants correctly', () => {
     const { rerender } = render(<EnhancedSelect {...defaultProps} size="sm" />);
@@ -83,7 +75,6 @@ describe('EnhancedSelect', () => {
     rerender(<EnhancedSelect {...defaultProps} size="lg" />);
     trigger = screen.getByRole('combobox');
     expect(trigger).toHaveClass('h-12', 'px-[var(--space-md)]');
-  });
 
   it('should apply variant styles correctly', () => {
     const { rerender } = render(<EnhancedSelect {...defaultProps} variant="filled" />);
@@ -94,7 +85,6 @@ describe('EnhancedSelect', () => {
     rerender(<EnhancedSelect {...defaultProps} variant="ghost" />);
     trigger = screen.getByRole('combobox');
     expect(trigger).toHaveClass('border-transparent', 'bg-transparent');
-  });
 
   it('should apply state styles correctly', () => {
     const { rerender } = render(<EnhancedSelect {...defaultProps} state="error" />);
@@ -109,7 +99,6 @@ describe('EnhancedSelect', () => {
     rerender(<EnhancedSelect {...defaultProps} state="warning" />);
     trigger = screen.getByRole('combobox');
     expect(trigger).toHaveClass('border-[var(--color-warning-400)]');
-  });
 
   it('should handle value changes', async () => {
     const user = userEvent.setup();
@@ -124,12 +113,10 @@ describe('EnhancedSelect', () => {
     
     await waitFor(() => {
       expect(screen.getByText('Option 1')).toBeInTheDocument();
-    });
-    
+
     await user.click(screen.getByText('Option 1'));
     
     expect(onValueChange).toHaveBeenCalledWith('option1');
-  });
 
   it('should render placeholder', () => {
     render(
@@ -137,7 +124,6 @@ describe('EnhancedSelect', () => {
     );
     
     expect(screen.getByText('Select an option...')).toBeInTheDocument();
-  });
 
   it('should handle disabled state', () => {
     render(<EnhancedSelect {...defaultProps} disabled />);
@@ -145,7 +131,6 @@ describe('EnhancedSelect', () => {
     const trigger = screen.getByRole('combobox');
     expect(trigger).toBeDisabled();
     expect(trigger).toHaveClass('disabled:cursor-not-allowed', 'disabled:opacity-50');
-  });
 
   it('should apply design token classes', () => {
     render(<EnhancedSelect {...defaultProps} />);
@@ -156,7 +141,6 @@ describe('EnhancedSelect', () => {
     expect(trigger).toHaveClass('bg-[var(--color-neutral-50)]');
     expect(trigger).toHaveClass('text-[var(--color-neutral-900)]');
     expect(trigger).toHaveClass('[transition-duration:var(--duration-fast)]');
-  });
 
   it('should render with groups and separators', async () => {
     const user = userEvent.setup();
@@ -178,8 +162,7 @@ describe('EnhancedSelect', () => {
     await waitFor(() => {
       expect(screen.getByText('Group 1')).toBeInTheDocument();
       expect(screen.getByText('Group 2')).toBeInTheDocument();
-    });
-  });
+
 
   it('should handle keyboard navigation', async () => {
     const user = userEvent.setup();
@@ -197,14 +180,12 @@ describe('EnhancedSelect', () => {
     
     await waitFor(() => {
       expect(screen.getByText('Option 1')).toBeInTheDocument();
-    });
-    
+
     // Navigate with arrow keys and select with Enter
     await user.keyboard('{ArrowDown}');
     await user.keyboard('{Enter}');
     
     expect(onValueChange).toHaveBeenCalledWith('option2');
-  });
 
   it('should have proper accessibility attributes', () => {
     render(
@@ -218,8 +199,7 @@ describe('EnhancedSelect', () => {
     const trigger = screen.getByRole('combobox');
     expect(trigger).toHaveAccessibleName('Accessible select');
     expect(trigger).toHaveAccessibleDescription('This is a helper text');
-  });
-});
+
 
 describe('EnhancedSelectItem', () => {
   it('should render with correct classes', () => {
@@ -231,19 +211,16 @@ describe('EnhancedSelectItem', () => {
     expect(item).toHaveClass('relative', 'flex', 'w-full');
     expect(item).toHaveClass('rounded-[var(--radius-sm)]');
     expect(item).toHaveClass('focus:bg-[var(--color-primary-100)]');
-  });
 
   it('should handle disabled state', () => {
     render(
       <EnhancedSelectItem value="test" disabled>
-        Disabled Item
       </EnhancedSelectItem>
     );
     
     const item = screen.getByText('Disabled Item');
     expect(item).toHaveClass('data-[disabled]:pointer-events-none', 'data-[disabled]:opacity-50');
-  });
-});
+
 
 describe('EnhancedSelectLabel', () => {
   it('should render with correct styling', () => {
@@ -252,8 +229,7 @@ describe('EnhancedSelectLabel', () => {
     const label = screen.getByText('Group Label');
     expect(label).toHaveClass('py-[var(--space-xs)]', 'pl-8', 'pr-2');
     expect(label).toHaveClass('text-[var(--text-sm)]', 'font-semibold');
-  });
-});
+
 
 describe('EnhancedSelectSeparator', () => {
   it('should render with correct styling', () => {
@@ -262,5 +238,4 @@ describe('EnhancedSelectSeparator', () => {
     const separator = document.querySelector('[role="separator"]');
     expect(separator).toHaveClass('-mx-1', 'my-1', 'h-px');
     expect(separator).toHaveClass('bg-[var(--color-neutral-200)]');
-  });
-});
+

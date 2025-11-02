@@ -20,12 +20,4 @@ export { useMessageSending } from "./hooks/useMessageSending";
 export { useVoiceInput } from "./hooks/useVoiceInput";
 export { useArtifactManagement } from "./hooks/useArtifactManagement";
 export * from "./constants";
-export type {
-  ChatInterfaceProps,
-  ChatMessage,
-  ChatSettings,
-  ChatAnalytics,
-  ChatContext,
-  CopilotAction,
-  CopilotArtifact,
-} from "./types";
+export * from "./types";

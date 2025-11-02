@@ -78,13 +78,13 @@ class AccessibilityCIRunner {
           url,
           success: true,
           ...result,
-        });
+
       } catch (error) {
         results.push({
           url,
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error',
-        });
+
       }
     }
     return results;

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,11 +29,13 @@ const ChangePasswordSection: React.FC = () => {
     newPassword: '',
     confirmPassword: ''
   });
+
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
     confirm: false
   });
+
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
@@ -109,13 +111,13 @@ const ChangePasswordSection: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Security</h3>
-        <button
+        <Button
           variant={isChangingPassword ? "outline" : "default"}
           size="sm"
-          onClick={() = aria-label="Button"> isChangingPassword ? resetPasswordForm() : setIsChangingPassword(true)}
+          onClick={() => isChangingPassword ? resetPasswordForm() : setIsChangingPassword(true)}
           className="flex items-center gap-2"
         >
-          <Key className="h-4 w-4 sm:w-auto md:w-full" />
+          <Key className="h-4 w-4 " />
           {isChangingPassword ? 'Cancel' : 'Change Password'}
         </Button>
       </div>
@@ -132,26 +134,26 @@ const ChangePasswordSection: React.FC = () => {
           <div>
             <Label htmlFor="currentPassword">Current Password</Label>
             <div className="relative">
-              <input
+              <Input
                 id="currentPassword"
                 type={showPasswords.current ? "text" : "password"}
                 value={passwordData.currentPassword}
-                onChange={(e) = aria-label="Input"> setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
                 placeholder="Enter your current password"
                 className="pr-10"
                 required
               />
-              <button
+              <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() = aria-label="Button"> togglePasswordVisibility('current')}
+                onClick={() => togglePasswordVisibility('current')}
               >
                 {showPasswords.current ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <EyeOff className="h-4 w-4 text-muted-foreground " />
                 ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Eye className="h-4 w-4 text-muted-foreground " />
                 )}
               </Button>
             </div>
@@ -161,26 +163,26 @@ const ChangePasswordSection: React.FC = () => {
           <div>
             <Label htmlFor="newPassword">New Password</Label>
             <div className="relative">
-              <input
+              <Input
                 id="newPassword"
                 type={showPasswords.new ? "text" : "password"}
                 value={passwordData.newPassword}
-                onChange={(e) = aria-label="Input"> setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
                 placeholder="Enter your new password"
                 className="pr-10"
                 required
               />
-              <button
+              <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() = aria-label="Button"> togglePasswordVisibility('new')}
+                onClick={() => togglePasswordVisibility('new')}
               >
                 {showPasswords.new ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <EyeOff className="h-4 w-4 text-muted-foreground " />
                 ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Eye className="h-4 w-4 text-muted-foreground " />
                 )}
               </Button>
             </div>
@@ -203,26 +205,26 @@ const ChangePasswordSection: React.FC = () => {
           <div>
             <Label htmlFor="confirmPassword">Confirm New Password</Label>
             <div className="relative">
-              <input
+              <Input
                 id="confirmPassword"
                 type={showPasswords.confirm ? "text" : "password"}
                 value={passwordData.confirmPassword}
-                onChange={(e) = aria-label="Input"> setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                 placeholder="Confirm your new password"
                 className="pr-10"
                 required
               />
-              <button
+              <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() = aria-label="Button"> togglePasswordVisibility('confirm')}
+                onClick={() => togglePasswordVisibility('confirm')}
               >
                 {showPasswords.confirm ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <EyeOff className="h-4 w-4 text-muted-foreground " />
                 ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Eye className="h-4 w-4 text-muted-foreground " />
                 )}
               </Button>
             </div>
@@ -238,23 +240,23 @@ const ChangePasswordSection: React.FC = () => {
           )}
 
           <div className="flex gap-3 pt-2">
-            <button
+            <Button
               type="submit"
-              disabled={isUpdating || validatePassword(passwordData.newPassword).length  aria-label="Submit form"> 0 || passwordData.newPassword !== passwordData.confirmPassword}
+              disabled={isUpdating || validatePassword(passwordData.newPassword).length > 0 || passwordData.newPassword !== passwordData.confirmPassword}
               className="flex items-center gap-2"
             >
               {isUpdating ? (
-                <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                <Loader2 className="h-4 w-4 animate-spin " />
               ) : (
-                <Key className="h-4 w-4 sm:w-auto md:w-full" />
+                <Key className="h-4 w-4 " />
               )}
               {isUpdating ? 'Updating...' : 'Update Password'}
             </Button>
-            <button
+            <Button
               type="button"
               variant="outline"
               onClick={resetPasswordForm}
-             aria-label="Button">
+            >
               Cancel
             </Button>
           </div>
@@ -292,6 +294,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
       avatarUrl: ''
     }
   });
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
@@ -317,7 +320,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto sm:w-auto md:w-full">
+    <Card className="w-full max-w-4xl mx-auto ">
       <CardHeader>
         <div className="flex justify-between items-center">
           <div>
@@ -325,8 +328,8 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <CardDescription>Manage your account and AI preferences</CardDescription>
           </div>
           {onClose && (
-            <button variant="ghost" size="icon" onClick={onClose} aria-label="Button">
-              <X className="h-4 w-4 sm:w-auto md:w-full" />
+            <Button variant="ghost" size="icon" onClick={onClose} >
+              <X className="h-4 w-4 " />
             </Button>
           )}
         </div>
@@ -372,10 +375,10 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
         <div>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">AI Preferences</h3>
-            <button
+            <Button
               variant={isEditing ? "outline" : "default"}
               size="sm"
-              onClick={() = aria-label="Button"> setIsEditing(!isEditing)}
+              onClick={() => setIsEditing(!isEditing)}
             >
               {isEditing ? 'Cancel' : 'Edit'}
             </Button>
@@ -391,18 +394,18 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <div>
               <Label>Personality Tone</Label>
               {isEditing ? (
-                <select
+                <Select
                   value={preferences.personalityTone}
-                  onValueChange={(value) = aria-label="Select option"> setPreferences(prev => ({ ...prev, personalityTone: value }))}
+                  onValueChange={(value) => setPreferences(prev => ({ ...prev, personalityTone: value }))}
                 >
-                  <selectTrigger aria-label="Select option">
-                    <selectValue />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
-                  <selectContent aria-label="Select option">
-                    <selectItem value="friendly" aria-label="Select option">Friendly</SelectItem>
-                    <selectItem value="professional" aria-label="Select option">Professional</SelectItem>
-                    <selectItem value="casual" aria-label="Select option">Casual</SelectItem>
-                    <selectItem value="formal" aria-label="Select option">Formal</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="friendly">Friendly</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
+                    <SelectItem value="casual">Casual</SelectItem>
+                    <SelectItem value="formal">Formal</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
@@ -413,17 +416,17 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <div>
               <Label>Verbosity</Label>
               {isEditing ? (
-                <select
+                <Select
                   value={preferences.personalityVerbosity}
-                  onValueChange={(value) = aria-label="Select option"> setPreferences(prev => ({ ...prev, personalityVerbosity: value }))}
+                  onValueChange={(value) => setPreferences(prev => ({ ...prev, personalityVerbosity: value }))}
                 >
-                  <selectTrigger aria-label="Select option">
-                    <selectValue />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
-                  <selectContent aria-label="Select option">
-                    <selectItem value="concise" aria-label="Select option">Concise</SelectItem>
-                    <selectItem value="balanced" aria-label="Select option">Balanced</SelectItem>
-                    <selectItem value="detailed" aria-label="Select option">Detailed</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="concise">Concise</SelectItem>
+                    <SelectItem value="balanced">Balanced</SelectItem>
+                    <SelectItem value="detailed">Detailed</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
@@ -434,17 +437,17 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <div>
               <Label>Memory Depth</Label>
               {isEditing ? (
-                <select
+                <Select
                   value={preferences.memoryDepth}
-                  onValueChange={(value) = aria-label="Select option"> setPreferences(prev => ({ ...prev, memoryDepth: value }))}
+                  onValueChange={(value) => setPreferences(prev => ({ ...prev, memoryDepth: value }))}
                 >
-                  <selectTrigger aria-label="Select option">
-                    <selectValue />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
-                  <selectContent aria-label="Select option">
-                    <selectItem value="shallow" aria-label="Select option">Shallow</SelectItem>
-                    <selectItem value="medium" aria-label="Select option">Medium</SelectItem>
-                    <selectItem value="deep" aria-label="Select option">Deep</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="shallow">Shallow</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="deep">Deep</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
@@ -455,19 +458,19 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <div>
               <Label>Preferred LLM Provider</Label>
               {isEditing ? (
-                <select
+                <Select
                   value={preferences.preferredLLMProvider}
-                  onValueChange={(value) = aria-label="Select option"> setPreferences(prev => ({ ...prev, preferredLLMProvider: value }))}
+                  onValueChange={(value) => setPreferences(prev => ({ ...prev, preferredLLMProvider: value }))}
                 >
-                  <selectTrigger aria-label="Select option">
-                    <selectValue />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
-                  <selectContent aria-label="Select option">
-                    <selectItem value="llama-cpp" aria-label="Select option">LlamaCpp (Local)</SelectItem>
-                    <selectItem value="openai" aria-label="Select option">OpenAI</SelectItem>
-                    <selectItem value="gemini" aria-label="Select option">Google Gemini</SelectItem>
-                    <selectItem value="deepseek" aria-label="Select option">Deepseek</SelectItem>
-                    <selectItem value="huggingface" aria-label="Select option">HuggingFace</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="llama-cpp">LlamaCpp (Local)</SelectItem>
+                    <SelectItem value="openai">OpenAI</SelectItem>
+                    <SelectItem value="gemini">Google Gemini</SelectItem>
+                    <SelectItem value="deepseek">Deepseek</SelectItem>
+                    <SelectItem value="huggingface">HuggingFace</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
@@ -478,13 +481,13 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <div>
               <Label>Temperature</Label>
               {isEditing ? (
-                <input
+                <Input
                   type="number"
                   min="0"
                   max="2"
                   step="0.1"
                   value={preferences.temperature}
-                  onChange={(e) = aria-label="Input"> setPreferences(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                  onChange={(e) => setPreferences(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
                 />
               ) : (
                 <p className="p-2 bg-muted/50 rounded sm:p-4 md:p-6">{preferences.temperature}</p>
@@ -494,13 +497,13 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <div>
               <Label>Max Tokens</Label>
               {isEditing ? (
-                <input
+                <Input
                   type="number"
                   min="100"
                   max="4000"
                   step="100"
                   value={preferences.maxTokens}
-                  onChange={(e) = aria-label="Input"> setPreferences(prev => ({ ...prev, maxTokens: parseInt(e.target.value) }))}
+                  onChange={(e) => setPreferences(prev => ({ ...prev, maxTokens: parseInt(e.target.value) }))}
                 />
               ) : (
                 <p className="p-2 bg-muted/50 rounded sm:p-4 md:p-6">{preferences.maxTokens}</p>
@@ -510,19 +513,19 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <div>
               <Label>UI Theme</Label>
               {isEditing ? (
-                <select
+                <Select
                   value={preferences.ui.theme}
-                  onValueChange={(value) = aria-label="Select option"> setPreferences(prev => ({
+                  onValueChange={(value) => setPreferences(prev => ({
                     ...prev,
-                    ui: { ...(prev as any).ui, theme: value },
+                    ui: { ...prev.ui, theme: value },
                   }))}
                 >
-                  <selectTrigger aria-label="Select option">
-                    <selectValue />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
-                  <selectContent aria-label="Select option">
-                    <selectItem value="light" aria-label="Select option">Light</SelectItem>
-                    <selectItem value="dark" aria-label="Select option">Dark</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="light">Light</SelectItem>
+                    <SelectItem value="dark">Dark</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
@@ -533,10 +536,10 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <div>
               <Label>Avatar</Label>
               {isEditing ? (
-                <input type="file" accept="image/*" onChange={handleAvatarChange} />
+                <Input type="file" accept="image/*" onChange={handleAvatarChange} />
               ) : (
                 preferences.ui.avatarUrl && (
-                  <img src={preferences.ui.avatarUrl} className="h-12 w-12 rounded-full sm:w-auto md:w-full" alt="avatar" />
+                  <img src={preferences.ui.avatarUrl} className="h-12 w-12 rounded-full " alt="avatar" />
                 )
               )}
             </div>
@@ -545,9 +548,9 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
           {isEditing && (
             <div className="mt-4">
               <Label>Custom Persona Instructions</Label>
-              <textarea
+              <Textarea
                 value={preferences.customPersonaInstructions}
-                onChange={(e) = aria-label="Textarea"> setPreferences(prev => ({ ...prev, customPersonaInstructions: e.target.value }))}
+                onChange={(e) => setPreferences(prev => ({ ...prev, customPersonaInstructions: e.target.value }))}
                 rows={3}
                 placeholder="Enter custom instructions for the AI's personality and behavior..."
               />
@@ -556,21 +559,21 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
 
           {isEditing && (
             <div className="flex gap-3 mt-6">
-              <button
+              <Button
                 onClick={handleSavePreferences}
                 disabled={isSaving}
                 className="flex items-center gap-2"
-               aria-label="Button">
+              >
                 {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-4 w-4 animate-spin " />
                 ) : (
-                  <Save className="h-4 w-4 sm:w-auto md:w-full" />
+                  <Save className="h-4 w-4 " />
                 )}
                 {isSaving ? 'Saving...' : 'Save Preferences'}
               </Button>
-              <button
+              <Button
                 variant="outline"
-                onClick={() = aria-label="Button"> {
+                onClick={() => {
                   setIsEditing(false);
                   // Reset preferences - not available in simplified mode
                 }}
@@ -585,13 +588,13 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
 
         {/* Actions */}
         <div className="flex justify-end">
-          <button
+          <Button
             variant="destructive"
             onClick={handleLogout}
             className="flex items-center gap-2"
-           aria-label="Button">
-            <LogOut className="h-4 w-4 sm:w-auto md:w-full" />
-            Sign Out
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
           </Button>
         </div>
       </CardContent>

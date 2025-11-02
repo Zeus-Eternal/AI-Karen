@@ -106,7 +106,7 @@ If you received this email, your email service is configured correctly!`,
           recipient: testEmail,
         } : null,
       }
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to test email configuration' },

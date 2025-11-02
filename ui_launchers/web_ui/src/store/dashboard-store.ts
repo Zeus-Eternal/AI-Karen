@@ -9,12 +9,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { 
-  DashboardConfig, 
-  WidgetConfig, 
-  DashboardFilter,
-  DashboardLayout 
-} from '@/types/dashboard';
+import type {  DashboardConfig, WidgetConfig, DashboardFilter, DashboardLayout } from '@/types/dashboard';
 
 // Dashboard Template Types
 export interface DashboardTemplate {
@@ -345,8 +340,7 @@ export const useDashboardStore = create<DashboardStore>()(
             if (!state.activeDashboardId) {
               state.activeDashboardId = id;
             }
-          });
-          
+
           return id;
         },
         
@@ -387,8 +381,7 @@ export const useDashboardStore = create<DashboardStore>()(
           
           set((state) => {
             state.dashboards[newId] = duplicated;
-          });
-          
+
           return newId;
         },
         
@@ -411,8 +404,7 @@ export const useDashboardStore = create<DashboardStore>()(
               state.dashboards[dashboardId].widgets.push(newWidget);
               state.dashboards[dashboardId].updatedAt = new Date();
             }
-          });
-          
+
           return widgetId;
         },
         
@@ -459,8 +451,7 @@ export const useDashboardStore = create<DashboardStore>()(
           
           set((state) => {
             state.templates[id] = newTemplate;
-          });
-          
+
           return id;
         },
         
@@ -498,8 +489,7 @@ export const useDashboardStore = create<DashboardStore>()(
             if (!dashboardId) {
               state.activeDashboardId = targetId;
             }
-          });
-          
+
           return targetId;
         },
         
@@ -517,8 +507,7 @@ export const useDashboardStore = create<DashboardStore>()(
           
           set((state) => {
             state.globalFilters.push(newFilter);
-          });
-          
+
           return id;
         },
         
@@ -554,8 +543,7 @@ export const useDashboardStore = create<DashboardStore>()(
               dashboard.filters.push(newFilter);
               dashboard.updatedAt = new Date();
             }
-          });
-          
+
           return id;
         },
         
@@ -613,8 +601,7 @@ export const useDashboardStore = create<DashboardStore>()(
           
           set((state) => {
             state.exportInProgress = true;
-          });
-          
+
           try {
             const exportData = {
               version: '1.0',
@@ -628,7 +615,7 @@ export const useDashboardStore = create<DashboardStore>()(
           } finally {
             set((state) => {
               state.exportInProgress = false;
-            });
+
           }
         },
         
@@ -637,8 +624,7 @@ export const useDashboardStore = create<DashboardStore>()(
           
           set((state) => {
             state.exportInProgress = true;
-          });
-          
+
           try {
             const exportData = {
               version: '1.0',
@@ -655,14 +641,11 @@ export const useDashboardStore = create<DashboardStore>()(
           } finally {
             set((state) => {
               state.exportInProgress = false;
-            });
+
           }
         },
         
-        importDashboard: async (data) => {
-          set((state) => {
-            state.importInProgress = true;
-          });
+        importDashboard: async (data) => { set((state) => { state.importInProgress = true; }); from "@/lib/placeholder";
           
           try {
             const importData = JSON.parse(data);
@@ -684,8 +667,7 @@ export const useDashboardStore = create<DashboardStore>()(
               
               set((state) => {
                 state.dashboards[newId] = importedDashboard;
-              });
-              
+
               return newId;
             } else if (importData.type === 'dashboard-collection') {
               const { dashboards, templates } = importData.data;
@@ -709,8 +691,7 @@ export const useDashboardStore = create<DashboardStore>()(
                   
                   state.dashboards[newId] = importedDashboard;
                   importedIds.push(newId);
-                });
-                
+
                 // Import user templates
                 templates?.forEach((template: any) => {
                   const newId = generateId();
@@ -719,9 +700,8 @@ export const useDashboardStore = create<DashboardStore>()(
                     id: newId,
                     category: 'user'
                   };
-                });
-              });
-              
+
+
               return importedIds[0] || '';
             }
             
@@ -731,7 +711,7 @@ export const useDashboardStore = create<DashboardStore>()(
           } finally {
             set((state) => {
               state.importInProgress = false;
-            });
+
           }
         },
         

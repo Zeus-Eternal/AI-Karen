@@ -1,6 +1,7 @@
+
+"use client";
 import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
-import { 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-import {
 import { PluginInfo, PluginConfig, PluginConfigField } from '@/types/plugins';
 /**
  * Plugin Configuration Manager Component
@@ -23,44 +23,8 @@ import { PluginInfo, PluginConfig, PluginConfigField } from '@/types/plugins';
  * Dynamic plugin configuration forms based on plugin manifests.
  * Based on requirements: 5.3, 5.5, 9.1, 9.2, 9.4
  */
-"use client";
 
-
-  Settings, 
-  Save, 
-  RotateCcw, 
-  Eye, 
-  EyeOff, 
-  Shield, 
-  Lock, 
-  Unlock,
-  AlertTriangle, 
-  CheckCircle, 
-  Info, 
-  Copy,
-  Download,
-  Upload,
-  FileText,
-  Key,
-  Database,
-  Network,
-  HardDrive,
-  Cpu,
-  Globe,
-  Users,
-  Calendar,
-  Clock,
-  Zap,
-  Target,
-  Filter,
-  Search,
-  RefreshCw,
-  ExternalLink,
-  Edit,
-  Trash2,
-  Plus,
-  Minus,
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 
 
@@ -70,12 +34,7 @@ import { PluginInfo, PluginConfig, PluginConfigField } from '@/types/plugins';
 
 
 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
+import { } from '@/components/ui/select';
 
 
 
@@ -83,24 +42,10 @@ import { PluginInfo, PluginConfig, PluginConfigField } from '@/types/plugins';
 
 
 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { } from '@/components/ui/tooltip';
 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { } from '@/components/ui/dialog';
+import { } from '@/components/ui/collapsible';
 
 interface ValidationError {
   field: string;
@@ -147,7 +92,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
         sectionMap.set(section, []);
       }
       sectionMap.get(section)!.push(field);
-    });
+
     return Array.from(sectionMap.entries()).map(([id, fields]) => ({
       id,
       name: id.charAt(0).toUpperCase() + id.slice(1).replace(/([A-Z])/g, ' $1'),
@@ -201,7 +146,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
       if (error) {
         errors.push({ field: field.key, message: error });
       }
-    });
+
     return errors;
   };
   const handleFieldChange = (fieldKey: string, value: any) => {
@@ -248,7 +193,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
         newSet.add(sectionId);
       }
       return newSet;
-    });
+
   };
   const renderField = (field: PluginConfigField) => {
     const value = config[field.key] ?? field.default ?? '';
@@ -267,7 +212,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
-                    <Info className="w-3 h-3 text-muted-foreground sm:w-auto md:w-full" />
+                    <Info className="w-3 h-3 text-muted-foreground " />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="max-w-xs">{field.description}</p>
@@ -277,13 +222,13 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
             )}
           </Label>
           {isPassword && (
-            <button
+            <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() = aria-label="Button"> togglePasswordVisibility(field.key)}
+              onClick={() => togglePasswordVisibility(field.key)}
             >
-              {showPassword ? <EyeOff className="w-3 h-3 sm:w-auto md:w-full" /> : <Eye className="w-3 h-3 sm:w-auto md:w-full" />}
+              {showPassword ? <EyeOff className="w-3 h-3 " /> : <Eye className="w-3 h-3 " />}
             </Button>
           )}
         </div>
@@ -292,7 +237,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
             id={fieldId}
             type={isPassword && !showPassword ? 'password' : 'text'}
             value={value}
-            onChange={(e) = aria-label="Input"> handleFieldChange(field.key, e.target.value)}
+            onChange={(e) => handleFieldChange(field.key, e.target.value)}
             placeholder={field.default?.toString()}
             disabled={readOnly}
             className={error ? 'border-destructive' : ''}
@@ -303,7 +248,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
             id={fieldId}
             type="number"
             value={value}
-            onChange={(e) = aria-label="Input"> handleFieldChange(field.key, Number(e.target.value))}
+            onChange={(e) => handleFieldChange(field.key, Number(e.target.value))}
             min={field.validation?.min}
             max={field.validation?.max}
             disabled={readOnly}
@@ -369,7 +314,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
           <textarea
             id={fieldId}
             value={typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
-            onChange={(e) = aria-label="Textarea"> {
+            onChange={(e) => {
               try {
                 const parsed = JSON.parse(e.target.value);
                 handleFieldChange(field.key, parsed);
@@ -385,7 +330,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
         )}
         {error && (
           <Alert variant="destructive" className="py-2">
-            <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
+            <AlertTriangle className="w-4 h-4 " />
             <AlertDescription className="text-sm md:text-base lg:text-lg">{error.message}</AlertDescription>
           </Alert>
         )}
@@ -405,26 +350,25 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground " />
             <input
               placeholder="Search settings..."
               value={searchQuery}
-              onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
-              className="pl-10 w-64 sm:w-auto md:w-full"
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 w-64 "
             />
           </div>
-          <button
+          <Button
             variant="outline"
             size="sm"
-            onClick={() = aria-label="Button"> setShowAdvanced(!showAdvanced)}
+            onClick={() => setShowAdvanced(!showAdvanced)}
           >
-            <Settings className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
+            <Settings className="w-4 h-4 mr-2 " />
             {showAdvanced ? 'Simple' : 'Advanced'}
           </Button>
           {onExport && (
-            <button variant="outline" size="sm" onClick={handleExport} aria-label="Button">
-              <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-              Export
+            <Button variant="outline" size="sm" onClick={handleExport} >
+              <Download className="w-4 h-4 mr-2 " />
             </Button>
           )}
         </div>
@@ -432,7 +376,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
       {/* Configuration Status */}
       {hasChanges && (
         <Alert>
-          <Info className="w-4 h-4 sm:w-auto md:w-full" />
+          <Info className="w-4 h-4 " />
           <AlertDescription>
             You have unsaved changes. Don't forget to save your configuration.
           </AlertDescription>
@@ -441,7 +385,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
       {/* Validation Errors Summary */}
       {validationErrors.length > 0 && (
         <Alert variant="destructive">
-          <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
+          <AlertTriangle className="w-4 h-4 " />
           <AlertDescription>
             Please fix {validationErrors.length} configuration error{validationErrors.length !== 1 ? 's' : ''} before saving.
           </AlertDescription>
@@ -457,7 +401,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
           {filteredSections.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <Settings className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+                <Settings className="w-12 h-12 mx-auto mb-4 opacity-50 " />
                 <h3 className="text-lg font-medium mb-2">No Configuration Available</h3>
                 <p className="text-muted-foreground">
                   This plugin doesn't have any configurable settings.
@@ -484,9 +428,9 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
                               {section.fields.length} setting{section.fields.length !== 1 ? 's' : ''}
                             </Badge>
                             {expandedSections.has(section.id) ? (
-                              <Minus className="w-4 h-4 sm:w-auto md:w-full" />
+                              <Minus className="w-4 h-4 " />
                             ) : (
-                              <Plus className="w-4 h-4 sm:w-auto md:w-full" />
+                              <Plus className="w-4 h-4 " />
                             )}
                           </div>
                         </div>
@@ -507,11 +451,9 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5 sm:w-auto md:w-full" />
-                Security Settings
+                <Shield className="w-5 h-5 " />
               </CardTitle>
               <CardDescription>
-                Manage security policies and permissions for this plugin
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -521,7 +463,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Network className="w-4 h-4 sm:w-auto md:w-full" />
+                        <Network className="w-4 h-4 " />
                         <span className="text-sm md:text-base lg:text-lg">Network Access</span>
                       </div>
                       <Badge variant={plugin.manifest.securityPolicy.allowNetworkAccess ? 'default' : 'secondary'}>
@@ -530,7 +472,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <HardDrive className="w-4 h-4 sm:w-auto md:w-full" />
+                        <HardDrive className="w-4 h-4 " />
                         <span className="text-sm md:text-base lg:text-lg">File System Access</span>
                       </div>
                       <Badge variant={plugin.manifest.securityPolicy.allowFileSystemAccess ? 'default' : 'secondary'}>
@@ -539,7 +481,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Cpu className="w-4 h-4 sm:w-auto md:w-full" />
+                        <Cpu className="w-4 h-4 " />
                         <span className="text-sm md:text-base lg:text-lg">System Calls</span>
                       </div>
                       <Badge variant={plugin.manifest.securityPolicy.allowSystemCalls ? 'default' : 'secondary'}>
@@ -562,7 +504,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
                       <div className="space-y-1">
                         {plugin.manifest.securityPolicy.trustedDomains.map((domain, index) => (
                           <div key={index} className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
-                            <Globe className="w-3 h-3 sm:w-auto md:w-full" />
+                            <Globe className="w-3 h-3 " />
                             <span className="font-mono">{domain}</span>
                           </div>
                         ))}
@@ -610,7 +552,6 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
             <CardHeader>
               <CardTitle>Advanced Configuration</CardTitle>
               <CardDescription>
-                Advanced settings and debugging options
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -662,17 +603,14 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
               <div className="space-y-4">
                 <h4 className="font-medium">Configuration Management</h4>
                 <div className="flex gap-2">
-                  <button variant="outline" size="sm" onClick={handleExport} aria-label="Button">
-                    <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                    Export Config
+                  <Button variant="outline" size="sm" onClick={handleExport} >
+                    <Download className="w-4 h-4 mr-2 " />
                   </Button>
-                  <button variant="outline" size="sm" aria-label="Button">
-                    <Upload className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                    Import Config
+                  <Button variant="outline" size="sm" >
+                    <Upload className="w-4 h-4 mr-2 " />
                   </Button>
-                  <button variant="outline" size="sm" aria-label="Button">
-                    <Copy className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                    Copy as JSON
+                  <Button variant="outline" size="sm" >
+                    <Copy className="w-4 h-4 mr-2 " />
                   </Button>
                 </div>
               </div>
@@ -684,9 +622,8 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
       {!readOnly && (
         <div className="flex items-center justify-between pt-6 border-t">
           <div className="flex items-center gap-2">
-            <button variant="outline" onClick={handleReset} disabled={!hasChanges} aria-label="Button">
-              <RotateCcw className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-              Reset
+            <Button variant="outline" onClick={handleReset} disabled={!hasChanges} >
+              <RotateCcw className="w-4 h-4 mr-2 " />
             </Button>
           </div>
           <div className="flex items-center gap-2">
@@ -695,9 +632,9 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
               disabled={!hasChanges || saving || validationErrors.length  aria-label="Button"> 0}
             >
               {saving ? (
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin " />
               ) : (
-                <Save className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
+                <Save className="w-4 h-4 mr-2 " />
               )}
               {saving ? 'Saving...' : 'Save Changes'}
             </Button>

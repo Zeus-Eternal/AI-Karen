@@ -106,7 +106,6 @@ const localStorageMock = {
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
-});
 
 describe('EnhancedWebSocketService', () => {
   let wsService: EnhancedWebSocketService;
@@ -115,18 +114,15 @@ describe('EnhancedWebSocketService', () => {
     wsService = new EnhancedWebSocketService('ws://localhost:8000/ws');
     vi.clearAllMocks();
     localStorageMock.getItem.mockReturnValue('test-token');
-  });
 
   afterEach(() => {
     wsService.disconnect();
     vi.clearAllTimers();
-  });
 
   describe('Connection Management', () => {
     it('should initialize with disconnected state', () => {
       expect(wsService.getConnectionState()).toBe('disconnected');
       expect(wsService.isConnected()).toBe(false);
-    });
 
     it('should connect successfully', async () => {
       const connectPromise = wsService.connect();
@@ -138,7 +134,6 @@ describe('EnhancedWebSocketService', () => {
       
       expect(wsService.getConnectionState()).toBe('connected');
       expect(wsService.isConnected()).toBe(true);
-    });
 
     it('should disconnect cleanly', async () => {
       await wsService.connect();
@@ -148,7 +143,6 @@ describe('EnhancedWebSocketService', () => {
       
       expect(wsService.getConnectionState()).toBe('disconnected');
       expect(wsService.isConnected()).toBe(false);
-    });
 
     it('should not connect if already connected', async () => {
       await wsService.connect();
@@ -157,19 +151,16 @@ describe('EnhancedWebSocketService', () => {
       await wsService.connect(); // Second connect call
       
       expect(wsService.getConnectionState()).toBe(firstConnectionState);
-    });
-  });
+
 
   describe('Message Sending', () => {
     beforeEach(async () => {
       await wsService.connect();
-    });
 
     it('should send message when connected', () => {
       const result = wsService.send('test', { message: 'hello' });
       
       expect(result).toBe(true);
-    });
 
     it('should queue message when not connected', () => {
       wsService.disconnect();
@@ -178,15 +169,12 @@ describe('EnhancedWebSocketService', () => {
       
       expect(result).toBe(false);
       expect(wsService.getMessageQueueSize()).toBe(1);
-    });
 
     it('should send message with priority', () => {
       const result = wsService.send('test', { message: 'urgent' }, 'default', {
         priority: 'high',
-      });
-      
+
       expect(result).toBe(true);
-    });
 
     it('should respect TTL for messages', () => {
       wsService.disconnect();
@@ -194,8 +182,7 @@ describe('EnhancedWebSocketService', () => {
       // Send message with very short TTL
       wsService.send('test', { message: 'expired' }, 'default', {
         ttl: 1, // 1ms TTL
-      });
-      
+
       expect(wsService.getMessageQueueSize()).toBe(1);
       
       // Wait for TTL to expire and process queue
@@ -203,13 +190,11 @@ describe('EnhancedWebSocketService', () => {
         // Message should be expired and removed from queue
         expect(wsService.getMessageQueueSize()).toBe(0);
       }, 10);
-    });
-  });
+
 
   describe('Message Subscriptions', () => {
     beforeEach(async () => {
       await wsService.connect();
-    });
 
     it('should subscribe to events', () => {
       const callback = vi.fn();
@@ -217,7 +202,6 @@ describe('EnhancedWebSocketService', () => {
       
       expect(wsService.getSubscriptionCount()).toBe(1);
       expect(typeof unsubscribe).toBe('function');
-    });
 
     it('should unsubscribe from events', () => {
       const callback = vi.fn();
@@ -228,7 +212,6 @@ describe('EnhancedWebSocketService', () => {
       unsubscribe();
       
       expect(wsService.getSubscriptionCount()).toBe(0);
-    });
 
     it('should call subscription callback when message received', () => {
       const callback = vi.fn();
@@ -242,17 +225,14 @@ describe('EnhancedWebSocketService', () => {
         data: { text: 'Hello' },
         timestamp: new Date().toISOString(),
         id: 'msg-1',
-      });
-      
+
       expect(callback).toHaveBeenCalledWith({ text: 'Hello' });
-    });
 
     it('should filter messages based on filter function', () => {
       const callback = vi.fn();
       wsService.subscribe('chat.message', callback, {
         filter: (data) => data.important === true,
-      });
-      
+
       const mockWs = (wsService as any).ws as MockWebSocket;
       
       // Send message that should be filtered out
@@ -262,8 +242,7 @@ describe('EnhancedWebSocketService', () => {
         data: { text: 'Not important', important: false },
         timestamp: new Date().toISOString(),
         id: 'msg-1',
-      });
-      
+
       expect(callback).not.toHaveBeenCalled();
       
       // Send message that should pass filter
@@ -273,10 +252,8 @@ describe('EnhancedWebSocketService', () => {
         data: { text: 'Important', important: true },
         timestamp: new Date().toISOString(),
         id: 'msg-2',
-      });
-      
+
       expect(callback).toHaveBeenCalledWith({ text: 'Important', important: true });
-    });
 
     it('should handle one-time subscriptions', () => {
       const callback = vi.fn();
@@ -291,12 +268,10 @@ describe('EnhancedWebSocketService', () => {
         data: { text: 'Hello' },
         timestamp: new Date().toISOString(),
         id: 'msg-1',
-      });
-      
+
       expect(callback).toHaveBeenCalledOnce();
       expect(wsService.getSubscriptionCount()).toBe(0); // Should be auto-unsubscribed
-    });
-  });
+
 
   describe('Connection Metrics', () => {
     it('should track connection metrics', async () => {
@@ -318,13 +293,11 @@ describe('EnhancedWebSocketService', () => {
         data: { message: 'response' },
         timestamp: new Date().toISOString(),
         id: 'msg-1',
-      });
-      
+
       const metrics = wsService.getConnectionMetrics();
       expect(metrics.messagesSent).toBe(1);
       expect(metrics.messagesReceived).toBe(1);
       expect(metrics.lastConnected).toBeInstanceOf(Date);
-    });
 
     it('should track latency with ping/pong', async () => {
       await wsService.connect();
@@ -343,7 +316,7 @@ describe('EnhancedWebSocketService', () => {
           data: {},
           timestamp: new Date().toISOString(),
           id: 'pong-1',
-        });
+
       }, 50);
       
       // Wait for pong
@@ -352,8 +325,7 @@ describe('EnhancedWebSocketService', () => {
       const metrics = wsService.getConnectionMetrics();
       expect(metrics.latency).toBeGreaterThan(0);
       expect(metrics.latency).toBeLessThan(100);
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle connection errors', async () => {
@@ -367,7 +339,6 @@ describe('EnhancedWebSocketService', () => {
       
       await expect(connectPromise).rejects.toThrow();
       expect(wsService.getConnectionState()).toBe('error');
-    });
 
     it('should handle message parsing errors', async () => {
       await wsService.connect();
@@ -383,14 +354,13 @@ describe('EnhancedWebSocketService', () => {
       
       // Callback should not be called for invalid messages
       expect(callback).not.toHaveBeenCalled();
-    });
 
     it('should handle subscription callback errors', async () => {
       await wsService.connect();
       
       const errorCallback = vi.fn(() => {
         throw new Error('Callback error');
-      });
+
       const normalCallback = vi.fn();
       
       wsService.subscribe('test', errorCallback);
@@ -403,13 +373,11 @@ describe('EnhancedWebSocketService', () => {
         data: { message: 'test' },
         timestamp: new Date().toISOString(),
         id: 'msg-1',
-      });
-      
+
       // Both callbacks should be called, error in one shouldn't affect the other
       expect(errorCallback).toHaveBeenCalled();
       expect(normalCallback).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Reconnection Logic', () => {
     it('should attempt reconnection on connection loss', async () => {
@@ -431,7 +399,6 @@ describe('EnhancedWebSocketService', () => {
       expect(wsService.getConnectionState()).toBe('reconnecting');
       
       vi.useRealTimers();
-    });
 
     it('should respect maximum reconnection attempts', async () => {
       vi.useFakeTimers();
@@ -454,8 +421,7 @@ describe('EnhancedWebSocketService', () => {
       
       testService.disconnect();
       vi.useRealTimers();
-    });
-  });
+
 
   describe('Message Queue Processing', () => {
     it('should process queued messages when reconnected', async () => {
@@ -475,7 +441,6 @@ describe('EnhancedWebSocketService', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       expect(wsService.getMessageQueueSize()).toBe(0);
-    });
 
     it('should prioritize messages in queue', async () => {
       wsService.disconnect();
@@ -494,8 +459,7 @@ describe('EnhancedWebSocketService', () => {
       expect(queue[1].message.type).toBe('high');
       expect(queue[2].message.type).toBe('normal');
       expect(queue[3].message.type).toBe('low');
-    });
-  });
+
 
   describe('Duplicate Message Handling', () => {
     it('should ignore duplicate messages', async () => {
@@ -520,8 +484,7 @@ describe('EnhancedWebSocketService', () => {
       
       // Callback should only be called once
       expect(callback).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('Cleanup', () => {
     it('should clear all subscriptions', async () => {
@@ -535,7 +498,6 @@ describe('EnhancedWebSocketService', () => {
       wsService.clearSubscriptions();
       
       expect(wsService.getSubscriptionCount()).toBe(0);
-    });
 
     it('should clean up on disconnect', async () => {
       await wsService.connect();
@@ -547,6 +509,5 @@ describe('EnhancedWebSocketService', () => {
       
       expect(wsService.getMessageQueueSize()).toBe(0);
       expect(wsService.isConnected()).toBe(false);
-    });
-  });
-});
+
+

@@ -293,7 +293,7 @@ export function useAriaDescription(description: string, elementRef: React.RefObj
       const id = AriaManager.createDescription({
         description,
         element: elementRef.current
-      });
+
       setDescriptionId(id);
 
       return () => {
@@ -374,7 +374,6 @@ export const AccessibilityUtils = {
       if (element.hasAttribute('required') && !element.hasAttribute('aria-required')) {
         issues.push(`Required field missing aria-required: ${element.id || element.tagName.toLowerCase()}`);
       }
-    });
 
     return issues;
   },
@@ -400,11 +399,9 @@ export const AccessibilityUtils = {
     // Show on focus
     skipLink.addEventListener('focus', () => {
       skipLink.style.top = '6px';
-    });
 
     skipLink.addEventListener('blur', () => {
       skipLink.style.top = '-40px';
-    });
 
     return skipLink;
   }

@@ -86,7 +86,7 @@ class DiagnosticLogger {
         online: typeof navigator !== 'undefined' ? navigator.onLine : true,
         timestamp: new Date().toISOString(),
       },
-    });
+
   }
 
   /**
@@ -168,7 +168,6 @@ class DiagnosticLogger {
       if (logData[key as keyof typeof logData] === undefined) {
         delete logData[key as keyof typeof logData];
       }
-    });
 
     switch (log.level) {
       case 'debug':
@@ -201,7 +200,7 @@ class DiagnosticLogger {
       } catch (error) {
         console.error('Error in diagnostic log listener:', error);
       }
-    });
+
   }
 
   /**
@@ -547,7 +546,6 @@ class DiagnosticLogger {
       categories[log.category] = (categories[log.category] || 0) + 1;
       if (log.level === 'error') errorCount++;
       if (log.level === 'warn') warningCount++;
-    });
 
     return {
       totalLogs: this.logs.length,

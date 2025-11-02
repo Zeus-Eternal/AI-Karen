@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -7,18 +8,8 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Alert, AlertDescription } from '../ui/alert';
-import { 
-  Play, 
-  RefreshCw, 
-  Download, 
-  Copy, 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle,
-  Code,
-  FileText,
-  Settings,
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { useAccessibilityTestRunner } from '../../hooks/use-accessibility-testing';
 import { cn } from '../../lib/utils';
 interface AccessibilityTestRunnerProps {
@@ -89,7 +80,7 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
     } catch (error) {
       setTestResults({
         error: error instanceof Error ? error.message : 'Test failed',
-      });
+
     } finally {
       setIsRunning(false);
     }
@@ -103,7 +94,7 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
     if (testResults) {
       const blob = new Blob([JSON.stringify(testResults, null, 2)], {
         type: 'application/json',
-      });
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -133,7 +124,7 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
     if (testResults.error) {
       return (
         <Alert variant="destructive">
-          <XCircle className="h-4 w-4 sm:w-auto md:w-full" />
+          <XCircle className="h-4 w-4 " />
           <AlertDescription>{testResults.error}</AlertDescription>
         </Alert>
       );
@@ -147,9 +138,9 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
               <CardContent className="p-4 sm:p-4 md:p-6">
                 <div className="flex items-center space-x-2">
                   {testResults.passed ? (
-                    <CheckCircle className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />
+                    <CheckCircle className="h-5 w-5 text-green-600 " />
                   ) : (
-                    <XCircle className="h-5 w-5 text-red-600 sm:w-auto md:w-full" />
+                    <XCircle className="h-5 w-5 text-red-600 " />
                   )}
                   <span className="font-medium">
                     {testResults.passed ? 'PASS' : 'FAIL'}
@@ -224,9 +215,9 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
         <CardContent>
           <div className="flex items-center space-x-2 mb-4">
             {testResults.passed ? (
-              <CheckCircle className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />
+              <CheckCircle className="h-5 w-5 text-green-600 " />
             ) : (
-              <XCircle className="h-5 w-5 text-red-600 sm:w-auto md:w-full" />
+              <XCircle className="h-5 w-5 text-red-600 " />
             )}
             <span className="font-medium">
               {testResults.passed ? 'Test Passed' : 'Test Failed'}
@@ -245,14 +236,13 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
       <div>
         <h2 className="text-2xl font-bold">Accessibility Test Runner</h2>
         <p className="text-muted-foreground">
-          Test HTML snippets for accessibility compliance
         </p>
       </div>
       {/* Test Configuration */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Settings className="h-5 w-5 sm:w-auto md:w-full" />
+            <Settings className="h-5 w-5 " />
             <span>Test Configuration</span>
           </CardTitle>
         </CardHeader>
@@ -286,17 +276,16 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Code className="h-5 w-5 sm:w-auto md:w-full" />
+                <Code className="h-5 w-5 " />
                 <span>HTML to Test</span>
               </CardTitle>
               <CardDescription>
-                Enter the HTML you want to test for accessibility issues
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <textarea
                 value={customHtml}
-                onChange={(e) = aria-label="Textarea"> setCustomHtml(e.target.value)}
+                onChange={(e) => setCustomHtml(e.target.value)}
                 placeholder="Enter HTML to test..."
                 className="min-h-[300px] font-mono text-sm md:text-base lg:text-lg"
               />
@@ -307,17 +296,16 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
                   className="flex-1"
                  aria-label="Button">
                   {isRunning ? (
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin " />
                   ) : (
-                    <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                    <Play className="h-4 w-4 mr-2 " />
                   )}
                   Run {testType.charAt(0).toUpperCase() + testType.slice(1)} Test
                 </Button>
-                <button
+                <Button
                   variant="outline"
-                  onClick={() = aria-label="Button"> setCustomHtml(sampleHtml)}
+                  onClick={() => setCustomHtml(sampleHtml)}
                 >
-                  Load Sample
                 </Button>
               </div>
             </CardContent>
@@ -328,21 +316,19 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
             <div className="space-y-4">
               {/* Results Actions */}
               <div className="flex items-center space-x-2">
-                <button
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={copyResults}
-                 aria-label="Button">
-                  <Copy className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Copy Results
+                 >
+                  <Copy className="h-4 w-4 mr-2 " />
                 </Button>
-                <button
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={downloadResults}
-                 aria-label="Button">
-                  <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Download
+                 >
+                  <Download className="h-4 w-4 mr-2 " />
                 </Button>
               </div>
               {/* Results Display */}
@@ -351,13 +337,12 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
           ) : (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <FileText className="h-12 w-12 text-muted-foreground mb-4 sm:w-auto md:w-full" />
+                <FileText className="h-12 w-12 text-muted-foreground mb-4 " />
                 <h3 className="text-lg font-semibold mb-2">No Results Yet</h3>
                 <p className="text-muted-foreground text-center mb-4">
                   Run a test to see the results here.
                 </p>
-                <button onClick={() = aria-label="Button"> setActiveTab('html')}>
-                  Go to HTML Input
+                <Button onClick={() => setActiveTab('html')}>
                 </Button>
               </CardContent>
             </Card>

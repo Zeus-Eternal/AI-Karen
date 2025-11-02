@@ -1,16 +1,8 @@
-'use client';
+"use client";
 
 import React from 'react';
-import { 
-  CheckCircle, 
-  AlertTriangle, 
-  XCircle, 
-  HelpCircle,
-  Clock,
-  Activity,
-  Server,
-  Wifi
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetBase } from '../WidgetBase';
 import { Badge } from '@/components/ui/badge';
@@ -111,7 +103,6 @@ export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
     return (
       <WidgetBase {...props}>
         <div className="flex items-center justify-center h-full text-muted-foreground">
-          No status data available
         </div>
       </WidgetBase>
     );
@@ -163,7 +154,6 @@ export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
           <div className="mt-4 pt-4 border-t">
             <div className="space-y-2">
               <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide sm:text-sm md:text-base">
-                Details
               </h4>
               
               <div className="grid grid-cols-1 gap-2">
@@ -173,7 +163,7 @@ export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
                   return (
                     <div key={key} className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                       <div className="flex items-center gap-2 text-muted-foreground">
-                        <IconComponent className="h-3 w-3 sm:w-auto md:w-full" />
+                        <IconComponent className="h-3 w-3 " />
                         <span className="capitalize">
                           {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
                         </span>

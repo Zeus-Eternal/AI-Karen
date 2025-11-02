@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
 import { useExtensionContext, navigationActions } from "@/extensions";
 import { getPluginService, getExtensionService, type PluginCategory, type ExtensionInfo } from "@/services";
@@ -33,11 +34,11 @@ export default function SidebarNavigation() {
                   <button
                     type="button"
                     className="text-sm hover:underline md:text-base lg:text-lg"
-                    onClick={() = aria-label="Button">
+                    onClick={() => {
                       navigationActions
                         .navigateToPluginProvider(cat.name.toLowerCase(), p.name)
                         .forEach((action) => dispatch(action))
-                    }
+                    }}
                   >
                     {p.name}
                   </button>
@@ -57,12 +58,12 @@ export default function SidebarNavigation() {
           <button
             type="button"
             className="text-sm hover:underline md:text-base lg:text-lg"
-            onClick={() = aria-label="Button">
+            onClick={() => {
               dispatch({
                 type: "PUSH_BREADCRUMB",
                 item: { level: "items", id: ext.name, name: ext.name },
               })
-            }
+            }}
           >
             {ext.name}
           </button>

@@ -11,15 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RefreshCw, TrendingUp, TrendingDown, Activity, Database, Clock, Zap } from 'lucide-react';
 import { getMemoryService } from '@/services/memoryService';
-import type { 
-  MemoryAnalytics as MemoryAnalyticsData,
-  MemoryAnalyticsProps,
-  VectorStoreStats,
-  MemoryUsageStats,
-  MemoryPerformanceStats,
-  MemoryContentStats,
-  MemoryTrendData
-} from '@/types/memory';
+import type {  MemoryAnalytics as MemoryAnalyticsData, MemoryAnalyticsProps, VectorStoreStats, MemoryUsageStats, MemoryPerformanceStats, MemoryContentStats, MemoryTrendData } from '@/types/memory';
 
 // Lazy load charts for better performance
 const AgCharts = dynamic(() => import('ag-charts-react').then(m => m.AgCharts), { ssr: false });
@@ -59,7 +51,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
           <p className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">{title}</p>
           <div className="flex items-center mt-2">
             {loading ? (
-              <div className="h-8 w-24 bg-gray-200 animate-pulse rounded sm:w-auto md:w-full"></div>
+              <div className="h-8 w-24 bg-gray-200 animate-pulse rounded "></div>
             ) : (
               <p className="text-2xl font-bold text-gray-900">
                 {typeof value === 'number' ? value.toLocaleString() : value}
@@ -69,7 +61,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
               <div className={`ml-2 flex items-center text-sm ${
                 change >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {change >= 0 ? <TrendingUp className="w-4 h-4 sm:w-auto md:w-full" /> : <TrendingDown className="w-4 h-4 sm:w-auto md:w-full" />}
+                {change >= 0 ? <TrendingUp className="w-4 h-4 " /> : <TrendingDown className="w-4 h-4 " />}
                 <span className="ml-1">
                   {Math.abs(change)}% {changeLabel || (change >= 0 ? 'increase' : 'decrease')}
                 </span>
@@ -348,13 +340,12 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
       <Card className="p-6 sm:p-4 md:p-6">
         <div className="text-center">
           <div className="text-red-600 mb-4">
-            <Activity className="w-12 h-12 mx-auto mb-2 sm:w-auto md:w-full" />
+            <Activity className="w-12 h-12 mx-auto mb-2 " />
             <h3 className="text-lg font-semibold">Analytics Error</h3>
           </div>
           <p className="text-gray-600 mb-4">{error}</p>
-          <button onClick={fetchAnalytics} variant="outline" aria-label="Button">
-            <RefreshCw className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-            Retry
+          <Button onClick={fetchAnalytics} variant="outline" >
+            <RefreshCw className="w-4 h-4 mr-2 " />
           </Button>
         </div>
       </Card>
@@ -368,7 +359,6 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Memory Analytics</h2>
           <p className="text-gray-600">
-            Vector store statistics and performance metrics
             {lastUpdated && (
               <span className="ml-2 text-sm md:text-base lg:text-lg">
                 Last updated: {lastUpdated.toLocaleTimeString()}
@@ -376,9 +366,8 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
             )}
           </p>
         </div>
-        <button onClick={fetchAnalytics} disabled={loading} variant="outline" aria-label="Button">
+        <Button onClick={fetchAnalytics} disabled={loading} variant="outline" >
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
         </Button>
       </div>
 
@@ -387,28 +376,28 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
         <MetricCard
           title="Total Memories"
           value={analytics?.usage.totalMemories || 0}
-          icon={<Database className="w-6 h-6 sm:w-auto md:w-full" />}
+          icon={<Database className="w-6 h-6 " />}
           color="blue"
           loading={loading}
         />
         <MetricCard
           title="Storage Size"
           value={analytics ? `${(analytics.vectorStore.storageSize / 1024 / 1024).toFixed(1)} MB` : '0 MB'}
-          icon={<Activity className="w-6 h-6 sm:w-auto md:w-full" />}
+          icon={<Activity className="w-6 h-6 " />}
           color="green"
           loading={loading}
         />
         <MetricCard
           title="Avg Search Latency"
           value={analytics ? `${analytics.performance.searchLatency.average.toFixed(0)}ms` : '0ms'}
-          icon={<Clock className="w-6 h-6 sm:w-auto md:w-full" />}
+          icon={<Clock className="w-6 h-6 " />}
           color="orange"
           loading={loading}
         />
         <MetricCard
           title="Search Accuracy"
           value={analytics ? `${(analytics.vectorStore.searchAccuracy * 100).toFixed(1)}%` : '0%'}
-          icon={<Zap className="w-6 h-6 sm:w-auto md:w-full" />}
+          icon={<Zap className="w-6 h-6 " />}
           color="purple"
           loading={loading}
         />
@@ -435,7 +424,6 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
                 </div>
               ) : (
                 <div className="h-64 flex items-center justify-center text-gray-500">
-                  No data available
                 </div>
               )}
             </Card>
@@ -450,7 +438,6 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
                 </div>
               ) : (
                 <div className="h-64 flex items-center justify-center text-gray-500">
-                  No data available
                 </div>
               )}
             </Card>
@@ -472,17 +459,17 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
                   return (
                     <div key={type} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="w-4 h-4 bg-blue-500 rounded sm:w-auto md:w-full"></div>
+                        <div className="w-4 h-4 bg-blue-500 rounded "></div>
                         <span className="capitalize font-medium">{type}</span>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <div className="w-32 bg-gray-200 rounded-full h-2 sm:w-auto md:w-full">
+                        <div className="w-32 bg-gray-200 rounded-full h-2 ">
                           <div 
                             className="bg-blue-500 h-2 rounded-full" 
                             style={{ width: `${percentage}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm text-gray-600 w-16 text-right sm:w-auto md:w-full">
+                        <span className="text-sm text-gray-600 w-16 text-right ">
                           {(size / 1024).toFixed(1)} KB
                         </span>
                       </div>
@@ -506,7 +493,6 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
                 </div>
               ) : (
                 <div className="h-64 flex items-center justify-center text-gray-500">
-                  No data available
                 </div>
               )}
             </Card>
@@ -563,7 +549,6 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
                 </div>
               ) : (
                 <div className="h-64 flex items-center justify-center text-gray-500">
-                  No data available
                 </div>
               )}
             </Card>
@@ -606,7 +591,6 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
               </div>
             ) : (
               <div className="h-64 flex items-center justify-center text-gray-500">
-                No data available
               </div>
             )}
           </Card>

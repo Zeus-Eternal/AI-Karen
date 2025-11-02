@@ -2,7 +2,7 @@
  * Safe Chat Wrapper - Prevents console interceptor issues
  */
 
-'use client';
+"use client";
 
 import React, { Component, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
@@ -18,8 +18,6 @@ interface SafeChatWrapperState {
 }
 
 export class SafeChatWrapper extends Component<
-  SafeChatWrapperProps,
-  SafeChatWrapperState
 > {
   constructor(props: SafeChatWrapperProps) {
     super(props);
@@ -49,8 +47,7 @@ export class SafeChatWrapper extends Component<
     }, {
       skipInProduction: false,
       useStructuredLogging: true,
-    });
-    
+
     // Call the onError callback if provided
     this.props.onError?.(error, errorInfo);
   }
@@ -65,10 +62,9 @@ export class SafeChatWrapper extends Component<
               The chat interface encountered an error. Please refresh the page to continue.
             </p>
             <button
-              onClick={() = aria-label="Button"> window.location.reload()}
+              onClick={() => window.location.reload()}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
             >
-              Refresh Page
             </button>
           </div>
         </div>

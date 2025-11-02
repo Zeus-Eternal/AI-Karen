@@ -13,7 +13,6 @@ describe('Admin API Structure', () => {
     expect(userRoutes.POST).toBeDefined();
     expect(typeof userRoutes.GET).toBe('function');
     expect(typeof userRoutes.POST).toBe('function');
-  });
 
   it('should export individual user routes', async () => {
     const userIdRoutes = await import('../users/[id]/route');
@@ -23,13 +22,11 @@ describe('Admin API Structure', () => {
     expect(typeof userIdRoutes.GET).toBe('function');
     expect(typeof userIdRoutes.PUT).toBe('function');
     expect(typeof userIdRoutes.DELETE).toBe('function');
-  });
 
   it('should export bulk user operations route', async () => {
     const bulkRoutes = await import('../users/bulk/route');
     expect(bulkRoutes.POST).toBeDefined();
     expect(typeof bulkRoutes.POST).toBe('function');
-  });
 
   it('should export admin management routes', async () => {
     const adminRoutes = await import('../admins/route');
@@ -37,19 +34,16 @@ describe('Admin API Structure', () => {
     expect(adminRoutes.POST).toBeDefined();
     expect(typeof adminRoutes.GET).toBe('function');
     expect(typeof adminRoutes.POST).toBe('function');
-  });
 
   it('should export admin promotion route', async () => {
     const promoteRoutes = await import('../admins/promote/[id]/route');
     expect(promoteRoutes.POST).toBeDefined();
     expect(typeof promoteRoutes.POST).toBe('function');
-  });
 
   it('should export admin demotion route', async () => {
     const demoteRoutes = await import('../admins/demote/[id]/route');
     expect(demoteRoutes.POST).toBeDefined();
     expect(typeof demoteRoutes.POST).toBe('function');
-  });
 
   it('should export system config routes', async () => {
     const configRoutes = await import('../system/config/route');
@@ -57,7 +51,6 @@ describe('Admin API Structure', () => {
     expect(configRoutes.PUT).toBeDefined();
     expect(typeof configRoutes.GET).toBe('function');
     expect(typeof configRoutes.PUT).toBe('function');
-  });
 
   it('should export audit logs routes', async () => {
     const auditRoutes = await import('../system/audit-logs/route');
@@ -65,7 +58,6 @@ describe('Admin API Structure', () => {
     expect(auditRoutes.POST).toBeDefined();
     expect(typeof auditRoutes.GET).toBe('function');
     expect(typeof auditRoutes.POST).toBe('function');
-  });
 
   it('should have consistent API response structure', () => {
     // Test that our AdminApiResponse type is properly structured
@@ -89,5 +81,4 @@ describe('Admin API Structure', () => {
     expect(errorResponse.success).toBe(false);
     expect(errorResponse.error).toBeDefined();
     expect(errorResponse.error.code).toBe('TEST_ERROR');
-  });
-});
+

@@ -66,7 +66,7 @@ class PolyfillLoaderService {
       if (!polyfillsToLoad.includes(key) && config[key as keyof PolyfillConfig]) {
         result.skipped.push(key);
       }
-    });
+
     return result;
   }
   private determineNeededPolyfills(config: Partial<PolyfillConfig>): string[] {
@@ -175,7 +175,7 @@ class PolyfillLoaderService {
           timeRemaining() {
             return Math.max(0, 50 - (Date.now() - start));
           },
-        });
+
       }, 1);
     };
     (window as any).cancelIdleCallback = (id: number) => {
@@ -262,7 +262,7 @@ class PolyfillLoaderService {
         watch: true,
         preserveStatic: false,
         preserveVars: false,
-      });
+
     }
   }
   private loadScript(src: string): Promise<void> {
@@ -279,7 +279,7 @@ class PolyfillLoaderService {
       script.onload = () => resolve();
       script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
       document.head.appendChild(script);
-    });
+
   }
   // Public API
   public isPolyfillLoaded(name: string): boolean {
@@ -294,7 +294,7 @@ class PolyfillLoaderService {
       if (feature in config) {
         (config as any)[feature] = true;
       }
-    });
+
     return this.loadPolyfills(config);
   }
   public async ensurePolyfillsLoaded(polyfills: string[]): Promise<void> {
@@ -315,7 +315,7 @@ export function usePolyfills(config: Partial<PolyfillConfig>) {
         setLoadResult(result);
         setIsLoading(false);
       }
-    });
+
     return () => {
       mounted = false;
     };

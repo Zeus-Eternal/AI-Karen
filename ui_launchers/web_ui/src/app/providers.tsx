@@ -1,4 +1,6 @@
-'use client';
+"use client";
+
+import React from 'react';
 import { HookProvider } from '@/contexts/HookContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ErrorProvider } from '@/contexts/ErrorProvider';
@@ -34,8 +36,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           title: 'Backend unreachable',
           description: `Could not reach API at ${url}. Check that the backend is running on port 8000.`,
           variant: 'destructive',
-        });
-      });
+
+
     return () => {
       clearTimeout(timeout);
       controller.abort();

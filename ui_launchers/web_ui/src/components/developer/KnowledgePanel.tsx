@@ -1,5 +1,6 @@
+
+"use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,25 +10,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/use-debounce";
-"use client";
 
-
-  Search, 
-  Filter, 
-  History, 
-  BookOpen, 
-  FileText, 
-  Database, 
-  Code, 
-  ExternalLink,
-  ChevronRight,
-  Star,
-  Clock,
-  Tag,
-  Lightbulb,
-  X,
-  RefreshCw
-} from "lucide-react";
+import { } from "lucide-react";
 
 
 
@@ -35,12 +19,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 
 
 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
+import { } from "@/components/ui/select";
 
 
 
@@ -212,7 +191,7 @@ export default function KnowledgePanel({
           "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
-      });
+
       if (response.ok) {
         const data: SearchResponse = await response.json();
         setSearchResults(data.results);
@@ -224,14 +203,14 @@ export default function KnowledgePanel({
           title: "Search Failed",
           description: "Failed to search knowledge base",
           variant: "destructive",
-        });
+
       }
     } catch (error) {
       toast({
         title: "Search Error",
         description: "An error occurred while searching",
         variant: "destructive",
-      });
+
     } finally {
       setLoading(false);
     }
@@ -241,7 +220,7 @@ export default function KnowledgePanel({
       const updated = [query, ...prev.filter(q => q !== query)].slice(0, 10);
       localStorage.setItem("knowledge_search_history", JSON.stringify(updated));
       return updated;
-    });
+
   };
   const loadSearchHistory = () => {
     try {
@@ -266,18 +245,18 @@ export default function KnowledgePanel({
       const updated = [query, ...prev.filter(q => q !== query)].slice(0, 20);
       localStorage.setItem("knowledge_saved_queries", JSON.stringify(updated));
       return updated;
-    });
+
     toast({
       title: "Query Saved",
       description: "Query added to saved queries",
-    });
+
   };
   const removeSavedQuery = (query: string) => {
     setSavedQueries(prev => {
       const updated = prev.filter(q => q !== query);
       localStorage.setItem("knowledge_saved_queries", JSON.stringify(updated));
       return updated;
-    });
+
   };
   const handleCitationClick = (citation: Citation) => {
     if (onCitationClick) {
@@ -289,7 +268,7 @@ export default function KnowledgePanel({
         description: `${citation.file_path || citation.table_name || citation.source_id}${
           citation.line_start ? `:${citation.line_start}` : ""
         }`,
-      });
+
     }
   };
   const handleResultSelect = (result: KnowledgeResult) => {
@@ -298,9 +277,9 @@ export default function KnowledgePanel({
     }
   };
   const getCitationIcon = (citation: Citation) => {
-    if (citation.file_path) return <FileText className="h-3 w-3 sm:w-auto md:w-full" />;
-    if (citation.table_name) return <Database className="h-3 w-3 sm:w-auto md:w-full" />;
-    return <Code className="h-3 w-3 sm:w-auto md:w-full" />;
+    if (citation.file_path) return <FileText className="h-3 w-3 " />;
+    if (citation.table_name) return <Database className="h-3 w-3 " />;
+    return <Code className="h-3 w-3 " />;
   };
   const getCitationLabel = (citation: Citation) => {
     if (citation.file_path) {
@@ -324,20 +303,19 @@ export default function KnowledgePanel({
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <BookOpen className="h-5 w-5 sm:w-auto md:w-full" />
-          Knowledge Search
+          <BookOpen className="h-5 w-5 " />
         </CardTitle>
         {/* Search Input */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground " />
           <input
             placeholder="Search knowledge base..."
             value={searchQuery}
-            onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 pr-10"
           />
           {loading && (
-            <RefreshCw className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground sm:w-auto md:w-full" />
+            <RefreshCw className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground " />
           )}
         </div>
         {/* Filters */}
@@ -369,8 +347,8 @@ export default function KnowledgePanel({
             </SelectContent>
           </Select>
           {(selectedDepartment || selectedTeam) && (
-            <button variant="outline" size="sm" onClick={clearFilters} aria-label="Button">
-              <X className="h-4 w-4 sm:w-auto md:w-full" />
+            <Button variant="outline" size="sm" onClick={clearFilters} >
+              <X className="h-4 w-4 " />
             </Button>
           )}
         </div>
@@ -378,7 +356,7 @@ export default function KnowledgePanel({
         {routingInfo && (
           <div className="text-xs text-muted-foreground bg-muted p-2 rounded sm:text-sm md:text-base">
             <div className="flex items-center gap-1">
-              <Tag className="h-3 w-3 sm:w-auto md:w-full" />
+              <Tag className="h-3 w-3 " />
               Routed to: {routingInfo.routed_department}
               {routingInfo.routed_team && `/${routingInfo.routed_team}`}
               <Badge variant="outline" className="ml-2 text-xs sm:text-sm md:text-base">
@@ -422,15 +400,15 @@ export default function KnowledgePanel({
                                 </Badge>
                               )}
                             </div>
-                            <button
+                            <Button
                               variant="ghost"
                               size="sm"
-                              onClick={(e) = aria-label="Button"> {
+                              onClick={(e) = > {
                                 e.stopPropagation();
                                 saveQuery(searchQuery);
                               }}
                             >
-                              <Star className="h-3 w-3 sm:w-auto md:w-full" />
+                              <Star className="h-3 w-3 " />
                             </Button>
                           </div>
                           <p className="text-sm mb-3 line-clamp-3 md:text-base lg:text-lg">
@@ -451,7 +429,7 @@ export default function KnowledgePanel({
                                 <span className="flex-1 truncate">
                                   {getCitationLabel(citation)}
                                 </span>
-                                <ExternalLink className="h-3 w-3 sm:w-auto md:w-full" />
+                                <ExternalLink className="h-3 w-3 " />
                               </div>
                             ))}
                             {result.citations.length > 3 && (
@@ -466,12 +444,12 @@ export default function KnowledgePanel({
                   </div>
                 ) : searchQuery && !loading ? (
                   <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                    <Search className="h-8 w-8 mb-2 sm:w-auto md:w-full" />
+                    <Search className="h-8 w-8 mb-2 " />
                     <p>No results found</p>
                   </div>
                 ) : !searchQuery ? (
                   <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                    <BookOpen className="h-8 w-8 mb-2 sm:w-auto md:w-full" />
+                    <BookOpen className="h-8 w-8 mb-2 " />
                     <p>Enter a search query to get started</p>
                   </div>
                 ) : null}
@@ -481,14 +459,14 @@ export default function KnowledgePanel({
               <ScrollArea className="h-full px-4">
                 <div className="space-y-2 pb-4">
                   {suggestions.map((suggestion, index) => (
-                    <button
+                    <Button
                       key={index}
                       variant="ghost"
                       className="w-full justify-start text-left h-auto p-3 sm:p-4 md:p-6"
-                      onClick={() = aria-label="Button"> setSearchQuery(suggestion)}
+                      onClick={() => setSearchQuery(suggestion)}
                     >
                       <div className="flex items-center gap-2">
-                        <Lightbulb className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />
+                        <Lightbulb className="h-4 w-4 text-yellow-500 " />
                         <span className="text-sm md:text-base lg:text-lg">{suggestion}</span>
                       </div>
                     </Button>
@@ -502,19 +480,18 @@ export default function KnowledgePanel({
                   {/* Search History */}
                   <div>
                     <h4 className="text-sm font-medium mb-2 flex items-center gap-2 md:text-base lg:text-lg">
-                      <History className="h-4 w-4 sm:w-auto md:w-full" />
-                      Recent Searches
+                      <History className="h-4 w-4 " />
                     </h4>
                     <div className="space-y-1">
                       {searchHistory.map((query, index) => (
-                        <button
+                        <Button
                           key={index}
                           variant="ghost"
                           className="w-full justify-start text-left h-auto p-2 sm:p-4 md:p-6"
-                          onClick={() = aria-label="Button"> setSearchQuery(query)}
+                          onClick={() => setSearchQuery(query)}
                         >
                           <div className="flex items-center gap-2">
-                            <Clock className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
+                            <Clock className="h-3 w-3 text-muted-foreground " />
                             <span className="text-sm truncate md:text-base lg:text-lg">{query}</span>
                           </div>
                         </Button>
@@ -525,25 +502,24 @@ export default function KnowledgePanel({
                   {/* Saved Queries */}
                   <div>
                     <h4 className="text-sm font-medium mb-2 flex items-center gap-2 md:text-base lg:text-lg">
-                      <Star className="h-4 w-4 sm:w-auto md:w-full" />
-                      Saved Queries
+                      <Star className="h-4 w-4 " />
                     </h4>
                     <div className="space-y-1">
                       {savedQueries.map((query, index) => (
                         <div key={index} className="flex items-center gap-1">
-                          <button
+                          <Button
                             variant="ghost"
                             className="flex-1 justify-start text-left h-auto p-2 sm:p-4 md:p-6"
-                            onClick={() = aria-label="Button"> setSearchQuery(query)}
+                            onClick={() => setSearchQuery(query)}
                           >
                             <span className="text-sm truncate md:text-base lg:text-lg">{query}</span>
                           </Button>
-                          <button
+                          <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() = aria-label="Button"> removeSavedQuery(query)}
+                            onClick={() => removeSavedQuery(query)}
                           >
-                            <X className="h-3 w-3 sm:w-auto md:w-full" />
+                            <X className="h-3 w-3 " />
                           </Button>
                         </div>
                       ))}

@@ -6,7 +6,8 @@
  * 
  * Requirements: 4.2, 4.3, 7.4
  */
-'use client';
+"use client";
+
 import React, { useState } from 'react';
 import { useRole } from '@/hooks/useRole';
 import { validateEmail } from '@/lib/auth/setup-validation';
@@ -116,7 +117,7 @@ export function UserCreationForm({ onUserCreated, className = '' }: UserCreation
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestData),
-      });
+
       const data: AdminApiResponse<{ user: User; invitation_sent?: boolean }> = await response.json();
       if (!response.ok || !data.success) {
         throw new Error(data.error?.message || 'Failed to create user');
@@ -166,7 +167,7 @@ export function UserCreationForm({ onUserCreated, className = '' }: UserCreation
           {success && (
             <div className="p-4 bg-green-50 border border-green-200 rounded-md sm:p-4 md:p-6">
               <div className="flex">
-                <svg className="h-5 w-5 text-green-400 sm:w-auto md:w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 text-green-400 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <p className="ml-3 text-sm text-green-700 md:text-base lg:text-lg">{success}</p>
@@ -177,7 +178,7 @@ export function UserCreationForm({ onUserCreated, className = '' }: UserCreation
           {errors.general && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-md sm:p-4 md:p-6">
               <div className="flex">
-                <svg className="h-5 w-5 text-red-400 sm:w-auto md:w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 text-red-400 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p className="ml-3 text-sm text-red-700 md:text-base lg:text-lg">{errors.general}</p>
@@ -193,7 +194,7 @@ export function UserCreationForm({ onUserCreated, className = '' }: UserCreation
               id="email"
               type="email"
               value={formData.email}
-              onChange={(e) = aria-label="Input"> handleInputChange('email', e.target.value)}
+              onChange={(e) => handleInputChange('email', e.target.value)}
               className={`block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.email ? 'border-red-300' : 'border-gray-300'
               }`}
@@ -213,7 +214,7 @@ export function UserCreationForm({ onUserCreated, className = '' }: UserCreation
               id="full_name"
               type="text"
               value={formData.full_name}
-              onChange={(e) = aria-label="Input"> handleInputChange('full_name', e.target.value)}
+              onChange={(e) => handleInputChange('full_name', e.target.value)}
               className={`block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.full_name ? 'border-red-300' : 'border-gray-300'
               }`}
@@ -232,7 +233,7 @@ export function UserCreationForm({ onUserCreated, className = '' }: UserCreation
             <select
               id="role"
               value={formData.role}
-              onChange={(e) = aria-label="Select option"> handleInputChange('role', e.target.value)}
+              onChange={(e) => handleInputChange('role', e.target.value)}
               className={`block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.role ? 'border-red-300' : 'border-gray-300'
               }`}
@@ -260,12 +261,11 @@ export function UserCreationForm({ onUserCreated, className = '' }: UserCreation
                 id="send_invitation"
                 type="checkbox"
                 checked={formData.send_invitation}
-                onChange={(e) = aria-label="Input"> handleInputChange('send_invitation', e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded sm:w-auto md:w-full"
+                onChange={(e) => handleInputChange('send_invitation', e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded "
                 disabled={loading}
               />
               <label htmlFor="send_invitation" className="ml-2 block text-sm text-gray-900 md:text-base lg:text-lg">
-                Send invitation email
               </label>
             </div>
             <p className="mt-1 text-sm text-gray-500 md:text-base lg:text-lg">
@@ -286,7 +286,7 @@ export function UserCreationForm({ onUserCreated, className = '' }: UserCreation
                   id="password"
                   type="password"
                   value={formData.password}
-                  onChange={(e) = aria-label="Input"> handleInputChange('password', e.target.value)}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
                   className={`block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.password ? 'border-red-300' : 'border-gray-300'
                   }`}
@@ -308,7 +308,7 @@ export function UserCreationForm({ onUserCreated, className = '' }: UserCreation
                   id="confirm_password"
                   type="password"
                   value={formData.confirm_password}
-                  onChange={(e) = aria-label="Input"> handleInputChange('confirm_password', e.target.value)}
+                  onChange={(e) => handleInputChange('confirm_password', e.target.value)}
                   className={`block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.confirm_password ? 'border-red-300' : 'border-gray-300'
                   }`}
@@ -329,7 +329,6 @@ export function UserCreationForm({ onUserCreated, className = '' }: UserCreation
               disabled={loading}
               className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
              aria-label="Button">
-              Reset
             </button>
             <button
               type="submit"
@@ -338,7 +337,7 @@ export function UserCreationForm({ onUserCreated, className = '' }: UserCreation
              aria-label="Submit form">
               {loading ? (
                 <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white sm:w-auto md:w-full" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white " fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>

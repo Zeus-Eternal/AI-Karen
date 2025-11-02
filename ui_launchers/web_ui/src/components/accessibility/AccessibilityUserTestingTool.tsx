@@ -5,7 +5,7 @@
  * user testing scenarios, and accessibility evaluation workflows.
  */
 
-'use client';
+"use client";
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,30 +19,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Eye, 
-  EyeOff, 
-  Keyboard, 
-  Volume2, 
-  VolumeX, 
-  MousePointer, 
-  Smartphone,
-  Monitor,
-  Tablet,
-  Play,
-  Pause,
-  RotateCcw,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Info,
-  Download,
-  Upload,
-  Settings,
-  User,
-  Clock,
-  Target
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 
 // Types for testing scenarios and results
 interface TestingScenario {
@@ -124,7 +102,7 @@ export function AccessibilityUserTestingTool({
     motorImpairment: { enabled: false, type: 'none', keyboardOnly: false },
     cognitiveImpairment: { enabled: false, type: 'none', reducedMotion: false },
     screenReader: { enabled: false, type: 'nvda', speechRate: 50, verbosity: 'medium' }
-  });
+
   const [currentTest, setCurrentTest] = useState<TestResult | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [newIssue, setNewIssue] = useState<Partial<TestIssue>>({});
@@ -444,23 +422,20 @@ export function AccessibilityUserTestingTool({
         <div>
           <h1 className="text-3xl font-bold">Accessibility User Testing</h1>
           <p className="text-muted-foreground">
-            Test your application with simulated assistive technologies and accessibility scenarios
           </p>
         </div>
         <div className="flex gap-2">
           {isRecording && (
             <Badge variant="destructive" className="animate-pulse">
-              <div className="w-2 h-2 bg-red-500 rounded-full mr-2 sm:w-auto md:w-full" />
-              Recording
+              <div className="w-2 h-2 bg-red-500 rounded-full mr-2 " />
             </Badge>
           )}
           <button
-            onClick={() = aria-label="Button"> setShowIssueForm(true)}
+            onClick={() => setShowIssueForm(true)}
             variant="outline"
             disabled={!isRecording}
           >
-            <AlertTriangle className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Report Issue
+            <AlertTriangle className="h-4 w-4 mr-2 " />
           </Button>
         </div>
       </div>
@@ -468,7 +443,7 @@ export function AccessibilityUserTestingTool({
       {/* Current Test Status */}
       {currentTest && currentScenario && (
         <Alert>
-          <Play className="h-4 w-4 sm:w-auto md:w-full" />
+          <Play className="h-4 w-4 " />
           <AlertTitle>Test in Progress: {currentScenario.name}</AlertTitle>
           <AlertDescription>
             <div className="flex items-center gap-4 mt-2">
@@ -477,19 +452,17 @@ export function AccessibilityUserTestingTool({
               <div className="flex gap-2 ml-auto">
                 <button
                   size="sm"
-                  onClick={() = aria-label="Button"> completeTest(true, 'Test completed successfully')}
+                  onClick={() => completeTest(true, 'Test completed successfully')}
                   variant="outline"
                 >
-                  <CheckCircle className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                  Pass
+                  <CheckCircle className="h-4 w-4 mr-1 " />
                 </Button>
                 <button
                   size="sm"
-                  onClick={() = aria-label="Button"> completeTest(false, 'Test failed or abandoned')}
+                  onClick={() => completeTest(false, 'Test failed or abandoned')}
                   variant="outline"
                 >
-                  <XCircle className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                  Fail
+                  <XCircle className="h-4 w-4 mr-1 " />
                 </Button>
               </div>
             </div>
@@ -524,7 +497,7 @@ export function AccessibilityUserTestingTool({
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground md:text-base lg:text-lg">
-                      <Clock className="h-4 w-4 sm:w-auto md:w-full" />
+                      <Clock className="h-4 w-4 " />
                       <span>~{scenario.estimatedTime} minutes</span>
                     </div>
                     
@@ -546,12 +519,11 @@ export function AccessibilityUserTestingTool({
                     </div>
 
                     <button
-                      onClick={() = aria-label="Button"> startTest(scenario)}
+                      onClick={() => startTest(scenario)}
                       disabled={isRecording}
                       className="w-full"
                     >
-                      <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Start Test
+                      <Play className="h-4 w-4 mr-2 " />
                     </Button>
                   </div>
                 </CardContent>
@@ -566,11 +538,9 @@ export function AccessibilityUserTestingTool({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Eye className="h-5 w-5 sm:w-auto md:w-full" />
-                  Visual Impairment
+                  <Eye className="h-5 w-5 " />
                 </CardTitle>
                 <CardDescription>
-                  Simulate various visual impairments and conditions
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -640,11 +610,9 @@ export function AccessibilityUserTestingTool({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MousePointer className="h-5 w-5 sm:w-auto md:w-full" />
-                  Motor Impairment
+                  <MousePointer className="h-5 w-5 " />
                 </CardTitle>
                 <CardDescription>
-                  Simulate motor disabilities and limited mobility
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -708,11 +676,9 @@ export function AccessibilityUserTestingTool({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Volume2 className="h-5 w-5 sm:w-auto md:w-full" />
-                  Screen Reader
+                  <Volume2 className="h-5 w-5 " />
                 </CardTitle>
                 <CardDescription>
-                  Simulate screen reader behavior and announcements
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -805,11 +771,9 @@ export function AccessibilityUserTestingTool({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5 sm:w-auto md:w-full" />
-                  Cognitive Impairment
+                  <User className="h-5 w-5 " />
                 </CardTitle>
                 <CardDescription>
-                  Simulate cognitive disabilities and processing differences
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -874,9 +838,8 @@ export function AccessibilityUserTestingTool({
         <TabsContent value="results" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Test Results</h3>
-            <button variant="outline" size="sm" aria-label="Button">
-              <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Export Results
+            <Button variant="outline" size="sm" >
+              <Download className="h-4 w-4 mr-2 " />
             </Button>
           </div>
 
@@ -884,7 +847,7 @@ export function AccessibilityUserTestingTool({
             <Card>
               <CardContent className="flex items-center justify-center h-32">
                 <div className="text-center text-muted-foreground">
-                  <Target className="h-12 w-12 mx-auto mb-2 sm:w-auto md:w-full" />
+                  <Target className="h-12 w-12 mx-auto mb-2 " />
                   <p>No test results yet</p>
                   <p className="text-sm md:text-base lg:text-lg">Complete some test scenarios to see results here</p>
                 </div>
@@ -970,12 +933,11 @@ export function AccessibilityUserTestingTool({
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Reported Issues</h3>
             <button
-              onClick={() = aria-label="Button"> setShowIssueForm(true)}
+              onClick={() => setShowIssueForm(true)}
               variant="outline"
               size="sm"
             >
-              <AlertTriangle className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Report New Issue
+              <AlertTriangle className="h-4 w-4 mr-2 " />
             </Button>
           </div>
 
@@ -1024,7 +986,6 @@ export function AccessibilityUserTestingTool({
             <CardHeader>
               <CardTitle>Report Accessibility Issue</CardTitle>
               <CardDescription>
-                Describe the accessibility issue you encountered
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1051,7 +1012,7 @@ export function AccessibilityUserTestingTool({
                 <input
                   id="issue-category"
                   value={newIssue.category || ''}
-                  onChange={(e) = aria-label="Input"> setNewIssue(prev => ({ ...prev, category: e.target.value }))}
+                  onChange={(e) => setNewIssue(prev => ({ ...prev, category: e.target.value }))}
                   placeholder="e.g., keyboard navigation, screen reader, visual"
                 />
               </div>
@@ -1061,7 +1022,7 @@ export function AccessibilityUserTestingTool({
                 <textarea
                   id="issue-description"
                   value={newIssue.description || ''}
-                  onChange={(e) = aria-label="Textarea"> setNewIssue(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) => setNewIssue(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Describe the accessibility issue..."
                   rows={3}
                 />
@@ -1072,7 +1033,7 @@ export function AccessibilityUserTestingTool({
                 <textarea
                   id="issue-reproduction"
                   value={newIssue.reproduction || ''}
-                  onChange={(e) = aria-label="Textarea"> setNewIssue(prev => ({ ...prev, reproduction: e.target.value }))}
+                  onChange={(e) => setNewIssue(prev => ({ ...prev, reproduction: e.target.value }))}
                   placeholder="Steps to reproduce the issue..."
                   rows={2}
                 />
@@ -1083,29 +1044,27 @@ export function AccessibilityUserTestingTool({
                 <textarea
                   id="issue-suggestion"
                   value={newIssue.suggestion || ''}
-                  onChange={(e) = aria-label="Textarea"> setNewIssue(prev => ({ ...prev, suggestion: e.target.value }))}
+                  onChange={(e) => setNewIssue(prev => ({ ...prev, suggestion: e.target.value }))}
                   placeholder="How could this be fixed?"
                   rows={2}
                 />
               </div>
 
               <div className="flex gap-2 pt-4">
-                <button
-                  onClick={() = aria-label="Button"> reportIssue(newIssue)}
+                <Button
+                  onClick={() => reportIssue(newIssue)}
                   disabled={!newIssue.description}
                   className="flex-1"
                 >
-                  Report Issue
                 </Button>
-                <button
-                  onClick={() = aria-label="Button"> {
+                <Button
+                  onClick={() => {
                     setShowIssueForm(false);
                     setNewIssue({});
                   }}
                   variant="outline"
                   className="flex-1"
                 >
-                  Cancel
                 </Button>
               </div>
             </CardContent>

@@ -325,7 +325,7 @@ export class EnvironmentConfigManager {
       } catch {
         errors.push(`Invalid fallback URL[${index}]: ${url}`);
       }
-    });
+
     // Validate timeout values
     if (this.timeouts.authentication < 1000) {
       warnings.push(`Authentication timeout is very low (${this.timeouts.authentication}ms), consider increasing it`);
@@ -398,7 +398,7 @@ export class EnvironmentConfigManager {
     this.validationCache.set(cacheKey, {
       result,
       timestamp: Date.now(),
-    });
+
     return result;
   }
   /**
@@ -501,21 +501,21 @@ export class EnvironmentConfigManager {
         from: 'API_BASE_URL',
         to: 'KAREN_BACKEND_URL',
         action: 'Rename environment variable for server-side backend URL',
-      });
+
     }
     if (this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', '')) {
       recommendations.push({
         from: 'NEXT_PUBLIC_API_BASE_URL',
         to: 'NEXT_PUBLIC_KAREN_BACKEND_URL',
         action: 'Rename environment variable for client-side backend URL',
-      });
+
     }
     if (this.getEnvVar('BACKEND_PORT', '')) {
       recommendations.push({
         from: 'BACKEND_PORT',
         to: 'KAREN_BACKEND_PORT',
         action: 'Rename environment variable for backend port (optional, defaults to 8000)',
-      });
+
     }
     return recommendations;
   }
@@ -567,9 +567,4 @@ export function initializeEnvironmentConfigManager(): EnvironmentConfigManager {
 }
 // Export types
 export type {
-  BackendConfig as BackendConfigType,
-  TimeoutConfiguration as TimeoutConfigurationType,
-  RetryPolicy as RetryPolicyType,
-  EnvironmentInfo as EnvironmentInfoType,
-  ValidationResult as ValidationResultType,
 };

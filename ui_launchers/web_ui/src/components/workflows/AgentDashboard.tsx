@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,37 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-'use client';
 
 
+import { } from 'lucide-react';
 
-
-
-
-
-
-
-
-
-  Play, 
-  Square, 
-  RotateCcw, 
-  Settings, 
-  Activity, 
-  Clock, 
-  CheckCircle, 
-  AlertCircle, 
-  TrendingUp,
-  Cpu,
-  MemoryStick,
-  Users,
-  Search
-} from 'lucide-react';
-
-  Agent, 
-  AgentHealth
-} from '@/types/workflows';
+import { } from '@/types/workflows';
 interface AgentDashboardProps {
   agents: Agent[];
   onStartAgent?: (agentId: string) => Promise<void>;
@@ -69,13 +45,13 @@ const taskPriorityColors = {
 const getHealthIcon = (health: AgentHealth) => {
   switch (health.status) {
     case 'healthy':
-      return <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+      return <CheckCircle className="h-4 w-4 text-green-600 " />;
     case 'warning':
-      return <AlertCircle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
+      return <AlertCircle className="h-4 w-4 text-yellow-600 " />;
     case 'critical':
-      return <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+      return <AlertCircle className="h-4 w-4 text-red-600 " />;
     default:
-      return <AlertCircle className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
+      return <AlertCircle className="h-4 w-4 text-gray-600 " />;
   }
 };
 export function AgentDashboard({
@@ -96,7 +72,7 @@ export function AgentDashboard({
                            agent.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || agent.status === statusFilter;
       return matchesSearch && matchesStatus;
-    });
+
   }, [agents, searchTerm, statusFilter]);
   const agentStats = useMemo(() => {
     const stats = {
@@ -115,7 +91,7 @@ export function AgentDashboard({
       stats.totalTasks += agent.metrics.tasksCompleted + agent.metrics.tasksInProgress + agent.metrics.tasksFailed;
       stats.completedTasks += agent.metrics.tasksCompleted;
       stats.failedTasks += agent.metrics.tasksFailed;
-    });
+
     return stats;
   }, [agents]);
   const handleAgentAction = useCallback(async (
@@ -158,17 +134,17 @@ export function AgentDashboard({
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Search className="h-4 w-4 text-muted-foreground " />
             <input
               placeholder="Search agents..."
               value={searchTerm}
-              onChange={(e) = aria-label="Input"> setSearchTerm(e.target.value)}
-              className="w-64 sm:w-auto md:w-full"
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-64 "
             />
           </div>
           <select
             value={statusFilter}
-            onChange={(e) = aria-label="Select option"> setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 border border-input rounded-md text-sm md:text-base lg:text-lg"
           >
             <option value="all">All Status</option>
@@ -189,7 +165,7 @@ export function AgentDashboard({
                 <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Total Agents</p>
                 <p className="text-2xl font-bold">{agentStats.total}</p>
               </div>
-              <Users className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
+              <Users className="h-8 w-8 text-muted-foreground " />
             </div>
           </CardContent>
         </Card>
@@ -200,7 +176,7 @@ export function AgentDashboard({
                 <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Running</p>
                 <p className="text-2xl font-bold text-green-600">{agentStats.running}</p>
               </div>
-              <Activity className="h-8 w-8 text-green-600 sm:w-auto md:w-full" />
+              <Activity className="h-8 w-8 text-green-600 " />
             </div>
           </CardContent>
         </Card>
@@ -211,7 +187,7 @@ export function AgentDashboard({
                 <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Tasks Completed</p>
                 <p className="text-2xl font-bold">{agentStats.completedTasks}</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-blue-600 sm:w-auto md:w-full" />
+              <CheckCircle className="h-8 w-8 text-blue-600 " />
             </div>
           </CardContent>
         </Card>
@@ -227,7 +203,7 @@ export function AgentDashboard({
                   }
                 </p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-600 sm:w-auto md:w-full" />
+              <TrendingUp className="h-8 w-8 text-green-600 " />
             </div>
           </CardContent>
         </Card>
@@ -290,8 +266,7 @@ export function AgentDashboard({
                             <div className="mt-3 space-y-2">
                               <div className="flex items-center justify-between text-xs sm:text-sm md:text-base">
                                 <span className="flex items-center gap-1">
-                                  <Cpu className="h-3 w-3 sm:w-auto md:w-full" />
-                                  CPU
+                                  <Cpu className="h-3 w-3 " />
                                 </span>
                                 <span>{formatResourceUsage(agent.metrics.resourceUsage.cpu)}</span>
                               </div>
@@ -301,8 +276,7 @@ export function AgentDashboard({
                               />
                               <div className="flex items-center justify-between text-xs sm:text-sm md:text-base">
                                 <span className="flex items-center gap-1">
-                                  <MemoryStick className="h-3 w-3 sm:w-auto md:w-full" />
-                                  Memory
+                                  <MemoryStick className="h-3 w-3 " />
                                 </span>
                                 <span>{formatResourceUsage(agent.metrics.resourceUsage.memory)}</span>
                               </div>
@@ -317,51 +291,47 @@ export function AgentDashboard({
                             {agent.status === 'stopped' || agent.status === 'idle' ? (
                               <button
                                 size="sm"
-                                onClick={(e) = aria-label="Button"> {
+                                onClick={() => {
                                   e.stopPropagation();
                                   handleAgentAction('start', agent.id);
                                 }}
                                 disabled={isLoading[agent.id]}
                               >
-                                <Play className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                                Start
+                                <Play className="h-4 w-4 mr-1 " />
                               </Button>
                             ) : (
-                              <button
+                              <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={(e) = aria-label="Button"> {
+                                onClick={(e) = > {
                                   e.stopPropagation();
                                   handleAgentAction('stop', agent.id);
                                 }}
                                 disabled={isLoading[agent.id]}
                               >
-                                <Square className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                                Stop
+                                <Square className="h-4 w-4 mr-1 " />
                               </Button>
                             )}
-                            <button
+                            <Button
                               size="sm"
                               variant="outline"
-                              onClick={(e) = aria-label="Button"> {
+                              onClick={(e) = > {
                                 e.stopPropagation();
                                 handleAgentAction('restart', agent.id);
                               }}
                               disabled={isLoading[agent.id]}
                             >
-                              <RotateCcw className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                              Restart
+                              <RotateCcw className="h-4 w-4 mr-1 " />
                             </Button>
-                            <button
+                            <Button
                               size="sm"
                               variant="outline"
-                              onClick={(e) = aria-label="Button"> {
+                              onClick={(e) = > {
                                 e.stopPropagation();
                                 onConfigureAgent?.(agent.id);
                               }}
                             >
-                              <Settings className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                              Config
+                              <Settings className="h-4 w-4 mr-1 " />
                             </Button>
                           </div>
                         </div>
@@ -370,7 +340,7 @@ export function AgentDashboard({
                   ))}
                   {filteredAgents.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                       <p>No agents found matching your criteria.</p>
                     </div>
                   )}
@@ -390,7 +360,7 @@ export function AgentDashboard({
             <Card>
               <CardContent className="flex items-center justify-center h-[600px] text-muted-foreground">
                 <div className="text-center">
-                  <Activity className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                  <Activity className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                   <p>Select an agent to view details</p>
                 </div>
               </CardContent>
@@ -416,7 +386,7 @@ function AgentDetailsPanel({ agent, onClose }: AgentDetailsPanelProps) {
               {agent.status}
             </Badge>
           </CardTitle>
-          <button variant="ghost" size="sm" onClick={onClose} aria-label="Button">
+          <Button variant="ghost" size="sm" onClick={onClose} >
             ×
           </Button>
         </div>
@@ -508,7 +478,7 @@ function AgentDetailsPanel({ agent, onClose }: AgentDetailsPanelProps) {
                 ))}
                 {agent.taskQueue.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    <Clock className="h-6 w-6 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                    <Clock className="h-6 w-6 mx-auto mb-2 opacity-50 " />
                     <p className="text-sm md:text-base lg:text-lg">No tasks in queue</p>
                   </div>
                 )}
@@ -531,7 +501,7 @@ function AgentDetailsPanel({ agent, onClose }: AgentDetailsPanelProps) {
                 <div className="mt-2 space-y-2">
                   {agent.health.issues.map((issue) => (
                     <Alert key={issue.id} variant={issue.severity === 'critical' ? 'destructive' : 'default'}>
-                      <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                      <AlertCircle className="h-4 w-4 " />
                       <AlertDescription>
                         <div className="font-medium">{issue.type}</div>
                         <div className="text-sm md:text-base lg:text-lg">{issue.message}</div>

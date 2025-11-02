@@ -90,7 +90,6 @@ describe('GlobalErrorBoundary', () => {
         }
       },
       writable: true
-    });
 
     // Mock navigator
     Object.defineProperty(window, 'navigator', {
@@ -98,7 +97,6 @@ describe('GlobalErrorBoundary', () => {
         userAgent: 'test-user-agent'
       },
       writable: true
-    });
 
     // Mock sessionStorage
     Object.defineProperty(window, 'sessionStorage', {
@@ -107,7 +105,6 @@ describe('GlobalErrorBoundary', () => {
         setItem: vi.fn()
       },
       writable: true
-    });
 
     // Mock localStorage
     Object.defineProperty(window, 'localStorage', {
@@ -116,13 +113,11 @@ describe('GlobalErrorBoundary', () => {
         setItem: vi.fn()
       },
       writable: true
-    });
-  });
+
 
   afterEach(() => {
     consoleErrorSpy.mockRestore();
     vi.clearAllMocks();
-  });
 
   describe('Basic Error Handling', () => {
     it('should render children when no error occurs', () => {
@@ -134,7 +129,6 @@ describe('GlobalErrorBoundary', () => {
 
       expect(screen.getByTestId('working-component')).toBeInTheDocument();
       expect(screen.getByText('Component works!')).toBeInTheDocument();
-    });
 
     it('should catch and display error when component throws', async () => {
       render(
@@ -145,10 +139,8 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
-      });
 
       expect(screen.queryByTestId('working-component')).not.toBeInTheDocument();
-    });
 
     it('should call custom error handler when provided', async () => {
       const mockOnError = vi.fn();
@@ -165,8 +157,7 @@ describe('GlobalErrorBoundary', () => {
           expect.any(Object),
           expect.any(Object)
         );
-      });
-    });
+
 
     it('should use custom fallback component when provided', async () => {
       render(
@@ -178,9 +169,8 @@ describe('GlobalErrorBoundary', () => {
       await waitFor(() => {
         expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
         expect(screen.getByTestId('error-message')).toHaveTextContent('Custom fallback test');
-      });
-    });
-  });
+
+
 
   describe('Error Recovery', () => {
     it('should attempt automatic recovery when enabled', async () => {
@@ -192,8 +182,7 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(mockRecoveryManager.getRecoveryStrategy).toHaveBeenCalled();
-      });
-    });
+
 
     it('should not attempt recovery when disabled', async () => {
       render(
@@ -204,10 +193,8 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
-      });
 
       expect(mockRecoveryManager.getRecoveryStrategy).not.toHaveBeenCalled();
-    });
 
     it('should handle retry functionality', async () => {
       const { rerender } = render(
@@ -218,7 +205,6 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-      });
 
       // Click retry button
       fireEvent.click(screen.getByTestId('retry-button'));
@@ -232,8 +218,7 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('working-component')).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle recovery functionality', async () => {
       render(
@@ -244,13 +229,11 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-      });
 
       // Click recover button
       fireEvent.click(screen.getByTestId('recover-button'));
 
       expect(mockRecoveryManager.getRecoveryStrategy).toHaveBeenCalled();
-    });
 
     it('should track recovery attempts', async () => {
       render(
@@ -261,16 +244,14 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('recovery-attempts')).toHaveTextContent('0');
-      });
 
       // Trigger recovery
       fireEvent.click(screen.getByTestId('recover-button'));
 
       await waitFor(() => {
         expect(screen.getByTestId('recovery-attempts')).toHaveTextContent('1');
-      });
-    });
-  });
+
+
 
   describe('Error Analytics', () => {
     it('should track errors with analytics when enabled', async () => {
@@ -288,8 +269,7 @@ describe('GlobalErrorBoundary', () => {
             section: 'test-section'
           })
         );
-      });
-    });
+
 
     it('should not track errors when analytics disabled', async () => {
       render(
@@ -300,11 +280,9 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
-      });
 
       expect(mockAnalytics.trackError).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('Error Severity and Categorization', () => {
     it('should determine critical severity for global level errors', async () => {
@@ -322,8 +300,7 @@ describe('GlobalErrorBoundary', () => {
             level: 'global'
           })
         );
-      });
-    });
+
 
     it('should determine high severity for feature level errors', async () => {
       render(
@@ -340,8 +317,7 @@ describe('GlobalErrorBoundary', () => {
             level: 'feature'
           })
         );
-      });
-    });
+
 
     it('should handle chunk loading errors as critical', async () => {
       render(
@@ -352,8 +328,7 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle network errors appropriately', async () => {
       render(
@@ -364,9 +339,8 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Fallback Modes', () => {
     it('should use minimal fallback for critical errors', async () => {
@@ -379,8 +353,7 @@ describe('GlobalErrorBoundary', () => {
       await waitFor(() => {
         expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
         expect(screen.getByText(/Refresh Page/i)).toBeInTheDocument();
-      });
-    });
+
 
     it('should use degraded fallback for high severity errors', async () => {
       render(
@@ -391,8 +364,7 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Component Error/i)).toBeInTheDocument();
-      });
-    });
+
 
     it('should use full fallback for low severity errors', async () => {
       render(
@@ -403,9 +375,8 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Something went wrong/i)).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Error Reporting', () => {
     it('should generate comprehensive error reports', async () => {
@@ -424,7 +395,6 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
-      });
 
       // Verify error report was generated with proper structure
       expect(mockAnalytics.trackError).toHaveBeenCalledWith(
@@ -434,7 +404,6 @@ describe('GlobalErrorBoundary', () => {
           section: 'test-section'
         })
       );
-    });
 
     it('should handle reporting failures gracefully', async () => {
       const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'));
@@ -448,12 +417,10 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
-      });
 
       // Should not crash even if reporting fails
       expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
-    });
-  });
+
 
   describe('Performance Monitoring', () => {
     it('should capture performance metrics when error occurs', async () => {
@@ -465,11 +432,9 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
-      });
 
       // Verify performance metrics were captured
       expect(window.performance.now).toHaveBeenCalled();
-    });
 
     it('should track memory usage impact', async () => {
       render(
@@ -480,12 +445,10 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
-      });
 
       // Memory tracking should be included in error report
       expect(mockAnalytics.trackError).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Cleanup and Memory Management', () => {
     it('should cleanup timeouts on unmount', () => {
@@ -499,7 +462,6 @@ describe('GlobalErrorBoundary', () => {
 
       // Should not cause any errors or memory leaks
       expect(true).toBe(true);
-    });
 
     it('should handle multiple rapid errors gracefully', async () => {
       const { rerender } = render(
@@ -510,7 +472,6 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-      });
 
       // Trigger another error quickly
       rerender(
@@ -521,12 +482,10 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-      });
 
       // Should handle multiple errors without crashing
       expect(mockAnalytics.trackError).toHaveBeenCalledTimes(2);
-    });
-  });
+
 
   describe('Integration with External Services', () => {
     it('should integrate with Sentry when available', async () => {
@@ -543,7 +502,6 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
-      });
 
       expect(mockSentry.captureException).toHaveBeenCalledWith(
         expect.any(Error),
@@ -554,7 +512,6 @@ describe('GlobalErrorBoundary', () => {
       );
 
       delete (window as any).Sentry;
-    });
 
     it('should integrate with Google Analytics when available', async () => {
       const mockGtag = vi.fn();
@@ -568,7 +525,6 @@ describe('GlobalErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Application Error/i)).toBeInTheDocument();
-      });
 
       expect(mockGtag).toHaveBeenCalledWith(
         'event',
@@ -580,9 +536,8 @@ describe('GlobalErrorBoundary', () => {
       );
 
       delete (window as any).gtag;
-    });
-  });
-});
+
+
 
 describe('withGlobalErrorBoundary HOC', () => {
   it('should wrap component with error boundary', () => {
@@ -592,7 +547,6 @@ describe('withGlobalErrorBoundary HOC', () => {
     render(<WrappedComponent />);
 
     expect(screen.getByTestId('test-component')).toBeInTheDocument();
-  });
 
   it('should pass through props to wrapped component', () => {
     const TestComponent = ({ message }: { message: string }) => (
@@ -603,5 +557,4 @@ describe('withGlobalErrorBoundary HOC', () => {
     render(<WrappedComponent message="Hello World" />);
 
     expect(screen.getByText('Hello World')).toBeInTheDocument();
-  });
-});
+

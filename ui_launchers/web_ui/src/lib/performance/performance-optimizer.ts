@@ -104,7 +104,7 @@ export class PerformanceOptimizer {
       if (optimizationOptions.enableCaching !== false) {
         const cachedResponse = await this.responseCache.get(cacheKey, {
           skipCache: false,
-        });
+
         if (cachedResponse) {
           return cachedResponse.data;
         }
@@ -119,12 +119,12 @@ export class PerformanceOptimizer {
         const result = await connectionManager.makeRequest(url, options, {
           timeout: optimizationOptions.timeout,
           retryAttempts: optimizationOptions.retryAttempts,
-        });
+
         response = new Response(JSON.stringify(result.data), {
           status: result.status,
           statusText: result.statusText,
           headers: result.headers,
-        });
+
       }
       // Parse response
       let data: T;
@@ -139,7 +139,7 @@ export class PerformanceOptimizer {
         const headers: Record<string, string> = {};
         response.headers.forEach((value, key) => {
           headers[key] = value;
-        });
+
         await this.responseCache.set(
           cacheKey,
           data,
@@ -181,7 +181,7 @@ export class PerformanceOptimizer {
         compress: false, // Don't compress auth responses for security
       },
       useConnectionPool: true,
-    });
+
   }
   /**
    * Optimized session validation request
@@ -201,7 +201,7 @@ export class PerformanceOptimizer {
         compress: false,
       },
       useConnectionPool: true,
-    });
+
   }
   /**
    * Optimized user data request
@@ -217,7 +217,7 @@ export class PerformanceOptimizer {
         compress: true,
       },
       useConnectionPool: true,
-    });
+
   }
   /**
    * Optimized health check request
@@ -234,7 +234,7 @@ export class PerformanceOptimizer {
       },
       useConnectionPool: true,
       timeout: 5000, // Short timeout for health checks
-    });
+
   }
   /**
    * Invalidate cache by tags
@@ -371,7 +371,7 @@ export class PerformanceOptimizer {
         cacheHitRate: (metrics.responseCache.hitRate * 100).toFixed(1) + '%',
         connectionReuse: metrics.connectionPool.connectionReuse,
         errorRate: (metrics.overall.errorRate * 100).toFixed(2) + '%',
-      });
+
       // Auto-optimize if enabled
       this.autoOptimize();
     }, this.config.metricsInterval);

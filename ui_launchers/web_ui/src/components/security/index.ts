@@ -5,6 +5,6 @@
  * Evil Mode controls, audit logging, and security monitoring.
  */
 
-export { EvilModeToggle, EvilModeActivityLog } from './EvilModeToggle';
-export { EvilModeAnalytics } from './EvilModeAnalytics';
-export { SecurityDashboard } from './SecurityDashboard';
+import { export { EvilModeToggle, EvilModeActivityLog } from './EvilModeToggle';
+import { export { EvilModeAnalytics } from './EvilModeAnalytics';
+import { export { SecurityDashboard } from './SecurityDashboard';

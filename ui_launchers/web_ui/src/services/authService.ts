@@ -16,7 +16,7 @@ export class AuthService {
         service: 'AuthService',
         method: 'login',
         endpoint: '/api/auth/login',
-      });
+
       // Throw user-friendly error message
       throw new Error(serviceError.userMessage);
     }
@@ -73,7 +73,7 @@ export class AuthService {
       const response = await this.apiClient.post('/api/auth/update_credentials', {
         new_username: newUsername,
         new_password: newPassword,
-      });
+
       return response.data;
     } catch (error: any) {
       throw new Error(`Failed to update credentials: ${error.message}`);
@@ -113,7 +113,7 @@ export class AuthService {
       await this.apiClient.post('/api/auth/reset_password', { 
         token, 
         new_password: newPassword 
-      });
+
     } catch (error: any) {
       throw new Error(`Failed to reset password: ${error.message}`);
     }

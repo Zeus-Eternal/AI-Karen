@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen } from "@testing-library/react";
 import ResponsiveCardGrid from "../responsive-card-grid";
 
@@ -10,4 +11,3 @@ test("renders children in a responsive grid", () => {
   );
   const grid = screen.getByTestId("grid");
   expect(grid.className).toMatch(/grid/);
-});

@@ -2,6 +2,6 @@
  * Authentication components and utilities
  */
 
-export { ProtectedRoute } from './ProtectedRoute';
-export { AdminRoute } from './AdminRoute';
-export { SuperAdminRoute } from './SuperAdminRoute';
+import { export { ProtectedRoute } from './ProtectedRoute';
+import { export { AdminRoute } from './AdminRoute';
+import { export { SuperAdminRoute } from './SuperAdminRoute';

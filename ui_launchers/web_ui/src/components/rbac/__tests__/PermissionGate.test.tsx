@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { PermissionGate, withPermission, usePermissionGate } from '../PermissionGate';
@@ -31,7 +32,6 @@ const createMockRBACContext = () => ({
   isLoading: false,
   isError: false,
   error: null
-});
 
 describe('PermissionGate', () => {
   let mockRBACContext: ReturnType<typeof createMockRBACContext>;
@@ -39,7 +39,6 @@ describe('PermissionGate', () => {
   beforeEach(() => {
     mockRBACContext = createMockRBACContext();
     mockUseRBAC.mockReturnValue(mockRBACContext);
-  });
 
   it('renders children when user has permission', () => {
     mockRBACContext.hasPermission.mockReturnValue(true);
@@ -48,7 +47,6 @@ describe('PermissionGate', () => {
       reason: 'Permission granted',
       appliedRules: [],
       restrictions: []
-    });
 
     render(
       <PermissionGate permission="dashboard:view">
@@ -57,7 +55,6 @@ describe('PermissionGate', () => {
     );
 
     expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-  });
 
   it('does not render children when user lacks permission', () => {
     mockRBACContext.hasPermission.mockReturnValue(false);
@@ -66,7 +63,6 @@ describe('PermissionGate', () => {
       reason: 'Permission denied',
       appliedRules: [],
       restrictions: []
-    });
 
     render(
       <PermissionGate permission="dashboard:admin" showFallback={false}>
@@ -75,7 +71,6 @@ describe('PermissionGate', () => {
     );
 
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-  });
 
   it('renders default fallback when permission denied and showFallback is true', () => {
     mockRBACContext.hasPermission.mockReturnValue(false);
@@ -84,7 +79,6 @@ describe('PermissionGate', () => {
       reason: 'Permission denied',
       appliedRules: [],
       restrictions: []
-    });
 
     render(
       <PermissionGate permission="dashboard:admin" showFallback={true}>
@@ -94,7 +88,6 @@ describe('PermissionGate', () => {
 
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
     expect(screen.getByText('Permission denied')).toBeInTheDocument();
-  });
 
   it('renders custom fallback when provided', () => {
     mockRBACContext.hasPermission.mockReturnValue(false);
@@ -103,7 +96,6 @@ describe('PermissionGate', () => {
       reason: 'Permission denied',
       appliedRules: [],
       restrictions: []
-    });
 
     render(
       <PermissionGate 
@@ -116,7 +108,6 @@ describe('PermissionGate', () => {
 
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
     expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-  });
 
   it('handles array of permissions with requireAll=true', () => {
     mockRBACContext.hasAllPermissions.mockReturnValue(true);
@@ -125,7 +116,6 @@ describe('PermissionGate', () => {
       reason: 'Permission granted',
       appliedRules: [],
       restrictions: []
-    });
 
     render(
       <PermissionGate 
@@ -138,7 +128,6 @@ describe('PermissionGate', () => {
 
     expect(screen.getByTestId('protected-content')).toBeInTheDocument();
     expect(mockRBACContext.hasAllPermissions).toHaveBeenCalledWith(['dashboard:view', 'dashboard:edit']);
-  });
 
   it('handles array of permissions with requireAll=false', () => {
     mockRBACContext.hasAnyPermission.mockReturnValue(true);
@@ -147,7 +136,6 @@ describe('PermissionGate', () => {
       reason: 'Permission granted',
       appliedRules: [],
       restrictions: []
-    });
 
     render(
       <PermissionGate 
@@ -160,7 +148,6 @@ describe('PermissionGate', () => {
 
     expect(screen.getByTestId('protected-content')).toBeInTheDocument();
     expect(mockRBACContext.hasAnyPermission).toHaveBeenCalledWith(['dashboard:view', 'dashboard:admin']);
-  });
 
   it('shows elevation required message', () => {
     mockRBACContext.hasPermission.mockReturnValue(false);
@@ -171,7 +158,6 @@ describe('PermissionGate', () => {
       restrictions: [],
       requiresElevation: true,
       elevationReason: 'This operation requires Evil Mode activation'
-    });
 
     render(
       <PermissionGate permission="security:evil_mode" showFallback={true}>
@@ -181,7 +167,6 @@ describe('PermissionGate', () => {
 
     expect(screen.getByText('Evil Mode required')).toBeInTheDocument();
     expect(screen.getByText('This operation requires Evil Mode activation')).toBeInTheDocument();
-  });
 
   it('shows restriction message', () => {
     mockRBACContext.hasPermission.mockReturnValue(false);
@@ -195,7 +180,6 @@ describe('PermissionGate', () => {
         config: { startTime: '09:00', endTime: '17:00' },
         active: true
       }]
-    });
 
     render(
       <PermissionGate permission="dashboard:admin" showFallback={true}>
@@ -204,8 +188,7 @@ describe('PermissionGate', () => {
     );
 
     expect(screen.getByText('Access restricted outside allowed time window')).toBeInTheDocument();
-  });
-});
+
 
 describe('withPermission HOC', () => {
   let mockRBACContext: ReturnType<typeof createMockRBACContext>;
@@ -221,7 +204,6 @@ describe('withPermission HOC', () => {
   beforeEach(() => {
     mockRBACContext = createMockRBACContext();
     mockUseRBAC.mockReturnValue(mockRBACContext);
-  });
 
   it('renders wrapped component when permission granted', () => {
     mockRBACContext.hasPermission.mockReturnValue(true);
@@ -230,7 +212,6 @@ describe('withPermission HOC', () => {
       reason: 'Permission granted',
       appliedRules: [],
       restrictions: []
-    });
 
     const WrappedComponent = withPermission(TestComponent, 'dashboard:view');
 
@@ -238,7 +219,6 @@ describe('withPermission HOC', () => {
 
     expect(screen.getByTestId('test-component')).toBeInTheDocument();
     expect(screen.getByText('Hello World')).toBeInTheDocument();
-  });
 
   it('renders fallback component when permission denied', () => {
     mockRBACContext.hasPermission.mockReturnValue(false);
@@ -247,18 +227,15 @@ describe('withPermission HOC', () => {
       reason: 'Permission denied',
       appliedRules: [],
       restrictions: []
-    });
 
     const WrappedComponent = withPermission(TestComponent, 'dashboard:admin', {
       fallback: FallbackComponent
-    });
 
     render(<WrappedComponent message="Hello World" />);
 
     expect(screen.queryByTestId('test-component')).not.toBeInTheDocument();
     expect(screen.getByTestId('fallback-component')).toBeInTheDocument();
     expect(screen.getByText('Fallback: Hello World')).toBeInTheDocument();
-  });
 
   it('handles multiple permissions with requireAll option', () => {
     mockRBACContext.hasAllPermissions.mockReturnValue(false);
@@ -267,10 +244,8 @@ describe('withPermission HOC', () => {
       reason: 'Permission denied',
       appliedRules: [],
       restrictions: []
-    });
 
     const WrappedComponent = withPermission(
-      TestComponent, 
       ['dashboard:view', 'dashboard:admin'], 
       { requireAll: true, showFallback: false }
     );
@@ -279,8 +254,7 @@ describe('withPermission HOC', () => {
 
     expect(screen.queryByTestId('test-component')).not.toBeInTheDocument();
     expect(mockRBACContext.hasAllPermissions).toHaveBeenCalledWith(['dashboard:view', 'dashboard:admin']);
-  });
-});
+
 
 describe('usePermissionGate hook', () => {
   let mockRBACContext: ReturnType<typeof createMockRBACContext>;
@@ -300,7 +274,6 @@ describe('usePermissionGate hook', () => {
   beforeEach(() => {
     mockRBACContext = createMockRBACContext();
     mockUseRBAC.mockReturnValue(mockRBACContext);
-  });
 
   it('returns correct access status when permission granted', () => {
     mockRBACContext.hasPermission.mockReturnValue(true);
@@ -309,14 +282,12 @@ describe('usePermissionGate hook', () => {
       reason: 'Permission granted',
       appliedRules: [],
       restrictions: []
-    });
 
     render(<TestComponent permission="dashboard:view" />);
 
     expect(screen.getByTestId('has-access')).toHaveTextContent('true');
     expect(screen.getByTestId('can-render')).toHaveTextContent('true');
     expect(screen.getByTestId('permission-reason')).toHaveTextContent('Permission granted');
-  });
 
   it('returns correct access status when permission denied', () => {
     mockRBACContext.hasPermission.mockReturnValue(false);
@@ -325,14 +296,12 @@ describe('usePermissionGate hook', () => {
       reason: 'Permission denied',
       appliedRules: [],
       restrictions: []
-    });
 
     render(<TestComponent permission="dashboard:admin" />);
 
     expect(screen.getByTestId('has-access')).toHaveTextContent('false');
     expect(screen.getByTestId('can-render')).toHaveTextContent('false');
     expect(screen.getByTestId('permission-reason')).toHaveTextContent('Permission denied');
-  });
 
   it('handles array permissions correctly', () => {
     mockRBACContext.hasAnyPermission.mockReturnValue(true);
@@ -341,7 +310,6 @@ describe('usePermissionGate hook', () => {
       reason: 'Permission granted',
       appliedRules: [],
       restrictions: []
-    });
 
     function TestComponentWithArray() {
       const { hasAccess } = usePermissionGate(['dashboard:view', 'dashboard:edit'], false);
@@ -352,5 +320,4 @@ describe('usePermissionGate hook', () => {
 
     expect(screen.getByTestId('has-access')).toHaveTextContent('true');
     expect(mockRBACContext.hasAnyPermission).toHaveBeenCalledWith(['dashboard:view', 'dashboard:edit']);
-  });
-});
+

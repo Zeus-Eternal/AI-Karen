@@ -7,12 +7,8 @@
 
 // Connection Manager exports
 export {
-  ConnectionManager,
   getConnectionManager,
   initializeConnectionManager,
-  ConnectionError,
-  ErrorCategory,
-  CircuitBreakerState,
   type RequestConfig,
   type ConnectionOptions,
   type ConnectionResponse,
@@ -22,20 +18,18 @@ export {
   type RequestResultType,
   type ConnectionStatusType,
   type ConnectionErrorType,
-} from './connection-manager';
+import { } from './connection-manager';
 
 // Timeout Manager exports
 export {
-  TimeoutManager,
   getTimeoutManager,
   initializeTimeoutManager,
-  OperationType,
   type TimeoutConfig,
   type TimeoutSettings,
   type OperationTimeouts,
   type TimeoutSettingsType,
   type OperationTimeoutsType,
-} from './timeout-manager';
+import { } from './timeout-manager';
 
 // Health Monitor exports (if exists)
 export * from './health-monitor';

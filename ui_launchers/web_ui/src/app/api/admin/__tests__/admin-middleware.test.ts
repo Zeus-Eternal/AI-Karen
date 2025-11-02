@@ -15,13 +15,11 @@ describe('Admin Middleware', () => {
     expect(middleware.requireAdmin).toBeDefined();
     expect(middleware.requireSuperAdmin).toBeDefined();
     expect(middleware.requirePermission).toBeDefined();
-  });
 
   it('should create proper request objects', () => {
     const request = new NextRequest('http://localhost/api/admin/users');
     expect(request.url).toBe('http://localhost/api/admin/users');
     expect(request.method).toBe('GET');
-  });
 
   it('should handle URL parsing', () => {
     const request = new NextRequest('http://localhost/api/admin/users?page=1&limit=20');
@@ -29,5 +27,4 @@ describe('Admin Middleware', () => {
     
     expect(searchParams.get('page')).toBe('1');
     expect(searchParams.get('limit')).toBe('20');
-  });
-});
+

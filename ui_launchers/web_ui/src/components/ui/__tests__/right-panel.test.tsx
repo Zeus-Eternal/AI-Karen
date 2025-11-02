@@ -60,7 +60,6 @@ describe('RightPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Basic Rendering', () => {
     it('renders the right panel when open', () => {
@@ -70,21 +69,18 @@ describe('RightPanel', () => {
       expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
       expect(screen.getByText('Configure your preferences')).toBeInTheDocument();
       expect(screen.getByTestId('settings-content')).toBeInTheDocument();
-    });
 
     it('does not render when closed', () => {
       render(<RightPanel {...defaultProps} isOpen={false} />);
       
       expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
-    });
 
     it('renders with default view when no activeView is specified', () => {
       render(<RightPanel views={mockViews} isOpen={true} />);
       
       expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
       expect(screen.getByTestId('settings-content')).toBeInTheDocument();
-    });
-  });
+
 
   describe('View Management', () => {
     it('displays the correct active view content', () => {
@@ -94,7 +90,6 @@ describe('RightPanel', () => {
       expect(screen.getByText('Manage your profile')).toBeInTheDocument();
       expect(screen.getByTestId('profile-content')).toBeInTheDocument();
       expect(screen.queryByTestId('settings-content')).not.toBeInTheDocument();
-    });
 
     it('calls onViewChange when navigation button is clicked', async () => {
       const user = userEvent.setup();
@@ -112,7 +107,6 @@ describe('RightPanel', () => {
       await user.click(profileButton);
       
       expect(onViewChange).toHaveBeenCalledWith('profile');
-    });
 
     it('switches content when activeView changes', () => {
       const { rerender } = render(<RightPanel {...defaultProps} activeView="settings" />);
@@ -123,8 +117,7 @@ describe('RightPanel', () => {
       
       expect(screen.getByTestId('profile-content')).toBeInTheDocument();
       expect(screen.queryByTestId('settings-content')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Navigation', () => {
     it('renders navigation when showNavigation is true and multiple views exist', () => {
@@ -133,13 +126,11 @@ describe('RightPanel', () => {
       expect(screen.getByRole('button', { name: /settings/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /profile/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /notifications/i })).toBeInTheDocument();
-    });
 
     it('does not render navigation when showNavigation is false', () => {
       render(<RightPanel {...defaultProps} showNavigation={false} />);
       
       expect(screen.queryByRole('button', { name: /profile/i })).not.toBeInTheDocument();
-    });
 
     it('does not render navigation when only one view exists', () => {
       render(
@@ -152,7 +143,6 @@ describe('RightPanel', () => {
       );
       
       expect(screen.queryByRole('button', { name: /settings/i })).not.toBeInTheDocument();
-    });
 
     it('highlights the active view in navigation', () => {
       render(<RightPanel {...defaultProps} activeView="profile" showNavigation={true} />);
@@ -163,8 +153,7 @@ describe('RightPanel', () => {
       // Active button should have different styling (this depends on your Button component implementation)
       expect(profileButton).toBeInTheDocument();
       expect(settingsButton).toBeInTheDocument();
-    });
-  });
+
 
   describe('Close Functionality', () => {
     it('renders close button when showCloseButton is true', () => {
@@ -172,13 +161,11 @@ describe('RightPanel', () => {
       render(<RightPanel {...defaultProps} showCloseButton={true} onClose={onClose} />);
       
       expect(screen.getByRole('button', { name: /close panel/i })).toBeInTheDocument();
-    });
 
     it('does not render close button when showCloseButton is false', () => {
       render(<RightPanel {...defaultProps} showCloseButton={false} />);
       
       expect(screen.queryByRole('button', { name: /close panel/i })).not.toBeInTheDocument();
-    });
 
     it('calls onClose when close button is clicked', async () => {
       const user = userEvent.setup();
@@ -190,8 +177,7 @@ describe('RightPanel', () => {
       await user.click(closeButton);
       
       expect(onClose).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('Width Variants', () => {
     it('applies correct width classes for different variants', () => {
@@ -214,8 +200,7 @@ describe('RightPanel', () => {
       rerender(<RightPanel {...defaultProps} width="full" />);
       panel = screen.getByRole('complementary');
       expect(panel).toHaveClass('w-full');
-    });
-  });
+
 
   describe('Custom Content', () => {
     it('renders custom header content', () => {
@@ -224,7 +209,6 @@ describe('RightPanel', () => {
       render(<RightPanel {...defaultProps} headerContent={headerContent} />);
       
       expect(screen.getByTestId('custom-header')).toBeInTheDocument();
-    });
 
     it('renders custom footer content', () => {
       const footerContent = <div data-testid="custom-footer">Custom Footer</div>;
@@ -232,8 +216,7 @@ describe('RightPanel', () => {
       render(<RightPanel {...defaultProps} footerContent={footerContent} />);
       
       expect(screen.getByTestId('custom-footer')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('has proper ARIA attributes', () => {
@@ -245,7 +228,6 @@ describe('RightPanel', () => {
       
       const closeButton = screen.getByRole('button', { name: /close panel/i });
       expect(closeButton).toHaveAttribute('aria-label', 'Close panel');
-    });
 
     it('supports keyboard navigation', async () => {
       const user = userEvent.setup();
@@ -261,8 +243,7 @@ describe('RightPanel', () => {
       await user.keyboard('{Enter}');
       
       expect(onViewChange).toHaveBeenCalledWith('profile');
-    });
-  });
+
 
   describe('Grid System', () => {
     it('uses 12-column grid system in header', () => {
@@ -271,7 +252,6 @@ describe('RightPanel', () => {
       // Check that the header uses grid-cols-12
       const headerGrid = screen.getByRole('complementary').querySelector('.grid-cols-12');
       expect(headerGrid).toBeInTheDocument();
-    });
 
     it('uses 12-column grid system in content', () => {
       render(<RightPanel {...defaultProps} />);
@@ -279,9 +259,8 @@ describe('RightPanel', () => {
       // Check that content area uses grid system
       const contentGrid = screen.getByRole('complementary').querySelector('.grid-cols-12');
       expect(contentGrid).toBeInTheDocument();
-    });
-  });
-});
+
+
 
 describe('useRightPanel Hook', () => {
   function TestComponent({ initialView }: { initialView?: string }) {
@@ -291,10 +270,10 @@ describe('useRightPanel Hook', () => {
       <div>
         <div data-testid="is-open">{isOpen.toString()}</div>
         <div data-testid="active-view">{activeView || 'none'}</div>
-        <button onClick={() = aria-label="Button"> openPanel('test-view')}>Open Panel</button>
-        <button onClick={() = aria-label="Button"> openPanel()}>Open Panel No View</button>
+        <button onClick={() => openPanel('test-view')}>Open Panel</button>
+        <button onClick={() => openPanel()}>Open Panel No View</button>
         <button onClick={closePanel} aria-label="Button">Close Panel</button>
-        <button onClick={() = aria-label="Button"> switchView('new-view')}>Switch View</button>
+        <button onClick={() => switchView('new-view')}>Switch View</button>
       </div>
     );
   }
@@ -304,13 +283,11 @@ describe('useRightPanel Hook', () => {
     
     expect(screen.getByTestId('is-open')).toHaveTextContent('false');
     expect(screen.getByTestId('active-view')).toHaveTextContent('none');
-  });
 
   it('initializes with provided initial view', () => {
     render(<TestComponent initialView="initial-view" />);
     
     expect(screen.getByTestId('active-view')).toHaveTextContent('initial-view');
-  });
 
   it('opens panel and sets view when openPanel is called with viewId', async () => {
     const user = userEvent.setup();
@@ -320,7 +297,6 @@ describe('useRightPanel Hook', () => {
     
     expect(screen.getByTestId('is-open')).toHaveTextContent('true');
     expect(screen.getByTestId('active-view')).toHaveTextContent('test-view');
-  });
 
   it('opens panel without changing view when openPanel is called without viewId', async () => {
     const user = userEvent.setup();
@@ -330,7 +306,6 @@ describe('useRightPanel Hook', () => {
     
     expect(screen.getByTestId('is-open')).toHaveTextContent('true');
     expect(screen.getByTestId('active-view')).toHaveTextContent('existing-view');
-  });
 
   it('closes panel when closePanel is called', async () => {
     const user = userEvent.setup();
@@ -343,7 +318,6 @@ describe('useRightPanel Hook', () => {
     // Then close it
     await user.click(screen.getByText('Close Panel'));
     expect(screen.getByTestId('is-open')).toHaveTextContent('false');
-  });
 
   it('switches view when switchView is called', async () => {
     const user = userEvent.setup();
@@ -352,5 +326,4 @@ describe('useRightPanel Hook', () => {
     await user.click(screen.getByText('Switch View'));
     
     expect(screen.getByTestId('active-view')).toHaveTextContent('new-view');
-  });
-});
+

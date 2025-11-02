@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useExtensionContext } from '../../../extensions/ExtensionContext';
 
 export interface ExtensionHeaderProps {

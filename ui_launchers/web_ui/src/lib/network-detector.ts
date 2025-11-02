@@ -67,7 +67,7 @@ export class NetworkDetectionService {
       localhostDetection,
       endpointTests,
       timestamp,
-    });
+
     // Cache the result
     this.detectionCache = result;
     return result;
@@ -263,7 +263,7 @@ export class NetworkDetectionService {
       } catch {
         // Endpoint not reachable
       }
-    });
+
     await Promise.allSettled(testPromises);
     // Find the best working endpoint
     let bestEndpoint: string | null = null;
@@ -407,7 +407,7 @@ export class NetworkDetectionService {
       backendUrl,
       environment: detection.environment,
       networkMode: detection.networkMode,
-    });
+
   }
   /**
    * Get recommended backend URL based on detection
@@ -473,6 +473,4 @@ export function initializeNetworkDetectionService(): NetworkDetectionService {
 }
 // Export types
 export type {
-  NetworkDetectionResult as NetworkDetectionResultType,
-  NetworkEnvironmentInfo as NetworkEnvironmentInfoType,
 };

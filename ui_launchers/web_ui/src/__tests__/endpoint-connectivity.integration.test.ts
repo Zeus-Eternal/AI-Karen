@@ -50,14 +50,12 @@ describe('Endpoint Connectivity Integration Tests', () => {
     
     // Create fresh config manager
     configManager = new ConfigManager();
-  });
 
   afterEach(() => {
     // Restore original globals
     global.process = originalProcess;
     global.window = originalWindow;
     vi.clearAllMocks();
-  });
 
   describe('Backend Health Check Integration', () => {
     it('should successfully connect to backend health endpoint', async () => {
@@ -70,7 +68,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
           ['content-type', 'application/json'],
         ]),
         json: async () => ({ status: 'healthy', timestamp: new Date().toISOString() }),
-      });
 
       const results = await configManager.validateEndpoints();
       const primaryResult = results[0];
@@ -85,7 +82,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
           headers: { 'Accept': 'application/json' },
         })
       );
-    });
 
     it('should handle backend unavailable scenario', async () => {
       // Mock network error (backend not running)
@@ -96,7 +92,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
 
       expect(primaryResult.isValid).toBe(false);
       expect(primaryResult.error).toBe('Network error - unable to connect');
-    });
 
     it('should handle backend returning error status', async () => {
       // Mock backend returning 500 error
@@ -105,15 +100,13 @@ describe('Endpoint Connectivity Integration Tests', () => {
         status: 500,
         statusText: 'Internal Server Error',
         headers: new Map(),
-      });
 
       const results = await configManager.validateEndpoints();
       const primaryResult = results[0];
 
       expect(primaryResult.isValid).toBe(false);
       expect(primaryResult.error).toBe('HTTP 500: Internal Server Error');
-    });
-  });
+
 
   describe('Authentication Endpoint Integration', () => {
     it('should successfully connect to authentication status endpoint', async () => {
@@ -126,7 +119,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
           ['content-type', 'application/json'],
           ['access-control-allow-origin', 'http://localhost:8010'],
         ]),
-      });
 
       const networkDiagnostics = getNetworkDiagnostics();
       const result = await networkDiagnostics.testEndpointConnectivity('/api/auth/status');
@@ -135,7 +127,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
       expect(result.statusCode).toBe(200);
       expect(result.endpoint).toBe('http://localhost:8000/api/auth/status');
       expect(result.headers?.['access-control-allow-origin']).toBe('http://localhost:8010');
-    });
 
     it('should handle authentication endpoint CORS issues', async () => {
       // Mock CORS error (status 0)
@@ -144,7 +135,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
         status: 0,
         statusText: '',
         headers: new Map(),
-      });
 
       // Mock CORS preflight analysis
       mockFetch.mockResolvedValueOnce({
@@ -153,7 +143,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
           ['access-control-allow-origin', 'http://localhost:3000'], // Different origin
           ['access-control-allow-methods', 'GET, POST'],
         ]),
-      });
 
       const networkDiagnostics = getNetworkDiagnostics();
       const result = await networkDiagnostics.testEndpointConnectivity('/api/auth/login', 'POST');
@@ -161,7 +150,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
       expect(result.status).toBe('cors');
       expect(result.corsInfo).toBeDefined();
       expect(result.corsInfo?.origin).toBe('http://localhost:8010');
-    });
 
     it('should handle authentication endpoint requiring credentials', async () => {
       // Mock 401 Unauthorized response
@@ -172,15 +160,13 @@ describe('Endpoint Connectivity Integration Tests', () => {
         headers: new Map([
           ['www-authenticate', 'Bearer'],
         ]),
-      });
 
       const networkDiagnostics = getNetworkDiagnostics();
       const result = await networkDiagnostics.testEndpointConnectivity('/api/auth/protected');
 
       expect(result.status).toBe('error');
       expect(result.statusCode).toBe(401);
-    });
-  });
+
 
   describe('Fallback Endpoint Integration', () => {
     it('should test all fallback endpoints when primary fails', async () => {
@@ -193,7 +179,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       // Mock second fallback success
       mockFetch.mockResolvedValueOnce({
@@ -201,7 +186,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       const results = await configManager.validateEndpoints();
 
@@ -212,7 +196,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
 
       expect(results[1].endpoint).toBe('http://127.0.0.1:8000');
       expect(results[2].endpoint).toBe('http://localhost:8000');
-    });
 
     it('should handle all endpoints failing', async () => {
       // Mock all endpoints failing
@@ -223,8 +206,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
       expect(results).toHaveLength(3);
       expect(results.every(result => !result.isValid)).toBe(true);
       expect(results.every(result => result.error === 'Network unreachable')).toBe(true);
-    });
-  });
+
 
   describe('Environment-Specific Integration Tests', () => {
     it('should handle localhost development environment', async () => {
@@ -234,7 +216,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       const envInfo = configManager.getEnvironmentInfo();
       expect(envInfo.environment).toBe('local');
@@ -243,7 +224,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
 
       const results = await configManager.validateEndpoints();
       expect(results[0].endpoint).toBe('http://localhost:8000');
-    });
 
     it('should handle Docker container environment', async () => {
       // Mock Docker environment
@@ -258,7 +238,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       const envInfo = dockerConfigManager.getEnvironmentInfo();
       expect(envInfo.environment).toBe('docker');
@@ -267,7 +246,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
 
       const results = await dockerConfigManager.validateEndpoints();
       expect(results[0].endpoint).toBe('http://backend-service:8000');
-    });
 
     it('should handle external IP environment', async () => {
       // Mock external IP environment
@@ -282,7 +260,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       const envInfo = externalConfigManager.getEnvironmentInfo();
       expect(envInfo.networkMode).toBe('external');
@@ -290,8 +267,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
 
       const results = await externalConfigManager.validateEndpoints();
       expect(results[0].endpoint).toBe('http://10.105.235.209:8000');
-    });
-  });
+
 
   describe('Comprehensive Network Testing Integration', () => {
     it('should run comprehensive test across multiple endpoints', async () => {
@@ -317,7 +293,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
 
       mockResponses.forEach(response => {
         mockFetch.mockResolvedValueOnce(response);
-      });
 
       const networkDiagnostics = getNetworkDiagnostics();
       const report = await networkDiagnostics.runComprehensiveTest();
@@ -327,7 +302,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
       expect(report.summary.passedTests).toBe(report.summary.totalTests);
       expect(report.summary.failedTests).toBe(0);
       expect(report.recommendations).toContain('All network tests passed successfully');
-    });
 
     it('should handle mixed success/failure scenarios', async () => {
       // Mock mixed responses - some succeed, some fail
@@ -356,7 +330,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
         } else {
           mockFetch.mockResolvedValueOnce(response);
         }
-      });
 
       const networkDiagnostics = getNetworkDiagnostics();
       const report = await networkDiagnostics.runComprehensiveTest();
@@ -365,8 +338,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
       expect(report.summary.failedTests).toBeGreaterThan(0);
       expect(report.summary.passedTests).toBeGreaterThan(0);
       expect(report.recommendations).toContain('Some network issues detected - monitoring recommended');
-    });
-  });
+
 
   describe('Authentication Flow Integration', () => {
     it('should test complete authentication flow endpoints', async () => {
@@ -387,8 +359,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
             ['content-type', 'application/json'],
             ['access-control-allow-origin', 'http://localhost:9002'],
           ]),
-        });
-      });
+
 
       const networkDiagnostics = getNetworkDiagnostics();
       const results = [];
@@ -403,7 +374,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
       expect(results.every(result => 
         result.headers?.['access-control-allow-origin'] === 'http://localhost:9002'
       )).toBe(true);
-    });
 
     it('should handle authentication flow with different endpoint configurations', async () => {
       // Test with different backend configurations
@@ -421,8 +391,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
         expect(configManager.getMemoryEndpoint()).toBe(`${config.backendUrl}/api/memory`);
         expect(configManager.getPluginsEndpoint()).toBe(`${config.backendUrl}/api/plugins`);
       }
-    });
-  });
+
 
   describe('Error Recovery Integration', () => {
     it('should demonstrate endpoint failover behavior', async () => {
@@ -439,14 +408,12 @@ describe('Endpoint Connectivity Integration Tests', () => {
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       const results = await configManager.validateEndpoints();
 
@@ -459,7 +426,6 @@ describe('Endpoint Connectivity Integration Tests', () => {
       // Verify fallback URLs are correct
       expect(results[1].endpoint).toBe('http://127.0.0.1:8000');
       expect(results[2].endpoint).toBe('http://localhost:8000');
-    });
 
     it('should handle gradual service recovery', async () => {
       // First test - all endpoints fail
@@ -478,7 +444,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
+
       mockFetch.mockRejectedValueOnce(new Error('Still down'));
       mockFetch.mockRejectedValueOnce(new Error('Still down'));
 
@@ -486,8 +452,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
       expect(results[0].isValid).toBe(true);  // Primary recovered
       expect(results[1].isValid).toBe(false); // Fallbacks still down
       expect(results[2].isValid).toBe(false);
-    });
-  });
+
 
   describe('Performance Integration', () => {
     it('should measure and report response times accurately', async () => {
@@ -505,20 +470,17 @@ describe('Endpoint Connectivity Integration Tests', () => {
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
         statusText: 'OK',
         headers: new Map(),
-      });
 
       const results = await configManager.validateEndpoints();
 
       expect(results[0].responseTime).toBe(250);
       expect(results[1].responseTime).toBe(100);
-    });
 
     it('should handle concurrent endpoint validation', async () => {
       // Mock multiple successful responses
@@ -528,7 +490,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
           status: 200,
           statusText: 'OK',
           headers: new Map(),
-        });
+
       }
 
       const startTime = Date.now();
@@ -548,6 +510,5 @@ describe('Endpoint Connectivity Integration Tests', () => {
       // Both should succeed
       expect(results[0][0].isValid).toBe(true);
       expect(results[1][0].isValid).toBe(true);
-    });
-  });
-});
+
+

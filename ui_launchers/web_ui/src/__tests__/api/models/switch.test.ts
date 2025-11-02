@@ -13,7 +13,6 @@ jest.mock('@/lib/model-selection-service', () => ({
 describe('/api/models/switch', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
 
   describe('POST - Switch Model', () => {
     it('should switch models successfully', async () => {
@@ -36,11 +35,9 @@ describe('/api/models/switch', () => {
 
       (modelSelectionService.getSelectionStats as jest.Mock).mockResolvedValue({
         selectedModel: { id: 'source-model' }
-      });
 
       (modelSelectionService.selectModel as jest.Mock).mockResolvedValue({
         success: true
-      });
 
       const request = new NextRequest('http://localhost:3000/api/models/switch', {
         method: 'POST',
@@ -49,7 +46,6 @@ describe('/api/models/switch', () => {
           to_model_id: 'target-model',
           preserve_context: true
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -64,20 +60,17 @@ describe('/api/models/switch', () => {
       expect(data.switch_time).toBeGreaterThan(0);
       expect(response.headers.get('X-From-Provider')).toBe('llama-cpp');
       expect(response.headers.get('X-To-Provider')).toBe('stable-diffusion');
-    });
 
     it('should return error for missing to_model_id', async () => {
       const request = new NextRequest('http://localhost:3000/api/models/switch', {
         method: 'POST',
         body: JSON.stringify({})
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing required field: to_model_id');
-    });
 
     it('should return error for non-existent target model', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -87,14 +80,12 @@ describe('/api/models/switch', () => {
       const request = new NextRequest('http://localhost:3000/api/models/switch', {
         method: 'POST',
         body: JSON.stringify({ to_model_id: 'non-existent' })
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(404);
       expect(data.error).toBe('Target model not found');
-    });
 
     it('should handle switching to same model', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -110,12 +101,10 @@ describe('/api/models/switch', () => {
 
       (modelSelectionService.getSelectionStats as jest.Mock).mockResolvedValue({
         selectedModel: { id: 'same-model' }
-      });
 
       const request = new NextRequest('http://localhost:3000/api/models/switch', {
         method: 'POST',
         body: JSON.stringify({ to_model_id: 'same-model' })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -125,7 +114,6 @@ describe('/api/models/switch', () => {
       expect(data.message).toBe('Already using target model');
       expect(data.capabilities_changed.added).toEqual([]);
       expect(data.capabilities_changed.removed).toEqual([]);
-    });
 
     it('should handle switch failure', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -136,17 +124,14 @@ describe('/api/models/switch', () => {
 
       (modelSelectionService.getSelectionStats as jest.Mock).mockResolvedValue({
         selectedModel: { id: 'current-model' }
-      });
 
       (modelSelectionService.selectModel as jest.Mock).mockResolvedValue({
         success: false,
         error: 'Switch failed'
-      });
 
       const request = new NextRequest('http://localhost:3000/api/models/switch', {
         method: 'POST',
         body: JSON.stringify({ to_model_id: 'target-model' })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -154,7 +139,6 @@ describe('/api/models/switch', () => {
       expect(response.status).toBe(500);
       expect(data.error).toBe('Model switch failed');
       expect(data.message).toBe('Switch failed');
-    });
 
     it('should auto-detect from_model when not provided', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -166,16 +150,13 @@ describe('/api/models/switch', () => {
 
       (modelSelectionService.getSelectionStats as jest.Mock).mockResolvedValue({
         selectedModel: { id: 'current-model' }
-      });
 
       (modelSelectionService.selectModel as jest.Mock).mockResolvedValue({
         success: true
-      });
 
       const request = new NextRequest('http://localhost:3000/api/models/switch', {
         method: 'POST',
         body: JSON.stringify({ to_model_id: 'target-model' })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -183,6 +164,5 @@ describe('/api/models/switch', () => {
       expect(response.status).toBe(200);
       expect(data.from_model).toBe('current-model');
       expect(data.to_model).toBe('target-model');
-    });
-  });
-});
+
+

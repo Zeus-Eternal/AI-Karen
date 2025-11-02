@@ -3,11 +3,7 @@
  * Implements comprehensive validation rules for authentication forms
  */
 
-import type {
-  ValidationRule,
-  ValidationErrors,
-  LoginCredentials
-} from '@/types/auth';
+import type { ValidationRule, ValidationErrors, LoginCredentials } from '@/types/auth';
 import type { FormFieldType } from '@/types/auth-form';
 
 /**

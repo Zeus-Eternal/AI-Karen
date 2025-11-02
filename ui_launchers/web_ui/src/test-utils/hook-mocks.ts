@@ -8,12 +8,7 @@
 import { vi, beforeEach, afterEach } from 'vitest';
 import type { AuthContextType, User, LoginCredentials } from '@/contexts/AuthContext';
 import type { UseRoleReturn } from '@/hooks/useRole';
-import { 
-  mockSuperAdminUser, 
-  mockAdminUser, 
-  mockRegularUser,
-  createMockAuthContext 
-} from './test-providers';
+import {  mockSuperAdminUser, mockAdminUser, mockRegularUser, createMockAuthContext } from './test-providers';
 // Global mock registry to track active mocks for cleanup
 const activeMocks = new Set<string>();
 /**
@@ -93,7 +88,7 @@ export const mockScenarios = {
     const authContext = createMockAuthContext(null, false, {
       login: vi.fn().mockRejectedValue(new Error('Authentication failed')),
       checkAuth: vi.fn().mockRejectedValue(new Error('Authentication failed'))
-    });
+
     const roleReturn = createUseRoleReturnFromAuth(authContext);
     return setupAuthAndRoleMocks(authContext, roleReturn);
   },
@@ -101,7 +96,7 @@ export const mockScenarios = {
     const authContext = createMockAuthContext(null, false, {
       checkAuth: vi.fn().mockResolvedValue(false),
       logout: vi.fn()
-    });
+
     const roleReturn = createUseRoleReturnFromAuth(authContext);
     return setupAuthAndRoleMocks(authContext, roleReturn);
   }
@@ -165,10 +160,10 @@ export const cleanupHookMocks = () => {
 export const setupTestIsolation = () => {
   beforeEach(() => {
     resetHookMocks();
-  });
+
   afterEach(() => {
     cleanupHookMocks();
-  });
+
 };
 /**
  * Batch mock setup for multiple hooks with consistent state
@@ -195,7 +190,7 @@ export const validateMockSetup = (authContext: AuthContextType, roleReturn: UseR
  * Debug utilities for troubleshooting mock issues
  */
 export const debugMockState = (authContext: AuthContextType, roleReturn: UseRoleReturn) => {
-  });
+
 };
 /**
  * Helper to create mock implementations that match actual hook behavior
@@ -208,7 +203,7 @@ export const createRealisticMockAuth = (user: User | null, isAuthenticated: bool
       return user.role === role;
     }
     return user.roles.includes(role);
-  });
+
   const hasPermission = vi.fn((permission: string): boolean => {
     if (!user) return false;
     // Match actual implementation logic
@@ -218,13 +213,13 @@ export const createRealisticMockAuth = (user: User | null, isAuthenticated: bool
     // Default permissions based on role (matches actual implementation)
     const rolePermissions = getRolePermissions(user.role || (user.roles[0] as 'super_admin' | 'admin' | 'user'));
     return rolePermissions.includes(permission);
-  });
+
   const isAdmin = vi.fn((): boolean => {
     return hasRole('admin') || hasRole('super_admin');
-  });
+
   const isSuperAdmin = vi.fn((): boolean => {
     return hasRole('super_admin');
-  });
+
   return {
     user,
     isAuthenticated,
@@ -345,7 +340,7 @@ export const resetToDefaultMocks = () => {
         hasPermission: vi.fn(() => false),
         isAdmin: vi.fn(() => false),
         isSuperAdmin: vi.fn(() => false),
-      });
+
     }
     if (vi.isMockFunction(useRole)) {
       useRole.mockReturnValue({
@@ -359,7 +354,7 @@ export const resetToDefaultMocks = () => {
         canManageAdmins: false,
         canManageSystem: false,
         canViewAuditLogs: false,
-      });
+
     }
   } catch (error) {
     // Ignore errors if modules are not available

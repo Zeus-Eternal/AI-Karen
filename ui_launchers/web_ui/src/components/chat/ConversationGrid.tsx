@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AgGridReact } from 'ag-grid-react';
@@ -256,35 +256,32 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
             Conversations ({filteredConversations.length})
           </CardTitle>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={isLoading}
-             aria-label="Button">
+             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
             </Button>
-            <button variant="outline" size="sm" aria-label="Button">
-              <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Export
+            <Button variant="outline" size="sm" >
+              <Download className="h-4 w-4 mr-2 " />
             </Button>
           </div>
         </div>
         
         <div className="flex items-center gap-2 mt-4">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground " />
             <input
               placeholder="Search conversations..."
               value={searchText}
-              onChange={(e) = aria-label="Input"> setSearchText(e.target.value)}
+              onChange={(e) => setSearchText(e.target.value)}
               className="pl-10"
             />
           </div>
-          <button variant="outline" size="sm" aria-label="Button">
-            <Filter className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Filters
+          <Button variant="outline" size="sm" >
+            <Filter className="h-4 w-4 mr-2 " />
           </Button>
         </div>
 
@@ -293,8 +290,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
             <Badge variant="secondary">
               {selectedRows.length} selected
             </Badge>
-            <button variant="outline" size="sm" aria-label="Button">
-              Bulk Actions
+            <Button variant="outline" size="sm" >
             </Button>
           </div>
         )}

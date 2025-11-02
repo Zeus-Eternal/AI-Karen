@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-
+import React from 'react';
 import { motion } from 'framer-motion';
 import { ProgressAnimationProps } from './types';
 import { useMicroInteractions } from './micro-interaction-provider';

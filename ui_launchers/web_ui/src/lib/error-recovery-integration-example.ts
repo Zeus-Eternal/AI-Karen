@@ -8,10 +8,7 @@
 import { logger } from "./logger";
 import { errorHandler } from "./error-handler";
 import { getExtensionAuthErrorHandler } from "./auth/extension-auth-error-handler";
-import {
-  handleExtensionError,
-  shouldUseExtensionFallback,
-} from "./extension-error-integration";
+import { handleExtensionError, shouldUseExtensionFallback } from "./extension-error-integration";
 import "./extension-403-fix"; // Import the 403 fix to ensure it's loaded
 
 // Types for the error recovery system
@@ -85,7 +82,6 @@ export class EnhancedErrorHandler {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ error_data: recoveryRequest }),
-      });
 
       if (!response.ok) {
         logger.warn(`Error recovery service unavailable: ${response.status}`);
@@ -374,7 +370,7 @@ export async function fetchWithRecovery(
           return new Response(JSON.stringify(recoveryResult.fallback_data), {
             status: 200,
             headers: { "Content-Type": "application/json" },
-          });
+
         } else if (recoveryResult.requires_login) {
           throw new Error("Authentication required");
         } else {
@@ -410,7 +406,7 @@ export async function fetchWithRecovery(
           return new Response(JSON.stringify(recoveryResult.fallback_data), {
             status: 200,
             headers: { "Content-Type": "application/json" },
-          });
+
         }
       }
     }
@@ -488,5 +484,5 @@ if (typeof window !== "undefined") {
     })
     .catch((error) => {
       logger.warn("Could not check error recovery system status:", error);
-    });
+
 }

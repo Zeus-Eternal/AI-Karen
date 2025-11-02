@@ -51,17 +51,14 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             role="status"
             aria-label="Welcome message"
           >
-            <Bot className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" aria-hidden="true" />
+            <Bot className="h-12 w-12 mx-auto mb-4 opacity-50 " aria-hidden="true" />
               <div className="text-lg font-medium mb-2">
-                Welcome to AI Assistant
                 {useCopilotKit && (
                   <Badge variant="secondary" className="ml-2 text-xs sm:text-sm md:text-base">
-                    CopilotKit Enhanced
                   </Badge>
                 )}
               </div>
             <div className="text-sm md:text-base lg:text-lg">
-              I can help you with code, answer questions, and provide
               suggestions.
               {enableCodeAssistance &&
                 " Try asking me about code or programming concepts!"}
@@ -119,13 +116,13 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 
         {isTyping && (
           <div className="flex gap-3 mb-4" role="status" aria-live="polite" id="typing-indicator">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center sm:w-auto md:w-full">
-              <Bot className="h-4 w-4 sm:w-auto md:w-full" aria-hidden="true" />
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center ">
+              <Bot className="h-4 w-4 " aria-hidden="true" />
             </div>
             <div className="flex-1">
               <div className="inline-block p-3 rounded-lg bg-muted border sm:p-4 md:p-6">
                 <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" aria-hidden="true" />
+                  <Loader2 className="h-4 w-4 animate-spin " aria-hidden="true" />
                   <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                     AI is thinking...
                   </span>

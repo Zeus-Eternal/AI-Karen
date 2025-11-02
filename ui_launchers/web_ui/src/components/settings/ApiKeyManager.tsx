@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Input } from '@/components/ui/input';
@@ -88,48 +90,47 @@ export default function ApiKeyManager() {
       <CardContent className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="apiKey">API Key (stored in browser)</Label>
-          <input
+          <Input
             id="apiKey"
             type="password"
             value={displayApiKey}
-            onChange={(e) = aria-label="Input"> setApiKey(e.target.value)}
+            onChange={(e) => setApiKey(e.target.value)}
             placeholder="Enter your Google AI API Key"
             className="text-sm md:text-base lg:text-lg"
           />
         </div>
         {!displayApiKey.trim() && (
           <Alert variant="default" className="bg-muted/30">
-            <Info className="h-4 w-4 !text-accent-foreground sm:w-auto md:w-full" />
+            <Info className="h-4 w-4 !text-accent-foreground " />
             <AlertTitle className="font-semibold text-accent-foreground">Setup API Key</AlertTitle>
             <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
               Enter your Google AI API key above and save it to your browser. For Karen AI to function, this key also needs to be set up on the server.
               <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="block mt-2 text-primary underline">
-                Get a Google AI API Key <ExternalLink className="inline-block h-3 w-3 ml-0.5 sm:w-auto md:w-full" />
+                Get a Google AI API Key <ExternalLink className="inline-block h-3 w-3 ml-0.5 " />
               </a>
             </AlertDescription>
           </Alert>
         )}
         {displayApiKey.trim() && (
           <Alert variant="default" className="bg-muted/30">
-            <AlertCircle className="h-4 w-4 !text-accent-foreground sm:w-auto md:w-full" />
+            <AlertCircle className="h-4 w-4 !text-accent-foreground " />
             <AlertTitle className="font-semibold text-accent-foreground">Server Configuration Reminder</AlertTitle>
             <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
               The API key (starting with <code>{displayApiKey.substring(0,7)}...</code>) is {currentApiKeyIsSaved ? "saved in your browser" : "currently entered"}.
               For Karen AI's features to function, this key must also be configured on the server (typically via an <code>.env</code> file and a Genkit server restart).
               <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="block mt-2 text-primary underline">
-                Get a Google AI API Key <ExternalLink className="inline-block h-3 w-3 ml-0.5 sm:w-auto md:w-full" />
+                Get a Google AI API Key <ExternalLink className="inline-block h-3 w-3 ml-0.5 " />
               </a>
             </AlertDescription>
           </Alert>
         )}
       </CardContent>
       <CardFooter className="flex justify-end space-x-2">
-        <button onClick={handleReloadFromStorage} variant="outline" size="sm" aria-label="Button">
-          <RotateCcw className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-          Reload from Storage
+        <Button onClick={handleReloadFromStorage} variant="outline" size="sm" >
+          <RotateCcw className="mr-2 h-4 w-4 " />
         </Button>
-        <button onClick={handleSaveKey} className="text-sm md:text-base lg:text-lg" disabled={!displayApiKey.trim() || currentApiKeyIsSaved} size="sm" aria-label="Button">
-          {currentApiKeyIsSaved ? <CheckCircle2 className="mr-2 h-4 w-4 sm:w-auto md:w-full" /> : <Save className="mr-2 h-4 w-4 sm:w-auto md:w-full" />}
+        <Button onClick={handleSaveKey} className="text-sm md:text-base lg:text-lg" disabled={!displayApiKey.trim() || currentApiKeyIsSaved} size="sm">
+          {currentApiKeyIsSaved ? <CheckCircle2 className="mr-2 h-4 w-4 " /> : <Save className="mr-2 h-4 w-4 " />}
           {currentApiKeyIsSaved ? 'Key Saved' : 'Save to Browser'}
         </Button>
       </CardFooter>

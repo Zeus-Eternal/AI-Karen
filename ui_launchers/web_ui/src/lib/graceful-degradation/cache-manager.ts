@@ -212,7 +212,7 @@ export class ExtensionDataCache extends CacheManager {
       ttl: 10 * 60 * 1000, // 10 minutes
       version: '1.0.0',
       metadata: { type: 'extension-list', count: extensions.length }
-    });
+
   }
   getCachedExtensionList(): any[] | null {
     return this.get('extensions-list');
@@ -222,7 +222,7 @@ export class ExtensionDataCache extends CacheManager {
       ttl: 2 * 60 * 1000, // 2 minutes
       version: '1.0.0',
       metadata: { type: 'extension-health', extensionName }
-    });
+
   }
   getCachedExtensionHealth(extensionName: string): any | null {
     return this.get(`extension-health-${extensionName}`);
@@ -232,7 +232,7 @@ export class ExtensionDataCache extends CacheManager {
       ttl: 5 * 60 * 1000, // 5 minutes
       version: '1.0.0',
       metadata: { type: 'background-tasks', count: tasks.length }
-    });
+
   }
   getCachedBackgroundTasks(): any[] | null {
     return this.get('background-tasks');
@@ -242,7 +242,7 @@ export class ExtensionDataCache extends CacheManager {
       ttl: 15 * 60 * 1000, // 15 minutes
       version: '1.0.0',
       metadata: { type: 'model-providers', count: providers.length }
-    });
+
   }
   getCachedModelProviders(): any[] | null {
     return this.get('model-providers');

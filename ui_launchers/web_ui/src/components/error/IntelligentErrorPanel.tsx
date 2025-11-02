@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -58,15 +59,15 @@ export interface IntelligentErrorPanelProps {
 const getSeverityIcon = (severity: string) => {
   switch (severity) {
     case 'critical':
-      return <XCircle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />;
+      return <XCircle className="h-5 w-5 text-red-500 " />;
     case 'high':
-      return <AlertTriangle className="h-5 w-5 text-orange-500 sm:w-auto md:w-full" />;
+      return <AlertTriangle className="h-5 w-5 text-orange-500 " />;
     case 'medium':
-      return <AlertCircle className="h-5 w-5 text-yellow-500 sm:w-auto md:w-full" />;
+      return <AlertCircle className="h-5 w-5 text-yellow-500 " />;
     case 'low':
-      return <Info className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />;
+      return <Info className="h-5 w-5 text-blue-500 " />;
     default:
-      return <AlertCircle className="h-5 w-5 text-gray-500 sm:w-auto md:w-full" />;
+      return <AlertCircle className="h-5 w-5 text-gray-500 " />;
   }
 };
 const getSeverityColor = (severity: string) => {
@@ -86,13 +87,13 @@ const getSeverityColor = (severity: string) => {
 const getProviderHealthIcon = (status: string) => {
   switch (status) {
     case 'healthy':
-      return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
+      return <CheckCircle className="h-4 w-4 text-green-500 " />;
     case 'degraded':
-      return <AlertTriangle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
+      return <AlertTriangle className="h-4 w-4 text-yellow-500 " />;
     case 'unhealthy':
-      return <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
+      return <XCircle className="h-4 w-4 text-red-500 " />;
     default:
-      return <AlertCircle className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
+      return <AlertCircle className="h-4 w-4 text-gray-500 " />;
   }
 };
 export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
@@ -155,7 +156,7 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
         contact_admin: true,
         cached: false,
         response_time_ms: 0,
-      });
+
     } finally {
       setIsLoading(false);
     }
@@ -181,18 +182,17 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
       <Card className={cn('w-full', className)}>
         <CardHeader>
           <div className="flex items-center space-x-2">
-            <RefreshCw className="h-5 w-5 animate-spin text-blue-500 sm:w-auto md:w-full" />
+            <RefreshCw className="h-5 w-5 animate-spin text-blue-500 " />
             <CardTitle className="text-lg">Analyzing Error...</CardTitle>
           </div>
           <CardDescription>
-            Generating intelligent response and next steps
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4 sm:w-auto md:w-full" />
+          <Skeleton className="h-4 w-3/4 " />
           <div className="space-y-2">
-            <Skeleton className="h-3 w-1/2 sm:w-auto md:w-full" />
+            <Skeleton className="h-3 w-1/2 " />
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
           </div>
@@ -204,23 +204,21 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
   if (fetchError && !analysis) {
     return (
       <Alert variant="destructive" className={className}>
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>Analysis Failed</AlertTitle>
         <AlertDescription className="mt-2">
           <p>{fetchError}</p>
           <div className="flex gap-2 mt-3">
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={handleRefreshAnalysis}
               disabled={isLoading}
-             aria-label="Button">
+             >
               <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
-              Try Again
             </Button>
             {onDismiss && (
-              <button variant="ghost" size="sm" onClick={onDismiss} aria-label="Button">
-                Dismiss
+              <Button variant="ghost" size="sm" onClick={onDismiss} >
               </Button>
             )}
           </div>
@@ -250,8 +248,7 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
                 </Badge>
                 {analysis.cached && (
                   <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-                    <Clock className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                    Cached
+                    <Clock className="h-3 w-3 mr-1 " />
                   </Badge>
                 )}
               </div>
@@ -268,7 +265,7 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
               <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
             </Button>
             {onDismiss && (
-              <button variant="ghost" size="sm" onClick={onDismiss} aria-label="Button">
+              <Button variant="ghost" size="sm" onClick={onDismiss} >
                 ×
               </Button>
             )}
@@ -308,7 +305,7 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
             <ol className="space-y-2">
               {analysis.next_steps.map((step, index) => (
                 <li key={index} className="flex items-start space-x-2 text-sm md:text-base lg:text-lg">
-                  <span className="flex-shrink-0 w-5 h-5 bg-primary/10 text-primary rounded-full flex items-center justify-center text-xs font-medium sm:w-auto md:w-full">
+                  <span className="flex-shrink-0 w-5 h-5 bg-primary/10 text-primary rounded-full flex items-center justify-center text-xs font-medium ">
                     {index + 1}
                   </span>
                   <span>{step}</span>
@@ -320,54 +317,52 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2 pt-2">
           {onRetry && retryCount < maxRetries && (
-            <button
+            <Button
               variant="default"
               size="sm"
               onClick={handleRetry}
               disabled={analysis.retry_after ? true : false}
-             aria-label="Button">
+             >
               {analysis.retry_after ? (
                 <>
-                  <Clock className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                  <Clock className="h-4 w-4 mr-2 " />
                   Retry in {analysis.retry_after}s
                 </>
               ) : (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                  <RefreshCw className="h-4 w-4 mr-2 " />
                   Try Again {retryCount > 0 && `(${retryCount}/${maxRetries})`}
                 </>
               )}
             </Button>
           )}
           {analysis.help_url && (
-            <button
+            <Button
               variant="outline"
               size="sm"
-              onClick={() = aria-label="Button"> window.open(analysis.help_url, '_blank')}
+              onClick={() => window.open(analysis.help_url, '_blank')}
             >
-              <ExternalLink className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Help
+              <ExternalLink className="h-4 w-4 mr-2 " />
             </Button>
           )}
           {analysis.contact_admin && (
-            <button
+            <Button
               variant="outline"
               size="sm"
-              onClick={() = aria-label="Button"> {
+              onClick={() => {
                 // This could open a support modal or mailto link
                 const subject = encodeURIComponent(`Error: ${analysis.title}`);
                 const body = encodeURIComponent(`Error Details:\n${analysis.summary}\n\nTechnical Details:\n${analysis.technical_details || errorMessage}`);
                 window.open(`mailto:admin@example.com?subject=${subject}&body=${body}`, '_blank');
               }}
             >
-              Contact Admin
             </Button>
           )}
           {analysis.technical_details && (
-            <button
+            <Button
               variant="ghost"
               size="sm"
-              onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
+              onClick={() => setShowDetails(!showDetails)}
             >
               {showDetails ? 'Hide' : 'Show'} Details
             </Button>

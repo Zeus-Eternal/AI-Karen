@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import {
-  getBackendCandidates,
-  withBackendPath,
-} from '@/app/api/_utils/backend';
+import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
 import { logger } from '@/lib/logger';
 
 const API_PATH = '/api/system/config/models';
@@ -124,7 +121,7 @@ async function parseResponseBody(response: Response): Promise<unknown> {
     logger.warn('Received non-JSON payload from system configuration API', {
       status: response.status,
       error: error instanceof Error ? error.message : String(error),
-    });
+
     return { message: raw };
   }
 }
@@ -146,7 +143,7 @@ async function forwardToBackend(
       const response = await fetch(url, {
         ...init,
         signal: controller.signal,
-      });
+
       clearTimeout(timeout);
 
       if (RETRYABLE_STATUS.has(response.status)) {
@@ -163,14 +160,14 @@ async function forwardToBackend(
       logger.warn('System configuration backend request failed', {
         url,
         message,
-      });
+
     }
   }
 
   if (lastResponse) {
     logger.warn('All backend candidates returned server errors', {
       attempts,
-    });
+
     return lastResponse;
   }
 
@@ -187,26 +184,23 @@ export async function GET(request: NextRequest) {
     const { response, url } = await forwardToBackend(request, {
       method: 'GET',
       headers: buildForwardHeaders(request),
-    });
 
     const payload = await parseResponseBody(response);
 
     logger.info('System model configuration retrieved', {
       url,
       status: response.status,
-    });
 
     return NextResponse.json(payload ?? {}, {
       status: response.status,
       headers: {
         'Cache-Control': response.ok ? 'private, max-age=30' : 'no-store',
       },
-    });
+
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error('Unable to retrieve system configuration from backend', {
       message,
-    });
 
     return NextResponse.json(
       {
@@ -228,7 +222,7 @@ export async function PUT(request: NextRequest) {
     } catch (error) {
       logger.warn('System configuration update received malformed JSON', {
         error: error instanceof Error ? error.message : String(error),
-      });
+
     }
 
     const payload = sanitizePayload(body);
@@ -239,21 +233,19 @@ export async function PUT(request: NextRequest) {
         'Content-Type': 'application/json',
       }),
       body: JSON.stringify(payload),
-    });
 
     const responseBody = await parseResponseBody(response);
 
     logger.info('System model configuration updated', {
       url,
       status: response.status,
-    });
 
     return NextResponse.json(responseBody ?? { success: response.ok }, {
       status: response.status,
       headers: {
         'Cache-Control': 'no-store',
       },
-    });
+
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error('Failed to update system configuration', { message });

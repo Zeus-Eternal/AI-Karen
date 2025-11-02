@@ -18,7 +18,6 @@ describe('Form Validation System', () => {
       expect(config.password).toBeDefined();
       expect(config.email.length).toBeGreaterThan(0);
       expect(config.password.length).toBeGreaterThan(0);
-    });
 
     it('should validate email field with real-time feedback', () => {
       const validator = createFormValidator();
@@ -32,7 +31,6 @@ describe('Form Validation System', () => {
       const validResult = validator.validateField('email', 'user@example.com');
       expect(validResult.isValid).toBe(true);
       expect(validResult.error).toBeNull();
-    });
 
     it('should validate password field with real-time feedback', () => {
       const validator = createFormValidator();
@@ -46,7 +44,6 @@ describe('Form Validation System', () => {
       const validResult = validator.validateField('password', 'validpassword123');
       expect(validResult.isValid).toBe(true);
       expect(validResult.error).toBeNull();
-    });
 
     it('should provide field-specific error display and clearing logic', () => {
       const validator = createFormValidator();
@@ -64,7 +61,6 @@ describe('Form Validation System', () => {
       
       const validPassword = validator.validateField('password', 'validpassword123');
       expect(validPassword.error).toBeNull();
-    });
 
     it('should validate complete form', () => {
       const validator = createFormValidator();
@@ -87,7 +83,6 @@ describe('Form Validation System', () => {
       const validResult = validator.validateForm(validCredentials);
       expect(validResult.isValid).toBe(true);
       expect(Object.keys(validResult.errors)).toHaveLength(0);
-    });
 
     it('should support debounced validation', () => {
       const validator = createFormValidator();
@@ -96,7 +91,6 @@ describe('Form Validation System', () => {
       expect(validator.getDebounceDelay('email')).toBe(300);
       expect(validator.getDebounceDelay('password')).toBe(500);
       expect(validator.getDebounceDelay('totp_code')).toBe(200);
-    });
 
     it('should support enhanced validation rules', () => {
       const enhancedValidator = createFormValidator(true);
@@ -110,7 +104,6 @@ describe('Form Validation System', () => {
       const noNumberResult = enhancedValidator.validateField('password', 'onlyletters');
       expect(noNumberResult.isValid).toBe(false);
       expect(noNumberResult.error).toBe('Password must contain at least one letter and one number');
-    });
 
     it('should handle validation timing preferences', () => {
       const validator = createFormValidator();
@@ -125,8 +118,7 @@ describe('Form Validation System', () => {
       expect(validator.shouldValidateOnBlur('email')).toBe(true);
       expect(validator.shouldValidateOnBlur('password')).toBe(true);
       expect(validator.shouldValidateOnBlur('totp_code')).toBe(true);
-    });
-  });
+
 
   describe('Validation Rules', () => {
     it('should have comprehensive email validation rules', () => {
@@ -143,7 +135,6 @@ describe('Form Validation System', () => {
       // Valid emails
       expect(validator.validateField('email', 'user@example.com').isValid).toBe(true);
       expect(validator.validateField('email', 'test.email+tag@domain.co.uk').isValid).toBe(true);
-    });
 
     it('should have comprehensive password validation rules', () => {
       const validator = createFormValidator();
@@ -158,7 +149,6 @@ describe('Form Validation System', () => {
       // Valid passwords
       expect(validator.validateField('password', 'validpassword').isValid).toBe(true);
       expect(validator.validateField('password', 'validpassword123').isValid).toBe(true);
-    });
 
     it('should have optional TOTP validation rules', () => {
       const validator = createFormValidator();
@@ -174,8 +164,7 @@ describe('Form Validation System', () => {
       // Valid TOTP codes
       expect(validator.validateField('totp_code', '123456').isValid).toBe(true);
       expect(validator.validateField('totp_code', '000000').isValid).toBe(true);
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should provide user-friendly error messages', () => {
@@ -192,7 +181,6 @@ describe('Form Validation System', () => {
       
       const lengthError = validator.validateField('password', 'short');
       expect(lengthError.error).toBe('Password must be at least 8 characters long');
-    });
 
     it('should handle form validation with multiple errors', () => {
       const validator = createFormValidator();
@@ -200,12 +188,10 @@ describe('Form Validation System', () => {
       const result = validator.validateForm({
         email: '',
         password: ''
-      });
-      
+
       expect(result.isValid).toBe(false);
       expect(result.errors.email).toBe('Email is required');
       expect(result.errors.password).toBe('Password is required');
       expect(result.firstErrorField).toBe('email');
-    });
-  });
-});
+
+

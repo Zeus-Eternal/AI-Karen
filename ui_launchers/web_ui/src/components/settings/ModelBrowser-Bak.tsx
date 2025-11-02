@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,25 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Database,
-  Download,
-  RefreshCw,
-  HardDrive,
-  Cloud,
-  Globe,
-  Settings,
-  Info,
-  Loader2,
-  CheckCircle2,
-  ExternalLink,
-  Activity,
-  Upload,
-  Cpu,
-  Monitor,
-  AlertTriangle,
-  XCircle
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import SystemModelConfig from './SystemModelConfig';
 // Temporarily disable advanced components to test basic functionality
@@ -122,7 +107,7 @@ export default function ModelBrowser({
         query: query || '',
         page: '1',
         per_page: '20'
-      });
+
       const response = await backend.makeRequestPublic<{models: ModelInfo[]}>(`/api/models/huggingface/search?${params}`);
       const hfModels = (response?.models || []).map(model => ({ 
         ...model, 
@@ -145,11 +130,11 @@ export default function ModelBrowser({
           model_name: model.name,
           provider: model.provider
         })
-      });
+
       toast({
         title: "Download Started",
         description: `Started downloading ${model.name}`,
-      });
+
       setTimeout(() => {
         loadLocalModels();
       }, 2000);
@@ -158,13 +143,13 @@ export default function ModelBrowser({
         variant: 'destructive',
         title: "Download Failed",
         description: "Could not start model download.",
-      });
+
     } finally {
       setDownloadingModels(prev => {
         const newSet = new Set(prev);
         newSet.delete(model.id);
         return newSet;
-      });
+
     }
   };
   const formatFileSize = (bytes?: number) => {
@@ -175,23 +160,23 @@ export default function ModelBrowser({
   };
   const getModelTypeIcon = (model: ModelInfo) => {
     if (model.is_system_model) {
-      return <Cpu className="h-4 w-4 text-purple-600 sm:w-auto md:w-full" />;
+      return <Cpu className="h-4 w-4 text-purple-600 " />;
     }
     if (model.is_local || model.local_path) {
-      return <HardDrive className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+      return <HardDrive className="h-4 w-4 text-green-600 " />;
     }
-    return <Cloud className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />;
+    return <Cloud className="h-4 w-4 text-blue-600 " />;
   };
   const getStatusIcon = (status?: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600 " />;
       case 'unhealthy':
-        return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+        return <XCircle className="h-4 w-4 text-red-600 " />;
       case 'loading':
-        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin sm:w-auto md:w-full" />;
+        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin " />;
       default:
-        return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600 " />;
     }
   };
   const renderModelCard = (model: ModelInfo) => (
@@ -214,18 +199,15 @@ export default function ModelBrowser({
                   )}
                   {model.is_system_model ? (
                     <Badge variant="default" className="text-xs bg-purple-100 text-purple-800 sm:text-sm md:text-base">
-                      <Cpu className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                      System
+                      <Cpu className="h-3 w-3 mr-1 " />
                     </Badge>
                   ) : model.is_local || model.local_path ? (
                     <Badge variant="default" className="text-xs bg-green-100 text-green-800 sm:text-sm md:text-base">
-                      <HardDrive className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                      Local
+                      <HardDrive className="h-3 w-3 mr-1 " />
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-                      <Cloud className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                      Remote
+                      <Cloud className="h-3 w-3 mr-1 " />
                     </Badge>
                   )}
                   {model.status && (
@@ -273,56 +255,52 @@ export default function ModelBrowser({
             <div className="space-y-2">
               {model.is_system_model ? (
                 <div className="flex items-center gap-2">
-                  <Monitor className="h-4 w-4 text-purple-600 sm:w-auto md:w-full" />
+                  <Monitor className="h-4 w-4 text-purple-600 " />
                   <span className="text-sm text-purple-600 md:text-base lg:text-lg">System Model</span>
                 </div>
               ) : model.is_local || model.local_path ? (
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                  <CheckCircle2 className="h-4 w-4 text-green-600 " />
                   <span className="text-sm text-green-600 md:text-base lg:text-lg">Downloaded</span>
                 </div>
               ) : (
                 <button
                   size="sm"
-                  onClick={() = aria-label="Button"> downloadModel(model)}
+                  onClick={() => downloadModel(model)}
                   disabled={downloadingModels.has(model.id)}
                 >
                   {downloadingModels.has(model.id) ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
-                      Downloading
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                     </>
                   ) : (
                     <>
-                      <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Download
+                      <Download className="h-4 w-4 mr-2 " />
                     </>
                   )}
                 </Button>
               )}
               {model.huggingface_id && (
-                <button variant="outline" size="sm" asChild aria-label="Button">
+                <Button variant="outline" size="sm" asChild >
                   <a 
                     href={`https://huggingface.co/${model.huggingface_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <ExternalLink className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    View on HF
+                    <ExternalLink className="h-4 w-4 mr-2 " />
                   </a>
                 </Button>
               )}
               {(model.is_system_model || model.is_local || model.local_path) && (
-                <button
+                <Button
                   variant="outline"
                   size="sm"
-                  onClick={() = aria-label="Button"> {
+                  onClick={() => {
                     setSelectedModelForConfig(model);
                     setActiveTab('config');
                   }}
                 >
-                  <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Configure
+                  <Settings className="h-4 w-4 mr-2 " />
                 </Button>
               )}
             </div>
@@ -346,24 +324,21 @@ export default function ModelBrowser({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5 sm:w-auto md:w-full" />
-                Model Library
+                <Database className="h-5 w-5 " />
               </CardTitle>
               <CardDescription>
-                Browse local models and discover new ones from Hugging Face
               </CardDescription>
             </div>
-            <button
+            <Button
               variant="outline"
               size="sm"
-              onClick={() = aria-label="Button"> {
+              onClick={() => {
                 loadSystemModels();
                 loadLocalModels();
                 searchHuggingFaceModels(searchQuery);
               }}
             >
-              <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Refresh
+              <RefreshCw className="h-4 w-4 mr-2 " />
             </Button>
           </div>
         </CardHeader>
@@ -371,39 +346,35 @@ export default function ModelBrowser({
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
             <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="system" className="flex items-center gap-2">
-                <Cpu className="h-4 w-4 sm:w-auto md:w-full" />
+                <Cpu className="h-4 w-4 " />
                 System ({systemModels.length})
               </TabsTrigger>
               <TabsTrigger value="all" className="flex items-center gap-2">
-                <Globe className="h-4 w-4 sm:w-auto md:w-full" />
+                <Globe className="h-4 w-4 " />
                 All ({displayModels.length})
               </TabsTrigger>
               <TabsTrigger value="local" className="flex items-center gap-2">
-                <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />
+                <HardDrive className="h-4 w-4 " />
                 Local ({localModels.length})
               </TabsTrigger>
               <TabsTrigger value="huggingface" className="flex items-center gap-2">
-                <Cloud className="h-4 w-4 sm:w-auto md:w-full" />
-                Hugging Face
+                <Cloud className="h-4 w-4 " />
               </TabsTrigger>
               <TabsTrigger value="upload" className="flex items-center gap-2">
-                <Upload className="h-4 w-4 sm:w-auto md:w-full" />
-                Upload
+                <Upload className="h-4 w-4 " />
               </TabsTrigger>
               <TabsTrigger value="jobs" className="flex items-center gap-2">
-                <Activity className="h-4 w-4 sm:w-auto md:w-full" />
-                Jobs
+                <Activity className="h-4 w-4 " />
               </TabsTrigger>
               <TabsTrigger value="config" className="flex items-center gap-2">
-                <Settings className="h-4 w-4 sm:w-auto md:w-full" />
-                Config
+                <Settings className="h-4 w-4 " />
               </TabsTrigger>
             </TabsList>
             <div className="flex gap-4">
               <input
                 placeholder="Search models..."
                 value={searchQuery}
-                onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex-1"
               />
             </div>
@@ -418,7 +389,7 @@ export default function ModelBrowser({
                 <CardContent>
                   {loading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary " />
                     </div>
                   ) : systemModels.length > 0 ? (
                     <div className="space-y-4">
@@ -428,7 +399,7 @@ export default function ModelBrowser({
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <Cpu className="h-12 w-12 mx-auto text-muted-foreground mb-4 sm:w-auto md:w-full" />
+                      <Cpu className="h-12 w-12 mx-auto text-muted-foreground mb-4 " />
                       <h3 className="text-lg font-medium mb-2">No System Models</h3>
                       <p className="text-muted-foreground">
                         System models are not available or not properly configured.
@@ -449,7 +420,7 @@ export default function ModelBrowser({
                 <CardContent>
                   {loading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary " />
                     </div>
                   ) : filteredModels.length > 0 ? (
                     <div className="space-y-4">
@@ -457,7 +428,7 @@ export default function ModelBrowser({
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4 sm:w-auto md:w-full" />
+                      <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4 " />
                       <h3 className="text-lg font-medium mb-2">No Models Found</h3>
                     </div>
                   )}
@@ -475,7 +446,7 @@ export default function ModelBrowser({
                 <CardContent>
                   {loading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary " />
                     </div>
                   ) : localModels.length > 0 ? (
                     <div className="space-y-4">
@@ -485,19 +456,17 @@ export default function ModelBrowser({
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <HardDrive className="h-12 w-12 mx-auto text-muted-foreground mb-4 sm:w-auto md:w-full" />
+                      <HardDrive className="h-12 w-12 mx-auto text-muted-foreground mb-4 " />
                       <h3 className="text-lg font-medium mb-2">No Local Models</h3>
                       <p className="text-muted-foreground mb-4">
                         Download models from Hugging Face or upload your own.
                       </p>
                       <div className="flex gap-2 justify-center">
-                        <button onClick={() = aria-label="Button"> setActiveTab('huggingface')}>
-                          <Cloud className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                          Browse Hugging Face
+                        <button onClick={() => setActiveTab('huggingface')}>
+                          <Cloud className="h-4 w-4 mr-2 " />
                         </Button>
-                        <button variant="outline" onClick={() = aria-label="Button"> setActiveTab('upload')}>
-                          <Upload className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                          Upload Models
+                        <Button variant="outline" onClick={() => setActiveTab('upload')}>
+                          <Upload className="h-4 w-4 mr-2 " />
                         </Button>
                       </div>
                     </div>
@@ -522,7 +491,7 @@ export default function ModelBrowser({
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <Cloud className="h-12 w-12 mx-auto text-muted-foreground mb-4 sm:w-auto md:w-full" />
+                      <Cloud className="h-12 w-12 mx-auto text-muted-foreground mb-4 " />
                       <h3 className="text-lg font-medium mb-2">Search Hugging Face Models</h3>
                       <p className="text-muted-foreground">
                         Use the search bar to find models from Hugging Face Hub.
@@ -535,7 +504,7 @@ export default function ModelBrowser({
             <TabsContent value="upload" className="space-y-6">
               <Card>
                 <CardContent className="text-center py-12">
-                  <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                   <p className="text-lg font-medium mb-2">Upload & Convert Models</p>
                   <p className="text-sm text-muted-foreground mb-4 md:text-base lg:text-lg">
                     Advanced model upload and conversion features will be available when the backend is running.
@@ -546,7 +515,7 @@ export default function ModelBrowser({
             <TabsContent value="jobs" className="space-y-6">
               <Card>
                 <CardContent className="text-center py-12">
-                  <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                   <p className="text-lg font-medium mb-2">Job Management</p>
                   <p className="text-sm text-muted-foreground mb-4 md:text-base lg:text-lg">
                     Job tracking and management features will be available when the backend is running.
@@ -566,14 +535,13 @@ export default function ModelBrowser({
               ) : (
                 <Card>
                   <CardContent className="text-center py-12">
-                    <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                    <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                     <p className="text-lg font-medium mb-2">Model Configuration</p>
                     <p className="text-sm text-muted-foreground mb-4 md:text-base lg:text-lg">
                       Select a system or local model to configure its settings.
                     </p>
-                    <button onClick={() = aria-label="Button"> setActiveTab('system')}>
-                      <Cpu className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Browse System Models
+                    <button onClick={() => setActiveTab('system')}>
+                      <Cpu className="h-4 w-4 mr-2 " />
                     </Button>
                   </CardContent>
                 </Card>
@@ -583,7 +551,7 @@ export default function ModelBrowser({
         </CardContent>
       </Card>
       <Alert>
-        <Info className="h-4 w-4 sm:w-auto md:w-full" />
+        <Info className="h-4 w-4 " />
         <AlertTitle>Model Library</AlertTitle>
         <AlertDescription>
           • System models provide core local inference capabilities (llama-cpp, distilbert, basic_cls)<br/>

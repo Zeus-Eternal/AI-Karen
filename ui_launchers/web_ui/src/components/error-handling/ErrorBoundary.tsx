@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,7 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo,
       errorId,
     });
+
     // Report error if enabled
     if (this.props.enableReporting !== false) {
       this.reportError(error, errorInfo, errorId);
@@ -110,6 +112,7 @@ export class ErrorBoundary extends Component<Props, State> {
           featureName: this.props.featureName,
           retryCount,
         });
+
         if (recoveryStrategy.canRecover) {
           await this.executeRecoveryStrategy(recoveryStrategy);
         }
@@ -155,7 +158,7 @@ export class ErrorBoundary extends Component<Props, State> {
       retryCount: 0,
       isRecovering: false,
     });
-  };
+  }
   componentWillUnmount() {
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
@@ -203,8 +206,8 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
     <div className="min-h-[400px] flex items-center justify-center p-4 sm:p-4 md:p-6">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20 sm:w-auto md:w-full">
-            <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400 sm:w-auto md:w-full" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20 ">
+            <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400 " />
           </div>
           <CardTitle className="text-xl">
             {isGlobalError ? 'Application Error' : 'Something went wrong'}
@@ -226,19 +229,16 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
           <div className="flex flex-col gap-2">
             {canRetry && (
               <button onClick={resetError} className="w-full" aria-label="Button">
-                <RefreshCw className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                Try Again
+                <RefreshCw className="mr-2 h-4 w-4 " />
               </Button>
             )}
             {!isGlobalError && (
-              <button variant="outline" onClick={handleGoHome} className="w-full" aria-label="Button">
-                <Home className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                Go to Dashboard
+              <Button variant="outline" onClick={handleGoHome} className="w-full" >
+                <Home className="mr-2 h-4 w-4 " />
               </Button>
             )}
-            <button variant="outline" onClick={handleReportBug} className="w-full" aria-label="Button">
-              <Bug className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-              Report Bug
+            <Button variant="outline" onClick={handleReportBug} className="w-full" >
+              <Bug className="mr-2 h-4 w-4 " />
             </Button>
           </div>
           {process.env.NODE_ENV === 'development' && (

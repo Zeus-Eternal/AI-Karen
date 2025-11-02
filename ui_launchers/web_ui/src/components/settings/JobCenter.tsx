@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -9,30 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Play,
-  Pause,
-  Square,
-  Trash2,
-  RefreshCw,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  Settings,
-  Zap,
-  Upload,
-  Download,
-  Plus,
-  Eye,
-  EyeOff,
-  Calendar,
-  Timer,
-  HardDrive,
-  Database,
-  Filter,
-  X
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
 interface Job {
@@ -57,13 +37,13 @@ interface JobCenterProps {
   showCompletedJobs?: boolean;
 }
 const JOB_ICONS = {
-  upload: <Upload className="h-4 w-4 sm:w-auto md:w-full" />,
-  download: <Download className="h-4 w-4 sm:w-auto md:w-full" />,
-  convert: <Settings className="h-4 w-4 sm:w-auto md:w-full" />,
-  quantize: <Zap className="h-4 w-4 sm:w-auto md:w-full" />,
-  merge_lora: <Plus className="h-4 w-4 sm:w-auto md:w-full" />,
-  scan: <Database className="h-4 w-4 sm:w-auto md:w-full" />,
-  cleanup: <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
+  upload: <Upload className="h-4 w-4 " />,
+  download: <Download className="h-4 w-4 " />,
+  convert: <Settings className="h-4 w-4 " />,
+  quantize: <Zap className="h-4 w-4 " />,
+  merge_lora: <Plus className="h-4 w-4 " />,
+  scan: <Database className="h-4 w-4 " />,
+  cleanup: <Trash2 className="h-4 w-4 " />
 };
 const STATUS_COLORS = {
   queued: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
@@ -85,7 +65,7 @@ export default function JobCenter({
   const [filters, setFilters] = useState({
     status: 'all',
     kind: 'all'
-  });
+
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [showCompletedJobs, setShowCompletedJobs] = useState(initialShowCompleted);
   const { toast } = useToast();
@@ -105,7 +85,7 @@ export default function JobCenter({
           variant: 'destructive',
           title: info.title,
           description: info.message,
-        });
+
       }
     } finally {
       setLoading(false);
@@ -129,11 +109,11 @@ export default function JobCenter({
     try {
       await backend.makeRequestPublic(`/api/models/jobs/${jobId}/${action}`, {
         method: 'POST'
-      });
+
       toast({
         title: 'Job Updated',
         description: `Job ${action}${action.endsWith('e') ? 'd' : 'led'} successfully.`,
-      });
+
       // Refresh jobs
       loadJobs();
     } catch (error) {
@@ -142,18 +122,18 @@ export default function JobCenter({
         variant: 'destructive',
         title: info.title,
         description: info.message,
-      });
+
     }
   };
   const deleteJob = async (jobId: string) => {
     try {
       await backend.makeRequestPublic(`/api/models/jobs/${jobId}`, {
         method: 'DELETE'
-      });
+
       toast({
         title: 'Job Deleted',
         description: 'Job removed from history.',
-      });
+
       // Remove from local state
       setJobs(prev => prev.filter(job => job.id !== jobId));
       if (selectedJob?.id === jobId) {
@@ -165,7 +145,7 @@ export default function JobCenter({
         variant: 'destructive',
         title: info.title,
         description: info.message,
-      });
+
     }
   };
   const clearCompletedJobs = async () => {
@@ -181,7 +161,7 @@ export default function JobCenter({
       toast({
         title: 'Jobs Cleared',
         description: `Removed ${completedJobs.length} completed jobs.`,
-      });
+
       loadJobs();
     } catch (error) {
       const info = handleApiError(error as any, 'clearJobs');
@@ -189,7 +169,7 @@ export default function JobCenter({
         variant: 'destructive',
         title: info.title,
         description: info.message,
-      });
+
     }
   };
   const toggleJobLogs = (jobId: string) => {
@@ -201,19 +181,19 @@ export default function JobCenter({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'queued':
-        return <Clock className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Clock className="h-4 w-4 " />;
       case 'running':
-        return <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />;
+        return <Loader2 className="h-4 w-4 animate-spin " />;
       case 'completed':
-        return <CheckCircle2 className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <CheckCircle2 className="h-4 w-4 " />;
       case 'failed':
-        return <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-4 w-4 " />;
       case 'cancelled':
-        return <X className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <X className="h-4 w-4 " />;
       case 'paused':
-        return <Pause className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Pause className="h-4 w-4 " />;
       default:
-        return <Clock className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Clock className="h-4 w-4 " />;
     }
   };
   const formatDuration = (startTime?: number, endTime?: number) => {
@@ -234,7 +214,7 @@ export default function JobCenter({
       return false;
     }
     return true;
-  });
+
   const activeJobs = jobs.filter(job => job.status === 'running' || job.status === 'queued');
   const completedJobs = jobs.filter(job => job.status === 'completed');
   const failedJobs = jobs.filter(job => job.status === 'failed');
@@ -245,35 +225,31 @@ export default function JobCenter({
         <div>
           <h2 className="text-2xl font-bold">Job Center</h2>
           <p className="text-muted-foreground">
-            Monitor and manage model processing jobs
           </p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             variant="outline"
             size="sm"
-            onClick={() = aria-label="Button"> setAutoRefresh(!autoRefresh)}
+            onClick={() => setAutoRefresh(!autoRefresh)}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${autoRefresh ? 'animate-spin' : ''}`} />
-            Auto Refresh
           </Button>
-          <button
+          <Button
             variant="outline"
             size="sm"
             onClick={loadJobs}
             disabled={loading}
-           aria-label="Button">
+           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
           </Button>
           {completedJobs.length > 0 && (
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={clearCompletedJobs}
-             aria-label="Button">
-              <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Clear Completed
+             >
+              <Trash2 className="h-4 w-4 mr-2 " />
             </Button>
           )}
         </div>
@@ -283,7 +259,7 @@ export default function JobCenter({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />
+              <Loader2 className="h-4 w-4 text-blue-600 " />
               <div>
                 <div className="text-2xl font-bold">{activeJobs.length}</div>
                 <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Active Jobs</div>
@@ -294,7 +270,7 @@ export default function JobCenter({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+              <CheckCircle2 className="h-4 w-4 text-green-600 " />
               <div>
                 <div className="text-2xl font-bold">{completedJobs.length}</div>
                 <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Completed</div>
@@ -305,7 +281,7 @@ export default function JobCenter({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
+              <AlertCircle className="h-4 w-4 text-red-600 " />
               <div>
                 <div className="text-2xl font-bold">{failedJobs.length}</div>
                 <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Failed</div>
@@ -316,7 +292,7 @@ export default function JobCenter({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-purple-600 sm:w-auto md:w-full" />
+              <Database className="h-4 w-4 text-purple-600 " />
               <div>
                 <div className="text-2xl font-bold">{jobs.length}</div>
                 <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Total Jobs</div>
@@ -330,11 +306,11 @@ export default function JobCenter({
         <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 sm:w-auto md:w-full" />
+              <Filter className="h-4 w-4 " />
               <Label className="text-sm font-medium md:text-base lg:text-lg">Filters:</Label>
             </div>
             <select value={filters.status} onValueChange={(value) = aria-label="Select option"> setFilters(prev => ({ ...prev, status: value }))}>
-              <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-40 " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
@@ -348,7 +324,7 @@ export default function JobCenter({
               </SelectContent>
             </Select>
             <select value={filters.kind} onValueChange={(value) = aria-label="Select option"> setFilters(prev => ({ ...prev, kind: value }))}>
-              <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-40 " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
@@ -366,7 +342,7 @@ export default function JobCenter({
                 type="checkbox"
                 id="show-completed"
                 checked={showCompletedJobs}
-                onChange={(e) = aria-label="Input"> setShowCompletedJobs(e.target.checked)}
+                onChange={(e) => setShowCompletedJobs(e.target.checked)}
               />
               <Label htmlFor="show-completed" className="text-sm md:text-base lg:text-lg">Show completed jobs</Label>
             </div>
@@ -389,7 +365,7 @@ export default function JobCenter({
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center space-y-4">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary " />
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading jobs...</p>
               </div>
             </div>
@@ -400,7 +376,7 @@ export default function JobCenter({
                   <CardContent className="p-6 sm:p-4 md:p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        {JOB_ICONS[job.kind as keyof typeof JOB_ICONS] || <Settings className="h-4 w-4 sm:w-auto md:w-full" />}
+                        {JOB_ICONS[job.kind as keyof typeof JOB_ICONS] || <Settings className="h-4 w-4 " />}
                         <div>
                           <h4 className="font-semibold">{job.title}</h4>
                           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">{job.description}</p>
@@ -415,46 +391,46 @@ export default function JobCenter({
                         <div className="flex gap-1">
                           {job.status === 'running' && (
                             <>
-                              <button
+                              <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() = aria-label="Button"> controlJob(job.id, 'pause')}
+                                onClick={() => controlJob(job.id, 'pause')}
                               >
-                                <Pause className="h-4 w-4 sm:w-auto md:w-full" />
+                                <Pause className="h-4 w-4 " />
                               </Button>
-                              <button
+                              <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() = aria-label="Button"> controlJob(job.id, 'cancel')}
+                                onClick={() => controlJob(job.id, 'cancel')}
                               >
-                                <Square className="h-4 w-4 sm:w-auto md:w-full" />
+                                <Square className="h-4 w-4 " />
                               </Button>
                             </>
                           )}
                           {job.status === 'paused' && (
-                            <button
+                            <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() = aria-label="Button"> controlJob(job.id, 'resume')}
+                              onClick={() => controlJob(job.id, 'resume')}
                             >
-                              <Play className="h-4 w-4 sm:w-auto md:w-full" />
+                              <Play className="h-4 w-4 " />
                             </Button>
                           )}
                           {(job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') && (
-                            <button
+                            <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() = aria-label="Button"> deleteJob(job.id)}
+                              onClick={() => deleteJob(job.id)}
                             >
-                              <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
+                              <Trash2 className="h-4 w-4 " />
                             </Button>
                           )}
-                          <button
+                          <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() = aria-label="Button"> toggleJobLogs(job.id)}
+                            onClick={() => toggleJobLogs(job.id)}
                           >
-                            {showLogs[job.id] ? <EyeOff className="h-4 w-4 sm:w-auto md:w-full" /> : <Eye className="h-4 w-4 sm:w-auto md:w-full" />}
+                            {showLogs[job.id] ? <EyeOff className="h-4 w-4 " /> : <Eye className="h-4 w-4 " />}
                           </Button>
                         </div>
                       </div>
@@ -495,7 +471,7 @@ export default function JobCenter({
                     {/* Error Display */}
                     {job.error && (
                       <Alert variant="destructive" className="mb-4">
-                        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                        <AlertCircle className="h-4 w-4 " />
                         <AlertDescription>{job.error}</AlertDescription>
                       </Alert>
                     )}
@@ -503,7 +479,6 @@ export default function JobCenter({
                     {job.status === 'completed' && Object.keys(job.result).length > 0 && (
                       <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded sm:p-4 md:p-6">
                         <div className="text-sm font-medium text-green-800 dark:text-green-200 mb-2 md:text-base lg:text-lg">
-                          Job completed successfully
                         </div>
                         {job.result.model_id && (
                           <div className="text-sm text-green-700 dark:text-green-300 md:text-base lg:text-lg">
@@ -543,7 +518,7 @@ export default function JobCenter({
             </div>
           ) : (
             <div className="text-center py-12">
-              <Database className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Database className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
               <h3 className="text-lg font-semibold mb-2">No Jobs Found</h3>
               <p className="text-muted-foreground">
                 {filters.status !== 'all' || filters.kind !== 'all' 

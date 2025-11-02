@@ -1,5 +1,6 @@
+
+"use client";
 import React, { useState, useEffect } from 'react';
-import { 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
-import {
 import { PluginInfo, PluginAuditEntry, PluginLogEntry } from '@/types/plugins';
 /**
  * Plugin Audit Logger Component
@@ -18,82 +18,26 @@ import { PluginInfo, PluginAuditEntry, PluginLogEntry } from '@/types/plugins';
  * Based on requirements: 9.2, 9.4
  */
 
-"use client";
 
-
-
-  FileText, 
-  Search, 
-  Filter, 
-  Download, 
-  Calendar, 
-  Clock, 
-  User, 
-  Activity, 
-  Shield, 
-  Settings, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle,
-  Eye,
-  EyeOff,
-  RefreshCw,
-  ExternalLink,
-  Database,
-  Network,
-  HardDrive,
-  Key,
-  Lock,
-  Unlock,
-  Zap,
-  Target,
-  Info,
-  TrendingUp,
-  BarChart3,
-  PieChart,
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 
 
 
 
 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
+import { } from '@/components/ui/select';
 
 
 
 
 
 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { } from '@/components/ui/table';
 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { } from '@/components/ui/tooltip';
 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-
-
-
+import { } from '@/components/ui/dialog';
 interface AuditSummary {
   totalEvents: number;
   criticalEvents: number;
@@ -279,7 +223,6 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
     filteredEntries.forEach(entry => {
       eventsByType[entry.action] = (eventsByType[entry.action] || 0) + 1;
       userCounts[entry.userId] = (userCounts[entry.userId] || 0) + 1;
-    });
 
     const topUsers = Object.entries(userCounts)
       .map(([userId, count]) => ({ userId, count }))
@@ -318,7 +261,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
       const matchesAction = actionFilter === 'all' || entry.action === actionFilter;
       
       return matchesSearch && matchesAction;
-    });
+
   }, [auditEntries, searchQuery, actionFilter]);
 
   const filteredLogEntries = React.useMemo(() => {
@@ -330,7 +273,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
       const matchesLevel = levelFilter === 'all' || entry.level === levelFilter;
       
       return matchesSearch && matchesLevel;
-    });
+
   }, [logEntries, searchQuery, levelFilter]);
 
   const handleRefresh = async () => {
@@ -443,7 +386,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Info className="w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Info className="w-4 h-4 text-muted-foreground " />
                 </TooltipTrigger>
                 <TooltipContent>
                   <pre className="text-xs max-w-xs overflow-auto sm:text-sm md:text-base">
@@ -471,7 +414,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
         
         <div className="flex items-center gap-2">
           <select value={dateRange} onValueChange={setDateRange} aria-label="Select option">
-            <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+            <selectTrigger className="w-32 " aria-label="Select option">
               <selectValue />
             </SelectTrigger>
             <selectContent aria-label="Select option">
@@ -482,14 +425,12 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
             </SelectContent>
           </Select>
           
-          <button variant="outline" size="sm" onClick={handleRefresh} disabled={loading} aria-label="Button">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading} >
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
           </Button>
           
-          <button variant="outline" size="sm" onClick={() = aria-label="Button"> handleExport('csv')}>
-            <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-            Export
+          <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>
+            <Download className="w-4 h-4 mr-2 " />
           </Button>
         </div>
       </div>
@@ -499,7 +440,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-blue-600 sm:w-auto md:w-full" />
+              <Activity className="w-4 h-4 text-blue-600 " />
               <span className="text-sm font-medium md:text-base lg:text-lg">Total Events</span>
             </div>
             <div className="text-2xl font-bold mt-2">{auditSummary.totalEvents}</div>
@@ -509,7 +450,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />
+              <AlertTriangle className="w-4 h-4 text-red-600 " />
               <span className="text-sm font-medium md:text-base lg:text-lg">Critical Events</span>
             </div>
             <div className="text-2xl font-bold mt-2">{auditSummary.criticalEvents}</div>
@@ -519,7 +460,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
+              <Shield className="w-4 h-4 text-green-600 " />
               <span className="text-sm font-medium md:text-base lg:text-lg">Security Events</span>
             </div>
             <div className="text-2xl font-bold mt-2">{auditSummary.securityEvents}</div>
@@ -529,7 +470,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-orange-600 sm:w-auto md:w-full" />
+              <Settings className="w-4 h-4 text-orange-600 " />
               <span className="text-sm font-medium md:text-base lg:text-lg">Config Changes</span>
             </div>
             <div className="text-2xl font-bold mt-2">{auditSummary.configurationChanges}</div>
@@ -552,18 +493,18 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
               <div className="flex flex-col gap-4 md:flex-row md:items-center">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground " />
                     <input
                       placeholder="Search audit entries..."
                       value={searchQuery}
-                      onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"
                     />
                   </div>
                 </div>
                 
                 <select value={actionFilter} onValueChange={setActionFilter} aria-label="Select option">
-                  <selectTrigger className="w-48 sm:w-auto md:w-full" aria-label="Select option">
+                  <selectTrigger className="w-48 " aria-label="Select option">
                     <selectValue placeholder="Filter by action" />
                   </SelectTrigger>
                   <selectContent aria-label="Select option">
@@ -607,10 +548,9 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
               
               {filteredAuditEntries.length === 0 && (
                 <div className="text-center py-8">
-                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50 " />
                   <h3 className="text-lg font-medium mb-2">No Audit Entries</h3>
                   <p className="text-muted-foreground">
-                    No audit entries match your current filters
                   </p>
                 </div>
               )}
@@ -625,18 +565,18 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
               <div className="flex flex-col gap-4 md:flex-row md:items-center">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground " />
                     <input
                       placeholder="Search log entries..."
                       value={searchQuery}
-                      onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"
                     />
                   </div>
                 </div>
                 
                 <select value={levelFilter} onValueChange={setLevelFilter} aria-label="Select option">
-                  <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+                  <selectTrigger className="w-32 " aria-label="Select option">
                     <selectValue placeholder="Level" />
                   </SelectTrigger>
                   <selectContent aria-label="Select option">
@@ -656,7 +596,6 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
             <CardHeader>
               <CardTitle>System Logs</CardTitle>
               <CardDescription>
-                Runtime logs and system messages from the plugin
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -706,11 +645,11 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
                       {report.requirements.map((req) => (
                         <div key={req.id} className="flex items-start gap-2">
                           {req.status === 'met' ? (
-                            <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 sm:w-auto md:w-full" />
+                            <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 " />
                           ) : req.status === 'partial' ? (
-                            <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 sm:w-auto md:w-full" />
+                            <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 " />
                           ) : (
-                            <XCircle className="w-4 h-4 text-red-600 mt-0.5 sm:w-auto md:w-full" />
+                            <XCircle className="w-4 h-4 text-red-600 mt-0.5 " />
                           )}
                           <div className="flex-1">
                             <div className="text-sm font-medium md:text-base lg:text-lg">{req.description}</div>
@@ -742,7 +681,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
                     <div key={action} className="flex items-center justify-between">
                       <span className="text-sm capitalize md:text-base lg:text-lg">{action.replace('_', ' ')}</span>
                       <div className="flex items-center gap-2">
-                        <div className="w-24 bg-muted rounded-full h-2 sm:w-auto md:w-full">
+                        <div className="w-24 bg-muted rounded-full h-2 ">
                           <div 
                             className="bg-primary h-2 rounded-full"
                             style={{ 
@@ -750,7 +689,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
                             }}
                           />
                         </div>
-                        <span className="text-sm font-medium w-8 text-right sm:w-auto md:w-full">{count}</span>
+                        <span className="text-sm font-medium w-8 text-right ">{count}</span>
                       </div>
                     </div>
                   ))}
@@ -767,7 +706,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
                   {auditSummary.topUsers.map((user, index) => (
                     <div key={user.userId} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs sm:w-auto md:w-full">
+                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs ">
                           {index + 1}
                         </div>
                         <span className="text-sm md:text-base lg:text-lg">{user.userId}</span>
@@ -784,7 +723,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
 
       {/* Audit Entry Detail Dialog */}
       <Dialog open={!!selectedEntry} onOpenChange={() => setSelectedEntry(null)}>
-        <DialogContent className="max-w-2xl sm:w-auto md:w-full">
+        <DialogContent className="max-w-2xl ">
           {selectedEntry && (
             <>
               <DialogHeader>

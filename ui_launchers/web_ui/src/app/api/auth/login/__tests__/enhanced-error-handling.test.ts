@@ -8,7 +8,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 describe('Authentication Error Handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Error Type Classification', () => {
     it('should classify timeout errors correctly', () => {
@@ -35,7 +34,6 @@ describe('Authentication Error Handling', () => {
       }
       
       expect(getErrorType(timeoutError)).toBe('timeout');
-    });
 
     it('should classify network errors correctly', () => {
       const networkError = new Error('Network connection failed');
@@ -59,7 +57,6 @@ describe('Authentication Error Handling', () => {
       }
       
       expect(getErrorType(networkError)).toBe('network');
-    });
 
     it('should classify database errors correctly', () => {
       const dbError = new Error('Database query failed');
@@ -83,8 +80,7 @@ describe('Authentication Error Handling', () => {
       }
       
       expect(getErrorType(dbError)).toBe('database');
-    });
-  });
+
 
   describe('Retry Logic', () => {
     it('should identify retryable errors', () => {
@@ -110,7 +106,6 @@ describe('Authentication Error Handling', () => {
       expect(isRetryableError(networkError)).toBe(true);
       expect(isRetryableError(socketError)).toBe(true);
       expect(isRetryableError(credentialsError)).toBe(false);
-    });
 
     it('should identify retryable HTTP status codes', () => {
       function isRetryableStatus(status: number): boolean {
@@ -125,8 +120,7 @@ describe('Authentication Error Handling', () => {
       expect(isRetryableStatus(401)).toBe(false);
       expect(isRetryableStatus(403)).toBe(false);
       expect(isRetryableStatus(404)).toBe(false);
-    });
-  });
+
 
   describe('Error Messages', () => {
     it('should provide user-friendly error messages', () => {
@@ -165,8 +159,7 @@ describe('Authentication Error Handling', () => {
       expect(getLoginErrorMessage({ isConnected: true }, 429)).toBe('Too many login attempts. Please wait a moment and try again.');
       expect(getLoginErrorMessage({ isConnected: false, error: 'timeout' }, 500)).toBe('Database authentication is taking longer than expected. Please try again.');
       expect(getLoginErrorMessage({ isConnected: false, error: 'network error' }, 500)).toBe('Unable to connect to authentication database. Please check your network connection.');
-    });
-  });
+
 
   describe('Rate Limiting', () => {
     it('should track authentication attempts', () => {
@@ -203,14 +196,13 @@ describe('Authentication Error Handling', () => {
           ipAddress: '192.168.1.1',
           success: false,
           timestamp: new Date(),
-        });
+
       }
       
       expect(isRateLimited('test@example.com', '192.168.1.1')).toBe(true);
       expect(isRateLimited('other@example.com', '192.168.1.1')).toBe(false);
       expect(isRateLimited('test@example.com', '192.168.1.2')).toBe(false);
-    });
-  });
+
 
   describe('Response Format', () => {
     it('should return consistent error response structure', () => {
@@ -240,6 +232,5 @@ describe('Authentication Error Handling', () => {
       expect(typeof errorResponse.error).toBe('string');
       expect(typeof errorResponse.retryable).toBe('boolean');
       expect(typeof errorResponse.responseTime).toBe('number');
-    });
-  });
-});
+
+

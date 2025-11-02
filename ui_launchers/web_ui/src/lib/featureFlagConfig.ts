@@ -62,7 +62,7 @@ export const validateFeatureFlagConfig = (
     if (config.hasOwnProperty(flag) && config[flag] === false) {
       errors.push(`Security-critical flag '${flag}' cannot be disabled`);
     }
-  });
+
   // Check performance implications in production
   if (environment === 'production') {
     if (config.hasOwnProperty('analytics.detailed') && config['analytics.detailed'] === true) {
@@ -147,7 +147,7 @@ export const loadConfigFromEnvironment = (): Partial<Record<FeatureFlag, boolean
     if (envValue !== undefined) {
       config[flag] = envValue.toLowerCase() === 'true';
     }
-  });
+
   return config;
 };
 /**

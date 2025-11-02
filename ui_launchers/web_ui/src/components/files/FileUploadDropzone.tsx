@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, File, Image, Video, Music, Archive, Code, FileText, X, CheckCircle, AlertCircle } from 'lucide-react';
@@ -28,13 +29,13 @@ interface FileUploadDropzoneProps {
 const getFileIcon = (file: File) => {
   const type = file.type;
   const extension = file.name.split('.').pop()?.toLowerCase();
-  if (type.startsWith('image/')) return <Image className="h-6 w-6 sm:w-auto md:w-full" />;
-  if (type.startsWith('video/')) return <Video className="h-6 w-6 sm:w-auto md:w-full" />;
-  if (type.startsWith('audio/')) return <Music className="h-6 w-6 sm:w-auto md:w-full" />;
-  if (type.startsWith('text/') || ['txt', 'md', 'csv'].includes(extension || '')) return <FileText className="h-6 w-6 sm:w-auto md:w-full" />;
-  if (['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'c', 'html', 'css', 'json', 'xml', 'yaml', 'yml'].includes(extension || '')) return <Code className="h-6 w-6 sm:w-auto md:w-full" />;
-  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension || '')) return <Archive className="h-6 w-6 sm:w-auto md:w-full" />;
-  return <File className="h-6 w-6 sm:w-auto md:w-full" />;
+  if (type.startsWith('image/')) return <Image className="h-6 w-6 " />;
+  if (type.startsWith('video/')) return <Video className="h-6 w-6 " />;
+  if (type.startsWith('audio/')) return <Music className="h-6 w-6 " />;
+  if (type.startsWith('text/') || ['txt', 'md', 'csv'].includes(extension || '')) return <FileText className="h-6 w-6 " />;
+  if (['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'c', 'html', 'css', 'json', 'xml', 'yaml', 'yml'].includes(extension || '')) return <Code className="h-6 w-6 " />;
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension || '')) return <Archive className="h-6 w-6 " />;
+  return <File className="h-6 w-6 " />;
 };
 const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
@@ -101,7 +102,7 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
     onDragLeave: () => setIsDragActive(false),
     onDropAccepted: () => setIsDragActive(false),
     onDropRejected: () => setIsDragActive(false)
-  });
+
   const removeFile = (fileId: string) => {
     setUploadItems(prev => {
       const item = prev.find(item => item.id === fileId);
@@ -109,7 +110,7 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
         URL.revokeObjectURL(item.preview);
       }
       return prev.filter(item => item.id !== fileId);
-    });
+
     onFileRemove(fileId);
   };
   const startUpload = () => {
@@ -123,7 +124,7 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
             ? { ...prevItem, status: 'uploading' }
             : prevItem
         ));
-      });
+
     }
   };
   const pendingFiles = uploadItems.filter(item => item.status === 'pending');
@@ -164,7 +165,6 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
               {isDragActive ? 'Drop files here' : 'Upload files'}
             </h3>
             <p className="text-sm text-muted-foreground mb-4 md:text-base lg:text-lg">
-              Drag and drop files here, or click to browse
             </p>
             <div className="flex flex-wrap gap-2 justify-center text-xs text-muted-foreground sm:text-sm md:text-base">
               <span>Max {maxFiles} files</span>
@@ -184,7 +184,7 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold">Selected Files ({uploadItems.length})</h4>
               {pendingFiles.length > 0 && (
-                <button onClick={startUpload} size="sm" aria-label="Button">
+                <Button onClick={startUpload} size="sm" >
                   Upload {pendingFiles.length} file{pendingFiles.length !== 1 ? 's' : ''}
                 </Button>
               )}
@@ -201,16 +201,16 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
                       <img
                         src={item.preview}
                         alt={item.file.name}
-                        className="h-10 w-10 rounded object-cover sm:w-auto md:w-full"
+                        className="h-10 w-10 rounded object-cover "
                       />
                     ) : (
-                      <div className="h-10 w-10 rounded bg-muted flex items-center justify-center sm:w-auto md:w-full">
+                      <div className="h-10 w-10 rounded bg-muted flex items-center justify-center ">
                         {getFileIcon(item.file)}
                       </div>
                     )}
                   </div>
                   {/* File Info */}
-                  <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                  <div className="flex-1 min-w-0 ">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-sm font-medium truncate md:text-base lg:text-lg">
                         {item.file.name}
@@ -238,19 +238,19 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
                   {/* Status Icon */}
                   <div className="flex-shrink-0">
                     {item.status === 'completed' && (
-                      <CheckCircle className="h-5 w-5 text-green-500 sm:w-auto md:w-full" />
+                      <CheckCircle className="h-5 w-5 text-green-500 " />
                     )}
                     {item.status === 'error' && (
-                      <AlertCircle className="h-5 w-5 text-destructive sm:w-auto md:w-full" />
+                      <AlertCircle className="h-5 w-5 text-destructive " />
                     )}
                     {(item.status === 'pending' || item.status === 'uploading') && (
-                      <button
+                      <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() = aria-label="Button"> removeFile(item.id)}
-                        className="h-8 w-8 p-0 sm:w-auto md:w-full"
+                        onClick={() => removeFile(item.id)}
+                        className="h-8 w-8 p-0 "
                       >
-                        <X className="h-4 w-4 sm:w-auto md:w-full" />
+                        <X className="h-4 w-4 " />
                       </Button>
                     )}
                   </div>

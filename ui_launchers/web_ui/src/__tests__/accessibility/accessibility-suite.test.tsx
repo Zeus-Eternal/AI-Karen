@@ -43,7 +43,6 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('FlexContainer should be accessible', async () => {
       const { container } = render(
@@ -58,7 +57,6 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('ResponsiveContainer should be accessible', async () => {
       const { container } = render(
@@ -72,8 +70,7 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('Compound Components', () => {
     it('Card component should be accessible', async () => {
@@ -101,7 +98,6 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('Modal component should be accessible', async () => {
       const { container } = render(
@@ -128,7 +124,6 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('Form component should be accessible', async () => {
       const { container } = render(
@@ -143,7 +138,6 @@ describe('Accessibility Test Suite', () => {
                 aria-describedby="name-help"
               />
               <Form.Help id="name-help">
-                Enter your full legal name
               </Form.Help>
             </Form.Field>
             
@@ -156,7 +150,6 @@ describe('Accessibility Test Suite', () => {
                 aria-describedby="email-error"
               />
               <Form.Error id="email-error">
-                Please enter a valid email address
               </Form.Error>
             </Form.Field>
             
@@ -169,8 +162,7 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('Interactive Components', () => {
     it('InteractiveButton should be accessible', async () => {
@@ -180,17 +172,14 @@ describe('Accessibility Test Suite', () => {
             aria-label="Save document"
             aria-describedby="save-help"
           >
-            Save
           </InteractiveButton>
           <div id="save-help">
-            Save the current document to your account
           </div>
         </TestWrapper>
       );
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('InteractiveInput should be accessible', async () => {
       const { container } = render(
@@ -203,15 +192,13 @@ describe('Accessibility Test Suite', () => {
             aria-describedby="search-help"
           />
           <div id="search-help">
-            Search through all available content
           </div>
         </TestWrapper>
       );
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('ARIA Enhanced Components', () => {
     it('AriaEnhancedButton should be accessible', async () => {
@@ -221,17 +208,14 @@ describe('Accessibility Test Suite', () => {
             aria-label="Delete item"
             aria-describedby="delete-warning"
           >
-            Delete
           </AriaEnhancedButton>
           <div id="delete-warning" role="alert">
-            This action cannot be undone
           </div>
         </TestWrapper>
       );
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('AriaEnhancedForm should be accessible', async () => {
       const { container } = render(
@@ -255,7 +239,6 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('AriaEnhancedInput should be accessible', async () => {
       const { container } = render(
@@ -272,8 +255,7 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('Focus Management Components', () => {
     it('FocusTrap should be accessible', async () => {
@@ -293,7 +275,6 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('SkipLinks should be accessible', async () => {
       const { container } = render(
@@ -325,8 +306,7 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('Complex Accessibility Scenarios', () => {
     it('should handle complex form with validation', async () => {
@@ -346,7 +326,6 @@ describe('Accessibility Test Suite', () => {
                   aria-invalid="true"
                 />
                 <div id="first-name-error" role="alert">
-                  First name is required
                 </div>
               </div>
               
@@ -359,7 +338,6 @@ describe('Accessibility Test Suite', () => {
                   aria-describedby="last-name-help"
                 />
                 <div id="last-name-help">
-                  Enter your family name or surname
                 </div>
               </div>
             </fieldset>
@@ -379,7 +357,6 @@ describe('Accessibility Test Suite', () => {
                   Username must be 3-20 characters long
                 </div>
                 <div id="username-error" role="alert">
-                  Username is already taken
                 </div>
               </div>
               
@@ -414,7 +391,6 @@ describe('Accessibility Test Suite', () => {
                 I agree to the terms and conditions *
               </label>
               <div id="terms-error" role="alert">
-                You must agree to the terms to continue
               </div>
             </div>
             
@@ -425,7 +401,6 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should handle data table with proper headers', async () => {
       const { container } = render(
@@ -473,7 +448,6 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should handle navigation with proper landmarks', async () => {
       const { container } = render(
@@ -528,8 +502,7 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('Color Contrast and Visual Accessibility', () => {
     it('should have sufficient color contrast for text', async () => {
@@ -556,9 +529,8 @@ describe('Accessibility Test Suite', () => {
         rules: {
           'color-contrast': { enabled: true }
         }
-      });
+
       expect(results).toHaveNoViolations();
-    });
 
     it('should handle focus indicators properly', async () => {
       const { container } = render(
@@ -585,8 +557,7 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('Screen Reader Compatibility', () => {
     it('should provide proper screen reader content', async () => {
@@ -608,10 +579,8 @@ describe('Accessibility Test Suite', () => {
               aria-controls="collapsible-content"
               aria-describedby="expand-help"
             >
-              Expand Section
             </button>
             <div id="expand-help" className="sr-only">
-              Click to show additional content
             </div>
             
             <div id="collapsible-content" hidden>
@@ -633,6 +602,5 @@ describe('Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
-});
+
+

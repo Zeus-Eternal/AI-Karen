@@ -61,15 +61,7 @@ class SimpleCache<K, V> {
     return this.cache.size;
   }
 }
-import type { 
-  User, 
-  Permission, 
-  SystemConfig, 
-  UserListFilter,
-  PaginatedResponse,
-  CacheConfig,
-  CacheStats
-} from '@/types/admin';
+import type {  User, Permission, SystemConfig, UserListFilter, PaginatedResponse, CacheConfig, CacheStats } from '@/types/admin';
 // Cache configuration
 const CACHE_CONFIG: CacheConfig = {
   permissions: {
@@ -97,23 +89,23 @@ const CACHE_CONFIG: CacheConfig = {
 const permissionsCache = new SimpleCache<string, Permission[]>({
   max: CACHE_CONFIG.permissions.maxSize,
   ttl: CACHE_CONFIG.permissions.ttl,
-});
+
 const systemConfigCache = new SimpleCache<string, SystemConfig[]>({
   max: CACHE_CONFIG.systemConfig.maxSize,
   ttl: CACHE_CONFIG.systemConfig.ttl,
-});
+
 const userCache = new SimpleCache<string, User>({
   max: CACHE_CONFIG.users.maxSize,
   ttl: CACHE_CONFIG.users.ttl,
-});
+
 const userListCache = new SimpleCache<string, PaginatedResponse<User>>({
   max: CACHE_CONFIG.userLists.maxSize,
   ttl: CACHE_CONFIG.userLists.ttl,
-});
+
 const statisticsCache = new SimpleCache<string, any>({
   max: CACHE_CONFIG.statistics.maxSize,
   ttl: CACHE_CONFIG.statistics.ttl,
-});
+
 // Cache key generators
 export class CacheKeyGenerator {
   static userPermissions(userId: string): string {
@@ -430,7 +422,7 @@ export function withCache<T>(
     } catch (error) {
       reject(error);
     }
-  });
+
 }
 // Export cache instances for direct access if needed
 export {

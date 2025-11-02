@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { ReactNode } from 'react';
 import { RefreshCw, AlertCircle, Clock, Wifi, WifiOff } from 'lucide-react';
@@ -85,7 +85,7 @@ function RetryCard({
             return 0;
           }
           return prev - 100;
-        });
+
       }, 100);
 
       return () => clearInterval(interval);
@@ -105,13 +105,13 @@ function RetryCard({
   const getErrorIcon = (errorType: string) => {
     switch (errorType) {
       case 'network':
-        return <WifiOff className="h-5 w-5 text-orange-500 sm:w-auto md:w-full" />;
+        return <WifiOff className="h-5 w-5 text-orange-500 " />;
       case 'timeout':
-        return <Clock className="h-5 w-5 text-yellow-500 sm:w-auto md:w-full" />;
+        return <Clock className="h-5 w-5 text-yellow-500 " />;
       case 'server':
-        return <AlertCircle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-5 w-5 text-red-500 " />;
       default:
-        return <AlertCircle className="h-5 w-5 text-destructive sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-5 w-5 text-destructive " />;
     }
   };
 
@@ -139,7 +139,7 @@ function RetryCard({
       <CardContent className="space-y-4">
         {error && (
           <Alert>
-            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+            <AlertCircle className="h-4 w-4 " />
             <AlertTitle>Error Details</AlertTitle>
             <AlertDescription className="text-sm md:text-base lg:text-lg">
               {error.message}
@@ -166,20 +166,18 @@ function RetryCard({
           />
           
           {!canRetry && (
-            <button
+            <Button
               variant="outline"
-              onClick={() = aria-label="Button"> window.location.reload()}
+              onClick={() => window.location.reload()}
               className="flex-1"
             >
-              <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Reload Page
+              <RefreshCw className="h-4 w-4 mr-2 " />
             </Button>
           )}
         </div>
 
         {errorType === 'network' && (
           <div className="text-xs text-muted-foreground text-center sm:text-sm md:text-base">
-            Check your internet connection and try again
           </div>
         )}
       </CardContent>
@@ -252,7 +250,7 @@ function InlineRetry({
 }: InlineRetryProps) {
   return (
     <div className={`flex items-center space-x-2 text-sm ${className}`}>
-      <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 sm:w-auto md:w-full" />
+      <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 " />
       <span className="text-destructive flex-1">
         {error?.message || 'Failed to load'}
       </span>
@@ -306,31 +304,31 @@ function RetryBanner({
     <div className={`border rounded-lg p-4 ${getVariantStyles()} ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <AlertCircle className="h-5 w-5 flex-shrink-0 sm:w-auto md:w-full" />
+          <AlertCircle className="h-5 w-5 flex-shrink-0 " />
           <span className="text-sm font-medium md:text-base lg:text-lg">{message}</span>
         </div>
         
         <div className="flex items-center space-x-2">
           {canRetry && (
-            <button
+            <Button
               size="sm"
               variant="outline"
               onClick={onRetry}
               disabled={isRetrying}
               className="h-8"
-             aria-label="Button">
+             >
               <RefreshCw className={`h-3 w-3 mr-1 ${isRetrying ? 'animate-spin' : ''}`} />
               {isRetrying ? 'Retrying' : 'Retry'}
             </Button>
           )}
           
           {onDismiss && (
-            <button
+            <Button
               size="sm"
               variant="ghost"
               onClick={onDismiss}
-              className="h-8 w-8 p-0 sm:w-auto md:w-full"
-             aria-label="Button">
+              className="h-8 w-8 p-0 "
+             >
               ×
             </Button>
           )}
@@ -368,7 +366,7 @@ function LoadingRetry({
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center space-y-3">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground sm:w-auto md:w-full" />
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground " />
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">{loadingText}</p>
         </div>
       </div>
@@ -379,7 +377,7 @@ function LoadingRetry({
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center space-y-3">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary " />
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">{retryingText}</p>
         </div>
       </div>
@@ -403,10 +401,4 @@ function LoadingRetry({
 }
 
 export {
-  RetryButton,
-  RetryCard,
-  RetryWrapper,
-  InlineRetry,
-  RetryBanner,
-  LoadingRetry,
 };

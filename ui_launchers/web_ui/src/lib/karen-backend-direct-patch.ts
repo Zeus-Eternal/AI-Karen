@@ -145,7 +145,7 @@ export function patchFetchForKarenBackend() {
               'Content-Type': 'application/json',
               'X-Fallback-Mode': 'extension-readonly'
             }
-          });
+
         }
       }
       
@@ -166,7 +166,7 @@ export function patchFetchForKarenBackend() {
             'Content-Type': 'application/json',
             'X-Fallback-Mode': 'extension-offline'
           }
-        });
+
       }
       
       throw error;

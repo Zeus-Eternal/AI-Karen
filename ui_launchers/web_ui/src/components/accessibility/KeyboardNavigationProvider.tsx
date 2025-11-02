@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useKeyboardNavigation } from '../../hooks/use-keyboard-navigation';
@@ -78,7 +78,6 @@ export function KeyboardNavigationProvider({
         }
       }
     },
-  });
 
   const registerNavigationContainer = React.useCallback((element: HTMLElement) => {
     containerRef.current = element;
@@ -100,7 +99,6 @@ export function KeyboardNavigationProvider({
       subtree: true,
       attributes: true,
       attributeFilter: ['role', 'data-keyboard-nav-item'],
-    });
 
     return () => {
       observer.disconnect();

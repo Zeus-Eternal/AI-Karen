@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -78,10 +79,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <Card className="w-full max-w-md">
           <CardContent className="p-6 sm:p-4 md:p-6">
             <div className="flex flex-col items-center space-y-4">
-              <Skeleton className="h-12 w-12 rounded-full sm:w-auto md:w-full" />
+              <Skeleton className="h-12 w-12 rounded-full " />
               <div className="space-y-2 text-center">
-                <Skeleton className="h-4 w-48 sm:w-auto md:w-full" />
-                <Skeleton className="h-3 w-32 sm:w-auto md:w-full" />
+                <Skeleton className="h-4 w-48 " />
+                <Skeleton className="h-3 w-32 " />
               </div>
               <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 {loadingMessage}

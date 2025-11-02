@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { InteractiveButton } from './interactive-button';
@@ -40,7 +40,7 @@ export function MicroInteractionDemo() {
 
   return (
     <MicroInteractionProvider>
-      <div className="p-8 space-y-8 max-w-4xl mx-auto sm:w-auto md:w-full">
+      <div className="p-8 space-y-8 max-w-4xl mx-auto ">
         <h1 className="text-3xl font-bold mb-8">Micro-Interactions Demo</h1>
         
         {/* Interactive Buttons */}
@@ -52,28 +52,24 @@ export function MicroInteractionDemo() {
               loading={loading}
               loadingText="Processing..."
             >
-              Click Me
             </InteractiveButton>
             
             <InteractiveButton 
               variant="outline"
               animationVariant="bounce"
             >
-              Bounce Effect
             </InteractiveButton>
             
             <InteractiveButton 
               variant="secondary"
               animationVariant="scale"
             >
-              Scale Effect
             </InteractiveButton>
             
             <InteractiveButton 
               variant="ghost"
               animationVariant="slide"
             >
-              Slide Effect
             </InteractiveButton>
           </div>
         </section>
@@ -199,10 +195,8 @@ export function MicroInteractionDemo() {
             
             <div className="flex gap-4">
               <InteractiveButton onClick={incrementProgress}>
-                Increment Progress
               </InteractiveButton>
               <InteractiveButton onClick={resetProgress} variant="outline">
-                Reset Progress
               </InteractiveButton>
             </div>
           </div>

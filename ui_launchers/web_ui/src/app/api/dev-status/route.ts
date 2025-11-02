@@ -34,7 +34,6 @@ export async function GET() {
     environment,
     backendConfigured,
     authenticationConfigured,
-  });
 
   return NextResponse.json(responseBody, {
     status: backendConfigured ? 200 : 503,
@@ -42,5 +41,5 @@ export async function GET() {
       'Cache-Control': 'no-store, max-age=0',
       'Content-Type': 'application/json',
     },
-  });
+
 }

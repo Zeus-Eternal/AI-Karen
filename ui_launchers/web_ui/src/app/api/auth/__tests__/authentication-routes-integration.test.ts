@@ -63,11 +63,9 @@ import { GET as validateSessionGet } from '../validate-session/route';
 describe('Authentication Routes Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('Login Route (/api/auth/login)', () => {
     it('should successfully authenticate with valid credentials', async () => {
@@ -97,7 +95,6 @@ describe('Authentication Routes Integration', () => {
         headers: {
           'content-type': 'application/json',
         },
-      });
 
       const response = await loginPost(request);
       const data = await response.json();
@@ -121,7 +118,6 @@ describe('Authentication Routes Integration', () => {
           exponentialBackoff: true,
         })
       );
-    });
 
     it('should handle authentication timeout with proper error response', async () => {
       const timeoutError = new ConnectionError(
@@ -139,7 +135,6 @@ describe('Authentication Routes Integration', () => {
       (getConnectionStatus as Mock).mockReturnValue({
         isHealthy: false,
         circuitBreakerState: 'open',
-      });
 
       const request = new NextRequest('http://localhost:3000/api/auth/login', {
         method: 'POST',
@@ -150,7 +145,6 @@ describe('Authentication Routes Integration', () => {
         headers: {
           'content-type': 'application/json',
         },
-      });
 
       const response = await loginPost(request);
       const data = await response.json();
@@ -160,7 +154,6 @@ describe('Authentication Routes Integration', () => {
       expect(data.retryable).toBe(true);
       expect(data.databaseConnectivity.isConnected).toBe(false);
       expect(data.error).toContain('Authentication database is temporarily unavailable');
-    });
 
     it('should fallback to simple auth when primary endpoint returns 404', async () => {
       const notFoundError = new ConnectionError(
@@ -200,7 +193,6 @@ describe('Authentication Routes Integration', () => {
         headers: {
           'content-type': 'application/json',
         },
-      });
 
       const response = await loginPost(request);
       const data = await response.json();
@@ -209,7 +201,6 @@ describe('Authentication Routes Integration', () => {
       expect(data.access_token).toBe('fallback-token');
       expect(makeBackendRequest).toHaveBeenCalledTimes(2);
       expect(makeBackendRequest).toHaveBeenNthCalledWith(2, '/auth/login', expect.any(Object), expect.any(Object));
-    });
 
     it('should handle rate limiting', async () => {
       const authError = new ConnectionError(
@@ -236,7 +227,7 @@ describe('Authentication Routes Integration', () => {
             'content-type': 'application/json',
             'x-forwarded-for': '192.168.1.1',
           },
-        });
+
         await loginPost(request);
       }
 
@@ -251,7 +242,6 @@ describe('Authentication Routes Integration', () => {
           'content-type': 'application/json',
           'x-forwarded-for': '192.168.1.1',
         },
-      });
 
       const response = await loginPost(finalRequest);
       const data = await response.json();
@@ -259,8 +249,7 @@ describe('Authentication Routes Integration', () => {
       expect(response.status).toBe(429);
       expect(data.errorType).toBe('rate_limit');
       expect(data.retryAfter).toBe(900); // 15 minutes
-    });
-  });
+
 
   describe('Login Simple Route (/api/auth/login-simple)', () => {
     it('should successfully authenticate with simple auth', async () => {
@@ -289,7 +278,6 @@ describe('Authentication Routes Integration', () => {
         headers: {
           'content-type': 'application/json',
         },
-      });
 
       const response = await loginSimplePost(request);
       const data = await response.json();
@@ -310,7 +298,6 @@ describe('Authentication Routes Integration', () => {
           retryAttempts: 3,
         })
       );
-    });
 
     it('should fallback to bypass endpoint when primary fails', async () => {
       const primaryError = new ConnectionError(
@@ -349,7 +336,6 @@ describe('Authentication Routes Integration', () => {
         headers: {
           'content-type': 'application/json',
         },
-      });
 
       const response = await loginSimplePost(request);
       const data = await response.json();
@@ -366,8 +352,7 @@ describe('Authentication Routes Integration', () => {
         },
         expect.any(Object)
       );
-    });
-  });
+
 
   describe('Validate Session Route (/api/auth/validate-session)', () => {
     it('should successfully validate a valid session', async () => {
@@ -392,7 +377,6 @@ describe('Authentication Routes Integration', () => {
         headers: {
           cookie: 'session=valid-session-token',
         },
-      });
 
       const response = await validateSessionGet(request);
       const data = await response.json();
@@ -414,7 +398,6 @@ describe('Authentication Routes Integration', () => {
           }),
         })
       );
-    });
 
     it('should handle invalid session with proper error response', async () => {
       const unauthorizedError = new ConnectionError(
@@ -434,7 +417,6 @@ describe('Authentication Routes Integration', () => {
         headers: {
           cookie: 'session=invalid-session-token',
         },
-      });
 
       const response = await validateSessionGet(request);
       const data = await response.json();
@@ -444,7 +426,6 @@ describe('Authentication Routes Integration', () => {
       expect(data.user).toBe(null);
       expect(data.errorType).toBe('credentials');
       expect(data.error).toContain('Session has expired');
-    });
 
     it('should handle database connectivity issues during session validation', async () => {
       const networkError = new ConnectionError(
@@ -460,14 +441,12 @@ describe('Authentication Routes Integration', () => {
       (getConnectionStatus as Mock).mockReturnValue({
         isHealthy: false,
         circuitBreakerState: 'open',
-      });
 
       const request = new NextRequest('http://localhost:3000/api/auth/validate-session', {
         method: 'GET',
         headers: {
           cookie: 'session=some-session-token',
         },
-      });
 
       const response = await validateSessionGet(request);
       const data = await response.json();
@@ -478,8 +457,7 @@ describe('Authentication Routes Integration', () => {
       expect(data.retryable).toBe(true);
       expect(data.databaseConnectivity.isConnected).toBe(false);
       expect(data.error).toContain('Authentication database is temporarily unavailable');
-    });
-  });
+
 
   describe('Session Management Improvements', () => {
     it('should include retry count and response time in all responses', async () => {
@@ -500,14 +478,12 @@ describe('Authentication Routes Integration', () => {
         method: 'POST',
         body: JSON.stringify({ email: 'test@example.com', password: 'test' }),
         headers: { 'content-type': 'application/json' },
-      });
 
       const response = await loginPost(request);
       const data = await response.json();
 
       expect(data.responseTime).toBeGreaterThan(0);
       expect(typeof data.responseTime).toBe('number');
-    });
 
     it('should properly forward cookies from backend responses', async () => {
       const mockResult = {
@@ -529,7 +505,6 @@ describe('Authentication Routes Integration', () => {
         method: 'POST',
         body: JSON.stringify({ email: 'test@example.com', password: 'test' }),
         headers: { 'content-type': 'application/json' },
-      });
 
       const response = await loginPost(request);
 
@@ -537,8 +512,7 @@ describe('Authentication Routes Integration', () => {
       const setCookieHeaders = response.headers.getSetCookie();
       expect(setCookieHeaders.length).toBeGreaterThan(0);
       expect(setCookieHeaders.some(cookie => cookie.includes('auth_session=abc123'))).toBe(true);
-    });
-  });
+
 
   describe('Error Handling and User Feedback', () => {
     it('should provide user-friendly error messages for different error types', async () => {
@@ -566,13 +540,11 @@ describe('Authentication Routes Integration', () => {
           method: 'POST',
           body: JSON.stringify({ email: 'test@example.com', password: 'test' }),
           headers: { 'content-type': 'application/json' },
-        });
 
         const response = await loginPost(request);
         const data = await response.json();
 
         expect(data.error).toContain(testCase.expectedMessage);
       }
-    });
-  });
-});
+
+

@@ -104,7 +104,7 @@ export class DevelopmentAuthManager {
       logger.debug('Development authentication manager initialized', {
         config: this.config,
         mockUsers: Array.from(this.mockUsers.keys()),
-      });
+
     } else if (!featuresEnabled) {
       logger.info('Development authentication disabled for production environment');
     }
@@ -199,13 +199,12 @@ export class DevelopmentAuthManager {
 
     mockUsers.forEach(user => {
       this.mockUsers.set(user.user_id, user);
-    });
 
     if (this.config.debugLogging) {
       logger.debug('Mock users initialized', {
         userCount: this.mockUsers.size,
         users: Array.from(this.mockUsers.keys()),
-      });
+
     }
   }
 
@@ -221,25 +220,23 @@ export class DevelopmentAuthManager {
     if ((window as any).module?.hot) {
       (window as any).module.hot.accept(() => {
         this.handleHotReload('webpack-hmr');
-      });
+
     }
 
     // Listen for Vite HMR events
     if ((window as any).__vite_plugin_react_preamble_installed__) {
       window.addEventListener('vite:beforeUpdate', () => {
         this.handleHotReload('vite-hmr');
-      });
+
     }
 
     // Listen for manual reload events
     window.addEventListener('beforeunload', () => {
       this.preserveAuthStateForReload();
-    });
 
     // Restore auth state after reload
     window.addEventListener('load', () => {
       this.restoreAuthStateAfterReload();
-    });
 
     if (this.config.debugLogging) {
       logger.debug('Hot reload support configured');
@@ -261,7 +258,6 @@ export class DevelopmentAuthManager {
       } catch (error) {
         logger.warn('Hot reload listener error:', error);
       }
-    });
 
     // Preserve authentication state
     this.preserveAuthStateForReload();
@@ -313,7 +309,7 @@ export class DevelopmentAuthManager {
       if (this.config.debugLogging) {
         logger.debug('Authentication state restored after hot reload', {
           tokenCount: this.developmentTokens.size,
-        });
+
       }
     } catch (error) {
       logger.warn('Failed to restore auth state after hot reload:', error);

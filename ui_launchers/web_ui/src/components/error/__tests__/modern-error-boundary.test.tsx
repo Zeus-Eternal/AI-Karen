@@ -21,13 +21,11 @@ describe('ModernErrorBoundary', () => {
     console.warn = vi.fn();
     vi.clearAllTimers();
     vi.useFakeTimers();
-  });
 
   afterEach(() => {
     console.error = originalConsoleError;
     console.warn = originalConsoleWarn;
     vi.useRealTimers();
-  });
 
   it('renders children when there is no error', () => {
     render(
@@ -37,7 +35,6 @@ describe('ModernErrorBoundary', () => {
     );
 
     expect(screen.getByText('No error')).toBeInTheDocument();
-  });
 
   it('renders error UI when child component throws', () => {
     render(
@@ -49,7 +46,6 @@ describe('ModernErrorBoundary', () => {
     expect(screen.getByText('Test Error')).toBeInTheDocument();
     expect(screen.getByText('Something went wrong in this section')).toBeInTheDocument();
     expect(screen.getByText('Test error message')).toBeInTheDocument();
-  });
 
   it('calls onError callback when error occurs', () => {
     const onError = vi.fn();
@@ -64,7 +60,6 @@ describe('ModernErrorBoundary', () => {
       expect.objectContaining({ message: 'Callback test' }),
       expect.objectContaining({ componentStack: expect.any(String) })
     );
-  });
 
   it('shows retry button and handles manual retry', async () => {
     const TestComponent = () => {
@@ -96,8 +91,7 @@ describe('ModernErrorBoundary', () => {
 
     await waitFor(() => {
       expect(screen.getByText('No error')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles auto-retry when enabled', async () => {
     let throwCount = 0;
@@ -128,8 +122,7 @@ describe('ModernErrorBoundary', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Success after retries')).toBeInTheDocument();
-    });
-  });
+
 
   it('stops retrying after max retries reached', async () => {
     const AlwaysThrow = () => {
@@ -155,8 +148,7 @@ describe('ModernErrorBoundary', () => {
     await waitFor(() => {
       expect(screen.getByText('Application Error')).toBeInTheDocument();
       expect(screen.queryByText('Retrying automatically...')).not.toBeInTheDocument();
-    });
-  });
+
 
   it('uses custom fallback when provided', () => {
     const customFallback = (error: Error, errorInfo: React.ErrorInfo, retry: () => void) => (
@@ -176,7 +168,6 @@ describe('ModernErrorBoundary', () => {
     expect(screen.getByText('Custom fallback')).toBeInTheDocument();
     expect(screen.getByText('Error: Custom fallback test')).toBeInTheDocument();
     expect(screen.getByText('Custom retry')).toBeInTheDocument();
-  });
 
   it('shows technical details when enabled', () => {
     render(
@@ -190,7 +181,6 @@ describe('ModernErrorBoundary', () => {
 
     expect(screen.getByText('Error Stack:')).toBeInTheDocument();
     expect(screen.getByText('Component Stack:')).toBeInTheDocument();
-  });
 
   it('handles reload button click', () => {
     // Mock window.location.reload
@@ -198,7 +188,6 @@ describe('ModernErrorBoundary', () => {
     Object.defineProperty(window, 'location', {
       value: { reload: mockReload },
       writable: true,
-    });
 
     render(
       <ModernErrorBoundary>
@@ -210,7 +199,6 @@ describe('ModernErrorBoundary', () => {
     fireEvent.click(reloadButton);
 
     expect(mockReload).toHaveBeenCalled();
-  });
 
   it('handles report bug button click', () => {
     // Mock window.open
@@ -230,7 +218,6 @@ describe('ModernErrorBoundary', () => {
       expect.stringContaining('mailto:support@example.com'),
       '_blank'
     );
-  });
 
   it('displays section name in error title', () => {
     render(
@@ -240,7 +227,6 @@ describe('ModernErrorBoundary', () => {
     );
 
     expect(screen.getByText('Sidebar Error')).toBeInTheDocument();
-  });
 
   it('shows retry count in error details', () => {
     const TestComponent = () => {
@@ -264,7 +250,6 @@ describe('ModernErrorBoundary', () => {
 
     // The retry count should be visible in the UI
     expect(screen.getByText(/Retry attempt/)).toBeInTheDocument();
-  });
 
   it('cleans up timers on unmount', () => {
     const { unmount } = render(
@@ -280,5 +265,4 @@ describe('ModernErrorBoundary', () => {
 
     // Timers should be cleaned up
     expect(vi.getTimerCount()).toBe(0);
-  });
-});
+

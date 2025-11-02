@@ -2,14 +2,14 @@
  * React components for extension management
  */
 import React, { useState, useCallback } from 'react';
-import { 
+
   useExtensionStatuses, 
   useExtensionHealth, 
   useExtensionPerformance,
   useExtensionTaskMonitoring,
   useExtensionTasks,
   useExtensionWidgets
-} from './hooks';
+import { } from './hooks';
 import { formatResourceUsage, formatUptime, getStatusColorClass } from './extensionUtils';
 import type { ExtensionStatus } from './extension-integration';
 /**

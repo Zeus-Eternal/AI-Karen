@@ -8,17 +8,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import {
-  PluginInfo,
-  PluginInstallationRequest,
-  PluginInstallationProgress,
-  PluginMarketplaceEntry,
-  PluginFilter,
-  PluginConfig,
-  PluginStore,
-  PluginStoreState,
-  PluginStoreActions,
-} from '@/types/plugins';
+import { PluginInfo, PluginInstallationRequest, PluginInstallationProgress, PluginMarketplaceEntry, PluginFilter, PluginConfig, PluginStore, PluginStoreState, PluginStoreActions } from '@/types/plugins';
 
 // Mock API service (will be replaced with actual API integration)
 class PluginAPIService {
@@ -363,19 +353,18 @@ export const usePluginStore = create<PluginStore>()(
         set((state) => {
           state.loading.plugins = true;
           state.errors.plugins = null;
-        });
-        
+
         try {
           const plugins = await pluginAPI.listPlugins();
           set((state) => {
             state.plugins = plugins;
             state.loading.plugins = false;
-          });
+
         } catch (error) {
           set((state) => {
             state.loading.plugins = false;
             state.errors.plugins = error instanceof Error ? error.message : 'Failed to load plugins';
-          });
+
         }
       },
       
@@ -387,8 +376,7 @@ export const usePluginStore = create<PluginStore>()(
         set((state) => {
           state.loading.installation = true;
           state.errors.installation = null;
-        });
-        
+
         try {
           const installationId = await pluginAPI.installPlugin(request);
           
@@ -399,8 +387,7 @@ export const usePluginStore = create<PluginStore>()(
               progress: 0,
               message: 'Starting installation...',
             };
-          });
-          
+
           // Simulate installation progress
           const progressStages = [
             { stage: 'downloading' as const, progress: 20, message: 'Downloading plugin...' },
@@ -420,7 +407,7 @@ export const usePluginStore = create<PluginStore>()(
                   ...stage,
                 };
               }
-            });
+
           }
           
           // Reload plugins after installation
@@ -429,14 +416,13 @@ export const usePluginStore = create<PluginStore>()(
           set((state) => {
             state.loading.installation = false;
             delete state.installations[installationId];
-          });
-          
+
           return installationId;
         } catch (error) {
           set((state) => {
             state.loading.installation = false;
             state.errors.installation = error instanceof Error ? error.message : 'Installation failed';
-          });
+
           throw error;
         }
       },
@@ -444,8 +430,7 @@ export const usePluginStore = create<PluginStore>()(
       uninstallPlugin: async (id: string) => {
         set((state) => {
           state.loading[`uninstall-${id}`] = true;
-        });
-        
+
         try {
           await pluginAPI.uninstallPlugin(id);
           
@@ -455,12 +440,12 @@ export const usePluginStore = create<PluginStore>()(
               state.selectedPlugin = null;
             }
             delete state.loading[`uninstall-${id}`];
-          });
+
         } catch (error) {
           set((state) => {
             delete state.loading[`uninstall-${id}`];
             state.errors[`uninstall-${id}`] = error instanceof Error ? error.message : 'Uninstallation failed';
-          });
+
           throw error;
         }
       },
@@ -468,8 +453,7 @@ export const usePluginStore = create<PluginStore>()(
       enablePlugin: async (id: string) => {
         set((state) => {
           state.loading[`enable-${id}`] = true;
-        });
-        
+
         try {
           await pluginAPI.enablePlugin(id);
           
@@ -484,12 +468,12 @@ export const usePluginStore = create<PluginStore>()(
               state.selectedPlugin.status = 'active';
             }
             delete state.loading[`enable-${id}`];
-          });
+
         } catch (error) {
           set((state) => {
             delete state.loading[`enable-${id}`];
             state.errors[`enable-${id}`] = error instanceof Error ? error.message : 'Failed to enable plugin';
-          });
+
           throw error;
         }
       },
@@ -497,8 +481,7 @@ export const usePluginStore = create<PluginStore>()(
       disablePlugin: async (id: string) => {
         set((state) => {
           state.loading[`disable-${id}`] = true;
-        });
-        
+
         try {
           await pluginAPI.disablePlugin(id);
           
@@ -513,12 +496,12 @@ export const usePluginStore = create<PluginStore>()(
               state.selectedPlugin.status = 'inactive';
             }
             delete state.loading[`disable-${id}`];
-          });
+
         } catch (error) {
           set((state) => {
             delete state.loading[`disable-${id}`];
             state.errors[`disable-${id}`] = error instanceof Error ? error.message : 'Failed to disable plugin';
-          });
+
           throw error;
         }
       },
@@ -526,8 +509,7 @@ export const usePluginStore = create<PluginStore>()(
       configurePlugin: async (id: string, config: PluginConfig) => {
         set((state) => {
           state.loading[`configure-${id}`] = true;
-        });
-        
+
         try {
           await pluginAPI.configurePlugin(id, config);
           
@@ -540,12 +522,12 @@ export const usePluginStore = create<PluginStore>()(
               state.selectedPlugin.config = { ...state.selectedPlugin.config, ...config };
             }
             delete state.loading[`configure-${id}`];
-          });
+
         } catch (error) {
           set((state) => {
             delete state.loading[`configure-${id}`];
             state.errors[`configure-${id}`] = error instanceof Error ? error.message : 'Failed to configure plugin';
-          });
+
           throw error;
         }
       },
@@ -555,19 +537,18 @@ export const usePluginStore = create<PluginStore>()(
         set((state) => {
           state.loading.marketplace = true;
           state.errors.marketplace = null;
-        });
-        
+
         try {
           const plugins = await pluginAPI.searchMarketplace(query);
           set((state) => {
             state.marketplacePlugins = plugins;
             state.loading.marketplace = false;
-          });
+
         } catch (error) {
           set((state) => {
             state.loading.marketplace = false;
             state.errors.marketplace = error instanceof Error ? error.message : 'Failed to load marketplace';
-          });
+
         }
       },
       
@@ -688,7 +669,6 @@ export const selectFilteredPlugins = (state: PluginStore) => {
     if (aValue < bValue) return state.sortOrder === 'asc' ? -1 : 1;
     if (aValue > bValue) return state.sortOrder === 'asc' ? 1 : -1;
     return 0;
-  });
-  
+
   return filtered;
 };

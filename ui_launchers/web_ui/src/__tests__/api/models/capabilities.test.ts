@@ -11,7 +11,6 @@ jest.mock('@/lib/model-selection-service', () => ({
 describe('/api/models/capabilities', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
 
   describe('GET - Model Capabilities', () => {
     it('should return text model capabilities', async () => {
@@ -44,7 +43,6 @@ describe('/api/models/capabilities', () => {
       expect(data.parameters.text_generation.temperature).toBeDefined();
       expect(data.compatibility.streaming).toBe(true);
       expect(response.headers.get('X-Model-Type')).toBe('text_generation');
-    });
 
     it('should return image model capabilities', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -75,7 +73,6 @@ describe('/api/models/capabilities', () => {
       expect(data.parameters.image_generation).toBeDefined();
       expect(data.parameters.image_generation.width).toBeDefined();
       expect(data.parameters.image_generation.guidance_scale).toBeDefined();
-    });
 
     it('should return error for missing model_id', async () => {
       const request = new NextRequest('http://localhost:3000/api/models/capabilities');
@@ -84,7 +81,6 @@ describe('/api/models/capabilities', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing required parameter: model_id');
-    });
 
     it('should return error for non-existent model', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -97,7 +93,6 @@ describe('/api/models/capabilities', () => {
 
       expect(response.status).toBe(404);
       expect(data.error).toBe('Model not found');
-    });
 
     it('should return minimal response when parameters not requested', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -121,7 +116,6 @@ describe('/api/models/capabilities', () => {
       expect(data.compatibility.multimodal).toBe(false);
       expect(data.compatibility.streaming).toBe(false);
       expect(data.compatibility.batch_processing).toBe(false);
-    });
 
     it('should handle embedding model capabilities', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -146,7 +140,6 @@ describe('/api/models/capabilities', () => {
       expect(data.parameters.embedding).toBeDefined();
       expect(data.parameters.embedding.normalize).toBeDefined();
       expect(data.parameters.embedding.batch_size).toBeDefined();
-    });
 
     it('should set appropriate cache headers', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -166,7 +159,6 @@ describe('/api/models/capabilities', () => {
 
       expect(response.headers.get('Cache-Control')).toBe('public, max-age=3600');
       expect(response.headers.get('X-Model-Provider')).toBe('llama-cpp');
-    });
 
     it('should handle service errors gracefully', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -182,6 +174,5 @@ describe('/api/models/capabilities', () => {
       expect(response.status).toBe(500);
       expect(data.error).toBe('Failed to fetch model capabilities');
       expect(data.message).toBe('Service unavailable');
-    });
-  });
-});
+
+

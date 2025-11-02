@@ -25,7 +25,6 @@ describe('Layout System Components', () => {
       const container = screen.getByTestId('grid-container');
       expect(container).toBeInTheDocument();
       expect(container).toHaveClass('grid');
-    });
 
     it('should apply custom columns and rows', () => {
       render(
@@ -42,8 +41,7 @@ describe('Layout System Components', () => {
       expect(container).toHaveStyle({
         gridTemplateColumns: 'repeat(3, 1fr)',
         gridTemplateRows: 'repeat(2, auto)'
-      });
-    });
+
 
     it('should apply gap spacing', () => {
       render(
@@ -54,7 +52,6 @@ describe('Layout System Components', () => {
 
       const container = screen.getByTestId('gap-grid');
       expect(container).toHaveStyle({ gap: '1rem' });
-    });
 
     it('should support grid areas', () => {
       const areas = [
@@ -72,8 +69,7 @@ describe('Layout System Components', () => {
       const container = screen.getByTestId('areas-grid');
       expect(container).toHaveStyle({
         gridTemplateAreas: '"header header" "sidebar content" "footer footer"'
-      });
-    });
+
 
     it('should handle responsive grid behavior', () => {
       render(
@@ -84,7 +80,6 @@ describe('Layout System Components', () => {
 
       const container = screen.getByTestId('responsive-grid');
       expect(container).toHaveClass('responsive-grid');
-    });
 
     it('should support numeric column specification', () => {
       render(
@@ -96,9 +91,8 @@ describe('Layout System Components', () => {
       const container = screen.getByTestId('numeric-grid');
       expect(container).toHaveStyle({
         gridTemplateColumns: 'repeat(4, 1fr)'
-      });
-    });
-  });
+
+
 
   describe('FlexContainer', () => {
     it('should render with default flex properties', () => {
@@ -112,7 +106,6 @@ describe('Layout System Components', () => {
       const container = screen.getByTestId('flex-container');
       expect(container).toBeInTheDocument();
       expect(container).toHaveClass('flex');
-    });
 
     it('should apply flex direction', () => {
       render(
@@ -123,7 +116,6 @@ describe('Layout System Components', () => {
 
       const container = screen.getByTestId('column-flex');
       expect(container).toHaveClass('flex-col');
-    });
 
     it('should apply alignment properties', () => {
       render(
@@ -139,7 +131,6 @@ describe('Layout System Components', () => {
       const container = screen.getByTestId('aligned-flex');
       expect(container).toHaveClass('items-center');
       expect(container).toHaveClass('justify-between');
-    });
 
     it('should support flex wrap', () => {
       render(
@@ -150,7 +141,6 @@ describe('Layout System Components', () => {
 
       const container = screen.getByTestId('wrap-flex');
       expect(container).toHaveClass('flex-wrap');
-    });
 
     it('should apply gap spacing', () => {
       render(
@@ -161,7 +151,6 @@ describe('Layout System Components', () => {
 
       const container = screen.getByTestId('gap-flex');
       expect(container).toHaveStyle({ gap: '0.5rem' });
-    });
 
     it('should handle all direction variants', () => {
       const directions = ['row', 'column', 'row-reverse', 'column-reverse'] as const;
@@ -181,9 +170,8 @@ describe('Layout System Components', () => {
         
         expect(container).toHaveClass(expectedClass);
         unmount();
-      });
-    });
-  });
+
+
 
   describe('ResponsiveContainer', () => {
     it('should render with container query support', () => {
@@ -196,7 +184,6 @@ describe('Layout System Components', () => {
       const container = screen.getByTestId('responsive-container');
       expect(container).toBeInTheDocument();
       expect(container).toHaveClass('container-responsive');
-    });
 
     it('should apply custom breakpoints', () => {
       render(
@@ -215,8 +202,7 @@ describe('Layout System Components', () => {
         '--breakpoint-sm': '640px',
         '--breakpoint-md': '768px',
         '--breakpoint-lg': '1024px'
-      });
-    });
+
 
     it('should support container name for queries', () => {
       render(
@@ -232,8 +218,7 @@ describe('Layout System Components', () => {
       const container = screen.getByTestId('named-container');
       expect(container).toHaveStyle({
         containerName: 'sidebar'
-      });
-    });
+
 
     it('should handle container type specification', () => {
       render(
@@ -248,9 +233,8 @@ describe('Layout System Components', () => {
       const container = screen.getByTestId('typed-container');
       expect(container).toHaveStyle({
         containerType: 'inline-size'
-      });
-    });
-  });
+
+
 
   describe('Layout Integration', () => {
     it('should work together in complex layouts', () => {
@@ -276,7 +260,6 @@ describe('Layout System Components', () => {
       
       const flexContainers = layout.querySelectorAll('.flex');
       expect(flexContainers).toHaveLength(2);
-    });
 
     it('should maintain accessibility with proper semantic structure', () => {
       render(
@@ -298,8 +281,7 @@ describe('Layout System Components', () => {
       
       const article = screen.getByRole('article');
       expect(article).toBeInTheDocument();
-    });
-  });
+
 
   describe('Performance Considerations', () => {
     it('should not cause unnecessary re-renders', () => {
@@ -326,7 +308,6 @@ describe('Layout System Components', () => {
       );
 
       expect(renderSpy).toHaveBeenCalledTimes(2); // React will re-render but that's expected
-    });
 
     it('should handle large numbers of children efficiently', () => {
       const manyChildren = Array.from({ length: 100 }, (_, i) => (
@@ -349,6 +330,5 @@ describe('Layout System Components', () => {
       
       const container = screen.getByTestId('many-children');
       expect(container.children).toHaveLength(100);
-    });
-  });
-});
+
+

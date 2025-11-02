@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -43,7 +44,6 @@ const mockLocalStorage = {
 
 Object.defineProperty(window, 'localStorage', {
   value: mockLocalStorage,
-});
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -58,7 +58,6 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
-});
 
 // Test navigation items
 const testNavigationItems: NavigationItem[] = [
@@ -122,8 +121,7 @@ describe('SidebarNavigation', () => {
       writable: true,
       configurable: true,
       value: 1024,
-    });
-  });
+
 
   describe('Basic Rendering', () => {
     it('renders navigation items correctly', () => {
@@ -133,7 +131,6 @@ describe('SidebarNavigation', () => {
       expect(screen.getByText('Agents')).toBeInTheDocument();
       expect(screen.getByText('Settings')).toBeInTheDocument();
       expect(screen.getByText('External Link')).toBeInTheDocument();
-    });
 
     it('applies correct ARIA attributes', () => {
       renderSidebarNavigation();
@@ -141,22 +138,19 @@ describe('SidebarNavigation', () => {
       const nav = screen.getByRole('navigation');
       expect(nav).toHaveAttribute('aria-label', 'Main navigation');
       expect(nav).toHaveAttribute('tabIndex', '-1');
-    });
 
     it('shows active state for current route', () => {
       renderSidebarNavigation();
 
       const dashboardButton = screen.getByRole('button', { name: /dashboard/i });
       expect(dashboardButton).toHaveAttribute('aria-current', 'page');
-    });
 
     it('shows disabled state for disabled items', () => {
       renderSidebarNavigation();
 
       const settingsButton = screen.getByRole('button', { name: /settings/i });
       expect(settingsButton).toBeDisabled();
-    });
-  });
+
 
   describe('Navigation Interaction', () => {
     it('navigates to route when clicking navigation item', async () => {
@@ -179,7 +173,6 @@ describe('SidebarNavigation', () => {
       await user.click(agentListButton);
 
       expect(mockPush).toHaveBeenCalledWith('/agents');
-    });
 
     it('opens external links in new tab', async () => {
       const user = userEvent.setup();
@@ -196,7 +189,6 @@ describe('SidebarNavigation', () => {
         '_blank',
         'noopener,noreferrer'
       );
-    });
 
     it('expands and collapses parent items', async () => {
       const user = userEvent.setup();
@@ -218,7 +210,6 @@ describe('SidebarNavigation', () => {
       await user.click(agentsButton);
       expect(agentsButton).toHaveAttribute('aria-expanded', 'false');
       expect(screen.queryByText('Agent List')).not.toBeInTheDocument();
-    });
 
     it('calls onItemClick callback when provided', async () => {
       const user = userEvent.setup();
@@ -235,8 +226,7 @@ describe('SidebarNavigation', () => {
           label: 'Agents',
         })
       );
-    });
-  });
+
 
   describe('Keyboard Navigation', () => {
     it('navigates with arrow keys', async () => {
@@ -259,7 +249,6 @@ describe('SidebarNavigation', () => {
       // Arrow up should go back
       await user.keyboard('{ArrowUp}');
       expect(firstButton).toHaveFocus();
-    });
 
     it('expands items with right arrow', async () => {
       const user = userEvent.setup();
@@ -272,7 +261,6 @@ describe('SidebarNavigation', () => {
       await user.keyboard('{ArrowRight}');
       expect(agentsButton).toHaveAttribute('aria-expanded', 'true');
       expect(screen.getByText('Agent List')).toBeInTheDocument();
-    });
 
     it('collapses items with left arrow', async () => {
       const user = userEvent.setup();
@@ -289,7 +277,6 @@ describe('SidebarNavigation', () => {
       // Left arrow should collapse
       await user.keyboard('{ArrowLeft}');
       expect(agentsButton).toHaveAttribute('aria-expanded', 'false');
-    });
 
     it('activates items with Enter and Space', async () => {
       const user = userEvent.setup();
@@ -305,7 +292,6 @@ describe('SidebarNavigation', () => {
       // Space should collapse
       await user.keyboard(' ');
       expect(agentsButton).toHaveAttribute('aria-expanded', 'false');
-    });
 
     it('jumps to first/last items with Home/End', async () => {
       const user = userEvent.setup();
@@ -327,8 +313,7 @@ describe('SidebarNavigation', () => {
       await user.keyboard('{End}');
       const lastButton = screen.getByRole('button', { name: /external link/i });
       expect(lastButton).toHaveFocus();
-    });
-  });
+
 
   describe('Mobile Behavior', () => {
     it('closes sidebar when navigating on mobile', async () => {
@@ -339,7 +324,6 @@ describe('SidebarNavigation', () => {
         writable: true,
         configurable: true,
         value: 600,
-      });
 
       renderSidebarNavigation();
 
@@ -351,7 +335,6 @@ describe('SidebarNavigation', () => {
         // We can't easily test the closeSidebar call without more complex mocking
         // but we can verify the navigation still works
         expect(screen.getByText('Dashboard')).toBeInTheDocument();
-      });
 
       // Expand agents and click on agent list
       const agentsButton = screen.getByRole('button', { name: /^agents$/i });
@@ -361,8 +344,7 @@ describe('SidebarNavigation', () => {
       await user.click(agentListButton);
 
       expect(mockPush).toHaveBeenCalledWith('/agents');
-    });
-  });
+
 
   describe('Auto-expansion', () => {
     it('auto-expands parent of active item', () => {
@@ -374,8 +356,7 @@ describe('SidebarNavigation', () => {
       const agentsButton = screen.getByRole('button', { name: /^agents$/i });
       expect(agentsButton).toHaveAttribute('aria-expanded', 'true');
       expect(screen.getByText('Agent List')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Collapsed State', () => {
     it('shows tooltips when collapsed', async () => {
@@ -392,8 +373,7 @@ describe('SidebarNavigation', () => {
       // This would be set by the isCollapsed prop from AppShell context
       // For now, we'll just verify the button exists
       expect(dashboardButton).toBeInTheDocument();
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('has proper ARIA structure', () => {
@@ -408,14 +388,12 @@ describe('SidebarNavigation', () => {
       // Check that expandable items have proper ARIA attributes
       const agentsButton = screen.getByRole('button', { name: /^agents$/i });
       expect(agentsButton).toHaveAttribute('aria-expanded', 'false');
-    });
 
     it('supports custom aria-label', () => {
       renderSidebarNavigation({ ariaLabel: 'Custom navigation' });
 
       const nav = screen.getByRole('navigation');
       expect(nav).toHaveAttribute('aria-label', 'Custom navigation');
-    });
 
     it('sets aria-level for nested items', async () => {
       const user = userEvent.setup();
@@ -427,15 +405,13 @@ describe('SidebarNavigation', () => {
 
       const agentListButton = screen.getByRole('button', { name: /agent list/i });
       expect(agentListButton).toHaveAttribute('aria-level', '2');
-    });
 
     it('sets aria-current for active items', () => {
       renderSidebarNavigation();
 
       const dashboardButton = screen.getByRole('button', { name: /dashboard/i });
       expect(dashboardButton).toHaveAttribute('aria-current', 'page');
-    });
-  });
+
 
   describe('Focus Management', () => {
     it('auto-focuses navigation when requested', () => {
@@ -443,7 +419,6 @@ describe('SidebarNavigation', () => {
 
       const nav = screen.getByRole('navigation');
       expect(nav).toHaveFocus();
-    });
 
     it('maintains focus when expanding/collapsing items', async () => {
       const user = userEvent.setup();
@@ -457,6 +432,5 @@ describe('SidebarNavigation', () => {
 
       await user.click(agentsButton);
       expect(agentsButton).toHaveFocus();
-    });
-  });
-});
+
+

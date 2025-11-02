@@ -11,7 +11,7 @@ export async function getCurrentDate(): Promise<string> {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-  });
+
 }
 export async function getCurrentTime(location?: string): Promise<string> {
   const originalLocation = location?.trim();
@@ -45,7 +45,7 @@ export async function getCurrentTime(location?: string): Promise<string> {
         const formattedTime = timeInLocation.toLocaleTimeString(undefined, {
           hour: 'numeric',
           minute: '2-digit',
-        });
+
         const successMsg = `The current time in ${data.timeZone.replace(/_/g, ' ')} is ${formattedTime}.`;
         logs.push(`getCurrentTime: TimeAPI.io Success for "${timeApiLocation}": ${successMsg}`);
         console.log(logs.join('\n'));
@@ -82,7 +82,7 @@ export async function getCurrentTime(location?: string): Promise<string> {
         const formattedTime = timeInLocation.toLocaleTimeString(undefined, {
           hour: 'numeric',
           minute: '2-digit',
-        });
+
         const successMsg = `The current time in ${data.timezone.replace(/_/g, ' ')} is ${formattedTime} (obtained via backup source WorldTimeAPI).`;
         logs.push(`getCurrentTime: WorldTimeAPI Success for "${originalLocation}": ${successMsg}`);
         console.log(logs.join('\n'));
@@ -121,7 +121,7 @@ export async function getCurrentTime(location?: string): Promise<string> {
             const formattedTime = timeInLocation.toLocaleTimeString(undefined, {
               hour: 'numeric',
               minute: '2-digit',
-            });
+
             const successMsg = `The current time in ${data.timezone.replace(/_/g, ' ')} is ${formattedTime} (obtained using simplified location "${cityPart}" with WorldTimeAPI).`;
             logs.push(`getCurrentTime: WorldTimeAPI Success for simplified city "${cityPart}": ${successMsg}`);
             console.log(logs.join('\n'));
@@ -163,7 +163,7 @@ export async function getCurrentTime(location?: string): Promise<string> {
                     const formattedTime = timeInLocation.toLocaleTimeString(undefined, {
                         hour: 'numeric',
                         minute: '2-digit',
-                    });
+
                     const successMsg = `The current time in ${data.timezone.replace(/_/g, ' ')} is ${formattedTime} (obtained using suffix-removed location "${locationWithoutSuffix}" with WorldTimeAPI).`;
                     logs.push(`getCurrentTime: WorldTimeAPI Success for suffix-removed "${locationWithoutSuffix}": ${successMsg}`);
                     console.log(logs.join('\n'));
@@ -183,7 +183,7 @@ export async function getCurrentTime(location?: string): Promise<string> {
     const serverTime = new Date().toLocaleTimeString(undefined, {
       hour: 'numeric',
       minute: '2-digit',
-    });
+
     const msg = `The current time (for me) is ${serverTime}. If you'd like the time for a specific place, please tell me the location.`;
     logs.push(`getCurrentTime: No location provided, returning server time: ${msg}`);
     console.log(logs.join('\n'));
@@ -321,7 +321,7 @@ export async function mockQueryBookDatabase(bookTitle?: string): Promise<string>
     return JSON.stringify({
       error: "Missing book title",
       message: "I need a book title to look up details. Which book are you interested in?"
-    });
+
   }
   await new Promise(resolve => setTimeout(resolve, 500)); 
   if (bookTitle.toLowerCase().includes("dune")) {
@@ -331,7 +331,7 @@ export async function mockQueryBookDatabase(bookTitle?: string): Promise<string>
       genre: "Science Fiction",
       summary: "Dune is a 1965 science fiction novel by American author Frank Herbert, originally published as two separate serials in Analog magazine. It tied with Roger Zelazny's This Immortal for the Hugo Award in 1966 and it won the inaugural Nebula Award for Best Novel.",
       publishedYear: 1965
-    });
+
   } else if (bookTitle.toLowerCase().includes("gatsby")) {
      return JSON.stringify({
       title: bookTitle,
@@ -339,13 +339,13 @@ export async function mockQueryBookDatabase(bookTitle?: string): Promise<string>
       genre: "Novel",
       summary: "The Great Gatsby is a 1925 novel by American writer F. Scott Fitzgerald. Set in the Jazz Age on Long Island, near New York City, the novel depicts first-person narrator Nick Carraway's interactions with mysterious millionaire Jay Gatsby and Gatsby's obsession to reunite with his former lover, Daisy Buchanan.",
       publishedYear: 1925
-    });
+
   } else {
      return JSON.stringify({
       error: "Book not found",
       title: bookTitle,
       message: `Sorry, I couldn't find detailed information for the item titled "${bookTitle}" in the database.`
-    });
+
   }
 }
 // Mocked Gmail Tools
@@ -357,7 +357,7 @@ export async function mockCheckGmailUnread(): Promise<string> {
       { from: "Alice Wonderland", subject: "Tea Party Invitation", snippet: "You're invited to a mad tea party!" },
       { from: "Hacker News Digest", subject: "Top Stories for Today", snippet: "Check out the latest in tech..." }
     ]
-  });
+
 }
 export async function mockComposeGmail(input: {
   gmailRecipient?: string;
@@ -373,12 +373,12 @@ export async function mockComposeGmail(input: {
     return JSON.stringify({
       error: "Missing email details",
       message: `I'm missing some details to compose the email. I still need the ${missing.join(', ')}. Could you provide them?`
-    });
+
   }
   return JSON.stringify({
     success: true,
     message: `Okay, I've "sent" an email to ${input.gmailRecipient} with the subject "${input.gmailSubject}".`
-  });
+
 }
 // Note: Enhanced AI Karen backend integration functions have been moved to dedicated services
 // These functions are now available through:
@@ -407,14 +407,14 @@ export async function executeKarenPlugin(
         ? `Successfully executed ${pluginName} plugin.`
         : `Failed to execute ${pluginName} plugin: ${result.error}`,
       timestamp: result.timestamp
-    });
+
   } catch (error) {
     return JSON.stringify({
       success: false,
       plugin: pluginName,
       error: error instanceof Error ? error.message : 'Unknown error',
       message: `I encountered an error while trying to execute the ${pluginName} plugin.`
-    });
+
   }
 }
 export async function queryKarenMemory(
@@ -440,7 +440,7 @@ export async function queryKarenMemory(
       similarityThreshold: options.similarityThreshold || 0.7,
       tags: options.tags,
       timeRange: options.timeRange,
-    });
+
     if (memories.length > 0) {
       const formattedMemories = memories.map(mem => ({
         content: mem.content,
@@ -454,7 +454,7 @@ export async function queryKarenMemory(
         found: memories.length,
         memories: formattedMemories,
         message: `Found ${memories.length} relevant memories for your query.`
-      });
+
     } else {
       return JSON.stringify({
         success: true,
@@ -462,7 +462,7 @@ export async function queryKarenMemory(
         found: 0,
         memories: [],
         message: "I couldn't find any relevant memories for that query."
-      });
+
     }
   } catch (error) {
     return JSON.stringify({
@@ -470,7 +470,7 @@ export async function queryKarenMemory(
       query: queryText,
       error: error instanceof Error ? error.message : 'Unknown error',
       message: "I had trouble searching through my memories right now."
-    });
+
   }
 }
 export async function storeKarenMemory(
@@ -492,7 +492,7 @@ export async function storeKarenMemory(
       metadata: options.metadata,
       userId,
       sessionId,
-    });
+
     if (memoryId) {
       return JSON.stringify({
         success: true,
@@ -500,19 +500,19 @@ export async function storeKarenMemory(
         content: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
         tags: options.tags || [],
         message: "I've stored that information in my memory for future reference."
-      });
+
     } else {
       return JSON.stringify({
         success: false,
         message: "I had trouble storing that information in my memory."
-      });
+
     }
   } catch (error) {
     return JSON.stringify({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       message: "I encountered an issue while trying to store that information."
-    });
+
   }
 }
 export async function getKarenSystemStatus(): Promise<string> {
@@ -538,13 +538,13 @@ export async function getKarenSystemStatus(): Promise<string> {
         response_time_avg: metrics.response_time_avg
       },
       message: `System is ${health.status}. CPU: ${metrics.cpu_usage}%, Memory: ${metrics.memory_usage}%, Uptime: ${metrics.uptime_hours}h`
-    });
+
   } catch (error) {
     return JSON.stringify({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       message: "I'm having trouble checking my system status right now."
-    });
+
   }
 }
 export async function getKarenAnalytics(timeRange: string = '24h'): Promise<string> {
@@ -563,13 +563,13 @@ export async function getKarenAnalytics(timeRange: string = '24h'): Promise<stri
         peak_hours: analytics.peak_hours
       },
       message: `In the last ${timeRange}: ${analytics.total_interactions} interactions from ${analytics.unique_users} users. Satisfaction: ${analytics.user_satisfaction}/5.0`
-    });
+
   } catch (error) {
     return JSON.stringify({
       success: false,
       timeRange,
       error: error instanceof Error ? error.message : 'Unknown error',
       message: "I couldn't retrieve analytics data right now."
-    });
+
   }
 }

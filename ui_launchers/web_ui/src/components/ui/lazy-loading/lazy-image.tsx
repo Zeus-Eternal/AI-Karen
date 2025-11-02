@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -20,13 +20,13 @@ interface LazyImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>,
 
 const DefaultPlaceholder: React.FC<{ className?: string }> = ({ className }) => (
   <div className={`flex items-center justify-center bg-muted ${className}`}>
-    <ImageIcon className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
+    <ImageIcon className="h-8 w-8 text-muted-foreground " />
   </div>
 );
 
 const DefaultErrorFallback: React.FC<{ className?: string }> = ({ className }) => (
   <div className={`flex items-center justify-center bg-muted ${className}`}>
-    <AlertCircle className="h-8 w-8 text-destructive sm:w-auto md:w-full" />
+    <AlertCircle className="h-8 w-8 text-destructive " />
   </div>
 );
 
@@ -117,7 +117,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
           )}
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin sm:w-auto md:w-full" />
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin " />
             </div>
           )}
         </motion.div>
@@ -177,8 +177,7 @@ export function useImagePreloader() {
           reject(new Error(`Failed to load image: ${url}`));
         };
         img.src = url;
-      });
-    });
+
 
     return Promise.allSettled(promises);
   }, []);

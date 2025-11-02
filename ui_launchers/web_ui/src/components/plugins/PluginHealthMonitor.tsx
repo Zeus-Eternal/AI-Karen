@@ -1,5 +1,6 @@
+
+"use client";
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
 import { PluginInfo } from '@/types/plugins';
 /**
  * Plugin Health Monitor Component
@@ -19,40 +19,8 @@ import { PluginInfo } from '@/types/plugins';
  * Based on requirements: 5.4, 10.3
  */
 
-"use client";
 
-
-
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle, 
-  RefreshCw, 
-  Zap,
-  Clock,
-  TrendingUp,
-  TrendingDown,
-  Pause,
-  Play,
-  RotateCcw,
-  Settings,
-  Bell,
-  BellOff,
-  Eye,
-  EyeOff,
-  Filter,
-  Download,
-  Calendar,
-  Target,
-  Gauge,
-  Shield,
-  AlertCircle,
-  Info,
-  Cpu,
-  MemoryStick,
-  Network,
-  HardDrive,
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 
 
@@ -61,33 +29,15 @@ import { PluginInfo } from '@/types/plugins';
 
 
 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
+import { } from '@/components/ui/select';
 
 
 
 
 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { } from '@/components/ui/tooltip';
 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-
-
-
+import { } from '@/components/ui/dialog';
 interface HealthCheck {
   id: string;
   name: string;
@@ -399,32 +349,32 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'passing':
-        return <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle className="w-4 h-4 text-green-600 " />;
       case 'warning':
-        return <AlertTriangle className="w-4 h-4 text-yellow-600 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="w-4 h-4 text-yellow-600 " />;
       case 'failing':
-        return <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />;
+        return <XCircle className="w-4 h-4 text-red-600 " />;
       default:
-        return <AlertCircle className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />;
+        return <AlertCircle className="w-4 h-4 text-gray-400 " />;
     }
   };
 
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'check_passed':
-        return <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle className="w-4 h-4 text-green-600 " />;
       case 'check_failed':
-        return <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />;
+        return <XCircle className="w-4 h-4 text-red-600 " />;
       case 'recovery_attempted':
-        return <RefreshCw className="w-4 h-4 text-blue-600 sm:w-auto md:w-full" />;
+        return <RefreshCw className="w-4 h-4 text-blue-600 " />;
       case 'recovery_succeeded':
-        return <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle className="w-4 h-4 text-green-600 " />;
       case 'recovery_failed':
-        return <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />;
+        return <XCircle className="w-4 h-4 text-red-600 " />;
       case 'alert_triggered':
-        return <Bell className="w-4 h-4 text-orange-600 sm:w-auto md:w-full" />;
+        return <Bell className="w-4 h-4 text-orange-600 " />;
       default:
-        return <Info className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />;
+        return <Info className="w-4 h-4 text-gray-400 " />;
     }
   };
 
@@ -453,21 +403,20 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
           
           <Separator orientation="vertical" className="h-6" />
           
-          <button
+          <Button
             variant="outline"
             size="sm"
-            onClick={() = aria-label="Button"> setNotifications(!notifications)}
+            onClick={() => setNotifications(!notifications)}
           >
-            {notifications ? <Bell className="w-4 h-4 sm:w-auto md:w-full" /> : <BellOff className="w-4 h-4 sm:w-auto md:w-full" />}
+            {notifications ? <Bell className="w-4 h-4 " /> : <BellOff className="w-4 h-4 " />}
           </Button>
           
-          <button
+          <Button
             variant="outline"
             size="sm"
-            onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
+            onClick={() => setShowDetails(!showDetails)}
           >
-            {showDetails ? <EyeOff className="w-4 h-4 sm:w-auto md:w-full" /> : <Eye className="w-4 h-4 sm:w-auto md:w-full" />}
-            Details
+            {showDetails ? <EyeOff className="w-4 h-4 " /> : <Eye className="w-4 h-4 " />}
           </Button>
         </div>
       </div>
@@ -483,11 +432,11 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                 'bg-red-100 text-red-600'
               }`}>
                 {overallHealth === 'healthy' ? (
-                  <CheckCircle className="w-6 h-6 sm:w-auto md:w-full" />
+                  <CheckCircle className="w-6 h-6 " />
                 ) : overallHealth === 'warning' ? (
-                  <AlertTriangle className="w-6 h-6 sm:w-auto md:w-full" />
+                  <AlertTriangle className="w-6 h-6 " />
                 ) : (
-                  <XCircle className="w-6 h-6 sm:w-auto md:w-full" />
+                  <XCircle className="w-6 h-6 " />
                 )}
               </div>
               <div>
@@ -506,8 +455,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
               
               {autoRecovery && (
                 <Badge variant="outline">
-                  <Shield className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
-                  Auto Recovery
+                  <Shield className="w-3 h-3 mr-1 " />
                 </Badge>
               )}
             </div>
@@ -587,7 +535,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Health Events</h3>
             <select value={selectedTimeRange} onValueChange={(value: any) = aria-label="Select option"> setSelectedTimeRange(value)}>
-              <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-32 " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
@@ -645,7 +593,6 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
             <div>
               <h3 className="text-lg font-semibold">Recovery Actions</h3>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Automated and manual recovery actions for health issues
               </p>
             </div>
             
@@ -656,7 +603,6 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                 onCheckedChange={setAutoRecovery}
               />
               <Label htmlFor="auto-recovery" className="text-sm md:text-base lg:text-lg">
-                Auto Recovery
               </Label>
             </div>
           </div>
@@ -671,8 +617,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                         <h4 className="font-medium">{action.name}</h4>
                         {action.automatic && (
                           <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-                            <Zap className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
-                            Auto
+                            <Zap className="w-3 h-3 mr-1 " />
                           </Badge>
                         )}
                         <Badge 
@@ -710,16 +655,16 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                         onCheckedChange={() => handleToggleRecoveryAction(action.id)}
                         className="scale-75"
                       />
-                      <button
+                      <Button
                         variant="outline"
                         size="sm"
-                        onClick={() = aria-label="Button"> handleRunRecoveryAction(action.id)}
+                        onClick={() => handleRunRecoveryAction(action.id)}
                         disabled={!action.enabled || isRunningRecovery}
                       >
                         {isRunningRecovery ? (
-                          <RefreshCw className="w-3 h-3 animate-spin sm:w-auto md:w-full" />
+                          <RefreshCw className="w-3 h-3 animate-spin " />
                         ) : (
-                          <Play className="w-3 h-3 sm:w-auto md:w-full" />
+                          <Play className="w-3 h-3 " />
                         )}
                       </Button>
                     </div>
@@ -735,7 +680,6 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
             <CardHeader>
               <CardTitle>Monitoring Settings</CardTitle>
               <CardDescription>
-                Configure health monitoring and alerting preferences
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -743,7 +687,6 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                 <div>
                   <Label htmlFor="enable-monitoring">Enable Health Monitoring</Label>
                   <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                    Continuously monitor plugin health status
                   </p>
                 </div>
                 <Switch
@@ -759,7 +702,6 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                 <div>
                   <Label htmlFor="enable-notifications">Enable Notifications</Label>
                   <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                    Receive notifications for health issues
                   </p>
                 </div>
                 <Switch
@@ -775,7 +717,6 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                 <div>
                   <Label htmlFor="enable-auto-recovery">Enable Auto Recovery</Label>
                   <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                    Automatically attempt to recover from failures
                   </p>
                 </div>
                 <Switch
@@ -791,7 +732,6 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
             <CardHeader>
               <CardTitle>Alert Thresholds</CardTitle>
               <CardDescription>
-                Configure when to trigger alerts for different metrics
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

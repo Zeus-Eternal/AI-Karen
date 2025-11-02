@@ -22,7 +22,7 @@ export function TextSelectionDemo() {
     },
     onTextCopied: (text) => {
     },
-  });
+
   const handleSelectAll = () => {
     if (contentRef.current) {
       selectAllInElement(contentRef.current);
@@ -32,7 +32,7 @@ export function TextSelectionDemo() {
     copyToClipboard('This is custom text copied programmatically!');
   };
   return (
-    <div className="modern-card max-w-2xl mx-auto sm:w-auto md:w-full">
+    <div className="modern-card max-w-2xl mx-auto ">
       <div className="modern-card-header">
         <h2 className="text-2xl font-semibold">Text Selection Demo</h2>
         <p className="text-sm text-muted-foreground mt-2 md:text-base lg:text-lg">
@@ -60,42 +60,38 @@ export function TextSelectionDemo() {
         </div>
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2">
-          <button
+          <Button
             onClick={copySelection}
             disabled={!hasSelection}
             variant="outline"
             size="sm"
             className="text-selectable"
-           aria-label="Button">
-            <Copy className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Copy Selection
+           >
+            <Copy className="h-4 w-4 mr-2 " />
           </Button>
-          <button
+          <Button
             onClick={handleSelectAll}
             variant="outline"
             size="sm"
             className="text-selectable"
-           aria-label="Button">
-            <MousePointer className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Select All Content
+           >
+            <MousePointer className="h-4 w-4 mr-2 " />
           </Button>
-          <button
+          <Button
             onClick={clearSelection}
             disabled={!hasSelection}
             variant="outline"
             size="sm"
             className="text-selectable"
-           aria-label="Button">
-            <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Clear Selection
+           >
+            <Trash2 className="h-4 w-4 mr-2 " />
           </Button>
-          <button
+          <Button
             onClick={handleCopyCustomText}
             variant="outline"
             size="sm"
             className="text-selectable"
-           aria-label="Button">
-            Copy Custom Text
+           >
           </Button>
         </div>
         {/* Test Content */}
@@ -136,15 +132,12 @@ greetUser(user);`}
           <div className="p-4 border rounded-lg sm:p-4 md:p-6">
             <h3 className="font-semibold mb-2">Interactive Elements</h3>
             <div className="space-y-2">
-              <button variant="outline" className="text-selectable" aria-label="Button">
-                This button text is selectable
+              <Button variant="outline" className="text-selectable" >
               </Button>
               <div className="flex gap-2">
                 <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm text-selectable md:text-base lg:text-lg">
-                  Tag 1
                 </span>
                 <span className="px-3 py-1 bg-secondary/10 text-secondary rounded-full text-sm text-selectable md:text-base lg:text-lg">
-                  Tag 2
                 </span>
               </div>
             </div>
@@ -155,7 +148,6 @@ greetUser(user);`}
                dolor sit amet, consectetur adipiscing elit. Sed do eiusmod 
               tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
               quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
-              Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
               fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in 
               culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde 
               omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem 

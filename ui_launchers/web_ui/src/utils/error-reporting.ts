@@ -84,7 +84,7 @@ class ErrorReportingService {
         message: args.join(' '),
         level: 'error',
         data: { arguments: args },
-      });
+
       originalError.apply(console, args);
     };
     const originalWarn = console.warn;
@@ -94,7 +94,7 @@ class ErrorReportingService {
         message: args.join(' '),
         level: 'warning',
         data: { arguments: args },
-      });
+
       originalWarn.apply(console, args);
     };
   }
@@ -116,7 +116,7 @@ class ErrorReportingService {
             duration,
             method: args[1]?.method || 'GET',
           },
-        });
+
         return response;
       } catch (error) {
         const duration = Date.now() - startTime;
@@ -130,7 +130,7 @@ class ErrorReportingService {
             duration,
             method: args[1]?.method || 'GET',
           },
-        });
+
         throw error;
       }
     };
@@ -157,9 +157,9 @@ class ErrorReportingService {
               duration,
               method: data.method,
             },
-          });
+
         }
-      });
+
       xhr.addEventListener('error', () => {
         if (data) {
           const duration = Date.now() - data.startTime;
@@ -173,9 +173,9 @@ class ErrorReportingService {
               duration,
               method: data.method,
             },
-          });
+
         }
-      });
+
       return originalXHRSend.call(this, body);
     };
   }
@@ -196,8 +196,8 @@ class ErrorReportingService {
           id,
           innerText: target.textContent?.slice(0, 100),
         },
-      });
-    });
+
+
     // Capture form submissions
     document.addEventListener('submit', (event) => {
       const target = event.target as HTMLFormElement;
@@ -210,8 +210,8 @@ class ErrorReportingService {
           method: target.method,
           formId: target.id,
         },
-      });
-    });
+
+
   }
   private captureNavigationEvents() {
     // Capture page navigation
@@ -225,8 +225,8 @@ class ErrorReportingService {
           search: window.location.search,
           hash: window.location.hash,
         },
-      });
-    });
+
+
     // Capture initial page load
     this.addBreadcrumb({
       category: 'navigation',
@@ -238,7 +238,7 @@ class ErrorReportingService {
         hash: window.location.hash,
         referrer: document.referrer,
       },
-    });
+
   }
   public addBreadcrumb(breadcrumb: Omit<ErrorBreadcrumb, 'timestamp'>) {
     if (!this.config.enabled) return;
@@ -358,7 +358,7 @@ class ErrorReportingService {
         'Authorization': `Bearer ${this.config.apiKey}`,
       },
       body: JSON.stringify(report),
-    });
+
     if (!response.ok) {
       throw new Error(`Failed to send error report: ${response.status}`);
     }
@@ -376,7 +376,7 @@ class ErrorReportingService {
           severity: report.severity,
           retry_count: report.retryCount,
         },
-      });
+
     }
     // Send to other analytics services as needed
   }
@@ -423,7 +423,7 @@ export const errorReportingService = new ErrorReportingService({
     }
     return report;
   },
-});
+
 // Initialize error reporting
 if (typeof window !== 'undefined') {
   // Capture unhandled promise rejections
@@ -433,7 +433,7 @@ if (typeof window !== 'undefined') {
       undefined,
       { section: 'global', category: 'promise' }
     );
-  });
+
   // Capture global errors
   window.addEventListener('error', (event) => {
     errorReportingService.reportError(
@@ -447,6 +447,6 @@ if (typeof window !== 'undefined') {
         colno: event.colno,
       }
     );
-  });
+
 }
 export default errorReportingService;

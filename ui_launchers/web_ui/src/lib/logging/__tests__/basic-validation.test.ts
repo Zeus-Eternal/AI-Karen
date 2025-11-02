@@ -17,7 +17,6 @@ const mockSessionStorage = {
 
 Object.defineProperty(window, 'sessionStorage', {
   value: mockSessionStorage
-});
 
 // Mock performance API
 Object.defineProperty(global, 'performance', {
@@ -29,12 +28,10 @@ Object.defineProperty(global, 'performance', {
       jsHeapSizeLimit: 4000000
     }
   }
-});
 
 describe('Logging System Basic Validation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('CorrelationTracker', () => {
     it('should generate correlation IDs', () => {
@@ -44,7 +41,6 @@ describe('Logging System Basic Validation', () => {
       expect(id1).toMatch(/^corr_[a-f0-9-]+$/);
       expect(id2).toMatch(/^corr_[a-f0-9-]+$/);
       expect(id1).not.toBe(id2);
-    });
 
     it('should set and get correlation IDs', () => {
       const testId = 'test-correlation-id';
@@ -53,7 +49,6 @@ describe('Logging System Basic Validation', () => {
       const retrieved = correlationTracker.getCurrentCorrelationId();
       
       expect(retrieved).toBe(testId);
-    });
 
     it('should associate requests with correlation IDs', () => {
       const requestId = 'test-request-id';
@@ -63,8 +58,7 @@ describe('Logging System Basic Validation', () => {
       const retrieved = correlationTracker.getCorrelationForRequest(requestId);
       
       expect(retrieved).toBe(correlationId);
-    });
-  });
+
 
   describe('PerformanceTracker', () => {
     it('should track operation timing', () => {
@@ -76,7 +70,6 @@ describe('Logging System Basic Validation', () => {
       
       expect(metrics).toBeDefined();
       expect(metrics?.duration).toBeGreaterThanOrEqual(0);
-    });
 
     it('should track sync operations', () => {
       const operation = vi.fn(() => 'result');
@@ -89,7 +82,6 @@ describe('Logging System Basic Validation', () => {
       expect(result).toBe('result');
       expect(metrics.duration).toBeGreaterThanOrEqual(0);
       expect(operation).toHaveBeenCalled();
-    });
 
     it('should get performance statistics', () => {
       const stats = performanceTracker.getPerformanceStats();
@@ -98,26 +90,22 @@ describe('Logging System Basic Validation', () => {
       expect(stats).toHaveProperty('averageTime');
       expect(stats).toHaveProperty('minTime');
       expect(stats).toHaveProperty('maxTime');
-    });
-  });
+
 
   describe('ConnectivityLogger', () => {
     it('should create logger instance', () => {
       const logger = new ConnectivityLogger({
         enableConsoleLogging: false,
         enableRemoteLogging: false
-      });
-      
+
       expect(logger).toBeDefined();
       expect(logger.getConfig()).toHaveProperty('enableConsoleLogging', false);
-    });
 
     it('should log connectivity issues', () => {
       const logger = new ConnectivityLogger({
         enableConsoleLogging: false,
         enableRemoteLogging: false
-      });
-      
+
       // Should not throw
       expect(() => {
         logger.logConnectivity(
@@ -126,14 +114,12 @@ describe('Logging System Basic Validation', () => {
           { url: 'test', method: 'GET' }
         );
       }).not.toThrow();
-    });
 
     it('should log authentication attempts', () => {
       const logger = new ConnectivityLogger({
         enableConsoleLogging: false,
         enableRemoteLogging: false
-      });
-      
+
       // Should not throw
       expect(() => {
         logger.logAuthentication(
@@ -142,20 +128,17 @@ describe('Logging System Basic Validation', () => {
           { email: 'test@example.com', success: true }
         );
       }).not.toThrow();
-    });
 
     it('should update configuration', () => {
       const logger = new ConnectivityLogger({
         logLevel: 'debug'
-      });
-      
+
       expect(logger.getConfig().logLevel).toBe('debug');
       
       logger.updateConfig({ logLevel: 'error' });
       
       expect(logger.getConfig().logLevel).toBe('error');
-    });
-  });
+
 
   describe('Integration', () => {
     it('should work together for end-to-end logging', () => {
@@ -163,8 +146,7 @@ describe('Logging System Basic Validation', () => {
         enableConsoleLogging: false,
         enableRemoteLogging: false,
         enableCorrelationTracking: true
-      });
-      
+
       const correlationId = correlationTracker.generateCorrelationId();
       correlationTracker.setCorrelationId(correlationId);
       
@@ -185,6 +167,5 @@ describe('Logging System Basic Validation', () => {
       
       const currentCorrelationId = correlationTracker.getCurrentCorrelationId();
       expect(currentCorrelationId).toBe(correlationId);
-    });
-  });
-});
+
+

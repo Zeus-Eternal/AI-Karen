@@ -35,7 +35,7 @@ class UIDiagnostics {
         message: `Slow render detected for ${componentName}`,
         details: { duration: duration.toFixed(2), component: componentName },
         suggestion: 'Consider implementing virtualization or memoization'
-      });
+
     }
     
     return duration;
@@ -49,7 +49,7 @@ class UIDiagnostics {
         message: 'Large message count may impact performance',
         details: { messageCount, threshold: 50 },
         suggestion: 'Implement message virtualization using react-window'
-      });
+
     }
   }
 
@@ -75,7 +75,6 @@ class UIDiagnostics {
       if (style.visibility === 'hidden' || style.display === 'none') {
         keyboardAccessible = false;
       }
-    });
 
     if (!keyboardAccessible) {
       issues.push('Some focusable elements may not be keyboard accessible');
@@ -91,7 +90,6 @@ class UIDiagnostics {
       if (style.color === style.backgroundColor) {
         issues.push('Potential color contrast issue detected');
       }
-    });
 
     if (issues.length > 0) {
       this.addResult({
@@ -100,7 +98,7 @@ class UIDiagnostics {
         message: 'Accessibility issues detected',
         details: { issues },
         suggestion: 'Implement proper ARIA landmarks and test with screen readers'
-      });
+
     }
   }
 
@@ -148,7 +146,7 @@ class UIDiagnostics {
         message: 'Browser compatibility issues detected',
         details: { issues, userAgent: navigator.userAgent },
         suggestion: 'Consider polyfills or alternative implementations for unsupported features'
-      });
+
     }
   }
 
@@ -180,7 +178,7 @@ class UIDiagnostics {
         message: 'Potential security issues detected',
         details: { issues },
         suggestion: 'Use DOMPurify for HTML sanitization and avoid inline scripts'
-      });
+
     }
   }
 
@@ -198,7 +196,7 @@ class UIDiagnostics {
           message: 'High memory usage detected',
           details: { usedMB: usedMB.toFixed(2), totalMB: totalMB.toFixed(2) },
           suggestion: 'Check for memory leaks and optimize component lifecycle'
-        });
+
       }
     }
   }
@@ -218,7 +216,7 @@ class UIDiagnostics {
         message: 'Chat interface missing message virtualization',
         details: { visibleMessages: messageContainers.length },
         suggestion: 'Implement react-window for virtualized message list'
-      });
+
     }
   }
 
@@ -254,7 +252,6 @@ class UIDiagnostics {
     const info = this.results.filter(r => r.level === 'info');
 
     return `
-UI Diagnostics Report
 ====================
 
 Critical Issues: ${critical.length}

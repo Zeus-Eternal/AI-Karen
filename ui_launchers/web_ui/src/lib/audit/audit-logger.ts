@@ -5,14 +5,7 @@
  * administrative actions, security events, and system changes.
  */
 
-import {
-  AuditLog,
-  AuditLogEntry,
-  AuditLogFilter,
-  PaginationParams,
-  PaginatedResponse,
-  User,
-} from "@/types/admin";
+import { AuditLog, AuditLogEntry, AuditLogFilter, PaginationParams, PaginatedResponse, User } from "@/types/admin";
 import { getAdminDatabaseUtils } from "@/lib/database/admin-utils";
 import { NextRequest } from "next/server";
 
@@ -158,7 +151,7 @@ export class AuditLogger {
       resourceId: targetUserId,
       details,
       request,
-    });
+
   }
 
   /**
@@ -173,7 +166,7 @@ export class AuditLogger {
     return await this.log(userId, action, AUDIT_RESOURCE_TYPES.SESSION, {
       details,
       request,
-    });
+
   }
 
   /**
@@ -240,7 +233,7 @@ export class AuditLogger {
         count: resourceIds.length,
       },
       request,
-    });
+
   }
 
   /**

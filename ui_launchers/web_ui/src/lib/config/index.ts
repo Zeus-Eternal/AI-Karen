@@ -6,7 +6,6 @@
  */
 
 export {
-  EnvironmentConfigManager,
   getEnvironmentConfigManager,
   initializeEnvironmentConfigManager,
   type BackendConfig,
@@ -19,7 +18,7 @@ export {
   type EnvironmentInfoType,
   type ValidationResult,
   type ValidationResultType,
-} from './environment-config-manager';
+import { } from './environment-config-manager';
 
 // Re-export existing config for backward compatibility
 export {
@@ -29,4 +28,4 @@ export {
   getRuntimeInfo,
   webUIConfig,
   type WebUIConfig,
-} from '../config';
+import { } from '../config';

@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApiKeyManager from "./ApiKeyManager";
@@ -12,18 +13,8 @@ import PersonaSettings from "./PersonaSettings";
 import LLMSettings from "./LLMSettings";
 import ModelLibrary from "./ModelLibrary";
 import CopilotKitSettings from "./CopilotKitSettings";
-import {
-  Cog,
-  KeyRound,
-  BookText,
-  Bell,
-  Shield,
-  Speaker,
-  UserCog,
-  Brain,
-  MessageSquare,
-  Library,
-} from "lucide-react";
+
+import { } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
@@ -58,7 +49,6 @@ export default function SettingsDialog() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">
-          Application Settings
         </h2>
         <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
           Customize Karen AI's behavior, API connections, personal knowledge,

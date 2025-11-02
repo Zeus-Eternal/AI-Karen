@@ -24,7 +24,6 @@ describe('AuditLogger', () => {
     // Mock store
     mockUseAppStore.getState = vi.fn().mockReturnValue({
       user: mockUser
-    });
 
     // Mock API responses
     mockApiClient.get.mockResolvedValue({
@@ -75,22 +74,18 @@ describe('AuditLogger', () => {
           severity: 'high'
         }
       }
-    });
 
     mockApiClient.post.mockResolvedValue({});
-  });
 
   afterEach(() => {
     // Clean up any timers
     vi.clearAllTimers();
-  });
 
   describe('initialization', () => {
     it('should initialize with API config', async () => {
       await auditLogger.initialize();
       
       expect(mockApiClient.get).toHaveBeenCalledWith('/api/audit/config');
-    });
 
     it('should use default config if API fails', async () => {
       mockApiClient.get.mockRejectedValue(new Error('API Error'));
@@ -99,20 +94,17 @@ describe('AuditLogger', () => {
       
       // Should not throw and should continue working
       expect(auditLogger).toBeDefined();
-    });
-  });
+
 
   describe('event logging', () => {
     beforeEach(async () => {
       await auditLogger.initialize();
-    });
 
     it('should log basic audit event', async () => {
       await auditLogger.logEvent('ui:page_view', 'User viewed dashboard');
       
       // Should queue the event (not immediately send)
       expect(mockApiClient.post).not.toHaveBeenCalled();
-    });
 
     it('should include user context in events', async () => {
       await auditLogger.logEvent('ui:page_view', 'User viewed dashboard');
@@ -129,14 +121,12 @@ describe('AuditLogger', () => {
             eventType: 'ui:page_view'
           })
         ])
-      });
-    });
+
 
     it('should flush immediately for critical events', async () => {
       await auditLogger.logEvent('security:threat_detected', 'Critical security event', {
         severity: 'critical'
-      });
-      
+
       expect(mockApiClient.post).toHaveBeenCalledWith('/api/audit/events', {
         events: expect.arrayContaining([
           expect.objectContaining({
@@ -144,8 +134,7 @@ describe('AuditLogger', () => {
             severity: 'critical'
           })
         ])
-      });
-    });
+
 
     it('should batch events when batch size is reached', async () => {
       // Log multiple events to reach batch size
@@ -159,20 +148,17 @@ describe('AuditLogger', () => {
             eventType: 'ui:page_view'
           })
         ])
-      });
-    });
-  });
+
+
 
   describe('authentication logging', () => {
     beforeEach(async () => {
       await auditLogger.initialize();
-    });
 
     it('should log successful login', async () => {
       await auditLogger.logAuth('auth:login', 'success', {
         method: 'password'
-      });
-      
+
       await (auditLogger as any).flush();
       
       expect(mockApiClient.post).toHaveBeenCalledWith('/api/audit/events', {
@@ -184,14 +170,12 @@ describe('AuditLogger', () => {
             riskScore: 1
           })
         ])
-      });
-    });
+
 
     it('should log failed login with higher risk score', async () => {
       await auditLogger.logAuth('auth:failed_login', 'failure', {
         reason: 'invalid_password'
-      });
-      
+
       await (auditLogger as any).flush();
       
       expect(mockApiClient.post).toHaveBeenCalledWith('/api/audit/events', {
@@ -203,14 +187,12 @@ describe('AuditLogger', () => {
             riskScore: 7
           })
         ])
-      });
-    });
-  });
+
+
 
   describe('authorization logging', () => {
     beforeEach(async () => {
       await auditLogger.initialize();
-    });
 
     it('should log permission granted', async () => {
       await auditLogger.logAuthz('authz:permission_granted', 'dashboard:view', 'success');
@@ -225,8 +207,7 @@ describe('AuditLogger', () => {
             severity: 'low'
           })
         ])
-      });
-    });
+
 
     it('should log evil mode activation with critical severity', async () => {
       await auditLogger.logAuthz('authz:evil_mode_enabled', 'system', 'success');
@@ -240,14 +221,12 @@ describe('AuditLogger', () => {
             riskScore: 9
           })
         ])
-      });
-    });
-  });
+
+
 
   describe('data access logging', () => {
     beforeEach(async () => {
       await auditLogger.initialize();
-    });
 
     it('should log data read with low severity', async () => {
       await auditLogger.logDataAccess('data:read', 'user', 'user-123', 'success');
@@ -263,8 +242,7 @@ describe('AuditLogger', () => {
             severity: 'low'
           })
         ])
-      });
-    });
+
 
     it('should log data deletion with high severity', async () => {
       await auditLogger.logDataAccess('data:delete', 'user', 'user-123', 'success');
@@ -279,14 +257,12 @@ describe('AuditLogger', () => {
             riskScore: 6
           })
         ])
-      });
-    });
-  });
+
+
 
   describe('security logging', () => {
     beforeEach(async () => {
       await auditLogger.initialize();
-    });
 
     it('should log security threat with high risk score', async () => {
       await auditLogger.logSecurity(
@@ -305,14 +281,12 @@ describe('AuditLogger', () => {
             threatLevel: 'high'
           })
         ])
-      });
-    });
-  });
+
+
 
   describe('search and export', () => {
     beforeEach(async () => {
       await auditLogger.initialize();
-    });
 
     it('should search events with filter', async () => {
       const filter = {
@@ -325,7 +299,6 @@ describe('AuditLogger', () => {
         events: [],
         totalCount: 0,
         hasMore: false
-      });
 
       const result = await auditLogger.searchEvents(filter);
       
@@ -334,8 +307,7 @@ describe('AuditLogger', () => {
         events: [],
         totalCount: 0,
         hasMore: false
-      });
-    });
+
 
     it('should export events as blob', async () => {
       const mockBlob = new Blob(['test data'], { type: 'application/json' });
@@ -349,16 +321,13 @@ describe('AuditLogger', () => {
         format: 'json'
       }, {
         responseType: 'blob'
-      });
-      
+
       expect(result).toBe(mockBlob);
-    });
-  });
+
 
   describe('statistics', () => {
     beforeEach(async () => {
       await auditLogger.initialize();
-    });
 
     it('should get audit statistics', async () => {
       const timeframe = {
@@ -381,13 +350,11 @@ describe('AuditLogger', () => {
       
       expect(mockApiClient.post).toHaveBeenCalledWith('/api/audit/statistics', timeframe);
       expect(result).toEqual(mockStats);
-    });
-  });
+
 
   describe('error handling', () => {
     beforeEach(async () => {
       await auditLogger.initialize();
-    });
 
     it('should handle flush errors gracefully', async () => {
       mockApiClient.post.mockRejectedValue(new Error('Network error'));
@@ -396,7 +363,6 @@ describe('AuditLogger', () => {
       
       // Should not throw error
       await expect((auditLogger as any).flush()).resolves.not.toThrow();
-    });
 
     it('should re-queue events on flush failure', async () => {
       mockApiClient.post.mockRejectedValueOnce(new Error('Network error'));
@@ -409,6 +375,5 @@ describe('AuditLogger', () => {
       await (auditLogger as any).flush();
       
       expect(mockApiClient.post).toHaveBeenCalledTimes(2);
-    });
-  });
-});
+
+

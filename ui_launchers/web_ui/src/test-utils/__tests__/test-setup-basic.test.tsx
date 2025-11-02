@@ -8,7 +8,7 @@
 import React from 'react';
 import { render, screen, cleanup } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import {
+
   setupTestEnvironment,
   setupTestIsolation,
   setupCompleteTestEnvironment,
@@ -17,7 +17,7 @@ import {
   cleanupTestData,
   validateTestEnvironment,
   debugTestEnvironment
-} from '../test-setup';
+import { } from '../test-setup';
 
 // Simple test component
 const TestComponent: React.FC = () => {
@@ -42,30 +42,24 @@ describe('Test Setup Utilities Basic Coverage', () => {
   describe('Basic Environment Setup', () => {
     beforeEach(() => {
       setupTestIsolation();
-    });
 
     afterEach(() => {
       cleanup();
-    });
 
     it('should setup test environment without errors', () => {
       expect(() => setupTestEnvironment()).not.toThrow();
-    });
 
     it('should setup test isolation without errors', () => {
       expect(() => setupTestIsolation()).not.toThrow();
-    });
 
     it('should setup complete test environment without errors', () => {
       expect(() => setupCompleteTestEnvironment()).not.toThrow();
-    });
 
     it('should have jsdom environment available', () => {
       expect(typeof window).toBe('object');
       expect(typeof document).toBe('object');
       expect(typeof localStorage).toBe('object');
       expect(typeof sessionStorage).toBe('object');
-    });
 
     it('should clear localStorage and sessionStorage between tests', () => {
       // Set some data
@@ -80,8 +74,7 @@ describe('Test Setup Utilities Basic Coverage', () => {
 
       expect(localStorage.getItem('test-key')).toBeNull();
       expect(sessionStorage.getItem('test-key')).toBeNull();
-    });
-  });
+
 
   describe('Async Utilities', () => {
     it('should wait for async operations', async () => {
@@ -90,21 +83,18 @@ describe('Test Setup Utilities Basic Coverage', () => {
       const end = Date.now();
       
       expect(end - start).toBeGreaterThanOrEqual(45); // Allow some tolerance
-    });
 
     it('should flush promises', async () => {
       let resolved = false;
       
       Promise.resolve().then(() => {
         resolved = true;
-      });
-      
+
       expect(resolved).toBe(false);
       
       await flushPromises();
       
       expect(resolved).toBe(true);
-    });
 
     it('should work with components that have async behavior', async () => {
       render(<TestComponent />);
@@ -117,8 +107,7 @@ describe('Test Setup Utilities Basic Coverage', () => {
       
       // Should now show 'updated'
       expect(screen.getByTestId('data')).toHaveTextContent('updated');
-    });
-  });
+
 
   describe('Test Data Cleanup', () => {
     beforeEach(() => {
@@ -128,7 +117,6 @@ describe('Test Setup Utilities Basic Coverage', () => {
         sessionStorage.setItem('test-key', 'test-value');
         (window as any).test_property = 'test-value';
       }
-    });
 
     it('should cleanup localStorage and sessionStorage', () => {
       expect(localStorage.getItem('test-key')).toBe('test-value');
@@ -138,7 +126,6 @@ describe('Test Setup Utilities Basic Coverage', () => {
 
       expect(localStorage.getItem('test-key')).toBeNull();
       expect(sessionStorage.getItem('test-key')).toBeNull();
-    });
 
     it('should cleanup custom window properties', () => {
       expect((window as any).test_property).toBe('test-value');
@@ -146,14 +133,12 @@ describe('Test Setup Utilities Basic Coverage', () => {
       cleanupTestData();
 
       expect((window as any).test_property).toBeUndefined();
-    });
-  });
+
 
   describe('Test Isolation Between Tests', () => {
     it('should isolate test data - first test', () => {
       localStorage.setItem('isolation-test', 'first-test');
       expect(localStorage.getItem('isolation-test')).toBe('first-test');
-    });
 
     it('should isolate test data - second test', () => {
       // Should not see data from previous test due to isolation
@@ -161,13 +146,11 @@ describe('Test Setup Utilities Basic Coverage', () => {
       
       localStorage.setItem('isolation-test', 'second-test');
       expect(localStorage.getItem('isolation-test')).toBe('second-test');
-    });
 
     it('should isolate test data - third test', () => {
       // Should not see data from previous tests
       expect(localStorage.getItem('isolation-test')).toBeNull();
-    });
-  });
+
 
   describe('Test Environment Validation', () => {
     it('should validate test environment', () => {
@@ -175,13 +158,11 @@ describe('Test Setup Utilities Basic Coverage', () => {
       
       // Should be valid in jsdom environment
       expect(typeof isValid).toBe('boolean');
-    });
 
     it('should provide debug information', () => {
       // Should not throw when debugging
       expect(() => debugTestEnvironment()).not.toThrow();
-    });
-  });
+
 
   describe('Component Rendering', () => {
     it('should render components without errors', () => {
@@ -189,7 +170,6 @@ describe('Test Setup Utilities Basic Coverage', () => {
       
       expect(screen.getByTestId('test-component')).toBeInTheDocument();
       expect(screen.getByTestId('data')).toHaveTextContent('initial');
-    });
 
     it('should handle multiple component renders', () => {
       // Render multiple components
@@ -204,7 +184,6 @@ describe('Test Setup Utilities Basic Coverage', () => {
       // Should not cause any issues
       render(<TestComponent />);
       expect(screen.getByTestId('test-component')).toBeInTheDocument();
-    });
 
     it('should handle component cleanup properly', () => {
       const { unmount } = render(<TestComponent />);
@@ -212,8 +191,7 @@ describe('Test Setup Utilities Basic Coverage', () => {
       
       unmount();
       expect(screen.queryByTestId('test-component')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Mock Function Utilities', () => {
     it('should create and reset mock functions', () => {
@@ -225,7 +203,6 @@ describe('Test Setup Utilities Basic Coverage', () => {
       
       mockFn.mockClear();
       expect(mockFn).not.toHaveBeenCalled();
-    });
 
     it('should handle mock function isolation', () => {
       const mockFn1 = vi.fn();
@@ -238,8 +215,7 @@ describe('Test Setup Utilities Basic Coverage', () => {
       expect(mockFn2).toHaveBeenCalledWith('test2');
       expect(mockFn1).not.toHaveBeenCalledWith('test2');
       expect(mockFn2).not.toHaveBeenCalledWith('test1');
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle setup errors gracefully', () => {
@@ -248,7 +224,6 @@ describe('Test Setup Utilities Basic Coverage', () => {
         setupTestEnvironment();
         setupTestEnvironment();
       }).not.toThrow();
-    });
 
     it('should handle cleanup errors gracefully', () => {
       // Should not throw even if nothing to clean up
@@ -256,7 +231,6 @@ describe('Test Setup Utilities Basic Coverage', () => {
         cleanupTestData();
         cleanupTestData();
       }).not.toThrow();
-    });
 
     it('should handle missing window properties gracefully', () => {
       // Should not throw if properties don't exist
@@ -264,8 +238,7 @@ describe('Test Setup Utilities Basic Coverage', () => {
         delete (window as any).nonexistent_property;
         cleanupTestData();
       }).not.toThrow();
-    });
-  });
+
 
   describe('Performance and Memory', () => {
     it('should not leak memory with multiple setups', () => {
@@ -279,7 +252,6 @@ describe('Test Setup Utilities Basic Coverage', () => {
       expect(() => {
         render(<TestComponent />);
       }).not.toThrow();
-    });
 
     it('should handle rapid component mounting/unmounting', () => {
       // Rapidly mount and unmount components
@@ -292,6 +264,5 @@ describe('Test Setup Utilities Basic Coverage', () => {
       // Final render should still work
       render(<TestComponent />);
       expect(screen.getByTestId('test-component')).toBeInTheDocument();
-    });
-  });
-});
+
+

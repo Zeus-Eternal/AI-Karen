@@ -26,7 +26,7 @@ const CopilotArtifacts: React.FC<CopilotArtifactsProps> = ({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
-          <Wand2 className="h-4 w-4 sm:w-auto md:w-full" /> Copilot Artifacts
+          <Wand2 className="h-4 w-4" /> Copilot Artifacts
           <Badge variant="secondary">{artifacts.length}</Badge>
         </CardTitle>
       </CardHeader>
@@ -48,14 +48,14 @@ const CopilotArtifacts: React.FC<CopilotArtifactsProps> = ({
               {artifact.description}
             </div>
             <div className="flex gap-2">
-              <button size="sm" variant="default" onClick={() = aria-label="Button"> onApprove(artifact.id)}>
-                <Check className="h-4 w-4 mr-1 sm:w-auto md:w-full" /> Approve
+              <Button size="sm" variant="default" onClick={() => onApprove(artifact.id)}>
+                <Check className="h-4 w-4 mr-1" /> Approve
               </Button>
-              <button size="sm" variant="secondary" onClick={() = aria-label="Button"> onApply(artifact.id)}>
-                <Wand2 className="h-4 w-4 mr-1 sm:w-auto md:w-full" /> Apply
+              <Button size="sm" variant="secondary" onClick={() => onApply(artifact.id)}>
+                <Wand2 className="h-4 w-4 mr-1" /> Apply
               </Button>
-              <button size="sm" variant="ghost" onClick={() = aria-label="Button"> onReject(artifact.id)}>
-                <X className="h-4 w-4 mr-1 sm:w-auto md:w-full" /> Reject
+              <Button size="sm" variant="ghost" onClick={() => onReject(artifact.id)}>
+                <X className="h-4 w-4 mr-1" /> Reject
               </Button>
             </div>
           </div>

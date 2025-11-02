@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
@@ -9,23 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
-import { 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle,
-  RefreshCw,
-  Settings,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Activity,
-  Cpu,
-  HardDrive,
-  Zap,
-  Database,
-  Brain,
-  Gauge
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 
 interface IntegrationStatus {
   initialized: boolean;
@@ -142,8 +127,7 @@ const OptimizationDashboard: React.FC = () => {
     try {
       const response = await fetch(`/api/optimization/performance/alerts/${alertId}/resolve`, {
         method: 'POST'
-      });
-      
+
       if (!response.ok) {
         throw new Error('Failed to resolve alert');
       }
@@ -199,7 +183,7 @@ const OptimizationDashboard: React.FC = () => {
     return (
     <ErrorBoundary fallback={<div>Something went wrong in OptimizationDashboard</div>}>
       <div className="flex items-center justify-center p-8 sm:p-4 md:p-6">
-        <RefreshCw className="h-6 w-6 animate-spin mr-2 sm:w-auto md:w-full" />
+        <RefreshCw className="h-6 w-6 animate-spin mr-2 " />
         <span>Loading optimization dashboard...</span>
       </div>
     );
@@ -208,7 +192,7 @@ const OptimizationDashboard: React.FC = () => {
   if (error) {
     return (
       <Alert className="m-4">
-        <XCircle className="h-4 w-4 sm:w-auto md:w-full" />
+        <XCircle className="h-4 w-4 " />
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
@@ -221,21 +205,18 @@ const OptimizationDashboard: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold">Optimization Dashboard</h1>
           <p className="text-muted-foreground">
-            Monitor and manage the intelligent response optimization system
           </p>
         </div>
         <div className="flex space-x-2">
-          <button 
+          <Button 
             onClick={refreshData} 
             disabled={refreshing}
             variant="outline"
-           aria-label="Button">
+           >
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
           </Button>
           {!integrationStatus?.initialized && (
-            <button onClick={initializeIntegration} aria-label="Button">
-              Initialize Integration
+            <Button onClick={initializeIntegration} >
             </Button>
           )}
         </div>
@@ -250,9 +231,9 @@ const OptimizationDashboard: React.FC = () => {
           <CardContent>
             <div className="flex items-center space-x-2">
               {integrationStatus?.initialized ? (
-                <CheckCircle className="h-5 w-5 text-green-500 sm:w-auto md:w-full" />
+                <CheckCircle className="h-5 w-5 text-green-500 " />
               ) : (
-                <XCircle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />
+                <XCircle className="h-5 w-5 text-red-500 " />
               )}
               <span className="text-lg font-semibold">
                 {integrationStatus?.initialized ? 'Initialized' : 'Not Initialized'}
@@ -286,7 +267,7 @@ const OptimizationDashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500 sm:w-auto md:w-full" />
+              <AlertTriangle className="h-5 w-5 text-yellow-500 " />
               <span className="text-lg font-semibold">
                 {performanceDashboard?.active_alerts?.length || 0}
               </span>
@@ -300,7 +281,7 @@ const OptimizationDashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-2">
-              <Gauge className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />
+              <Gauge className="h-5 w-5 text-blue-500 " />
               <span className="text-lg font-semibold capitalize">
                 {integrationStatus?.configuration_summary?.optimization_level || 'Unknown'}
               </span>
@@ -415,9 +396,9 @@ const OptimizationDashboard: React.FC = () => {
                   <div key={component} className="flex items-center justify-between p-3 border rounded sm:p-4 md:p-6">
                     <div className="flex items-center space-x-3">
                       {status.integrated ? (
-                        <CheckCircle className="h-5 w-5 text-green-500 sm:w-auto md:w-full" />
+                        <CheckCircle className="h-5 w-5 text-green-500 " />
                       ) : (
-                        <XCircle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />
+                        <XCircle className="h-5 w-5 text-red-500 " />
                       )}
                       <div>
                         <p className="font-medium capitalize">{component.replace('_', ' ')}</p>
@@ -467,9 +448,9 @@ const OptimizationDashboard: React.FC = () => {
                 {integrationStatus?.configuration_summary?.reasoning_preservation && Object.entries(integrationStatus.configuration_summary.reasoning_preservation).map(([component, preserved]) => (
                   <div key={component} className="flex items-center space-x-2">
                     {preserved ? (
-                      <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+                      <CheckCircle className="h-4 w-4 text-green-500 " />
                     ) : (
-                      <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
+                      <XCircle className="h-4 w-4 text-red-500 " />
                     )}
                     <span className="text-sm capitalize md:text-base lg:text-lg">{component.replace('_', ' ')}</span>
                   </div>
@@ -488,7 +469,7 @@ const OptimizationDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
-                <Activity className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+                <Activity className="h-12 w-12 mx-auto mb-4 opacity-50 " />
                 <p>Performance metrics visualization coming soon</p>
                 <p className="text-sm md:text-base lg:text-lg">Metrics are being collected: {performanceDashboard?.metrics_count || 0} data points</p>
               </div>
@@ -505,7 +486,7 @@ const OptimizationDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
-                <Settings className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+                <Settings className="h-12 w-12 mx-auto mb-4 opacity-50 " />
                 <p>Configuration management interface coming soon</p>
                 <p className="text-sm md:text-base lg:text-lg">Current config version: {integrationStatus?.configuration_summary?.config_version}</p>
               </div>
@@ -541,12 +522,11 @@ const OptimizationDashboard: React.FC = () => {
                             Current: {alert.current_value} | Threshold: {alert.threshold_value}
                           </div>
                         </div>
-                        <button
+                        <Button
                           size="sm"
                           variant="outline"
-                          onClick={() = aria-label="Button"> resolveAlert(alert.alert_id)}
+                          onClick={() => resolveAlert(alert.alert_id)}
                         >
-                          Resolve
                         </Button>
                       </div>
                     </div>
@@ -554,7 +534,7 @@ const OptimizationDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50 text-green-500 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50 text-green-500 " />
                   <p>No active alerts</p>
                   <p className="text-sm md:text-base lg:text-lg">All systems are operating within normal parameters</p>
                 </div>

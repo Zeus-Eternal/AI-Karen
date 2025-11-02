@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers,
       signal: AbortSignal.timeout(10000), // 10 second timeout
-    });
+
     const data = await response.json();
     // Return the backend response with appropriate status
     return NextResponse.json(data, { 
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         'Pragma': 'no-cache',
         'Expires': '0'
       }
-    });
+
   } catch (error) {
     // Return structured error response
     return NextResponse.json(

@@ -21,25 +21,21 @@ export function generateColorProperties(): Record<string, string> {
   // Primary colors
   Object.entries(designTokens.colors.primary).forEach(([step, value]) => {
     properties[`--color-primary-${step}`] = value;
-  });
-  
+
   // Secondary colors
   Object.entries(designTokens.colors.secondary).forEach(([step, value]) => {
     properties[`--color-secondary-${step}`] = value;
-  });
-  
+
   // Neutral colors
   Object.entries(designTokens.colors.neutral).forEach(([step, value]) => {
     properties[`--color-neutral-${step}`] = value;
-  });
-  
+
   // Semantic colors
   Object.entries(designTokens.colors.semantic).forEach(([category, scale]) => {
     Object.entries(scale as Record<string, string>).forEach(([step, value]) => {
       properties[`--color-${category}-${step}`] = value as string;
-    });
-  });
-  
+
+
   return properties;
 }
 
@@ -51,8 +47,7 @@ export function generateSpacingProperties(): Record<string, string> {
   
   Object.entries(designTokens.spacing).forEach(([size, value]) => {
     properties[`--space-${size}`] = value;
-  });
-  
+
   return properties;
 }
 
@@ -65,23 +60,19 @@ export function generateTypographyProperties(): Record<string, string> {
   // Font sizes
   Object.entries(designTokens.typography.fontSize).forEach(([size, value]) => {
     properties[`--text-${size}`] = value;
-  });
-  
+
   // Font weights
   Object.entries(designTokens.typography.fontWeight).forEach(([weight, value]) => {
     properties[`--font-weight-${weight}`] = value.toString();
-  });
-  
+
   // Line heights
   Object.entries(designTokens.typography.lineHeight).forEach(([height, value]) => {
     properties[`--line-height-${height}`] = value.toString();
-  });
-  
+
   // Letter spacing
   Object.entries(designTokens.typography.letterSpacing).forEach(([spacing, value]) => {
     properties[`--letter-spacing-${spacing}`] = value;
-  });
-  
+
   return properties;
 }
 
@@ -93,8 +84,7 @@ export function generateShadowProperties(): Record<string, string> {
   
   Object.entries(designTokens.shadows).forEach(([size, value]) => {
     properties[`--shadow-${size}`] = value;
-  });
-  
+
   return properties;
 }
 
@@ -106,8 +96,7 @@ export function generateRadiusProperties(): Record<string, string> {
   
   Object.entries(designTokens.radius).forEach(([size, value]) => {
     properties[`--radius-${size}`] = value;
-  });
-  
+
   return properties;
 }
 
@@ -120,12 +109,10 @@ export function generateAnimationProperties(): Record<string, string> {
   // Durations
   Object.entries(designTokens.animations.duration).forEach(([speed, value]) => {
     properties[`--duration-${speed}`] = value;
-  });
 
   // Easing curves
   Object.entries(designTokens.animations.easing).forEach(([curve, value]) => {
     properties[`--ease-${curve}`] = value;
-  });
 
   return properties;
 }
@@ -141,16 +128,14 @@ export function generateComponentProperties(): Record<string, string> {
       if (typeof value === 'string' && value.length > 0) {
         properties[`--component-${prefix}-${toKebabCase(key)}`] = value;
       }
-    });
+
   };
 
   Object.entries(designTokens.components.button).forEach(([variant, tokens]) => {
     assignTokens(`button-${variant}`, tokens as unknown as Record<string, string | undefined>);
-  });
 
   Object.entries(designTokens.components.badge).forEach(([variant, tokens]) => {
     assignTokens(`badge-${variant}`, tokens as unknown as Record<string, string | undefined>);
-  });
 
   assignTokens('card', designTokens.components.card as unknown as Record<string, string | undefined>);
 

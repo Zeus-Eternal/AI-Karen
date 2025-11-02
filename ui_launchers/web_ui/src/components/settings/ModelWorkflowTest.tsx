@@ -1,21 +1,14 @@
 "use client";
+
+import React from 'react';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import {
-  PlayCircle,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
-  ArrowRight,
-  Library,
-  Download,
-  Settings,
-  MessageSquare
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 interface WorkflowStep {
   id: string;
@@ -91,7 +84,7 @@ export default function ModelWorkflowTest({
         updateStepStatus('discover', 'completed', undefined, { 
           count: modelsArray.length || 0,
           models: modelsArray.slice(0, 3).map((m: any) => m.name) || []
-        });
+
       } catch (error) {
         updateStepStatus('discover', 'failed', 'Failed to load models from Model Library');
         throw error;
@@ -110,7 +103,7 @@ export default function ModelWorkflowTest({
               compatibilityResults.push({
                 provider,
                 compatible_models: suggestionsData.total_compatible_models || 0
-              });
+
             }
           } catch (error) {
           }
@@ -118,7 +111,7 @@ export default function ModelWorkflowTest({
         updateStepStatus('compatibility', 'completed', undefined, {
           providers_checked: compatibilityResults.length,
           results: compatibilityResults
-        });
+
       } catch (error) {
         updateStepStatus('compatibility', 'failed', 'Failed to check model compatibility');
         throw error;
@@ -132,13 +125,13 @@ export default function ModelWorkflowTest({
         updateStepStatus('download', 'completed', undefined, {
           simulated: true,
           message: 'Download simulation completed successfully'
-        });
+
       } catch (error) {
         // This is expected to fail in simulation, so we'll mark it as completed
         updateStepStatus('download', 'completed', undefined, {
           simulated: true,
           message: 'Download simulation completed (API not available)'
-        });
+
       }
       // Step 4: Provider Configuration
       updateStepStatus('provider_setup', 'running');
@@ -150,7 +143,7 @@ export default function ModelWorkflowTest({
         updateStepStatus('provider_setup', 'completed', undefined, {
           healthy_providers: statsData?.healthy_providers || 0,
           total_providers: statsData?.total_providers || 0
-        });
+
       } catch (error) {
         updateStepStatus('provider_setup', 'failed', 'Failed to validate provider configuration');
         throw error;
@@ -169,11 +162,11 @@ export default function ModelWorkflowTest({
         updateStepStatus('validation', 'completed', undefined, {
           checks: validationChecks,
           overall_status: 'healthy'
-        });
+
         toast({
           title: "Workflow Test Completed",
           description: "All integration tests passed successfully!",
-        });
+
       } catch (error) {
         updateStepStatus('validation', 'failed', 'End-to-end validation failed');
         throw error;
@@ -183,7 +176,7 @@ export default function ModelWorkflowTest({
         title: "Workflow Test Failed",
         description: "Some integration tests failed. Check the details below.",
         variant: "destructive",
-      });
+
     } finally {
       setIsRunning(false);
     }
@@ -191,13 +184,13 @@ export default function ModelWorkflowTest({
   const getStepIcon = (step: WorkflowStep) => {
     switch (step.status) {
       case 'running':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500 sm:w-auto md:w-full" />;
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500 " />;
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
+        return <CheckCircle className="h-4 w-4 text-green-500 " />;
       case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-4 w-4 text-red-500 " />;
       default:
-        return <div className="h-4 w-4 rounded-full border-2 border-muted-foreground sm:w-auto md:w-full" />;
+        return <div className="h-4 w-4 rounded-full border-2 border-muted-foreground " />;
     }
   };
   const getStepBadgeVariant = (status: WorkflowStep['status']) => {
@@ -220,11 +213,9 @@ export default function ModelWorkflowTest({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <PlayCircle className="h-5 w-5 sm:w-auto md:w-full" />
-              Integration Workflow Test
+              <PlayCircle className="h-5 w-5 " />
             </CardTitle>
             <CardDescription>
-              Test the complete workflow from model discovery to usage
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -248,30 +239,28 @@ export default function ModelWorkflowTest({
             className="gap-2"
            aria-label="Button">
             {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+              <Loader2 className="h-4 w-4 animate-spin " />
             ) : (
-              <PlayCircle className="h-4 w-4 sm:w-auto md:w-full" />
+              <PlayCircle className="h-4 w-4 " />
             )}
             {isRunning ? 'Running Test...' : 'Run Workflow Test'}
           </Button>
           {onNavigateToModelLibrary && (
-            <button
+            <Button
               variant="outline"
               onClick={onNavigateToModelLibrary}
               className="gap-2"
-             aria-label="Button">
-              <Library className="h-4 w-4 sm:w-auto md:w-full" />
-              Model Library
+             >
+              <Library className="h-4 w-4 " />
             </Button>
           )}
           {onNavigateToProviders && (
-            <button
+            <Button
               variant="outline"
               onClick={onNavigateToProviders}
               className="gap-2"
-             aria-label="Button">
-              <Settings className="h-4 w-4 sm:w-auto md:w-full" />
-              Providers
+             >
+              <Settings className="h-4 w-4 " />
             </Button>
           )}
         </div>
@@ -285,7 +274,7 @@ export default function ModelWorkflowTest({
                   <div className="w-px h-8 bg-border mt-2" />
                 )}
               </div>
-              <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+              <div className="flex-1 min-w-0 ">
                 <div className="flex items-center gap-2 mb-1">
                   <h4 className="font-medium text-sm md:text-base lg:text-lg">{step.name}</h4>
                   <Badge variant={getStepBadgeVariant(step.status)} className="text-xs sm:text-sm md:text-base">
@@ -297,7 +286,7 @@ export default function ModelWorkflowTest({
                 </p>
                 {step.error && (
                   <Alert variant="destructive" className="mb-2">
-                    <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                    <AlertCircle className="h-4 w-4 " />
                     <AlertDescription className="text-xs sm:text-sm md:text-base">
                       {step.error}
                     </AlertDescription>
@@ -318,9 +307,9 @@ export default function ModelWorkflowTest({
         {!isRunning && (completedSteps > 0 || failedSteps > 0) && (
           <Alert variant={failedSteps > 0 ? "destructive" : "default"}>
             {failedSteps > 0 ? (
-              <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+              <AlertCircle className="h-4 w-4 " />
             ) : (
-              <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
+              <CheckCircle className="h-4 w-4 " />
             )}
             <AlertTitle>
               {failedSteps > 0 ? "Test Completed with Issues" : "Test Completed Successfully"}
@@ -337,16 +326,16 @@ export default function ModelWorkflowTest({
         <div className="border-t pt-4">
           <h4 className="font-medium text-sm mb-2 md:text-base lg:text-lg">Integration Workflow</h4>
           <div className="flex items-center gap-2 text-xs text-muted-foreground sm:text-sm md:text-base">
-            <Library className="h-3 w-3 sm:w-auto md:w-full" />
+            <Library className="h-3 w-3 " />
             <span>Model Library</span>
-            <ArrowRight className="h-3 w-3 sm:w-auto md:w-full" />
-            <Settings className="h-3 w-3 sm:w-auto md:w-full" />
+            <ArrowRight className="h-3 w-3 " />
+            <Settings className="h-3 w-3 " />
             <span>Provider Config</span>
-            <ArrowRight className="h-3 w-3 sm:w-auto md:w-full" />
-            <Download className="h-3 w-3 sm:w-auto md:w-full" />
+            <ArrowRight className="h-3 w-3 " />
+            <Download className="h-3 w-3 " />
             <span>Model Download</span>
-            <ArrowRight className="h-3 w-3 sm:w-auto md:w-full" />
-            <MessageSquare className="h-3 w-3 sm:w-auto md:w-full" />
+            <ArrowRight className="h-3 w-3 " />
+            <MessageSquare className="h-3 w-3 " />
             <span>Usage</span>
           </div>
         </div>

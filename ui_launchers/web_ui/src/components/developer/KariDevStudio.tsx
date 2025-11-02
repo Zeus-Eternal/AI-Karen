@@ -1,10 +1,11 @@
+
+"use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AgCharts } from "ag-charts-react";
 import { ColDef } from "ag-grid-community";
 import { AgCartesianChartOptions } from "ag-charts-community";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
-import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import KnowledgePanel from "./KnowledgePanel";
 import CenterPanel from "./CenterPanel";
 import { useToast } from "@/hooks/use-toast";
-"use client";
+
+import { } from "@/components/ui/card";
 
 
 
@@ -20,37 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 
 
 
-
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
-
-
-
-
-
-
-  Terminal,
-  Code,
-  Activity,
-  Zap,
-  Brain,
-  Settings,
-  Play,
-  Square,
-  RefreshCw,
-  MessageSquare,
-  Cpu,
-  MemoryStick,
-  Network,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-} from "lucide-react";
+import { } from "lucide-react";
 
 
 interface KariComponent {
@@ -95,12 +67,10 @@ export default function KariDevStudio() {
   useCopilotReadable({
     description: "Current Kari system components and their status",
     value: components,
-  });
 
   useCopilotReadable({
     description: "Chat system performance metrics",
     value: chatMetrics,
-  });
 
   // CopilotKit actions for developer assistance
   useCopilotAction({
@@ -138,7 +108,6 @@ export default function KariDevStudio() {
         ),
       };
     },
-  });
 
   useCopilotAction({
     name: "optimizeComponent",
@@ -159,7 +128,6 @@ export default function KariDevStudio() {
 
       return generateOptimizationSuggestions(component);
     },
-  });
 
   useCopilotAction({
     name: "generateComponentCode",
@@ -191,7 +159,6 @@ export default function KariDevStudio() {
         features?.split(",") || []
       );
     },
-  });
 
   // Component grid columns with modern styling
   const componentColumns: ColDef[] = [
@@ -235,11 +202,11 @@ export default function KariDevStudio() {
       cellRenderer: (params: any) => (
         <div className="flex items-center gap-2">
           {params.value === "healthy" ? (
-            <CheckCircle2 className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+            <CheckCircle2 className="h-4 w-4 text-green-500 " />
           ) : params.value === "warning" ? (
-            <AlertTriangle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />
+            <AlertTriangle className="h-4 w-4 text-yellow-500 " />
           ) : (
-            <AlertTriangle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
+            <AlertTriangle className="h-4 w-4 text-red-500 " />
           )}
           <span className="text-sm capitalize md:text-base lg:text-lg">{params.value}</span>
         </div>
@@ -251,7 +218,7 @@ export default function KariDevStudio() {
       flex: 1,
       cellRenderer: (params: any) => (
         <div className="flex items-center gap-2">
-          <div className="w-16 bg-gray-200 rounded-full h-2 sm:w-auto md:w-full">
+          <div className="w-16 bg-gray-200 rounded-full h-2 ">
             <div
               className={`h-2 rounded-full ${
                 params.value > 0.95
@@ -385,7 +352,7 @@ export default function KariDevStudio() {
         title: "Error",
         description: "Failed to fetch system data",
         variant: "destructive",
-      });
+
     } finally {
       setLoading(false);
     }
@@ -404,7 +371,7 @@ export default function KariDevStudio() {
         toast({
           title: "Success",
           description: `Component ${action} completed successfully`,
-        });
+
         await fetchSystemData();
       } else {
         throw new Error(`Failed to ${action} component`);
@@ -414,7 +381,7 @@ export default function KariDevStudio() {
         title: "Error",
         description: `Failed to ${action} component: ${error}`,
         variant: "destructive",
-      });
+
     }
   };
 
@@ -427,15 +394,15 @@ export default function KariDevStudio() {
   const getComponentIcon = (type: string) => {
     switch (type) {
       case "plugin":
-        return <Zap className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />;
+        return <Zap className="h-5 w-5 text-blue-500 " />;
       case "extension":
-        return <Code className="h-5 w-5 text-green-500 sm:w-auto md:w-full" />;
+        return <Code className="h-5 w-5 text-green-500 " />;
       case "hook":
-        return <Activity className="h-5 w-5 text-purple-500 sm:w-auto md:w-full" />;
+        return <Activity className="h-5 w-5 text-purple-500 " />;
       case "llm_provider":
-        return <Brain className="h-5 w-5 text-orange-500 sm:w-auto md:w-full" />;
+        return <Brain className="h-5 w-5 text-orange-500 " />;
       default:
-        return <Settings className="h-5 w-5 text-gray-500 sm:w-auto md:w-full" />;
+        return <Settings className="h-5 w-5 text-gray-500 " />;
     }
   };
 
@@ -546,7 +513,7 @@ export default function KariDevStudio() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <div className="flex h-screen">
         {/* Left Panel - Knowledge Search */}
-        <div className="w-80 border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:w-auto md:w-full">
+        <div className="w-80 border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ">
           <KnowledgePanel
             currentFile={selectedComponent?.name}
             currentOperation="development"
@@ -559,14 +526,14 @@ export default function KariDevStudio() {
                   citation.table_name ||
                   citation.source_id
                 }`,
-              });
+
             }}
             onResultSelect={(result) => {
               // Handle result selection
               toast({
                 title: "Knowledge Selected",
                 description: "Knowledge result selected for context",
-              });
+
             }}
           />
         </div>
@@ -579,7 +546,7 @@ export default function KariDevStudio() {
               toast({
                 title: "Open File",
                 description: `Opening: ${filePath}`,
-              });
+
             }}
             onRefresh={async () => {
               // Handle refresh
@@ -595,26 +562,23 @@ export default function KariDevStudio() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Kari Dev Studio
                 </h1>
                 <p className="text-muted-foreground text-lg">
                   AI-powered development environment for Kari components
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <button
+                <Button
                   onClick={fetchSystemData}
                   disabled={loading}
                   variant="outline"
-                 aria-label="Button">
+                 >
                   <RefreshCw
                     className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
                   />
-                  Refresh
                 </Button>
                 <button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" aria-label="Button">
-                  <Terminal className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Open Terminal
+                  <Terminal className="h-4 w-4 mr-2 " />
                 </Button>
               </div>
             </div>
@@ -626,13 +590,12 @@ export default function KariDevStudio() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
-                        Active Components
                       </p>
                       <p className="text-2xl font-bold">
                         {components.filter((c) => c.status === "active").length}
                       </p>
                     </div>
-                    <Activity className="h-8 w-8 text-blue-500 sm:w-auto md:w-full" />
+                    <Activity className="h-8 w-8 text-blue-500 " />
                   </div>
                 </CardContent>
               </Card>
@@ -642,13 +605,12 @@ export default function KariDevStudio() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
-                        Chat Integrated
                       </p>
                       <p className="text-2xl font-bold">
                         {components.filter((c) => c.chat_integration).length}
                       </p>
                     </div>
-                    <MessageSquare className="h-8 w-8 text-green-500 sm:w-auto md:w-full" />
+                    <MessageSquare className="h-8 w-8 text-green-500 " />
                   </div>
                 </CardContent>
               </Card>
@@ -658,13 +620,12 @@ export default function KariDevStudio() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
-                        AI Enabled
                       </p>
                       <p className="text-2xl font-bold">
                         {components.filter((c) => c.copilot_enabled).length}
                       </p>
                     </div>
-                    <Brain className="h-8 w-8 text-purple-500 sm:w-auto md:w-full" />
+                    <Brain className="h-8 w-8 text-purple-500 " />
                   </div>
                 </CardContent>
               </Card>
@@ -674,7 +635,6 @@ export default function KariDevStudio() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
-                        Health Issues
                       </p>
                       <p className="text-2xl font-bold">
                         {
@@ -683,7 +643,7 @@ export default function KariDevStudio() {
                         }
                       </p>
                     </div>
-                    <AlertTriangle className="h-8 w-8 text-orange-500 sm:w-auto md:w-full" />
+                    <AlertTriangle className="h-8 w-8 text-orange-500 " />
                   </div>
                 </CardContent>
               </Card>
@@ -696,22 +656,19 @@ export default function KariDevStudio() {
                   value="components"
                   className="flex items-center gap-2"
                 >
-                  <Code className="h-4 w-4 sm:w-auto md:w-full" />
-                  Components
+                  <Code className="h-4 w-4 " />
                 </TabsTrigger>
                 <TabsTrigger
                   value="chat-metrics"
                   className="flex items-center gap-2"
                 >
-                  <MessageSquare className="h-4 w-4 sm:w-auto md:w-full" />
-                  Chat Metrics
+                  <MessageSquare className="h-4 w-4 " />
                 </TabsTrigger>
                 <TabsTrigger
                   value="ai-assistant"
                   className="flex items-center gap-2"
                 >
-                  <Brain className="h-4 w-4 sm:w-auto md:w-full" />
-                  AI Assistant
+                  <Brain className="h-4 w-4 " />
                 </TabsTrigger>
               </TabsList>
 
@@ -721,8 +678,7 @@ export default function KariDevStudio() {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="flex items-center gap-2">
-                          <Code className="h-5 w-5 sm:w-auto md:w-full" />
-                          System Components
+                          <Code className="h-5 w-5 " />
                         </CardTitle>
                         <CardDescription>
                           Monitor and manage all Kari components with real-time
@@ -732,8 +688,8 @@ export default function KariDevStudio() {
                       <input
                         placeholder="Search components..."
                         value={searchQuery}
-                        onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
-                        className="w-64 sm:w-auto md:w-full"
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-64 "
                       />
                     </div>
                   </CardHeader>
@@ -769,12 +725,10 @@ export default function KariDevStudio() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5 sm:w-auto md:w-full" />
-                      Chat System Performance
+                      <MessageSquare className="h-5 w-5 " />
                     </CardTitle>
                     <CardDescription>
                       Real-time metrics for the Kari Chat system with AG-UI +
-                      CopilotKit integration
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -789,8 +743,7 @@ export default function KariDevStudio() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Brain className="h-5 w-5 sm:w-auto md:w-full" />
-                      AI Development Assistant
+                      <Brain className="h-5 w-5 " />
                     </CardTitle>
                     <CardDescription>
                       Get AI-powered insights and assistance for Kari
@@ -801,16 +754,13 @@ export default function KariDevStudio() {
                     <div className="space-y-4">
                       <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 p-6 rounded-lg border sm:p-4 md:p-6">
                         <h3 className="text-lg font-semibold mb-2">
-                          AI Assistant Ready
                         </h3>
                         <p className="text-muted-foreground mb-4">
-                          Ask me anything about your Kari components,
                           performance optimization, or code generation.
                         </p>
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="outline">Component Analysis</Badge>
                           <Badge variant="outline">
-                            Performance Optimization
                           </Badge>
                           <Badge variant="outline">Code Generation</Badge>
                           <Badge variant="outline">Health Monitoring</Badge>
@@ -819,7 +769,6 @@ export default function KariDevStudio() {
 
                       <div className="text-center text-muted-foreground">
                         <p>
-                          Open the Kari Chat to interact with the AI assistant
                         </p>
                         <p className="text-sm md:text-base lg:text-lg">
                           Try: "Analyze my component health" or "Generate a new

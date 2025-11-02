@@ -63,7 +63,7 @@ export async function DELETE(
     );
     return NextResponse.json({
       message: 'IP address unblocked successfully'
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to unblock IP address' },

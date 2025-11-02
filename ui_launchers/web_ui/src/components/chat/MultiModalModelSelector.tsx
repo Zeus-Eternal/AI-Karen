@@ -70,7 +70,7 @@ export default function MultiModalModelSelector({
         const bestProvider = await multiModalService.getBestProvider({
           prompt,
           type: selectedType
-        });
+
         setKarenRecommendation(bestProvider);
       } catch (error) {
         setKarenRecommendation(null);
@@ -119,13 +119,12 @@ export default function MultiModalModelSelector({
       {/* Type Selector */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2 md:text-base lg:text-lg">
-          Content Type
         </label>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {Object.entries(providerTypeLabels).map(([type, label]) => (
             <button
               key={type}
-              onClick={() = aria-label="Button"> onTypeChange(type as ProviderType)}
+              onClick={() => onTypeChange(type as ProviderType)}
               className={`
                 flex items-center justify-center p-3 rounded-lg border-2 transition-all
                 ${selectedType === type
@@ -146,11 +145,10 @@ export default function MultiModalModelSelector({
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <label className="block text-sm font-medium text-gray-700 md:text-base lg:text-lg">
-            AI Provider
           </label>
           {isLoading && (
             <div className="flex items-center text-xs text-gray-500 sm:text-sm md:text-base">
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500 mr-1 sm:w-auto md:w-full"></div>
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500 mr-1 "></div>
               Karen is analyzing...
             </div>
           )}
@@ -279,7 +277,7 @@ export default function MultiModalModelSelector({
       {/* Quick Actions */}
       <div className="mt-4 flex space-x-2">
         <button
-          onClick={() = aria-label="Button"> {
+          onClick={() => {
             // Refresh providers
             const refreshedProviders = multiModalService.getProviders(selectedType);
             setProviders(refreshedProviders);
@@ -289,7 +287,7 @@ export default function MultiModalModelSelector({
           🔄 Refresh
         </button>
         <button
-          onClick={() = aria-label="Button"> {
+          onClick={() => {
             // Open provider settings (would open a modal in real implementation)
           }}
           className="flex-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors md:text-base lg:text-lg"

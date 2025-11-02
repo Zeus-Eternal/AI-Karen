@@ -1,65 +1,36 @@
-import React, {
-import {
-import { Badge } from "@/components/ui/badge";
+
+"use client";
+import React, { import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getKarenBackend } from "@/lib/karen-backend";
 import { safeError, safeWarn, safeDebug } from "@/lib/safe-console";
 import { modelSelectionService } from "@/lib/model-selection-service";
-"use client";
-
 
   useState,
   useEffect,
   useMemo,
   useCallback,
   useRef,
-} from "react";
+import { } from "react";
 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectGroup,
-  SelectLabel,
-  SelectSeparator,
-} from "@/components/ui/select";
+import { } from "@/components/ui/select";
 
 
 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { } from "@/components/ui/tooltip";
 
-  Brain,
-  Cpu,
-  Download,
-  HardDrive,
-  Zap,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
-  RefreshCw,
-  Image,
-  MessageSquare,
-  AudioWaveform,
-  Sparkles,
-} from "lucide-react";
+import { } from "lucide-react";
 
 
 
 
-  Model,
   formatFileSize,
   getStatusBadgeVariant,
   getRecommendedModels,
   getModelSelectorValue,
   doesModelMatchValue,
-} from "@/lib/model-utils";
+import { } from "@/lib/model-utils";
 
 
 type ModelSelectorTask = "chat" | "image" | "code" | "embedding" | "any";
@@ -277,28 +248,27 @@ const TASK_GROUP_ORDER: TaskGroupKey[] = [
 ];
 
 const TASK_GROUP_METADATA: Record<
-  TaskGroupKey,
   { label: string; icon: React.ReactElement }
 > = {
   chat: {
     label: "Chat & Text",
-    icon: <MessageSquare className="h-3 w-3 sm:w-auto md:w-full" />,
+    icon: <MessageSquare className="h-3 w-3 " />,
   },
   image: {
     label: "Image Generation",
-    icon: <Image className="h-3 w-3 sm:w-auto md:w-full" />,
+    icon: <Image className="h-3 w-3 " />,
   },
   audio: {
     label: "Audio & Speech",
-    icon: <AudioWaveform className="h-3 w-3 sm:w-auto md:w-full" />,
+    icon: <AudioWaveform className="h-3 w-3 " />,
   },
   embedding: {
     label: "Embeddings & Search",
-    icon: <Brain className="h-3 w-3 sm:w-auto md:w-full" />,
+    icon: <Brain className="h-3 w-3 " />,
   },
   production: {
     label: "Production Models",
-    icon: <Sparkles className="h-3 w-3 sm:w-auto md:w-full" />,
+    icon: <Sparkles className="h-3 w-3 " />,
   },
 };
 
@@ -330,7 +300,7 @@ const sortByStatusThenName = (a: ModelInfo, b: ModelInfo) => {
 
   return (a.name || "").localeCompare(b.name || "", undefined, {
     sensitivity: "base",
-  });
+
 };
 
 const sortByRecommendation = (models: ModelInfo[], recommended: Set<string>) =>
@@ -347,7 +317,6 @@ const sortByRecommendation = (models: ModelInfo[], recommended: Set<string>) =>
     }
 
     return sortByStatusThenName(a, b);
-  });
 
 const inferPrimaryCapability = (model: ModelInfo): TaskGroupKey => {
   const name = (model.name || "").toLowerCase();
@@ -411,35 +380,35 @@ const inferPrimaryCapability = (model: ModelInfo): TaskGroupKey => {
 
 const getProviderIcon = (provider: string) => {
   if (!provider) {
-    return <Cpu className="h-3 w-3 sm:w-auto md:w-full" />;
+    return <Cpu className="h-3 w-3 " />;
   }
   switch (provider.toLowerCase()) {
     case "llama-cpp":
     case "local":
-      return <HardDrive className="h-3 w-3 sm:w-auto md:w-full" />;
+      return <HardDrive className="h-3 w-3 " />;
     case "transformers":
-      return <Brain className="h-3 w-3 sm:w-auto md:w-full" />;
+      return <Brain className="h-3 w-3 " />;
     case "openai":
-      return <Zap className="h-3 w-3 sm:w-auto md:w-full" />;
+      return <Zap className="h-3 w-3 " />;
     default:
-      return <Cpu className="h-3 w-3 sm:w-auto md:w-full" />;
+      return <Cpu className="h-3 w-3 " />;
   }
 };
 
 const getStatusIcon = (status: string) => {
   switch (status) {
     case "local":
-      return <CheckCircle className="h-3 w-3 text-green-500 sm:w-auto md:w-full" />;
+      return <CheckCircle className="h-3 w-3 text-green-500 " />;
     case "downloading":
-      return <Loader2 className="h-3 w-3 text-blue-500 animate-spin sm:w-auto md:w-full" />;
+      return <Loader2 className="h-3 w-3 text-blue-500 animate-spin " />;
     case "available":
-      return <Download className="h-3 w-3 text-gray-500 sm:w-auto md:w-full" />;
+      return <Download className="h-3 w-3 text-gray-500 " />;
     case "incompatible":
-      return <AlertCircle className="h-3 w-3 text-yellow-500 sm:w-auto md:w-full" />;
+      return <AlertCircle className="h-3 w-3 text-yellow-500 " />;
     case "error":
-      return <AlertCircle className="h-3 w-3 text-red-500 sm:w-auto md:w-full" />;
+      return <AlertCircle className="h-3 w-3 text-red-500 " />;
     default:
-      return <Clock className="h-3 w-3 text-gray-400 sm:w-auto md:w-full" />;
+      return <Clock className="h-3 w-3 text-gray-400 " />;
   }
 };
 
@@ -557,7 +526,6 @@ export const ProductionModelSelector: React.FC<ModelSelectorProps> = ({
       }
 
       preferred.set(selectorValue, model);
-    });
 
     const result = Array.from(preferred.values());
 
@@ -577,7 +545,6 @@ export const ProductionModelSelector: React.FC<ModelSelectorProps> = ({
       }
 
       return (a.name || "").localeCompare(b.name || "");
-    });
 
     return result;
   }, [models, task, includeDownloadable, includeDownloading]);
@@ -664,7 +631,7 @@ export const ProductionModelSelector: React.FC<ModelSelectorProps> = ({
               "ProductionModelSelector: Failed to persist last selected model",
               err
             );
-          });
+
       }
     },
     [findModelByValue, onValueChange]
@@ -707,7 +674,7 @@ export const ProductionModelSelector: React.FC<ModelSelectorProps> = ({
         provider: defaultModel.provider,
         status: defaultModel.status,
         task,
-      });
+
       if (defaultValue) {
         handleModelValueChange(defaultValue);
       }
@@ -737,7 +704,6 @@ export const ProductionModelSelector: React.FC<ModelSelectorProps> = ({
         const capability = inferPrimaryCapability(model);
         groups[capability].push(model);
       }
-    });
 
     return TASK_GROUP_ORDER.map((key) => ({
       key,
@@ -789,13 +755,13 @@ export const ProductionModelSelector: React.FC<ModelSelectorProps> = ({
         disabled={disabled || itemDisabled}
        aria-label="Select option">
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center space-x-3 flex-1 min-w-0 sm:w-auto md:w-full">
+          <div className="flex items-center space-x-3 flex-1 min-w-0 ">
             <div className="flex items-center space-x-1">
               {getProviderIcon(provider)}
               {getStatusIcon(model.status)}
             </div>
 
-            <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+            <div className="flex-1 min-w-0 ">
               <div className="flex items-center space-x-2">
                 <span className="font-medium truncate">{name}</span>
                 <div className="flex items-center space-x-2">
@@ -810,7 +776,6 @@ export const ProductionModelSelector: React.FC<ModelSelectorProps> = ({
                       variant="outline"
                       className="text-xs text-purple-600 border-purple-200 bg-purple-50 sm:text-sm md:text-base"
                     >
-                      Recommended
                     </Badge>
                   )}
                   {(disabled || itemDisabled) && disabledReason && (
@@ -864,7 +829,7 @@ export const ProductionModelSelector: React.FC<ModelSelectorProps> = ({
   if (loading) {
     return (
       <div className={cn("flex items-center space-x-2", className)}>
-        <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+        <Loader2 className="h-4 w-4 animate-spin " />
         <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading models...</span>
       </div>
     );
@@ -873,15 +838,15 @@ export const ProductionModelSelector: React.FC<ModelSelectorProps> = ({
   if (error) {
     return (
       <div className={cn("flex items-center space-x-2", className)}>
-        <AlertCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
+        <AlertCircle className="h-4 w-4 text-red-500 " />
         <span className="text-sm text-red-600 md:text-base lg:text-lg">{error}</span>
-        <button
+        <Button
           variant="ghost"
           size="sm"
           onClick={loadModels}
-          className="h-6 w-6 p-0 sm:w-auto md:w-full"
-         aria-label="Button">
-          <RefreshCw className="h-3 w-3 sm:w-auto md:w-full" />
+          className="h-6 w-6 p-0 "
+         >
+          <RefreshCw className="h-3 w-3 " />
         </Button>
       </div>
     );
@@ -978,7 +943,7 @@ export const ProductionModelSelector: React.FC<ModelSelectorProps> = ({
               {taskGroups.length > 0 && <selectSeparator />}
               <selectGroup aria-label="Select option">
                 <selectLabel className="flex items-center space-x-2" aria-label="Select option">
-                  <Download className="h-3 w-3 text-gray-500 sm:w-auto md:w-full" />
+                  <Download className="h-3 w-3 text-gray-500 " />
                   <span>Available Models ({downloadableModels.length})</span>
                 </SelectLabel>
                 <div className="px-3 pb-1 text-xs text-muted-foreground sm:text-sm md:text-base">

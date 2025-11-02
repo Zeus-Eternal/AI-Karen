@@ -279,7 +279,7 @@ class FeatureDetectionService {
       img.onload = () => resolve(true);
       img.onerror = () => resolve(false);
       img.src = src;
-    });
+
   }
 
   // Input Feature Detection

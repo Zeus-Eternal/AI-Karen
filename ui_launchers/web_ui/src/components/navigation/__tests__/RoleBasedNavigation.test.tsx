@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,10 +26,8 @@ beforeEach(() => {
     user: { role: 'user' },
     hasRole: mockHasRole,
     hasPermission: mockHasPermission,
-  });
-  
+
   vi.clearAllMocks();
-});
 
 describe('RoleBasedNavigation', () => {
   it('renders basic navigation for regular users', () => {
@@ -41,7 +40,6 @@ describe('RoleBasedNavigation', () => {
     expect(screen.getByText('Profile')).toBeInTheDocument();
     expect(screen.queryByText('User Management')).not.toBeInTheDocument();
     expect(screen.queryByText('Super Admin')).not.toBeInTheDocument();
-  });
 
   it('renders admin navigation for admin users', () => {
     mockHasRole.mockImplementation((role: string) => ['admin', 'user'].includes(role));
@@ -54,7 +52,6 @@ describe('RoleBasedNavigation', () => {
     expect(screen.getByText('User Management')).toBeInTheDocument();
     expect(screen.getByText('Activity Monitor')).toBeInTheDocument();
     expect(screen.queryByText('Super Admin')).not.toBeInTheDocument();
-  });
 
   it('renders full navigation for super admin users', () => {
     mockHasRole.mockImplementation((role: string) => ['super_admin', 'admin', 'user'].includes(role));
@@ -70,7 +67,6 @@ describe('RoleBasedNavigation', () => {
     expect(screen.getByText('System Config')).toBeInTheDocument();
     expect(screen.getByText('Security Settings')).toBeInTheDocument();
     expect(screen.getByText('Audit Logs')).toBeInTheDocument();
-  });
 
   it('renders header variant correctly', () => {
     mockHasRole.mockImplementation((role: string) => role === 'user');
@@ -81,7 +77,6 @@ describe('RoleBasedNavigation', () => {
     // Header variant should not show descriptions
     expect(screen.getByText('Chat')).toBeInTheDocument();
     expect(screen.queryByText('AI conversation interface')).not.toBeInTheDocument();
-  });
 
   it('highlights active navigation item', () => {
     (usePathname as jest.Mock).mockReturnValue('/admin');
@@ -92,7 +87,6 @@ describe('RoleBasedNavigation', () => {
 
     const userManagementButton = screen.getByText('User Management').closest('button');
     expect(userManagementButton).toHaveClass('bg-secondary');
-  });
 
   it('shows role badges correctly', () => {
     mockHasRole.mockImplementation((role: string) => ['super_admin', 'admin', 'user'].includes(role));
@@ -102,7 +96,6 @@ describe('RoleBasedNavigation', () => {
 
     expect(screen.getByText('Admin')).toBeInTheDocument();
     expect(screen.getByText('Super Admin')).toBeInTheDocument();
-  });
 
   it('respects permission requirements', () => {
     mockHasRole.mockImplementation((role: string) => ['admin', 'user'].includes(role));
@@ -112,7 +105,6 @@ describe('RoleBasedNavigation', () => {
 
     // Should show admin items since role check passes
     expect(screen.getByText('User Management')).toBeInTheDocument();
-  });
 
   it('returns null when no items are visible', () => {
     mockHasRole.mockReturnValue(false);
@@ -120,5 +112,4 @@ describe('RoleBasedNavigation', () => {
 
     const { container } = render(<RoleBasedNavigation />);
     expect(container.firstChild).toBeNull();
-  });
-});
+

@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-
+import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
 import { Globe, Check } from 'lucide-react';
@@ -65,7 +65,7 @@ export function LanguageSelector({
                       {showNativeName ? localeInfo.nativeName : localeInfo.name}
                     </span>
                     {locale === localeCode && (
-                      <Check className="h-4 w-4 ml-auto text-primary sm:w-auto md:w-full" />
+                      <Check className="h-4 w-4 ml-auto text-primary " />
                     )}
                   </div>
                 </SelectItem>
@@ -89,7 +89,7 @@ export function LanguageSelector({
               key={localeCode}
               variant={isActive ? 'default' : 'ghost'}
               size="sm"
-              onClick={() = aria-label="Button"> changeLocale(localeCode)}
+              onClick={() => changeLocale(localeCode)}
               className={cn(
                 'h-8 px-2 text-xs',
                 isActive && 'bg-primary text-primary-foreground'
@@ -117,7 +117,7 @@ export function LanguageSelector({
         className="h-8 px-2"
         aria-label={t('settings.language')}
       >
-        <Globe className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
+        <Globe className="h-4 w-4 mr-1 " />
         {showFlag && <span className="mr-1">{currentLocaleInfo.flag}</span>}
         <span className="uppercase text-xs font-medium sm:text-sm md:text-base">
           {locale}

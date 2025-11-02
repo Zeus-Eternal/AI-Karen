@@ -4,6 +4,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import FallbackConfigInterface from '../FallbackConfigInterface';
@@ -199,19 +200,19 @@ describe('FallbackConfigInterface Integration Tests', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ configs: mockConfigs })
-        });
+
       }
       if (url.includes('/api/fallback/analytics')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ analytics: mockAnalytics })
-        });
+
       }
       if (url.includes('/api/fallback/events')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ events: mockEvents })
-        });
+
       }
       if (url.includes('/api/fallback/test') && options?.method === 'POST') {
         return Promise.resolve({
@@ -223,32 +224,29 @@ describe('FallbackConfigInterface Integration Tests', () => {
             recoveryTime: 2500,
             details: 'Failover test completed successfully. All providers responded within acceptable limits.'
           })
-        });
+
       }
       if (url.includes('/toggle') && options?.method === 'POST') {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ success: true })
-        });
+
       }
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({})
-      });
-    });
-  });
+
+
 
   it('loads and displays fallback configurations', async () => {
     render(<FallbackConfigInterface />);
     
     await waitFor(() => {
       expect(screen.getByText('Primary Text Generation')).toBeInTheDocument();
-    });
 
     expect(screen.getByText('1 configuration defined')).toBeInTheDocument();
     expect(screen.getByText('1 chain')).toBeInTheDocument();
     expect(screen.getByText('2 health checks')).toBeInTheDocument();
-  });
 
   it('displays analytics overview correctly', async () => {
     render(<FallbackConfigInterface />);
@@ -258,8 +256,7 @@ describe('FallbackConfigInterface Integration Tests', () => {
       expect(screen.getByText('95.0%')).toBeInTheDocument(); // Success rate
       expect(screen.getByText('2500ms')).toBeInTheDocument(); // Avg recovery time
       expect(screen.getByText('1250')).toBeInTheDocument(); // Requests saved
-    });
-  });
+
 
   it('shows fallback chain configuration details', async () => {
     render(<FallbackConfigInterface />);
@@ -267,14 +264,12 @@ describe('FallbackConfigInterface Integration Tests', () => {
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     expect(screen.getByText('High Performance Chain')).toBeInTheDocument();
     expect(screen.getByText('Priority 1')).toBeInTheDocument();
     expect(screen.getByText('openai-1')).toBeInTheDocument();
     expect(screen.getByText('anthropic-1')).toBeInTheDocument();
     expect(screen.getByText('ollama-1')).toBeInTheDocument();
-  });
 
   it('tests fallback chain successfully', async () => {
     render(<FallbackConfigInterface />);
@@ -282,7 +277,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     const testButton = screen.getByText('Test');
     fireEvent.click(testButton);
@@ -291,14 +285,12 @@ describe('FallbackConfigInterface Integration Tests', () => {
       expect(screen.getByText('Test Passed')).toBeInTheDocument();
       expect(screen.getByText('Failover: 150ms | Recovery: 2500ms')).toBeInTheDocument();
       expect(screen.getByText('Failover test completed successfully. All providers responded within acceptable limits.')).toBeInTheDocument();
-    });
 
     expect(mockToast).toHaveBeenCalledWith({
       title: 'Test Complete',
       description: 'Fallback test successful',
       variant: 'default'
-    });
-  });
+
 
   it('handles test failure scenarios', async () => {
     // Mock failed test response
@@ -313,20 +305,18 @@ describe('FallbackConfigInterface Integration Tests', () => {
             recoveryTime: 0,
             details: 'Primary provider failed, secondary provider also unavailable'
           })
-        });
+
       }
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ configs: mockConfigs })
-      });
-    });
+
 
     render(<FallbackConfigInterface />);
     
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     const testButton = screen.getByText('Test');
     fireEvent.click(testButton);
@@ -334,21 +324,18 @@ describe('FallbackConfigInterface Integration Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Test Failed')).toBeInTheDocument();
       expect(screen.getByText('Primary provider failed, secondary provider also unavailable')).toBeInTheDocument();
-    });
 
     expect(mockToast).toHaveBeenCalledWith({
       title: 'Test Complete',
       description: 'Fallback test failed',
       variant: 'destructive'
-    });
-  });
+
 
   it('toggles configuration enabled state', async () => {
     render(<FallbackConfigInterface />);
     
     await waitFor(() => {
       expect(screen.getByText('Primary Text Generation')).toBeInTheDocument();
-    });
 
     // Find and click the switch (it should be checked initially)
     const toggleSwitch = screen.getByRole('switch');
@@ -360,9 +347,8 @@ describe('FallbackConfigInterface Integration Tests', () => {
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Configuration Disabled',
         description: 'Fallback configuration has been disabled'
-      });
-    });
-  });
+
+
 
   it('displays health check configuration', async () => {
     render(<FallbackConfigInterface />);
@@ -370,7 +356,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     const healthTab = screen.getByText('Health Checks');
     fireEvent.click(healthTab);
@@ -381,7 +366,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     expect(screen.getByText('request')).toBeInTheDocument();
     expect(screen.getByText('Interval: 30000ms')).toBeInTheDocument();
     expect(screen.getByText('Timeout: 5000ms')).toBeInTheDocument();
-  });
 
   it('displays failover rules', async () => {
     render(<FallbackConfigInterface />);
@@ -389,7 +373,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     const rulesTab = screen.getByText('Failover Rules');
     fireEvent.click(rulesTab);
@@ -399,7 +382,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     expect(screen.getByText('Threshold: 0.1')).toBeInTheDocument();
     expect(screen.getByText('Duration: 60000ms')).toBeInTheDocument();
     expect(screen.getByText('Action: switch')).toBeInTheDocument();
-  });
 
   it('displays recent events with proper formatting', async () => {
     render(<FallbackConfigInterface />);
@@ -407,7 +389,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     const eventsTab = screen.getByText('Recent Events');
     fireEvent.click(eventsTab);
@@ -420,7 +401,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     expect(screen.getByText('Reason: High latency detected')).toBeInTheDocument();
     expect(screen.getByText('Duration: 2500ms')).toBeInTheDocument();
     expect(screen.getByText('Impact: Switched to anthropic-1')).toBeInTheDocument();
-  });
 
   it('opens chain configuration dialog', async () => {
     render(<FallbackConfigInterface />);
@@ -428,7 +408,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     const addChainButton = screen.getByText('Add Chain');
     fireEvent.click(addChainButton);
@@ -437,7 +416,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     expect(screen.getByText('Configure provider fallback order and conditions')).toBeInTheDocument();
     expect(screen.getByLabelText('Chain Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Priority')).toBeInTheDocument();
-  });
 
   it('creates new fallback chain', async () => {
     (global.fetch as any).mockImplementation((url: string, options: any) => {
@@ -466,20 +444,18 @@ describe('FallbackConfigInterface Integration Tests', () => {
               }
             ]
           })
-        });
+
       }
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ configs: mockConfigs })
-      });
-    });
+
 
     render(<FallbackConfigInterface />);
     
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     const addChainButton = screen.getByText('Add Chain');
     fireEvent.click(addChainButton);
@@ -510,9 +486,8 @@ describe('FallbackConfigInterface Integration Tests', () => {
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Configuration Saved',
         description: 'Fallback configuration "Primary Text Generation" has been saved'
-      });
-    });
-  });
+
+
 
   it('validates chain configuration before saving', async () => {
     render(<FallbackConfigInterface />);
@@ -520,7 +495,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     const addChainButton = screen.getByText('Add Chain');
     fireEvent.click(addChainButton);
@@ -534,7 +508,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     fireEvent.change(nameInput, { target: { value: 'Test Chain' } });
 
     expect(saveButton).toBeDisabled();
-  });
 
   it('reorders providers in chain configuration', async () => {
     render(<FallbackConfigInterface />);
@@ -542,7 +515,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     // Edit existing chain
     const editButton = screen.getAllByLabelText('')[0]; // Edit button (no accessible label)
@@ -566,7 +538,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     const providerInputs = screen.getAllByPlaceholderText('openai-1');
     expect(providerInputs[0]).toHaveValue('anthropic-1');
     expect(providerInputs[1]).toHaveValue('openai-1');
-  });
 
   it('removes providers from chain configuration', async () => {
     render(<FallbackConfigInterface />);
@@ -574,7 +545,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     const addChainButton = screen.getByText('Add Chain');
     fireEvent.click(addChainButton);
@@ -600,7 +570,6 @@ describe('FallbackConfigInterface Integration Tests', () => {
 
     // Should have 1 provider left
     expect(screen.getAllByText(/Provider \d/)).toHaveLength(1);
-  });
 
   it('handles API errors gracefully', async () => {
     (global.fetch as any).mockRejectedValue(new Error('Network error'));
@@ -612,9 +581,8 @@ describe('FallbackConfigInterface Integration Tests', () => {
         title: 'Error',
         description: 'Failed to load fallback configurations',
         variant: 'destructive'
-      });
-    });
-  });
+
+
 
   it('deletes configuration with confirmation', async () => {
     // Mock window.confirm
@@ -627,14 +595,12 @@ describe('FallbackConfigInterface Integration Tests', () => {
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ configs: mockConfigs })
-      });
-    });
+
 
     render(<FallbackConfigInterface />);
     
     await waitFor(() => {
       expect(screen.getByText('Primary Text Generation')).toBeInTheDocument();
-    });
 
     // Click delete button
     const deleteButton = screen.getByLabelText(''); // Trash button
@@ -644,11 +610,9 @@ describe('FallbackConfigInterface Integration Tests', () => {
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Configuration Deleted',
         description: 'Fallback configuration has been deleted'
-      });
-    });
+
 
     expect(global.confirm).toHaveBeenCalledWith('Are you sure you want to delete this fallback configuration?');
-  });
 
   it('shows loading state during test execution', async () => {
     // Mock slow test response
@@ -665,22 +629,20 @@ describe('FallbackConfigInterface Integration Tests', () => {
                 recoveryTime: 2500,
                 details: 'Test completed'
               })
-            });
+
           }, 1000);
-        });
+
       }
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ configs: mockConfigs })
-      });
-    });
+
 
     render(<FallbackConfigInterface />);
     
     await waitFor(() => {
       const configCard = screen.getByText('Primary Text Generation');
       fireEvent.click(configCard);
-    });
 
     const testButton = screen.getByText('Test');
     fireEvent.click(testButton);
@@ -693,5 +655,4 @@ describe('FallbackConfigInterface Integration Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Test Passed')).toBeInTheDocument();
     }, { timeout: 2000 });
-  });
-});
+

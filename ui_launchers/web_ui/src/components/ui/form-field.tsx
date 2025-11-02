@@ -196,19 +196,19 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(({
         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
           {isValidating && (
             <Loader2 
-              className="h-4 w-4 animate-spin text-muted-foreground sm:w-auto md:w-full" 
+              className="h-4 w-4 animate-spin text-muted-foreground " 
               aria-label="Validating"
             />
           )}
           {hasError && (
             <AlertCircle 
-              className="h-4 w-4 text-destructive sm:w-auto md:w-full" 
+              className="h-4 w-4 text-destructive " 
               aria-label="Error"
             />
           )}
           {isValid && showValidIcon && (
             <CheckCircle2 
-              className="h-4 w-4 text-green-500 sm:w-auto md:w-full" 
+              className="h-4 w-4 text-green-500 " 
               aria-label="Valid"
             />
           )}
@@ -226,7 +226,7 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(({
           role="alert"
           aria-live="polite"
         >
-          <AlertCircle className="h-3 w-3 flex-shrink-0 sm:w-auto md:w-full" />
+          <AlertCircle className="h-3 w-3 flex-shrink-0 " />
           {error}
         </p>
       )}
@@ -245,7 +245,6 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(({
       )}
     </div>
   );
-});
 
 FormField.displayName = 'FormField';
 
@@ -307,7 +306,6 @@ export const ValidatedFormField = forwardRef<HTMLInputElement, ValidatedFormFiel
       {...props}
     />
   );
-});
 
 ValidatedFormField.displayName = 'ValidatedFormField';
 

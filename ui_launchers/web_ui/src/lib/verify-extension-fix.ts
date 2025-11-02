@@ -72,7 +72,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     // Also test the actual functionality
     setTimeout(() => {
       testExtensionErrorRecovery().then(testResult => {
-      });
+
     }, 2000);
   }, 1000);
 }

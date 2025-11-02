@@ -3,18 +3,15 @@
  * Shows how to use error boundaries, toasts, and service error handling together
  */
 
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  GlobalErrorBoundary, 
-  ApiErrorBoundary, 
-  ErrorToastContainer
-} from './index';
+
+import { } from './index';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { getServiceErrorHandler } from '@/services/errorHandler';
 
@@ -95,14 +92,13 @@ const ErrorHandlingExample: React.FC = () => {
         service: 'ExampleService',
         method: 'handleApiCall',
         endpoint: '/api/example',
-      });
-      
+
       showServiceError(serviceError, {
         enableRetry: true,
         onRetry: async () => {
           await handleApiCall(false); // Retry with success
         },
-      });
+
     }
   };
 
@@ -128,7 +124,7 @@ const ErrorHandlingExample: React.FC = () => {
       showError('Service call failed after retries', {
         error: error instanceof Error ? error : new Error('Unknown error'),
         showIntelligentResponse: true,
-      });
+
     }
   };
 
@@ -146,7 +142,7 @@ const ErrorHandlingExample: React.FC = () => {
     
     showInfo(`Result: ${result}`, {
       title: 'Fallback Used',
-    });
+
   };
 
   const resetErrors = () => {
@@ -155,12 +151,11 @@ const ErrorHandlingExample: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6 sm:w-auto md:w-full">
+    <div className="max-w-6xl mx-auto p-6 space-y-6 ">
       <Card>
         <CardHeader>
           <CardTitle>Error Handling System Demo</CardTitle>
           <CardDescription>
-            Comprehensive demonstration of error boundaries, toast notifications, and service error handling
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -177,26 +172,23 @@ const ErrorHandlingExample: React.FC = () => {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex flex-wrap gap-2">
-                      <button 
+                      <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() = aria-label="Button"> setErrorType('generic')}
+                        onClick={() => setErrorType('generic')}
                       >
-                        Generic Error
                       </Button>
-                      <button 
+                      <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() = aria-label="Button"> setErrorType('auth')}
+                        onClick={() => setErrorType('auth')}
                       >
-                        Auth Error
                       </Button>
-                      <button 
+                      <Button 
                         size="sm" 
                         variant="secondary"
                         onClick={resetErrors}
-                       aria-label="Button">
-                        Reset
+                       >
                       </Button>
                     </div>
                     
@@ -221,19 +213,17 @@ const ErrorHandlingExample: React.FC = () => {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex flex-wrap gap-2">
-                      <button 
+                      <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() = aria-label="Button"> setShowApiError(true)}
+                        onClick={() => setShowApiError(true)}
                       >
-                        API Error
                       </Button>
-                      <button 
+                      <Button 
                         size="sm" 
                         variant="secondary"
-                        onClick={() = aria-label="Button"> setShowApiError(false)}
+                        onClick={() => setShowApiError(false)}
                       >
-                        Reset
                       </Button>
                     </div>
                     
@@ -262,9 +252,9 @@ const ErrorHandlingExample: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold mb-3">Toast Notifications</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <button 
+              <Button 
                 variant="destructive" 
-                onClick={() = aria-label="Button"> showError('This is an error message', {
+                onClick={() => showError('This is an error message', {
                   title: 'Error Occurred',
                   enableRetry: true,
                   onRetry: async () => {
@@ -273,35 +263,31 @@ const ErrorHandlingExample: React.FC = () => {
                   },
                 })}
               >
-                Show Error
               </Button>
               
-              <button 
+              <Button 
                 variant="outline" 
-                onClick={() = aria-label="Button"> showWarning('This is a warning message', {
+                onClick={() => showWarning('This is a warning message', {
                   title: 'Warning',
                   persistent: true,
                 })}
               >
-                Show Warning
               </Button>
               
-              <button 
+              <Button 
                 variant="secondary" 
-                onClick={() = aria-label="Button"> showInfo('This is an info message', {
+                onClick={() => showInfo('This is an info message', {
                   title: 'Information',
                 })}
               >
-                Show Info
               </Button>
               
-              <button 
+              <Button 
                 variant="default" 
-                onClick={() = aria-label="Button"> showSuccess('This is a success message', {
+                onClick={() => showSuccess('This is a success message', {
                   title: 'Success',
                 })}
               >
-                Show Success
               </Button>
             </div>
           </div>
@@ -313,27 +299,27 @@ const ErrorHandlingExample: React.FC = () => {
             <h3 className="text-lg font-semibold mb-3">Service Error Handling</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <button 
-                onClick={() = aria-label="Button"> handleApiCall(true)}
+                onClick={() => handleApiCall(true)}
                 className="flex flex-col items-center p-4 h-auto sm:p-4 md:p-6"
               >
                 <span className="font-medium">API Call with Retry</span>
                 <span className="text-xs opacity-75 sm:text-sm md:text-base">Shows service error with retry option</span>
               </Button>
               
-              <button 
+              <Button 
                 onClick={handleServiceCall}
                 className="flex flex-col items-center p-4 h-auto sm:p-4 md:p-6"
                 variant="outline"
-               aria-label="Button">
+               >
                 <span className="font-medium">Service with Auto-Retry</span>
                 <span className="text-xs opacity-75 sm:text-sm md:text-base">Automatic retry logic in service layer</span>
               </Button>
               
-              <button 
+              <Button 
                 onClick={handleFallbackCall}
                 className="flex flex-col items-center p-4 h-auto sm:p-4 md:p-6"
                 variant="secondary"
-               aria-label="Button">
+               >
                 <span className="font-medium">Service with Fallback</span>
                 <span className="text-xs opacity-75 sm:text-sm md:text-base">Uses fallback value on error</span>
               </Button>
@@ -354,15 +340,14 @@ const ErrorHandlingExample: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{toasts.length} active</Badge>
                     {toasts.length > 0 && (
-                      <button 
+                      <Button 
                         size="sm" 
                         variant="ghost"
-                        onClick={() = aria-label="Button"> {
+                        onClick={() => {
                           // Clear all toasts (implementation depends on your toast manager)
                           window.location.reload();
                         }}
                       >
-                        Clear All
                       </Button>
                     )}
                   </div>

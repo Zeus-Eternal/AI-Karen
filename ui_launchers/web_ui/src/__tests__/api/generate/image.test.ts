@@ -11,7 +11,6 @@ jest.mock('@/lib/model-selection-service', () => ({
 describe('/api/generate/image', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
 
   describe('POST - Generate Image', () => {
     it('should generate image successfully', async () => {
@@ -37,7 +36,6 @@ describe('/api/generate/image', () => {
           guidance_scale: 7.5,
           batch_size: 1
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -53,20 +51,17 @@ describe('/api/generate/image', () => {
       expect(data.generation_info.prompt).toBe('A beautiful sunset over mountains');
       expect(data.generation_info.generation_time).toBeGreaterThan(0);
       expect(response.headers.get('X-Model-Provider')).toBe('stable-diffusion');
-    });
 
     it('should return error for missing prompt', async () => {
       const request = new NextRequest('http://localhost:3000/api/generate/image', {
         method: 'POST',
         body: JSON.stringify({})
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing required field: prompt');
-    });
 
     it('should return error for excessive batch size', async () => {
       const request = new NextRequest('http://localhost:3000/api/generate/image', {
@@ -75,14 +70,12 @@ describe('/api/generate/image', () => {
           prompt: 'Test prompt',
           batch_size: 10
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Batch size cannot exceed 4 images');
-    });
 
     it('should return error when no image models available', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -102,14 +95,12 @@ describe('/api/generate/image', () => {
         body: JSON.stringify({
           prompt: 'Test prompt'
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(503);
       expect(data.error).toBe('No image generation models available');
-    });
 
     it('should use specified model when model_id provided', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -137,7 +128,6 @@ describe('/api/generate/image', () => {
           prompt: 'Test prompt',
           model_id: 'flux-dev'
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -145,7 +135,6 @@ describe('/api/generate/image', () => {
       expect(response.status).toBe(200);
       expect(data.generation_info.model_id).toBe('flux-dev');
       expect(data.generation_info.provider).toBe('flux');
-    });
 
     it('should return error for img2img without model support', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -167,14 +156,12 @@ describe('/api/generate/image', () => {
           init_image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
           strength: 0.8
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Model does not support image-to-image generation');
-    });
 
     it('should generate multiple images in batch', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -195,7 +182,6 @@ describe('/api/generate/image', () => {
           prompt: 'Test prompt',
           batch_size: 3
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -203,7 +189,6 @@ describe('/api/generate/image', () => {
       expect(response.status).toBe(200);
       expect(data.images).toHaveLength(3);
       expect(response.headers.get('X-Images-Generated')).toBe('3');
-    });
 
     it('should handle generation service errors', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -217,7 +202,6 @@ describe('/api/generate/image', () => {
         body: JSON.stringify({
           prompt: 'Test prompt'
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -225,6 +209,5 @@ describe('/api/generate/image', () => {
       expect(response.status).toBe(500);
       expect(data.error).toBe('Image generation failed');
       expect(data.message).toBe('Service unavailable');
-    });
-  });
-});
+
+

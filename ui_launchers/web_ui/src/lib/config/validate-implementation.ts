@@ -58,13 +58,13 @@ export function validateImplementation(): {
       results.push(`   - Warning details:`);
       validation.warnings.forEach(warning => {
         results.push(`     • ${warning}`);
-      });
+
     }
     if (validation.errors.length > 0) {
       results.push(`   - Error details:`);
       validation.errors.forEach(error => {
         results.push(`     • ${error}`);
-      });
+
     }
     // Test 7: Utility methods
     const healthUrl = manager.getHealthCheckUrl();

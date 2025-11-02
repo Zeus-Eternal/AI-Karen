@@ -3,6 +3,7 @@
  * Tests to ensure all pages work correctly with modern components
  */
 
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { useRouter } from 'next/navigation';
@@ -68,12 +69,10 @@ describe('Page Integration Tests', () => {
       prefetch: vi.fn(),
     };
     (useRouter as any).mockReturnValue(mockRouter);
-  });
 
   describe('Component Migration Status', () => {
     it('should have all components migrated', () => {
       expect(areAllComponentsMigrated()).toBe(true);
-    });
 
     it('should have valid migration map', () => {
       expect(componentMigrationMap).toBeDefined();
@@ -84,9 +83,8 @@ describe('Page Integration Tests', () => {
         expect(component.newPath).toBeDefined();
         expect(component.migrated).toBe(true);
         expect(component.testsPassing).toBe(true);
-      });
-    });
-  });
+
+
 
   describe('HomePage Integration', () => {
     it('should render with modern layout components', async () => {
@@ -99,8 +97,7 @@ describe('Page Integration Tests', () => {
       // Check for modern components
       await waitFor(() => {
         expect(screen.getByTestId('dashboard')).toBeInTheDocument();
-      });
-    });
+
 
     it('should have proper accessibility structure', () => {
       render(<HomePage />);
@@ -109,7 +106,6 @@ describe('Page Integration Tests', () => {
       expect(screen.getByRole('banner')).toBeInTheDocument();
       expect(screen.getByRole('main')).toBeInTheDocument();
       expect(screen.getByLabelText('Main navigation')).toBeInTheDocument();
-    });
 
     it('should use modern grid layout', () => {
       const { container } = render(<HomePage />);
@@ -117,8 +113,7 @@ describe('Page Integration Tests', () => {
       // Check for modern grid classes
       const gridContainer = container.querySelector('.app-grid');
       expect(gridContainer).toBeInTheDocument();
-    });
-  });
+
 
   describe('ChatPage Integration', () => {
     it('should render with modern layout components', async () => {
@@ -130,8 +125,7 @@ describe('Page Integration Tests', () => {
       
       await waitFor(() => {
         expect(screen.getByTestId('chat-interface')).toBeInTheDocument();
-      });
-    });
+
 
     it('should have proper chat grid layout', () => {
       const { container } = render(<ChatPage />);
@@ -139,7 +133,6 @@ describe('Page Integration Tests', () => {
       // Check for chat grid structure
       const chatGrid = container.querySelector('.chat-grid');
       expect(chatGrid).toBeInTheDocument();
-    });
 
     it('should maintain responsive behavior', () => {
       const { container } = render(<ChatPage />);
@@ -147,8 +140,7 @@ describe('Page Integration Tests', () => {
       // Check for responsive classes
       expect(container.querySelector('.container')).toBeInTheDocument();
       expect(container.querySelector('.max-w-screen-xl')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Modern Component Usage', () => {
     it('should use FlexContainer components', () => {
@@ -157,7 +149,6 @@ describe('Page Integration Tests', () => {
       // Check for flex container usage (would be in DOM as div with flex classes)
       const flexElements = container.querySelectorAll('[class*="flex"]');
       expect(flexElements.length).toBeGreaterThan(0);
-    });
 
     it('should use GridContainer components', () => {
       const { container } = render(<HomePage />);
@@ -165,7 +156,6 @@ describe('Page Integration Tests', () => {
       // Check for grid container usage
       const gridElements = container.querySelectorAll('[class*="grid"]');
       expect(gridElements.length).toBeGreaterThan(0);
-    });
 
     it('should have modern card styling', () => {
       const { container } = render(<HomePage />);
@@ -173,8 +163,7 @@ describe('Page Integration Tests', () => {
       // Check for modern card classes
       const modernCards = container.querySelectorAll('.modern-card');
       expect(modernCards.length).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('Performance Optimizations', () => {
     it('should have proper loading states', async () => {
@@ -184,7 +173,6 @@ describe('Page Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByTestId('dashboard')).toBeInTheDocument();
       }, { timeout: 3000 });
-    });
 
     it('should handle dynamic imports correctly', async () => {
       render(<ChatPage />);
@@ -192,9 +180,8 @@ describe('Page Integration Tests', () => {
       // Verify dynamic components load
       await waitFor(() => {
         expect(screen.getByTestId('chat-interface')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Accessibility Integration', () => {
     it('should have proper heading hierarchy', () => {
@@ -204,7 +191,6 @@ describe('Page Integration Tests', () => {
       const h1 = screen.getByRole('heading', { level: 1 });
       expect(h1).toBeInTheDocument();
       expect(h1).toHaveTextContent('Karen AI');
-    });
 
     it('should have skip links', () => {
       render(<HomePage />);
@@ -212,7 +198,6 @@ describe('Page Integration Tests', () => {
       // Check for skip link (would be in layout)
       const skipLink = document.querySelector('.skip-link');
       expect(skipLink).toBeInTheDocument();
-    });
 
     it('should have proper focus management', () => {
       render(<HomePage />);
@@ -220,8 +205,7 @@ describe('Page Integration Tests', () => {
       // Check for focus-visible classes
       const focusableElements = document.querySelectorAll('[class*="focus"]');
       expect(focusableElements.length).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('Theme Integration', () => {
     it('should support dark mode', () => {
@@ -230,7 +214,6 @@ describe('Page Integration Tests', () => {
       // Check for theme-aware classes
       const themeElements = document.querySelectorAll('[class*="dark:"]');
       expect(themeElements.length).toBeGreaterThan(0);
-    });
 
     it('should use design tokens', () => {
       const { container } = render(<HomePage />);
@@ -238,6 +221,5 @@ describe('Page Integration Tests', () => {
       // Check for CSS custom properties usage
       const styles = getComputedStyle(container.firstChild as Element);
       expect(styles.getPropertyValue('--primary')).toBeDefined();
-    });
-  });
-});
+
+

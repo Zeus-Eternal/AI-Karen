@@ -37,7 +37,6 @@ vi.mock('qrcode', () => ({
 describe('Security System Basic Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Security Manager', () => {
     it('should create security manager instance', async () => {
@@ -47,7 +46,6 @@ describe('Security System Basic Tests', () => {
       expect(securityManager).toBeDefined();
       expect(typeof securityManager.getSessionTimeout).toBe('function');
       expect(typeof securityManager.isAccountLocked).toBe('function');
-    });
 
     it('should return correct session timeouts for different roles', async () => {
       const { SecurityManager } = await import('../security-manager');
@@ -56,7 +54,6 @@ describe('Security System Basic Tests', () => {
       expect(securityManager.getSessionTimeout('super_admin')).toBe(30 * 60); // 30 minutes
       expect(securityManager.getSessionTimeout('admin')).toBe(30 * 60); // 30 minutes
       expect(securityManager.getSessionTimeout('user')).toBe(60 * 60); // 60 minutes
-    });
 
     it('should clear failed attempts', async () => {
       const { SecurityManager } = await import('../security-manager');
@@ -66,8 +63,7 @@ describe('Security System Basic Tests', () => {
       expect(() => {
         securityManager.clearFailedAttempts('test@example.com', '192.168.1.1');
       }).not.toThrow();
-    });
-  });
+
 
   describe('MFA Manager', () => {
     it('should create MFA manager instance', async () => {
@@ -77,7 +73,6 @@ describe('Security System Basic Tests', () => {
       expect(mfaManager).toBeDefined();
       expect(typeof mfaManager.generateMfaSetup).toBe('function');
       expect(typeof mfaManager.verifyMfaCode).toBe('function');
-    });
 
     it('should generate MFA setup data', async () => {
       const { MfaManager } = await import('../mfa-manager');
@@ -105,8 +100,7 @@ describe('Security System Basic Tests', () => {
       expect(setupData.secret).toBe('TESTSECRET123');
       expect(setupData.backupCodes).toHaveLength(10);
       expect(setupData.qrCodeUrl).toContain('data:image/png;base64');
-    });
-  });
+
 
   describe('Session Timeout Manager', () => {
     it('should create session timeout manager instance', async () => {
@@ -119,7 +113,6 @@ describe('Security System Basic Tests', () => {
       
       // Clean up
       sessionManager.destroy();
-    });
 
     it('should return null for non-existent session', async () => {
       const { SessionTimeoutManager } = await import('../session-timeout-manager');
@@ -130,8 +123,7 @@ describe('Security System Basic Tests', () => {
       
       // Clean up
       sessionManager.destroy();
-    });
-  });
+
 
   describe('IP Security Manager', () => {
     it('should create IP security manager instance', async () => {
@@ -141,7 +133,6 @@ describe('Security System Basic Tests', () => {
       expect(ipManager).toBeDefined();
       expect(typeof ipManager.checkIpAccess).toBe('function');
       expect(typeof ipManager.recordIpAccess).toBe('function');
-    });
 
     it('should provide IP statistics', async () => {
       const { IpSecurityManager } = await import('../ip-security-manager');
@@ -154,8 +145,7 @@ describe('Security System Basic Tests', () => {
       expect(typeof stats.whitelistedIps).toBe('number');
       expect(typeof stats.blockedIps).toBe('number');
       expect(Array.isArray(stats.topAccessedIps)).toBe(true);
-    });
-  });
+
 
   describe('Enhanced Auth Middleware', () => {
     it('should create enhanced auth middleware instance', async () => {
@@ -165,8 +155,7 @@ describe('Security System Basic Tests', () => {
       expect(authMiddleware).toBeDefined();
       expect(typeof authMiddleware.authenticateUser).toBe('function');
       expect(typeof authMiddleware.validateSession).toBe('function');
-    });
-  });
+
 
   describe('Security Configuration', () => {
     it('should have correct security constants', async () => {
@@ -177,6 +166,5 @@ describe('Security System Basic Tests', () => {
       expect(SECURITY_CONFIG.USER_SESSION_TIMEOUT).toBe(60 * 60);
       expect(Array.isArray(SECURITY_CONFIG.LOGIN_DELAYS)).toBe(true);
       expect(SECURITY_CONFIG.LOGIN_DELAYS.length).toBeGreaterThan(0);
-    });
-  });
-});
+
+

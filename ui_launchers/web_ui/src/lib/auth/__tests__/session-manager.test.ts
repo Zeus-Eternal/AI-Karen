@@ -24,7 +24,6 @@ describe('SessionManager', () => {
   beforeEach(() => {
     sessionManager = new SessionManager();
     vi.clearAllMocks();
-  });
 
   describe('hasValidSession', () => {
     it('should return true when session cookie exists', () => {
@@ -32,23 +31,20 @@ describe('SessionManager', () => {
       
       expect(sessionManager.hasValidSession()).toBe(true);
       expect(mockHasSessionCookie).toHaveBeenCalledTimes(1);
-    });
 
     it('should return false when session cookie does not exist', () => {
       mockHasSessionCookie.mockReturnValue(false);
       
       expect(sessionManager.hasValidSession()).toBe(false);
       expect(mockHasSessionCookie).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('clearSession', () => {
     it('should call clearSession function', () => {
       sessionManager.clearSession();
       
       expect(mockClearSession).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('validateSession', () => {
     it('should return true when session validation succeeds', async () => {
@@ -58,7 +54,6 @@ describe('SessionManager', () => {
       
       expect(result).toBe(true);
       expect(mockValidateSession).toHaveBeenCalledTimes(1);
-    });
 
     it('should return false when session validation fails', async () => {
       mockValidateSession.mockResolvedValue(false);
@@ -67,13 +62,11 @@ describe('SessionManager', () => {
       
       expect(result).toBe(false);
       expect(mockValidateSession).toHaveBeenCalledTimes(1);
-    });
 
     it('should handle validation errors gracefully', async () => {
       mockValidateSession.mockRejectedValue(new Error('Network error'));
       
       await expect(sessionManager.validateSession()).rejects.toThrow('Network error');
       expect(mockValidateSession).toHaveBeenCalledTimes(1);
-    });
-  });
-});
+
+

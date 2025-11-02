@@ -59,7 +59,7 @@ export const BasicErrorPanelExample: React.FC = () => {
   const [showPanel, setShowPanel] = useState(false);
   const scenario = ERROR_SCENARIOS[selectedScenario];
   return (
-    <Card className="w-full max-w-4xl sm:w-auto md:w-full">
+    <Card className="w-full max-w-4xl ">
       <CardHeader>
         <CardTitle>Basic Intelligent Error Panel</CardTitle>
         <CardDescription>
@@ -72,7 +72,7 @@ export const BasicErrorPanelExample: React.FC = () => {
             value={selectedScenario}
             onValueChange={(value) = aria-label="Select option"> setSelectedScenario(value as keyof typeof ERROR_SCENARIOS)}
           >
-            <selectTrigger className="w-64 sm:w-auto md:w-full" aria-label="Select option">
+            <selectTrigger className="w-64 " aria-label="Select option">
               <selectValue />
             </SelectTrigger>
             <selectContent aria-label="Select option">
@@ -83,12 +83,10 @@ export const BasicErrorPanelExample: React.FC = () => {
               ))}
             </SelectContent>
           </Select>
-          <button onClick={() = aria-label="Button"> setShowPanel(true)}>
-            Trigger Error
+          <Button onClick={() => setShowPanel(true)}>
           </Button>
           {showPanel && (
-            <button variant="outline" onClick={() = aria-label="Button"> setShowPanel(false)}>
-              Hide Panel
+            <Button variant="outline" onClick={() => setShowPanel(false)}>
             </Button>
           )}
         </div>
@@ -118,7 +116,7 @@ export const HookUsageExample: React.FC = () => {
     },
     onAnalysisError: (error) => {
     }
-  });
+
   const [selectedScenario, setSelectedScenario] = useState<keyof typeof ERROR_SCENARIOS>('api_key_missing');
   const triggerError = () => {
     const scenario = ERROR_SCENARIOS[selectedScenario];
@@ -127,10 +125,10 @@ export const HookUsageExample: React.FC = () => {
       status_code: scenario.statusCode,
       provider_name: scenario.providerName,
       request_path: '/api/hook-example',
-    });
+
   };
   return (
-    <Card className="w-full max-w-4xl sm:w-auto md:w-full">
+    <Card className="w-full max-w-4xl ">
       <CardHeader>
         <CardTitle>Hook Usage Example</CardTitle>
         <CardDescription>
@@ -143,7 +141,7 @@ export const HookUsageExample: React.FC = () => {
             value={selectedScenario}
             onValueChange={(value) = aria-label="Select option"> setSelectedScenario(value as keyof typeof ERROR_SCENARIOS)}
           >
-            <selectTrigger className="w-64 sm:w-auto md:w-full" aria-label="Select option">
+            <selectTrigger className="w-64 " aria-label="Select option">
               <selectValue />
             </SelectTrigger>
             <selectContent aria-label="Select option">
@@ -154,12 +152,10 @@ export const HookUsageExample: React.FC = () => {
               ))}
             </SelectContent>
           </Select>
-          <button onClick={triggerError} disabled={intelligentError.isAnalyzing} aria-label="Button">
-            Analyze Error
+          <Button onClick={triggerError} disabled={intelligentError.isAnalyzing} >
           </Button>
           {intelligentError.analysis && (
-            <button variant="outline" onClick={intelligentError.clearAnalysis} aria-label="Button">
-              Clear Analysis
+            <Button variant="outline" onClick={intelligentError.clearAnalysis} >
             </Button>
           )}
         </div>
@@ -171,13 +167,12 @@ export const HookUsageExample: React.FC = () => {
         {intelligentError.analysisError && (
           <div className="text-sm text-red-600 md:text-base lg:text-lg">
             Analysis failed: {intelligentError.analysisError}
-            <button
+            <Button
               variant="link"
               size="sm"
               onClick={intelligentError.retryAnalysis}
               className="ml-2"
-             aria-label="Button">
-              Retry
+             >
             </Button>
           </div>
         )}
@@ -223,10 +218,10 @@ export const ApiErrorExample: React.FC = () => {
       endpoint: '/api/chat/completions',
       method: 'POST',
       provider: 'openai',
-    });
+
   };
   return (
-    <Card className="w-full max-w-4xl sm:w-auto md:w-full">
+    <Card className="w-full max-w-4xl ">
       <CardHeader>
         <CardTitle>API Error Hook Example</CardTitle>
         <CardDescription>
@@ -234,8 +229,7 @@ export const ApiErrorExample: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <button onClick={simulateApiError} disabled={apiError.isAnalyzing} aria-label="Button">
-          Simulate API Error
+        <Button onClick={simulateApiError} disabled={apiError.isAnalyzing} >
         </Button>
         {apiError.analysis && (
           <IntelligentErrorPanel
@@ -267,11 +261,11 @@ const EnhancedProblematicComponent = withIntelligentError(ProblematicComponent, 
   errorPanelProps: {
     showTechnicalDetails: true,
   },
-});
+
 export const HOCExample: React.FC = () => {
   const [shouldError, setShouldError] = useState(false);
   return (
-    <Card className="w-full max-w-4xl sm:w-auto md:w-full">
+    <Card className="w-full max-w-4xl ">
       <CardHeader>
         <CardTitle>Higher-Order Component Example</CardTitle>
         <CardDescription>
@@ -280,9 +274,9 @@ export const HOCExample: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center space-x-4">
-          <button
+          <Button
             variant={shouldError ? "destructive" : "default"}
-            onClick={() = aria-label="Button"> setShouldError(!shouldError)}
+            onClick={() => setShouldError(!shouldError)}
           >
             {shouldError ? 'Fix Component' : 'Break Component'}
           </Button>

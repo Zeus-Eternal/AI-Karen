@@ -1,19 +1,13 @@
 "use client";
 
+import React from 'react';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  HelpCircle,
-  ChevronDown,
-  ChevronUp,
-  BookOpen,
-  Lightbulb,
-  AlertTriangle,
-  CheckCircle
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { getHelpContent } from '@/lib/help-content';
 
@@ -43,19 +37,19 @@ export function ContextualHelp({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-sm font-medium text-blue-900 md:text-base lg:text-lg">
-            <HelpCircle className="h-4 w-4 sm:w-auto md:w-full" />
+            <HelpCircle className="h-4 w-4 " />
             Help: {section}
           </CardTitle>
-          <button
+          <Button
             variant="ghost"
             size="sm"
-            onClick={() = aria-label="Button"> setExpanded(!expanded)}
+            onClick={() => setExpanded(!expanded)}
             className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
           >
             {expanded ? (
-              <ChevronUp className="h-4 w-4 sm:w-auto md:w-full" />
+              <ChevronUp className="h-4 w-4 " />
             ) : (
-              <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
+              <ChevronDown className="h-4 w-4 " />
             )}
           </Button>
         </div>
@@ -71,9 +65,9 @@ export function ContextualHelp({
               return (
                 <div key={helpKey} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-blue-100 sm:p-4 md:p-6">
                   <div className="flex-shrink-0 mt-0.5">
-                    <Lightbulb className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />
+                    <Lightbulb className="h-4 w-4 text-blue-600 " />
                   </div>
-                  <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                  <div className="flex-1 min-w-0 ">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-sm text-blue-900 md:text-base lg:text-lg">{content.title}</h4>
                       <HelpTooltip helpKey={helpKey} category={category} variant="inline" size="sm" />
@@ -114,13 +108,13 @@ export function HelpCallout({
   const getIcon = () => {
     switch (type) {
       case 'tip':
-        return <Lightbulb className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Lightbulb className="h-4 w-4 " />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 " />;
       case 'success':
-        return <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <CheckCircle className="h-4 w-4 " />;
       default:
-        return <BookOpen className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <BookOpen className="h-4 w-4 " />;
     }
   };
 
@@ -189,11 +183,9 @@ export function QuickStartHelp({
     <Card className={`border-green-200 bg-green-50/50 ${className}`}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-green-900">
-          <CheckCircle className="h-5 w-5 sm:w-auto md:w-full" />
-          Quick Start Guide
+          <CheckCircle className="h-5 w-5 " />
         </CardTitle>
         <CardDescription className="text-green-700">
-          Follow these steps to get started quickly
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -99,12 +99,10 @@ describe('Monitoring System Integration', () => {
         return Promise.resolve({ ok: true, status: 200 });
       }
       return Promise.reject(new Error('Not found'));
-    });
-  });
+
 
   afterEach(() => {
     jest.useRealTimers();
-  });
 
   describe('End-to-End Monitoring Flow', () => {
     it('should render complete monitoring dashboard with all components', async () => {
@@ -112,8 +110,7 @@ describe('Monitoring System Integration', () => {
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       // Check all major components are rendered
       expect(screen.getByText('Backend API')).toBeInTheDocument();
       expect(screen.getByText('Database')).toBeInTheDocument();
@@ -121,23 +118,20 @@ describe('Monitoring System Integration', () => {
       expect(screen.getByText('Performance Metrics')).toBeInTheDocument();
       expect(screen.getByText('Error Metrics')).toBeInTheDocument();
       expect(screen.getByText('Authentication Metrics')).toBeInTheDocument();
-    });
 
     it('should track health changes over time', async () => {
       render(<TestMonitoringApp />);
       
       await waitFor(() => {
         expect(screen.getByTestId('health-changes')).toHaveTextContent('Health Changes: 1');
-      });
-      
+
       // Trigger manual refresh
       const refreshButton = screen.getByText('Refresh');
       fireEvent.click(refreshButton);
       
       await waitFor(() => {
         expect(screen.getByTestId('health-changes')).toHaveTextContent('Health Changes: 2');
-      });
-    });
+
 
     it('should generate alerts based on thresholds', async () => {
       // Mock high response time to trigger alert
@@ -146,24 +140,20 @@ describe('Monitoring System Integration', () => {
         averageTime: 3000, // Above threshold of 2000
         p95Time: 4000,
         p99Time: 5000
-      });
-      
+
       render(<TestMonitoringApp />);
       
       await waitFor(() => {
         expect(screen.getByTestId('alerts-count')).toHaveTextContent('Alerts: 1');
-      });
-      
+
       expect(screen.getByTestId('alert-0')).toHaveTextContent('performance: High response time');
-    });
 
     it('should handle real-time updates', async () => {
       render(<TestMonitoringApp />);
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       const initialHealthChanges = screen.getByTestId('health-changes').textContent;
       
       // Fast-forward time to trigger auto-refresh
@@ -172,9 +162,8 @@ describe('Monitoring System Integration', () => {
       await waitFor(() => {
         const currentHealthChanges = screen.getByTestId('health-changes').textContent;
         expect(currentHealthChanges).not.toBe(initialHealthChanges);
-      });
-    });
-  });
+
+
 
   describe('Logging Integration', () => {
     it('should log health check activities', async () => {
@@ -182,8 +171,7 @@ describe('Monitoring System Integration', () => {
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       expect(loggingModule.connectivityLogger.logConnectivity).toHaveBeenCalledWith(
         'debug',
         'System health check completed',
@@ -193,7 +181,6 @@ describe('Monitoring System Integration', () => {
           statusCode: 200
         })
       );
-    });
 
     it('should log errors when health checks fail', async () => {
       // Mock fetch to fail
@@ -203,15 +190,13 @@ describe('Monitoring System Integration', () => {
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       expect(loggingModule.connectivityLogger.logError).toHaveBeenCalledWith(
         'Failed to check system health',
         expect.any(Error),
         'connectivity'
       );
-    });
-  });
+
 
   describe('Performance Tracking Integration', () => {
     it('should integrate with performance tracker for real metrics', async () => {
@@ -228,25 +213,21 @@ describe('Monitoring System Integration', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Performance Metrics')).toBeInTheDocument();
-      });
-      
+
       // Should display the real performance data
       expect(screen.getByText('1.80s')).toBeInTheDocument(); // Average time
       expect(screen.getByText('2.50s')).toBeInTheDocument(); // P95 time
       expect(screen.getByText('3.20s')).toBeInTheDocument(); // P99 time
-    });
 
     it('should track dashboard rendering performance', async () => {
       render(<TestMonitoringApp />);
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       // Performance tracking should be called for various operations
       expect(loggingModule.performanceTracker.getPerformanceStats).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Error Handling and Recovery', () => {
     it('should handle partial health check failures gracefully', async () => {
@@ -262,19 +243,16 @@ describe('Monitoring System Integration', () => {
           return Promise.resolve({ ok: false, status: 503 });
         }
         return Promise.reject(new Error('Not found'));
-      });
-      
+
       render(<TestMonitoringApp />);
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       // Should still render the dashboard
       expect(screen.getByText('Backend API')).toBeInTheDocument();
       expect(screen.getByText('Database')).toBeInTheDocument();
       expect(screen.getByText('Authentication')).toBeInTheDocument();
-    });
 
     it('should recover from temporary failures', async () => {
       let callCount = 0;
@@ -286,26 +264,22 @@ describe('Monitoring System Integration', () => {
           return Promise.reject(new Error('Temporary failure'));
         }
         return Promise.resolve({ ok: true, status: 200 });
-      });
-      
+
       render(<TestMonitoringApp />);
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       // Trigger refresh to test recovery
       const refreshButton = screen.getByText('Refresh');
       fireEvent.click(refreshButton);
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       // Should have logged both failures and recovery
       expect(loggingModule.connectivityLogger.logError).toHaveBeenCalled();
-    });
-  });
+
 
   describe('User Interactions', () => {
     it('should handle auto-refresh toggle', async () => {
@@ -313,8 +287,7 @@ describe('Monitoring System Integration', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Auto-refresh ON')).toBeInTheDocument();
-      });
-      
+
       const autoRefreshButton = screen.getByText('Auto-refresh ON');
       fireEvent.click(autoRefreshButton);
       
@@ -328,16 +301,14 @@ describe('Monitoring System Integration', () => {
       await waitFor(() => {
         const currentHealthChanges = screen.getByTestId('health-changes').textContent;
         expect(currentHealthChanges).toBe(initialHealthChanges);
-      });
-    });
+
 
     it('should handle manual refresh', async () => {
       render(<TestMonitoringApp />);
       
       await waitFor(() => {
         expect(screen.getByText('Refresh')).toBeInTheDocument();
-      });
-      
+
       const initialHealthChanges = screen.getByTestId('health-changes').textContent;
       
       const refreshButton = screen.getByText('Refresh');
@@ -346,9 +317,8 @@ describe('Monitoring System Integration', () => {
       await waitFor(() => {
         const currentHealthChanges = screen.getByTestId('health-changes').textContent;
         expect(currentHealthChanges).not.toBe(initialHealthChanges);
-      });
-    });
-  });
+
+
 
   describe('Responsive Behavior', () => {
     it('should adapt to different screen sizes', async () => {
@@ -357,19 +327,16 @@ describe('Monitoring System Integration', () => {
         writable: true,
         configurable: true,
         value: 768,
-      });
-      
+
       render(<TestMonitoringApp />);
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       // Should render all components regardless of screen size
       expect(screen.getByText('Backend API')).toBeInTheDocument();
       expect(screen.getByText('Performance Metrics')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('should have proper ARIA labels and roles', async () => {
@@ -377,19 +344,16 @@ describe('Monitoring System Integration', () => {
       
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /System Health Dashboard/i })).toBeInTheDocument();
-      });
-      
+
       expect(screen.getByRole('button', { name: /Refresh/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Auto-refresh/i })).toBeInTheDocument();
-    });
 
     it('should support keyboard navigation', async () => {
       render(<TestMonitoringApp />);
       
       await waitFor(() => {
         expect(screen.getByText('System Health Dashboard')).toBeInTheDocument();
-      });
-      
+
       const refreshButton = screen.getByRole('button', { name: /Refresh/i });
       const autoRefreshButton = screen.getByRole('button', { name: /Auto-refresh/i });
       
@@ -402,6 +366,5 @@ describe('Monitoring System Integration', () => {
       
       autoRefreshButton.focus();
       expect(document.activeElement).toBe(autoRefreshButton);
-    });
-  });
-});
+
+

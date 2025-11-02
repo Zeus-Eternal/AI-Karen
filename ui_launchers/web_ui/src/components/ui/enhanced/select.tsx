@@ -82,7 +82,6 @@ export interface EnhancedSelectTriggerProps
     VariantProps<typeof enhancedSelectTriggerVariants> {}
 export const EnhancedSelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
-  EnhancedSelectTriggerProps
 >(({ className, size, variant, state, children, ...props }, ref) => (
   <selectPrimitive.Trigger
     ref={ref}
@@ -91,7 +90,7 @@ export const EnhancedSelectTrigger = React.forwardRef<
    aria-label="Select option">
     {children}
     <selectPrimitive.Icon asChild aria-label="Select option">
-      <ChevronDown className="h-4 w-4 opacity-50 sm:w-auto md:w-full" />
+      <ChevronDown className="h-4 w-4 opacity-50 " />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -109,7 +108,7 @@ export const EnhancedSelectScrollUpButton = React.forwardRef<
     )}
     {...props}
    aria-label="Select option">
-    <ChevronUp className="h-4 w-4 sm:w-auto md:w-full" />
+    <ChevronUp className="h-4 w-4 " />
   </SelectPrimitive.ScrollUpButton>
 ));
 EnhancedSelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
@@ -125,7 +124,7 @@ export const EnhancedSelectScrollDownButton = React.forwardRef<
     )}
     {...props}
    aria-label="Select option">
-    <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
+    <ChevronDown className="h-4 w-4 " />
   </SelectPrimitive.ScrollDownButton>
 ));
 EnhancedSelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
@@ -206,9 +205,9 @@ export const EnhancedSelectItem = React.forwardRef<
     )}
     {...props}
    aria-label="Select option">
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center sm:w-auto md:w-full">
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center ">
       <selectPrimitive.ItemIndicator aria-label="Select option">
-        <Check className="h-4 w-4 sm:w-auto md:w-full" />
+        <Check className="h-4 w-4 " />
       </SelectPrimitive.ItemIndicator>
     </span>
     <selectPrimitive.ItemText aria-label="Select option">{children}</SelectPrimitive.ItemText>
@@ -249,7 +248,6 @@ export interface EnhancedSelectProps {
 }
 export const EnhancedSelect = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Root>,
-  EnhancedSelectProps
 >(({ 
   children, 
   label, 
@@ -321,9 +319,8 @@ export const EnhancedSelect = React.forwardRef<
       )}
     </div>
   );
-});
+
 EnhancedSelect.displayName = 'EnhancedSelect';
 // Export all components
 export {
-  SelectPrimitive as Select,
 };

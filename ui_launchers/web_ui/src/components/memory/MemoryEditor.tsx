@@ -78,7 +78,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
       cluster: memory.semantic_cluster,
       relationships: memory.relationships
     } : null
-  });
+
   // CopilotKit action for memory enhancement
   useCopilotAction({
     name: "enhanceMemory",
@@ -98,7 +98,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
     handler: async ({ content, context }) => {
       await generateAISuggestions(content, context);
     }
-  });
+
   // CopilotKit action for memory categorization
   useCopilotAction({
     name: "categorizeMemory",
@@ -119,7 +119,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
         setEditedCluster(suggestions.cluster);
       }
     }
-  });
+
   // Generate AI suggestions for memory enhancement
   const generateAISuggestions = useCallback(async (content?: string, context?: string) => {
     try {
@@ -139,7 +139,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
           current_type: editedType,
           current_cluster: editedCluster
         })
-      });
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -164,7 +164,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
           user_id: userId,
           tenant_id: tenantId
         })
-      });
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -197,7 +197,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
             const cluster = line.split(':')[1].trim().toLowerCase();
             setEditedCluster(cluster);
           }
-        });
+
         break;
       case 'correction':
         setEditedContent(suggestion.content);
@@ -292,7 +292,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
           <div>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                Memory Content
               </label>
               <CopilotTextarea
                 className="memory-content-textarea"
@@ -323,11 +322,10 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                  Type
                 </label>
                 <select
                   value={editedType}
-                  onChange={(e) = aria-label="Select option"> setEditedType(e.target.value as 'fact' | 'preference' | 'context')}
+                  onChange={(e) => setEditedType(e.target.value as 'fact' | 'preference' | 'context')}
                   style={{
                     width: '100%',
                     padding: '8px',
@@ -350,17 +348,16 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                   max="1"
                   step="0.1"
                   value={editedConfidence}
-                  onChange={(e) = aria-label="Input"> setEditedConfidence(parseFloat(e.target.value))}
+                  onChange={(e) => setEditedConfidence(parseFloat(e.target.value))}
                   style={{ width: '100%' }}
                 />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                  Cluster
                 </label>
                 <select
                   value={editedCluster}
-                  onChange={(e) = aria-label="Select option"> setEditedCluster(e.target.value)}
+                  onChange={(e) => setEditedCluster(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '8px',
@@ -377,7 +374,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
             </div>
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
               <button
-                onClick={() = aria-label="Button"> generateAISuggestions()}
+                onClick={() => generateAISuggestions()}
                 disabled={isLoadingSuggestions || !editedContent.trim()}
                 style={{
                   padding: '8px 16px',
@@ -392,7 +389,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                 {isLoadingSuggestions ? 'Generating...' : 'Get AI Suggestions'}
               </button>
               <button
-                onClick={() = aria-label="Button"> getCategorySuggestions(editedContent)}
+                onClick={() => getCategorySuggestions(editedContent)}
                 disabled={!editedContent.trim()}
                 style={{
                   padding: '8px 16px',
@@ -456,7 +453,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                       {suggestion.reasoning}
                     </div>
                     <button
-                      onClick={() = aria-label="Button"> applySuggestion(suggestion)}
+                      onClick={() => applySuggestion(suggestion)}
                       style={{
                         padding: '4px 8px',
                         backgroundColor: '#4CAF50',
@@ -467,7 +464,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                         cursor: 'pointer'
                       }}
                     >
-                      Apply
                     </button>
                   </div>
                 ))}
@@ -501,7 +497,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                   cursor: 'pointer'
                 }}
                aria-label="Button">
-                Delete Memory
               </button>
             )}
           </div>
@@ -517,7 +512,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                 cursor: 'pointer'
               }}
              aria-label="Button">
-              Cancel
             </button>
             <button
               onClick={handleSave}

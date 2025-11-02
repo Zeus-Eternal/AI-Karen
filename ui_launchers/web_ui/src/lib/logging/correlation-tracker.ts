@@ -89,7 +89,7 @@ class CorrelationTracker {
       this.correlationMap.clear();
       toKeep.forEach(([key, value]) => {
         this.correlationMap.set(key, value);
-      });
+
     }
   }
 
@@ -130,7 +130,7 @@ export function withCorrelation(target: any, propertyName: string, descriptor: P
     const correlationId = correlationTracker.generateCorrelationId();
     return correlationTracker.withCorrelation(correlationId, () => {
       return method.apply(this, args);
-    });
+
   };
 }
 
@@ -144,6 +144,6 @@ export function withCorrelationAsync(target: any, propertyName: string, descript
     const correlationId = correlationTracker.generateCorrelationId();
     return await correlationTracker.withCorrelationAsync(correlationId, () => {
       return method.apply(this, args);
-    });
+
   };
 }

@@ -82,7 +82,6 @@ export class PluginService {
           categoryMap.set(category, []);
         }
         categoryMap.get(category)!.push(plugin);
-      });
 
       const categories: PluginCategory[] = Array.from(categoryMap.entries()).map(([name, plugins]) => ({
         name,
@@ -106,7 +105,6 @@ export class PluginService {
         headers: {
           ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
         },
-      });
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -199,7 +197,6 @@ export class PluginService {
           plugin_name: pluginName,
           parameters,
         }),
-      });
 
       if (!response.ok) {
         throw new Error(`Validation request failed: ${response.statusText}`);
@@ -290,7 +287,6 @@ export class PluginService {
           ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
         },
         body: JSON.stringify({ enabled }),
-      });
 
       if (response.ok) {
         // Clear plugin cache to force refresh
@@ -314,7 +310,6 @@ export class PluginService {
         headers: {
           ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
         },
-      });
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -389,8 +384,7 @@ export class PluginService {
     // Update popular parameters
     Object.keys(parameters).forEach(param => {
       metrics!.popularParameters[param] = (metrics!.popularParameters[param] || 0) + 1;
-    });
-    
+
     this.metricsCache.set(pluginName, metrics);
   }
 

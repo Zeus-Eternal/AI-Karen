@@ -251,7 +251,6 @@ export const ExtensionProvider: React.FC<{ initialCategory?: ExtensionCategory; 
       ...initialState.navigation,
       currentCategory: initialCategory,
     }
-  });
 
   return <ExtensionContext.Provider value={{ state, dispatch }}>{children}</ExtensionContext.Provider>;
 };
@@ -264,4 +263,4 @@ export function useExtensionContext() {
   return context;
 }
 
-export { type ExtensionState, type ExtensionAction, type ExtensionCategory, type BreadcrumbItem } from './types';
+import { export { type ExtensionState, type ExtensionAction, type ExtensionCategory, type BreadcrumbItem } from './types';

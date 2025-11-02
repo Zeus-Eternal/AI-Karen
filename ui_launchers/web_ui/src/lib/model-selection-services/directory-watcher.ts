@@ -1,7 +1,6 @@
 import { promises as fs } from "fs";
 import * as path from "path";
 import { BaseModelService } from "./base-service";
-import {
 import { DirectoryWatchError } from "./errors/model-selection-errors";
 /**
  * Directory Watcher Service
@@ -14,18 +13,14 @@ import { DirectoryWatchError } from "./errors/model-selection-errors";
 
 
 
-  IDirectoryWatcher,
-  DirectoryWatchOptions,
-  FileSystemChangeEvent,
-  DirectoryWatcherConfig,
-} from "./types";
+import { } from "./types";
 
 
   directoryExists,
   readDirectory,
   getFileModTime,
   normalizePath,
-} from "./utils/file-utils";
+import { } from "./utils/file-utils";
 
 export class DirectoryWatcher
   extends BaseModelService
@@ -335,7 +330,6 @@ export class DirectoryWatcher
           error,
           `Native watcher error for directory: ${directory}`
         );
-      });
 
       this.watchers.set(directory, watcher);
     } catch (error) {
@@ -399,7 +393,7 @@ export class DirectoryWatcher
           .catch(() => {
             changeType = "removed";
             this.emitChangeEvent(changeType, normalizedPath, directory);
-          });
+
         return;
 
       case "change":
@@ -421,7 +415,6 @@ export class DirectoryWatcher
       const currentFiles = await readDirectory(directory, {
         recursive: this.config.enableRecursiveWatching,
         includeStats: true,
-      });
 
       const currentState = new Map<string, { mtime: number; size: number }>();
 
@@ -436,7 +429,7 @@ export class DirectoryWatcher
           currentState.set(file.path, {
             mtime: stats.mtime.getTime(),
             size: stats.size,
-          });
+
         }
       }
 
@@ -486,7 +479,6 @@ export class DirectoryWatcher
         const files = await readDirectory(directory, {
           recursive: this.config.enableRecursiveWatching,
           includeStats: true,
-        });
 
         const state = new Map<string, { mtime: number; size: number }>();
 
@@ -500,7 +492,7 @@ export class DirectoryWatcher
             state.set(file.path, {
               mtime: stats.mtime.getTime(),
               size: stats.size,
-            });
+
           }
         }
 

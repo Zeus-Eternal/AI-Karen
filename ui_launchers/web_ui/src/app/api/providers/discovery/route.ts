@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
           // @ts-ignore undici hint
           keepalive: true,
           cache: 'no-store',
-        });
+
         clearTimeout(timeout);
         if (response.ok) {
           break; // success
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
               // @ts-ignore undici hint
               keepalive: true,
               cache: 'no-store',
-            });
+
             clearTimeout(timeout2);
             if (publicResp.ok) {
               response = publicResp;

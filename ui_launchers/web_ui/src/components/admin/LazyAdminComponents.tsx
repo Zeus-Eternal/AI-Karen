@@ -6,23 +6,24 @@
  * 
  * Requirements: 7.3, 7.5
  */
-'use client';
+"use client";
+
 import React, { Suspense, lazy } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 // Loading components
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center p-8 sm:p-4 md:p-6">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 sm:w-auto md:w-full"></div>
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 "></div>
   </div>
 );
 const LoadingCard = ({ title }: { title: string }) => (
   <div className="bg-white shadow rounded-lg p-6 sm:p-4 md:p-6">
     <div className="animate-pulse">
-      <div className="h-6 bg-gray-200 rounded w-1/3 mb-4 sm:w-auto md:w-full"></div>
+      <div className="h-6 bg-gray-200 rounded w-1/3 mb-4 "></div>
       <div className="space-y-3">
         <div className="h-4 bg-gray-200 rounded"></div>
-        <div className="h-4 bg-gray-200 rounded w-5/6 sm:w-auto md:w-full"></div>
-        <div className="h-4 bg-gray-200 rounded w-4/6 sm:w-auto md:w-full"></div>
+        <div className="h-4 bg-gray-200 rounded w-5/6 "></div>
+        <div className="h-4 bg-gray-200 rounded w-4/6 "></div>
       </div>
     </div>
   </div>
@@ -30,17 +31,17 @@ const LoadingCard = ({ title }: { title: string }) => (
 const LoadingTable = () => (
   <div className="bg-white shadow rounded-lg">
     <div className="px-6 py-4 border-b border-gray-200">
-      <div className="animate-pulse h-6 bg-gray-200 rounded w-1/4 sm:w-auto md:w-full"></div>
+      <div className="animate-pulse h-6 bg-gray-200 rounded w-1/4 "></div>
     </div>
     <div className="p-6 sm:p-4 md:p-6">
       <div className="animate-pulse space-y-4">
         {[...Array(5)].map((_, i) => (
           <div key={i} className="flex space-x-4">
-            <div className="h-4 bg-gray-200 rounded w-1/4 sm:w-auto md:w-full"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/6 sm:w-auto md:w-full"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/8 sm:w-auto md:w-full"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/6 sm:w-auto md:w-full"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/8 sm:w-auto md:w-full"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/4 "></div>
+            <div className="h-4 bg-gray-200 rounded w-1/6 "></div>
+            <div className="h-4 bg-gray-200 rounded w-1/8 "></div>
+            <div className="h-4 bg-gray-200 rounded w-1/6 "></div>
+            <div className="h-4 bg-gray-200 rounded w-1/8 "></div>
           </div>
         ))}
       </div>
@@ -53,8 +54,8 @@ const LoadingDashboard = () => (
       {[...Array(4)].map((_, i) => (
         <div key={i} className="bg-white shadow rounded-lg p-6 sm:p-4 md:p-6">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-2/3 mb-2 sm:w-auto md:w-full"></div>
-            <div className="h-8 bg-gray-200 rounded w-1/2 sm:w-auto md:w-full"></div>
+            <div className="h-4 bg-gray-200 rounded w-2/3 mb-2 "></div>
+            <div className="h-8 bg-gray-200 rounded w-1/2 "></div>
           </div>
         </div>
       ))}
@@ -70,13 +71,12 @@ const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error; resetError
   <div className="bg-red-50 border border-red-200 rounded-lg p-6 sm:p-4 md:p-6">
     <div className="flex items-center">
       <div className="flex-shrink-0">
-        <svg className="h-5 w-5 text-red-400 sm:w-auto md:w-full" viewBox="0 0 20 20" fill="currentColor">
+        <svg className="h-5 w-5 text-red-400 " viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
         </svg>
       </div>
       <div className="ml-3">
         <h3 className="text-sm font-medium text-red-800 md:text-base lg:text-lg">
-          Component failed to load
         </h3>
         <div className="mt-2 text-sm text-red-700 md:text-base lg:text-lg">
           <p>{error.message}</p>
@@ -86,7 +86,6 @@ const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error; resetError
             onClick={resetErrorBoundary}
             className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200 md:text-base lg:text-lg"
            aria-label="Button">
-            Try again
           </button>
         </div>
       </div>
@@ -95,38 +94,7 @@ const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error; resetError
 );
 // Lazy-loaded components
 const LazyUserManagementTable = lazy(() => 
-  import('./UserManagementTable').then(module => ({ default: module.UserManagementTable }))
-);
-const LazyVirtualizedUserTable = lazy(() => 
-  import('./VirtualizedUserTable').then(module => ({ default: module.VirtualizedUserTable }))
-);
-const LazyAdminDashboard = lazy(() => 
-  import('./AdminDashboard').then(module => ({ default: module.AdminDashboard }))
-);
-const LazySuperAdminDashboard = lazy(() => 
-  import('./SuperAdminDashboard')
-);
-const LazyUserCreationForm = lazy(() => 
-  import('./UserCreationForm').then(module => ({ default: module.UserCreationForm }))
-);
-const LazyBulkUserOperations = lazy(() => 
-  import('./BulkUserOperations').then(module => ({ default: module.BulkUserOperations }))
-);
-const LazyAuditLogViewer = lazy(() => 
-  import('./audit/AuditLogViewer')
-);
-const LazySystemConfigurationPanel = lazy(() => 
-  import('./SystemConfigurationPanel')
-);
-const LazySecuritySettingsPanel = lazy(() => 
-  import('./SecuritySettingsPanel')
-);
-const LazyAdminManagementInterface = lazy(() => 
-  import('./AdminManagementInterface')
-);
-// Wrapper components with error boundaries and loading states
-export const UserManagementTable = (props: any) => (
-  <ErrorBoundary FallbackComponent={ErrorFallback}>
+  import('./BulkUserOperations').then(module => ({ default: module.BulkUserOperations })) ); const LazyAuditLogViewer = lazy(() => import('./audit/AuditLogViewer') ); const LazySystemConfigurationPanel = lazy(() => import('./SystemConfigurationPanel') ); const LazySecuritySettingsPanel = lazy(() => import('./SecuritySettingsPanel') ); const LazyAdminManagementInterface = lazy(() => import('./AdminManagementInterface') ); // Wrapper components with error boundaries and loading states export const UserManagementTable = (props: any) => ( <ErrorBoundary FallbackComponent={ErrorFallback}> from "@/lib/placeholder";
     <Suspense fallback={<LoadingTable />}>
       <LazyUserManagementTable {...props} />
     </Suspense>
@@ -226,21 +194,11 @@ export const preloadAdminComponents = {
 export const preloadAllAdminComponents = () => {
   Object.values(preloadAdminComponents).forEach(preload => {
     preload().catch(error => {
-    });
-  });
+
+
 };
 // Component registry for dynamic loading
 export const adminComponentRegistry = {
-  UserManagementTable,
-  VirtualizedUserTable,
-  AdminDashboard,
-  SuperAdminDashboard,
-  UserCreationForm,
-  BulkUserOperations,
-  AuditLogViewer,
-  SystemConfigurationPanel,
-  SecuritySettingsPanel,
-  AdminManagementInterface,
 };
 // Dynamic component loader
 export function loadAdminComponent(componentName: keyof typeof adminComponentRegistry) {
@@ -264,7 +222,7 @@ export function useComponentLoadTime(componentName: string) {
         (window as any).gtag('event', 'component_load_time', {
           component_name: componentName,
           load_time: Math.round(loadTime),
-        });
+
       }
     };
   }, [componentName]);

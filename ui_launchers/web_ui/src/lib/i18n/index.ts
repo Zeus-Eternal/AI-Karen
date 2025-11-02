@@ -332,7 +332,7 @@ export class I18nManager {
         callback(locale);
       } catch (error) {
       }
-    });
+
   }
 }
 // Global instance

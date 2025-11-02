@@ -1,3 +1,3 @@
 // Automation extension components
-export { default as AgentList } from './AgentList';
-export { default as WorkflowList } from './WorkflowList';
+import { export { default as AgentList } from './AgentList';
+import { export { default as WorkflowList } from './WorkflowList';

@@ -1,16 +1,13 @@
 "use client";
 
+import React from 'react';
 
-import {
-  SidebarHeader,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, PanelLeft } from "lucide-react";
 import ExtensionBreadcrumbs from "./ExtensionBreadcrumbs";
 import ExtensionStats from "./ExtensionStats";
-import { useExtensionContext } from "@/extensions";
+import { useExtensionContext } from "@/extensions/ExtensionContext";
 
 export default function ExtensionHeader() {
   const {
@@ -19,12 +16,13 @@ export default function ExtensionHeader() {
   } = useExtensionContext();
 
   return (
-    <SidebarHeader className="space-y-2">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Extension Manager</h2>
-        <SidebarTrigger>
+        <Button variant="ghost" size="icon" aria-label="Toggle sidebar">
+          <PanelLeft className="h-5 w-5 text-muted-foreground" />
           <span className="sr-only">Toggle sidebar</span>
-        </SidebarTrigger>
+        </Button>
       </div>
       <Tabs
         value={currentCategory}
@@ -37,17 +35,17 @@ export default function ExtensionHeader() {
         </TabsList>
       </Tabs>
       {level > 0 && (
-        <button
+        <Button
           variant="ghost"
           size="sm"
           className="px-1 gap-1 h-6"
-          onClick={() = aria-label="Button"> dispatch({ type: "GO_BACK" })}
+          onClick={() => dispatch({ type: "GO_BACK" })}
         >
-          <ArrowLeft className="h-3 w-3 sm:w-auto md:w-full" /> Back
+          <ArrowLeft className="h-3 w-3 " /> Back
         </Button>
       )}
       <ExtensionBreadcrumbs />
       <ExtensionStats />
-    </SidebarHeader>
+    </div>
   );
 }

@@ -153,7 +153,7 @@ class AdminIntegrationTestRunner {
         covered: false,
         tests: [],
       };
-    });
+
   }
 
   private async runTestSuite(suite: { name: string; file: string; description: string }): Promise<TestResult> {
@@ -166,7 +166,6 @@ class AdminIntegrationTestRunner {
         encoding: 'utf8',
         cwd: process.cwd(),
         timeout: 120000, // 2 minutes timeout
-      });
 
       const result = this.parseTestOutput(output);
       result.suite = suite.name;
@@ -236,7 +235,7 @@ class AdminIntegrationTestRunner {
           report.requirements[req].covered = true;
           report.requirements[req].tests.push(suite.name);
         }
-      });
+
     }
   }
 
@@ -336,7 +335,6 @@ ${requirementsCoverage >= 95 ? '✅ Excellent requirements coverage achieved.' :
     report.suites.forEach(suite => {
       const suiteSuccess = suite.tests > 0 ? Math.round((suite.passed / suite.tests) * 100) : 0;
       console.log(`   ${suite.suite}: ${suite.passed}/${suite.tests} (${suiteSuccess}%) ${suiteSuccess === 100 ? '✅' : '⚠️'}`);
-    });
 
     if (report.totalFailed > 0) {
       console.log(`\n❌ ${report.totalFailed} test(s) failed. Check the detailed report for more information.`);
@@ -358,7 +356,7 @@ if (require.main === module) {
     .catch(error => {
       console.error('❌ Test runner failed:', error);
       process.exit(1);
-    });
+
 }
 
 export { AdminIntegrationTestRunner };

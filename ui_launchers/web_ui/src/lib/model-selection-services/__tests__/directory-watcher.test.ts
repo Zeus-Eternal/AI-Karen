@@ -24,7 +24,6 @@ vi.mock('fs', async (importOriginal) => {
     createReadStream: vi.fn(),
     createWriteStream: vi.fn()
   };
-});
 
 vi.mock('../utils/file-utils', () => ({
   directoryExists: vi.fn(),
@@ -63,28 +62,24 @@ describe('DirectoryWatcher', () => {
     mockFsWatch.mockReturnValue({
       close: vi.fn(),
       on: vi.fn()
-    });
 
     directoryWatcher = new DirectoryWatcher({
       debounceMs: 100,
       pollingInterval: 1000,
       maxWatchedDirectories: 5
-    });
-  });
+
 
   afterEach(async () => {
     if (directoryWatcher) {
       await directoryWatcher.stopWatching();
     }
     await resetDirectoryWatcher();
-  });
 
   describe('constructor', () => {
     it('should create instance with default config', () => {
       const watcher = new DirectoryWatcher();
       expect(watcher).toBeInstanceOf(DirectoryWatcher);
       expect(watcher.isWatching()).toBe(false);
-    });
 
     it('should create instance with custom config', () => {
       const config = {
@@ -104,7 +99,6 @@ describe('DirectoryWatcher', () => {
       expect(stats.config.maxWatchedDirectories).toBe(3);
       expect(stats.config.enableRecursiveWatching).toBe(false);
       expect(stats.config.ignoredPatterns).toContain('*.test');
-    });
 
     it('should validate required config fields', () => {
       // The validation happens after defaults are applied, so we need to test
@@ -113,8 +107,7 @@ describe('DirectoryWatcher', () => {
       expect(() => {
         (watcher as any).validateConfig({}, ['requiredField']);
       }).toThrow();
-    });
-  });
+
 
   describe('startWatching', () => {
     it('should start watching specified directories', async () => {
@@ -126,7 +119,6 @@ describe('DirectoryWatcher', () => {
       expect(directoryWatcher.isWatching()).toBe(true);
       expect(directoryWatcher.getWatchedDirectories()).toEqual(directories);
       expect(mockFsWatch).toHaveBeenCalledTimes(2);
-    });
 
     it('should skip non-existent directories', async () => {
       const directories = ['/test/exists', '/test/missing'];
@@ -139,7 +131,6 @@ describe('DirectoryWatcher', () => {
       expect(directoryWatcher.isWatching()).toBe(true);
       expect(directoryWatcher.getWatchedDirectories()).toEqual(['/test/exists']);
       expect(mockFsWatch).toHaveBeenCalledTimes(1);
-    });
 
     it('should throw error if too many directories', async () => {
       const directories = Array.from({ length: 10 }, (_, i) => `/test/dir${i}`);
@@ -147,7 +138,6 @@ describe('DirectoryWatcher', () => {
       await expect(
         directoryWatcher.startWatching({ directories })
       ).rejects.toThrow(DirectoryWatchError);
-    });
 
     it('should throw error if no valid directories', async () => {
       const directories = ['/test/missing'];
@@ -156,20 +146,17 @@ describe('DirectoryWatcher', () => {
       await expect(
         directoryWatcher.startWatching({ directories })
       ).rejects.toThrow(DirectoryWatchError);
-    });
 
     it('should fallback to polling if native watching fails', async () => {
       const directories = ['/test/dir1'];
       mockDirectoryExists.mockResolvedValue(true);
       mockFsWatch.mockImplementation(() => {
         throw new Error('Native watching failed');
-      });
 
       await directoryWatcher.startWatching({ directories });
 
       expect(directoryWatcher.isWatching()).toBe(true);
       expect(directoryWatcher.getWatchedDirectories()).toEqual(directories);
-    });
 
     it('should use polling when enablePolling is true', async () => {
       const directories = ['/test/dir1'];
@@ -182,11 +169,9 @@ describe('DirectoryWatcher', () => {
         directories, 
         enablePolling: true,
         pollingInterval: 500
-      });
 
       expect(directoryWatcher.isWatching()).toBe(true);
       expect(mockFsWatch).not.toHaveBeenCalled();
-    });
 
     it('should not start if already watching', async () => {
       const directories = ['/test/dir1'];
@@ -198,8 +183,7 @@ describe('DirectoryWatcher', () => {
       await directoryWatcher.startWatching({ directories });
       
       expect(mockFsWatch).toHaveBeenCalledTimes(firstCallCount);
-    });
-  });
+
 
   describe('stopWatching', () => {
     it('should stop watching all directories', async () => {
@@ -214,7 +198,6 @@ describe('DirectoryWatcher', () => {
       expect(directoryWatcher.isWatching()).toBe(false);
       expect(directoryWatcher.getWatchedDirectories()).toEqual([]);
       expect(mockWatcher.close).toHaveBeenCalledTimes(2);
-    });
 
     it('should handle errors when closing watchers', async () => {
       const directories = ['/test/dir1'];
@@ -230,13 +213,11 @@ describe('DirectoryWatcher', () => {
       // Should not throw error
       await expect(directoryWatcher.stopWatching()).resolves.not.toThrow();
       expect(directoryWatcher.isWatching()).toBe(false);
-    });
 
     it('should do nothing if not watching', async () => {
       await expect(directoryWatcher.stopWatching()).resolves.not.toThrow();
       expect(directoryWatcher.isWatching()).toBe(false);
-    });
-  });
+
 
   describe('change listeners', () => {
     it('should add and remove change listeners', () => {
@@ -253,7 +234,6 @@ describe('DirectoryWatcher', () => {
 
       directoryWatcher.removeChangeListener(listener2);
       expect(directoryWatcher.getChangeListenerCount()).toBe(0);
-    });
 
     it('should notify listeners of file changes', async () => {
       const listener = vi.fn();
@@ -264,7 +244,6 @@ describe('DirectoryWatcher', () => {
       mockFsWatch.mockImplementation((dir, options, callback) => {
         watchCallback = callback;
         return { close: vi.fn(), on: vi.fn() };
-      });
 
       directoryWatcher.addChangeListener(listener);
       await directoryWatcher.startWatching({ directories });
@@ -283,7 +262,6 @@ describe('DirectoryWatcher', () => {
           timestamp: expect.any(Number)
         })
       );
-    });
 
     it('should handle listener errors gracefully', async () => {
       const errorListener = vi.fn(() => { throw new Error('Listener error'); });
@@ -295,7 +273,6 @@ describe('DirectoryWatcher', () => {
       mockFsWatch.mockImplementation((dir, options, callback) => {
         watchCallback = callback;
         return { close: vi.fn(), on: vi.fn() };
-      });
 
       directoryWatcher.addChangeListener(errorListener);
       directoryWatcher.addChangeListener(goodListener);
@@ -310,8 +287,7 @@ describe('DirectoryWatcher', () => {
 
       expect(errorListener).toHaveBeenCalled();
       expect(goodListener).toHaveBeenCalled();
-    });
-  });
+
 
   describe('file pattern matching', () => {
     it('should ignore files matching ignored patterns', async () => {
@@ -323,12 +299,10 @@ describe('DirectoryWatcher', () => {
       mockFsWatch.mockImplementation((dir, options, callback) => {
         watchCallback = callback;
         return { close: vi.fn(), on: vi.fn() };
-      });
 
       const watcher = new DirectoryWatcher({
         debounceMs: 50, // Shorter debounce for testing
         ignoredPatterns: ['*.tmp', '*.log', '.DS_Store']
-      });
 
       watcher.addChangeListener(listener);
       await watcher.startWatching({ directories });
@@ -357,8 +331,7 @@ describe('DirectoryWatcher', () => {
       );
 
       await watcher.stopWatching();
-    });
-  });
+
 
   describe('polling mode', () => {
     it('should detect added files in polling mode', async () => {
@@ -375,7 +348,6 @@ describe('DirectoryWatcher', () => {
         directories, 
         enablePolling: true,
         pollingInterval: 100
-      });
 
       // Simulate file being added
       mockReadDirectory.mockResolvedValue([
@@ -395,7 +367,6 @@ describe('DirectoryWatcher', () => {
           path: '/test/dir1/new-file.txt'
         })
       );
-    });
 
     it('should detect modified files in polling mode', async () => {
       const listener = vi.fn();
@@ -418,7 +389,6 @@ describe('DirectoryWatcher', () => {
         directories, 
         enablePolling: true,
         pollingInterval: 100
-      });
 
       directoryWatcher.addChangeListener(listener);
 
@@ -440,7 +410,6 @@ describe('DirectoryWatcher', () => {
           path: '/test/dir1/file.txt'
         })
       );
-    });
 
     it('should detect removed files in polling mode', async () => {
       const listener = vi.fn();
@@ -461,7 +430,6 @@ describe('DirectoryWatcher', () => {
         directories, 
         enablePolling: true,
         pollingInterval: 100
-      });
 
       directoryWatcher.addChangeListener(listener);
 
@@ -477,8 +445,7 @@ describe('DirectoryWatcher', () => {
           path: '/test/dir1/file.txt'
         })
       );
-    });
-  });
+
 
   describe('refreshWatching', () => {
     it('should restart watching with current directories', async () => {
@@ -492,13 +459,11 @@ describe('DirectoryWatcher', () => {
       
       expect(directoryWatcher.isWatching()).toBe(true);
       expect(directoryWatcher.getWatchedDirectories()).toEqual(directories);
-    });
 
     it('should do nothing if not watching', async () => {
       await expect(directoryWatcher.refreshWatching()).resolves.not.toThrow();
       expect(directoryWatcher.isWatching()).toBe(false);
-    });
-  });
+
 
   describe('getStats', () => {
     it('should return comprehensive statistics', async () => {
@@ -523,9 +488,8 @@ describe('DirectoryWatcher', () => {
           pollingInterval: expect.any(Number),
           maxWatchedDirectories: expect.any(Number)
         })
-      });
-    });
-  });
+
+
 
   describe('singleton functions', () => {
     it('should return same instance from getDirectoryWatcher', () => {
@@ -533,7 +497,6 @@ describe('DirectoryWatcher', () => {
       const instance2 = getDirectoryWatcher();
       
       expect(instance1).toBe(instance2);
-    });
 
     it('should create new instance after reset', async () => {
       const instance1 = getDirectoryWatcher();
@@ -541,7 +504,6 @@ describe('DirectoryWatcher', () => {
       const instance2 = getDirectoryWatcher();
       
       expect(instance1).not.toBe(instance2);
-    });
 
     it('should shutdown instance on reset', async () => {
       const instance = getDirectoryWatcher();
@@ -550,8 +512,7 @@ describe('DirectoryWatcher', () => {
       await resetDirectoryWatcher();
       
       expect(stopWatchingSpy).toHaveBeenCalled();
-    });
-  });
+
 
   describe('error handling', () => {
     it('should handle watcher errors gracefully', async () => {
@@ -575,7 +536,6 @@ describe('DirectoryWatcher', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
       
       expect(directoryWatcher.isWatching()).toBe(true);
-    });
 
     it('should handle polling errors gracefully', async () => {
       const directories = ['/test/dir1'];
@@ -588,14 +548,12 @@ describe('DirectoryWatcher', () => {
         directories, 
         enablePolling: true,
         pollingInterval: 100
-      });
 
       // Wait for polling cycle with error
       await new Promise(resolve => setTimeout(resolve, 250));
       
       expect(directoryWatcher.isWatching()).toBe(true);
-    });
-  });
+
 
   describe('debouncing', () => {
     it('should debounce rapid file changes', async () => {
@@ -607,7 +565,6 @@ describe('DirectoryWatcher', () => {
       mockFsWatch.mockImplementation((dir, options, callback) => {
         watchCallback = callback;
         return { close: vi.fn(), on: vi.fn() };
-      });
 
       const watcher = new DirectoryWatcher({ debounceMs: 100 });
       watcher.addChangeListener(listener);
@@ -628,6 +585,5 @@ describe('DirectoryWatcher', () => {
       expect(listener).toHaveBeenCalledTimes(1);
 
       await watcher.stopWatching();
-    });
-  });
-});
+
+

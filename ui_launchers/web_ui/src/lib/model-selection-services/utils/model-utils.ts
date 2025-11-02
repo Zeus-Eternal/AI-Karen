@@ -165,7 +165,7 @@ export function filterModels(
     }
     
     return true;
-  });
+
 }
 
 /**
@@ -183,8 +183,7 @@ export function groupModelsByProperty<T extends keyof Model>(
       groups[value] = [];
     }
     groups[value].push(model);
-  });
-  
+
   return groups;
 }
 

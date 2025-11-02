@@ -1,13 +1,10 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
+import { } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import type { KarenSettings } from '@/lib/types';
 import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
@@ -140,13 +137,13 @@ export default function VoiceSettings() {
       toast({
         title: "Voice Settings Saved",
         description: "Your preferred voice has been updated.",
-      });
+
     } catch (error) {
       toast({
         title: "Error Saving Voice Settings",
         description: "Could not save voice preferences. localStorage might be disabled or full.",
         variant: "destructive",
-      });
+
     }
   };
   const resetToDefaults = () => {
@@ -161,13 +158,13 @@ export default function VoiceSettings() {
       toast({
         title: "Voice Settings Reset",
         description: "Voice preference has been reset to default.",
-      });
+
     } catch (error) {
        toast({
           title: "Error Resetting Voice Settings",
           description: "Could not reset voice preferences.",
           variant: "destructive",
-        });
+
     }
   };
   if (typeof window !== 'undefined' && !window.speechSynthesis) {
@@ -178,7 +175,7 @@ export default function VoiceSettings() {
         </CardHeader>
         <CardContent className="space-y-6">
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+            <AlertCircle className="h-4 w-4 " />
             <AlertTitle>Speech Synthesis Not Supported</AlertTitle>
             <AlertDescription>
               Your browser does not support the Web Speech API, which is required for changing voices.
@@ -201,13 +198,13 @@ export default function VoiceSettings() {
             <div className="px-6 py-4">
                 {isLoadingVoices && (
                 <div className="flex items-center space-x-2 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin sm:w-auto md:w-full" />
+                    <Loader2 className="h-5 w-5 animate-spin " />
                     <span>Loading available voices...</span>
                 </div>
                 )}
                 {!isLoadingVoices && availableVoices.length === 0 && (
                 <Alert variant="default" className="bg-muted/30">
-                    <AlertCircle className="h-4 w-4 !text-accent-foreground sm:w-auto md:w-full" />
+                    <AlertCircle className="h-4 w-4 !text-accent-foreground " />
                     <AlertTitle className="font-semibold text-accent-foreground">No Voices Found</AlertTitle>
                     <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
                     No speech synthesis voices were found in your browser. Voice selection is not available.
@@ -247,8 +244,8 @@ export default function VoiceSettings() {
         </div>
       </CardContent>
       <CardFooter className="flex justify-end space-x-2">
-          <button variant="outline" onClick={resetToDefaults} aria-label="Button">Reset to Default</Button>
-          <button onClick={saveSettings} aria-label="Button">Save Settings</Button>
+          <Button variant="outline" onClick={resetToDefaults} >Reset to Default</Button>
+          <Button onClick={saveSettings} >Save Settings</Button>
       </CardFooter>
     </Card>
   );

@@ -1,11 +1,6 @@
 import { renderHook } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { 
-  useKeyboardShortcuts, 
-  useKeyboardShortcut, 
-  useCommonShortcuts,
-  useShortcutDisplay 
-} from "../use-keyboard-shortcuts"
+import {  useKeyboardShortcuts, useKeyboardShortcut, useCommonShortcuts, useShortcutDisplay } from "../use-keyboard-shortcuts"
 
 // Mock document
 const mockAddEventListener = vi.fn()

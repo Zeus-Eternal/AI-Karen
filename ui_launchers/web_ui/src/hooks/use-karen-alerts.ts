@@ -7,13 +7,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { alertManager } from '@/services/alertManager';
-import type {
-  KarenAlert,
-  AlertSettings,
-  AlertHistory,
-  AlertMetrics,
-  AlertResult,
-} from '@/types/karen-alerts';
+import type { KarenAlert, AlertSettings, AlertHistory, AlertMetrics, AlertResult } from '@/types/karen-alerts';
 
 /**
  * Hook state interface
@@ -61,7 +55,6 @@ export function useKarenAlerts(): UseKarenAlertsReturn {
     history: alertManager.getHistory(),
     metrics: alertManager.getMetrics(),
     isInitialized: false,
-  });
 
   // Refresh state from AlertManager
   const refresh = useCallback(() => {
@@ -72,7 +65,7 @@ export function useKarenAlerts(): UseKarenAlertsReturn {
       history: alertManager.getHistory(),
       metrics: alertManager.getMetrics(),
       isInitialized: true,
-    });
+
   }, []);
 
   // Initialize and set up event listeners
@@ -95,19 +88,15 @@ export function useKarenAlerts(): UseKarenAlertsReturn {
     // Set up event listeners
     const unsubscribeAlertShown = alertManager.addEventListener('alert-shown', () => {
       if (mounted) refresh();
-    });
 
     const unsubscribeAlertDismissed = alertManager.addEventListener('alert-dismissed', () => {
       if (mounted) refresh();
-    });
 
     const unsubscribeSettingsUpdated = alertManager.addEventListener('settings-updated', () => {
       if (mounted) refresh();
-    });
 
     const unsubscribeActionClicked = alertManager.addEventListener('alert-action-clicked', () => {
       if (mounted) refresh();
-    });
 
     return () => {
       mounted = false;

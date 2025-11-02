@@ -9,7 +9,8 @@
  * 
  * Requirements: 5.4
  */
-'use client';
+"use client";
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { getHealthMonitor, HealthEventType, type HealthEvent, type BackendEndpoint } from '../../lib/connection/health-monitor';
@@ -127,7 +128,7 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
     ];
     eventTypes.forEach(eventType => {
       healthMonitor.addEventListener(eventType, handleHealthEvent);
-    });
+
     // Initial data fetch
     updateEndpoints();
     fetchHealthData();
@@ -142,7 +143,7 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
       // Clean up event listeners
       eventTypes.forEach(eventType => {
         healthMonitor.removeEventListener(eventType, handleHealthEvent);
-      });
+
       if (intervalId) {
         clearInterval(intervalId);
       }
@@ -184,12 +185,11 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
             variant={isMonitoring ? "destructive" : "default"}
             size="sm"
            aria-label="Button">
-            <Activity className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
+            <Activity className="w-4 h-4 mr-2 " />
             {isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
           </Button>
           <button onClick={fetchHealthData} disabled={isLoading} size="sm" aria-label="Button">
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
           </Button>
         </div>
       </div>
@@ -197,8 +197,7 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Activity className="w-5 h-5 mr-2 sm:w-auto md:w-full" />
-            Overall System Health
+            <Activity className="w-5 h-5 mr-2 " />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -217,7 +216,7 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
                   return (
                     <>
                       <Badge className={`${color} text-white`}>
-                        <Icon className="w-4 h-4 mr-1 sm:w-auto md:w-full" />
+                        <Icon className="w-4 h-4 mr-1 " />
                         {text}
                       </Badge>
                       <span className="text-sm text-gray-600 md:text-base lg:text-lg">
@@ -259,7 +258,7 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
             </div>
           ) : (
             <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto sm:w-auto md:w-full"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto "></div>
               <p className="mt-2 text-gray-600">Loading health data...</p>
             </div>
           )}
@@ -281,7 +280,7 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Badge className={`${color} text-white`}>
-                        <Icon className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
+                        <Icon className="w-3 h-3 mr-1 " />
                         {text}
                       </Badge>
                     </div>
@@ -318,7 +317,7 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
                 <div key={endpoint.url} className="flex items-center justify-between p-3 border rounded sm:p-4 md:p-6">
                   <div className="flex items-center space-x-3">
                     <Badge className={`${color} text-white`}>
-                      <Icon className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
+                      <Icon className="w-3 h-3 mr-1 " />
                       {text}
                     </Badge>
                     <div>
@@ -335,12 +334,11 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
                       <Badge variant="outline">Active</Badge>
                     )}
                     {!endpoint.isActive && endpoint.health.isHealthy && (
-                      <button
-                        onClick={() = aria-label="Button"> forceFailover(endpoint.url)}
+                      <Button
+                        onClick={() => forceFailover(endpoint.url)}
                         size="sm"
                         variant="outline"
                       >
-                        Switch To
                       </Button>
                     )}
                   </div>

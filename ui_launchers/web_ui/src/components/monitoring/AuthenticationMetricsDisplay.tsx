@@ -125,10 +125,10 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-sm md:text-base lg:text-lg">Common Failure Reasons</h4>
-              <button
+              <Button
                 variant="ghost"
                 size="sm"
-                onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
+                onClick={() => setShowDetails(!showDetails)}
                 className="text-xs sm:text-sm md:text-base"
               >
                 {showDetails ? 'Hide' : 'Show'} Details
@@ -177,7 +177,7 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
                   className="p-2 bg-red-50 rounded border-l-4 border-red-500 sm:p-4 md:p-6"
                 >
                   <div className="flex justify-between items-start text-sm md:text-base lg:text-lg">
-                    <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                    <div className="flex-1 min-w-0 ">
                       <div className="font-medium text-red-700">
                         {failure.reason}
                       </div>
@@ -197,7 +197,7 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
             
             {metrics.recentFailures.length > 8 && (
               <div className="text-center">
-                <button variant="outline" size="sm" className="text-xs sm:text-sm md:text-base" aria-label="Button">
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm md:text-base" >
                   View All Failures ({metrics.recentFailures.length})
                 </Button>
               </div>

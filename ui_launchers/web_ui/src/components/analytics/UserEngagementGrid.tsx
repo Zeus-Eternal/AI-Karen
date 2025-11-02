@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridReadyEvent, CellValueChangedEvent, RowSelectedEvent } from 'ag-grid-community';
@@ -7,20 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  Users, 
-  Activity, 
-  Clock, 
-  MousePointer,
-  Eye,
-  AlertCircle,
-  CheckCircle,
-  TrendingUp,
-  BarChart3
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -84,13 +73,13 @@ const InteractionTypeRenderer = (params: any) => {
     'error': 'destructive'
   } as const;
   const icons = {
-    'click': <MousePointer className="h-3 w-3 sm:w-auto md:w-full" />,
-    'view': <Eye className="h-3 w-3 sm:w-auto md:w-full" />,
-    'hover': <Activity className="h-3 w-3 sm:w-auto md:w-full" />,
-    'scroll': <TrendingUp className="h-3 w-3 sm:w-auto md:w-full" />,
-    'input': <Search className="h-3 w-3 sm:w-auto md:w-full" />,
-    'submit': <CheckCircle className="h-3 w-3 sm:w-auto md:w-full" />,
-    'error': <AlertCircle className="h-3 w-3 sm:w-auto md:w-full" />
+    'click': <MousePointer className="h-3 w-3 " />,
+    'view': <Eye className="h-3 w-3 " />,
+    'hover': <Activity className="h-3 w-3 " />,
+    'scroll': <TrendingUp className="h-3 w-3 " />,
+    'input': <Search className="h-3 w-3 " />,
+    'submit': <CheckCircle className="h-3 w-3 " />,
+    'error': <AlertCircle className="h-3 w-3 " />
   };
   return (
     <Badge variant={variants[type as keyof typeof variants] || 'outline'} className="text-xs flex items-center gap-1 sm:text-sm md:text-base">
@@ -121,9 +110,9 @@ const SuccessRenderer = (params: any) => {
   return (
     <div className="flex items-center gap-2">
       {success ? (
-        <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+        <CheckCircle className="h-4 w-4 text-green-500 " />
       ) : (
-        <AlertCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
+        <AlertCircle className="h-4 w-4 text-red-500 " />
       )}
       <span className={`text-sm font-medium ${success ? 'text-green-600' : 'text-red-600'}`}>
         {success ? 'Success' : 'Error'}
@@ -147,8 +136,8 @@ const UserRenderer = (params: any) => {
   const shortId = userId ? userId.substring(0, 8) : 'anonymous';
   return (
     <div className="flex items-center gap-2">
-      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center sm:w-auto md:w-full">
-        <Users className="h-3 w-3 sm:w-auto md:w-full" />
+      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center ">
+        <Users className="h-3 w-3 " />
       </div>
       <span className="text-sm font-mono md:text-base lg:text-lg">{shortId}</span>
     </div>
@@ -181,7 +170,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
       const componentType = components[Math.floor(Math.random() * components.length)];
       const interactionType = interactions[Math.floor(Math.random() * interactions.length)];
       const success = Math.random() > 0.1; // 90% success rate
-      .push({
+      data.push({
         id: `engagement_${i}`,
         timestamp: timestamp.toISOString(),
         userId: users[Math.floor(Math.random() * users.length)],
@@ -194,7 +183,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
         sessionId: `session_${Math.floor(Math.random() * 10)}`,
         userAgent: 'Mozilla/5.0 (Chrome)',
         location: 'dashboard'
-      });
+
     }
     return .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [data]);
@@ -366,13 +355,13 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
       toast({
         title: 'Export Successful',
         description: `Exported ${filteredData.length} engagement records.`
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Export Failed',
         description: 'Failed to export engagement data. Please try again.'
-      });
+
     } finally {
       setIsLoading(false);
     }
@@ -386,13 +375,13 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
       toast({
         title: 'Data Refreshed',
         description: 'User engagement data has been updated.'
-      });
+
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Refresh Failed',
         description: 'Failed to refresh engagement data. Please try again.'
-      });
+
     } finally {
       setIsLoading(false);
     }
@@ -423,27 +412,25 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 sm:w-auto md:w-full" />
+            <BarChart3 className="h-5 w-5 " />
             User Engagement Analytics ({filteredData.length} records)
           </CardTitle>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={handleExport}
               disabled={isLoading || filteredData.length === 0}
-             aria-label="Button">
-              <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Export
+             >
+              <Download className="h-4 w-4 mr-2 " />
             </Button>
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={isLoading}
-             aria-label="Button">
+             >
               <Activity className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
             </Button>
           </div>
         </div>
@@ -477,16 +464,16 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
         {/* Filters and Search */}
         <div className="flex items-center gap-4 mt-4">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground " />
             <input
               placeholder="Search interactions..."
               value={searchText}
-              onChange={(e) = aria-label="Input"> setSearchText(e.target.value)}
+              onChange={(e) => setSearchText(e.target.value)}
               className="pl-10"
             />
           </div>
           <select value={filterType} onValueChange={(value) = aria-label="Select option"> setFilterType(value as FilterType)}>
-            <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+            <selectTrigger className="w-40 " aria-label="Select option">
               <selectValue />
             </SelectTrigger>
             <selectContent aria-label="Select option">
@@ -497,7 +484,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
             </SelectContent>
           </Select>
           <select value={timeRange} onValueChange={(value) = aria-label="Select option"> setTimeRange(value as TimeRange)}>
-            <selectTrigger className="w-24 sm:w-auto md:w-full" aria-label="Select option">
+            <selectTrigger className="w-24 " aria-label="Select option">
               <selectValue />
             </SelectTrigger>
             <selectContent aria-label="Select option">
@@ -513,8 +500,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
             <Badge variant="secondary">
               {selectedRows.length} selected
             </Badge>
-            <button variant="outline" size="sm" aria-label="Button">
-              Analyze Selected
+            <Button variant="outline" size="sm" >
             </Button>
           </div>
         )}

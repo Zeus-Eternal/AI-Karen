@@ -1,22 +1,7 @@
 // Extension utility functions
 
-import type {
-  ExtensionBase,
-  ExtensionPlugin,
-  ExtensionProvider,
-  ExtensionModel,
-  SystemExtension,
-  HealthStatus,
-  ResourceUsage,
-  ExtensionSetting,
-  ExtensionControl,
-} from '../../extensions/types';
-import { 
-  HEALTH_STATUS, 
-  LIFECYCLE_STATUS, 
-  EXTENSION_ICONS,
-  DEFAULT_RESOURCE_LIMITS 
-} from './constants';
+import type { ExtensionBase, ExtensionPlugin, ExtensionProvider, ExtensionModel, SystemExtension, HealthStatus, ResourceUsage, ExtensionSetting, ExtensionControl } from '../../extensions/types';
+import {  HEALTH_STATUS, LIFECYCLE_STATUS, EXTENSION_ICONS, DEFAULT_RESOURCE_LIMITS } from './constants';
 
 /**
  * Formats extension version for display
@@ -290,8 +275,7 @@ export function sortExtensions<T extends ExtensionBase>(
     }
     
     return order === 'desc' ? -comparison : comparison;
-  });
-  
+
   return sorted;
 }
 

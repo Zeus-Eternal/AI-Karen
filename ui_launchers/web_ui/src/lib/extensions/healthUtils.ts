@@ -1,10 +1,6 @@
 // Health monitoring utility functions for extension management
 
-import type { 
-  HealthStatus, 
-  ResourceUsage, 
-  ExtensionBase 
-} from '../../extensions/types';
+import type {  HealthStatus, ResourceUsage, ExtensionBase } from '../../extensions/types';
 import { HEALTH_STATUS, HEALTH_COLORS } from './constants';
 
 /**

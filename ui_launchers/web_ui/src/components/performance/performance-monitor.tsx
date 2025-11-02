@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect, useState, useCallback } from "react";
 import { AlertTriangle, Activity, Clock, Zap } from "lucide-react";
 interface PerformanceMetrics {
@@ -61,7 +62,7 @@ export function PerformanceMonitor({
           if (lastEntry) {
             setMetrics(prev => ({ ...prev, lcp: lastEntry.startTime }));
           }
-        });
+
         lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
       } catch (e) {
         // LCP not supported
@@ -75,8 +76,8 @@ export function PerformanceMonitor({
               const fid = entry.processingStart - entry.startTime;
               setMetrics(prev => ({ ...prev, fid }));
             }
-          });
-        });
+
+
         fidObserver.observe({ entryTypes: ['first-input'] });
       } catch (e) {
         // FID not supported
@@ -90,9 +91,9 @@ export function PerformanceMonitor({
             if (!entry.hadRecentInput) {
               clsValue += entry.value;
             }
-          });
+
           setMetrics(prev => ({ ...prev, cls: clsValue }));
-        });
+
         clsObserver.observe({ entryTypes: ['layout-shift'] });
       } catch (e) {
         // CLS not supported
@@ -105,8 +106,8 @@ export function PerformanceMonitor({
             if (entry.name === 'first-contentful-paint') {
               setMetrics(prev => ({ ...prev, fcp: entry.startTime }));
             }
-          });
-        });
+
+
         fcpObserver.observe({ entryTypes: ['paint'] });
       } catch (e) {
         // FCP not supported
@@ -149,7 +150,7 @@ export function PerformanceMonitor({
           userAgent: navigator.userAgent,
           url: window.location.href
         })
-      });
+
     } catch (error) {
     }
   }, [sendToAnalytics, analyticsEndpoint]);
@@ -212,22 +213,21 @@ export function PerformanceMonitor({
     <>
       {/* Toggle button */}
       <button
-        onClick={() = aria-label="Button"> setIsVisible(!isVisible)}
+        onClick={() => setIsVisible(!isVisible)}
         className="fixed bottom-4 right-4 z-50 bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors sm:p-4 md:p-6"
         title="Toggle Performance Monitor"
       >
-        <Activity className="h-4 w-4 sm:w-auto md:w-full" />
+        <Activity className="h-4 w-4 " />
       </button>
       {/* Performance overlay */}
       {isVisible && (
         <div className="fixed bottom-16 right-4 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 max-w-sm sm:p-4 md:p-6">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm flex items-center md:text-base lg:text-lg">
-              <Zap className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-              Performance
+              <Zap className="h-4 w-4 mr-1 " />
             </h3>
             <button
-              onClick={() = aria-label="Button"> setIsVisible(false)}
+              onClick={() => setIsVisible(false)}
               className="text-gray-400 hover:text-gray-600"
             >
               ×
@@ -300,12 +300,12 @@ export function PerformanceMonitor({
             <div className="flex items-center text-xs sm:text-sm md:text-base">
               {Object.values(metrics).some(v => v !== undefined) ? (
                 <>
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2 sm:w-auto md:w-full"></div>
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2 "></div>
                   <span>Monitoring active</span>
                 </>
               ) : (
                 <>
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2 sm:w-auto md:w-full"></div>
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2 "></div>
                   <span>Collecting metrics...</span>
                 </>
               )}

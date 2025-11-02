@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { useEffect } from 'react';
@@ -7,44 +9,15 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import {
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import type { DashboardFilter } from '@/types/dashboard';
-'use client';
 
+import { } from '@/components/ui/select';
 
+import { } from '@/components/ui/dropdown-menu';
 
-
-
-
-
-
-
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-
-
-
-
+import { } from '@/components/ui/dialog';
 interface DashboardFiltersProps {
   filters: DashboardFilter[];
   onFiltersChange: (filters: DashboardFilter[]) => void;
@@ -103,7 +76,6 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   const [newFilter, setNewFilter] = useState<Partial<DashboardFilter>>({
     type: 'category',
     enabled: true
-  });
 
   const handleAddFilter = () => {
     if (!newFilter.name || !newFilter.type) return;
@@ -136,7 +108,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   const handleToggleFilter = (id: string) => {
     handleUpdateFilter(id, { 
       enabled: !filters.find(f => f.id === id)?.enabled 
-    });
+
   };
 
   const getFilterTypeConfig = (type: DashboardFilter['type']) => {
@@ -196,7 +168,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
           <input
             type="number"
             value={value || ''}
-            onChange={(e) = aria-label="Input"> onChange(parseFloat(e.target.value) || 0)}
+            onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
             placeholder="Enter number..."
           />
         );
@@ -206,7 +178,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
           <input
             type="date"
             value={value || ''}
-            onChange={(e) = aria-label="Input"> onChange(e.target.value)}
+            onChange={(e) => onChange(e.target.value)}
           />
         );
       
@@ -214,7 +186,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
         return (
           <input
             value={value || ''}
-            onChange={(e) = aria-label="Input"> onChange(e.target.value)}
+            onChange={(e) => onChange(e.target.value)}
             placeholder="Enter value..."
           />
         );
@@ -229,7 +201,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
       {/* Filter Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+          <Filter className="h-4 w-4 text-muted-foreground " />
           <span className="text-sm font-medium md:text-base lg:text-lg">Filters</span>
           {activeFilters.length > 0 && (
             <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
@@ -240,9 +212,8 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <button variant="outline" size="sm" aria-label="Button">
-              <Plus className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-              Add Filter
+            <Button variant="outline" size="sm" >
+              <Plus className="h-3 w-3 mr-1 " />
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
@@ -255,7 +226,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                 <input
                   id="filter-name"
                   value={newFilter.name || ''}
-                  onChange={(e) = aria-label="Input"> setNewFilter({ ...newFilter, name: e.target.value })}
+                  onChange={(e) => setNewFilter({ ...newFilter, name: e.target.value })}
                   placeholder="Enter filter name..."
                 />
               </div>
@@ -307,17 +278,15 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
               </div>
 
               <div className="flex justify-end gap-2">
-                <button
+                <Button
                   variant="outline"
-                  onClick={() = aria-label="Button"> setIsAddDialogOpen(false)}
+                  onClick={() => setIsAddDialogOpen(false)}
                 >
-                  Cancel
                 </Button>
-                <button
+                <Button
                   onClick={handleAddFilter}
                   disabled={!newFilter.name || !newFilter.type}
-                 aria-label="Button">
-                  Add Filter
+                 >
                 </Button>
               </div>
             </div>
@@ -339,26 +308,24 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
               </span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
+                  <Button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 hover:bg-transparent sm:w-auto md:w-full"
-                   aria-label="Button">
-                    <Search className="h-3 w-3 sm:w-auto md:w-full" />
+                    className="h-4 w-4 p-0 hover:bg-transparent "
+                   >
+                    <Search className="h-3 w-3 " />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onClick={() => handleToggleFilter(filter.id)}
                   >
-                    Disable Filter
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => handleRemoveFilter(filter.id)}
                     className="text-destructive"
                   >
-                    Remove Filter
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -381,21 +348,21 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                 <span className="text-xs sm:text-sm md:text-base">
                   {filter.name}: {renderFilterValue(filter)}
                 </span>
-                <button
+                <Button
                   variant="ghost"
                   size="sm"
-                  className="h-4 w-4 p-0 hover:bg-transparent sm:w-auto md:w-full"
-                  onClick={() = aria-label="Button"> handleToggleFilter(filter.id)}
+                  className="h-4 w-4 p-0 hover:bg-transparent "
+                  onClick={() => handleToggleFilter(filter.id)}
                 >
-                  <Plus className="h-3 w-3 sm:w-auto md:w-full" />
+                  <Plus className="h-3 w-3 " />
                 </Button>
-                <button
+                <Button
                   variant="ghost"
                   size="sm"
-                  className="h-4 w-4 p-0 hover:bg-transparent sm:w-auto md:w-full"
-                  onClick={() = aria-label="Button"> handleRemoveFilter(filter.id)}
+                  className="h-4 w-4 p-0 hover:bg-transparent "
+                  onClick={() => handleRemoveFilter(filter.id)}
                 >
-                  <X className="h-3 w-3 sm:w-auto md:w-full" />
+                  <X className="h-3 w-3 " />
                 </Button>
               </Badge>
             ))}

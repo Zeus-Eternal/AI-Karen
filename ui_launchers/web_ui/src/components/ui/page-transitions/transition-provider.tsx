@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { createContext, useContext } from 'react';
 import { TransitionConfig, TransitionProviderProps } from './types';
@@ -28,7 +28,6 @@ export function TransitionProvider({
     ease: [0.4, 0, 0.2, 1],
     delay: 0,
     ...defaultConfig
-  });
 
   const updateConfig = (newConfig: Partial<TransitionConfig>) => {
     setConfig(prev => ({ ...prev, ...newConfig }));

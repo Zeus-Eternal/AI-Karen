@@ -8,13 +8,14 @@
  */
 
 
-import {
+import React from 'react';
+
   render,
   screen,
   fireEvent,
   waitFor,
   act,
-} from "@testing-library/react";
+import { } from "@testing-library/react";
 import { renderHook } from "@testing-library/react";
 import { ThemeProvider, useTheme } from "../theme-provider";
 import { useUIStore } from "../../store";
@@ -41,7 +42,6 @@ const mockLocalStorage = {
 
 Object.defineProperty(window, "localStorage", {
   value: mockLocalStorage,
-});
 
 // Mock matchMedia
 Object.defineProperty(window, "matchMedia", {
@@ -56,7 +56,6 @@ Object.defineProperty(window, "matchMedia", {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
-});
 
 describe("ThemeProvider", () => {
   const mockSetTheme = vi.fn();
@@ -68,7 +67,6 @@ describe("ThemeProvider", () => {
     (useUIStore as any).mockReturnValue({
       theme: "system",
       setTheme: mockSetTheme,
-    });
 
     // Reset document classes
     document.documentElement.className = "";
@@ -92,7 +90,6 @@ describe("ThemeProvider", () => {
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
     }));
-  });
 
   describe("Basic Theme Functionality", () => {
     it("should provide theme context values", () => {
@@ -122,7 +119,6 @@ describe("ThemeProvider", () => {
       expect(screen.getByTestId("system-theme")).toHaveTextContent("dark");
       expect(screen.getByTestId("density")).toHaveTextContent("comfortable");
       expect(screen.getByTestId("is-system")).toHaveTextContent("true");
-    });
 
     it("should throw error when useTheme is used outside provider", () => {
       const TestComponent = () => {
@@ -140,15 +136,13 @@ describe("ThemeProvider", () => {
       );
 
       consoleSpy.mockRestore();
-    });
-  });
+
 
   describe("Theme Switching", () => {
     it("should apply theme classes to document element", async () => {
       (useUIStore as any).mockReturnValue({
         theme: "dark",
         setTheme: mockSetTheme,
-      });
 
       render(
         <ThemeProvider>
@@ -160,14 +154,12 @@ describe("ThemeProvider", () => {
         expect(document.documentElement).toHaveClass("dark");
         expect(document.documentElement).toHaveAttribute("data-theme", "dark");
         expect(document.documentElement.style.colorScheme).toBe("dark");
-      });
-    });
+
 
     it("should apply light theme classes", async () => {
       (useUIStore as any).mockReturnValue({
         theme: "light",
         setTheme: mockSetTheme,
-      });
 
       render(
         <ThemeProvider>
@@ -179,15 +171,13 @@ describe("ThemeProvider", () => {
         expect(document.documentElement).toHaveClass("light");
         expect(document.documentElement).toHaveAttribute("data-theme", "light");
         expect(document.documentElement.style.colorScheme).toBe("light");
-      });
-    });
+
 
     it("should toggle theme correctly", () => {
       const TestComponent = () => {
         const { toggleTheme } = useTheme();
         return (
           <button onClick={toggleTheme} data-testid="toggle-theme">
-            Toggle Theme
           </button>
         );
       };
@@ -200,14 +190,12 @@ describe("ThemeProvider", () => {
 
       fireEvent.click(screen.getByTestId("toggle-theme"));
       expect(mockSetTheme).toHaveBeenCalledWith("light");
-    });
 
     it("should cycle through themes when toggling", () => {
       const TestComponent = () => {
         const { toggleTheme } = useTheme();
         return (
           <button onClick={toggleTheme} data-testid="toggle-theme">
-            Toggle Theme
           </button>
         );
       };
@@ -216,7 +204,6 @@ describe("ThemeProvider", () => {
       (useUIStore as any).mockReturnValue({
         theme: "light",
         setTheme: mockSetTheme,
-      });
 
       const { rerender } = render(
         <ThemeProvider>
@@ -231,7 +218,6 @@ describe("ThemeProvider", () => {
       (useUIStore as any).mockReturnValue({
         theme: "dark",
         setTheme: mockSetTheme,
-      });
 
       rerender(
         <ThemeProvider>
@@ -241,8 +227,7 @@ describe("ThemeProvider", () => {
 
       fireEvent.click(screen.getByTestId("toggle-theme"));
       expect(mockSetTheme).toHaveBeenCalledWith("system");
-    });
-  });
+
 
   describe("Density Control", () => {
     it("should apply density classes to document element", async () => {
@@ -254,8 +239,7 @@ describe("ThemeProvider", () => {
 
       await waitFor(() => {
         expect(document.documentElement).toHaveClass("density-compact");
-      });
-    });
+
 
     it("should change density and persist to localStorage", () => {
       const TestComponent = () => {
@@ -267,7 +251,6 @@ describe("ThemeProvider", () => {
               onClick={() => setDensity("spacious")}
               data-testid="set-density"
             >
-              Set Spacious
             </button>
           </div>
         );
@@ -288,7 +271,6 @@ describe("ThemeProvider", () => {
         "ui-theme-density",
         "spacious"
       );
-    });
 
     it("should load density from localStorage", () => {
       mockLocalStorage.getItem.mockReturnValue("compact");
@@ -305,8 +287,7 @@ describe("ThemeProvider", () => {
       );
 
       expect(screen.getByTestId("density")).toHaveTextContent("compact");
-    });
-  });
+
 
   describe("System Theme Detection", () => {
     it("should detect system theme changes", async () => {
@@ -335,13 +316,11 @@ describe("ThemeProvider", () => {
       const changeHandler = mockMediaQuery.addEventListener.mock.calls[0][1];
       act(() => {
         changeHandler({ matches: true });
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId("system-theme")).toHaveTextContent("dark");
-      });
-    });
-  });
+
+
 
   describe("CSS Injection", () => {
     it("should inject CSS tokens when enabled", () => {
@@ -354,7 +333,6 @@ describe("ThemeProvider", () => {
       const styleElement = document.getElementById("design-tokens-css");
       expect(styleElement).toBeInTheDocument();
       expect(styleElement?.textContent).toContain("--test-token: value");
-    });
 
     it("should not inject CSS tokens when disabled", () => {
       // Ensure no existing style element
@@ -371,15 +349,13 @@ describe("ThemeProvider", () => {
 
       const styleElement = document.getElementById("design-tokens-css");
       expect(styleElement).not.toBeInTheDocument();
-    });
-  });
+
 
   describe("Transition Control", () => {
     it("should disable transitions when disableTransitionOnChange is true", async () => {
       (useUIStore as jest.Mock).mockReturnValue({
         theme: "dark",
         setTheme: mockSetTheme,
-      });
 
       render(
         <ThemeProvider disableTransitionOnChange={true}>
@@ -389,21 +365,18 @@ describe("ThemeProvider", () => {
 
       await waitFor(() => {
         expect(document.documentElement).toHaveClass("dark");
-      });
 
       // The disable-transitions class should be temporarily added and removed
       // This is hard to test due to requestAnimationFrame, but we can verify
       // the theme was applied
       expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-    });
-  });
+
 
   describe("Accessibility", () => {
     it("should set color-scheme property for better browser integration", async () => {
       (useUIStore as any).mockReturnValue({
         theme: "dark",
         setTheme: mockSetTheme,
-      });
 
       render(
         <ThemeProvider>
@@ -413,14 +386,12 @@ describe("ThemeProvider", () => {
 
       await waitFor(() => {
         expect(document.documentElement.style.colorScheme).toBe("dark");
-      });
-    });
+
 
     it("should handle system theme for color-scheme", async () => {
       (useUIStore as any).mockReturnValue({
         theme: "system",
         setTheme: mockSetTheme,
-      });
 
       render(
         <ThemeProvider>
@@ -430,9 +401,8 @@ describe("ThemeProvider", () => {
 
       await waitFor(() => {
         expect(document.documentElement.style.colorScheme).toBe("dark"); // Based on matchMedia mock
-      });
-    });
-  });
+
+
 
   describe("Custom Storage Key", () => {
     it("should use custom storage key for density", () => {
@@ -443,7 +413,6 @@ describe("ThemeProvider", () => {
             onClick={() => setDensity("compact")}
             data-testid="set-density"
           >
-            Set Compact
           </button>
         );
       };
@@ -460,6 +429,5 @@ describe("ThemeProvider", () => {
         "custom-theme-density",
         "compact"
       );
-    });
-  });
-});
+
+

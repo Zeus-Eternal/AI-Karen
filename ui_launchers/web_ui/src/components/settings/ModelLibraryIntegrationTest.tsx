@@ -1,23 +1,14 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import {
-  PlayCircle,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
-  ArrowRight,
-  Library,
-  Download,
-  Settings,
-  MessageSquare,
-  RefreshCw,
-  Info
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 interface IntegrationTestStep {
@@ -203,7 +194,7 @@ export default function ModelLibraryIntegrationTest({
                 excellent: suggestionsData.recommendations?.excellent?.length || 0,
                 good: suggestionsData.recommendations?.good?.length || 0,
                 acceptable: suggestionsData.recommendations?.acceptable?.length || 0
-              });
+
             }
           } catch (error) {
           }
@@ -266,13 +257,13 @@ export default function ModelLibraryIntegrationTest({
           toast({
             title: "Integration Test Completed",
             description: "All integration tests passed successfully! Model Library is fully integrated with LLM Settings.",
-          });
+
         } else {
           toast({
             title: "Integration Test Completed with Issues",
             description: "Some integration tests failed. Check the details for troubleshooting.",
             variant: "destructive",
-          });
+
         }
       } catch (error) {
         updateStepStatus('workflow_validation', 'failed', `Workflow validation failed: ${error}`);
@@ -283,7 +274,7 @@ export default function ModelLibraryIntegrationTest({
         title: "Integration Test Failed",
         description: "Some integration tests failed. Check the details below for troubleshooting.",
         variant: "destructive",
-      });
+
     } finally {
       setIsRunning(false);
     }
@@ -291,15 +282,15 @@ export default function ModelLibraryIntegrationTest({
   const getStepIcon = (step: IntegrationTestStep) => {
     switch (step.status) {
       case 'running':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500 sm:w-auto md:w-full" />;
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500 " />;
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
+        return <CheckCircle className="h-4 w-4 text-green-500 " />;
       case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-4 w-4 text-red-500 " />;
       case 'skipped':
-        return <Info className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
+        return <Info className="h-4 w-4 text-yellow-500 " />;
       default:
-        return <div className="h-4 w-4 rounded-full border-2 border-muted-foreground sm:w-auto md:w-full" />;
+        return <div className="h-4 w-4 rounded-full border-2 border-muted-foreground " />;
     }
   };
   const getStepBadgeVariant = (status: IntegrationTestStep['status']) => {
@@ -327,11 +318,9 @@ export default function ModelLibraryIntegrationTest({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <PlayCircle className="h-5 w-5 sm:w-auto md:w-full" />
-                Model Library Integration Test
+                <PlayCircle className="h-5 w-5 " />
               </CardTitle>
               <CardDescription>
-                Comprehensive test of the integration between Model Library and LLM Settings
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -360,39 +349,36 @@ export default function ModelLibraryIntegrationTest({
               className="gap-2"
              aria-label="Button">
               {isRunning ? (
-                <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                <Loader2 className="h-4 w-4 animate-spin " />
               ) : (
-                <PlayCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                <PlayCircle className="h-4 w-4 " />
               )}
               {isRunning ? 'Running Test...' : 'Run Integration Test'}
             </Button>
-            <button
+            <Button
               variant="outline"
               onClick={loadIntegrationStatus}
               disabled={isRunning}
               className="gap-2"
-             aria-label="Button">
-              <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
-              Refresh Status
+             >
+              <RefreshCw className="h-4 w-4 " />
             </Button>
             {onNavigateToModelLibrary && (
-              <button
+              <Button
                 variant="outline"
                 onClick={onNavigateToModelLibrary}
                 className="gap-2"
-               aria-label="Button">
-                <Library className="h-4 w-4 sm:w-auto md:w-full" />
-                Model Library
+               >
+                <Library className="h-4 w-4 " />
               </Button>
             )}
             {onNavigateToLLMSettings && (
-              <button
+              <Button
                 variant="outline"
                 onClick={onNavigateToLLMSettings}
                 className="gap-2"
-               aria-label="Button">
-                <Settings className="h-4 w-4 sm:w-auto md:w-full" />
-                LLM Settings
+               >
+                <Settings className="h-4 w-4 " />
               </Button>
             )}
           </div>
@@ -400,9 +386,9 @@ export default function ModelLibraryIntegrationTest({
           {integrationStatus && (
             <Alert variant={integrationStatus.overall_status === 'healthy' ? 'default' : 'destructive'}>
               {integrationStatus.overall_status === 'healthy' ? (
-                <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                <CheckCircle className="h-4 w-4 " />
               ) : (
-                <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                <AlertCircle className="h-4 w-4 " />
               )}
               <AlertTitle>
                 Integration Status: {integrationStatus?.overall_status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
@@ -431,7 +417,6 @@ export default function ModelLibraryIntegrationTest({
         <CardHeader>
           <CardTitle>Test Steps</CardTitle>
           <CardDescription>
-            Detailed progress of integration validation steps
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -443,7 +428,7 @@ export default function ModelLibraryIntegrationTest({
                   <div className="w-px h-8 bg-border mt-2" />
                 )}
               </div>
-              <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+              <div className="flex-1 min-w-0 ">
                 <div className="flex items-center gap-2 mb-1">
                   <h4 className="font-medium text-sm md:text-base lg:text-lg">{step.name}</h4>
                   <Badge variant={getStepBadgeVariant(step.status)} className="text-xs sm:text-sm md:text-base">
@@ -460,7 +445,7 @@ export default function ModelLibraryIntegrationTest({
                 </p>
                 {step.error && (
                   <Alert variant="destructive" className="mb-2">
-                    <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                    <AlertCircle className="h-4 w-4 " />
                     <AlertDescription className="text-xs sm:text-sm md:text-base">
                       {step.error}
                     </AlertDescription>
@@ -482,25 +467,23 @@ export default function ModelLibraryIntegrationTest({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            Integration Workflow
             <HelpTooltip helpKey="workflowTesting" variant="inline" size="sm" />
           </CardTitle>
           <CardDescription>
-            Complete workflow from model discovery to provider configuration
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
-            <Library className="h-4 w-4 text-primary sm:w-auto md:w-full" />
+            <Library className="h-4 w-4 text-primary " />
             <span>Discover Models</span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
-            <Download className="h-4 w-4 text-primary sm:w-auto md:w-full" />
+            <ArrowRight className="h-3 w-3 text-muted-foreground " />
+            <Download className="h-4 w-4 text-primary " />
             <span>Download Locally</span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
-            <Settings className="h-4 w-4 text-primary sm:w-auto md:w-full" />
+            <ArrowRight className="h-3 w-3 text-muted-foreground " />
+            <Settings className="h-4 w-4 text-primary " />
             <span>Configure Provider</span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
-            <CheckCircle className="h-4 w-4 text-primary sm:w-auto md:w-full" />
+            <ArrowRight className="h-3 w-3 text-muted-foreground " />
+            <CheckCircle className="h-4 w-4 text-primary " />
             <span>Ready for Use</span>
           </div>
         </CardContent>

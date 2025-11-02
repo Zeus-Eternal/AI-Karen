@@ -52,7 +52,7 @@ async function handleCopilotRequest(request: NextRequest) {
       // @ts-ignore undici option in Node runtime
       keepalive: true,
       cache: 'no-store',
-    });
+
     clearTimeout(timeout);
     let data;
     const contentType = response.headers.get('content-type');
@@ -82,7 +82,7 @@ async function handleCopilotRequest(request: NextRequest) {
       if (headerValue) {
         nextResponse.headers.set(headerName, headerValue);
       }
-    });
+
     // Add CORS headers
     nextResponse.headers.set('Access-Control-Allow-Credentials', 'true');
     nextResponse.headers.set('Access-Control-Allow-Origin', '*');
@@ -137,5 +137,5 @@ export async function OPTIONS(request: NextRequest) {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Session-ID, X-Conversation-ID',
       'Access-Control-Max-Age': '86400',
     },
-  });
+
 }

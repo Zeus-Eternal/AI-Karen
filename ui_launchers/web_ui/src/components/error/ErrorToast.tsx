@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useTelemetry } from '@/hooks/use-telemetry';
@@ -112,7 +112,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
       duration,
       correlationId,
       priority
-    });
+
     handleClose();
   }, [id, message, type, duration, correlationId, priority, track]);
 
@@ -126,8 +126,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
       correlationId,
       priority,
       timeVisible: Date.now() - startTimeRef.current
-    });
-    
+
     setIsExiting(true);
     clearTimers();
     
@@ -145,7 +144,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
       actionLabel,
       correlationId,
       priority
-    });
+
     onAction?.();
   }, [id, message, type, actionLabel, correlationId, priority, track, onAction]);
 
@@ -160,7 +159,6 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
       correlationId,
       priority,
       position
-    });
 
     startTimer();
 
@@ -298,7 +296,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
         <div className="flex items-start space-x-3 w-full">
           {getIcon()}
           
-          <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+          <div className="flex-1 min-w-0 ">
             {title && (
               <h4 className="text-sm font-semibold mb-1 md:text-base lg:text-lg">
                 {title}
@@ -327,7 +325,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
                 className="inline-flex rounded-md p-1.5 hover:bg-black/5 dark:hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current transition-colors sm:p-4 md:p-6"
                 aria-label="Close notification"
               >
-                <svg className="w-4 h-4 sm:w-auto md:w-full" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <svg className="w-4 h-4 " fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
               </button>
@@ -371,7 +369,7 @@ export const ErrorToastContainer: React.FC<ToastContainerProps> = ({
         totalToasts: toasts.length,
         maxToasts,
         position
-      });
+
     }
   }, [toasts.length, maxToasts, position, track]);
 

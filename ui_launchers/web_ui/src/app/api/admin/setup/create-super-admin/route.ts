@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       role: 'admin', // Will be updated to super_admin after creation
       tenant_id: 'default',
       created_by: 'system' // Special marker for system-created user
-    });
+
     // Update the role to super_admin (this bypasses normal role change restrictions)
     await adminUtils.updateUserRole(userId, 'super_admin', 'system');
     // Get the created user for response
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       },
       ip_address: getClientIP(request),
       user_agent: request.headers.get('user-agent') || undefined
-    });
+
     // Send email verification (if email service is configured)
     try {
       await sendSuperAdminVerificationEmail(body.email, body.full_name, userId);
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         'Pragma': 'no-cache',
         'Expires': '0'
       }
-    });
+
   } catch (error) {
     return NextResponse.json({
       success: false,
@@ -189,7 +189,6 @@ async function sendSuperAdminVerificationEmail(
       </div>
     `,
     text_content: `
-Super Admin Account Created
 Hello {{full_name}},
 Your Super Administrator account has been successfully created for {{system_name}}.
 Account Details:
@@ -229,7 +228,7 @@ This is an automated message from {{system_name}}. Please do not reply to this e
     await emailService.initialize();
     await emailService.sendTemplateEmail(email, emailTemplate, variables, {
       priority: 'high'
-    });
+
   } catch (error) {
     // If email service fails, log the verification link for manual verification
     throw error;

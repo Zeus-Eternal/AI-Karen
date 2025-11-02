@@ -21,13 +21,13 @@ vi.mock('@/lib/auth/session', () => ({
   getCurrentUser: vi.fn(),
 }));
 
-import { 
+
   login as sessionLogin,
   logout as sessionLogout,
   validateSession, 
   hasSessionCookie,
   getCurrentUser 
-} from '@/lib/auth/session';
+import { } from '@/lib/auth/session';
 
 const mockLogin = sessionLogin as ReturnType<typeof vi.fn>;
 const mockLogout = sessionLogout as ReturnType<typeof vi.fn>;
@@ -42,7 +42,6 @@ const mockLocation = {
 Object.defineProperty(window, 'location', {
   value: mockLocation,
   writable: true,
-});
 
 // Test component to access auth context
 const TestComponent: React.FC = () => {
@@ -58,13 +57,10 @@ const TestComponent: React.FC = () => {
         data-testid="login-btn" 
         onClick={() => login({ email: 'test@example.com', password: 'password123' })}
       >
-        Login
       </button>
       <button data-testid="logout-btn" onClick={logout}>
-        Logout
       </button>
       <button data-testid="check-auth-btn" onClick={() => checkAuth()}>
-        Check Auth
       </button>
     </div>
   );
@@ -81,11 +77,9 @@ describe('AuthContext Unit Tests', () => {
     mockGetCurrentUser.mockReturnValue(null);
     mockLogin.mockResolvedValue(undefined);
     mockLogout.mockResolvedValue(undefined);
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Initial State', () => {
     it('should initialize with unauthenticated state', async () => {
@@ -99,7 +93,6 @@ describe('AuthContext Unit Tests', () => {
       expect(screen.getByTestId('user-email')).toHaveTextContent('null');
       expect(screen.getByTestId('user-id')).toHaveTextContent('null');
       expect(screen.getByTestId('user-roles')).toHaveTextContent('null');
-    });
 
     it('should check authentication on mount', async () => {
       render(
@@ -110,8 +103,7 @@ describe('AuthContext Unit Tests', () => {
 
       await waitFor(() => {
         expect(mockHasSessionCookie).toHaveBeenCalledTimes(1);
-      });
-    });
+
 
     it('should restore authentication state if valid session exists', async () => {
       const mockUserData = {
@@ -136,9 +128,8 @@ describe('AuthContext Unit Tests', () => {
         expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com');
         expect(screen.getByTestId('user-id')).toHaveTextContent('user123');
         expect(screen.getByTestId('user-roles')).toHaveTextContent('user,admin');
-      });
-    });
-  });
+
+
 
   describe('Login Method', () => {
     it('should successfully login with valid credentials', async () => {
@@ -164,7 +155,6 @@ describe('AuthContext Unit Tests', () => {
       // Trigger login
       await act(async () => {
         screen.getByTestId('login-btn').click();
-      });
 
       // Should be authenticated after login
       await waitFor(() => {
@@ -172,10 +162,8 @@ describe('AuthContext Unit Tests', () => {
         expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com');
         expect(screen.getByTestId('user-id')).toHaveTextContent('user123');
         expect(screen.getByTestId('user-roles')).toHaveTextContent('user');
-      });
 
       expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123', undefined);
-    });
 
     it('should handle login failure and clear state', async () => {
       mockLogin.mockRejectedValueOnce(new Error('Invalid credentials'));
@@ -189,7 +177,6 @@ describe('AuthContext Unit Tests', () => {
       // Trigger login
       await act(async () => {
         screen.getByTestId('login-btn').click();
-      });
 
       // Should remain unauthenticated
       await waitFor(() => {
@@ -197,8 +184,7 @@ describe('AuthContext Unit Tests', () => {
         expect(screen.getByTestId('user-email')).toHaveTextContent('null');
         expect(screen.getByTestId('user-id')).toHaveTextContent('null');
         expect(screen.getByTestId('user-roles')).toHaveTextContent('null');
-      });
-    });
+
 
     it('should clear state if user data is not available after login', async () => {
       mockLogin.mockResolvedValueOnce(undefined);
@@ -213,15 +199,13 @@ describe('AuthContext Unit Tests', () => {
       // Trigger login
       await act(async () => {
         screen.getByTestId('login-btn').click();
-      });
 
       // Should remain unauthenticated
       await waitFor(() => {
         expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
         expect(screen.getByTestId('user-email')).toHaveTextContent('null');
-      });
-    });
-  });
+
+
 
   describe('Logout Method', () => {
     it('should clear authentication state and redirect to login', async () => {
@@ -246,12 +230,10 @@ describe('AuthContext Unit Tests', () => {
       // Wait for initial authentication
       await waitFor(() => {
         expect(screen.getByTestId('is-authenticated')).toHaveTextContent('true');
-      });
 
       // Trigger logout
       await act(async () => {
         screen.getByTestId('logout-btn').click();
-      });
 
       // Should clear authentication state
       expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
@@ -264,7 +246,6 @@ describe('AuthContext Unit Tests', () => {
 
       // Should redirect to login
       expect(mockLocation.href).toBe('/login');
-    });
 
     it('should handle logout errors gracefully', async () => {
       mockLogout.mockRejectedValueOnce(new Error('Logout failed'));
@@ -278,13 +259,11 @@ describe('AuthContext Unit Tests', () => {
       // Trigger logout
       await act(async () => {
         screen.getByTestId('logout-btn').click();
-      });
 
       // Should still clear state and redirect
       expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
       expect(mockLocation.href).toBe('/login');
-    });
-  });
+
 
   describe('CheckAuth Method', () => {
     it('should return true and set state for valid session', async () => {
@@ -308,14 +287,12 @@ describe('AuthContext Unit Tests', () => {
       // Trigger checkAuth
       await act(async () => {
         screen.getByTestId('check-auth-btn').click();
-      });
 
       // Should be authenticated
       await waitFor(() => {
         expect(screen.getByTestId('is-authenticated')).toHaveTextContent('true');
         expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com');
-      });
-    });
+
 
     it('should return false and clear state for invalid session', async () => {
       mockHasSessionCookie.mockReturnValue(true);
@@ -330,14 +307,12 @@ describe('AuthContext Unit Tests', () => {
       // Trigger checkAuth
       await act(async () => {
         screen.getByTestId('check-auth-btn').click();
-      });
 
       // Should not be authenticated
       await waitFor(() => {
         expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
         expect(screen.getByTestId('user-email')).toHaveTextContent('null');
-      });
-    });
+
 
     it('should return false when no session cookie exists', async () => {
       mockHasSessionCookie.mockReturnValue(false);
@@ -351,14 +326,12 @@ describe('AuthContext Unit Tests', () => {
       // Trigger checkAuth
       await act(async () => {
         screen.getByTestId('check-auth-btn').click();
-      });
 
       // Should not be authenticated
       await waitFor(() => {
         expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
         expect(screen.getByTestId('user-email')).toHaveTextContent('null');
-      });
-    });
+
 
     it('should handle validation errors gracefully', async () => {
       mockHasSessionCookie.mockReturnValue(true);
@@ -373,14 +346,12 @@ describe('AuthContext Unit Tests', () => {
       // Trigger checkAuth
       await act(async () => {
         screen.getByTestId('check-auth-btn').click();
-      });
 
       // Should not be authenticated on error
       await waitFor(() => {
         expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
         expect(screen.getByTestId('user-email')).toHaveTextContent('null');
-      });
-    });
+
 
     it('should clear state if user data is missing after validation', async () => {
       mockHasSessionCookie.mockReturnValue(true);
@@ -396,15 +367,13 @@ describe('AuthContext Unit Tests', () => {
       // Trigger checkAuth
       await act(async () => {
         screen.getByTestId('check-auth-btn').click();
-      });
 
       // Should not be authenticated without user data
       await waitFor(() => {
         expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
         expect(screen.getByTestId('user-email')).toHaveTextContent('null');
-      });
-    });
-  });
+
+
 
   describe('Single Source of Truth', () => {
     it('should maintain consistent state across all operations', async () => {
@@ -430,25 +399,21 @@ describe('AuthContext Unit Tests', () => {
 
       await act(async () => {
         screen.getByTestId('login-btn').click();
-      });
 
       await waitFor(() => {
         expect(screen.getByTestId('is-authenticated')).toHaveTextContent('true');
         expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com');
-      });
 
       // Logout
       await act(async () => {
         screen.getByTestId('logout-btn').click();
-      });
 
       // Should be consistently unauthenticated
       expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
       expect(screen.getByTestId('user-email')).toHaveTextContent('null');
       expect(screen.getByTestId('user-id')).toHaveTextContent('null');
       expect(screen.getByTestId('user-roles')).toHaveTextContent('null');
-    });
-  });
+
 
   describe('Error Boundaries', () => {
     it('should throw error when useAuth is used outside AuthProvider', () => {
@@ -460,6 +425,5 @@ describe('AuthContext Unit Tests', () => {
       }).toThrow('useAuth must be used within an AuthProvider');
 
       consoleSpy.mockRestore();
-    });
-  });
-});
+
+

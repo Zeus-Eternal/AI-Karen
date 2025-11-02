@@ -84,7 +84,7 @@ export function suppressKarenBackendExtensionErrors() {
         instance._extensionErrorPatched = true;
         patchedCount++;
       }
-    });
+
     return patchedCount;
   };
   // Try to patch immediately

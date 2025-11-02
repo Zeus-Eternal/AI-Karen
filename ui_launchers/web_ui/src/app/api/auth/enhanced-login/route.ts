@@ -142,7 +142,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       sameSite: 'strict',
       maxAge: remember_me ? 30 * 24 * 60 * 60 : sessionTimeout, // 30 days if remember_me, otherwise session timeout
       path: '/'
-    });
+
     // Set additional security headers
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('X-Frame-Options', 'DENY');

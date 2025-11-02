@@ -46,10 +46,10 @@ export class PostgreSQLClient implements DatabaseClient {
       max: config.max || 20,
       idleTimeoutMillis: config.idleTimeoutMillis || 30000,
       connectionTimeoutMillis: config.connectionTimeoutMillis || 2000,
-    });
+
     // Handle pool errors
     this.pool.on('error', (err: any) => {
-    });
+
   }
   async query(sql: string, params?: any[]): Promise<QueryResult> {
     try {

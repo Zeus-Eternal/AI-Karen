@@ -102,7 +102,7 @@ export async function readDirectory(
           name: entry,
           path: fullPath,
           stats: options.includeStats ? stats : undefined
-        });
+
       }
     }
   } catch (error) {
@@ -189,14 +189,13 @@ export async function copyFile(
     readStream.on('data', (chunk) => {
       bytesWritten += chunk.length;
       onProgress?.(bytesWritten, totalBytes);
-    });
-    
+
     readStream.on('error', reject);
     writeStream.on('error', reject);
     writeStream.on('finish', resolve);
     
     readStream.pipe(writeStream);
-  });
+
 }
 
 /**

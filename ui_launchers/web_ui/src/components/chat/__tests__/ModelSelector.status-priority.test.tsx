@@ -42,7 +42,7 @@ describe('ModelSelector STATUS_PRIORITY functionality', () => {
 
       return (a.name || "").localeCompare(b.name || "", undefined, {
         sensitivity: "base",
-      });
+
     };
 
     const sortedModels = [...testModels].sort(sortByStatusThenName);
@@ -54,7 +54,6 @@ describe('ModelSelector STATUS_PRIORITY functionality', () => {
     expect(sortedModels[3].status).toBe('incompatible'); // priority 3
     expect(sortedModels[4].status).toBe('error'); // priority 4
     expect(sortedModels[5].status).toBe('unknown'); // should use default priority 99
-  });
 
   it('should use default priority (99) for unknown statuses', () => {
     const expectedPriorities = {
@@ -82,7 +81,7 @@ describe('ModelSelector STATUS_PRIORITY functionality', () => {
 
       return (a.name || "").localeCompare(b.name || "", undefined, {
         sensitivity: "base",
-      });
+
     };
 
     const sortedModels = [...testModels].sort(sortByStatusThenName);
@@ -93,7 +92,6 @@ describe('ModelSelector STATUS_PRIORITY functionality', () => {
     // Unknown status models should come last (priority 99)
     expect(sortedModels[1].status).toBe('another-unknown');
     expect(sortedModels[2].status).toBe('unknown-status');
-  });
 
   it('should sort models with same priority by name', () => {
     const expectedPriorities = {
@@ -121,7 +119,7 @@ describe('ModelSelector STATUS_PRIORITY functionality', () => {
 
       return (a.name || "").localeCompare(b.name || "", undefined, {
         sensitivity: "base",
-      });
+
     };
 
     const sortedModels = [...testModels].sort(sortByStatusThenName);
@@ -130,7 +128,6 @@ describe('ModelSelector STATUS_PRIORITY functionality', () => {
     expect(sortedModels[0].name).toBe('alpha-model');
     expect(sortedModels[1].name).toBe('beta-model');
     expect(sortedModels[2].name).toBe('zebra-model');
-  });
 
   it('should handle mixed priority and name sorting correctly', () => {
     const expectedPriorities = {
@@ -160,7 +157,7 @@ describe('ModelSelector STATUS_PRIORITY functionality', () => {
 
       return (a.name || "").localeCompare(b.name || "", undefined, {
         sensitivity: "base",
-      });
+
     };
 
     const sortedModels = [...testModels].sort(sortByStatusThenName);
@@ -171,8 +168,7 @@ describe('ModelSelector STATUS_PRIORITY functionality', () => {
     expect(sortedModels[2]).toEqual({ status: 'downloading', name: 'beta-downloading' });
     expect(sortedModels[3]).toEqual({ status: 'error', name: 'alpha-error' });
     expect(sortedModels[4]).toEqual({ status: 'error', name: 'zebra-error' });
-  });
-});
+
 
 describe('Status badge variant mapping', () => {
   it('should map status values to correct badge variants', () => {
@@ -204,8 +200,7 @@ describe('Status badge variant mapping', () => {
     // Test unknown status defaults to outline
     expect(getStatusBadgeVariant('unknown')).toBe('outline');
     expect(getStatusBadgeVariant('')).toBe('outline');
-  });
-});
+
 
 describe('Model filtering logic', () => {
   it('should filter models correctly based on status and task compatibility', () => {
@@ -278,7 +273,6 @@ describe('Model filtering logic', () => {
 
     expect(imageModels).toHaveLength(1); // Only image-model
     expect(imageModels[0].name).toBe('image-model');
-  });
 
   it('should handle includeDownloadable flag correctly', () => {
     const testModels = [
@@ -297,7 +291,6 @@ describe('Model filtering logic', () => {
       if (!includeDownloading && model.status === 'downloading') return false;
       
       return ['local', 'downloading', 'available'].includes(model.status);
-    });
 
     expect(withDownloadable).toHaveLength(3);
     expect(withDownloadable.find(m => m.status === 'available')).toBeDefined();
@@ -311,11 +304,9 @@ describe('Model filtering logic', () => {
       if (!includeDownloading && model.status === 'downloading') return false;
       
       return ['local', 'downloading', 'available'].includes(model.status);
-    });
 
     expect(withoutDownloadable).toHaveLength(2);
     expect(withoutDownloadable.find(m => m.status === 'available')).toBeUndefined();
     expect(withoutDownloadable.find(m => m.status === 'local')).toBeDefined();
     expect(withoutDownloadable.find(m => m.status === 'downloading')).toBeDefined();
-  });
-});
+

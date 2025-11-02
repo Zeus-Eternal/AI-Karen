@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-
+import React from 'react';
 import { useHaptic } from './use-haptic';
 import { HapticSettingsProps, HapticPattern } from './types';
 import { getHapticPatternInfo } from './haptic-utils';
@@ -52,7 +52,6 @@ export function HapticSettings({
           <div>
             <h3 className="font-medium">Haptic Feedback</h3>
             <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-              Enable vibration feedback for interactions
             </p>
           </div>
         </div>
@@ -82,7 +81,7 @@ export function HapticSettings({
               return (
                 <button
                   key={pattern}
-                  onClick={() = aria-label="Button"> handleTestPattern(pattern)}
+                  onClick={() => handleTestPattern(pattern)}
                   className={cn(
                     'p-3 text-left border rounded-lg hover:bg-muted/50 transition-colors',
                     'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'

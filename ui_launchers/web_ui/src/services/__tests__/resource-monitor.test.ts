@@ -76,19 +76,16 @@ describe('ResourceMonitor', () => {
     monitor = new ResourceMonitor({
       cpu: { warning: 70, critical: 90, scaleUp: 80, scaleDown: 30 },
       memory: { warning: 75, critical: 90, scaleUp: 85, scaleDown: 40 },
-    });
-  });
+
 
   afterEach(() => {
     monitor.destroy();
-  });
 
   describe('Initialization', () => {
     it('should initialize with default thresholds', () => {
       const defaultMonitor = new ResourceMonitor();
       expect(defaultMonitor).toBeDefined();
       defaultMonitor.destroy();
-    });
 
     it('should initialize with custom thresholds', () => {
       const customThresholds = {
@@ -98,12 +95,10 @@ describe('ResourceMonitor', () => {
       const customMonitor = new ResourceMonitor(customThresholds);
       expect(customMonitor).toBeDefined();
       customMonitor.destroy();
-    });
 
     it('should start monitoring automatically', () => {
       expect(monitor['isMonitoring']).toBe(true);
-    });
-  });
+
 
   describe('Metric Collection', () => {
     it('should collect CPU metrics', async () => {
@@ -114,7 +109,6 @@ describe('ResourceMonitor', () => {
       expect(cpuMetrics).toHaveProperty('loadAverage');
       expect(cpuMetrics).toHaveProperty('processes');
       expect(cpuMetrics.cores).toBe(8);
-    });
 
     it('should collect memory metrics', async () => {
       const memoryMetrics = await monitor['getMemoryMetrics']();
@@ -126,7 +120,6 @@ describe('ResourceMonitor', () => {
       expect(memoryMetrics.used).toBe(50000000);
       expect(memoryMetrics.total).toBe(100000000);
       expect(memoryMetrics.percentage).toBe(50);
-    });
 
     it('should collect network metrics', async () => {
       const networkMetrics = await monitor['getNetworkMetrics']();
@@ -138,7 +131,6 @@ describe('ResourceMonitor', () => {
       expect(networkMetrics).toHaveProperty('connectionType');
       expect(networkMetrics.bandwidth).toBe(10);
       expect(networkMetrics.connectionType).toBe('4g');
-    });
 
     it('should collect storage metrics', async () => {
       const storageMetrics = await monitor['getStorageMetrics']();
@@ -147,7 +139,6 @@ describe('ResourceMonitor', () => {
       expect(storageMetrics).toHaveProperty('total');
       expect(storageMetrics).toHaveProperty('available');
       expect(storageMetrics).toHaveProperty('percentage');
-    });
 
     it('should handle missing performance.memory gracefully', async () => {
       const originalMemory = global.performance.memory;
@@ -160,7 +151,6 @@ describe('ResourceMonitor', () => {
       expect(memoryMetrics.percentage).toBe(0);
       
       global.performance.memory = originalMemory;
-    });
 
     it('should handle missing navigator.storage gracefully', async () => {
       const originalStorage = global.navigator.storage;
@@ -172,26 +162,22 @@ describe('ResourceMonitor', () => {
       expect(storageMetrics.total).toBe(0);
       
       global.navigator.storage = originalStorage;
-    });
-  });
+
 
   describe('CPU Usage Estimation', () => {
     it('should estimate CPU usage from long tasks', () => {
       const usage = monitor['estimateCPUUsage']();
       expect(usage).toBeGreaterThanOrEqual(0);
       expect(usage).toBeLessThanOrEqual(100);
-    });
 
     it('should return low usage when no long tasks', () => {
       mockPerformance.getEntriesByType.mockImplementation((type) => {
         if (type === 'longtask') return [];
         return [];
-      });
-      
+
       const usage = monitor['estimateCPUUsage']();
       expect(usage).toBeLessThan(30);
-    });
-  });
+
 
   describe('Network Latency Calculation', () => {
     it('should calculate average latency from resource timings', () => {
@@ -202,12 +188,10 @@ describe('ResourceMonitor', () => {
       
       const latency = monitor['calculateAverageLatency'](timings);
       expect(latency).toBe(35); // (50 + 20) / 2
-    });
 
     it('should return 0 for empty timings', () => {
       const latency = monitor['calculateAverageLatency']([]);
       expect(latency).toBe(0);
-    });
 
     it('should filter out invalid latencies', () => {
       const timings = [
@@ -217,8 +201,7 @@ describe('ResourceMonitor', () => {
       
       const latency = monitor['calculateAverageLatency'](timings);
       expect(latency).toBe(20);
-    });
-  });
+
 
   describe('Alert System', () => {
     it('should create alerts when thresholds are exceeded', () => {
@@ -237,7 +220,6 @@ describe('ResourceMonitor', () => {
       expect(alertCallback).toHaveBeenCalled();
       const alerts = monitor.getAlerts();
       expect(alerts.length).toBeGreaterThan(0);
-    });
 
     it('should not create duplicate alerts', () => {
       monitor.onAlert(alertCallback);
@@ -256,7 +238,6 @@ describe('ResourceMonitor', () => {
       
       const alerts = monitor.getAlerts();
       expect(alerts.length).toBe(1); // Should only have one alert
-    });
 
     it('should allow unsubscribing from alerts', () => {
       const unsubscribe = monitor.onAlert(alertCallback);
@@ -274,7 +255,6 @@ describe('ResourceMonitor', () => {
       monitor['checkThresholds'](metrics);
       
       expect(alertCallback).not.toHaveBeenCalled();
-    });
 
     it('should resolve alerts', () => {
       const metrics = {
@@ -295,8 +275,7 @@ describe('ResourceMonitor', () => {
       
       const resolvedAlert = monitor.getAlerts(true).find(a => a.id === alertId);
       expect(resolvedAlert?.resolved).toBe(true);
-    });
-  });
+
 
   describe('Scaling Recommendations', () => {
     beforeEach(() => {
@@ -308,9 +287,8 @@ describe('ResourceMonitor', () => {
           network: { bytesReceived: 1000, bytesSent: 500, packetsReceived: 10, packetsSent: 5, bandwidth: 10, latency: 50, connectionType: '4g' },
           storage: { used: 50000000, total: 100000000, available: 50000000, percentage: 50, readSpeed: 0, writeSpeed: 0 },
           timestamp: Date.now() - (15 - i) * 60000,
-        });
+
       }
-    });
 
     it('should generate scale-up recommendations for high usage', () => {
       monitor['generateScalingRecommendations']();
@@ -319,7 +297,6 @@ describe('ResourceMonitor', () => {
       const scaleUpRecs = recommendations.filter(r => r.type === 'scale-up');
       
       expect(scaleUpRecs.length).toBeGreaterThan(0);
-    });
 
     it('should generate scale-down recommendations for low usage', () => {
       // Add low usage metrics
@@ -330,7 +307,7 @@ describe('ResourceMonitor', () => {
           network: { bytesReceived: 1000, bytesSent: 500, packetsReceived: 10, packetsSent: 5, bandwidth: 10, latency: 50, connectionType: '4g' },
           storage: { used: 50000000, total: 100000000, available: 50000000, percentage: 50, readSpeed: 0, writeSpeed: 0 },
           timestamp: Date.now() - (15 - i) * 60000,
-        });
+
       }
       
       monitor['generateScalingRecommendations']();
@@ -339,7 +316,6 @@ describe('ResourceMonitor', () => {
       const scaleDownRecs = recommendations.filter(r => r.type === 'scale-down');
       
       expect(scaleDownRecs.length).toBeGreaterThan(0);
-    });
 
     it('should generate network optimization recommendations', () => {
       // Add high latency metrics
@@ -351,7 +327,6 @@ describe('ResourceMonitor', () => {
       const networkRecs = recommendations.filter(r => r.resource === 'network');
       
       expect(networkRecs.length).toBeGreaterThan(0);
-    });
 
     it('should sort recommendations by priority and confidence', () => {
       monitor['generateScalingRecommendations']();
@@ -372,8 +347,7 @@ describe('ResourceMonitor', () => {
           }
         }
       }
-    });
-  });
+
 
   describe('Resource Trends', () => {
     beforeEach(() => {
@@ -385,9 +359,8 @@ describe('ResourceMonitor', () => {
           network: { bytesReceived: 1000, bytesSent: 500, packetsReceived: 10, packetsSent: 5, bandwidth: 10, latency: 50 + i, connectionType: '4g' },
           storage: { used: 50000000 + i * 1000000, total: 100000000, available: 50000000 - i * 1000000, percentage: 50 + i, readSpeed: 0, writeSpeed: 0 },
           timestamp: Date.now() - (20 - i) * 60000,
-        });
+
       }
-    });
 
     it('should calculate resource trends', () => {
       const trends = monitor['calculateResourceTrends']();
@@ -402,7 +375,6 @@ describe('ResourceMonitor', () => {
       expect(trends.memory).toBeGreaterThan(0);
       expect(trends.network).toBeGreaterThan(0);
       expect(trends.storage).toBeGreaterThan(0);
-    });
 
     it('should return zero trends with insufficient data', () => {
       monitor['metrics'] = monitor['metrics'].slice(0, 5); // Keep only 5 metrics
@@ -413,8 +385,7 @@ describe('ResourceMonitor', () => {
       expect(trends.memory).toBe(0);
       expect(trends.network).toBe(0);
       expect(trends.storage).toBe(0);
-    });
-  });
+
 
   describe('Confidence Calculation', () => {
     it('should calculate confidence based on trend and value', () => {
@@ -424,13 +395,11 @@ describe('ResourceMonitor', () => {
       expect(confidence1).toBeGreaterThan(confidence2);
       expect(confidence1).toBeLessThanOrEqual(100);
       expect(confidence2).toBeGreaterThanOrEqual(0);
-    });
 
     it('should cap confidence at 100', () => {
       const confidence = monitor['calculateConfidence'](50, 95);
       expect(confidence).toBeLessThanOrEqual(100);
-    });
-  });
+
 
   describe('Capacity Planning', () => {
     beforeEach(() => {
@@ -442,9 +411,8 @@ describe('ResourceMonitor', () => {
           network: { bytesReceived: 1000, bytesSent: 500, packetsReceived: 10, packetsSent: 5, bandwidth: 10, latency: 50, connectionType: '4g' },
           storage: { used: 40000000 + i * 1000000, total: 100000000, available: 60000000 - i * 1000000, percentage: 40 + i, readSpeed: 0, writeSpeed: 0 },
           timestamp: Date.now() - (30 - i) * 60000,
-        });
+
       }
-    });
 
     it('should generate capacity plans', () => {
       const plans = monitor.generateCapacityPlan('3months');
@@ -466,7 +434,6 @@ describe('ResourceMonitor', () => {
           }),
         ])
       );
-    });
 
     it('should project resource usage based on trends', () => {
       const plans = monitor.generateCapacityPlan('6months');
@@ -474,8 +441,7 @@ describe('ResourceMonitor', () => {
       plans.forEach(plan => {
         expect(plan.projectedUsage).toBeGreaterThanOrEqual(plan.currentUsage);
         expect(plan.growthRate).toBeGreaterThanOrEqual(0);
-      });
-    });
+
 
     it('should recommend capacity increases for high projected usage', () => {
       const plans = monitor.generateCapacityPlan('1year');
@@ -484,16 +450,14 @@ describe('ResourceMonitor', () => {
       highUsagePlans.forEach(plan => {
         expect(plan.recommendedCapacity).toBeGreaterThan(plan.resource === 'cpu' ? 8 : 100000000);
         expect(plan.costImpact).toBeGreaterThan(0);
-      });
-    });
+
 
     it('should return empty plans with insufficient data', () => {
       monitor['metrics'] = monitor['metrics'].slice(0, 10); // Keep only 10 metrics
       
       const plans = monitor.generateCapacityPlan();
       expect(plans).toEqual([]);
-    });
-  });
+
 
   describe('Data Management', () => {
     it('should get current metrics', () => {
@@ -504,12 +468,10 @@ describe('ResourceMonitor', () => {
         network: { bytesReceived: 1000, bytesSent: 500, packetsReceived: 10, packetsSent: 5, bandwidth: 10, latency: 50, connectionType: '4g' },
         storage: { used: 50000000, total: 100000000, available: 50000000, percentage: 50, readSpeed: 0, writeSpeed: 0 },
         timestamp: Date.now(),
-      });
-      
+
       const current = monitor.getCurrentMetrics();
       expect(current).toBeDefined();
       expect(current?.cpu.usage).toBe(50);
-    });
 
     it('should get historical metrics', () => {
       // Add multiple metrics
@@ -520,7 +482,7 @@ describe('ResourceMonitor', () => {
           network: { bytesReceived: 1000, bytesSent: 500, packetsReceived: 10, packetsSent: 5, bandwidth: 10, latency: 50, connectionType: '4g' },
           storage: { used: 50000000, total: 100000000, available: 50000000, percentage: 50, readSpeed: 0, writeSpeed: 0 },
           timestamp: Date.now() - i * 60000,
-        });
+
       }
       
       const historical = monitor.getHistoricalMetrics();
@@ -528,7 +490,6 @@ describe('ResourceMonitor', () => {
       
       const limited = monitor.getHistoricalMetrics(3);
       expect(limited.length).toBe(3);
-    });
 
     it('should update thresholds', () => {
       const newThresholds = {
@@ -539,7 +500,6 @@ describe('ResourceMonitor', () => {
       
       expect(monitor['thresholds'].cpu.warning).toBe(60);
       expect(monitor['thresholds'].cpu.critical).toBe(80);
-    });
 
     it('should cleanup old data', () => {
       // Add old metrics
@@ -550,8 +510,7 @@ describe('ResourceMonitor', () => {
         network: { bytesReceived: 1000, bytesSent: 500, packetsReceived: 10, packetsSent: 5, bandwidth: 10, latency: 50, connectionType: '4g' },
         storage: { used: 50000000, total: 100000000, available: 50000000, percentage: 50, readSpeed: 0, writeSpeed: 0 },
         timestamp: oldTimestamp,
-      });
-      
+
       // Add recent metric
       monitor['metrics'].push({
         cpu: { usage: 60, cores: 8, loadAverage: [0.6, 0.6, 0.6], processes: 1 },
@@ -559,14 +518,12 @@ describe('ResourceMonitor', () => {
         network: { bytesReceived: 1000, bytesSent: 500, packetsReceived: 10, packetsSent: 5, bandwidth: 10, latency: 50, connectionType: '4g' },
         storage: { used: 50000000, total: 100000000, available: 50000000, percentage: 50, readSpeed: 0, writeSpeed: 0 },
         timestamp: Date.now(),
-      });
-      
+
       monitor.cleanup(24 * 60 * 60 * 1000); // 24 hours
       
       const metrics = monitor.getHistoricalMetrics();
       expect(metrics.every(m => m.timestamp > Date.now() - (24 * 60 * 60 * 1000))).toBe(true);
-    });
-  });
+
 
   describe('Monitoring Control', () => {
     it('should start and stop monitoring', () => {
@@ -575,7 +532,6 @@ describe('ResourceMonitor', () => {
       
       monitor.startMonitoring();
       expect(monitor['isMonitoring']).toBe(true);
-    });
 
     it('should not start monitoring if already monitoring', () => {
       const originalInterval = monitor['monitoringInterval'];
@@ -583,8 +539,7 @@ describe('ResourceMonitor', () => {
       monitor.startMonitoring(); // Should not create new interval
       
       expect(monitor['monitoringInterval']).toBe(originalInterval);
-    });
-  });
+
 
   describe('Memory Management', () => {
     it('should limit metrics to prevent memory leaks', async () => {
@@ -596,14 +551,13 @@ describe('ResourceMonitor', () => {
           network: { bytesReceived: 1000, bytesSent: 500, packetsReceived: 10, packetsSent: 5, bandwidth: 10, latency: 50, connectionType: '4g' },
           storage: { used: 50000000, total: 100000000, available: 50000000, percentage: 50, readSpeed: 0, writeSpeed: 0 },
           timestamp: Date.now() - i * 1000,
-        });
+
       }
       
       // Trigger collection which should clean up
       await monitor['collectMetrics']();
       
       expect(monitor['metrics'].length).toBeLessThanOrEqual(500);
-    });
 
     it('should limit alerts to prevent memory leaks', () => {
       // Add many alerts
@@ -617,15 +571,14 @@ describe('ResourceMonitor', () => {
           message: `Test alert ${i}`,
           timestamp: Date.now() - i * 1000,
           resolved: false,
-        });
+
       }
       
       // Trigger alert creation which should clean up
       monitor['createAlert']('memory', 'critical', 90, 95, 'Test cleanup');
       
       expect(monitor['alerts'].length).toBeLessThanOrEqual(50);
-    });
-  });
+
 
   describe('Cleanup', () => {
     it('should cleanup all resources on destroy', () => {
@@ -638,6 +591,5 @@ describe('ResourceMonitor', () => {
       expect(monitor['metrics']).toEqual([]);
       expect(monitor['alerts']).toEqual([]);
       expect(monitor['recommendations']).toEqual([]);
-    });
-  });
-});
+
+

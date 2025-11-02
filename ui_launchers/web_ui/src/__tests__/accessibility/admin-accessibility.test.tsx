@@ -109,8 +109,7 @@ describe('Admin Accessibility Tests', () => {
           }
         }
       })
-    });
-  });
+
 
   describe('Error Display Component', () => {
     it('should have no accessibility violations', async () => {
@@ -121,7 +120,6 @@ describe('Admin Accessibility Tests', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should have proper ARIA attributes', () => {
       const error = AdminErrorHandler.createError('USER_NOT_FOUND', 'Test error');
@@ -130,7 +128,6 @@ describe('Admin Accessibility Tests', () => {
       const errorContainer = screen.getByRole('alert');
       expect(errorContainer).toBeInTheDocument();
       expect(errorContainer).toHaveAttribute('role', 'alert');
-    });
 
     it('should support keyboard navigation', async () => {
       const user = userEvent.setup();
@@ -153,7 +150,6 @@ describe('Admin Accessibility Tests', () => {
       // Test Enter key activation
       await user.keyboard('{Enter}');
       expect(onDismiss).toHaveBeenCalled();
-    });
 
     it('should have proper aria-labels for buttons', () => {
       const error = AdminErrorHandler.createError('SYSTEM_SERVER_ERROR', 'Test error');
@@ -161,8 +157,7 @@ describe('Admin Accessibility Tests', () => {
 
       expect(screen.getByLabelText('Retry the failed operation')).toBeInTheDocument();
       expect(screen.getByLabelText('Dismiss this error')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Confirmation Dialog Component', () => {
     it('should have no accessibility violations', async () => {
@@ -178,7 +173,6 @@ describe('Admin Accessibility Tests', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should have proper dialog ARIA attributes', () => {
       render(
@@ -195,7 +189,6 @@ describe('Admin Accessibility Tests', () => {
       expect(dialog).toHaveAttribute('aria-modal', 'true');
       expect(dialog).toHaveAttribute('aria-labelledby', 'confirmation-dialog-title');
       expect(dialog).toHaveAttribute('aria-describedby', 'confirmation-dialog-description');
-    });
 
     it('should trap focus within dialog', async () => {
       const user = userEvent.setup();
@@ -216,7 +209,6 @@ describe('Admin Accessibility Tests', () => {
       // Focus should start on cancel button (safer default)
       await waitFor(() => {
         expect(cancelButton).toHaveFocus();
-      });
 
       // Tab should cycle through focusable elements
       await user.tab();
@@ -232,7 +224,6 @@ describe('Admin Accessibility Tests', () => {
       // Shift+Tab should go backwards
       await user.keyboard('{Shift>}{Tab}{/Shift}');
       expect(closeButton).toHaveFocus();
-    });
 
     it('should handle Escape key', async () => {
       const user = userEvent.setup();
@@ -250,7 +241,6 @@ describe('Admin Accessibility Tests', () => {
 
       await user.keyboard('{Escape}');
       expect(onClose).toHaveBeenCalled();
-    });
 
     it('should handle Enter key on confirm button', async () => {
       const user = userEvent.setup();
@@ -271,8 +261,7 @@ describe('Admin Accessibility Tests', () => {
       
       await user.keyboard('{Enter}');
       expect(onConfirm).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Progress Indicator Component', () => {
     it('should have no accessibility violations', async () => {
@@ -282,7 +271,6 @@ describe('Admin Accessibility Tests', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should have proper progress bar ARIA attributes', () => {
       render(<ProgressIndicator progress={mockProgress} />);
@@ -292,7 +280,6 @@ describe('Admin Accessibility Tests', () => {
       expect(progressBar).toHaveAttribute('aria-valuemin', '0');
       expect(progressBar).toHaveAttribute('aria-valuemax', '100');
       expect(progressBar).toHaveAttribute('aria-label', 'Operation progress: 50%');
-    });
 
     it('should announce progress updates to screen readers', () => {
       const { rerender } = render(<ProgressIndicator progress={mockProgress} />);
@@ -309,7 +296,6 @@ describe('Admin Accessibility Tests', () => {
       // Check that progress is visually updated
       const progressBar = screen.getByRole('progressbar');
       expect(progressBar).toHaveAttribute('aria-valuenow', '80');
-    });
 
     it('should have accessible cancel button', () => {
       render(
@@ -322,8 +308,7 @@ describe('Admin Accessibility Tests', () => {
       const cancelButton = screen.getByLabelText('Cancel operation');
       expect(cancelButton).toBeInTheDocument();
       expect(cancelButton).toHaveAttribute('aria-label', 'Cancel operation');
-    });
-  });
+
 
   describe('Enhanced User Management Table', () => {
     it('should have no accessibility violations', async () => {
@@ -339,11 +324,9 @@ describe('Admin Accessibility Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('grid')).toBeInTheDocument();
-      });
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should have proper table ARIA attributes', async () => {
       render(
@@ -360,8 +343,7 @@ describe('Admin Accessibility Tests', () => {
         const table = screen.getByRole('grid');
         expect(table).toHaveAttribute('aria-label', 'User management table');
         expect(table).toHaveAttribute('aria-rowcount', '3'); // header + 2 users
-      });
-    });
+
 
     it('should have proper column headers with scope attributes', async () => {
       render(
@@ -378,9 +360,8 @@ describe('Admin Accessibility Tests', () => {
         const columnHeaders = screen.getAllByRole('columnheader');
         columnHeaders.forEach(header => {
           expect(header).toHaveAttribute('scope', 'col');
-        });
-      });
-    });
+
+
 
     it('should have sortable column headers with proper ARIA attributes', async () => {
       render(
@@ -396,8 +377,7 @@ describe('Admin Accessibility Tests', () => {
       await waitFor(() => {
         const emailSortButton = screen.getByLabelText('Sort by email address');
         expect(emailSortButton).toHaveAttribute('aria-sort', 'none');
-      });
-    });
+
 
     it('should support keyboard navigation for table rows', async () => {
       const user = userEvent.setup();
@@ -414,7 +394,6 @@ describe('Admin Accessibility Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('grid')).toBeInTheDocument();
-      });
 
       // Test arrow key navigation
       const firstCheckbox = screen.getAllByRole('checkbox')[0];
@@ -423,7 +402,6 @@ describe('Admin Accessibility Tests', () => {
       await user.keyboard('{ArrowDown}');
       // Should move to next focusable element
       expect(document.activeElement).not.toBe(firstCheckbox);
-    });
 
     it('should have accessible form controls with labels', async () => {
       render(
@@ -442,8 +420,7 @@ describe('Admin Accessibility Tests', () => {
 
         const pageSizeSelect = screen.getByLabelText('Number of users per page');
         expect(pageSizeSelect).toBeInTheDocument();
-      });
-    });
+
 
     it('should announce loading states to screen readers', async () => {
       (global.fetch as any).mockImplementation(() => 
@@ -470,8 +447,7 @@ describe('Admin Accessibility Tests', () => {
       const loadingStatus = screen.getByRole('status');
       expect(loadingStatus).toHaveAttribute('aria-live', 'polite');
       expect(screen.getByText('Loading users...')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Enhanced Bulk Operations Component', () => {
     it('should have no accessibility violations', async () => {
@@ -487,7 +463,6 @@ describe('Admin Accessibility Tests', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should have proper button descriptions', () => {
       render(
@@ -505,7 +480,6 @@ describe('Admin Accessibility Tests', () => {
       
       const descriptionElement = document.getElementById('activate-description');
       expect(descriptionElement).toHaveTextContent('Enable login access for selected users');
-    });
 
     it('should support keyboard navigation between operation buttons', async () => {
       const user = userEvent.setup();
@@ -541,7 +515,6 @@ describe('Admin Accessibility Tests', () => {
 
       await user.keyboard('{Home}');
       expect(buttons[0]).toHaveFocus();
-    });
 
     it('should handle Escape key to close', async () => {
       const user = userEvent.setup();
@@ -559,7 +532,6 @@ describe('Admin Accessibility Tests', () => {
 
       await user.keyboard('{Escape}');
       expect(onCancel).toHaveBeenCalled();
-    });
 
     it('should show appropriate message when no users selected', () => {
       render(
@@ -574,8 +546,7 @@ describe('Admin Accessibility Tests', () => {
 
       expect(screen.getByText('No Users Selected')).toBeInTheDocument();
       expect(screen.getByText('Please select one or more users to perform bulk operations.')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Keyboard Navigation Utilities', () => {
     it('should create proper skip links', () => {
@@ -587,7 +558,6 @@ describe('Admin Accessibility Tests', () => {
       expect(skipLink.href).toContain('#main-content');
       expect(skipLink.textContent).toBe('Skip to main content');
       expect(skipLink.className).toBe('skip-link');
-    });
 
     it('should validate form accessibility', () => {
       const { AccessibilityUtils } = require('@/lib/accessibility/aria-helpers');
@@ -630,8 +600,7 @@ describe('Admin Accessibility Tests', () => {
       expect(issues).toContain('Required field missing aria-required: test-input-3');
       
       document.body.removeChild(form);
-    });
-  });
+
 
   describe('ARIA Live Regions', () => {
     it('should create and manage live regions properly', () => {
@@ -640,8 +609,7 @@ describe('Admin Accessibility Tests', () => {
       const regionId = AriaManager.createLiveRegion({
         politeness: 'assertive',
         atomic: true
-      });
-      
+
       const region = document.getElementById(regionId);
       expect(region).toBeInTheDocument();
       expect(region).toHaveAttribute('aria-live', 'assertive');
@@ -658,7 +626,6 @@ describe('Admin Accessibility Tests', () => {
       // Cleanup
       AriaManager.removeLiveRegion(regionId);
       expect(document.getElementById(regionId)).not.toBeInTheDocument();
-    });
 
     it('should announce bulk operation results', () => {
       const { AriaManager } = require('@/lib/accessibility/aria-helpers');
@@ -674,8 +641,7 @@ describe('Admin Accessibility Tests', () => {
       );
       
       spy.mockRestore();
-    });
-  });
+
 
   describe('Color Contrast and Visual Accessibility', () => {
     it('should use sufficient color contrast for error states', () => {
@@ -688,7 +654,6 @@ describe('Admin Accessibility Tests', () => {
       // These would need actual color contrast calculation in a real test
       // For now, we just verify the classes are applied correctly
       expect(errorContainer).toHaveClass('bg-red-50', 'border-red-200', 'text-red-800');
-    });
 
     it('should provide visual focus indicators', async () => {
       const user = userEvent.setup();
@@ -710,9 +675,8 @@ describe('Admin Accessibility Tests', () => {
       
       expect(confirmButton).toHaveFocus();
       expect(confirmButton).toHaveClass('focus:outline-none', 'focus:ring-2');
-    });
-  });
-});
+
+
 
 // Helper function to test keyboard navigation patterns
 export const testKeyboardNavigation = async (
@@ -741,5 +705,5 @@ export const testKeyboardNavigation = async (
 export const testAriaAttributes = (element: HTMLElement, expectedAttributes: Record<string, string>) => {
   Object.entries(expectedAttributes).forEach(([attribute, value]) => {
     expect(element).toHaveAttribute(attribute, value);
-  });
+
 };

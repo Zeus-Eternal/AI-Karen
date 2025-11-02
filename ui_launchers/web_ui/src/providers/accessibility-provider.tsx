@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useUIStore, selectAnimationState } from '../store';
 interface AccessibilitySettings {

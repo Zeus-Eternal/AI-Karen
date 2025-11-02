@@ -392,7 +392,7 @@ export class AutoScaler {
         errorRate: 0,
         healthStatus: 'healthy',
         lastUpdated: Date.now()
-      });
+
     }
   }
   private async scaleDown(instanceCount: number): Promise<void> {
@@ -443,7 +443,7 @@ export class AutoScaler {
         timestamp: futureTime,
         predictedLoad,
         confidence: 0.7 + Math.random() * 0.2
-      });
+
     }
     this.predictiveModel = {
       type: 'linear',

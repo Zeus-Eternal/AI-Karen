@@ -1,4 +1,6 @@
-'use client';
+"use client";
+
+import React from 'react';
 import { useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,7 +29,6 @@ export default function ChatError({
             <div>
               <CardTitle className="text-xl">Chat Loading Error</CardTitle>
               <CardDescription className="mt-1">
-                Failed to load the chat interface
               </CardDescription>
             </div>
           </div>
@@ -44,15 +45,12 @@ export default function ChatError({
           <div className="flex flex-col gap-2">
             <Button onClick={reset} className="w-full">
               <RefreshCw className="h-4 w-4 mr-2" />
-              Try Again
             </Button>
             <Button variant="outline" onClick={handleReload} className="w-full">
               <RefreshCw className="h-4 w-4 mr-2" />
-              Reload Page
             </Button>
             <Button variant="outline" onClick={handleGoHome} className="w-full">
               <Home className="h-4 w-4 mr-2" />
-              Go Home
             </Button>
           </div>
           <div className="text-center text-sm text-muted-foreground">

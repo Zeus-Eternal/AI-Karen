@@ -71,12 +71,10 @@ describe('Security System Integration', () => {
     
     jest.clearAllMocks();
     jest.useFakeTimers();
-  });
 
   afterEach(() => {
     sessionManager.destroy();
     jest.useRealTimers();
-  });
 
   describe('Complete Authentication Flow', () => {
     it('should handle complete successful authentication with all security features', async () => {
@@ -112,7 +110,6 @@ describe('Security System Integration', () => {
           action: 'session.created'
         })
       );
-    });
 
     it('should handle progressive security failures', async () => {
       mockAdminUtils.getUsers.mockResolvedValue({ data: [mockUser] });
@@ -147,7 +144,6 @@ describe('Security System Integration', () => {
           locked_until: expect.any(Date)
         })
       );
-    });
 
     it('should enforce MFA requirements for admin users', async () => {
       const adminWithoutMfa = { ...mockUser, two_factor_enabled: false };
@@ -167,8 +163,7 @@ describe('Security System Integration', () => {
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('MFA_SETUP_REQUIRED');
       expect(result.mfaRequired).toBe(true);
-    });
-  });
+
 
   describe('Session Management Integration', () => {
     it('should create and manage sessions with role-based timeouts', async () => {
@@ -201,7 +196,6 @@ describe('Security System Integration', () => {
       // Test concurrent session limits
       const canCreateAnother = await securityManager.checkConcurrentSessionLimit('user-123', 'admin');
       expect(canCreateAnother).toBe(true); // Should allow up to 2 sessions for admin
-    });
 
     it('should handle session timeout and cleanup', async () => {
       const session = await sessionManager.createSession(mockUser, 'test-session');
@@ -214,8 +208,7 @@ describe('Security System Integration', () => {
       
       const status = sessionManager.getSessionStatus('test-session');
       expect(status).toBeNull();
-    });
-  });
+
 
   describe('IP Security Integration', () => {
     it('should track and analyze IP access patterns', async () => {
@@ -234,7 +227,6 @@ describe('Security System Integration', () => {
 
       const blockedIps = ipManager.getBlockedIps();
       expect(blockedIps.some(blocked => blocked.ip === '192.168.1.200')).toBe(true);
-    });
 
     it('should enforce IP whitelisting for super admins', async () => {
       // Enable IP whitelisting
@@ -258,8 +250,7 @@ describe('Security System Integration', () => {
       // Test blocked IP
       const blockedResult = await ipManager.checkIpAccess('192.168.1.200', mockSuperAdmin);
       expect(blockedResult.allowed).toBe(false);
-    });
-  });
+
 
   describe('MFA Integration', () => {
     it('should handle complete MFA setup and verification flow', async () => {
@@ -271,7 +262,6 @@ describe('Security System Integration', () => {
       mockSpeakeasy.generateSecret.mockReturnValue({
         base32: 'TESTSECRET123',
         otpauth_url: 'otpauth://totp/test'
-      });
 
       const setupData = await mfaManager.generateMfaSetup(userWithoutMfa);
       expect(setupData.secret).toBe('TESTSECRET123');
@@ -293,7 +283,6 @@ describe('Security System Integration', () => {
 
       const verifyResult = await mfaManager.verifyMfaCode('user-123', '123456');
       expect(verifyResult.valid).toBe(true);
-    });
 
     it('should handle backup code usage and regeneration', async () => {
       const userWithMfa = {
@@ -314,8 +303,7 @@ describe('Security System Integration', () => {
       // Regenerate backup codes
       const newCodes = await mfaManager.regenerateBackupCodes('user-123', 'admin-456');
       expect(newCodes).toHaveLength(10);
-    });
-  });
+
 
   describe('Security Event Detection and Response', () => {
     it('should detect and log suspicious activities', async () => {
@@ -334,7 +322,6 @@ describe('Security System Integration', () => {
       // Check for security events
       const events = securityManager.getSecurityEvents('system');
       expect(events.length).toBeGreaterThan(0);
-    });
 
     it('should handle privilege escalation monitoring', async () => {
       const regularUser = { ...mockUser, role: 'user' as const };
@@ -347,8 +334,7 @@ describe('Security System Integration', () => {
       // Attempt to enforce MFA on admin (should require)
       const adminEnforcement = await securityManager.enforceMfaRequirement(mockUser);
       expect(adminEnforcement.required).toBe(true);
-    });
-  });
+
 
   describe('Error Handling and Recovery', () => {
     it('should handle database failures gracefully', async () => {
@@ -360,7 +346,6 @@ describe('Security System Integration', () => {
 
       const mfaStatus = await mfaManager.getMfaStatus('user-123');
       expect(mfaStatus.enabled).toBe(false); // Should default to safe state
-    });
 
     it('should handle concurrent operations safely', async () => {
       // Simulate concurrent login attempts
@@ -375,8 +360,7 @@ describe('Security System Integration', () => {
       
       // All operations should complete without errors
       expect(delays.every(delay => typeof delay === 'number')).toBe(true);
-    });
-  });
+
 
   describe('Performance and Cleanup', () => {
     it('should perform regular cleanup operations', async () => {
@@ -387,7 +371,6 @@ describe('Security System Integration', () => {
         user_id: 'user-123',
         details: { test: true },
         severity: 'low'
-      });
 
       // Perform cleanup
       await securityManager.cleanupSecurityData();
@@ -398,7 +381,6 @@ describe('Security System Integration', () => {
           action: 'security.cleanup.sessions'
         })
       );
-    });
 
     it('should provide comprehensive security statistics', async () => {
       // Create test sessions
@@ -417,8 +399,7 @@ describe('Security System Integration', () => {
 
       const ipStats = ipManager.getIpStatistics();
       expect(ipStats.totalUniqueIps).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('Configuration Management', () => {
     it('should handle security configuration updates', async () => {
@@ -435,7 +416,6 @@ describe('Security System Integration', () => {
           action: 'ip.config_updated'
         })
       );
-    });
 
     it('should load and apply system configurations', async () => {
       mockAdminUtils.getSystemConfigs.mockResolvedValue([
@@ -446,6 +426,5 @@ describe('Security System Integration', () => {
       // Configuration should be applied during initialization
       const mfaRequired = await mfaManager.isMfaRequired(mockUser);
       expect(mfaRequired).toBe(true);
-    });
-  });
-});
+
+

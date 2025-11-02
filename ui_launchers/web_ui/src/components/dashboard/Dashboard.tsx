@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { HealthDashboard } from '../monitoring/health-dashboard';
 import UsageAnalyticsCharts from '../analytics/UsageAnalyticsCharts';

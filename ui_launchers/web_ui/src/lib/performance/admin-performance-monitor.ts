@@ -7,13 +7,7 @@
  * Requirements: 7.3, 7.5
  */
 import React from 'react';
-import type { 
-  PerformanceMetric, 
-  DatabaseQueryMetric, 
-  ApiResponseMetric,
-  ComponentRenderMetric,
-  PerformanceReport 
-} from '@/types/admin';
+import type {  PerformanceMetric, DatabaseQueryMetric, ApiResponseMetric, ComponentRenderMetric, PerformanceReport } from '@/types/admin';
 // Performance metrics storage
 class PerformanceMetricsStore {
   private metrics: Map<string, PerformanceMetric[]> = new Map();
@@ -269,8 +263,8 @@ export class PerformanceReporter {
             JSON.stringify(metric.metadata)
           ].map(field => `"${field.replace(/"/g, '""')}"`).join(',');
           csvRows.push(row);
-        });
-      });
+
+
       return csvRows.join('\n');
     }
     return JSON.stringify(Object.fromEntries(allMetrics), null, 2);
@@ -352,7 +346,7 @@ export class AdminPerformanceMonitor {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(report)
-      });
+
     } catch (error) {
     }
   }
@@ -374,5 +368,5 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     reportInterval: 30000, // 30 seconds in dev
     enableConsoleReports: true,
     enableRemoteReporting: false
-  });
+
 }

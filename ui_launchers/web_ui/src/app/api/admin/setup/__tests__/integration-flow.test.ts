@@ -17,18 +17,15 @@ describe('First-Run Setup Integration Flow', () => {
   beforeEach(() => {
     setDatabaseClient(mockDb);
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   it('should complete the full first-run setup workflow', async () => {
     // Step 1: Initial check should show first-run setup is needed
     vi.spyOn(mockDb, 'query').mockResolvedValue({
       rows: [],
       rowCount: 0
-    });
 
     const checkRequest = new NextRequest('http://localhost:3000/api/admin/setup/check-first-run');
     const checkResponse = await checkFirstRun(checkRequest);
@@ -106,7 +103,6 @@ describe('First-Run Setup Integration Flow', () => {
         }
         
         return { rows: [], rowCount: 0 };
-      });
 
     const createRequest = new NextRequest('http://localhost:3000/api/admin/setup/create-super-admin', {
       method: 'POST',
@@ -116,7 +112,6 @@ describe('First-Run Setup Integration Flow', () => {
         'x-forwarded-for': '192.168.1.1',
         'user-agent': 'Integration Test Agent'
       }
-    });
 
     const createResponse = await createSuperAdmin(createRequest);
     const createData = await createResponse.json();
@@ -127,7 +122,7 @@ describe('First-Run Setup Integration Flow', () => {
       email: 'admin@example.com',
       full_name: 'System Administrator',
       role: 'super_admin'
-    });
+
     expect(createData.data.setup_completed).toBe(true);
 
     // Verify audit logs were created during super admin creation
@@ -154,7 +149,6 @@ describe('First-Run Setup Integration Flow', () => {
         role: 'super_admin'
       }],
       rowCount: 1
-    });
 
     const verifyRequest = new NextRequest('http://localhost:3000/api/admin/setup/check-first-run');
     const verifyResponse = await checkFirstRun(verifyRequest);
@@ -165,7 +159,6 @@ describe('First-Run Setup Integration Flow', () => {
     expect(verifyData.data.super_admin_exists).toBe(true);
     expect(verifyData.data.setup_completed).toBe(true);
     expect(verifyData.data.setup_token).toBeUndefined();
-  });
 
   it('should prevent duplicate super admin creation', async () => {
     // Mock existing super admin
@@ -176,7 +169,6 @@ describe('First-Run Setup Integration Flow', () => {
         role: 'super_admin'
       }],
       rowCount: 1
-    });
 
     // Step 1: Check should show setup is already completed
     const checkRequest = new NextRequest('http://localhost:3000/api/admin/setup/check-first-run');
@@ -198,7 +190,6 @@ describe('First-Run Setup Integration Flow', () => {
       method: 'POST',
       body: JSON.stringify(superAdminRequest),
       headers: { 'Content-Type': 'application/json' }
-    });
 
     const createResponse = await createSuperAdmin(createRequest);
     const createData = await createResponse.json();
@@ -206,14 +197,12 @@ describe('First-Run Setup Integration Flow', () => {
     expect(createResponse.status).toBe(409);
     expect(createData.success).toBe(false);
     expect(createData.error.code).toBe('SETUP_ALREADY_COMPLETED');
-  });
 
   it('should validate setup token format', async () => {
     // Mock no existing super admin
     vi.spyOn(mockDb, 'query').mockResolvedValue({
       rows: [],
       rowCount: 0
-    });
 
     const checkRequest = new NextRequest('http://localhost:3000/api/admin/setup/check-first-run');
     const checkResponse = await checkFirstRun(checkRequest);
@@ -231,5 +220,4 @@ describe('First-Run Setup Integration Flow', () => {
     expect(parseInt(parts[1])).toBeGreaterThan(0); // timestamp
     expect(parts[2]).toHaveLength(32); // hex string
     expect(/^[a-f0-9]{32}$/.test(parts[2])).toBe(true);
-  });
-});
+

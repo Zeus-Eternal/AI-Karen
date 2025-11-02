@@ -1,15 +1,11 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch'; // Added Switch import
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+
+import { } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch'; // Added Switch import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import type { KarenSettings, MemoryDepth, PersonalityTone, PersonalityVerbosity } from '@/lib/types';
 import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
 import { Button } from '../ui/button';
@@ -27,6 +23,7 @@ export default function BehaviorSettings() {
     personalityVerbosity: DEFAULT_KAREN_SETTINGS.personalityVerbosity,
     activeListenMode: DEFAULT_KAREN_SETTINGS.activeListenMode,
   });
+
   const { toast } = useToast();
   useEffect(() => {
     try {
@@ -243,8 +240,8 @@ export default function BehaviorSettings() {
         </div>
       </CardContent>
       <CardFooter className="flex justify-end space-x-2">
-            <button variant="outline" onClick={resetToDefaults} aria-label="Button">Reset to Defaults</Button>
-            <button onClick={saveSettingsToLocalStorage} aria-label="Button">Save Settings</Button>
+            <Button variant="outline" onClick={resetToDefaults} >Reset to Defaults</Button>
+            <Button onClick={saveSettingsToLocalStorage} >Save Settings</Button>
       </CardFooter>
     </Card>
   );

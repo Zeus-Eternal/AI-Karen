@@ -1,31 +1,16 @@
-'use client';
+"use client";
+
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { FixedSizeList as List } from 'react-window';
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  Pause, 
-  Play,
-  RotateCcw,
-  AlertCircle,
-  Info,
-  AlertTriangle,
-  Bug
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetBase } from '../WidgetBase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
-} from '@/components/ui/dropdown-menu';
+
+import { } from '@/components/ui/dropdown-menu';
 import type { WidgetProps, LogData } from '@/types/dashboard';
 interface LogWidgetProps extends WidgetProps {
   data?: {
@@ -105,7 +90,7 @@ const LogEntry: React.FC<LogEntryProps> = ({ index, style, data }) => {
             levelConfig.color
           )}
         >
-          <LevelIcon className="h-2 w-2 mr-1 sm:w-auto md:w-full" />
+          <LevelIcon className="h-2 w-2 mr-1 " />
           {levelConfig.label}
         </Badge>
         {/* Source */}
@@ -158,7 +143,7 @@ export const LogWidget: React.FC<LogWidgetProps> = (props) => {
         );
       }
       return true;
-    });
+
   }, [widgetData?.data?.entries, selectedLevels, searchTerm]);
   const handleLevelToggle = useCallback((level: string) => {
     setSelectedLevels(prev => {
@@ -169,7 +154,7 @@ export const LogWidget: React.FC<LogWidgetProps> = (props) => {
         newSet.add(level);
       }
       return newSet;
-    });
+
   }, []);
   const handleClearLogs = useCallback(() => {
     // In a real implementation, this would clear the logs
@@ -200,7 +185,6 @@ export const LogWidget: React.FC<LogWidgetProps> = (props) => {
     return (
       <WidgetBase {...props}>
         <div className="flex items-center justify-center h-full text-muted-foreground">
-          No log data available
         </div>
       </WidgetBase>
     );
@@ -213,30 +197,29 @@ export const LogWidget: React.FC<LogWidgetProps> = (props) => {
         <div className="flex items-center gap-2 mb-2 pb-2 border-b">
           {/* Search */}
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground " />
             <input
               placeholder="Search logs..."
               value={searchTerm}
-              onChange={(e) = aria-label="Input"> setSearchTerm(e.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-7 h-7 text-xs sm:text-sm md:text-base"
             />
           </div>
           {/* Level Filter */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button variant="outline" size="sm" className="h-7 px-2" aria-label="Button">
-                <Filter className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                Levels
+              <Button variant="outline" size="sm" className="h-7 px-2" >
+                <Filter className="h-3 w-3 mr-1 " />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40 sm:w-auto md:w-full">
+            <DropdownMenuContent align="end" className="w-40 ">
               {Object.entries(LOG_LEVEL_CONFIG).map(([level, config]) => (
                 <DropdownMenuCheckboxItem
                   key={level}
                   checked={selectedLevels.has(level)}
                   onCheckedChange={() => handleLevelToggle(level)}
                 >
-                  <config.icon className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
+                  <config.icon className="h-3 w-3 mr-2 " />
                   {config.label}
                 </DropdownMenuCheckboxItem>
               ))}
@@ -251,27 +234,25 @@ export const LogWidget: React.FC<LogWidgetProps> = (props) => {
             aria-label={isPaused ? 'Resume log streaming' : 'Pause log streaming'}
           >
             {isPaused ? (
-              <Play className="h-3 w-3 sm:w-auto md:w-full" />
+              <Play className="h-3 w-3 " />
             ) : (
-              <Pause className="h-3 w-3 sm:w-auto md:w-full" />
+              <Pause className="h-3 w-3 " />
             )}
           </Button>
           {/* Actions */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button variant="outline" size="sm" className="h-7 px-2" aria-label="Button">
-                <Download className="h-3 w-3 sm:w-auto md:w-full" />
+              <Button variant="outline" size="sm" className="h-7 px-2" >
+                <Download className="h-3 w-3 " />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40 sm:w-auto md:w-full">
+            <DropdownMenuContent align="end" className="w-40 ">
               <DropdownMenuItem onClick={handleExportLogs}>
-                <Download className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
-                Export Logs
+                <Download className="h-3 w-3 mr-2 " />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleClearLogs}>
-                <RotateCcw className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
-                Clear Logs
+                <RotateCcw className="h-3 w-3 mr-2 " />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -285,7 +266,6 @@ export const LogWidget: React.FC<LogWidgetProps> = (props) => {
           <div className="flex items-center gap-2">
             {isPaused && (
               <Badge variant="outline" className="text-[10px] px-1 py-0">
-                PAUSED
               </Badge>
             )}
             <span>
@@ -326,8 +306,7 @@ export const LogWidget: React.FC<LogWidgetProps> = (props) => {
         {/* Load More */}
         {logData.hasMore && (
           <div className="mt-2 text-center">
-            <button variant="outline" size="sm" className="text-xs sm:text-sm md:text-base" aria-label="Button">
-              Load More Entries
+            <Button variant="outline" size="sm" className="text-xs sm:text-sm md:text-base" >
             </Button>
           </div>
         )}

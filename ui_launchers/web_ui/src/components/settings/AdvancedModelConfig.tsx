@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,33 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Settings,
-  Cpu,
-  MemoryStick,
-  Zap,
-  Activity,
-  BarChart3,
-  Clock,
-  Target,
-  Gauge,
-  TrendingUp,
-  Save,
-  RotateCcw,
-  Play,
-  Pause,
-  Info,
-  AlertTriangle,
-  CheckCircle2,
-  Loader2,
-  Tag,
-  Edit3,
-  Star,
-  Calendar,
-  FileText,
-  Database,
-  HardDrive
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
 interface ModelConfig {
@@ -238,7 +215,7 @@ export default function AdvancedModelConfig({
         variant: 'destructive',
         title: "Load Failed",
         description: "Could not load model configuration",
-      });
+
     } finally {
       setLoading(false);
     }
@@ -264,10 +241,10 @@ export default function AdvancedModelConfig({
     const runtimeParams = RUNTIME_PARAMETERS[runtime as keyof typeof RUNTIME_PARAMETERS] || [];
     runtimeParams.forEach(param => {
       params[param.key] = param.default;
-    });
+
     GENERATION_PARAMETERS.forEach(param => {
       params[param.key] = param.default;
-    });
+
     return params;
   };
   const updateParameter = (key: string, value: any) => {
@@ -315,11 +292,11 @@ export default function AdvancedModelConfig({
       await backend.makeRequestPublic(`/api/models/${modelId}/config`, {
         method: 'PUT',
         body: JSON.stringify(config)
-      });
+
       toast({
         title: "Configuration Saved",
         description: "Model configuration has been updated successfully",
-      });
+
       setHasUnsavedChanges(false);
       onConfigSaved?.(config);
     } catch (error) {
@@ -328,7 +305,7 @@ export default function AdvancedModelConfig({
         variant: 'destructive',
         title: info.title || "Save Failed",
         description: info.message || "Could not save model configuration",
-      });
+
     } finally {
       setSaving(false);
     }
@@ -354,11 +331,11 @@ export default function AdvancedModelConfig({
           test_type: testType,
           config: config?.parameters
         })
-      });
+
       toast({
         title: "Benchmark Started",
         description: `${testType} benchmark is running. Results will appear when complete.`,
-      });
+
       // Refresh results after a delay
       setTimeout(() => {
         loadBenchmarkResults();
@@ -368,7 +345,7 @@ export default function AdvancedModelConfig({
         variant: 'destructive',
         title: "Benchmark Failed",
         description: "Could not start benchmark test",
-      });
+
     } finally {
       setBenchmarking(false);
     }
@@ -433,7 +410,7 @@ export default function AdvancedModelConfig({
             <input
               type="number"
               value={value || param.default}
-              onChange={(e) = aria-label="Input"> updateParameter(param.key, parseInt(e.target.value) || param.default)}
+              onChange={(e) => updateParameter(param.key, parseInt(e.target.value) || param.default)}
               min={param.min}
               max={param.max}
               step={param.step}
@@ -447,7 +424,7 @@ export default function AdvancedModelConfig({
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary " />
             <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading model configuration...</p>
           </div>
         </CardContent>
@@ -458,7 +435,7 @@ export default function AdvancedModelConfig({
     return (
       <Card>
         <CardContent className="text-center py-12">
-          <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+          <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
           <p className="text-lg font-medium mb-2">Configuration Not Available</p>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             Could not load configuration for this model.
@@ -476,8 +453,7 @@ export default function AdvancedModelConfig({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5 sm:w-auto md:w-full" />
-                Advanced Configuration
+                <Settings className="h-5 w-5 " />
               </CardTitle>
               <CardDescription>
                 Fine-tune {modelName} for optimal performance
@@ -486,17 +462,15 @@ export default function AdvancedModelConfig({
             <div className="flex items-center gap-2">
               {hasUnsavedChanges && (
                 <Badge variant="outline" className="text-orange-600">
-                  Unsaved Changes
                 </Badge>
               )}
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={resetConfig}
                 disabled={saving}
-               aria-label="Button">
-                <RotateCcw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Reset
+               >
+                <RotateCcw className="h-4 w-4 mr-2 " />
               </Button>
               <button
                 size="sm"
@@ -505,13 +479,12 @@ export default function AdvancedModelConfig({
                aria-label="Button">
                 {saving ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                     Saving...
                   </>
                 ) : (
                   <>
-                    <Save className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    Save Config
+                    <Save className="h-4 w-4 mr-2 " />
                   </>
                 )}
               </Button>
@@ -523,20 +496,16 @@ export default function AdvancedModelConfig({
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="config" className="flex items-center gap-2">
-            <Settings className="h-4 w-4 sm:w-auto md:w-full" />
-            Configuration
+            <Settings className="h-4 w-4 " />
           </TabsTrigger>
           <TabsTrigger value="benchmark" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 sm:w-auto md:w-full" />
-            Benchmarks
+            <BarChart3 className="h-4 w-4 " />
           </TabsTrigger>
           <TabsTrigger value="stats" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 sm:w-auto md:w-full" />
-            Usage Stats
+            <TrendingUp className="h-4 w-4 " />
           </TabsTrigger>
           <TabsTrigger value="metadata" className="flex items-center gap-2">
-            <Tag className="h-4 w-4 sm:w-auto md:w-full" />
-            Metadata
+            <Tag className="h-4 w-4 " />
           </TabsTrigger>
         </TabsList>
         {/* Configuration Tab */}
@@ -546,7 +515,7 @@ export default function AdvancedModelConfig({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Cpu className="h-4 w-4 sm:w-auto md:w-full" />
+                  <Cpu className="h-4 w-4 " />
                   Runtime Parameters ({runtime})
                 </CardTitle>
                 <CardDescription>
@@ -565,11 +534,9 @@ export default function AdvancedModelConfig({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 sm:w-auto md:w-full" />
-                  Generation Parameters
+                  <Zap className="h-4 w-4 " />
                 </CardTitle>
                 <CardDescription>
-                  Control text generation behavior and quality
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -586,14 +553,13 @@ export default function AdvancedModelConfig({
             <CardHeader>
               <CardTitle>Stop Sequences</CardTitle>
               <CardDescription>
-                Define custom stop sequences for text generation
               </CardDescription>
             </CardHeader>
             <CardContent>
               <textarea
                 placeholder="Enter stop sequences, one per line..."
                 value={(config.parameters.stop_sequences || []).join('\n')}
-                onChange={(e) = aria-label="Textarea"> updateParameter('stop_sequences', e.target.value.split('\n').filter(s => s.trim()))}
+                onChange={(e) => updateParameter('stop_sequences', e.target.value.split('\n').filter(s => s.trim()))}
                 rows={4}
               />
             </CardContent>
@@ -606,42 +572,37 @@ export default function AdvancedModelConfig({
             <CardHeader>
               <CardTitle>Performance Benchmarks</CardTitle>
               <CardDescription>
-                Test model performance with different configurations
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <button
+                <Button
                   variant="outline"
-                  onClick={() = aria-label="Button"> runBenchmark('throughput')}
+                  onClick={() => runBenchmark('throughput')}
                   disabled={benchmarking}
                 >
-                  <Gauge className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Throughput
+                  <Gauge className="h-4 w-4 mr-2 " />
                 </Button>
-                <button
+                <Button
                   variant="outline"
-                  onClick={() = aria-label="Button"> runBenchmark('latency')}
+                  onClick={() => runBenchmark('latency')}
                   disabled={benchmarking}
                 >
-                  <Clock className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Latency
+                  <Clock className="h-4 w-4 mr-2 " />
                 </Button>
-                <button
+                <Button
                   variant="outline"
-                  onClick={() = aria-label="Button"> runBenchmark('memory')}
+                  onClick={() => runBenchmark('memory')}
                   disabled={benchmarking}
                 >
-                  <MemoryStick className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Memory
+                  <MemoryStick className="h-4 w-4 mr-2 " />
                 </Button>
-                <button
+                <Button
                   variant="outline"
-                  onClick={() = aria-label="Button"> runBenchmark('quality')}
+                  onClick={() => runBenchmark('quality')}
                   disabled={benchmarking}
                 >
-                  <Target className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Quality
+                  <Target className="h-4 w-4 mr-2 " />
                 </Button>
               </div>
             </CardContent>
@@ -691,7 +652,7 @@ export default function AdvancedModelConfig({
           ) : (
             <Card>
               <CardContent className="text-center py-12">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                 <p className="text-lg font-medium mb-2">No Benchmark Results</p>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Run performance tests to see detailed metrics and optimization recommendations.
@@ -759,7 +720,6 @@ export default function AdvancedModelConfig({
                   <CardHeader>
                     <CardTitle>Popular Parameter Settings</CardTitle>
                     <CardDescription>
-                      Most commonly used parameter values by other users
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -778,7 +738,7 @@ export default function AdvancedModelConfig({
           ) : (
             <Card>
               <CardContent className="text-center py-12">
-                <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                 <p className="text-lg font-medium mb-2">No Usage Statistics</p>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Usage statistics will appear after the model has been used.
@@ -794,7 +754,6 @@ export default function AdvancedModelConfig({
             <CardHeader>
               <CardTitle>Tags</CardTitle>
               <CardDescription>
-                Add tags to organize and categorize this model
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -802,11 +761,11 @@ export default function AdvancedModelConfig({
                 {config.metadata.tags.map((tag) => (
                   <Badge key={tag} variant="secondary" className="flex items-center gap-1">
                     {tag}
-                    <button
+                    <Button
                       variant="ghost"
                       size="sm"
-                      className="h-4 w-4 p-0 hover:bg-transparent sm:w-auto md:w-full"
-                      onClick={() = aria-label="Button"> removeTag(tag)}
+                      className="h-4 w-4 p-0 hover:bg-transparent "
+                      onClick={() => removeTag(tag)}
                     >
                       ×
                     </Button>
@@ -817,11 +776,10 @@ export default function AdvancedModelConfig({
                 <input
                   placeholder="Add a tag..."
                   value={newTag}
-                  onChange={(e) = aria-label="Input"> setNewTag(e.target.value)}
+                  onChange={(e) => setNewTag(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addTag()}
                 />
-                <button onClick={addTag} disabled={!newTag.trim()} aria-label="Button">
-                  Add
+                <Button onClick={addTag} disabled={!newTag.trim()} >
                 </Button>
               </div>
             </CardContent>
@@ -839,17 +797,15 @@ export default function AdvancedModelConfig({
                 <div className="space-y-2">
                   <textarea
                     value={config.metadata.description}
-                    onChange={(e) = aria-label="Textarea"> updateMetadata('description', e.target.value)}
+                    onChange={(e) => updateMetadata('description', e.target.value)}
                     rows={4}
                     placeholder="Enter model description..."
                   />
                   <div className="flex gap-2">
-                    <button size="sm" onClick={() = aria-label="Button"> setEditingDescription(false)}>
-                      <CheckCircle2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Save
+                    <button size="sm" onClick={() => setEditingDescription(false)}>
+                      <CheckCircle2 className="h-4 w-4 mr-2 " />
                     </Button>
-                    <button variant="outline" size="sm" onClick={() = aria-label="Button"> setEditingDescription(false)}>
-                      Cancel
+                    <Button variant="outline" size="sm" onClick={() => setEditingDescription(false)}>
                     </Button>
                   </div>
                 </div>
@@ -858,9 +814,8 @@ export default function AdvancedModelConfig({
                   <p className="text-sm text-muted-foreground min-h-[60px] md:text-base lg:text-lg">
                     {config.metadata.description || 'No description provided.'}
                   </p>
-                  <button variant="outline" size="sm" onClick={() = aria-label="Button"> setEditingDescription(true)}>
-                    <Edit3 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    Edit Description
+                  <Button variant="outline" size="sm" onClick={() => setEditingDescription(true)}>
+                    <Edit3 className="h-4 w-4 mr-2 " />
                   </Button>
                 </div>
               )}
@@ -871,7 +826,6 @@ export default function AdvancedModelConfig({
             <CardHeader>
               <CardTitle>Notes</CardTitle>
               <CardDescription>
-                Private notes about configuration and performance
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -879,17 +833,15 @@ export default function AdvancedModelConfig({
                 <div className="space-y-2">
                   <textarea
                     value={config.metadata.notes}
-                    onChange={(e) = aria-label="Textarea"> updateMetadata('notes', e.target.value)}
+                    onChange={(e) => updateMetadata('notes', e.target.value)}
                     rows={6}
                     placeholder="Enter private notes..."
                   />
                   <div className="flex gap-2">
-                    <button size="sm" onClick={() = aria-label="Button"> setEditingNotes(false)}>
-                      <CheckCircle2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Save
+                    <button size="sm" onClick={() => setEditingNotes(false)}>
+                      <CheckCircle2 className="h-4 w-4 mr-2 " />
                     </Button>
-                    <button variant="outline" size="sm" onClick={() = aria-label="Button"> setEditingNotes(false)}>
-                      Cancel
+                    <Button variant="outline" size="sm" onClick={() => setEditingNotes(false)}>
                     </Button>
                   </div>
                 </div>
@@ -898,9 +850,8 @@ export default function AdvancedModelConfig({
                   <p className="text-sm text-muted-foreground min-h-[100px] whitespace-pre-wrap md:text-base lg:text-lg">
                     {config.metadata.notes || 'No notes added.'}
                   </p>
-                  <button variant="outline" size="sm" onClick={() = aria-label="Button"> setEditingNotes(true)}>
-                    <Edit3 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    Edit Notes
+                  <Button variant="outline" size="sm" onClick={() => setEditingNotes(true)}>
+                    <Edit3 className="h-4 w-4 mr-2 " />
                   </Button>
                 </div>
               )}
@@ -917,11 +868,11 @@ export default function AdvancedModelConfig({
             <CardContent>
               <div className="flex items-center gap-2">
                 {[1, 2, 3, 4, 5].map((rating) => (
-                  <button
+                  <Button
                     key={rating}
                     variant="ghost"
                     size="sm"
-                    onClick={() = aria-label="Button"> updateMetadata('performance_rating', rating)}
+                    onClick={() => updateMetadata('performance_rating', rating)}
                   >
                     <Star 
                       className={`h-5 w-5 ${

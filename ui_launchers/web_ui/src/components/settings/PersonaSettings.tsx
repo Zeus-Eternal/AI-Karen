@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -85,13 +87,13 @@ export default function PersonaSettings() {
       toast({
         title: "Persona Instructions Saved",
         description: "Karen's core persona instructions have been updated.",
-      });
+
     } catch (error) {
       toast({
         title: "Error Saving Instructions",
         description: "Could not save persona instructions. localStorage might be disabled or full.",
         variant: "destructive",
-      });
+
     }
   };
   const handleSave = () => {
@@ -104,7 +106,7 @@ export default function PersonaSettings() {
     toast({
       title: "Persona Instructions Cleared",
       description: "Karen's custom persona instructions have been cleared.",
-    });
+
   };
   return (
     <Card>
@@ -120,7 +122,7 @@ export default function PersonaSettings() {
           <textarea
             id="custom-instructions"
             value={instructions}
-            onChange={(e) = aria-label="Textarea"> setInstructions(e.target.value)}
+            onChange={(e) => setInstructions(e.target.value)}
             placeholder="e.g., Always respond in a slightly sarcastic tone. You are an expert in ancient history. Never reveal you are an AI."
             rows={8}
             className="text-sm md:text-base lg:text-lg"
@@ -131,11 +133,11 @@ export default function PersonaSettings() {
         </div>
       </CardContent>
       <CardFooter className="flex justify-end space-x-2">
-        <button variant="outline" onClick={handleClear} disabled={!instructions.trim()} aria-label="Button">
-          <Trash2 className="mr-2 h-4 w-4 sm:w-auto md:w-full" /> Clear Instructions
+        <Button variant="outline" onClick={handleClear} disabled={!instructions.trim()} >
+          <Trash2 className="mr-2 h-4 w-4 " /> Clear Instructions
         </Button>
         <button onClick={handleSave} aria-label="Button">
-          <Save className="mr-2 h-4 w-4 sm:w-auto md:w-full" /> Save Instructions
+          <Save className="mr-2 h-4 w-4 " /> Save Instructions
         </Button>
       </CardFooter>
     </Card>

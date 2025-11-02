@@ -5,12 +5,7 @@
  * with support for multiple formats, filtering, and compliance requirements.
  */
 
-import { 
-  AuditLog, 
-  AuditLogFilter, 
-  PaginationParams,
-  ExportConfig 
-} from '@/types/admin';
+import {  AuditLog, AuditLogFilter, PaginationParams, ExportConfig } from '@/types/admin';
 import { getAuditLogger, AuditLogger } from './audit-logger';
 import { AuditFilterBuilder } from './audit-filters';
 
@@ -253,9 +248,8 @@ export class AuditLogExporter {
       const transformed: any = {};
       fields.forEach(field => {
         transformed[field] = this.formatFieldValue(log, field, dateFormat);
-      });
+
       return transformed;
-    });
 
     // Add metadata if requested
     const exportData: any = {
@@ -323,10 +317,8 @@ export class AuditLogExporter {
         const label = EXPORT_FIELD_MAPPINGS[field as keyof typeof EXPORT_FIELD_MAPPINGS] || field;
         const value = this.formatFieldValue(log, field, dateFormat);
         content += `${label}: ${value}\n`;
-      });
-      
+
       content += '\n';
-    });
 
     return content;
   }
@@ -444,7 +436,7 @@ export class AuditLogExporter {
       format,
       filter: combinedFilter,
       filename: `audit-logs-${startDate.toISOString().split('T')[0]}-to-${endDate.toISOString().split('T')[0]}`
-    });
+
   }
 
   /**
@@ -465,7 +457,7 @@ export class AuditLogExporter {
       format,
       filter: filterBuilder.build(),
       filename: `user-activity-${userId.substring(0, 8)}-${new Date().toISOString().split('T')[0]}`
-    });
+
   }
 
   /**
@@ -486,7 +478,7 @@ export class AuditLogExporter {
       filter: filterBuilder.build(),
       fields: ['timestamp', 'user_email', 'action', 'ip_address', 'details'],
       filename: `security-events-${new Date().toISOString().split('T')[0]}`
-    });
+
   }
 }
 

@@ -57,7 +57,6 @@ export function useAdminErrorHandler(
     isRetrying: false,
     retryCount: 0,
     lastRetryAt: null
-  });
 
   const lastOperationRef = useRef<{
     operation: () => Promise<any>;
@@ -88,7 +87,7 @@ export function useAdminErrorHandler(
         ...defaultContext,
         ...context,
         timestamp: new Date()
-      });
+
     } else if (error instanceof Error) {
       // Handle JavaScript errors
       adminError = AdminErrorHandler.fromNetworkError(error, {
@@ -96,7 +95,7 @@ export function useAdminErrorHandler(
         ...defaultContext,
         ...context,
         timestamp: new Date()
-      });
+
     } else if (typeof error === 'object' && error !== null && 'code' in error) {
       // Handle AdminError objects
       adminError = error as AdminError;
@@ -121,7 +120,7 @@ export function useAdminErrorHandler(
         ...defaultContext,
         ...context,
         timestamp: new Date()
-      });
+
     }
 
     // Announce error to screen readers if enabled
@@ -202,7 +201,6 @@ export function useAdminErrorHandler(
         isRetrying: false,
         retryCount: 0,
         lastRetryAt: null
-      });
 
       if (announceErrors) {
         announce('Operation completed successfully after retry', 'polite');
@@ -227,7 +225,7 @@ export function useAdminErrorHandler(
           ...defaultContext,
           ...lastOperation.context,
           timestamp: new Date()
-        });
+
       }
 
       if (announceErrors) {
@@ -242,7 +240,7 @@ export function useAdminErrorHandler(
       isRetrying: false,
       retryCount: 0,
       lastRetryAt: null
-    });
+
     lastOperationRef.current = null;
   }, []);
 
@@ -271,7 +269,7 @@ export function useUserManagementErrors() {
     context: {
       operation: 'user_management'
     }
-  });
+
 }
 
 export function useBulkOperationErrors() {
@@ -281,7 +279,7 @@ export function useBulkOperationErrors() {
     context: {
       operation: 'bulk_operation'
     }
-  });
+
 }
 
 export function useSystemConfigErrors() {
@@ -291,7 +289,7 @@ export function useSystemConfigErrors() {
     context: {
       operation: 'system_config'
     }
-  });
+
 }
 
 export function useAuditLogErrors() {
@@ -301,7 +299,7 @@ export function useAuditLogErrors() {
     context: {
       operation: 'audit_log'
     }
-  });
+
 }
 
 export default useAdminErrorHandler;

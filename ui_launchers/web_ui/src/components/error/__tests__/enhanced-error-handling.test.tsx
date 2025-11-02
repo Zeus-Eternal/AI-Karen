@@ -4,6 +4,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GlobalErrorBoundary } from '../GlobalErrorBoundary';
@@ -37,17 +38,15 @@ const TestComponent = () => {
   
   return (
     <div>
-      <button onClick={() = aria-label="Button"> showError('Test error message')}>
-        Show Error Toast
+      <button onClick={() => showError('Test error message')}>
       </button>
-      <button onClick={() = aria-label="Button"> {
+      <button onClick={() => {
         const serviceError = new Error('Service error') as any;
         serviceError.severity = 'high';
         serviceError.retryable = true;
         serviceError.userMessage = 'Service is temporarily unavailable';
         showServiceError(serviceError);
       }}>
-        Show Service Error
       </button>
       <div data-testid="toast-count">{toasts.length}</div>
     </div>
@@ -61,11 +60,9 @@ describe('Enhanced Error Handling System', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'log').mockImplementation(() => {});
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('GlobalErrorBoundary', () => {
     it('should catch and display generic errors', () => {
@@ -78,7 +75,6 @@ describe('Enhanced Error Handling System', () => {
       expect(screen.getByText('Application Error')).toBeInTheDocument();
       expect(screen.getByText('Test error')).toBeInTheDocument();
       expect(screen.getByText('Try Again')).toBeInTheDocument();
-    });
 
     it('should provide retry functionality', async () => {
       let shouldThrow = true;
@@ -103,8 +99,7 @@ describe('Enhanced Error Handling System', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Success after retry')).toBeInTheDocument();
-      });
-    });
+
 
     it('should show intelligent error response when enabled', () => {
       render(
@@ -116,7 +111,6 @@ describe('Enhanced Error Handling System', () => {
       expect(screen.getByText('Application Error')).toBeInTheDocument();
       // The IntelligentErrorPanel should be rendered
       expect(screen.getByTestId('intelligent-error-panel')).toBeInTheDocument();
-    });
 
     it('should handle maximum retry attempts', async () => {
       let retryCount = 0;
@@ -142,8 +136,7 @@ describe('Enhanced Error Handling System', () => {
 
       // Should eventually disable retry button
       expect(screen.queryByText('Try Again')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('ApiErrorBoundary', () => {
     it('should catch and display API errors', () => {
@@ -156,14 +149,12 @@ describe('Enhanced Error Handling System', () => {
       expect(screen.getByText('API Connection Error')).toBeInTheDocument();
       expect(screen.getByText('API request failed')).toBeInTheDocument();
       expect(screen.getByText('HIGH')).toBeInTheDocument(); // Severity badge
-    });
 
     it('should show network status when enabled', () => {
       // Mock navigator.onLine
       Object.defineProperty(navigator, 'onLine', {
         writable: true,
         value: false,
-      });
 
       render(
         <ApiErrorBoundary showNetworkStatus={true}>
@@ -172,7 +163,6 @@ describe('Enhanced Error Handling System', () => {
       );
 
       expect(screen.getByText('Offline')).toBeInTheDocument();
-    });
 
     it('should handle auto-retry for retryable errors', async () => {
       vi.useFakeTimers();
@@ -199,15 +189,12 @@ describe('Enhanced Error Handling System', () => {
       shouldThrow = false;
       act(() => {
         vi.advanceTimersByTime(3000); // Advance past retry delay
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Connected successfully')).toBeInTheDocument();
-      });
 
       vi.useRealTimers();
-    });
-  });
+
 
   describe('Enhanced Error Toast', () => {
     it('should display error toast with proper styling', () => {
@@ -215,7 +202,6 @@ describe('Enhanced Error Handling System', () => {
 
       expect(screen.getByText('Test error message')).toBeInTheDocument();
       expect(screen.getByRole('alert')).toHaveClass('bg-red-50/95');
-    });
 
     it('should auto-dismiss after duration', async () => {
       vi.useFakeTimers();
@@ -234,14 +220,11 @@ describe('Enhanced Error Handling System', () => {
 
       act(() => {
         vi.advanceTimersByTime(1100);
-      });
 
       await waitFor(() => {
         expect(onDismiss).toHaveBeenCalledWith('test');
-      });
 
       vi.useRealTimers();
-    });
 
     it('should show retry button for retryable errors', () => {
       const onRetry = vi.fn();
@@ -259,7 +242,6 @@ describe('Enhanced Error Handling System', () => {
 
       fireEvent.click(retryButton);
       expect(onRetry).toHaveBeenCalled();
-    });
 
     it('should show severity-based styling', () => {
       const { rerender } = render(
@@ -273,8 +255,7 @@ describe('Enhanced Error Handling System', () => {
       );
 
       expect(screen.getByText('LOW')).toBeInTheDocument();
-    });
-  });
+
 
   describe('useErrorToast Hook', () => {
     it('should manage toast state correctly', async () => {
@@ -286,8 +267,7 @@ describe('Enhanced Error Handling System', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('toast-count')).toHaveTextContent('1');
-      });
-    });
+
 
     it('should handle service errors with proper severity', async () => {
       render(<TestComponent />);
@@ -296,9 +276,8 @@ describe('Enhanced Error Handling System', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('toast-count')).toHaveTextContent('1');
-      });
-    });
-  });
+
+
 
   describe('EnhancedApiClient', () => {
     let apiClient: EnhancedApiClient;
@@ -313,8 +292,7 @@ describe('Enhanced Error Handling System', () => {
           retryableStatuses: [500, 502, 503],
           retryableErrors: ['NetworkError'],
         },
-      });
-    });
+
 
     it('should retry failed requests', async () => {
       let attemptCount = 0;
@@ -328,8 +306,7 @@ describe('Enhanced Error Handling System', () => {
           status: 200,
           json: () => Promise.resolve({ success: true }),
           headers: new Headers(),
-        });
-      });
+
 
       global.fetch = mockFetch;
 
@@ -337,7 +314,6 @@ describe('Enhanced Error Handling System', () => {
       
       expect(mockFetch).toHaveBeenCalledTimes(3);
       expect(result.data).toEqual({ success: true });
-    });
 
     it('should implement circuit breaker pattern', async () => {
       const mockFetch = vi.fn().mockRejectedValue(new Error('Server error'));
@@ -357,13 +333,11 @@ describe('Enhanced Error Handling System', () => {
       const testEndpointState = circuitBreakerStates.get('GET:/api/test:');
       
       expect(testEndpointState?.state).toBe('OPEN');
-    });
 
     it('should cache GET responses when enabled', async () => {
       const apiClientWithCache = new EnhancedApiClient({
         enableResponseCaching: true,
         cacheTTL: 5000,
-      });
 
       const mockResponse = {
         ok: true,
@@ -382,8 +356,7 @@ describe('Enhanced Error Handling System', () => {
       await apiClientWithCache.get('/api/cached');
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('ServiceErrorHandler', () => {
     let errorHandler: ServiceErrorHandler;
@@ -393,21 +366,18 @@ describe('Enhanced Error Handling System', () => {
         enableRetry: true,
         maxRetries: 2,
         retryDelay: 100,
-      });
-    });
+
 
     it('should transform errors into ServiceError format', () => {
       const originalError = new Error('Test error');
       const serviceError = errorHandler.handleError(originalError, {
         service: 'TestService',
         method: 'testMethod',
-      });
 
       expect(serviceError.name).toBe('ServiceError');
       expect(serviceError.code).toBe('UNKNOWN_ERROR');
       expect(serviceError.severity).toBe('medium');
       expect(serviceError.context?.service).toBe('TestService');
-    });
 
     it('should handle API errors with proper classification', () => {
       const apiError = new Error('Unauthorized') as any;
@@ -417,13 +387,11 @@ describe('Enhanced Error Handling System', () => {
       const serviceError = errorHandler.handleError(apiError, {
         service: 'AuthService',
         method: 'login',
-      });
 
       expect(serviceError.code).toBe('API_UNAUTHORIZED');
       expect(serviceError.severity).toBe('high');
       expect(serviceError.retryable).toBe(false);
       expect(serviceError.userMessage).toContain('log in');
-    });
 
     it('should execute functions with retry logic', async () => {
       let attemptCount = 0;
@@ -433,7 +401,6 @@ describe('Enhanced Error Handling System', () => {
           throw new Error('Temporary error');
         }
         return Promise.resolve('success');
-      });
 
       const result = await errorHandler.withRetry(
         testFunction,
@@ -445,7 +412,6 @@ describe('Enhanced Error Handling System', () => {
 
       expect(result).toBe('success');
       expect(testFunction).toHaveBeenCalledTimes(3);
-    });
 
     it('should provide fallback values on error', async () => {
       const failingFunction = vi.fn().mockRejectedValue(new Error('Always fails'));
@@ -462,8 +428,7 @@ describe('Enhanced Error Handling System', () => {
 
       expect(result).toBe(fallbackValue);
       expect(failingFunction).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('Integration Tests', () => {
     it('should handle complete error flow from API to UI', async () => {
@@ -481,7 +446,7 @@ describe('Enhanced Error Handling System', () => {
                 // Simulate successful retry
                 console.log('Retry successful');
               },
-            });
+
           }
         };
 
@@ -503,8 +468,7 @@ describe('Enhanced Error Handling System', () => {
       await waitFor(() => {
         expect(screen.getByText('Failed to load data. Please try again.')).toBeInTheDocument();
         expect(screen.getByText(/Retry/)).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle offline/online state changes', async () => {
       // Mock online/offline events
@@ -523,7 +487,6 @@ describe('Enhanced Error Handling System', () => {
 
       await waitFor(() => {
         // Should show offline indicator
-      });
 
       // Simulate coming back online
       Object.defineProperty(navigator, 'onLine', { value: true, writable: true });
@@ -531,7 +494,6 @@ describe('Enhanced Error Handling System', () => {
 
       await waitFor(() => {
         // Should show online indicator
-      });
-    });
-  });
-});
+
+
+

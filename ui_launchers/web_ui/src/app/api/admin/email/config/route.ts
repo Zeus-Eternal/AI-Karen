@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
-import { 
 import { emailService } from '@/lib/email/email-service';
 import { auditLogger } from '@/lib/audit/audit-logger';
 /**
@@ -9,18 +8,8 @@ import { auditLogger } from '@/lib/audit/audit-logger';
  * API endpoints for managing email service configuration including
  * provider settings, testing connections, and service health monitoring.
  */
-
-
-
-  EmailServiceConfig,
-  UpdateEmailServiceConfigRequest 
-} from '@/lib/email/types';
-
-  getEmailServiceConfig, 
-  validateEmailConfig, 
-  testEmailService,
-  EMAIL_PROVIDERS 
-} from '@/lib/email/config';
+import { EmailServiceConfig, UpdateEmailServiceConfigRequest } from '@/lib/email/types';
+import { getEmailServiceConfig, validateEmailConfig, testEmailService, EMAIL_PROVIDERS } from '@/lib/email/config';
 
 
 /**
@@ -58,7 +47,7 @@ export async function GET(request: NextRequest) {
         config: safeConfig,
         providers: EMAIL_PROVIDERS,
       }
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to get email configuration' },
@@ -128,7 +117,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Email configuration updated successfully'
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to update email configuration' },

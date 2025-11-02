@@ -2,13 +2,7 @@
  * Demo usage examples for the comprehensive error handling system
  * Requirements: 1.3, 2.3, 3.3, 4.3
  */
-import { 
-  handleError, 
-  withErrorHandling, 
-  withRetry,
-  ErrorCategory,
-  ErrorSeverity 
-} from './index';
+import {  handleError, withErrorHandling, withRetry, ErrorCategory, ErrorSeverity } from './index';
 /**
  * Example 1: Basic error handling with categorization
  */
@@ -21,7 +15,7 @@ export async function basicErrorHandlingExample() {
       enableRecovery: true,
       enableLogging: true,
       context: { operation: 'api-call', endpoint: '/api/users' }
-    });
+
     return result;
   }
 }
@@ -41,7 +35,7 @@ export async function retryExample() {
     const result = await withRetry(unstableOperation, {
       maxRetryAttempts: 5,
       context: { operation: 'data-fetch' }
-    });
+
     return result;
   } catch (error) {
     throw error;
@@ -70,7 +64,7 @@ export const authenticatedApiCall = withErrorHandling(async (endpoint: string, d
   maxRetryAttempts: 3,
   enableRecovery: true,
   context: { type: 'authenticated-api-call' }
-});
+
 /**
  * Example 4: Database operation with error handling
  */
@@ -94,7 +88,7 @@ export const databaseOperation = withErrorHandling(async (query: string) => {
   maxRetryAttempts: 5,
   enableRecovery: true,
   context: { type: 'database-operation' }
-});
+
 /**
  * Example 5: Configuration validation with error handling
  */
@@ -117,7 +111,7 @@ export async function validateConfiguration(config: any) {
     const result = await handleError(error as Error, {
       enableRecovery: false, // Configuration errors usually need manual intervention
       context: { operation: 'config-validation', config }
-    });
+
     throw error;
   }
 }

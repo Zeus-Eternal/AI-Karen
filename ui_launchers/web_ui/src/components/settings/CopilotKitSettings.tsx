@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -7,15 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Settings,
-  Code,
-  Zap,
-  Info,
-  Save,
-  RotateCcw,
-  ExternalLink
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 interface CopilotKitConfig {
   enabled: boolean;
   apiEndpoint: string;
@@ -104,6 +99,7 @@ export default function CopilotKitSettings() {
       title: "Settings Reset",
       description: "CopilotKit configuration has been reset to defaults.",
     });
+
   };
   return (
     <div className="space-y-6">
@@ -113,27 +109,25 @@ export default function CopilotKitSettings() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Code className="h-5 w-5 sm:w-auto md:w-full" />
-                CopilotKit Configuration
+                <Code className="h-5 w-5 " />
               </CardTitle>
               <CardDescription>
                 Configure CopilotKit UI framework for AI-powered development assistance
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <button
+              <Button
                 variant="outline"
                 onClick={handleReset}
                 disabled={saving}
-               aria-label="Button">
-                <RotateCcw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Reset
+               >
+                <RotateCcw className="h-4 w-4 mr-2 " />
               </Button>
               <button
                 onClick={handleSave}
                 disabled={saving || !hasChanges}
                aria-label="Button">
-                <Save className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                <Save className="h-4 w-4 mr-2 " />
                 {saving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
@@ -144,8 +138,7 @@ export default function CopilotKitSettings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-4 w-4 sm:w-auto md:w-full" />
-            General Settings
+            <Settings className="h-4 w-4 " />
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -153,7 +146,6 @@ export default function CopilotKitSettings() {
             <div className="space-y-0.5">
               <Label>Enable CopilotKit</Label>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Enable or disable CopilotKit UI framework
               </p>
             </div>
             <Switch
@@ -166,11 +158,10 @@ export default function CopilotKitSettings() {
             <input
               id="api-endpoint"
               value={config.apiEndpoint}
-              onChange={(e) = aria-label="Input"> handleConfigChange('apiEndpoint', e.target.value)}
+              onChange={(e) => handleConfigChange('apiEndpoint', e.target.value)}
               placeholder="/copilot"
             />
             <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-              Endpoint for CopilotKit API integration
             </p>
           </div>
         </CardContent>
@@ -179,8 +170,7 @@ export default function CopilotKitSettings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="h-4 w-4 sm:w-auto md:w-full" />
-            Features
+            <Zap className="h-4 w-4 " />
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -200,7 +190,6 @@ export default function CopilotKitSettings() {
             <div className="space-y-0.5">
               <Label>Contextual Help</Label>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Show contextual help and documentation
               </p>
             </div>
             <Switch
@@ -212,7 +201,6 @@ export default function CopilotKitSettings() {
             <div className="space-y-0.5">
               <Label>Auto Complete</Label>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Enable automatic code completion
               </p>
             </div>
             <Switch
@@ -247,7 +235,7 @@ export default function CopilotKitSettings() {
                 id="theme"
                 className="w-full p-2 border rounded-md sm:p-4 md:p-6"
                 value={config.ui.theme}
-                onChange={(e) = aria-label="Select option"> handleConfigChange('ui.theme', e.target.value)}
+                onChange={(e) => handleConfigChange('ui.theme', e.target.value)}
               >
                 <option value="auto">Auto</option>
                 <option value="light">Light</option>
@@ -260,7 +248,7 @@ export default function CopilotKitSettings() {
                 id="position"
                 className="w-full p-2 border rounded-md sm:p-4 md:p-6"
                 value={config.ui.position}
-                onChange={(e) = aria-label="Select option"> handleConfigChange('ui.position', e.target.value)}
+                onChange={(e) => handleConfigChange('ui.position', e.target.value)}
               >
                 <option value="bottom-right">Bottom Right</option>
                 <option value="bottom-left">Bottom Left</option>
@@ -273,7 +261,6 @@ export default function CopilotKitSettings() {
             <div className="space-y-0.5">
               <Label>Show Shortcuts</Label>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Display keyboard shortcuts in the UI
               </p>
             </div>
             <Switch
@@ -285,7 +272,6 @@ export default function CopilotKitSettings() {
             <div className="space-y-0.5">
               <Label>Compact Mode</Label>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Use compact UI layout to save space
               </p>
             </div>
             <Switch
@@ -307,7 +293,7 @@ export default function CopilotKitSettings() {
               id="debounce"
               type="number"
               value={config.performance.debounceMs}
-              onChange={(e) = aria-label="Input"> handleConfigChange('performance.debounceMs', parseInt(e.target.value))}
+              onChange={(e) => handleConfigChange('performance.debounceMs', parseInt(e.target.value))}
               min="100"
               max="2000"
             />
@@ -321,7 +307,7 @@ export default function CopilotKitSettings() {
               id="max-suggestions"
               type="number"
               value={config.performance.maxSuggestions}
-              onChange={(e) = aria-label="Input"> handleConfigChange('performance.maxSuggestions', parseInt(e.target.value))}
+              onChange={(e) => handleConfigChange('performance.maxSuggestions', parseInt(e.target.value))}
               min="1"
               max="20"
             />
@@ -333,7 +319,6 @@ export default function CopilotKitSettings() {
             <div className="space-y-0.5">
               <Label>Enable Caching</Label>
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Cache suggestions for better performance
               </p>
             </div>
             <Switch
@@ -345,7 +330,7 @@ export default function CopilotKitSettings() {
       </Card>
       {/* Information */}
       <Alert>
-        <Info className="h-4 w-4 sm:w-auto md:w-full" />
+        <Info className="h-4 w-4 " />
         <AlertTitle>About CopilotKit</AlertTitle>
         <AlertDescription className="space-y-2">
           <p>
@@ -353,16 +338,14 @@ export default function CopilotKitSettings() {
             It provides components and tools for integrating AI assistance into your development workflow.
           </p>
           <div className="flex gap-2 mt-2">
-            <button variant="outline" size="sm" asChild aria-label="Button">
+            <Button variant="outline" size="sm" asChild >
               <a href="https://copilotkit.ai/docs" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                Documentation
+                <ExternalLink className="h-3 w-3 mr-1 " />
               </a>
             </Button>
-            <button variant="outline" size="sm" asChild aria-label="Button">
+            <Button variant="outline" size="sm" asChild >
               <a href="https://github.com/CopilotKit/CopilotKit" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                GitHub
+                <ExternalLink className="h-3 w-3 mr-1 " />
               </a>
             </Button>
           </div>

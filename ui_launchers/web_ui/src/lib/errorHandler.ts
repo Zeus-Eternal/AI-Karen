@@ -307,7 +307,7 @@ export class UnifiedErrorHandler {
     const byCode: Record<string, number> = {};
     this.errorLog.forEach(error => {
       byCode[error.errorCode] = (byCode[error.errorCode] || 0) + 1;
-    });
+
     return {
       total: this.errorLog.length,
       byCode,

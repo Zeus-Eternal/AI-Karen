@@ -1,6 +1,6 @@
 "use client";
 
-
+import React from 'react';
 import { ModelBrowser } from '@/components/models';
 
 export default function ModelsPage() {

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         directory,
         message: `Directory ${directory} not found`,
         scan_time: new Date().toISOString()
-      });
+
     }
     // Read directory contents
     const files = await fs.readdir(fullPath, { withFileTypes: true });
@@ -25,7 +25,6 @@ export async function GET(request: NextRequest) {
     const ggufFiles = files.filter(file => 
       file.isFile() && file.name.toLowerCase().endsWith('.gguf')
     );
-    });
     // Process each GGUF file
     const models = [];
     for (const file of ggufFiles) {
@@ -40,7 +39,7 @@ export async function GET(request: NextRequest) {
           size: stats.size,
           modified: stats.mtime.toISOString(),
           metadata
-        });
+
       } catch (fileError) {
       }
     }

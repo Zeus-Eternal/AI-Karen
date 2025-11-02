@@ -45,10 +45,8 @@ const CustomFallback: React.FC<any> = ({
     <p>Error: {error?.message}</p>
     <p>Retry count: {retryCount}/{maxRetries}</p>
     <button onClick={onRetry} data-testid="custom-retry">
-      Custom Retry
     </button>
     <button onClick={onReset} data-testid="custom-reset">
-      Custom Reset
     </button>
   </div>
 );
@@ -58,11 +56,9 @@ describe('ErrorBoundary', () => {
     jest.clearAllMocks();
     // Suppress console.error for cleaner test output
     jest.spyOn(console, 'error').mockImplementation(() => {});
-  });
 
   afterEach(() => {
     jest.restoreAllMocks();
-  });
 
   describe('Basic Error Handling', () => {
     it('should render children when no error occurs', () => {
@@ -73,15 +69,13 @@ describe('ErrorBoundary', () => {
       );
 
       expect(screen.getByTestId('success')).toBeInTheDocument();
-    });
 
     it('should catch and display error when child component throws', async () => {
       const mockHandleError = jest.fn().mockResolvedValue({
         strategy: 'error_message',
         message: 'Component failed to load',
         retryAvailable: true
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       render(
@@ -92,21 +86,18 @@ describe('ErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-      });
 
       expect(mockHandleError).toHaveBeenCalledWith(
         expect.any(Error),
         'test-component'
       );
-    });
 
     it('should call custom onError handler when provided', async () => {
       const mockOnError = jest.fn();
       const mockHandleError = jest.fn().mockResolvedValue({
         strategy: 'error_message',
         message: 'Error occurred'
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       render(
@@ -120,17 +111,15 @@ describe('ErrorBoundary', () => {
           expect.any(Error),
           expect.any(Object)
         );
-      });
-    });
-  });
+
+
 
   describe('Custom Fallback Component', () => {
     it('should render custom fallback component when provided', async () => {
       const mockHandleError = jest.fn().mockResolvedValue({
         strategy: 'error_message',
         message: 'Custom fallback test'
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       render(
@@ -142,15 +131,13 @@ describe('ErrorBoundary', () => {
       await waitFor(() => {
         expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
         expect(screen.getByText('Custom Error Fallback')).toBeInTheDocument();
-      });
-    });
+
 
     it('should pass correct props to custom fallback component', async () => {
       const mockHandleError = jest.fn().mockResolvedValue({
         strategy: 'error_message',
         message: 'Props test'
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       render(
@@ -162,9 +149,8 @@ describe('ErrorBoundary', () => {
       await waitFor(() => {
         expect(screen.getByText('Error: Props test error')).toBeInTheDocument();
         expect(screen.getByText('Retry count: 0/3')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Retry Functionality', () => {
     it('should retry rendering when retry button is clicked', async () => {
@@ -172,8 +158,7 @@ describe('ErrorBoundary', () => {
         strategy: 'error_message',
         message: 'Retry test',
         retryAvailable: true
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       let shouldThrow = true;
@@ -188,7 +173,6 @@ describe('ErrorBoundary', () => {
       // Wait for error to be caught
       await waitFor(() => {
         expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-      });
 
       // Click retry button
       const retryButton = screen.getByText(/retry/i);
@@ -202,15 +186,13 @@ describe('ErrorBoundary', () => {
         // The component should attempt to re-render
         expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument();
       }, { timeout: 2000 });
-    });
 
     it('should disable retry button after max retries', async () => {
       const mockHandleError = jest.fn().mockResolvedValue({
         strategy: 'error_message',
         message: 'Max retry test',
         retryAvailable: true
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       render(
@@ -221,7 +203,6 @@ describe('ErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-      });
 
       // Click retry button multiple times to exceed max retries
       const retryButton = screen.getByText(/retry \(0\/3\)/i);
@@ -240,17 +221,15 @@ describe('ErrorBoundary', () => {
         if (retryBtn) {
           expect(retryBtn).toBeDisabled();
         }
-      });
-    });
-  });
+
+
 
   describe('Reset Functionality', () => {
     it('should reset component when reset button is clicked', async () => {
       const mockHandleError = jest.fn().mockResolvedValue({
         strategy: 'error_message',
         message: 'Reset test'
-      });
-      
+
       const mockReset = jest.fn();
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
       (agUIErrorHandler.resetComponent as jest.Mock).mockImplementation(mockReset);
@@ -263,14 +242,12 @@ describe('ErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-      });
 
       const resetButton = screen.getByText(/reset/i);
       fireEvent.click(resetButton);
 
       expect(mockReset).toHaveBeenCalledWith('reset-test');
-    });
-  });
+
 
   describe('Fallback Strategy Rendering', () => {
     it('should render simple table fallback correctly', async () => {
@@ -280,8 +257,7 @@ describe('ErrorBoundary', () => {
         columns: [{ field: 'id', headerName: 'ID' }, { field: 'name', headerName: 'Name' }],
         message: 'Grid failed, using simple table',
         degradedFeatures: ['sorting', 'filtering']
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       render(
@@ -297,16 +273,14 @@ describe('ErrorBoundary', () => {
         expect(screen.getByText('ID')).toBeInTheDocument();
         expect(screen.getByText('Name')).toBeInTheDocument();
         expect(screen.getByText('Test')).toBeInTheDocument();
-      });
-    });
+
 
     it('should render cached data fallback correctly', async () => {
       const mockHandleError = jest.fn().mockResolvedValue({
         strategy: 'cached_data',
         message: 'Using cached data due to loading error',
         degradedFeatures: ['real-time-updates']
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       render(
@@ -318,15 +292,13 @@ describe('ErrorBoundary', () => {
       await waitFor(() => {
         expect(screen.getByText('Using cached data due to loading error')).toBeInTheDocument();
         expect(screen.getByText('Disabled features: real-time-updates')).toBeInTheDocument();
-      });
-    });
+
 
     it('should render loading state fallback correctly', async () => {
       const mockHandleError = jest.fn().mockResolvedValue({
         strategy: 'loading_state',
         message: 'Data fetch failed. Click to retry.'
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       render(
@@ -338,15 +310,13 @@ describe('ErrorBoundary', () => {
       await waitFor(() => {
         expect(screen.getByText('Data fetch failed. Click to retry.')).toBeInTheDocument();
         expect(screen.getByText('⏳')).toBeInTheDocument(); // Loading spinner
-      });
-    });
+
 
     it('should render error message fallback correctly', async () => {
       const mockHandleError = jest.fn().mockResolvedValue({
         strategy: 'error_message',
         message: 'Component failed to load. Please try refreshing the page.'
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       render(
@@ -358,35 +328,30 @@ describe('ErrorBoundary', () => {
       await waitFor(() => {
         expect(screen.getByText('Component failed to load. Please try refreshing the page.')).toBeInTheDocument();
         expect(screen.getByText('❌')).toBeInTheDocument(); // Error icon
-      });
-    });
-  });
+
+
 
   describe('Higher-Order Component', () => {
     it('should wrap component with error boundary using HOC', async () => {
       const WrappedComponent = withErrorBoundary(ThrowError, {
         componentName: 'hoc-test',
         enableRetry: false
-      });
 
       const mockHandleError = jest.fn().mockResolvedValue({
         strategy: 'error_message',
         message: 'HOC test error'
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       render(<WrappedComponent shouldThrow={true} />);
 
       await waitFor(() => {
         expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-      });
 
       expect(mockHandleError).toHaveBeenCalledWith(
         expect.any(Error),
         'hoc-test'
       );
-    });
 
     it('should set correct display name for wrapped component', () => {
       const TestComponent = () => <div>Test</div>;
@@ -395,8 +360,7 @@ describe('ErrorBoundary', () => {
       const WrappedComponent = withErrorBoundary(TestComponent);
       
       expect(WrappedComponent.displayName).toBe('withErrorBoundary(TestComponent)');
-    });
-  });
+
 
   describe('useErrorBoundary Hook', () => {
     it('should provide error boundary utilities', () => {
@@ -409,7 +373,6 @@ describe('ErrorBoundary', () => {
               onClick={() => resetComponent('test')}
               data-testid="hook-reset"
             >
-              Reset
             </button>
             <button 
               onClick={() => {
@@ -418,7 +381,6 @@ describe('ErrorBoundary', () => {
               }}
               data-testid="hook-health"
             >
-              Check Health
             </button>
           </div>
         );
@@ -434,8 +396,7 @@ describe('ErrorBoundary', () => {
 
       fireEvent.click(healthButton);
       expect(agUIErrorHandler.getComponentHealth).toHaveBeenCalledWith('test');
-    });
-  });
+
 
   describe('Edge Cases', () => {
     it('should handle error boundary without fallback response', async () => {
@@ -450,15 +411,13 @@ describe('ErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle component unmounting during retry', async () => {
       const mockHandleError = jest.fn().mockResolvedValue({
         strategy: 'error_message',
         message: 'Unmount test'
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       const { unmount } = render(
@@ -469,7 +428,6 @@ describe('ErrorBoundary', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-      });
 
       // Click retry and immediately unmount
       const retryButton = screen.getByText(/retry/i);
@@ -477,7 +435,6 @@ describe('ErrorBoundary', () => {
       
       // Unmount should not cause errors
       expect(() => unmount()).not.toThrow();
-    });
 
     it('should handle empty data in simple table fallback', async () => {
       const mockHandleError = jest.fn().mockResolvedValue({
@@ -485,8 +442,7 @@ describe('ErrorBoundary', () => {
         data: [],
         columns: [],
         message: 'No data available'
-      });
-      
+
       (agUIErrorHandler.handleComponentError as jest.Mock).mockImplementation(mockHandleError);
 
       render(
@@ -498,7 +454,6 @@ describe('ErrorBoundary', () => {
       await waitFor(() => {
         expect(screen.getByText('No data available')).toBeInTheDocument();
         expect(screen.getByText('No data available')).toBeInTheDocument();
-      });
-    });
-  });
-});
+
+
+

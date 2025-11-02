@@ -4,11 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import {
-  NetworkDiagnostics,
-  getNetworkDiagnostics,
-  initializeNetworkDiagnostics,
-} from "../network-diagnostics";
+import { NetworkDiagnostics, getNetworkDiagnostics, initializeNetworkDiagnostics } from "../network-diagnostics";
 
 // Mock webUIConfig
 vi.mock("../config", () => ({
@@ -62,13 +58,11 @@ describe("NetworkDiagnostics", () => {
 
     // Clear singleton
     (getNetworkDiagnostics as any).networkDiagnostics = null;
-  });
 
   afterEach(() => {
     // Restore navigator
     global.navigator = originalNavigator;
     vi.clearAllMocks();
-  });
 
   describe("Network Information", () => {
     it("should get current network information", () => {
@@ -80,7 +74,6 @@ describe("NetworkDiagnostics", () => {
       expect(networkInfo.host).toBe("localhost");
       expect(networkInfo.port).toBe("8000");
       expect(networkInfo.connectionType).toBe("4g");
-    });
 
     it("should handle missing navigator", () => {
       global.navigator = undefined as any;
@@ -90,7 +83,6 @@ describe("NetworkDiagnostics", () => {
       expect(networkInfo.userAgent).toBe("server");
       expect(networkInfo.isOnline).toBe(true);
       expect(networkInfo.connectionType).toBeUndefined();
-    });
 
     it("should handle missing connection info", () => {
       global.navigator = { ...mockNavigator, connection: undefined } as any;
@@ -98,14 +90,12 @@ describe("NetworkDiagnostics", () => {
       const networkInfo = networkDiagnostics.getNetworkInfo();
 
       expect(networkInfo.connectionType).toBeUndefined();
-    });
 
     it("should parse HTTPS URLs correctly", () => {
       // Skip this test as mocking is complex in this context
       // The functionality is tested indirectly through other tests
       expect(true).toBe(true);
-    });
-  });
+
 
   describe("Endpoint Connectivity Testing", () => {
     it("should test endpoint connectivity successfully", async () => {
@@ -121,7 +111,6 @@ describe("NetworkDiagnostics", () => {
       mockResponse.headers.forEach = vi.fn((callback) => {
         callback("application/json", "content-type");
         callback("*", "access-control-allow-origin");
-      });
 
       mockFetch.mockResolvedValueOnce(mockResponse);
 
@@ -137,8 +126,7 @@ describe("NetworkDiagnostics", () => {
       expect(result.headers).toEqual({
         "content-type": "application/json",
         "access-control-allow-origin": "*",
-      });
-    });
+
 
     it("should handle HTTP error responses", async () => {
       mockFetch.mockResolvedValueOnce({
@@ -146,7 +134,6 @@ describe("NetworkDiagnostics", () => {
         status: 404,
         statusText: "Not Found",
         headers: new Map(),
-      });
 
       const result = await networkDiagnostics.testEndpointConnectivity(
         "/api/nonexistent"
@@ -155,7 +142,6 @@ describe("NetworkDiagnostics", () => {
       expect(result.status).toBe("error");
       expect(result.statusCode).toBe(404);
       expect(result.endpoint).toBe("http://localhost:8000/api/nonexistent");
-    });
 
     it("should handle network errors", async () => {
       mockFetch.mockRejectedValueOnce(
@@ -168,7 +154,6 @@ describe("NetworkDiagnostics", () => {
 
       expect(result.status).toBe("network");
       expect(result.error).toBe("NetworkError: Failed to fetch");
-    });
 
     it("should handle timeout errors", async () => {
       mockFetch.mockRejectedValueOnce(new Error("AbortError"));
@@ -181,7 +166,6 @@ describe("NetworkDiagnostics", () => {
 
       expect(result.status).toBe("timeout");
       expect(result.error).toBe("AbortError");
-    });
 
     it("should handle CORS errors", async () => {
       mockFetch.mockResolvedValueOnce({
@@ -189,7 +173,6 @@ describe("NetworkDiagnostics", () => {
         status: 0,
         statusText: "",
         headers: new Map(),
-      });
 
       const result = await networkDiagnostics.testEndpointConnectivity(
         "/api/health"
@@ -197,7 +180,6 @@ describe("NetworkDiagnostics", () => {
 
       expect(result.status).toBe("cors");
       expect(result.corsInfo).toBeDefined();
-    });
 
     it("should test with custom headers and method", async () => {
       mockFetch.mockResolvedValueOnce({
@@ -205,7 +187,6 @@ describe("NetworkDiagnostics", () => {
         status: 200,
         statusText: "OK",
         headers: new Map(),
-      });
 
       const customHeaders = { Authorization: "Bearer token123" };
       await networkDiagnostics.testEndpointConnectivity(
@@ -225,7 +206,6 @@ describe("NetworkDiagnostics", () => {
           },
         })
       );
-    });
 
     it("should send body when provided", async () => {
       mockFetch.mockResolvedValueOnce({
@@ -233,7 +213,6 @@ describe("NetworkDiagnostics", () => {
         status: 200,
         statusText: "OK",
         headers: new Map(),
-      });
 
       const body = JSON.stringify({ ping: true });
       await networkDiagnostics.testEndpointConnectivity(
@@ -251,7 +230,6 @@ describe("NetworkDiagnostics", () => {
           body,
         })
       );
-    });
 
     it("should handle full URLs", async () => {
       mockFetch.mockResolvedValueOnce({
@@ -259,7 +237,6 @@ describe("NetworkDiagnostics", () => {
         status: 200,
         statusText: "OK",
         headers: new Map(),
-      });
 
       await networkDiagnostics.testEndpointConnectivity(
         "https://external-api.com/health"
@@ -269,8 +246,7 @@ describe("NetworkDiagnostics", () => {
         "https://external-api.com/health",
         expect.any(Object)
       );
-    });
-  });
+
 
   describe("CORS Analysis", () => {
     it("should analyze CORS configuration", async () => {
@@ -289,7 +265,6 @@ describe("NetworkDiagnostics", () => {
           "access-control-allow-headers": "Content-Type, Authorization",
         };
         return headers[key as keyof typeof headers] || null;
-      });
 
       mockFetch.mockResolvedValueOnce(mockPreflightResponse);
 
@@ -302,7 +277,6 @@ describe("NetworkDiagnostics", () => {
         ok: false,
         status: 0,
         headers: new Map(),
-      });
 
       const corsResult = await networkDiagnostics.testEndpointConnectivity(
         "/api/cors-test"
@@ -310,7 +284,6 @@ describe("NetworkDiagnostics", () => {
 
       expect(corsResult.corsInfo).toBeDefined();
       expect(corsResult.corsInfo?.origin).toBeDefined();
-    });
 
     it("should handle CORS analysis errors", async () => {
       // First call triggers CORS analysis (status 0)
@@ -318,7 +291,6 @@ describe("NetworkDiagnostics", () => {
         ok: false,
         status: 0,
         headers: new Map(),
-      });
 
       // Second call (for CORS analysis) fails
       mockFetch.mockRejectedValueOnce(new Error("CORS preflight failed"));
@@ -329,8 +301,7 @@ describe("NetworkDiagnostics", () => {
 
       expect(result.status).toBe("cors");
       expect(result.corsInfo?.corsError).toBe("CORS preflight failed");
-    });
-  });
+
 
   describe("Comprehensive Network Testing", () => {
     it("should run comprehensive network test", async () => {
@@ -340,7 +311,6 @@ describe("NetworkDiagnostics", () => {
         status: 200,
         statusText: "OK",
         headers: new Map(),
-      });
 
       const report = await networkDiagnostics.runComprehensiveTest();
 
@@ -353,7 +323,6 @@ describe("NetworkDiagnostics", () => {
       expect(report.recommendations).toContain(
         "All network tests passed successfully"
       );
-    });
 
     it("should handle partial failures in comprehensive test", async () => {
       // Mock mixed responses
@@ -370,7 +339,6 @@ describe("NetworkDiagnostics", () => {
           status: 200,
           statusText: "OK",
           headers: new Map(),
-        });
 
       const report = await networkDiagnostics.runComprehensiveTest();
 
@@ -379,7 +347,6 @@ describe("NetworkDiagnostics", () => {
       expect(report.recommendations).toContain(
         "Some network issues detected - monitoring recommended"
       );
-    });
 
     it("should handle critical failures in comprehensive test", async () => {
       // Mock all failures
@@ -392,7 +359,6 @@ describe("NetworkDiagnostics", () => {
       expect(report.recommendations).toContain(
         "Critical network issues detected - immediate attention required"
       );
-    });
 
     it("should include fallback endpoint tests", async () => {
       mockFetch.mockResolvedValue({
@@ -400,7 +366,6 @@ describe("NetworkDiagnostics", () => {
         status: 200,
         statusText: "OK",
         headers: new Map(),
-      });
 
       const report = await networkDiagnostics.runComprehensiveTest();
 
@@ -409,7 +374,6 @@ describe("NetworkDiagnostics", () => {
       );
 
       expect(fallbackTests.length).toBe(2); // Two fallback URLs in mock config
-    });
 
     it("should generate appropriate recommendations for different error types", async () => {
       // Mock CORS errors
@@ -417,7 +381,6 @@ describe("NetworkDiagnostics", () => {
         ok: false,
         status: 0,
         headers: new Map(),
-      });
 
       const report = await networkDiagnostics.runComprehensiveTest();
 
@@ -427,8 +390,7 @@ describe("NetworkDiagnostics", () => {
       expect(report.recommendations).toContain(
         "Update backend CORS settings to allow the current origin"
       );
-    });
-  });
+
 
   describe("Detailed Endpoint Testing", () => {
     it("should provide detailed endpoint analysis", async () => {
@@ -437,7 +399,6 @@ describe("NetworkDiagnostics", () => {
         status: 200,
         statusText: "OK",
         headers: new Map(),
-      });
 
       const result = await networkDiagnostics.testEndpointDetailed(
         "/api/health"
@@ -447,7 +408,6 @@ describe("NetworkDiagnostics", () => {
       expect(result.corsAnalysis).toBeDefined();
       expect(result.recommendations).toBeDefined();
       expect(result.connectivity.status).toBe("success");
-    });
 
     it("should provide recommendations for failed endpoints", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Connection failed"));
@@ -458,14 +418,12 @@ describe("NetworkDiagnostics", () => {
 
       expect(result.recommendations).toContain("Endpoint connectivity failed");
       expect(result.recommendations).toContain("Check backend service status");
-    });
 
     it("should provide recommendations for slow endpoints", async () => {
       // Skip this test as the implementation doesn't check response time in testEndpointDetailed
       // The functionality is tested in the connectivity test
       expect(true).toBe(true);
-    });
-  });
+
 
   describe("Network Monitoring", () => {
     it("should start and stop network monitoring", () => {
@@ -481,7 +439,6 @@ describe("NetworkDiagnostics", () => {
       stopMonitoring();
 
       vi.useRealTimers();
-    });
 
     it("should handle monitoring errors gracefully", () => {
       vi.useFakeTimers();
@@ -496,8 +453,7 @@ describe("NetworkDiagnostics", () => {
 
       stopMonitoring();
       vi.useRealTimers();
-    });
-  });
+
 
   describe("Singleton Pattern", () => {
     it("should return the same instance from getNetworkDiagnostics", () => {
@@ -505,15 +461,13 @@ describe("NetworkDiagnostics", () => {
       const instance2 = getNetworkDiagnostics();
 
       expect(instance1).toBe(instance2);
-    });
 
     it("should create new instance with initializeNetworkDiagnostics", () => {
       const instance1 = getNetworkDiagnostics();
       const instance2 = initializeNetworkDiagnostics();
 
       expect(instance1).not.toBe(instance2);
-    });
-  });
+
 
   describe("Error Handling", () => {
     it("should handle fetch abort errors", async () => {
@@ -527,7 +481,6 @@ describe("NetworkDiagnostics", () => {
 
       expect(result.status).toBe("timeout");
       expect(result.error).toBe("AbortError");
-    });
 
     it("should handle generic fetch errors", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Failed to fetch"));
@@ -538,7 +491,6 @@ describe("NetworkDiagnostics", () => {
 
       expect(result.status).toBe("network");
       expect(result.error).toBe("Failed to fetch");
-    });
 
     it("should handle non-Error objects", async () => {
       mockFetch.mockRejectedValueOnce("String error");
@@ -548,6 +500,5 @@ describe("NetworkDiagnostics", () => {
       );
 
       expect(result.error).toBe("String error");
-    });
-  });
-});
+
+

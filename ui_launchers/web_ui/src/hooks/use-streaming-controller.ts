@@ -121,7 +121,7 @@ export const useStreamingController = (): StreamingController => {
           setState(prev => ({ ...prev, isBackpressureActive: false }));
           resolve();
         }, BACKPRESSURE_DELAY);
-      });
+
     }
   }, [state.bufferSize, state.isBackpressureActive, telemetryService]);
 
@@ -142,7 +142,7 @@ export const useStreamingController = (): StreamingController => {
             : 0,
         },
       };
-    });
+
   }, []);
 
   // Start streaming
@@ -210,7 +210,6 @@ export const useStreamingController = (): StreamingController => {
         },
         body: options.body ? JSON.stringify(options.body) : undefined,
         signal: combinedSignal
-      });
 
       clearTimeout(timeoutId);
 

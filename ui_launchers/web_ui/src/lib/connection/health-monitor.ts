@@ -94,7 +94,7 @@ export class HealthMonitor {
       // Add fallback endpoints
       fallbackUrls.forEach((url, index) => {
         this.addEndpoint(url, index + 2, false);
-      });
+
       // Set active endpoint to primary
       this.activeEndpoint = primaryUrl;
     } catch (error) {
@@ -104,7 +104,7 @@ export class HealthMonitor {
         : ['http://localhost:8000'];
       defaultEndpoints.forEach((url, index) => {
         this.addEndpoint(url, index + 1, index === 0);
-      });
+
       if (defaultEndpoints.length > 0) {
         this.activeEndpoint = defaultEndpoints[0];
       }
@@ -186,7 +186,7 @@ export class HealthMonitor {
         timeout: timeoutManager.getTimeout(OperationType.HEALTH_CHECK),
         retryAttempts: 0, // No retries for health checks
         circuitBreakerEnabled: false,
-      });
+
       const responseTime = Date.now() - startTime;
       // Update endpoint health
       this.updateEndpointHealth(url, true, responseTime);
@@ -291,7 +291,7 @@ export class HealthMonitor {
       this.emitEvent(HealthEventType.ENDPOINT_FAILOVER, nextEndpoint, {
         from: oldEndpoint,
         to: nextEndpoint,
-      });
+
     }
   }
   /**
@@ -394,7 +394,7 @@ export class HealthMonitor {
           listener(event);
         } catch (error) {
         }
-      });
+
     }
   }
   /**
@@ -436,12 +436,12 @@ export class HealthMonitor {
     // Update active status
     this.endpoints.forEach((endpoint, url) => {
       endpoint.isActive = url === targetUrl;
-    });
+
     this.emitEvent(HealthEventType.ENDPOINT_FAILOVER, targetUrl, {
       from: oldEndpoint,
       to: targetUrl,
       forced: true,
-    });
+
     return true;
   }
   /**
@@ -460,7 +460,7 @@ export class HealthMonitor {
         averageResponseTime: 0,
         uptime: 100,
       };
-    });
+
     this.responseTimes = [];
   }
 }
@@ -484,8 +484,4 @@ export function initializeHealthMonitor(config?: Partial<MonitoringConfig>): Hea
 }
 // Export types
 export type {
-  HealthStatus as HealthStatusType,
-  BackendEndpoint as BackendEndpointType,
-  HealthCheckResult as HealthCheckResultType,
-  MonitoringConfig as MonitoringConfigType,
 };

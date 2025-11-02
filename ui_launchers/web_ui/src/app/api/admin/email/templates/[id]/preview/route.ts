@@ -70,7 +70,7 @@ export async function POST(
           variables: template.variables,
         }
       }
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to generate template preview' },

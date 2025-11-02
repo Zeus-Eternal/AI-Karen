@@ -6,13 +6,7 @@
  */
 
 import { vi, beforeEach, afterEach, describe, it, expect } from 'vitest';
-import { 
-  handleExtensionAuthenticationError,
-  checkExtensionFeatureAvailability,
-  getExtensionAuthStatus,
-  initializeExtensionAuthErrorHandling,
-  resetExtensionAuthErrorHandling
-} from '../index';
+import {  handleExtensionAuthenticationError, checkExtensionFeatureAvailability, getExtensionAuthStatus, initializeExtensionAuthErrorHandling, resetExtensionAuthErrorHandling } from '../index';
 import { ExtensionFeatureLevel } from '../extension-auth-degradation';
 
 // Mock fetch for testing real HTTP responses
@@ -28,7 +22,6 @@ const mockLocalStorage = {
 };
 Object.defineProperty(window, 'localStorage', {
   value: mockLocalStorage
-});
 
 // Mock sessionStorage
 const mockSessionStorage = {
@@ -39,7 +32,6 @@ const mockSessionStorage = {
 };
 Object.defineProperty(window, 'sessionStorage', {
   value: mockSessionStorage
-});
 
 // Mock console methods to avoid test noise
 const originalConsole = { ...console };
@@ -49,11 +41,9 @@ beforeEach(() => {
   console.error = vi.fn();
   console.info = vi.fn();
   console.debug = vi.fn();
-});
 
 afterEach(() => {
   Object.assign(console, originalConsole);
-});
 
 describe('Extension Authentication Real Response Integration Tests', () => {
   beforeEach(() => {
@@ -70,7 +60,6 @@ describe('Extension Authentication Real Response Integration Tests', () => {
     mockSessionStorage.getItem.mockReturnValue(null);
     mockSessionStorage.setItem.mockImplementation(() => {});
     mockSessionStorage.removeItem.mockImplementation(() => {});
-  });
 
   describe('HTTP 401 Unauthorized Response Handling', () => {
     it('should handle 401 response with token refresh and retry', async () => {
@@ -123,7 +112,6 @@ describe('Extension Authentication Real Response Integration Tests', () => {
           })
         })
       );
-    });
 
     it('should handle 401 response when token refresh fails', async () => {
       const unauthorizedResponse = new Response(
@@ -151,8 +139,7 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       expect(result).toBeDefined();
       expect(result.extensions).toEqual([]);
       expect(result.message).toContain('temporarily unavailable');
-    });
-  });
+
 
   describe('HTTP 403 Forbidden Response Handling', () => {
     it('should handle 403 response with readonly fallback', async () => {
@@ -188,8 +175,7 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       
       const listAvailability = checkExtensionFeatureAvailability('extension_list');
       expect(listAvailability.available).toBe(true);
-    });
-  });
+
 
   describe('HTTP 503 Service Unavailable Response Handling', () => {
     it('should handle 503 response with cached data fallback', async () => {
@@ -223,7 +209,6 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       const authStatus = getExtensionAuthStatus();
       expect(authStatus.degradationLevel).toBe(ExtensionFeatureLevel.CACHED);
       expect(authStatus.recoveryEstimate).toBeDefined();
-    });
 
     it('should handle 503 response with HTML error page', async () => {
       const htmlErrorResponse = new Response(
@@ -244,8 +229,7 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       // Should still provide fallback data even with HTML response
       expect(result).toBeDefined();
       expect(result.extensions).toEqual([]);
-    });
-  });
+
 
   describe('Network Error Response Handling', () => {
     it('should handle network timeout errors', async () => {
@@ -264,7 +248,6 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       // Check that system applies graceful degradation
       const authStatus = getExtensionAuthStatus();
       expect([ExtensionFeatureLevel.CACHED, ExtensionFeatureLevel.LIMITED]).toContain(authStatus.degradationLevel);
-    });
 
     it('should handle DNS resolution errors', async () => {
       const dnsError = new TypeError('Failed to fetch');
@@ -278,8 +261,7 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       // Should provide fallback data
       expect(result).toBeDefined();
       expect(result.message).toContain('temporarily unavailable');
-    });
-  });
+
 
   describe('Malformed Response Handling', () => {
     it('should handle responses with invalid JSON', async () => {
@@ -300,14 +282,12 @@ describe('Extension Authentication Real Response Integration Tests', () => {
 
       // Should still provide fallback data
       expect(result).toBeDefined();
-    });
 
     it('should handle empty response bodies', async () => {
       const emptyResponse = new Response('', {
         status: 500,
         statusText: 'Internal Server Error',
         headers: { 'Content-Type': 'application/json' }
-      });
 
       const result = await handleExtensionAuthenticationError(
         emptyResponse,
@@ -317,8 +297,7 @@ describe('Extension Authentication Real Response Integration Tests', () => {
 
       // Should provide fallback data
       expect(result).toBeDefined();
-    });
-  });
+
 
   describe('Rate Limiting Response Handling', () => {
     it('should handle 429 Too Many Requests with retry-after', async () => {
@@ -353,8 +332,7 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       // Check that system applies appropriate degradation
       const authStatus = getExtensionAuthStatus();
       expect(authStatus.degradationLevel).toBe(ExtensionFeatureLevel.LIMITED);
-    });
-  });
+
 
   describe('CORS Error Response Handling', () => {
     it('should handle CORS preflight failures', async () => {
@@ -362,7 +340,6 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       // Simulate CORS error characteristics
       Object.defineProperty(corsError, 'message', {
         value: 'Failed to fetch'
-      });
 
       const result = await handleExtensionAuthenticationError(
         corsError,
@@ -373,8 +350,7 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       // Should provide fallback data
       expect(result).toBeDefined();
       expect(result.message).toContain('temporarily unavailable');
-    });
-  });
+
 
   describe('Authentication Flow Integration', () => {
     it('should handle complete authentication flow with real responses', async () => {
@@ -419,7 +395,6 @@ describe('Extension Authentication Real Response Integration Tests', () => {
         expect.stringContaining('token'),
         expect.any(String)
       );
-    });
 
     it('should handle cascading failures gracefully', async () => {
       // Step 1: Initial request fails with 401
@@ -446,8 +421,7 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       // Verify system is in degraded state
       const authStatus = getExtensionAuthStatus();
       expect(authStatus.degradationLevel).not.toBe(ExtensionFeatureLevel.FULL);
-    });
-  });
+
 
   describe('Feature Availability with Real Responses', () => {
     it('should correctly determine feature availability after real error responses', async () => {
@@ -475,8 +449,7 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       const listCheck = checkExtensionFeatureAvailability('extension_list');
       expect(listCheck.available).toBe(true);
       expect(listCheck.level).toBe(ExtensionFeatureLevel.READONLY);
-    });
-  });
+
 
   describe('Error Recovery with Real Responses', () => {
     it('should recover from temporary service issues', async () => {
@@ -505,8 +478,7 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       // Verify recovery
       authStatus = getExtensionAuthStatus();
       expect(authStatus.degradationLevel).toBe(ExtensionFeatureLevel.FULL);
-    });
-  });
+
 
   describe('Performance and Memory Management', () => {
     it('should handle multiple rapid error responses without memory leaks', async () => {
@@ -535,14 +507,12 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       // All should provide fallback data
       results.forEach(result => {
         expect(result).toBeDefined();
-      });
 
       // System should still be responsive
       const authStatus = getExtensionAuthStatus();
       expect(authStatus).toBeDefined();
       expect(authStatus.degradationLevel).toBeDefined();
-    });
-  });
+
 
   describe('Real-world Scenario Simulation', () => {
     it('should handle a complete production failure scenario', async () => {
@@ -569,7 +539,6 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       // All should provide fallback data
       results.forEach(result => {
         expect(result).toBeDefined();
-      });
 
       // Step 2: System should detect systemic issues
       const authStatus = getExtensionAuthStatus();
@@ -580,7 +549,6 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       
       const recoveredStatus = getExtensionAuthStatus();
       expect(recoveredStatus.degradationLevel).toBe(ExtensionFeatureLevel.FULL);
-    });
 
     it('should handle mixed success and failure responses', async () => {
       // Simulate partial system degradation
@@ -611,7 +579,6 @@ describe('Extension Authentication Real Response Integration Tests', () => {
       expect(results).toHaveLength(4);
       results.forEach(result => {
         expect(result).toBeDefined();
-      });
-    });
-  });
-});
+
+
+

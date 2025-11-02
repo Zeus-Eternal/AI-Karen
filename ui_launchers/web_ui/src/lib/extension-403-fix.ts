@@ -38,7 +38,7 @@ export function patchFetchForExtension403() {
               'Content-Type': 'application/json',
               'X-Fallback-Mode': response.status === 403 ? 'extension-readonly' : 'extension-offline'
             }
-          });
+
         }
       }
       
@@ -59,7 +59,7 @@ export function patchFetchForExtension403() {
             'Content-Type': 'application/json',
             'X-Fallback-Mode': 'extension-offline'
           }
-        });
+
       }
       
       throw error;

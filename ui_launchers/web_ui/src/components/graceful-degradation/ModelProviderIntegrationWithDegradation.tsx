@@ -4,14 +4,10 @@
  */
 
 import React from 'react';
-import { 
-  ProgressiveFeature,
+
   useProgressiveData,
-  ServiceUnavailable,
-  ExtensionUnavailable,
-  DegradedModeBanner,
   useFeatureFlag
-} from '../../lib/graceful-degradation';
+import { } from '../../lib/graceful-degradation';
 import { EnhancedBackendService } from '../../lib/graceful-degradation/enhanced-backend-service';
 
 interface ModelProvider {
@@ -64,7 +60,6 @@ export function ModelProviderIntegrationWithDegradation({
     // In a real implementation, you'd get the original service instance
     const originalService = (window as any).karenBackendService;
     return new EnhancedBackendService(originalService);
-  });
 
   const {
     data: providers,
@@ -194,14 +189,14 @@ function ModelProviderSkeleton({ className }: { className?: string }) {
   return (
     <div className={`model-provider-skeleton ${className}`}>
       <div className="animate-pulse space-y-3">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 sm:w-auto md:w-full"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 "></div>
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex items-center space-x-3">
-              <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded sm:w-auto md:w-full"></div>
+              <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded "></div>
               <div className="flex-1 space-y-1">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 sm:w-auto md:w-full"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 sm:w-auto md:w-full"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 "></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 "></div>
               </div>
             </div>
           ))}
@@ -231,10 +226,8 @@ function ModelProviderList({
     <div className="model-provider-list">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-          Model Providers
           {isStale && (
             <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded sm:text-sm md:text-base">
-              Cached Data
             </span>
           )}
         </h3>
@@ -244,7 +237,6 @@ function ModelProviderList({
             className="text-sm text-blue-600 hover:text-blue-700 underline md:text-base lg:text-lg"
             disabled={disabled}
            aria-label="Button">
-            Refresh
           </button>
         )}
       </div>
@@ -287,7 +279,6 @@ function ModelProviderList({
 
       {providers.length === 0 && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          No model providers available
         </div>
       )}
     </div>
@@ -299,7 +290,6 @@ export function useModelProviders() {
   const [enhancedService] = React.useState(() => {
     const originalService = (window as any).karenBackendService;
     return new EnhancedBackendService(originalService);
-  });
 
   const {
     data: providers,

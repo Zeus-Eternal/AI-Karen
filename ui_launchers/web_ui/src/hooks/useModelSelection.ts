@@ -58,8 +58,7 @@ export function useModelSelection(options: UseModelSelectionOptions = {}): UseMo
         filterByCapability,
         preferLocal,
         forceRefresh
-      });
-      
+
       setModels(result.availableModels);
       
       if (result.selectedModel) {
@@ -79,7 +78,7 @@ export function useModelSelection(options: UseModelSelectionOptions = {}): UseMo
           name: result.selectedModel.name,
           reason: result.selectionReason,
           ready: isModelReady
-        });
+
       } else {
         setSelectedModelState(null);
         setSelectedModelInfo(null);
@@ -187,8 +186,7 @@ export function useModelActions() {
       const backend = getKarenBackend();
       await backend.makeRequestPublic<void>(`/api/models/${modelId}/download`, {
         method: 'POST',
-      });
-      
+
       // TODO: Handle download progress updates
       
     } catch (err) {
@@ -206,8 +204,7 @@ export function useModelActions() {
       const backend = getKarenBackend();
       await backend.makeRequestPublic<void>(`/api/models/${modelId}`, {
         method: 'DELETE',
-      });
-      
+
     } catch (err) {
       safeError('Failed to remove model:', err);
       throw err;

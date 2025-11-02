@@ -2,15 +2,7 @@
  * Structured logging system for connectivity and authentication issues
  */
 
-import { 
-  LogContext, 
-  BaseLogEntry,
-  ConnectivityLogEntry, 
-  AuthenticationLogEntry, 
-  PerformanceLogEntry,
-  LoggerConfig,
-  PerformanceMetrics
-} from './types';
+import {  LogContext, BaseLogEntry, ConnectivityLogEntry, AuthenticationLogEntry, PerformanceLogEntry, LoggerConfig, PerformanceMetrics } from './types';
 import { correlationTracker } from './correlation-tracker';
 import { performanceTracker } from './performance-tracker';
 
@@ -318,7 +310,7 @@ class ConnectivityLogger {
           timestamp: new Date().toISOString(),
           source: 'frontend'
         })
-      });
+
     } catch (error) {
       console.error('Failed to send logs to remote endpoint:', error);
       // Re-add logs to buffer for retry

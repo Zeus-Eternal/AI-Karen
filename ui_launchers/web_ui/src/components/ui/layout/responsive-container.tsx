@@ -197,8 +197,7 @@ function processResponsiveValue<T>(
           result[`--container-${breakpoint}`] = processedValue;
         }
       }
-    });
-    
+
     return result;
   }
   
@@ -237,7 +236,7 @@ function generateContainerStyles(props: ContainerStyleProps): React.CSSPropertie
     } else {
       Object.entries(paddingValue).forEach(([key, value]) => {
         (styles as any)[key] = value;
-      });
+
     }
   }
   
@@ -249,7 +248,7 @@ function generateContainerStyles(props: ContainerStyleProps): React.CSSPropertie
     } else {
       Object.entries(marginValue).forEach(([key, value]) => {
         (styles as any)[key] = value;
-      });
+
     }
   }
   
@@ -287,7 +286,7 @@ function generateContainerStyles(props: ContainerStyleProps): React.CSSPropertie
   if (props.breakpoints) {
     Object.entries(props.breakpoints).forEach(([breakpoint, value]) => {
       (styles as any)[`--breakpoint-${breakpoint}`] = value;
-    });
+
   }
   
   return styles;
@@ -321,8 +320,7 @@ function getResponsiveSizeClasses(size: ContainerSize | ResponsiveValue<Containe
         classes.push(`${breakpoint}:${sizeClass}`);
       }
     }
-  });
-  
+
   return classes.join(' ');
 }
 
@@ -372,8 +370,7 @@ export const ResponsiveContainer = React.forwardRef<HTMLDivElement, ResponsiveCo
       containerQueries,
       containerName,
       breakpoints,
-    });
-    
+
     // Get responsive classes
     const responsiveSizeClasses = responsive ? getResponsiveSizeClasses(size, responsive) : '';
     
@@ -573,8 +570,7 @@ export function useContainerSize(ref: React.RefObject<HTMLElement>): {
     width: 0,
     height: 0,
     size: 'xs',
-  });
-  
+
   React.useEffect(() => {
     if (!ref.current) return;
     
@@ -592,8 +588,7 @@ export function useContainerSize(ref: React.RefObject<HTMLElement>): {
         
         setDimensions({ width, height, size });
       }
-    });
-    
+
     resizeObserver.observe(ref.current);
     
     return () => {

@@ -1,31 +1,14 @@
+
+"use client";
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import {
-'use client';
 
 
+import { } from 'lucide-react';
 
-
-
-
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  AlertTriangle,
-  CheckCircle,
-  Info,
-  Brain,
-  Target,
-  Zap
-} from 'lucide-react';
-
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { } from '@/components/ui/tooltip';
 
 interface ConfidenceMetrics {
   overall: number;
@@ -113,7 +96,7 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className={`flex items-center gap-2 ${className}`}>
-              <Icon className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Icon className="h-4 w-4 text-muted-foreground " />
               <div className={`px-2 py-1 rounded text-xs font-medium border ${confidenceLevel.color}`}>
                 {Math.round(confidence * 100)}%
               </div>
@@ -138,8 +121,7 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
     <Card className={`${className}`}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Target className="h-5 w-5 sm:w-auto md:w-full" />
-          Confidence Analysis
+          <Target className="h-5 w-5 " />
         </CardTitle>
       </CardHeader>
 
@@ -147,12 +129,11 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
         {/* Overall Confidence */}
         <div className="text-center">
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${confidenceLevel.color}`}>
-            <confidenceLevel.icon className="h-5 w-5 sm:w-auto md:w-full" />
+            <confidenceLevel.icon className="h-5 w-5 " />
             <span className="text-2xl font-bold">{Math.round(confidence * 100)}%</span>
             <span className="font-medium">{confidenceLevel.level}</span>
           </div>
           <p className="text-sm text-muted-foreground mt-2 md:text-base lg:text-lg">
-            Overall confidence in the AI response
           </p>
         </div>
 
@@ -160,8 +141,7 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
         {showDetails && (
           <div className="space-y-4">
             <h3 className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
-              <Brain className="h-4 w-4 sm:w-auto md:w-full" />
-              Detailed Metrics
+              <Brain className="h-4 w-4 " />
             </h3>
             
             <div className="grid grid-cols-1 gap-3">
@@ -179,7 +159,6 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
                 </div>
                 <Progress value={finalMetrics.reasoning * 100} className="h-2" />
                 <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  Based on logical consistency and evidence strength
                 </p>
               </div>
 
@@ -197,7 +176,6 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
                 </div>
                 <Progress value={finalMetrics.sources * 100} className="h-2" />
                 <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  Quality and relevance of information sources
                 </p>
               </div>
 
@@ -215,7 +193,6 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
                 </div>
                 <Progress value={finalMetrics.consistency * 100} className="h-2" />
                 <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  Internal consistency across reasoning steps
                 </p>
               </div>
 
@@ -233,7 +210,6 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
                 </div>
                 <Progress value={finalMetrics.completeness * 100} className="h-2" />
                 <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  How thoroughly the response addresses the query
                 </p>
               </div>
             </div>
@@ -244,8 +220,7 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
         {reasoning && (
           <div className="space-y-3">
             <h3 className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
-              <Zap className="h-4 w-4 sm:w-auto md:w-full" />
-              Reasoning Statistics
+              <Zap className="h-4 w-4 " />
             </h3>
             
             <div className="grid grid-cols-3 gap-4 text-center">
@@ -302,8 +277,7 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
             {factors.positive.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-green-600 flex items-center gap-2 md:text-base lg:text-lg">
-                  <TrendingUp className="h-4 w-4 sm:w-auto md:w-full" />
-                  Positive Factors
+                  <TrendingUp className="h-4 w-4 " />
                 </h4>
                 <div className="space-y-2">
                   {factors.positive.map((factor, index) => (
@@ -325,8 +299,7 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
             {factors.negative.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-red-600 flex items-center gap-2 md:text-base lg:text-lg">
-                  <TrendingDown className="h-4 w-4 sm:w-auto md:w-full" />
-                  Limiting Factors
+                  <TrendingDown className="h-4 w-4 " />
                 </h4>
                 <div className="space-y-2">
                   {factors.negative.map((factor, index) => (

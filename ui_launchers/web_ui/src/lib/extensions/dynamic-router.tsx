@@ -4,7 +4,7 @@
  * Handles dynamic routing for extension pages and components
  */
 
-'use client';
+"use client";
 
 import React, { Suspense, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
@@ -122,7 +122,7 @@ class ExtensionErrorBoundary extends React.Component<
       errorInfo,
       extensionId: this.props.extensionId,
       routePath: this.props.routePath
-    });
+
   }
 
   render() {
@@ -177,7 +177,6 @@ function ExtensionErrorFallback({
         {error && (
           <details className="text-left bg-gray-100 rounded p-3 mb-4">
             <summary className="cursor-pointer text-sm font-medium text-gray-700">
-              Error Details
             </summary>
             <pre className="text-xs text-gray-600 mt-2 whitespace-pre-wrap">
               {error.toString()}
@@ -190,13 +189,11 @@ function ExtensionErrorFallback({
             onClick={handleRetry}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
-            Retry
           </button>
           <button
             onClick={() => window.history.back()}
             className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
           >
-            Go Back
           </button>
         </div>
       </div>

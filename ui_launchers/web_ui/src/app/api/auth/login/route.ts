@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  makeBackendRequest,
-  getTimeoutConfig,
-  getRetryPolicy,
-  checkBackendHealth,
-  getConnectionStatus,
-} from "@/app/api/_utils/backend";
+import { makeBackendRequest, getTimeoutConfig, getRetryPolicy, checkBackendHealth, getConnectionStatus } from "@/app/api/_utils/backend";
 import { isSimpleAuthEnabled } from "@/lib/auth/env";
 import { ConnectionError } from "@/lib/connection/connection-manager";
 interface DatabaseConnectivityResult {
@@ -186,7 +180,6 @@ export async function POST(request: NextRequest) {
       if (
         error instanceof ConnectionError &&
         (error.statusCode === 404 || error.statusCode === 405) &&
-        SIMPLE_AUTH_ENABLED
       ) {
         try {
           result = await makeBackendRequest(
@@ -227,7 +220,7 @@ export async function POST(request: NextRequest) {
       ...data,
       databaseConnectivity,
       responseTime: totalResponseTime,
-    });
+
     // Forward any Set-Cookie headers from the backend
     try {
       const setCookieHeaders: string[] = [];
@@ -303,7 +296,7 @@ export async function POST(request: NextRequest) {
             data?.expires_in && !isNaN(Number(data.expires_in))
               ? Number(data.expires_in)
               : 24 * 60 * 60,
-        });
+
       } catch {
         // ignore cookie errors in dev
       }

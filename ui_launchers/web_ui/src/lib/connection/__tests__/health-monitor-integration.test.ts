@@ -8,14 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
-import {
-  HealthMonitor,
-  getHealthMonitor,
-  initializeHealthMonitor,
-  HealthEventType,
-  type HealthCheckResult,
-  type HealthEvent,
-} from '../health-monitor';
+import { HealthMonitor, getHealthMonitor, initializeHealthMonitor, HealthEventType, type HealthCheckResult, type HealthEvent } from '../health-monitor';
 import { getConnectionManager } from '../connection-manager';
 import { getEnvironmentConfigManager } from '../../config/index';
 
@@ -54,21 +47,20 @@ class MockHealthServer {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Not found' }));
       }
-    });
 
     return new Promise<void>((resolve, reject) => {
       this.server.listen(this.port, (err: any) => {
         if (err) reject(err);
         else resolve();
-      });
-    });
+
+
   }
 
   async stop() {
     if (this.server) {
       return new Promise<void>((resolve) => {
         this.server.close(() => resolve());
-      });
+
     }
   }
 }
@@ -81,14 +73,12 @@ describe('HealthMonitor Integration Tests', () => {
     // Start mock server
     mockServer = new MockHealthServer(TEST_PORT);
     await mockServer.start();
-  });
 
   afterAll(async () => {
     // Stop mock server
     if (mockServer) {
       await mockServer.stop();
     }
-  });
 
   beforeEach(() => {
     // Initialize health monitor with test configuration
@@ -101,7 +91,6 @@ describe('HealthMonitor Integration Tests', () => {
         `${TEST_BASE_URL}`,
         `${TEST_BASE_URL.replace('8999', '9000')}`, // Fallback endpoint
       ],
-    });
 
     // Add test endpoints
     healthMonitor.addEndpoint(`${TEST_BASE_URL}`, 1, true);
@@ -109,13 +98,11 @@ describe('HealthMonitor Integration Tests', () => {
 
     vi.clearAllTimers();
     vi.useFakeTimers();
-  });
 
   afterEach(() => {
     healthMonitor.stopMonitoring();
     vi.useRealTimers();
     vi.restoreAllMocks();
-  });
 
   describe('Real Health Check Integration', () => {
     it('should perform successful health check against mock server', async () => {
@@ -128,7 +115,6 @@ describe('HealthMonitor Integration Tests', () => {
       expect(result.endpoint).toBe(`${TEST_BASE_URL}`);
       expect(result.responseTime).toBeGreaterThan(0);
       expect(result.error).toBeUndefined();
-    });
 
     it('should handle failed health check against unavailable endpoint', async () => {
       const result = await healthMonitor.checkEndpointHealth(`${TEST_BASE_URL.replace('8999', '9999')}`);
@@ -136,7 +122,6 @@ describe('HealthMonitor Integration Tests', () => {
       expect(result.isHealthy).toBe(false);
       expect(result.endpoint).toBe(`${TEST_BASE_URL.replace('8999', '9999')}`);
       expect(result.error).toBeDefined();
-    });
 
     it('should handle slow health check responses', async () => {
       // Setup slow response
@@ -149,7 +134,6 @@ describe('HealthMonitor Integration Tests', () => {
       expect(result.isHealthy).toBe(true);
       expect(endTime - startTime).toBeGreaterThanOrEqual(100);
       expect(result.responseTime).toBeGreaterThanOrEqual(100);
-    });
 
     it('should handle server error responses', async () => {
       // Setup server error response
@@ -159,8 +143,7 @@ describe('HealthMonitor Integration Tests', () => {
       
       expect(result.isHealthy).toBe(false);
       expect(result.error).toBeDefined();
-    });
-  });
+
 
   describe('Monitoring Integration', () => {
     it('should perform periodic health checks when monitoring is active', async () => {
@@ -180,7 +163,6 @@ describe('HealthMonitor Integration Tests', () => {
       
       // Should have performed initial check + 2 periodic checks for each endpoint
       expect(healthCheckSpy).toHaveBeenCalledTimes(6); // 2 endpoints * 3 checks
-    });
 
     it('should stop periodic health checks when monitoring is stopped', async () => {
       mockServer.setResponse('/health', 200, { status: 'healthy' });
@@ -201,8 +183,7 @@ describe('HealthMonitor Integration Tests', () => {
       await vi.runAllTimersAsync();
       
       expect(healthCheckSpy).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('Failover Integration', () => {
     it('should perform automatic failover when primary endpoint fails', async () => {
@@ -229,7 +210,6 @@ describe('HealthMonitor Integration Tests', () => {
           }),
         })
       );
-    });
 
     it('should recover from failover when primary endpoint becomes healthy', async () => {
       // First, cause a failover
@@ -247,8 +227,7 @@ describe('HealthMonitor Integration Tests', () => {
       const health = healthMonitor.getEndpointHealth(`${TEST_BASE_URL}`);
       expect(health?.isHealthy).toBe(true);
       expect(health?.consecutiveFailures).toBe(0);
-    });
-  });
+
 
   describe('Event Integration', () => {
     it('should emit events during real health checks', async () => {
@@ -279,7 +258,6 @@ describe('HealthMonitor Integration Tests', () => {
           endpoint: `${TEST_BASE_URL}`,
         })
       );
-    });
 
     it('should emit monitoring start/stop events', () => {
       const startListener = vi.fn();
@@ -301,8 +279,7 @@ describe('HealthMonitor Integration Tests', () => {
           type: HealthEventType.MONITORING_STOPPED,
         })
       );
-    });
-  });
+
 
   describe('Health Metrics Integration', () => {
     it('should track accurate health metrics during real checks', async () => {
@@ -319,7 +296,6 @@ describe('HealthMonitor Integration Tests', () => {
       expect(health?.successfulChecks).toBe(2);
       expect(health?.failedChecks).toBe(1);
       expect(health?.uptime).toBeCloseTo(66.67, 1); // 2/3 * 100
-    });
 
     it('should provide accurate health summary', async () => {
       // Setup one healthy, one unhealthy endpoint
@@ -333,8 +309,7 @@ describe('HealthMonitor Integration Tests', () => {
       expect(summary.totalEndpoints).toBe(2);
       expect(summary.healthyEndpoints).toBe(1);
       expect(summary.unhealthyEndpoints).toBe(1);
-    });
-  });
+
 
   describe('Configuration Integration', () => {
     it('should respect timeout configuration during health checks', async () => {
@@ -345,7 +320,7 @@ describe('HealthMonitor Integration Tests', () => {
       const fastMonitor = new HealthMonitor({
         healthCheckTimeout: 100,
         endpoints: [`${TEST_BASE_URL}`],
-      });
+
       fastMonitor.addEndpoint(`${TEST_BASE_URL}`, 1, true);
 
       const startTime = Date.now();
@@ -355,7 +330,6 @@ describe('HealthMonitor Integration Tests', () => {
       // Should timeout quickly
       expect(result.isHealthy).toBe(false);
       expect(endTime - startTime).toBeLessThan(1000); // Much less than 2000ms delay
-    });
 
     it('should update configuration and restart monitoring', async () => {
       mockServer.setResponse('/health', 200, { status: 'healthy' });
@@ -369,8 +343,7 @@ describe('HealthMonitor Integration Tests', () => {
       // Should still be monitoring with new config
       expect(healthMonitor.isMonitoringActive()).toBe(true);
       expect(healthMonitor.getConfig().checkInterval).toBe(2000);
-    });
-  });
+
 
   describe('Error Recovery Integration', () => {
     it('should handle network errors gracefully', async () => {
@@ -380,7 +353,6 @@ describe('HealthMonitor Integration Tests', () => {
       expect(result.isHealthy).toBe(false);
       expect(result.error).toBeDefined();
       expect(result.responseTime).toBeGreaterThan(0);
-    });
 
     it('should handle malformed responses gracefully', async () => {
       // Setup malformed response
@@ -388,12 +360,10 @@ describe('HealthMonitor Integration Tests', () => {
       const malformedServer = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end('invalid json{');
-      });
 
       const malformedPort = 8998;
       await new Promise<void>((resolve) => {
         malformedServer.listen(malformedPort, () => resolve());
-      });
 
       try {
         const result = await healthMonitor.checkEndpointHealth(`http://localhost:${malformedPort}`);
@@ -404,10 +374,9 @@ describe('HealthMonitor Integration Tests', () => {
       } finally {
         await new Promise<void>((resolve) => {
           malformedServer.close(() => resolve());
-        });
+
       }
-    });
-  });
+
 
   describe('Concurrent Operations Integration', () => {
     it('should handle concurrent health checks correctly', async () => {
@@ -424,13 +393,11 @@ describe('HealthMonitor Integration Tests', () => {
       results.forEach(result => {
         expect(result.isHealthy).toBe(true);
         expect(result.responseTime).toBeGreaterThanOrEqual(50);
-      });
 
       // Health metrics should reflect all checks
       const health = healthMonitor.getEndpointHealth(`${TEST_BASE_URL}`);
       expect(health?.totalChecks).toBe(5);
       expect(health?.successfulChecks).toBe(5);
-    });
 
     it('should handle monitoring during manual health checks', async () => {
       mockServer.setResponse('/health', 200, { status: 'healthy' });
@@ -449,6 +416,5 @@ describe('HealthMonitor Integration Tests', () => {
       // Should have multiple checks recorded
       const health = healthMonitor.getEndpointHealth(`${TEST_BASE_URL}`);
       expect(health?.totalChecks).toBeGreaterThan(1);
-    });
-  });
-});
+
+

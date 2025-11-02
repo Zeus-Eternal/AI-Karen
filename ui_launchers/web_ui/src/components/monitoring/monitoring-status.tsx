@@ -1,31 +1,18 @@
+
+"use client";
+import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
 import { useMonitoring } from '@/hooks/use-monitoring';
 /**
  * Monitoring Status Component
  * Shows a compact status indicator for API health and performance
  */
 
-'use client';
 
+import { } from '@/components/ui/popover';
 
-
-
-
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from '@/components/ui/popover';
-
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
-  XCircle,
-  Zap,
-  TrendingUp
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 
 interface MonitoringStatusProps {
@@ -43,14 +30,14 @@ export function MonitoringStatus({ className, showDetails = true }: MonitoringSt
   const getStatusIcon = () => {
     switch (overallStatus) {
       case 'healthy':
-        return <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle className="h-4 w-4 text-green-600 " />;
       case 'degraded':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600 " />;
       case 'error':
       case 'critical':
-        return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+        return <XCircle className="h-4 w-4 text-red-600 " />;
       default:
-        return <Clock className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
+        return <Clock className="h-4 w-4 text-gray-600 " />;
     }
   };
 
@@ -102,7 +89,7 @@ export function MonitoringStatus({ className, showDetails = true }: MonitoringSt
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button variant="ghost" size="sm" className={`gap-2 ${className}`} aria-label="Button">
+        <Button variant="ghost" size="sm" className={`gap-2 ${className}`} >
           {getStatusIcon()}
           <Badge variant={getStatusColor()}>
             {getStatusText()}
@@ -114,7 +101,7 @@ export function MonitoringStatus({ className, showDetails = true }: MonitoringSt
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 sm:w-auto md:w-full" align="end">
+      <PopoverContent className="w-80 " align="end">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold">API Status</h4>
@@ -130,7 +117,7 @@ export function MonitoringStatus({ className, showDetails = true }: MonitoringSt
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <TrendingUp className="h-4 w-4 text-muted-foreground " />
                   <div>
                     <div className="font-medium">Error Rate</div>
                     <div className="text-muted-foreground">
@@ -139,7 +126,7 @@ export function MonitoringStatus({ className, showDetails = true }: MonitoringSt
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Zap className="h-4 w-4 text-muted-foreground " />
                   <div>
                     <div className="font-medium">Response Time</div>
                     <div className="text-muted-foreground">
@@ -171,8 +158,7 @@ export function MonitoringStatus({ className, showDetails = true }: MonitoringSt
           {criticalAlerts.length > 0 && (
             <div className="space-y-2">
               <div className="font-medium text-red-600 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
-                Critical Alerts
+                <AlertTriangle className="h-4 w-4 " />
               </div>
               {criticalAlerts.slice(0, 3).map((alert) => (
                 <div key={alert.id} className="text-sm p-2 bg-red-50 rounded border-l-2 border-red-500 md:text-base lg:text-lg">
@@ -193,7 +179,7 @@ export function MonitoringStatus({ className, showDetails = true }: MonitoringSt
           {unacknowledgedAlerts.length > 0 && criticalAlerts.length === 0 && (
             <div className="space-y-2">
               <div className="font-medium text-yellow-600 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                <AlertTriangle className="h-4 w-4 " />
                 {unacknowledgedAlerts.length} Unacknowledged Alert{unacknowledgedAlerts.length !== 1 ? 's' : ''}
               </div>
               {unacknowledgedAlerts.slice(0, 2).map((alert) => (

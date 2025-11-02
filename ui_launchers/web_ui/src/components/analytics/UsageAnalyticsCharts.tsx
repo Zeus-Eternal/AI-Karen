@@ -1,8 +1,9 @@
 "use client";
 
+import React from 'react';
 import { useEffect, useState } from "react";
 // Temporarily commented out recharts imports due to lodash dependency issues
-// import {
+// 
 //   BarChart,
 //   Bar,
 //   XAxis,
@@ -60,6 +61,7 @@ export default function UsageAnalyticsCharts() {
         data.peak_hours?.forEach((h) => {
           if (hours[h]) hours[h].count = 1;
         });
+
         setPeakHours(hours);
         
       } catch (error) {

@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Role, User, Permission, SYSTEM_ROLES } from '@/types/rbac';
@@ -12,57 +14,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-'use client';
+
+import { } from '@/components/ui/dialog';
+import { } from '@/components/ui/select';
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle,
-  DialogTrigger 
-} from '@/components/ui/dialog';
-
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-
-
-
-  Users, 
-  Shield, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  UserPlus, 
-  UserMinus,
-  AlertTriangle,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 interface RoleManagementProps {
   className?: string;
@@ -81,12 +42,10 @@ export function RoleManagement({ className }: RoleManagementProps) {
           <div>
             <h2 className="text-2xl font-bold">Role Management</h2>
             <p className="text-muted-foreground">
-              Manage user roles and permissions across the system
             </p>
           </div>
-          <button onClick={() = aria-label="Button"> setIsCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Create Role
+          <button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2 " />
           </Button>
         </div>
 
@@ -148,14 +107,12 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
   const { data: roles = [], isLoading } = useQuery({
     queryKey: ['rbac', 'roles'],
     queryFn: () => enhancedApiClient.get<Role[]>('/api/rbac/roles'),
-  });
 
   const deleteRoleMutation = useMutation({
     mutationFn: (roleId: string) => enhancedApiClient.delete(`/api/rbac/roles/${roleId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] });
     }
-  });
 
   const filteredRoles = (Array.isArray(roles) ? roles : roles?.data || []).filter(role =>
     role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -172,7 +129,7 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
         <input
           placeholder="Search roles..."
           value={searchTerm}
-          onChange={(e) = aria-label="Input"> onSearchChange(e.target.value)}
+          onChange={(e) => onSearchChange(e.target.value)}
           className="max-w-sm"
         />
       </div>
@@ -187,26 +144,26 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
                   {role.metadata.isSystemRole && (
                     <Badge variant="secondary">System</Badge>
                   )}
-                  <button
+                  <Button
                     variant="ghost"
                     size="sm"
-                    onClick={(e) = aria-label="Button"> {
+                    onClick={(e) = > {
                       e.stopPropagation();
                       onEditRole(role);
                     }}
                   >
-                    <Edit className="h-4 w-4 sm:w-auto md:w-full" />
+                    <Edit className="h-4 w-4 " />
                   </Button>
                   {!role.metadata.isSystemRole && (
-                    <button
+                    <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) = aria-label="Button"> {
+                      onClick={(e) = > {
                         e.stopPropagation();
                         deleteRoleMutation.mutate(role.id);
                       }}
                     >
-                      <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
+                      <Trash2 className="h-4 w-4 " />
                     </Button>
                   )}
                 </div>
@@ -216,7 +173,7 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
             <CardContent>
               <div className="space-y-2">
                 <div className="flex items-center text-sm text-muted-foreground md:text-base lg:text-lg">
-                  <Shield className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                  <Shield className="h-4 w-4 mr-2 " />
                   {role.permissions.length} permissions
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -247,12 +204,10 @@ function UserRoleAssignments() {
   const { data: users = [] } = useQuery({
     queryKey: ['rbac', 'users'],
     queryFn: () => enhancedApiClient.get<User[]>('/api/rbac/users'),
-  });
 
   const { data: roles = [] } = useQuery({
     queryKey: ['rbac', 'roles'],
     queryFn: () => enhancedApiClient.get<Role[]>('/api/rbac/roles'),
-  });
 
   const { assignRole, removeRole } = useRBAC();
 
@@ -270,7 +225,6 @@ function UserRoleAssignments() {
         <CardHeader>
           <CardTitle>Assign Role to User</CardTitle>
           <CardDescription>
-            Grant roles to users to control their access permissions
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -307,8 +261,7 @@ function UserRoleAssignments() {
             </div>
           </div>
           <button onClick={handleAssignRole} disabled={!selectedUser || !selectedRole} aria-label="Button">
-            <UserPlus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Assign Role
+            <UserPlus className="h-4 w-4 mr-2 " />
           </Button>
         </CardContent>
       </Card>
@@ -357,12 +310,12 @@ function UserRoleTable({ users, roles }: UserRoleTableProps) {
             {user.roles.map((roleId) => (
               <div key={roleId} className="flex items-center space-x-1">
                 <Badge variant="outline">{getRoleName(roleId)}</Badge>
-                <button
+                <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() = aria-label="Button"> removeRole(user.id, roleId)}
+                  onClick={() => removeRole(user.id, roleId)}
                 >
-                  <XCircle className="h-3 w-3 sm:w-auto md:w-full" />
+                  <XCircle className="h-3 w-3 " />
                 </Button>
               </div>
             ))}
@@ -380,12 +333,11 @@ function RoleHierarchyView() {
   const { data: hierarchy = [] } = useQuery({
     queryKey: ['rbac', 'role-hierarchy'],
     queryFn: () => enhancedApiClient.get('/api/rbac/role-hierarchy'),
-  });
 
   return (
     <div className="space-y-4">
       <Alert>
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertTriangle className="h-4 w-4 " />
         <AlertDescription>
           Role hierarchy allows roles to inherit permissions from parent roles. 
           Conflicts are resolved based on the configured resolution strategy.
@@ -417,7 +369,7 @@ function RoleHierarchyView() {
                 <div className="space-y-2 mt-1">
                   {item.conflicts.map((conflict: any, index: number) => (
                     <Alert key={index} variant="destructive">
-                      <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                      <AlertTriangle className="h-4 w-4 " />
                       <AlertDescription>
                         Permission '{conflict.permission}' conflicts between roles: {conflict.conflictingRoles.join(', ')}
                         <br />
@@ -446,7 +398,6 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
     description: '',
     permissions: [] as Permission[],
     parentRoles: [] as string[]
-  });
 
   const queryClient = useQueryClient();
 
@@ -458,7 +409,6 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
       onOpenChange(false);
       setFormData({ name: '', description: '', permissions: [], parentRoles: [] });
     }
-  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -467,11 +417,10 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl sm:w-auto md:w-full">
+      <DialogContent className="max-w-2xl ">
         <DialogHeader>
           <DialogTitle>Create New Role</DialogTitle>
           <DialogDescription>
-            Define a new role with specific permissions and hierarchy
           </DialogDescription>
         </DialogHeader>
 
@@ -481,7 +430,7 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
             <input
               id="name"
               value={formData.name}
-              onChange={(e) = aria-label="Input"> setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
             />
           </div>
@@ -491,7 +440,7 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
             <textarea
               id="description"
               value={formData.description}
-              onChange={(e) = aria-label="Textarea"> setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
             />
           </div>
@@ -504,11 +453,9 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
           />
 
           <DialogFooter>
-            <button type="button" variant="outline" onClick={() = aria-label="Button"> onOpenChange(false)}>
-              Cancel
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             </Button>
             <button type="submit" disabled={createRoleMutation.isPending} aria-label="Submit form">
-              Create Role
             </Button>
           </DialogFooter>
         </form>
@@ -529,7 +476,6 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
     description: '',
     permissions: [] as Permission[],
     parentRoles: [] as string[]
-  });
 
   React.useEffect(() => {
     if (role) {
@@ -538,7 +484,7 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
         description: role.description,
         permissions: role.permissions,
         parentRoles: role.parentRoles || []
-      });
+
     }
   }, [role]);
 
@@ -551,7 +497,6 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
       queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] });
       onOpenChange(false);
     }
-  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -562,11 +507,10 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl sm:w-auto md:w-full">
+      <DialogContent className="max-w-2xl ">
         <DialogHeader>
           <DialogTitle>Edit Role</DialogTitle>
           <DialogDescription>
-            Modify role permissions and settings
           </DialogDescription>
         </DialogHeader>
 
@@ -576,7 +520,7 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
             <input
               id="name"
               value={formData.name}
-              onChange={(e) = aria-label="Input"> setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
               disabled={role?.metadata.isSystemRole}
             />
@@ -587,7 +531,7 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
             <textarea
               id="description"
               value={formData.description}
-              onChange={(e) = aria-label="Textarea"> setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
             />
           </div>
@@ -601,11 +545,9 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
           />
 
           <DialogFooter>
-            <button type="button" variant="outline" onClick={() = aria-label="Button"> onOpenChange(false)}>
-              Cancel
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             </Button>
             <button type="submit" disabled={updateRoleMutation.isPending} aria-label="Submit form">
-              Update Role
             </Button>
           </DialogFooter>
         </form>

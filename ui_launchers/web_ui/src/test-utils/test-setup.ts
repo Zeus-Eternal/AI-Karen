@@ -8,12 +8,7 @@
 import React from 'react';
 import { vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
-import { 
-  resetHookMocks, 
-  cleanupHookMocks, 
-  setupGlobalMocks,
-  resetToDefaultMocks 
-} from './hook-mocks';
+import {  resetHookMocks, cleanupHookMocks, setupGlobalMocks, resetToDefaultMocks } from './hook-mocks';
 /**
  * Global test environment setup
  */
@@ -25,11 +20,11 @@ export const setupTestEnvironment = () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'log').mockImplementation(() => {});
-  });
+
   afterAll(() => {
     // Restore all mocks after test suite
     vi.restoreAllMocks();
-  });
+
 };
 /**
  * Individual test isolation setup
@@ -47,12 +42,12 @@ export const setupTestIsolation = () => {
       window.localStorage.clear();
       window.sessionStorage.clear();
     }
-  });
+
   afterEach(() => {
     // Cleanup after each test
     cleanupHookMocks();
     cleanup();
-  });
+
 };
 /**
  * Complete test setup that includes both environment and isolation
@@ -68,7 +63,7 @@ export const setupFetchMock = () => {
   const mockFetch = vi.fn();
   beforeAll(() => {
     global.fetch = mockFetch;
-  });
+
   beforeEach(() => {
     mockFetch.mockClear();
     // Default successful response
@@ -78,11 +73,11 @@ export const setupFetchMock = () => {
       json: async () => ({}),
       text: async () => '',
       headers: new Headers(),
-    });
-  });
+
+
   afterAll(() => {
     vi.restoreAllMocks();
-  });
+
   return mockFetch;
 };
 /**
@@ -102,8 +97,8 @@ export const setupLocationMock = () => {
     Object.defineProperty(window, 'location', {
       value: mockLocation,
       writable: true,
-    });
-  });
+
+
   beforeEach(() => {
     mockLocation.href = 'http://localhost:3000';
     mockLocation.pathname = '/';
@@ -112,7 +107,7 @@ export const setupLocationMock = () => {
     mockLocation.assign.mockClear();
     mockLocation.replace.mockClear();
     mockLocation.reload.mockClear();
-  });
+
   return mockLocation;
 };
 /**
@@ -145,7 +140,7 @@ export const setupRouterMock = () => {
     mockRouter.pathname = '/';
     mockRouter.query = {};
     mockRouter.asPath = '/';
-  });
+
   return mockRouter;
 };
 /**
@@ -180,13 +175,13 @@ export const flushPromises = () => {
 export const setupTimerMocks = () => {
   beforeAll(() => {
     vi.useFakeTimers();
-  });
+
   afterAll(() => {
     vi.useRealTimers();
-  });
+
   beforeEach(() => {
     vi.clearAllTimers();
-  });
+
   return {
     advanceTimers: (ms: number) => vi.advanceTimersByTime(ms),
     runAllTimers: () => vi.runAllTimers(),
@@ -221,7 +216,7 @@ export const cleanupTestData = () => {
       if (key.startsWith('test_')) {
         delete (window as any)[key];
       }
-    });
+
   }
 };
 /**
@@ -233,10 +228,10 @@ export const setupIntersectionObserverMock = () => {
     observe: () => null,
     unobserve: () => null,
     disconnect: () => null,
-  });
+
   beforeAll(() => {
     window.IntersectionObserver = mockIntersectionObserver;
-  });
+
   return mockIntersectionObserver;
 };
 /**
@@ -248,10 +243,10 @@ export const setupResizeObserverMock = () => {
     observe: () => null,
     unobserve: () => null,
     disconnect: () => null,
-  });
+
   beforeAll(() => {
     window.ResizeObserver = mockResizeObserver;
-  });
+
   return mockResizeObserver;
 };
 /**
@@ -313,5 +308,5 @@ export const debugTestEnvironment = () => {
     hasLocalStorage: typeof window !== 'undefined' && 'localStorage' in window,
     hasSessionStorage: typeof window !== 'undefined' && 'sessionStorage' in window,
     validationPassed: validateTestEnvironment(),
-  });
+
 };

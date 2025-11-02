@@ -1,29 +1,14 @@
 "use client";
 
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import {
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  RefreshCw,
-  Loader2,
-  Zap,
-  Shield,
-  Eye,
-  Database,
-  Cloud,
-  HardDrive,
-  Globe,
-  Activity,
-  Wifi,
-  WifiOff,
-  AlertTriangle
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 
 export interface ProviderStatus {
   name: string;
@@ -91,13 +76,13 @@ export function ProviderStatusIndicator({
       toast({
         title: "Provider Test Complete",
         description: `${provider.name} connectivity test completed.`,
-      });
+
     } catch (error) {
       toast({
         title: "Test Failed",
         description: `Could not test ${provider.name}: ${(error as Error).message}`,
         variant: "destructive",
-      });
+
     } finally {
       setTesting(false);
     }
@@ -112,13 +97,13 @@ export function ProviderStatusIndicator({
       toast({
         title: "Status Refreshed",
         description: `${provider.name} status updated.`,
-      });
+
     } catch (error) {
       toast({
         title: "Refresh Failed",
         description: `Could not refresh ${provider.name}: ${(error as Error).message}`,
         variant: "destructive",
-      });
+
     } finally {
       setRefreshing(false);
     }
@@ -127,15 +112,15 @@ export function ProviderStatusIndicator({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600 " />;
       case 'unhealthy':
-        return <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-4 w-4 text-red-600 " />;
       case 'degraded':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600 " />;
       case 'testing':
-        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin sm:w-auto md:w-full" />;
+        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin " />;
       default:
-        return <Clock className="h-4 w-4 text-gray-400 sm:w-auto md:w-full" />;
+        return <Clock className="h-4 w-4 text-gray-400 " />;
     }
   };
 
@@ -157,26 +142,26 @@ export function ProviderStatusIndicator({
   const getConnectivityIcon = (status: string) => {
     switch (status) {
       case 'connected':
-        return <Wifi className="h-3 w-3 text-green-600 sm:w-auto md:w-full" />;
+        return <Wifi className="h-3 w-3 text-green-600 " />;
       case 'disconnected':
-        return <WifiOff className="h-3 w-3 text-red-600 sm:w-auto md:w-full" />;
+        return <WifiOff className="h-3 w-3 text-red-600 " />;
       case 'timeout':
-        return <Clock className="h-3 w-3 text-yellow-600 sm:w-auto md:w-full" />;
+        return <Clock className="h-3 w-3 text-yellow-600 " />;
       default:
-        return <AlertCircle className="h-3 w-3 text-gray-400 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-3 w-3 text-gray-400 " />;
     }
   };
 
   const getProviderTypeIcon = (type: string) => {
     switch (type) {
       case 'local':
-        return <HardDrive className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />;
+        return <HardDrive className="h-4 w-4 text-blue-600 " />;
       case 'remote':
-        return <Cloud className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+        return <Cloud className="h-4 w-4 text-green-600 " />;
       case 'hybrid':
-        return <Globe className="h-4 w-4 text-purple-600 sm:w-auto md:w-full" />;
+        return <Globe className="h-4 w-4 text-purple-600 " />;
       default:
-        return <Database className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
+        return <Database className="h-4 w-4 text-gray-600 " />;
     }
   };
 
@@ -235,28 +220,28 @@ export function ProviderStatusIndicator({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={handleTest}
               disabled={testing}
-             aria-label="Button">
+             >
               {testing ? (
-                <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                <Loader2 className="h-4 w-4 animate-spin " />
               ) : (
-                <Zap className="h-4 w-4 sm:w-auto md:w-full" />
+                <Zap className="h-4 w-4 " />
               )}
             </Button>
-            <button
+            <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={refreshing}
-             aria-label="Button">
+             >
               {refreshing ? (
-                <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                <Loader2 className="h-4 w-4 animate-spin " />
               ) : (
-                <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
+                <RefreshCw className="h-4 w-4 " />
               )}
             </Button>
           </div>
@@ -296,8 +281,7 @@ export function ProviderStatusIndicator({
         {Object.keys(provider.model_availability).length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
-              <Database className="h-4 w-4 sm:w-auto md:w-full" />
-              Model Availability
+              <Database className="h-4 w-4 " />
             </h4>
             <div className="flex flex-wrap gap-1">
               {Object.entries(provider.model_availability).map(([model, available]) => (
@@ -317,8 +301,7 @@ export function ProviderStatusIndicator({
         {Object.keys(provider.capability_status).length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
-              <Shield className="h-4 w-4 sm:w-auto md:w-full" />
-              Capabilities
+              <Shield className="h-4 w-4 " />
             </h4>
             <div className="flex flex-wrap gap-1">
               {Object.entries(provider.capability_status).map(([capability, available]) => (
@@ -343,9 +326,9 @@ export function ProviderStatusIndicator({
                 <div key={dep} className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                   <span>{dep}</span>
                   {available ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 " />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
+                    <AlertCircle className="h-4 w-4 text-red-600 " />
                   )}
                 </div>
               ))}
@@ -356,7 +339,7 @@ export function ProviderStatusIndicator({
         {/* Configuration Issues */}
         {provider.configuration_issues.length > 0 && (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+            <AlertCircle className="h-4 w-4 " />
             <AlertTitle>Configuration Issues</AlertTitle>
             <AlertDescription>
               <ul className="list-disc list-inside space-y-1">
@@ -371,7 +354,7 @@ export function ProviderStatusIndicator({
         {/* Last Error */}
         {provider.last_error && (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+            <AlertCircle className="h-4 w-4 " />
             <AlertTitle>Last Error</AlertTitle>
             <AlertDescription className="text-sm md:text-base lg:text-lg">
               {provider.last_error}
@@ -382,7 +365,7 @@ export function ProviderStatusIndicator({
         {/* Recovery Suggestions */}
         {provider.recovery_suggestions.length > 0 && (
           <Alert>
-            <Activity className="h-4 w-4 sm:w-auto md:w-full" />
+            <Activity className="h-4 w-4 " />
             <AlertTitle>Recovery Suggestions</AlertTitle>
             <AlertDescription>
               <ul className="list-disc list-inside space-y-1">

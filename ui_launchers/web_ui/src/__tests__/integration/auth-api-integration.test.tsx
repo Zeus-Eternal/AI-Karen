@@ -12,14 +12,14 @@
 
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getApiClient } from '@/lib/api-client';
-import { 
+
   login, 
   logout, 
   validateSession, 
   hasSessionCookie,
   getCurrentUser,
   clearSession 
-} from '@/lib/auth/session';
+import { } from '@/lib/auth/session';
 
 // Mock fetch for API calls
 const mockFetch = vi.fn();
@@ -34,7 +34,6 @@ const mockLocation = {
 Object.defineProperty(window, 'location', {
   value: mockLocation,
   writable: true,
-});
 
 // Mock document.cookie
 let mockCookie = '';
@@ -44,7 +43,6 @@ Object.defineProperty(document, 'cookie', {
     mockCookie = value;
   },
   configurable: true,
-});
 
 describe('Authentication API Integration Tests', () => {
   const mockUserData = {
@@ -62,11 +60,9 @@ describe('Authentication API Integration Tests', () => {
     mockCookie = '';
     mockFetch.mockClear();
     clearSession();
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Complete Authentication Flow from Login to Protected Pages', () => {
     it('should complete login flow and enable protected page access', async () => {
@@ -96,7 +92,6 @@ describe('Authentication API Integration Tests', () => {
           password: 'validpassword123',
         }),
         credentials: 'include', // Verify cookies are included
-      });
 
       // Verify user session is established
       const currentUser = getCurrentUser();
@@ -105,7 +100,6 @@ describe('Authentication API Integration Tests', () => {
         email: 'test@example.com',
         roles: ['user'],
         tenantId: 'tenant123',
-      });
 
       // Simulate session cookie being set after login
       mockCookie = 'session_id=abc123; Path=/';
@@ -132,7 +126,6 @@ describe('Authentication API Integration Tests', () => {
           'Accept': 'application/json',
         },
         credentials: 'include', // Verify cookies are included
-      });
 
       // Verify session is valid for protected page access
       expect(isValid).toBe(true);
@@ -141,8 +134,7 @@ describe('Authentication API Integration Tests', () => {
         email: 'test@example.com',
         roles: ['user'],
         tenantId: 'tenant123',
-      });
-    });
+
 
     it('should handle 2FA flow in complete authentication', async () => {
       // Mock 2FA required response
@@ -183,7 +175,6 @@ describe('Authentication API Integration Tests', () => {
           totp_code: '123456',
         }),
         credentials: 'include',
-      });
 
       // Verify user session is established after 2FA
       const currentUser = getCurrentUser();
@@ -192,8 +183,7 @@ describe('Authentication API Integration Tests', () => {
         email: 'test@example.com',
         roles: ['user'],
         tenantId: 'tenant123',
-      });
-    });
+
 
     it('should prevent access to protected pages without valid session', async () => {
       // No session cookie
@@ -211,8 +201,7 @@ describe('Authentication API Integration Tests', () => {
 
       // Should not make API call without session cookie
       expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('API Requests Include Cookies Automatically', () => {
     it('should include credentials in all API client requests', async () => {
@@ -236,7 +225,6 @@ describe('Authentication API Integration Tests', () => {
           credentials: 'include',
         })
       );
-    });
 
     it('should include credentials in session validation requests', async () => {
       // Set up session cookie
@@ -264,8 +252,7 @@ describe('Authentication API Integration Tests', () => {
           'Accept': 'application/json',
         },
         credentials: 'include',
-      });
-    });
+
 
     it('should include credentials in login requests', async () => {
       // Mock successful login
@@ -291,8 +278,7 @@ describe('Authentication API Integration Tests', () => {
           password: 'password123',
         }),
         credentials: 'include',
-      });
-    });
+
 
     it('should include credentials in logout requests', async () => {
       // Mock logout response
@@ -309,8 +295,7 @@ describe('Authentication API Integration Tests', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
-      });
-    });
+
 
     it('should include credentials in POST requests with JSON data', async () => {
       const apiClient = getApiClient();
@@ -339,8 +324,7 @@ describe('Authentication API Integration Tests', () => {
           }),
         })
       );
-    });
-  });
+
 
   describe('401 Response Handling and Redirect Behavior', () => {
     it('should redirect to login when API client receives 401 response', async () => {
@@ -363,7 +347,6 @@ describe('Authentication API Integration Tests', () => {
 
       // Verify redirect to login occurred
       expect(mockLocation.href).toBe('/login');
-    });
 
     it('should redirect to login when session validation returns 401', async () => {
       // Set up session cookie
@@ -383,7 +366,6 @@ describe('Authentication API Integration Tests', () => {
       // Should be invalid and clear session
       expect(isValid).toBe(false);
       expect(getCurrentUser()).toBeNull();
-    });
 
     it('should handle login 401 responses without redirect', async () => {
       // Mock 401 login response
@@ -399,7 +381,6 @@ describe('Authentication API Integration Tests', () => {
 
       // Should not redirect (login form handles 401 differently)
       expect(mockLocation.href).toBe('');
-    });
 
     it('should handle multiple 401 responses consistently', async () => {
       const apiClient = getApiClient();
@@ -441,7 +422,6 @@ describe('Authentication API Integration Tests', () => {
 
       // Verify second redirect also occurs
       expect(mockLocation.href).toBe('/login');
-    });
 
     it('should clear session state on 401 responses', async () => {
       // Set up initial session
@@ -476,8 +456,7 @@ describe('Authentication API Integration Tests', () => {
       // Should clear session state
       expect(isValid).toBe(false);
       expect(getCurrentUser()).toBeNull();
-    });
-  });
+
 
   describe('Network Error Handling Defaults to Logout', () => {
     it('should treat network errors during session validation as logout', async () => {
@@ -493,7 +472,6 @@ describe('Authentication API Integration Tests', () => {
       // Should treat network error as invalid session
       expect(isValid).toBe(false);
       expect(getCurrentUser()).toBeNull();
-    });
 
     it('should handle network errors during API calls without automatic logout', async () => {
       const apiClient = getApiClient();
@@ -506,7 +484,6 @@ describe('Authentication API Integration Tests', () => {
 
       // Should not redirect (only 401 responses should redirect)
       expect(mockLocation.href).toBe('');
-    });
 
     it('should handle network errors during login and show error', async () => {
       // Mock network error during login
@@ -520,7 +497,6 @@ describe('Authentication API Integration Tests', () => {
 
       // Should not redirect
       expect(mockLocation.href).toBe('');
-    });
 
     it('should handle timeout errors as network errors', async () => {
       // Set up session cookie
@@ -537,7 +513,6 @@ describe('Authentication API Integration Tests', () => {
       // Should treat timeout as invalid session
       expect(isValid).toBe(false);
       expect(getCurrentUser()).toBeNull();
-    });
 
     it('should handle CORS errors as network errors', async () => {
       // Set up session cookie
@@ -553,7 +528,6 @@ describe('Authentication API Integration Tests', () => {
       // Should treat CORS error as invalid session
       expect(isValid).toBe(false);
       expect(getCurrentUser()).toBeNull();
-    });
 
     it('should handle logout network errors gracefully without throwing', async () => {
       // Mock network error during logout
@@ -569,8 +543,7 @@ describe('Authentication API Integration Tests', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
-      });
-    });
+
 
     it('should handle connection refused errors', async () => {
       // Set up session cookie
@@ -586,8 +559,7 @@ describe('Authentication API Integration Tests', () => {
       // Should treat connection error as invalid session
       expect(isValid).toBe(false);
       expect(getCurrentUser()).toBeNull();
-    });
-  });
+
 
   describe('Edge Cases and Error Recovery', () => {
     it('should handle malformed JSON responses gracefully', async () => {
@@ -604,7 +576,6 @@ describe('Authentication API Integration Tests', () => {
 
       // Should clear session state
       expect(getCurrentUser()).toBeNull();
-    });
 
     it('should handle missing session cookie gracefully', async () => {
       // No session cookie
@@ -617,7 +588,6 @@ describe('Authentication API Integration Tests', () => {
       const isValid = await validateSession();
       expect(isValid).toBe(false);
       expect(getCurrentUser()).toBeNull();
-    });
 
     it('should handle empty or invalid session cookie', async () => {
       // Invalid session cookie format
@@ -629,7 +599,6 @@ describe('Authentication API Integration Tests', () => {
       // Session validation should return false
       const isValid = await validateSession();
       expect(isValid).toBe(false);
-    });
 
     it('should handle server errors (5xx) appropriately', async () => {
       // Mock server error
@@ -648,7 +617,6 @@ describe('Authentication API Integration Tests', () => {
 
       // Should not redirect (only 401 responses should redirect)
       expect(mockLocation.href).toBe('');
-    });
 
     it('should handle API client server errors without redirect', async () => {
       const apiClient = getApiClient();
@@ -666,6 +634,5 @@ describe('Authentication API Integration Tests', () => {
 
       // Should not redirect (only 401 responses should redirect)
       expect(mockLocation.href).toBe('');
-    });
-  });
-});
+
+

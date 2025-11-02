@@ -2,39 +2,7 @@
  * Test file to verify enhanced authentication types and interfaces
  */
 
-import {
-  // Base types
-  User,
-  LoginCredentials,
-  AuthenticationError,
-  ValidationErrors,
-  FeedbackMessage,
-  AuthenticationState,
-  
-  // Utility functions
-  createAuthError,
-  validateCredentials,
-  parseBackendError,
-  classifyError,
-  isRetryableError,
-  
-  // Constants
-  ERROR_MESSAGES,
-  ERROR_CLASSIFICATIONS,
-  
-  // Form types
-  FormFieldType,
-  AuthFormState,
-  FormValidator,
-  
-  // Feedback types
-  FeedbackMessageFactory,
-  
-  // Enhanced types
-  AuthSystemConfig,
-  DEFAULT_AUTH_SYSTEM_CONFIG,
-  AUTH_CONSTANTS
-} from '../auth-enhanced';
+import { // Base types User, LoginCredentials, AuthenticationError, ValidationErrors, FeedbackMessage, AuthenticationState,  // Utility functions createAuthError, validateCredentials, parseBackendError, classifyError, isRetryableError,  // Constants ERROR_MESSAGES, ERROR_CLASSIFICATIONS,  // Form types FormFieldType, AuthFormState, FormValidator,  // Feedback types FeedbackMessageFactory,  // Enhanced types AuthSystemConfig, DEFAULT_AUTH_SYSTEM_CONFIG, AUTH_CONSTANTS } from '../auth-enhanced';
 
 describe('Enhanced Authentication Types', () => {
   describe('Basic Type Creation', () => {
@@ -45,7 +13,6 @@ describe('Enhanced Authentication Types', () => {
       expect(error.message).toBe('Test error');
       expect(error.timestamp).toBeInstanceOf(Date);
       expect(error.requestId).toBeDefined();
-    });
 
     it('should create feedback message correctly', () => {
       const message = FeedbackMessageFactory.createSuccessMessage(
@@ -57,8 +24,7 @@ describe('Enhanced Authentication Types', () => {
       expect(message.title).toBe('Success');
       expect(message.message).toBe('Login successful');
       expect(message.autoHide).toBe(true);
-    });
-  });
+
 
   describe('Validation Functions', () => {
     it('should validate credentials correctly', () => {
@@ -69,7 +35,6 @@ describe('Enhanced Authentication Types', () => {
       
       const errors = validateCredentials(credentials);
       expect(Object.keys(errors)).toHaveLength(0);
-    });
 
     it('should detect invalid email', () => {
       const credentials: LoginCredentials = {
@@ -79,7 +44,6 @@ describe('Enhanced Authentication Types', () => {
       
       const errors = validateCredentials(credentials);
       expect(errors.email).toBeDefined();
-    });
 
     it('should detect short password', () => {
       const credentials: LoginCredentials = {
@@ -89,8 +53,7 @@ describe('Enhanced Authentication Types', () => {
       
       const errors = validateCredentials(credentials);
       expect(errors.password).toBeDefined();
-    });
-  });
+
 
   describe('Error Classification', () => {
     it('should classify errors correctly', () => {
@@ -100,7 +63,6 @@ describe('Enhanced Authentication Types', () => {
       expect(classification.category).toBe('network');
       expect(classification.retryable).toBe(true);
       expect(classification.supportContact).toBe(false);
-    });
 
     it('should identify retryable errors', () => {
       const retryableError = createAuthError('network_error');
@@ -108,8 +70,7 @@ describe('Enhanced Authentication Types', () => {
       
       expect(isRetryableError(retryableError)).toBe(true);
       expect(isRetryableError(nonRetryableError)).toBe(false);
-    });
-  });
+
 
   describe('Backend Error Parsing', () => {
     it('should parse network errors', () => {
@@ -117,14 +78,12 @@ describe('Enhanced Authentication Types', () => {
       const parsedError = parseBackendError(networkError);
       
       expect(parsedError.type).toBe('network_error');
-    });
 
     it('should parse invalid credentials error', () => {
       const credentialsError = new Error('Invalid credentials');
       const parsedError = parseBackendError(credentialsError);
       
       expect(parsedError.type).toBe('invalid_credentials');
-    });
 
     it('should parse rate limit error with retry time', () => {
       const rateLimitError = new Error('Rate limit exceeded. Try again in 5 minutes');
@@ -132,14 +91,12 @@ describe('Enhanced Authentication Types', () => {
       
       expect(parsedError.type).toBe('rate_limit');
       expect(parsedError.retryAfter).toBeDefined();
-    });
-  });
+
 
   describe('Form Validation', () => {
     it('should create form validator', () => {
       const validator = new FormValidator();
       expect(validator).toBeInstanceOf(FormValidator);
-    });
 
     it('should validate individual fields', () => {
       const validator = new FormValidator();
@@ -149,7 +106,6 @@ describe('Enhanced Authentication Types', () => {
       
       const validEmailError = validator.validateField('email', 'test@example.com');
       expect(validEmailError).toBeNull();
-    });
 
     it('should validate complete form', () => {
       const validator = new FormValidator();
@@ -161,21 +117,18 @@ describe('Enhanced Authentication Types', () => {
       const result = validator.validateForm(credentials);
       expect(result.isValid).toBe(true);
       expect(Object.keys(result.errors)).toHaveLength(0);
-    });
-  });
+
 
   describe('Constants and Configuration', () => {
     it('should have default system configuration', () => {
       expect(DEFAULT_AUTH_SYSTEM_CONFIG.enableRealTimeValidation).toBe(true);
       expect(DEFAULT_AUTH_SYSTEM_CONFIG.maxRetryAttempts).toBe(3);
       expect(DEFAULT_AUTH_SYSTEM_CONFIG.enableFeedbackMessages).toBe(true);
-    });
 
     it('should have authentication constants', () => {
       expect(AUTH_CONSTANTS.DEFAULT_REQUEST_TIMEOUT).toBe(30000);
       expect(AUTH_CONSTANTS.MAX_RETRY_ATTEMPTS).toBe(3);
       expect(AUTH_CONSTANTS.MIN_PASSWORD_LENGTH).toBe(8);
-    });
 
     it('should have error messages for all error types', () => {
       const errorTypes = [
@@ -197,9 +150,8 @@ describe('Enhanced Authentication Types', () => {
       errorTypes.forEach(errorType => {
         expect(ERROR_MESSAGES[errorType as keyof typeof ERROR_MESSAGES]).toBeDefined();
         expect(ERROR_CLASSIFICATIONS[errorType as keyof typeof ERROR_CLASSIFICATIONS]).toBeDefined();
-      });
-    });
-  });
+
+
 
   describe('Type Guards', () => {
     it('should identify authentication errors', () => {
@@ -210,9 +162,8 @@ describe('Enhanced Authentication Types', () => {
       // This is a placeholder for when type guards are implemented
       expect(authError.type).toBeDefined();
       expect(authError.message).toBeDefined();
-    });
-  });
-});
+
+
 
 // Mock implementations for testing
 const mockUser: User = {

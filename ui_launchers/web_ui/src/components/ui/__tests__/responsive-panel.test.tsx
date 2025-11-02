@@ -8,6 +8,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { vi, expect, describe, it, beforeEach, afterEach } from 'vitest';
 import { RightPanel, RightPanelView } from '../right-panel';
@@ -65,22 +66,20 @@ describe('Responsive Panel Behavior', () => {
       writable: true,
       configurable: true,
       value: width,
-    });
+
     Object.defineProperty(window, 'innerHeight', {
       writable: true,
       configurable: true,
       value: height,
-    });
+
   };
 
   beforeEach(() => {
     // Reset viewport to desktop size
     mockViewport(1024, 768);
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Desktop Behavior', () => {
     it('should render with desktop responsive classes', () => {
@@ -95,7 +94,6 @@ describe('Responsive Panel Behavior', () => {
 
       const panel = screen.getByTestId('right-panel');
       expect(panel).toHaveClass('panel-responsive', 'panel-desktop');
-    });
 
     it('should use appropriate width classes for desktop', () => {
       render(
@@ -110,8 +108,7 @@ describe('Responsive Panel Behavior', () => {
 
       const panel = screen.getByTestId('right-panel');
       expect(panel).toHaveClass('w-[28rem]', 'lg:max-w-[65vw]');
-    });
-  });
+
 
   describe('Mobile Behavior', () => {
     beforeEach(() => {
@@ -138,8 +135,7 @@ describe('Responsive Panel Behavior', () => {
             userSelect: 'none',
           },
         }),
-      });
-      
+
       usePanelBackdrop.mockReturnValue({
         showBackdrop: true,
         backdropProps: {
@@ -147,8 +143,7 @@ describe('Responsive Panel Behavior', () => {
           'data-state': 'open',
           'aria-hidden': true,
         },
-      });
-    });
+
 
     it('should render with mobile responsive classes', () => {
       render(
@@ -167,7 +162,6 @@ describe('Responsive Panel Behavior', () => {
         'panel-collapsible',
         'panel-overlay'
       );
-    });
 
     it('should show backdrop on mobile when overlay is enabled', () => {
       render(
@@ -182,7 +176,6 @@ describe('Responsive Panel Behavior', () => {
       const backdrop = document.querySelector('.panel-backdrop');
       expect(backdrop).toBeInTheDocument();
       expect(backdrop).toHaveAttribute('data-state', 'open');
-    });
 
     it('should apply touch gesture props on mobile', () => {
       render(
@@ -201,8 +194,7 @@ describe('Responsive Panel Behavior', () => {
         WebkitTouchCallout: 'none',
         WebkitUserSelect: 'none',
         userSelect: 'none',
-      });
-    });
+
 
     it('should handle collapsible behavior on mobile', () => {
       render(
@@ -218,8 +210,7 @@ describe('Responsive Panel Behavior', () => {
       const panel = screen.getByTestId('right-panel');
       expect(panel).toHaveAttribute('data-collapsible', 'true');
       expect(panel).toHaveClass('max-sm:translate-x-full', 'max-sm:data-[state=open]:translate-x-0');
-    });
-  });
+
 
   describe('Tablet Behavior', () => {
     beforeEach(() => {
@@ -236,8 +227,7 @@ describe('Responsive Panel Behavior', () => {
         shouldCollapse: false,
         getResponsiveClasses: () => 'panel-responsive panel-tablet',
         getTouchProps: () => ({}),
-      });
-    });
+
 
     it('should render with tablet responsive classes', () => {
       render(
@@ -251,7 +241,6 @@ describe('Responsive Panel Behavior', () => {
 
       const panel = screen.getByTestId('right-panel');
       expect(panel).toHaveClass('panel-responsive', 'panel-tablet');
-    });
 
     it('should use appropriate width classes for tablet', () => {
       render(
@@ -266,8 +255,7 @@ describe('Responsive Panel Behavior', () => {
 
       const panel = screen.getByTestId('right-panel');
       expect(panel).toHaveClass('w-96', 'md:max-w-[80vw]');
-    });
-  });
+
 
   describe('Touch Interactions', () => {
     it('should handle touch start events', () => {
@@ -285,7 +273,6 @@ describe('Responsive Panel Behavior', () => {
           onTouchMove: vi.fn(),
           onTouchEnd: vi.fn(),
         }),
-      });
 
       render(
         <RightPanel
@@ -302,10 +289,8 @@ describe('Responsive Panel Behavior', () => {
       // Simulate touch start
       fireEvent.touchStart(panel, {
         touches: [{ clientX: 100, clientY: 100 }],
-      });
 
       expect(mockTouchStart).toHaveBeenCalled();
-    });
 
     it('should handle swipe gestures for closing', () => {
       const mockClose = vi.fn();
@@ -323,7 +308,6 @@ describe('Responsive Panel Behavior', () => {
           onTouchMove: vi.fn(),
           onTouchEnd: mockTouchEnd,
         }),
-      });
 
       render(
         <RightPanel
@@ -342,8 +326,7 @@ describe('Responsive Panel Behavior', () => {
       fireEvent.touchEnd(panel);
       
       expect(mockTouchEnd).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Responsive Navigation', () => {
     it('should render navigation with responsive button sizing', () => {
@@ -368,8 +351,7 @@ describe('Responsive Panel Behavior', () => {
         expect(button).toHaveClass('px-2', 'sm:px-3');
         // Check for touch feedback
         expect(button).toHaveClass('active:scale-95', 'sm:active:scale-100');
-      });
-    });
+
 
     it('should handle responsive text sizing in navigation', () => {
       render(
@@ -384,9 +366,8 @@ describe('Responsive Panel Behavior', () => {
       const textElements = screen.getAllByText(/View [12]/);
       textElements.forEach(text => {
         expect(text).toHaveClass('text-xs', 'sm:text-sm');
-      });
-    });
-  });
+
+
 
   describe('Responsive Header', () => {
     it('should apply responsive padding to header', () => {
@@ -400,7 +381,6 @@ describe('Responsive Panel Behavior', () => {
 
       const header = screen.getByRole('banner');
       expect(header).toHaveClass('px-3', 'sm:px-4', 'md:px-6');
-    });
 
     it('should use responsive text sizing in header', () => {
       render(
@@ -418,7 +398,6 @@ describe('Responsive Panel Behavior', () => {
 
       const title = screen.getByRole('heading', { level: 2 });
       expect(title).toHaveClass('text-base', 'sm:text-lg');
-    });
 
     it('should apply touch-optimized close button sizing', () => {
       const mockClose = vi.fn();
@@ -441,8 +420,7 @@ describe('Responsive Panel Behavior', () => {
         'sm:min-w-[32px]'
       );
       expect(closeButton).toHaveClass('active:scale-95', 'sm:active:scale-100');
-    });
-  });
+
 
   describe('Responsive Content', () => {
     it('should apply responsive padding to content', () => {
@@ -457,7 +435,6 @@ describe('Responsive Panel Behavior', () => {
       // Content should have responsive padding through PanelContent
       const content = screen.getByTestId('view1-content').closest('.p-3');
       expect(content).toBeInTheDocument();
-    });
 
     it('should use responsive grid gaps', () => {
       render(
@@ -470,8 +447,7 @@ describe('Responsive Panel Behavior', () => {
 
       const gridContainer = screen.getByTestId('view1-content').closest('.grid');
       expect(gridContainer).toHaveClass('gap-2', 'sm:gap-3', 'md:gap-4');
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('should maintain accessibility on mobile', () => {
@@ -486,7 +462,6 @@ describe('Responsive Panel Behavior', () => {
       const panel = screen.getByRole('complementary');
       expect(panel).toBeInTheDocument();
       expect(panel).toHaveAttribute('data-state', 'open');
-    });
 
     it('should handle keyboard navigation on mobile', () => {
       const mockClose = vi.fn();
@@ -506,6 +481,5 @@ describe('Responsive Panel Behavior', () => {
       // Note: The actual keyboard handling would be in the hook
       // This test verifies the component structure supports it
       expect(screen.getByRole('complementary')).toBeInTheDocument();
-    });
-  });
-});
+
+

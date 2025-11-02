@@ -28,7 +28,7 @@ class PerformanceTracker {
       operation: operationName,
       startTime,
       metadata
-    });
+
   }
   /**
    * End tracking a performance operation
@@ -175,7 +175,7 @@ class PerformanceTracker {
           type: 'network',
           url,
           method
-        });
+
       },
       end: (statusCode?: number, error?: Error) => {
         const metrics = this.endOperation(operationId);

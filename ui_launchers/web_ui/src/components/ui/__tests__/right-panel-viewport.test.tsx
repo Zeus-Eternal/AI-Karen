@@ -55,13 +55,12 @@ describe('RightPanel Viewport Height', () => {
       writable: true,
       configurable: true,
       value: 800,
-    });
+
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
       value: 1200,
-    });
-  });
+
 
   it('should apply viewport height classes', () => {
     render(
@@ -74,7 +73,6 @@ describe('RightPanel Viewport Height', () => {
 
     const panel = screen.getByRole('complementary');
     expect(panel).toHaveClass('panel-viewport-height');
-  });
 
   it('should handle mobile viewport correctly', () => {
     // Mock mobile viewport
@@ -82,7 +80,6 @@ describe('RightPanel Viewport Height', () => {
       writable: true,
       configurable: true,
       value: 375,
-    });
 
     render(
       <RightPanel
@@ -95,7 +92,6 @@ describe('RightPanel Viewport Height', () => {
 
     const panel = screen.getByRole('complementary');
     expect(panel).toHaveClass('panel-viewport-height');
-  });
 
   it('should ensure content area is scrollable', () => {
     render(
@@ -110,7 +106,6 @@ describe('RightPanel Viewport Height', () => {
     const contentArea = screen.getByText('Test content 1').closest('.overflow-y-auto');
     expect(contentArea).toBeInTheDocument();
     expect(contentArea).toHaveClass('scrollbar-hide');
-  });
 
   it('should handle long content without breaking viewport', () => {
     const longContentViews: RightPanelView[] = [
@@ -140,7 +135,6 @@ describe('RightPanel Viewport Height', () => {
     const panel = screen.getByRole('complementary');
     expect(panel).toHaveClass('overflow-hidden');
     expect(panel).toHaveClass('panel-viewport-height');
-  });
 
   it('should maintain proper flex layout structure', () => {
     render(
@@ -158,7 +152,6 @@ describe('RightPanel Viewport Height', () => {
     // Content should be flex-1 to take remaining space
     const contentWrapper = panel.querySelector('.flex-1.min-h-0');
     expect(contentWrapper).toBeInTheDocument();
-  });
 
   it('should handle different panel widths correctly', () => {
     const widths = ['sm', 'md', 'lg', 'xl'] as const;
@@ -177,6 +170,5 @@ describe('RightPanel Viewport Height', () => {
       expect(panel).toHaveClass('panel-viewport-height');
       
       unmount();
-    });
-  });
-});
+
+

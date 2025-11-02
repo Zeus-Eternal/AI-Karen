@@ -8,19 +8,8 @@
  */
 
 import React from 'react';
-import {
-  GridContainer,
-  FlexContainer,
-  ResponsiveContainer,
-  TwoColumnGrid,
-  AutoFitGrid,
-  ResponsiveCardGrid,
-  HStack,
-  VStack,
-  Center,
-  PageContainer,
-  CardContainer,
-} from '../index';
+
+import { } from '../index';
 
 /**
  * Demo component showcasing all layout components
@@ -32,14 +21,12 @@ export const LayoutDemo: React.FC = () => {
         {/* Header */}
         <Center>
           <h1 style={{ fontSize: 'var(--text-4xl)', fontWeight: 'var(--font-weight-bold)' }}>
-            Modern Layout System Demo
           </h1>
         </Center>
 
         {/* Grid Container Demo */}
         <section>
           <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-lg)' }}>
-            Grid Container Examples
           </h2>
           
           {/* Basic Grid */}
@@ -75,7 +62,6 @@ export const LayoutDemo: React.FC = () => {
         {/* Flex Container Demo */}
         <section>
           <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-lg)' }}>
-            Flex Container Examples
           </h2>
           
           {/* Horizontal Stack */}
@@ -110,7 +96,6 @@ export const LayoutDemo: React.FC = () => {
         {/* Container Queries Demo */}
         <section>
           <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-lg)' }}>
-            Container Queries Example
           </h2>
           
           <ResponsiveContainer
@@ -142,7 +127,6 @@ export const LayoutDemo: React.FC = () => {
         {/* Mixed Layout Demo */}
         <section>
           <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-lg)' }}>
-            Mixed Layout Example
           </h2>
           
           <GridContainer
@@ -157,7 +141,6 @@ export const LayoutDemo: React.FC = () => {
                 <CardContainer>Content 2</CardContainer>
               </TwoColumnGrid>
               <CardContainer style={{ flexGrow: 1 }}>
-                Large content area that grows to fill available space
               </CardContainer>
             </VStack>
             

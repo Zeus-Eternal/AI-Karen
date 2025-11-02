@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
@@ -8,59 +10,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
 import { Alert, AlertDescription } from '@/components/ui/alert';
-'use client';
+
+import { } from '@/components/ui/select';
 
 
 
+import { } from 'recharts';
 
 
-
-
-
-
-
-
-
-
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-
-
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  Area,
-  AreaChart
-} from 'recharts';
-
-
-  TrendingUp, 
-  TrendingDown,
-  Users, 
-  Shield, 
-  AlertTriangle,
-  Activity,
-  Clock,
-  Target,
-  Eye,
-  BarChart3
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 interface AuditAnalyticsProps {
   className?: string;
@@ -84,13 +43,11 @@ export function AuditAnalytics({ className }: AuditAnalyticsProps) {
   const { data: statistics } = useQuery({
     queryKey: ['audit', 'statistics', dateRange],
     queryFn: () => auditLogger.getStatistics(dateRange),
-  });
 
   const { data: userBehavior = null } = useQuery<UserBehaviorPattern | null>({
     queryKey: ['audit', 'user-behavior', selectedUser, dateRange],
     queryFn: () => selectedUser ? getUserBehaviorPattern(selectedUser, dateRange) : null,
     enabled: !!selectedUser
-  });
 
   return (
     <PermissionGate permission="security:audit">
@@ -99,12 +56,11 @@ export function AuditAnalytics({ className }: AuditAnalyticsProps) {
           <div>
             <h2 className="text-2xl font-bold">Audit Analytics</h2>
             <p className="text-muted-foreground">
-              Analyze user behavior patterns and security trends
             </p>
           </div>
           <div className="flex items-center space-x-2">
             <select value={timeframe} onValueChange={(value: '7d' | '30d' | '90d') = aria-label="Select option"> setTimeframe(value)}>
-              <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-40 " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
@@ -205,17 +161,17 @@ function OverviewDashboard({ statistics }: OverviewDashboardProps) {
           <Card key={metric.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium md:text-base lg:text-lg">{metric.title}</CardTitle>
-              <metric.icon className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <metric.icon className="h-4 w-4 text-muted-foreground " />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metric.value}</div>
               <div className="flex items-center text-xs text-muted-foreground sm:text-sm md:text-base">
                 {metric.trendUp ? (
-                  <TrendingUp className="h-3 w-3 mr-1 text-green-500 sm:w-auto md:w-full" />
+                  <TrendingUp className="h-3 w-3 mr-1 text-green-500 " />
                 ) : (
-                  <TrendingDown className="h-3 w-3 mr-1 text-red-500 sm:w-auto md:w-full" />
+                  <TrendingDown className="h-3 w-3 mr-1 text-red-500 " />
                 )}
-                {metric.trend} from last period
+import {                 {metric.trend} from last period
               </div>
             </CardContent>
           </Card>
@@ -254,7 +210,7 @@ function OverviewDashboard({ statistics }: OverviewDashboardProps) {
               {statistics.topUsers.slice(0, 5).map((user: any, index: number) => (
                 <div key={user.userId} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs sm:w-auto md:w-full">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs ">
                       {index + 1}
                     </div>
                     <span className="font-medium">{user.username}</span>
@@ -492,7 +448,7 @@ function UserBehaviorAnalysis({
                 <div className="space-y-3">
                   {userBehavior.anomalies.map((anomaly, index) => (
                     <Alert key={index} variant={anomaly.severity === 'high' ? 'destructive' : 'default'}>
-                      <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                      <AlertTriangle className="h-4 w-4 " />
                       <AlertDescription>
                         <div className="flex items-center justify-between">
                           <div>
@@ -582,15 +538,13 @@ function SecurityTrends({ statistics }: { statistics: any }) {
           <CardContent>
             <div className="space-y-3">
               <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                <AlertTriangle className="h-4 w-4 " />
                 <AlertDescription>
-                  Multiple failed login attempts detected for user admin
                 </AlertDescription>
               </Alert>
               <Alert>
-                <Shield className="h-4 w-4 sm:w-auto md:w-full" />
+                <Shield className="h-4 w-4 " />
                 <AlertDescription>
-                  Unusual access pattern detected for sensitive data
                 </AlertDescription>
               </Alert>
             </div>
@@ -652,7 +606,7 @@ function AnomalyDetection() {
         <CardContent>
           <div className="space-y-4">
             <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+              <AlertTriangle className="h-4 w-4 " />
               <AlertDescription>
                 <div className="flex items-center justify-between">
                   <div>
@@ -665,7 +619,7 @@ function AnomalyDetection() {
             </Alert>
 
             <Alert>
-              <Eye className="h-4 w-4 sm:w-auto md:w-full" />
+              <Eye className="h-4 w-4 " />
               <AlertDescription>
                 <div className="flex items-center justify-between">
                   <div>
@@ -678,7 +632,7 @@ function AnomalyDetection() {
             </Alert>
 
             <Alert>
-              <Clock className="h-4 w-4 sm:w-auto md:w-full" />
+              <Clock className="h-4 w-4 " />
               <AlertDescription>
                 <div className="flex items-center justify-between">
                   <div>

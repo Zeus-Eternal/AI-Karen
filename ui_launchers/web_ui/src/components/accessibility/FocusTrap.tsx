@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useEffect, useRef } from 'react';
 import { useFocusTrap } from '../../hooks/use-focus-management';
@@ -24,7 +24,6 @@ export function FocusTrap({
   } = useFocusTrap<HTMLDivElement>(enabled, {
     initialFocus,
     restoreFocus,
-  });
 
   return (
     <div

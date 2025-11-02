@@ -1,5 +1,6 @@
+
+"use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,33 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-"use client";
 
-
-
-  Play, 
-  Pause, 
-  Square, 
-  CheckCircle2, 
-  AlertTriangle, 
-  XCircle, 
-  Clock, 
-  FileText, 
-  GitBranch, 
-  Settings, 
-  Eye, 
-  Download,
-  Upload,
-  Zap,
-  Shield,
-  Target,
-  ArrowRight,
-  ChevronDown,
-  ChevronRight,
-  Edit3,
-  Trash2,
-  Plus
-} from "lucide-react";
+import { } from "lucide-react";
 
 
 
@@ -45,12 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 
 
 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
+import { } from "@/components/ui/select";
 
 
 
@@ -142,11 +113,11 @@ export default function PlanVisualization({
 
   const getStatusIcon = (status: StepStatus) => {
     switch (status) {
-      case "pending": return <Clock className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
-      case "running": return <Play className="h-4 w-4 text-blue-500 animate-pulse sm:w-auto md:w-full" />;
-      case "completed": return <CheckCircle2 className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
-      case "failed": return <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
-      case "skipped": return <ArrowRight className="h-4 w-4 text-gray-400 sm:w-auto md:w-full" />;
+      case "pending": return <Clock className="h-4 w-4 text-gray-500 " />;
+      case "running": return <Play className="h-4 w-4 text-blue-500 animate-pulse " />;
+      case "completed": return <CheckCircle2 className="h-4 w-4 text-green-500 " />;
+      case "failed": return <XCircle className="h-4 w-4 text-red-500 " />;
+      case "skipped": return <ArrowRight className="h-4 w-4 text-gray-400 " />;
     }
   };
 
@@ -178,13 +149,13 @@ export default function PlanVisualization({
       toast({
         title: "Step Executed",
         description: "Step completed successfully",
-      });
+
     } catch (error) {
       toast({
         title: "Execution Failed",
         description: `Step execution failed: ${error}`,
         variant: "destructive",
-      });
+
     } finally {
       setIsExecuting(false);
     }
@@ -199,13 +170,13 @@ export default function PlanVisualization({
       toast({
         title: "Plan Executed",
         description: "All steps completed successfully",
-      });
+
     } catch (error) {
       toast({
         title: "Execution Failed",
         description: `Plan execution failed: ${error}`,
         variant: "destructive",
-      });
+
     } finally {
       setIsExecuting(false);
     }
@@ -217,7 +188,7 @@ export default function PlanVisualization({
       toast({
         title: "Plan Approved",
         description: "Plan has been approved for execution",
-      });
+
     }
   };
 
@@ -228,7 +199,7 @@ export default function PlanVisualization({
       toast({
         title: "Plan Rejected",
         description: "Plan has been rejected with feedback",
-      });
+
     }
   };
 
@@ -259,14 +230,14 @@ export default function PlanVisualization({
     return step.dependencies.every(depId => {
       const depStep = plan.steps.find(s => s.id === depId);
       return depStep?.status === "completed";
-    });
+
   };
 
   if (!plan) {
     return (
       <Card className="h-full flex items-center justify-center">
         <CardContent className="text-center">
-          <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+          <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
           <h3 className="text-lg font-semibold mb-2">No Plan Selected</h3>
           <p className="text-muted-foreground">
             Select or create an execution plan to visualize steps and manage execution.
@@ -282,7 +253,7 @@ export default function PlanVisualization({
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
-              <GitBranch className="h-5 w-5 sm:w-auto md:w-full" />
+              <GitBranch className="h-5 w-5 " />
               {plan.title}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
@@ -295,7 +266,7 @@ export default function PlanVisualization({
             </Badge>
             {!readonly && (
               <select value={executionMode} onValueChange={(value: "manual" | "auto") = aria-label="Select option"> setExecutionMode(value)}>
-                <selectTrigger className="w-24 sm:w-auto md:w-full" aria-label="Select option">
+                <selectTrigger className="w-24 " aria-label="Select option">
                   <selectValue />
                 </SelectTrigger>
                 <selectContent aria-label="Select option">
@@ -322,16 +293,14 @@ export default function PlanVisualization({
             {plan.status === "review" && (
               <>
                 <button onClick={handlePlanApprove} size="sm" className="bg-green-600 hover:bg-green-700" aria-label="Button">
-                  <CheckCircle2 className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                  Approve
+                  <CheckCircle2 className="h-4 w-4 mr-1 " />
                 </Button>
                 <button 
-                  onClick={() = aria-label="Button"> setRejectionReason("Please provide feedback")} 
+                  onClick={() => setRejectionReason("Please provide feedback")} 
                   variant="outline" 
                   size="sm"
                 >
-                  <XCircle className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                  Reject
+                  <XCircle className="h-4 w-4 mr-1 " />
                 </Button>
               </>
             )}
@@ -345,25 +314,23 @@ export default function PlanVisualization({
                   className="bg-blue-600 hover:bg-blue-700"
                  aria-label="Button">
                   {isExecuting ? (
-                    <Pause className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
+                    <Pause className="h-4 w-4 mr-1 " />
                   ) : (
-                    <Play className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
+                    <Play className="h-4 w-4 mr-1 " />
                   )}
                   {isExecuting ? "Executing..." : "Execute All"}
                 </Button>
                 
                 {isExecuting && (
-                  <button onClick={onPauseExecution} variant="outline" size="sm" aria-label="Button">
-                    <Square className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                    Pause
+                  <Button onClick={onPauseExecution} variant="outline" size="sm" >
+                    <Square className="h-4 w-4 mr-1 " />
                   </Button>
                 )}
               </>
             )}
             
-            <button onClick={() = aria-label="Button"> onStepAdd?.()} variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-              Add Step
+            <button onClick={() => onStepAdd?.()} variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-1 " />
             </Button>
           </div>
         )}
@@ -374,15 +341,13 @@ export default function PlanVisualization({
             <textarea
               placeholder="Provide feedback for rejection..."
               value={rejectionReason}
-              onChange={(e) = aria-label="Textarea"> setRejectionReason(e.target.value)}
+              onChange={(e) => setRejectionReason(e.target.value)}
               className="min-h-[60px]"
             />
             <div className="flex gap-2">
-              <button onClick={handlePlanReject} size="sm" variant="destructive" aria-label="Button">
-                Submit Rejection
+              <Button onClick={handlePlanReject} size="sm" variant="destructive" >
               </Button>
-              <button onClick={() = aria-label="Button"> setRejectionReason("")} size="sm" variant="outline">
-                Cancel
+              <Button onClick={() => setRejectionReason("")} size="sm" variant="outline">
               </Button>
             </div>
           </div>
@@ -406,16 +371,16 @@ export default function PlanVisualization({
                     {/* Step Header */}
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <button
+                        <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() = aria-label="Button"> toggleStepExpansion(step.id)}
-                          className="p-1 h-6 w-6 sm:w-auto md:w-full"
+                          onClick={() => toggleStepExpansion(step.id)}
+                          className="p-1 h-6 w-6 "
                         >
                           {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
+                            <ChevronDown className="h-4 w-4 " />
                           ) : (
-                            <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />
+                            <ChevronRight className="h-4 w-4 " />
                           )}
                         </Button>
                         
@@ -448,43 +413,43 @@ export default function PlanVisualization({
                           <div className="flex gap-1">
                             {canExecute && (
                               <button
-                                onClick={() = aria-label="Button"> handleStepExecute(step.id)}
+                                onClick={() => handleStepExecute(step.id)}
                                 disabled={isExecuting}
                                 size="sm"
                                 variant="outline"
                                 className="h-6 px-2"
                               >
-                                <Play className="h-3 w-3 sm:w-auto md:w-full" />
+                                <Play className="h-3 w-3 " />
                               </Button>
                             )}
                             
                             {step.status === "pending" && (
                               <button
-                                onClick={() = aria-label="Button"> onStepSkip?.(step.id)}
+                                onClick={() => onStepSkip?.(step.id)}
                                 size="sm"
                                 variant="outline"
                                 className="h-6 px-2"
                               >
-                                <ArrowRight className="h-3 w-3 sm:w-auto md:w-full" />
+                                <ArrowRight className="h-3 w-3 " />
                               </Button>
                             )}
                             
                             <button
-                              onClick={() = aria-label="Button"> setEditingStep(step.id)}
+                              onClick={() => setEditingStep(step.id)}
                               size="sm"
                               variant="ghost"
                               className="h-6 px-2"
                             >
-                              <Edit3 className="h-3 w-3 sm:w-auto md:w-full" />
+                              <Edit3 className="h-3 w-3 " />
                             </Button>
                             
                             <button
-                              onClick={() = aria-label="Button"> onStepDelete?.(step.id)}
+                              onClick={() => onStepDelete?.(step.id)}
                               size="sm"
                               variant="ghost"
                               className="h-6 px-2 text-red-500 hover:text-red-700"
                             >
-                              <Trash2 className="h-3 w-3 sm:w-auto md:w-full" />
+                              <Trash2 className="h-3 w-3 " />
                             </Button>
                           </div>
                         )}
@@ -500,7 +465,7 @@ export default function PlanVisualization({
                             <div className="mt-1 space-y-1">
                               {step.affectedFiles.map((file, idx) => (
                                 <div key={idx} className="flex items-center gap-1 text-xs sm:text-sm md:text-base">
-                                  <FileText className="h-3 w-3 sm:w-auto md:w-full" />
+                                  <FileText className="h-3 w-3 " />
                                   <span className="font-mono">{file}</span>
                                 </div>
                               ))}
@@ -514,7 +479,7 @@ export default function PlanVisualization({
                                 const depStep = plan.steps.find(s => s.id === depId);
                                 return (
                                   <div key={idx} className="flex items-center gap-1 text-xs sm:text-sm md:text-base">
-                                    <ArrowRight className="h-3 w-3 sm:w-auto md:w-full" />
+                                    <ArrowRight className="h-3 w-3 " />
                                     <span>{depStep?.title || depId}</span>
                                   </div>
                                 );

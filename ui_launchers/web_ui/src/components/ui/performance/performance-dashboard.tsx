@@ -1,28 +1,14 @@
+
+"use client";
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-'use client';
 
 
-
-
-  Activity, 
-  Zap, 
-  Clock, 
-  TrendingUp, 
-  TrendingDown, 
-  AlertTriangle,
-  CheckCircle,
-  Info
-} from 'lucide-react';
+import { } from 'lucide-react';
 
   usePerformanceMonitor, 
-  PerformanceSummary, 
-  WebVitalsMetric,
-  CustomMetric,
   checkPerformanceBudget,
-  PERFORMANCE_THRESHOLDS
-} from '@/utils/performance-monitor';
+import { } from '@/utils/performance-monitor';
 
 interface PerformanceDashboardProps {
   className?: string;
@@ -58,7 +44,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
     return (
       <div className={`p-4 bg-muted rounded-lg ${className}`}>
         <div className="flex items-center space-x-2 text-muted-foreground">
-          <Activity className="h-4 w-4 sm:w-auto md:w-full" />
+          <Activity className="h-4 w-4 " />
           <span>Performance monitoring not available</span>
         </div>
       </div>
@@ -70,12 +56,12 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Activity className="h-5 w-5 text-primary sm:w-auto md:w-full" />
+          <Activity className="h-5 w-5 text-primary " />
           <h2 className="text-lg font-semibold">Performance Dashboard</h2>
         </div>
         <div className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg">
           <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse sm:w-auto md:w-full" />
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse " />
             <span>Monitoring Active</span>
           </div>
         </div>
@@ -136,7 +122,7 @@ const WebVitalsOverview: React.FC<{ summary: PerformanceSummary }> = ({ summary 
             transition={{ duration: 0.3 }}
           >
             <div className="flex items-center justify-between mb-2">
-              <Icon className="h-4 w-4 sm:w-auto md:w-full" />
+              <Icon className="h-4 w-4 " />
               <span className="text-xs font-medium uppercase tracking-wide sm:text-sm md:text-base">
                 {metric.name}
               </span>
@@ -168,7 +154,7 @@ const CustomMetricsSection: React.FC<{
   return (
     <div className="space-y-4">
       <h3 className="text-md font-semibold flex items-center space-x-2">
-        <TrendingUp className="h-4 w-4 sm:w-auto md:w-full" />
+        <TrendingUp className="h-4 w-4 " />
         <span>Custom Metrics</span>
       </h3>
       
@@ -213,7 +199,7 @@ const ResourceTimingSection: React.FC<{
   return (
     <div className="space-y-4">
       <h3 className="text-md font-semibold flex items-center space-x-2">
-        <Activity className="h-4 w-4 sm:w-auto md:w-full" />
+        <Activity className="h-4 w-4 " />
         <span>Resource Loading</span>
       </h3>
       
@@ -270,7 +256,7 @@ const NavigationTimingSection: React.FC<{
   return (
     <div className="space-y-4">
       <h3 className="text-md font-semibold flex items-center space-x-2">
-        <Clock className="h-4 w-4 sm:w-auto md:w-full" />
+        <Clock className="h-4 w-4 " />
         <span>Navigation Timing</span>
       </h3>
       
@@ -303,7 +289,7 @@ const PerformanceAlerts: React.FC<{
     return (
       <div className="p-4 bg-green-50 border border-green-200 rounded-lg sm:p-4 md:p-6">
         <div className="flex items-center space-x-2 text-green-700">
-          <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
+          <CheckCircle className="h-4 w-4 " />
           <span className="text-sm font-medium md:text-base lg:text-lg">All performance metrics are within budget</span>
         </div>
       </div>
@@ -313,7 +299,7 @@ const PerformanceAlerts: React.FC<{
   return (
     <div className="space-y-4">
       <h3 className="text-md font-semibold flex items-center space-x-2">
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertTriangle className="h-4 w-4 " />
         <span>Performance Alerts</span>
       </h3>
       

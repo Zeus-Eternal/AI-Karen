@@ -31,7 +31,7 @@ export const sanitizeInput = (input: string, allowHtml: boolean = false): string
       ALLOWED_TAGS: [], 
       ALLOWED_ATTR: [],
       KEEP_CONTENT: true 
-    });
+
   }
 
   // For rich text, use configured safe tags

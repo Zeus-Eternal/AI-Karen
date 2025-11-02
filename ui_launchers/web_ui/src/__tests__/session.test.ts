@@ -6,22 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import {
-  setSession,
-  getSession,
-  clearSession,
-  isSessionValid,
-  getAuthHeader,
-  bootSession,
-  refreshToken,
-  ensureToken,
-  getCurrentUser,
-  hasRole,
-  isAuthenticated,
-  login,
-  logout,
-  type SessionData,
-} from '@/lib/auth/session';
+import { setSession, getSession, clearSession, isSessionValid, getAuthHeader, bootSession, refreshToken, ensureToken, getCurrentUser, hasRole, isAuthenticated, login, logout, type SessionData } from '@/lib/auth/session';
 
 // Mock the API client
 vi.mock('@/lib/api-client', () => ({
@@ -44,11 +29,9 @@ describe('Session Management', () => {
     // Clear session before each test
     clearSession();
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('Session Storage', () => {
     it('should store and retrieve session data', () => {
@@ -56,12 +39,10 @@ describe('Session Management', () => {
       const retrieved = getSession();
       
       expect(retrieved).toEqual(mockSessionData);
-    });
 
     it('should return null when no session is stored', () => {
       const retrieved = getSession();
       expect(retrieved).toBeNull();
-    });
 
     it('should clear session data', () => {
       setSession(mockSessionData);
@@ -69,14 +50,12 @@ describe('Session Management', () => {
       
       const retrieved = getSession();
       expect(retrieved).toBeNull();
-    });
-  });
+
 
   describe('Session Validation', () => {
     it('should return true for valid session', () => {
       setSession(mockSessionData);
       expect(isSessionValid()).toBe(true);
-    });
 
     it('should return false for expired session', () => {
       const expiredSession: SessionData = {
@@ -86,11 +65,9 @@ describe('Session Management', () => {
       
       setSession(expiredSession);
       expect(isSessionValid()).toBe(false);
-    });
 
     it('should return false when no session exists', () => {
       expect(isSessionValid()).toBe(false);
-    });
 
     it('should return false for session expiring within buffer time', () => {
       const soonToExpireSession: SessionData = {
@@ -100,8 +77,7 @@ describe('Session Management', () => {
       
       setSession(soonToExpireSession);
       expect(isSessionValid()).toBe(false);
-    });
-  });
+
 
   describe('Auth Header Generation', () => {
     it('should return auth header for valid session', () => {
@@ -110,8 +86,7 @@ describe('Session Management', () => {
       
       expect(header).toEqual({
         'Authorization': `Bearer ${mockSessionData.accessToken}`,
-      });
-    });
+
 
     it('should return empty object for invalid session', () => {
       const expiredSession: SessionData = {
@@ -123,13 +98,11 @@ describe('Session Management', () => {
       const header = getAuthHeader();
       
       expect(header).toEqual({});
-    });
 
     it('should return empty object when no session exists', () => {
       const header = getAuthHeader();
       expect(header).toEqual({});
-    });
-  });
+
 
   describe('User Data Access', () => {
     it('should return current user data', () => {
@@ -141,13 +114,11 @@ describe('Session Management', () => {
         email: mockSessionData.email,
         roles: mockSessionData.roles,
         tenantId: mockSessionData.tenantId,
-      });
-    });
+
 
     it('should return null when no session exists', () => {
       const user = getCurrentUser();
       expect(user).toBeNull();
-    });
 
     it('should check user roles correctly', () => {
       setSession(mockSessionData);
@@ -155,11 +126,9 @@ describe('Session Management', () => {
       expect(hasRole('admin')).toBe(true);
       expect(hasRole('user')).toBe(true);
       expect(hasRole('superuser')).toBe(false);
-    });
 
     it('should return false for role check when no session', () => {
       expect(hasRole('admin')).toBe(false);
-    });
 
     it('should check authentication status', () => {
       setSession(mockSessionData);
@@ -167,8 +136,7 @@ describe('Session Management', () => {
       
       clearSession();
       expect(isAuthenticated()).toBe(false);
-    });
-  });
+
 
   describe('Session Boot and Refresh', () => {
     it('should boot session successfully', async () => {
@@ -197,7 +165,6 @@ describe('Session Management', () => {
       expect(session?.accessToken).toBe('new-access-token');
       expect(session?.userId).toBe('user-123');
       expect(mockApiClient.post).toHaveBeenCalledWith('/api/auth/refresh');
-    });
 
     it('should handle boot session failure silently', async () => {
       const { getApiClient } = await import('@/lib/api-client');
@@ -211,7 +178,6 @@ describe('Session Management', () => {
       
       const session = getSession();
       expect(session).toBeNull();
-    });
 
     it('should refresh token successfully', async () => {
       const { getApiClient } = await import('@/lib/api-client');
@@ -237,7 +203,6 @@ describe('Session Management', () => {
       const session = getSession();
       expect(session?.accessToken).toBe('refreshed-access-token');
       expect(mockApiClient.post).toHaveBeenCalledWith('/api/auth/refresh');
-    });
 
     it('should handle refresh token failure', async () => {
       const { getApiClient } = await import('@/lib/api-client');
@@ -251,7 +216,6 @@ describe('Session Management', () => {
       
       const session = getSession();
       expect(session).toBeNull();
-    });
 
     it('should prevent multiple simultaneous refresh attempts', async () => {
       const { getApiClient } = await import('@/lib/api-client');
@@ -281,8 +245,7 @@ describe('Session Management', () => {
       
       // Should only make one API call
       expect(mockApiClient.post).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('Ensure Token', () => {
     it('should boot session when no current session', async () => {
@@ -308,7 +271,6 @@ describe('Session Management', () => {
       
       const session = getSession();
       expect(session?.accessToken).toBe('new-token');
-    });
 
     it('should do nothing when session is valid', async () => {
       const { getApiClient } = await import('@/lib/api-client');
@@ -324,7 +286,6 @@ describe('Session Management', () => {
       
       // Should not make any API calls
       expect(mockApiClient.post).not.toHaveBeenCalled();
-    });
 
     it('should refresh token when session is expired', async () => {
       const { getApiClient } = await import('@/lib/api-client');
@@ -357,8 +318,7 @@ describe('Session Management', () => {
       const session = getSession();
       expect(session?.accessToken).toBe('refreshed-token');
       expect(mockApiClient.post).toHaveBeenCalledWith('/api/auth/refresh');
-    });
-  });
+
 
   describe('Login and Logout', () => {
     it('should login successfully', async () => {
@@ -387,8 +347,7 @@ describe('Session Management', () => {
       expect(mockApiClient.post).toHaveBeenCalledWith('/api/auth/login', {
         email: 'test@example.com',
         password: 'password',
-      });
-    });
+
 
     it('should login with TOTP code', async () => {
       const { getApiClient } = await import('@/lib/api-client');
@@ -415,8 +374,7 @@ describe('Session Management', () => {
         email: 'test@example.com',
         password: 'password',
         totp_code: '123456',
-      });
-    });
+
 
     it('should handle login failure', async () => {
       const { getApiClient } = await import('@/lib/api-client');
@@ -430,7 +388,6 @@ describe('Session Management', () => {
       
       const session = getSession();
       expect(session).toBeNull();
-    });
 
     it('should logout successfully', async () => {
       const { getApiClient } = await import('@/lib/api-client');
@@ -447,7 +404,6 @@ describe('Session Management', () => {
       const session = getSession();
       expect(session).toBeNull();
       expect(mockApiClient.post).toHaveBeenCalledWith('/api/auth/logout');
-    });
 
     it('should clear session even if logout request fails', async () => {
       const { getApiClient } = await import('@/lib/api-client');
@@ -463,6 +419,5 @@ describe('Session Management', () => {
       
       const session = getSession();
       expect(session).toBeNull();
-    });
-  });
-});
+
+

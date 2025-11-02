@@ -19,7 +19,6 @@ export const useDeviceDetection = (): DeviceInfo => {
     screenSize: 'lg',
     orientation: 'landscape',
     platform: 'unknown',
-  });
 
   useEffect(() => {
     const updateDeviceInfo = () => {
@@ -65,7 +64,7 @@ export const useDeviceDetection = (): DeviceInfo => {
         screenSize,
         orientation,
         platform,
-      });
+
     };
 
     // Initial detection

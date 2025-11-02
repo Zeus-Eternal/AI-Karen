@@ -18,27 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Alert, AlertDescription } from '../ui/alert';
-import { 
-  Brain, 
-  Settings, 
-  TrendingUp, 
-  Activity, 
-  Zap, 
-  Target, 
-  BarChart3, 
-  AlertTriangle,
-  CheckCircle,
-  Play,
-  Pause,
-  Square,
-  Download,
-  Upload,
-  Lightbulb,
-  Cpu,
-  MemoryStick,
-  Clock,
-  Plus
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 interface HyperparameterRange {
   min_value: number;
@@ -192,7 +173,7 @@ const AdvancedTrainingConfig: React.FC = () => {
     device: 'auto',
     distributed_training: false,
     num_workers: 4
-  });
+
   const [activeTab, setActiveTab] = useState('basic');
   const [isLoading, setIsLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AIAssistanceResponse | null>(null);
@@ -225,7 +206,7 @@ const AdvancedTrainingConfig: React.FC = () => {
             cpu_cores: 8
           }
         })
-      });
+
       if (response.ok) {
         const data = await response.json();
         setAiSuggestions(data);
@@ -260,14 +241,14 @@ const AdvancedTrainingConfig: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
-      });
+
       if (response.ok) {
         const data = await response.json();
         setSweepStatus({
           sweep_id: data.sweep_id,
           status: 'running',
           current_trial: 0
-        });
+
       }
     } catch (error) {
     } finally {
@@ -283,13 +264,13 @@ const AdvancedTrainingConfig: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config.ab_test)
-      });
+
       if (response.ok) {
         const data = await response.json();
         setAbTestStatus({
           test_id: data.test_id,
           status: 'running'
-        });
+
       }
     } catch (error) {
     } finally {
@@ -315,7 +296,7 @@ const AdvancedTrainingConfig: React.FC = () => {
           loss_curves: lossData.loss_curves,
           gradient_analysis: gradientData.gradient_analysis,
           analysis: analysis.analysis
-        });
+
       }
     } catch (error) {
     }
@@ -328,7 +309,7 @@ const AdvancedTrainingConfig: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
-      });
+
       if (response.ok) {
         const data = await response.json();
       }
@@ -345,21 +326,17 @@ const AdvancedTrainingConfig: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Brain className="h-6 w-6 sm:w-auto md:w-full" />
-            Advanced Training Configuration
+            <Brain className="h-6 w-6 " />
           </h2>
           <p className="text-muted-foreground">
-            Sophisticated hyperparameter optimization, AI assistance, and comprehensive monitoring
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={getAIAssistance} disabled={isLoading} variant="outline" aria-label="Button">
-            <Lightbulb className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Get AI Suggestions
+          <Button onClick={getAIAssistance} disabled={isLoading} variant="outline" >
+            <Lightbulb className="h-4 w-4 mr-2 " />
           </Button>
           <button onClick={saveConfiguration} disabled={isLoading} aria-label="Button">
-            <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Save Config
+            <Download className="h-4 w-4 mr-2 " />
           </Button>
         </div>
       </div>
@@ -376,11 +353,9 @@ const AdvancedTrainingConfig: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5 sm:w-auto md:w-full" />
-                Basic Configuration
+                <Settings className="h-5 w-5 " />
               </CardTitle>
               <CardDescription>
-                Core training parameters and model settings
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -390,7 +365,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                   <input
                     id="model_id"
                     value={config.model_id}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ ...prev, model_id: e.target.value }))}
+                    onChange={(e) => setConfig(prev => ({ ...prev, model_id: e.target.value }))}
                     placeholder="Enter model identifier"
                   />
                 </div>
@@ -399,7 +374,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                   <input
                     id="dataset_id"
                     value={config.dataset_id}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ ...prev, dataset_id: e.target.value }))}
+                    onChange={(e) => setConfig(prev => ({ ...prev, dataset_id: e.target.value }))}
                     placeholder="Enter dataset identifier"
                   />
                 </div>
@@ -411,7 +386,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     id="max_epochs"
                     type="number"
                     value={config.max_epochs}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ ...prev, max_epochs: parseInt(e.target.value) }))}
+                    onChange={(e) => setConfig(prev => ({ ...prev, max_epochs: parseInt(e.target.value) }))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -420,7 +395,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     id="batch_size"
                     type="number"
                     value={config.batch_size}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ ...prev, batch_size: parseInt(e.target.value) }))}
+                    onChange={(e) => setConfig(prev => ({ ...prev, batch_size: parseInt(e.target.value) }))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -432,7 +407,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     min="0"
                     max="1"
                     value={config.validation_split}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ ...prev, validation_split: parseFloat(e.target.value) }))}
+                    onChange={(e) => setConfig(prev => ({ ...prev, validation_split: parseFloat(e.target.value) }))}
                   />
                 </div>
               </div>
@@ -457,7 +432,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     id="num_workers"
                     type="number"
                     value={config.num_workers}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ ...prev, num_workers: parseInt(e.target.value) }))}
+                    onChange={(e) => setConfig(prev => ({ ...prev, num_workers: parseInt(e.target.value) }))}
                   />
                 </div>
               </div>
@@ -476,8 +451,7 @@ const AdvancedTrainingConfig: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Brain className="h-5 w-5 sm:w-auto md:w-full" />
-                  AI Training Suggestions
+                  <Brain className="h-5 w-5 " />
                 </CardTitle>
                 <CardDescription>
                   AI-powered recommendations for optimal training configuration
@@ -521,8 +495,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                   </div>
                 </div>
                 <button onClick={applyAISuggestions} className="w-full" aria-label="Button">
-                  <Zap className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Apply AI Suggestions
+                  <Zap className="h-4 w-4 mr-2 " />
                 </Button>
               </CardContent>
             </Card>
@@ -532,11 +505,9 @@ const AdvancedTrainingConfig: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 sm:w-auto md:w-full" />
-                Optimization Configuration
+                <TrendingUp className="h-5 w-5 " />
               </CardTitle>
               <CardDescription>
-                Advanced optimizer settings and learning rate scheduling
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -593,7 +564,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     type="number"
                     step="0.00001"
                     value={config.optimization.learning_rate}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ 
+                    onChange={(e) => setConfig(prev => ({ 
                       ...prev, 
                       optimization: { ...prev.optimization, learning_rate: parseFloat(e.target.value) }
                     }))}
@@ -606,7 +577,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     type="number"
                     step="0.001"
                     value={config.optimization.weight_decay}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ 
+                    onChange={(e) => setConfig(prev => ({ 
                       ...prev, 
                       optimization: { ...prev.optimization, weight_decay: parseFloat(e.target.value) }
                     }))}
@@ -621,7 +592,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     min="0"
                     max="1"
                     value={config.optimization.momentum}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ 
+                    onChange={(e) => setConfig(prev => ({ 
                       ...prev, 
                       optimization: { ...prev.optimization, momentum: parseFloat(e.target.value) }
                     }))}
@@ -638,7 +609,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     min="0"
                     max="1"
                     value={config.optimization.beta1}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ 
+                    onChange={(e) => setConfig(prev => ({ 
                       ...prev, 
                       optimization: { ...prev.optimization, beta1: parseFloat(e.target.value) }
                     }))}
@@ -653,7 +624,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     min="0"
                     max="1"
                     value={config.optimization.beta2}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ 
+                    onChange={(e) => setConfig(prev => ({ 
                       ...prev, 
                       optimization: { ...prev.optimization, beta2: parseFloat(e.target.value) }
                     }))}
@@ -666,7 +637,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     type="number"
                     step="0.0000001"
                     value={config.optimization.epsilon}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ 
+                    onChange={(e) => setConfig(prev => ({ 
                       ...prev, 
                       optimization: { ...prev.optimization, epsilon: parseFloat(e.target.value) }
                     }))}
@@ -683,7 +654,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                       type="number"
                       min="1"
                       value={config.training_logic.gradient_accumulation_steps}
-                      onChange={(e) = aria-label="Input"> setConfig(prev => ({ 
+                      onChange={(e) => setConfig(prev => ({ 
                         ...prev, 
                         training_logic: { ...prev.training_logic, gradient_accumulation_steps: parseInt(e.target.value) }
                       }))}
@@ -696,7 +667,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                       type="number"
                       step="0.1"
                       value={config.training_logic.gradient_clipping || ''}
-                      onChange={(e) = aria-label="Input"> setConfig(prev => ({ 
+                      onChange={(e) => setConfig(prev => ({ 
                         ...prev, 
                         training_logic: { ...prev.training_logic, gradient_clipping: e.target.value ? parseFloat(e.target.value) : undefined }
                       }))}
@@ -723,11 +694,9 @@ const AdvancedTrainingConfig: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5 sm:w-auto md:w-full" />
-                Hyperparameter Optimization
+                <Target className="h-5 w-5 " />
               </CardTitle>
               <CardDescription>
-                Automated hyperparameter search and optimization
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -794,13 +763,11 @@ const AdvancedTrainingConfig: React.FC = () => {
               </div>
               <div className="flex gap-2">
                 <button onClick={startHyperparameterSweep} disabled={isLoading || sweepStatus.status === 'running'} aria-label="Button">
-                  <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Start Sweep
+                  <Play className="h-4 w-4 mr-2 " />
                 </Button>
                 {sweepStatus.status === 'running' && (
-                  <button variant="outline" aria-label="Button">
-                    <Pause className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    Pause Sweep
+                  <Button variant="outline" >
+                    <Pause className="h-4 w-4 mr-2 " />
                   </Button>
                 )}
               </div>
@@ -825,11 +792,10 @@ const AdvancedTrainingConfig: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 sm:w-auto md:w-full" />
+                <BarChart3 className="h-5 w-5 " />
                 A/B Testing
               </CardTitle>
               <CardDescription>
-                Compare different training strategies with statistical significance
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -854,7 +820,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                   <div className="p-3 border rounded-md sm:p-4 md:p-6">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">Treatment A (40%)</span>
-                      <button variant="ghost" size="sm" aria-label="Button">Remove</Button>
+                      <Button variant="ghost" size="sm" >Remove</Button>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm md:text-base lg:text-lg">
                       <div>Optimizer: AdamW</div>
@@ -866,7 +832,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                   <div className="p-3 border rounded-md sm:p-4 md:p-6">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">Treatment B (20%)</span>
-                      <button variant="ghost" size="sm" aria-label="Button">Remove</Button>
+                      <Button variant="ghost" size="sm" >Remove</Button>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm md:text-base lg:text-lg">
                       <div>Optimizer: SGD</div>
@@ -876,9 +842,8 @@ const AdvancedTrainingConfig: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <button variant="outline" className="w-full" aria-label="Button">
-                  <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Add Treatment
+                <Button variant="outline" className="w-full" >
+                  <Plus className="h-4 w-4 mr-2 " />
                 </Button>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -906,13 +871,12 @@ const AdvancedTrainingConfig: React.FC = () => {
               </div>
               <div className="flex gap-2">
                 <button onClick={createABTest} disabled={isLoading || abTestStatus.status === 'running'} aria-label="Button">
-                  <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                  <Play className="h-4 w-4 mr-2 " />
                   Start A/B Test
                 </Button>
                 {abTestStatus.status === 'running' && (
-                  <button variant="outline" aria-label="Button">
-                    <Square className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    Stop Test
+                  <Button variant="outline" >
+                    <Square className="h-4 w-4 mr-2 " />
                   </Button>
                 )}
               </div>
@@ -929,9 +893,9 @@ const AdvancedTrainingConfig: React.FC = () => {
                               {comparison.improvement_percent > 0 ? '+' : ''}{comparison.improvement_percent.toFixed(2)}%
                             </span>
                             {comparison.significant ? (
-                              <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                              <CheckCircle className="h-4 w-4 text-green-600 " />
                             ) : (
-                              <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
+                              <AlertTriangle className="h-4 w-4 text-yellow-600 " />
                             )}
                           </div>
                         </div>
@@ -950,11 +914,9 @@ const AdvancedTrainingConfig: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 sm:w-auto md:w-full" />
-                Training Monitoring
+                <Activity className="h-5 w-5 " />
               </CardTitle>
               <CardDescription>
-                Comprehensive monitoring and logging configuration
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1003,7 +965,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     id="gradient_histogram_frequency"
                     type="number"
                     value={config.monitoring.gradient_histogram_frequency}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ 
+                    onChange={(e) => setConfig(prev => ({ 
                       ...prev, 
                       monitoring: { ...prev.monitoring, gradient_histogram_frequency: parseInt(e.target.value) }
                     }))}
@@ -1015,7 +977,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     id="weight_histogram_frequency"
                     type="number"
                     value={config.monitoring.weight_histogram_frequency}
-                    onChange={(e) = aria-label="Input"> setConfig(prev => ({ 
+                    onChange={(e) => setConfig(prev => ({ 
                       ...prev, 
                       monitoring: { ...prev.monitoring, weight_histogram_frequency: parseInt(e.target.value) }
                     }))}
@@ -1058,7 +1020,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                   min="0"
                   max="1"
                   value={config.monitoring.loss_curve_smoothing}
-                  onChange={(e) = aria-label="Input"> setConfig(prev => ({ 
+                  onChange={(e) => setConfig(prev => ({ 
                     ...prev, 
                     monitoring: { ...prev.monitoring, loss_curve_smoothing: parseFloat(e.target.value) }
                   }))}
@@ -1073,8 +1035,7 @@ const AdvancedTrainingConfig: React.FC = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 sm:w-auto md:w-full" />
-                    Loss Curves
+                    <BarChart3 className="h-5 w-5 " />
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -1100,8 +1061,7 @@ const AdvancedTrainingConfig: React.FC = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 sm:w-auto md:w-full" />
-                    Gradient Analysis
+                    <Activity className="h-5 w-5 " />
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1150,8 +1110,7 @@ const AdvancedTrainingConfig: React.FC = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5 sm:w-auto md:w-full" />
-                    AI Analysis
+                    <Brain className="h-5 w-5 " />
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1179,7 +1138,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                       <div className="space-y-2">
                         {trainingMetrics.analysis.recommendations.map((rec, index) => (
                           <Alert key={index}>
-                            <Lightbulb className="h-4 w-4 sm:w-auto md:w-full" />
+                            <Lightbulb className="h-4 w-4 " />
                             <AlertDescription>
                               <strong>{rec.issue.replace('_', ' ')}:</strong> {rec.suggestion}
                             </AlertDescription>
@@ -1194,13 +1153,12 @@ const AdvancedTrainingConfig: React.FC = () => {
           ) : (
             <Card>
               <CardContent className="text-center py-8">
-                <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4 sm:w-auto md:w-full" />
+                <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4 " />
                 <h3 className="text-lg font-medium mb-2">No Training Data</h3>
                 <p className="text-muted-foreground mb-4">
                   Start a training session to see comprehensive analysis and monitoring data.
                 </p>
-                <button onClick={() = aria-label="Button"> loadTrainingMetrics('demo_training')}>
-                  Load Demo Data
+                <Button onClick={() => loadTrainingMetrics('demo_training')}>
                 </Button>
               </CardContent>
             </Card>

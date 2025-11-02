@@ -41,12 +41,10 @@ describe('SessionTimeoutManager', () => {
     sessionManager = new SessionTimeoutManager();
     jest.clearAllMocks();
     jest.useFakeTimers();
-  });
 
   afterEach(() => {
     sessionManager.destroy();
     jest.useRealTimers();
-  });
 
   describe('Session Creation', () => {
     it('should create session with correct timeout for admin', async () => {
@@ -75,7 +73,6 @@ describe('SessionTimeoutManager', () => {
           user_id: 'user-123'
         })
       );
-    });
 
     it('should create session with correct timeout for super admin', async () => {
       const superAdminUser = { ...mockUser, role: 'super_admin' as const };
@@ -86,7 +83,6 @@ describe('SessionTimeoutManager', () => {
       const expectedTimeout = 30 * 60 * 1000;
       const actualTimeout = session.expires_at.getTime() - session.created_at.getTime();
       expect(actualTimeout).toBe(expectedTimeout);
-    });
 
     it('should create session with correct timeout for regular user', async () => {
       const regularUser = { ...mockUser, role: 'user' as const };
@@ -97,8 +93,7 @@ describe('SessionTimeoutManager', () => {
       const expectedTimeout = 60 * 60 * 1000;
       const actualTimeout = session.expires_at.getTime() - session.created_at.getTime();
       expect(actualTimeout).toBe(expectedTimeout);
-    });
-  });
+
 
   describe('Session Activity Updates', () => {
     it('should update session activity for valid session', async () => {
@@ -107,7 +102,6 @@ describe('SessionTimeoutManager', () => {
       const updated = await sessionManager.updateSessionActivity('session-123');
       
       expect(updated).toBe(true);
-    });
 
     it('should reject activity update for expired session', async () => {
       const session = await sessionManager.createSession(mockUser, 'session-123');
@@ -118,14 +112,12 @@ describe('SessionTimeoutManager', () => {
       const updated = await sessionManager.updateSessionActivity('session-123');
       
       expect(updated).toBe(false);
-    });
 
     it('should reject activity update for non-existent session', async () => {
       const updated = await sessionManager.updateSessionActivity('nonexistent-session');
       
       expect(updated).toBe(false);
-    });
-  });
+
 
   describe('Session Extension', () => {
     it('should extend session successfully', async () => {
@@ -145,7 +137,6 @@ describe('SessionTimeoutManager', () => {
           user_id: 'user-123'
         })
       );
-    });
 
     it('should reject extension when max extensions reached', async () => {
       const session = await sessionManager.createSession(mockUser, 'session-123');
@@ -160,15 +151,13 @@ describe('SessionTimeoutManager', () => {
       
       expect(result.success).toBe(false);
       expect(result.message).toContain('Maximum session extensions');
-    });
 
     it('should reject extension for non-existent session', async () => {
       const result = await sessionManager.extendSession('nonexistent-session', 'user-123');
       
       expect(result.success).toBe(false);
       expect(result.message).toBe('Session not found or inactive');
-    });
-  });
+
 
   describe('Session Status', () => {
     it('should return correct session status', async () => {
@@ -182,13 +171,11 @@ describe('SessionTimeoutManager', () => {
       expect(status!.timeRemaining).toBeGreaterThan(0);
       expect(status!.extensionsUsed).toBe(0);
       expect(status!.maxExtensions).toBe(3); // Admin max extensions
-    });
 
     it('should return null for non-existent session', () => {
       const status = sessionManager.getSessionStatus('nonexistent-session');
       
       expect(status).toBeNull();
-    });
 
     it('should show warning when session is expiring soon', async () => {
       const session = await sessionManager.createSession(mockUser, 'session-123');
@@ -200,8 +187,7 @@ describe('SessionTimeoutManager', () => {
       
       expect(status!.warningActive).toBe(true);
       expect(status!.timeRemaining).toBeLessThan(5 * 60); // Less than 5 minutes
-    });
-  });
+
 
   describe('Session Termination', () => {
     it('should terminate session manually', async () => {
@@ -211,7 +197,6 @@ describe('SessionTimeoutManager', () => {
       
       const status = sessionManager.getSessionStatus('session-123');
       expect(status).toBeNull();
-    });
 
     it('should terminate all user sessions', async () => {
       // Create multiple sessions for the same user
@@ -227,8 +212,7 @@ describe('SessionTimeoutManager', () => {
       expect(sessionManager.getSessionStatus('session-1')).toBeNull();
       expect(sessionManager.getSessionStatus('session-2')).toBeNull();
       expect(sessionManager.getSessionStatus('session-3')).toBeNull();
-    });
-  });
+
 
   describe('Session Statistics', () => {
     it('should provide accurate session statistics', async () => {
@@ -244,7 +228,6 @@ describe('SessionTimeoutManager', () => {
       expect(stats.sessionsByRole.super_admin).toBe(1);
       expect(stats.sessionsByRole.user).toBe(1);
       expect(stats.averageSessionDuration).toBeGreaterThan(0);
-    });
 
     it('should count expiring sessions correctly', async () => {
       const session = await sessionManager.createSession(mockUser, 'session-123');
@@ -255,8 +238,7 @@ describe('SessionTimeoutManager', () => {
       const stats = sessionManager.getSessionStatistics();
       
       expect(stats.expiringSoon).toBe(1);
-    });
-  });
+
 
   describe('Automatic Cleanup', () => {
     it('should clean up expired sessions automatically', async () => {
@@ -270,8 +252,7 @@ describe('SessionTimeoutManager', () => {
       
       const status = sessionManager.getSessionStatus('session-123');
       expect(status).toBeNull();
-    });
-  });
+
 
   describe('Session Warnings', () => {
     it('should trigger warning before session expiry', async () => {
@@ -289,8 +270,7 @@ describe('SessionTimeoutManager', () => {
       );
       
       consoleSpy.mockRestore();
-    });
-  });
+
 
   describe('User Sessions', () => {
     it('should get all active sessions for a user', async () => {
@@ -302,14 +282,12 @@ describe('SessionTimeoutManager', () => {
       expect(userSessions).toHaveLength(2);
       expect(userSessions.every(s => s.user_id === 'user-123')).toBe(true);
       expect(userSessions.every(s => s.is_active)).toBe(true);
-    });
 
     it('should return empty array for user with no sessions', () => {
       const userSessions = sessionManager.getUserSessions('nonexistent-user');
       
       expect(userSessions).toHaveLength(0);
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle audit log errors gracefully', async () => {
@@ -317,6 +295,5 @@ describe('SessionTimeoutManager', () => {
       
       // Should not throw
       await expect(sessionManager.createSession(mockUser, 'session-123')).resolves.toBeDefined();
-    });
-  });
-});
+
+

@@ -27,14 +27,12 @@ const mockSessionStorage = {
 };
 Object.defineProperty(window, 'sessionStorage', {
   value: mockSessionStorage
-});
 
 describe('Logging System Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     performanceTracker.clearHistory();
     correlationTracker.clearCorrelationId();
-  });
 
   describe('End-to-End Authentication Flow Logging', () => {
     it('should track complete authentication flow with correlation', async () => {
@@ -55,7 +53,7 @@ describe('Logging System Integration', () => {
           const response = await loggedFetch('https://api.example.com/auth/login', {
             method: 'POST',
             body: JSON.stringify({ email: 'user@example.com', password: 'password' })
-          });
+
           return mockAuthOperation();
         },
         'user@example.com',
@@ -115,7 +113,6 @@ describe('Logging System Integration', () => {
           })
         })
       );
-    });
 
     it('should track authentication failure with retry attempts', async () => {
       const authError = new Error('Invalid credentials');
@@ -131,7 +128,7 @@ describe('Logging System Integration', () => {
           async () => {
             const response = await loggedFetch('https://api.example.com/auth/login', {
               method: 'POST'
-            });
+
             throw authError;
           },
           'user@example.com',
@@ -163,8 +160,7 @@ describe('Logging System Integration', () => {
           })
         })
       );
-    });
-  });
+
 
   describe('Performance Monitoring Integration', () => {
     it('should track and log performance metrics across operations', async () => {
@@ -193,7 +189,6 @@ describe('Logging System Integration', () => {
         call[0].includes('[INFO] [connectivity:request]')
       );
       expect(performanceLogs.length).toBeGreaterThan(0);
-    });
 
     it('should detect and log slow operations', async () => {
       // Mock very slow response
@@ -215,8 +210,7 @@ describe('Logging System Integration', () => {
           })
         })
       );
-    });
-  });
+
 
   describe('Error Correlation and Tracking', () => {
     it('should maintain correlation across nested operations', async () => {
@@ -248,7 +242,6 @@ describe('Logging System Integration', () => {
           'Operation 3',
           { url: 'test3', method: 'PUT' }
         );
-      });
 
       // Verify correlation IDs in logs
       const logCalls = mockConsole.info.mock.calls;
@@ -263,8 +256,7 @@ describe('Logging System Integration', () => {
       // Nested operation should have different correlation ID
       const nestedLog = logCalls.find(call => call[1] === 'Nested operation');
       expect(nestedLog[0]).not.toContain(correlationId);
-    });
-  });
+
 
   describe('Remote Logging Integration', () => {
     it('should batch and send logs to remote endpoint', async () => {
@@ -273,7 +265,6 @@ describe('Logging System Integration', () => {
         remoteEndpoint: 'https://logs.example.com/api/logs',
         batchSize: 2,
         enableConsoleLogging: false
-      });
 
       (fetch as jest.Mock).mockResolvedValueOnce(new Response('OK', { status: 200 }));
 
@@ -297,7 +288,6 @@ describe('Logging System Integration', () => {
       expect(requestBody.logs).toHaveLength(2);
       expect(requestBody.logs[0].message).toBe('Log 1');
       expect(requestBody.logs[1].message).toBe('Log 2');
-    });
 
     it('should handle remote logging failures and retry', async () => {
       const remoteLogger = new ConnectivityLogger({
@@ -305,7 +295,6 @@ describe('Logging System Integration', () => {
         remoteEndpoint: 'https://logs.example.com/api/logs',
         batchSize: 1,
         enableConsoleLogging: true
-      });
 
       // First call fails, second succeeds
       (fetch as jest.Mock)
@@ -331,8 +320,7 @@ describe('Logging System Integration', () => {
 
       // Should eventually succeed
       expect(fetch).toHaveBeenCalledTimes(2);
-    });
-  });
+
 
   describe('Memory and Resource Management', () => {
     it('should manage memory usage and clean up old data', () => {
@@ -346,7 +334,6 @@ describe('Logging System Integration', () => {
       // Old associations should be cleaned up
       expect(correlationTracker.getCorrelationForRequest('request-0')).toBeUndefined();
       expect(correlationTracker.getCorrelationForRequest('request-1400')).toBeDefined();
-    });
 
     it('should limit performance history size', async () => {
       // Generate many performance entries
@@ -359,8 +346,7 @@ describe('Logging System Integration', () => {
 
       const stats = performanceTracker.getPerformanceStats();
       expect(stats.count).toBeLessThan(1200); // Should have been trimmed
-    });
-  });
+
 
   describe('Configuration and Environment Handling', () => {
     it('should adapt to different environments', () => {
@@ -369,14 +355,12 @@ describe('Logging System Integration', () => {
         logLevel: 'debug',
         enablePerformanceMetrics: true,
         enableCorrelationTracking: true
-      });
 
       const productionLogger = new ConnectivityLogger({
         logLevel: 'warn',
         enablePerformanceMetrics: false,
         enableCorrelationTracking: false,
         enableRemoteLogging: true
-      });
 
       // Debug logger should log debug messages
       debugLogger.logConnectivity('debug', 'Debug message', { url: 'test', method: 'GET' });
@@ -391,6 +375,5 @@ describe('Logging System Integration', () => {
       // But should log warnings
       productionLogger.logConnectivity('warn', 'Warning message', { url: 'test', method: 'GET' });
       expect(mockConsole.warn).toHaveBeenCalled();
-    });
-  });
-});
+
+

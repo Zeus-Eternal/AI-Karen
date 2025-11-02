@@ -89,7 +89,6 @@ const GRID_COLUMN_CLASS_MAP: Record<LayoutColumns, string> = {
 };
 
 const RESPONSIVE_COLUMN_CLASS_MAP: Record<
-  Breakpoint,
   Record<ResponsiveColumnCount, string>
 > = {
   sm: {
@@ -184,7 +183,6 @@ export const Layout = forwardRef<HTMLDivElement, BaseLayoutProps>(function Layou
       {children}
     </div>
   );
-});
 
 Layout.displayName = "Layout";
 
@@ -222,7 +220,7 @@ export const LayoutGrid = forwardRef<HTMLDivElement, LayoutGridProps>(function L
           if (responsiveClass) {
             responsiveClasses.push(responsiveClass);
           }
-        });
+
     } else if (responsive && autoLayoutMode === "auto-fit") {
       responsiveClasses.push("md:grid-cols-2", "lg:grid-cols-3", "xl:grid-cols-4");
     }
@@ -247,7 +245,6 @@ export const LayoutGrid = forwardRef<HTMLDivElement, LayoutGridProps>(function L
       {children}
     </div>
   );
-});
 
 LayoutGrid.displayName = "LayoutGrid";
 
@@ -292,7 +289,6 @@ export const LayoutFlex = forwardRef<HTMLDivElement, LayoutFlexProps>(function L
       {children}
     </div>
   );
-});
 
 LayoutFlex.displayName = "LayoutFlex";
 
@@ -320,7 +316,6 @@ export const LayoutSection = forwardRef<HTMLElement, LayoutSectionProps>(functio
       {children}
     </section>
   );
-});
 
 LayoutSection.displayName = "LayoutSection";
 
@@ -358,7 +353,6 @@ export const LayoutHeader = forwardRef<HTMLElement, LayoutHeaderProps>(function 
       {children}
     </header>
   );
-});
 
 LayoutHeader.displayName = "LayoutHeader";
 
@@ -393,6 +387,5 @@ export const LayoutContainer = forwardRef<HTMLDivElement, LayoutContainerProps>(
       {children}
     </div>
   );
-});
 
 LayoutContainer.displayName = "LayoutContainer";

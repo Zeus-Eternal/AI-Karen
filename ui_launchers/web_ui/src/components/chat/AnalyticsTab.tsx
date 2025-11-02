@@ -1,18 +1,10 @@
-'use client';
+"use client";
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Activity,
-  BarChart3,
-  Brain,
-  Clock,
-  Code,
-  MessageSquare,
-  Target,
-  TrendingUp,
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 
 import type { ChatMessage } from '@/components/ChatInterface';
 
@@ -25,8 +17,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => (
   <div className="flex-1 p-4 sm:p-4 md:p-6">
     <div className="mb-6">
       <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-        <BarChart3 className="h-5 w-5 sm:w-auto md:w-full" />
-        Chat Analytics
+        <BarChart3 className="h-5 w-5 " />
         <Badge variant="outline" className="text-xs sm:text-sm md:text-base">Real-time</Badge>
       </h3>
       <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -38,7 +29,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => (
       <Card>
         <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center gap-2 mb-2">
-            <MessageSquare className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />
+            <MessageSquare className="h-4 w-4 text-blue-500 " />
             <span className="text-sm font-medium md:text-base lg:text-lg">Messages</span>
           </div>
           <div className="text-2xl font-bold">{analytics.totalMessages}</div>
@@ -51,7 +42,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => (
       <Card>
         <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center gap-2 mb-2">
-            <Clock className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+            <Clock className="h-4 w-4 text-green-500 " />
             <span className="text-sm font-medium md:text-base lg:text-lg">Response Time</span>
           </div>
           <div className="text-2xl font-bold">{analytics.averageResponseTime}ms</div>
@@ -62,7 +53,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => (
       <Card>
         <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center gap-2 mb-2">
-            <Target className="h-4 w-4 text-purple-500 sm:w-auto md:w-full" />
+            <Target className="h-4 w-4 text-purple-500 " />
             <span className="text-sm font-medium md:text-base lg:text-lg">Confidence</span>
           </div>
           <div className="text-2xl font-bold">{analytics.averageConfidence}%</div>
@@ -73,7 +64,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => (
       <Card>
         <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center gap-2 mb-2">
-            <Activity className="h-4 w-4 text-orange-500 sm:w-auto md:w-full" />
+            <Activity className="h-4 w-4 text-orange-500 " />
             <span className="text-sm font-medium md:text-base lg:text-lg">Session</span>
           </div>
           <div className="text-2xl font-bold">{Math.floor(analytics.sessionDuration / 60)}m</div>
@@ -86,8 +77,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => (
       <Card>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-            <Brain className="h-4 w-4 sm:w-auto md:w-full" />
-            Usage Statistics
+            <Brain className="h-4 w-4 " />
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -111,8 +101,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => (
       <Card>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-            <TrendingUp className="h-4 w-4 sm:w-auto md:w-full" />
-            Top Topics
+            <TrendingUp className="h-4 w-4 " />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -120,7 +109,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => (
             {analytics.topTopics.length > 0 ? (
               analytics.topTopics.map((topic: string, index: number) => (
                 <div key={index} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-primary sm:w-auto md:w-full" />
+                  <div className="w-2 h-2 rounded-full bg-primary " />
                   <span className="text-sm capitalize md:text-base lg:text-lg">{topic}</span>
                 </div>
               ))
@@ -136,8 +125,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => (
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-            <Code className="h-4 w-4 sm:w-auto md:w-full" />
-            Programming Languages
+            <Code className="h-4 w-4 " />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -155,8 +143,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-          <Activity className="h-4 w-4 sm:w-auto md:w-full" />
-          Recent Messages
+          <Activity className="h-4 w-4 " />
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -166,7 +153,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => (
               <div className={`w-2 h-2 rounded-full mt-2 ${
                 message.role === 'user' ? 'bg-blue-500' : 'bg-green-500'
               }`} />
-              <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+              <div className="flex-1 min-w-0 ">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-medium capitalize md:text-base lg:text-lg">{message.role}</span>
                   <Badge variant="outline" className="text-xs sm:text-sm md:text-base">

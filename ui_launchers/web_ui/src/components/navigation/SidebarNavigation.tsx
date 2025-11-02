@@ -13,20 +13,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useAppShell } from "@/components/layout/AppShell";
-import {
-  ChevronDown,
-  ChevronRight,
-  Menu,
-  X,
-  Home,
-  Settings,
-  BarChart3,
-  Puzzle,
-  Brain,
-  MessageSquare,
-  Shield,
-  Workflow,
-} from "lucide-react";
+
+import { } from "lucide-react";
 
 // Navigation item types
 export interface NavigationItem {
@@ -189,8 +177,6 @@ export interface SidebarNavigationProps
 }
 
 export const SidebarNavigation = React.forwardRef<
-  HTMLDivElement,
-  SidebarNavigationProps
 >(
   (
     {
@@ -240,7 +226,7 @@ export const SidebarNavigation = React.forwardRef<
           if (item.children && expandedItems.has(item.id)) {
             flatten(item.children, level + 1, item.id);
           }
-        });
+
       };
 
       flatten(items);
@@ -257,7 +243,7 @@ export const SidebarNavigation = React.forwardRef<
           newSet.add(itemId);
         }
         return newSet;
-      });
+
     }, []);
 
     const handleItemClick = useCallback(
@@ -390,7 +376,6 @@ export const SidebarNavigation = React.forwardRef<
         <div className="flex items-center justify-between p-[var(--space-md)] border-b border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-800)]">
           {!sidebarCollapsed && (
             <h2 className="text-[var(--text-lg)] font-semibold text-[var(--color-neutral-900)] dark:text-[var(--color-neutral-100)]">
-              Kari AI
             </h2>
           )}
           <SidebarToggle />
@@ -513,9 +498,9 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
             {hasChildren && (
               <span className="flex-shrink-0">
                 {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
+                  <ChevronDown className="h-4 w-4 " />
                 ) : (
-                  <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />
+                  <ChevronRight className="h-4 w-4 " />
                 )}
               </span>
             )}
@@ -572,12 +557,12 @@ const SidebarToggle: React.FC = () => {
     >
       {isMobile ? (
         sidebarOpen ? (
-          <X className="h-5 w-5 sm:w-auto md:w-full" />
+          <X className="h-5 w-5 " />
         ) : (
-          <Menu className="h-5 w-5 sm:w-auto md:w-full" />
+          <Menu className="h-5 w-5 " />
         )
       ) : (
-        <Menu className="h-5 w-5 sm:w-auto md:w-full" />
+        <Menu className="h-5 w-5 " />
       )}
     </button>
   );

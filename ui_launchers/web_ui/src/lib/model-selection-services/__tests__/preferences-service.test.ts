@@ -3,11 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from "vitest";
-import {
-  PreferencesService,
-  getPreferencesService,
-  resetPreferencesService,
-} from "../preferences-service";
+import { PreferencesService, getPreferencesService, resetPreferencesService } from "../preferences-service";
 import { ModelSelectionPreferences, PreferencesServiceConfig } from "../types";
 import { PreferencesError } from "../errors/model-selection-errors";
 
@@ -45,19 +41,16 @@ describe("PreferencesService", () => {
 
     // Create fresh service instance with short cache timeout for testing
     service = new PreferencesService({ cacheTimeout: 100 });
-  });
 
   afterEach(async () => {
     if (service) {
       await service.shutdown();
     }
     resetPreferencesService();
-  });
 
   describe("Constructor and Initialization", () => {
     it("should create service with default configuration", () => {
       expect(service).toBeInstanceOf(PreferencesService);
-    });
 
     it("should create service with custom configuration", () => {
       const config: Partial<PreferencesServiceConfig> = {
@@ -71,7 +64,6 @@ describe("PreferencesService", () => {
 
       const customService = new PreferencesService(config);
       expect(customService).toBeInstanceOf(PreferencesService);
-    });
 
     it("should initialize successfully", async () => {
       mockBackend.makeRequestPublic
@@ -87,7 +79,6 @@ describe("PreferencesService", () => {
       expect(mockBackend.makeRequestPublic).toHaveBeenCalledWith(
         "/api/system/config/models"
       );
-    });
 
     it("should handle initialization errors gracefully", async () => {
       mockBackend.makeRequestPublic.mockRejectedValue(
@@ -96,8 +87,7 @@ describe("PreferencesService", () => {
 
       // Should not throw, should handle errors gracefully
       await expect(service.initialize()).resolves.not.toThrow();
-    });
-  });
+
 
   describe("getUserPreferences", () => {
     it("should retrieve user preferences from backend", async () => {
@@ -117,7 +107,6 @@ describe("PreferencesService", () => {
       expect(mockBackend.makeRequestPublic).toHaveBeenCalledWith(
         "/api/user/preferences/models"
       );
-    });
 
     it("should return defaults when backend returns empty response", async () => {
       mockBackend.makeRequestPublic.mockResolvedValue(null);
@@ -130,8 +119,7 @@ describe("PreferencesService", () => {
         preferredProviders: [],
         preferLocal: false,
         autoSelectFallback: true,
-      });
-    });
+
 
     it("should return defaults when backend request fails", async () => {
       mockBackend.makeRequestPublic.mockRejectedValue(
@@ -146,8 +134,7 @@ describe("PreferencesService", () => {
         preferredProviders: [],
         preferLocal: false,
         autoSelectFallback: true,
-      });
-    });
+
 
     it("should cache preferences and return cached value on subsequent calls", async () => {
       const mockPreferences: ModelSelectionPreferences = {
@@ -175,8 +162,7 @@ describe("PreferencesService", () => {
       expect(mockBackend.makeRequestPublic).toHaveBeenCalledTimes(1);
 
       await freshService.shutdown();
-    });
-  });
+
 
   describe("saveUserPreferences", () => {
     it("should save valid preferences to backend", async () => {
@@ -197,7 +183,6 @@ describe("PreferencesService", () => {
           body: JSON.stringify(preferences),
         }
       );
-    });
 
     it("should throw error for invalid preferences", async () => {
       const invalidPreferences = {
@@ -208,7 +193,6 @@ describe("PreferencesService", () => {
       await expect(
         service.saveUserPreferences(invalidPreferences)
       ).rejects.toThrow(PreferencesError);
-    });
 
     it("should handle backend save errors", async () => {
       const preferences: Partial<ModelSelectionPreferences> = {
@@ -218,9 +202,7 @@ describe("PreferencesService", () => {
       mockBackend.makeRequestPublic.mockRejectedValue(new Error("Save failed"));
 
       await expect(service.saveUserPreferences(preferences)).rejects.toThrow(
-        PreferencesError
       );
-    });
 
     it("should invalidate cache after successful save", async () => {
       const initialPreferences: ModelSelectionPreferences = {
@@ -253,7 +235,6 @@ describe("PreferencesService", () => {
       mockBackend.makeRequestPublic.mockResolvedValueOnce({
         ...initialPreferences,
         ...updatedPreferences,
-      });
 
       const result = await freshService.getUserPreferences();
 
@@ -261,8 +242,7 @@ describe("PreferencesService", () => {
       expect(mockBackend.makeRequestPublic).toHaveBeenCalledTimes(3); // get, save, get again
 
       await freshService.shutdown();
-    });
-  });
+
 
   describe("getDefaultModelConfig", () => {
     it("should retrieve default model config from backend", async () => {
@@ -276,7 +256,6 @@ describe("PreferencesService", () => {
       expect(mockBackend.makeRequestPublic).toHaveBeenCalledWith(
         "/api/system/config/models"
       );
-    });
 
     it("should return empty config when backend request fails", async () => {
       mockBackend.makeRequestPublic.mockRejectedValue(
@@ -286,7 +265,6 @@ describe("PreferencesService", () => {
       const result = await service.getDefaultModelConfig();
 
       expect(result).toEqual({});
-    });
 
     it("should cache config and return cached value on subsequent calls", async () => {
       const mockConfig = { defaultModel: "system-default" };
@@ -308,8 +286,7 @@ describe("PreferencesService", () => {
       expect(mockBackend.makeRequestPublic).toHaveBeenCalledTimes(1);
 
       await freshService.shutdown();
-    });
-  });
+
 
   describe("updateLastSelectedModel", () => {
     it("should update last selected model", async () => {
@@ -338,11 +315,9 @@ describe("PreferencesService", () => {
           }),
         }
       );
-    });
 
     it("should throw error for invalid model ID", async () => {
       await expect(service.updateLastSelectedModel("")).rejects.toThrow(
-        PreferencesError
       );
 
       await expect(
@@ -350,10 +325,8 @@ describe("PreferencesService", () => {
       ).rejects.toThrow(PreferencesError);
 
       await expect(service.updateLastSelectedModel(123 as any)).rejects.toThrow(
-        PreferencesError
       );
-    });
-  });
+
 
   describe("setDefaultModel", () => {
     it("should set default model", async () => {
@@ -382,22 +355,17 @@ describe("PreferencesService", () => {
           }),
         }
       );
-    });
 
     it("should throw error for invalid model ID", async () => {
       await expect(service.setDefaultModel("")).rejects.toThrow(
-        PreferencesError
       );
 
       await expect(service.setDefaultModel(null as any)).rejects.toThrow(
-        PreferencesError
       );
 
       await expect(service.setDefaultModel(123 as any)).rejects.toThrow(
-        PreferencesError
       );
-    });
-  });
+
 
   describe("resetToDefaults", () => {
     it("should reset preferences to defaults", async () => {
@@ -419,7 +387,6 @@ describe("PreferencesService", () => {
           }),
         }
       );
-    });
 
     it("should handle reset errors", async () => {
       mockBackend.makeRequestPublic.mockRejectedValue(
@@ -427,8 +394,7 @@ describe("PreferencesService", () => {
       );
 
       await expect(service.resetToDefaults()).rejects.toThrow(PreferencesError);
-    });
-  });
+
 
   describe("validatePreferences", () => {
     it("should validate correct preferences", () => {
@@ -441,14 +407,12 @@ describe("PreferencesService", () => {
       };
 
       expect(service.validatePreferences(validPreferences)).toBe(true);
-    });
 
     it("should reject invalid preferences", () => {
       expect(service.validatePreferences(null as any)).toBe(false);
       expect(service.validatePreferences(undefined as any)).toBe(false);
       expect(service.validatePreferences("string" as any)).toBe(false);
       expect(service.validatePreferences(123 as any)).toBe(false);
-    });
 
     it("should reject preferences with invalid types", () => {
       expect(
@@ -469,7 +433,6 @@ describe("PreferencesService", () => {
       expect(
         service.validatePreferences({ autoSelectFallback: "no" } as any)
       ).toBe(false);
-    });
 
     it("should accept partial preferences", () => {
       expect(service.validatePreferences({})).toBe(true);
@@ -477,8 +440,7 @@ describe("PreferencesService", () => {
         true
       );
       expect(service.validatePreferences({ preferLocal: true })).toBe(true);
-    });
-  });
+
 
   describe("mergeWithDefaults", () => {
     it("should merge partial preferences with defaults", () => {
@@ -495,8 +457,7 @@ describe("PreferencesService", () => {
         preferredProviders: [],
         preferLocal: true,
         autoSelectFallback: true,
-      });
-    });
+
 
     it("should return defaults for empty preferences", () => {
       const result = service.mergeWithDefaults({});
@@ -507,8 +468,7 @@ describe("PreferencesService", () => {
         preferredProviders: [],
         preferLocal: false,
         autoSelectFallback: true,
-      });
-    });
+
 
     it("should use custom defaults from config", () => {
       const customDefaults: ModelSelectionPreferences = {
@@ -521,20 +481,18 @@ describe("PreferencesService", () => {
 
       const customService = new PreferencesService({
         defaultPreferences: customDefaults,
-      });
 
       const result = customService.mergeWithDefaults({});
 
       expect(result).toEqual(customDefaults);
-    });
-  });
+
 
   describe("Cache Management", () => {
     it("should clear cache", async () => {
       // Load some data into cache
       mockBackend.makeRequestPublic.mockResolvedValue({
         lastSelectedModel: "test",
-      });
+
       await service.getUserPreferences();
 
       const statsBefore = service.getPreferencesStats();
@@ -544,7 +502,6 @@ describe("PreferencesService", () => {
 
       const statsAfter = service.getPreferencesStats();
       expect(statsAfter.cacheSize).toBe(0);
-    });
 
     it("should provide service statistics", async () => {
       const stats = service.getPreferencesStats();
@@ -555,8 +512,7 @@ describe("PreferencesService", () => {
       expect(stats).toHaveProperty("config");
       expect(stats).toHaveProperty("hasUserPreferences");
       expect(stats).toHaveProperty("hasDefaultConfig");
-    });
-  });
+
 
   describe("Singleton Management", () => {
     it("should return same instance from getPreferencesService", () => {
@@ -564,7 +520,6 @@ describe("PreferencesService", () => {
       const instance2 = getPreferencesService();
 
       expect(instance1).toBe(instance2);
-    });
 
     it("should create new instance after reset", () => {
       const instance1 = getPreferencesService();
@@ -572,8 +527,7 @@ describe("PreferencesService", () => {
       const instance2 = getPreferencesService();
 
       expect(instance1).not.toBe(instance2);
-    });
-  });
+
 
   describe("Error Handling", () => {
     it("should handle timeout errors", async () => {
@@ -594,7 +548,6 @@ describe("PreferencesService", () => {
       expect(result.autoSelectFallback).toBe(true); // Should have default values
 
       await fastService.shutdown();
-    });
 
     it("should handle network errors gracefully", async () => {
       mockBackend.makeRequestPublic.mockRejectedValue(
@@ -604,6 +557,5 @@ describe("PreferencesService", () => {
       // Should not throw, should return defaults
       const result = await service.getUserPreferences();
       expect(result).toBeDefined();
-    });
-  });
-});
+
+

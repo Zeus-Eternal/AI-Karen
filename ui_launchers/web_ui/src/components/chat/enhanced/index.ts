@@ -12,43 +12,28 @@
  */
 
 // Main chat interface
-export { default as EnhancedChatInterface } from './EnhancedChatInterface';
+import { export { default as EnhancedChatInterface } from './EnhancedChatInterface';
 
 // Context awareness components
-export { default as ContextPanel } from './ContextPanel';
-export { default as ContextSuggestions } from './ContextSuggestions';
-export { default as ConversationThreading } from './ConversationThreading';
+import { export { default as ContextPanel } from './ContextPanel';
+import { export { default as ContextSuggestions } from './ContextSuggestions';
+import { export { default as ConversationThreading } from './ConversationThreading';
 
 // Multimodal components
-export { default as MultimodalFileUpload } from './MultimodalFileUpload';
-export { default as FilePreview } from './FilePreview';
-export { default as ImageAnalysis } from './ImageAnalysis';
+import { export { default as MultimodalFileUpload } from './MultimodalFileUpload';
+import { export { default as FilePreview } from './FilePreview';
+import { export { default as ImageAnalysis } from './ImageAnalysis';
 
 // Reasoning and confidence components
-export { default as ReasoningVisualization } from './ReasoningVisualization';
-export { default as ConfidenceScoring } from './ConfidenceScoring';
-export { default as SourceAttribution } from './SourceAttribution';
+import { export { default as ReasoningVisualization } from './ReasoningVisualization';
+import { export { default as ConfidenceScoring } from './ConfidenceScoring';
+import { export { default as SourceAttribution } from './SourceAttribution';
 
 // Conversation management components
-export { default as ConversationManager } from './ConversationManager';
-export { default as ConversationTemplates } from './ConversationTemplates';
-export { default as ConversationExportShare } from './ConversationExportShare';
+import { export { default as ConversationManager } from './ConversationManager';
+import { export { default as ConversationTemplates } from './ConversationTemplates';
+import { export { default as ConversationExportShare } from './ConversationExportShare';
 
 // Re-export types for convenience
 export type {
-  EnhancedChatMessage,
-  ConversationContext,
-  ConversationThread,
-  ContextSuggestion,
-  MemoryReference,
-  ReasoningChain,
-  ReasoningStep,
-  SourceAttribution as SourceAttributionType,
-  Attachment,
-  AttachmentMetadata,
-  AttachmentAnalysis,
-  ConversationExport,
-  ConversationShare,
-  EnhancedChatInterfaceProps,
-  ContextPanelProps
-} from '@/types/enhanced-chat';
+import { } from '@/types/enhanced-chat';

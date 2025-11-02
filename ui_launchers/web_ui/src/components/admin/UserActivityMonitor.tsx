@@ -6,18 +6,11 @@
  * 
  * Requirements: 4.6, 7.3, 7.4
  */
-'use client';
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { useRole } from '@/hooks/useRole';
-import type { 
-  AuditLog, 
-  ActivitySummary, 
-  SecurityEvent, 
-  AdminApiResponse,
-  PaginatedResponse,
-  AuditLogFilter,
-  PaginationParams
-} from '@/types/admin';
+import type {  AuditLog, ActivitySummary, SecurityEvent, AdminApiResponse, PaginatedResponse, AuditLogFilter, PaginationParams } from '@/types/admin';
 interface UserActivityMonitorProps {
   className?: string;
 }
@@ -37,7 +30,7 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
     limit: 20,
     sort_by: 'timestamp',
     sort_order: 'desc'
-  });
+
   const [auditTotalPages, setAuditTotalPages] = useState(1);
   // Security events data
   const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
@@ -46,7 +39,7 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
     limit: 20,
     sort_by: 'created_at',
     sort_order: 'desc'
-  });
+
   // Load data based on current view
   useEffect(() => {
     loadData();
@@ -101,7 +94,7 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
           params.append(key, value.toString());
         }
       }
-    });
+
     const response = await fetch(`/api/admin/system/audit-logs?${params.toString()}`);
     if (!response.ok) {
       throw new Error('Failed to load audit logs');
@@ -169,7 +162,7 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() = aria-label="Button"> setCurrentView(tab.id as ViewMode)}
+            onClick={() => setCurrentView(tab.id as ViewMode)}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               currentView === tab.id
                 ? 'border-blue-500 text-blue-600'
@@ -248,28 +241,28 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
             type="text"
             placeholder="Filter by action..."
             value={auditFilters.action || ''}
-            onChange={(e) = aria-label="Input"> setAuditFilters(prev => ({ ...prev, action: e.target.value || undefined }))}
+            onChange={(e) => setAuditFilters(prev => ({ ...prev, action: e.target.value || undefined }))}
             className="border border-gray-300 rounded-md px-3 py-2 text-sm md:text-base lg:text-lg"
           />
           <input
             type="text"
             placeholder="Filter by resource type..."
             value={auditFilters.resource_type || ''}
-            onChange={(e) = aria-label="Input"> setAuditFilters(prev => ({ ...prev, resource_type: e.target.value || undefined }))}
+            onChange={(e) => setAuditFilters(prev => ({ ...prev, resource_type: e.target.value || undefined }))}
             className="border border-gray-300 rounded-md px-3 py-2 text-sm md:text-base lg:text-lg"
           />
           <input
             type="date"
             placeholder="Start date"
             value={auditFilters.start_date ? auditFilters.start_date.toISOString().split('T')[0] : ''}
-            onChange={(e) = aria-label="Input"> setAuditFilters(prev => ({ ...prev, start_date: e.target.value ? new Date(e.target.value) : undefined }))}
+            onChange={(e) => setAuditFilters(prev => ({ ...prev, start_date: e.target.value ? new Date(e.target.value) : undefined }))}
             className="border border-gray-300 rounded-md px-3 py-2 text-sm md:text-base lg:text-lg"
           />
           <input
             type="date"
             placeholder="End date"
             value={auditFilters.end_date ? auditFilters.end_date.toISOString().split('T')[0] : ''}
-            onChange={(e) = aria-label="Input"> setAuditFilters(prev => ({ ...prev, end_date: e.target.value ? new Date(e.target.value) : undefined }))}
+            onChange={(e) => setAuditFilters(prev => ({ ...prev, end_date: e.target.value ? new Date(e.target.value) : undefined }))}
             className="border border-gray-300 rounded-md px-3 py-2 text-sm md:text-base lg:text-lg"
           />
         </div>
@@ -280,19 +273,14 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
-                Timestamp
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
-                User
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
-                Action
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
-                Resource
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
-                IP Address
               </th>
             </tr>
           </thead>
@@ -326,18 +314,16 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
       <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
         <div className="flex-1 flex justify-between sm:hidden">
           <button
-            onClick={() = aria-label="Button"> setAuditPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+            onClick={() => setAuditPagination(prev => ({ ...prev, page: prev.page - 1 }))}
             disabled={auditPagination.page <= 1}
             className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 md:text-base lg:text-lg"
           >
-            Previous
           </button>
           <button
-            onClick={() = aria-label="Button"> setAuditPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+            onClick={() => setAuditPagination(prev => ({ ...prev, page: prev.page + 1 }))}
             disabled={auditPagination.page >= auditTotalPages}
             className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 md:text-base lg:text-lg"
           >
-            Next
           </button>
         </div>
       </div>
@@ -350,22 +336,16 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
-                Timestamp
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
-                Event Type
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
-                Severity
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
-                User
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
-                IP Address
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
-                Status
               </th>
             </tr>
           </thead>
@@ -420,7 +400,7 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 sm:w-auto md:w-full"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 "></div>
       </div>
     );
   }
@@ -437,7 +417,6 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
               onClick={loadData}
               className="mt-2 text-sm text-red-600 hover:text-red-800 underline md:text-base lg:text-lg"
              aria-label="Button">
-              Try again
             </button>
           </div>
         )}

@@ -58,7 +58,6 @@ describe('EnhancedAuthMiddleware', () => {
   beforeEach(() => {
     authMiddleware = new EnhancedAuthMiddleware();
     jest.clearAllMocks();
-  });
 
   describe('User Authentication', () => {
     it('should authenticate user successfully with all security checks', async () => {
@@ -78,7 +77,6 @@ describe('EnhancedAuthMiddleware', () => {
         last_accessed: new Date(),
         expires_at: new Date(Date.now() + 30 * 60 * 1000),
         is_active: true
-      });
 
       const result = await authMiddleware.authenticateUser(
         'test@example.com',
@@ -98,7 +96,6 @@ describe('EnhancedAuthMiddleware', () => {
       expect(mockIpManager.checkIpAccess).toHaveBeenCalledWith('192.168.1.1', mockUser);
       expect(mockMfaManager.verifyMfaCode).toHaveBeenCalledWith('user-123', '123456');
       expect(mockSecurityManager.clearFailedAttempts).toHaveBeenCalledWith('test@example.com', '192.168.1.1');
-    });
 
     it('should reject authentication for locked account', async () => {
       mockAdminUtils.getUsers.mockResolvedValue({ data: [mockUser] });
@@ -114,7 +111,6 @@ describe('EnhancedAuthMiddleware', () => {
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('ACCOUNT_LOCKED');
       expect(mockSecurityManager.recordFailedLogin).toHaveBeenCalled();
-    });
 
     it('should reject authentication for blocked IP', async () => {
       mockAdminUtils.getUsers.mockResolvedValue({ data: [mockUser] });
@@ -122,7 +118,6 @@ describe('EnhancedAuthMiddleware', () => {
       mockIpManager.checkIpAccess.mockResolvedValue({ 
         allowed: false, 
         reason: 'IP not whitelisted' 
-      });
 
       const result = await authMiddleware.authenticateUser(
         'test@example.com',
@@ -134,7 +129,6 @@ describe('EnhancedAuthMiddleware', () => {
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('IP_ACCESS_DENIED');
       expect(result.error?.message).toBe('IP not whitelisted');
-    });
 
     it('should apply progressive delay for invalid credentials', async () => {
       mockAdminUtils.getUsers.mockResolvedValue({ data: [] }); // No user found
@@ -152,7 +146,6 @@ describe('EnhancedAuthMiddleware', () => {
       expect(result.error?.code).toBe('INVALID_CREDENTIALS');
       expect(mockSecurityManager.recordFailedLogin).toHaveBeenCalled();
       expect(mockIpManager.recordFailedAttempt).toHaveBeenCalled();
-    });
 
     it('should require MFA setup for admin without MFA', async () => {
       const userWithoutMfa = { ...mockUser, two_factor_enabled: false };
@@ -163,7 +156,6 @@ describe('EnhancedAuthMiddleware', () => {
         canProceed: false,
         requiresSetup: true,
         message: 'MFA setup required'
-      });
 
       const result = await authMiddleware.authenticateUser(
         'test@example.com',
@@ -175,7 +167,6 @@ describe('EnhancedAuthMiddleware', () => {
       expect(result.success).toBe(false);
       expect(result.mfaRequired).toBe(true);
       expect(result.error?.code).toBe('MFA_SETUP_REQUIRED');
-    });
 
     it('should require TOTP code when MFA is enabled', async () => {
       mockAdminUtils.getUsers.mockResolvedValue({ data: [mockUser] });
@@ -193,7 +184,6 @@ describe('EnhancedAuthMiddleware', () => {
       expect(result.success).toBe(false);
       expect(result.mfaRequired).toBe(true);
       expect(result.error?.code).toBe('MFA_CODE_REQUIRED');
-    });
 
     it('should reject invalid MFA code', async () => {
       mockAdminUtils.getUsers.mockResolvedValue({ data: [mockUser] });
@@ -212,7 +202,6 @@ describe('EnhancedAuthMiddleware', () => {
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('INVALID_MFA_CODE');
       expect(mockSecurityManager.recordFailedLogin).toHaveBeenCalled();
-    });
 
     it('should reject when session limit exceeded', async () => {
       mockAdminUtils.getUsers.mockResolvedValue({ data: [mockUser] });
@@ -231,8 +220,7 @@ describe('EnhancedAuthMiddleware', () => {
 
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('SESSION_LIMIT_EXCEEDED');
-    });
-  });
+
 
   describe('Session Validation', () => {
     it('should validate session successfully', async () => {
@@ -273,7 +261,6 @@ describe('EnhancedAuthMiddleware', () => {
       expect(context!.ipAddress).toBe('192.168.1.1');
       expect(context!.mfaRequired).toBe(true);
       expect(context!.mfaVerified).toBe(true);
-    });
 
     it('should return null for invalid session', async () => {
       mockSessionManager.getSessionStatus.mockReturnValue(null);
@@ -281,7 +268,6 @@ describe('EnhancedAuthMiddleware', () => {
       const context = await authMiddleware.validateSession('invalid-session');
 
       expect(context).toBeNull();
-    });
 
     it('should return null for expired session', async () => {
       mockSessionManager.getSessionStatus.mockReturnValue({
@@ -291,12 +277,10 @@ describe('EnhancedAuthMiddleware', () => {
         warningActive: false,
         extensionsUsed: 0,
         maxExtensions: 3
-      });
 
       const context = await authMiddleware.validateSession('expired-session');
 
       expect(context).toBeNull();
-    });
 
     it('should log IP mismatch but continue validation', async () => {
       const mockSessionStatus = {
@@ -336,8 +320,7 @@ describe('EnhancedAuthMiddleware', () => {
           action: 'security.ip_mismatch'
         })
       );
-    });
-  });
+
 
   describe('Enhanced Logout', () => {
     it('should logout successfully with security cleanup', async () => {
@@ -350,8 +333,7 @@ describe('EnhancedAuthMiddleware', () => {
           user_id: 'user-123'
         })
       );
-    });
-  });
+
 
   describe('Middleware Wrapper', () => {
     const createMockRequest = (sessionToken?: string, ip?: string): NextRequest => {
@@ -396,7 +378,6 @@ describe('EnhancedAuthMiddleware', () => {
       );
 
       expect(mockHandler).toHaveBeenCalledWith(request, mockContext);
-    });
 
     it('should reject access without session token', async () => {
       const request = createMockRequest(); // No session token
@@ -405,7 +386,6 @@ describe('EnhancedAuthMiddleware', () => {
 
       expect(response.status).toBe(401);
       expect(mockHandler).not.toHaveBeenCalled();
-    });
 
     it('should reject access with invalid session', async () => {
       const request = createMockRequest('invalid-session');
@@ -416,7 +396,6 @@ describe('EnhancedAuthMiddleware', () => {
 
       expect(response.status).toBe(401);
       expect(mockHandler).not.toHaveBeenCalled();
-    });
 
     it('should reject access with insufficient role', async () => {
       const request = createMockRequest('session-123');
@@ -446,7 +425,6 @@ describe('EnhancedAuthMiddleware', () => {
 
       expect(response.status).toBe(403);
       expect(mockHandler).not.toHaveBeenCalled();
-    });
 
     it('should reject access when MFA required but not verified', async () => {
       const request = createMockRequest('session-123');
@@ -476,7 +454,6 @@ describe('EnhancedAuthMiddleware', () => {
 
       expect(response.status).toBe(403);
       expect(mockHandler).not.toHaveBeenCalled();
-    });
 
     it('should reject access when IP not whitelisted', async () => {
       const request = createMockRequest('session-123', '192.168.1.1');
@@ -500,7 +477,6 @@ describe('EnhancedAuthMiddleware', () => {
       mockIpManager.checkIpAccess.mockResolvedValue({ 
         allowed: false, 
         reason: 'IP not whitelisted' 
-      });
 
       const response = await authMiddleware.withEnhancedAuth(
         request,
@@ -510,8 +486,7 @@ describe('EnhancedAuthMiddleware', () => {
 
       expect(response.status).toBe(403);
       expect(mockHandler).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle authentication errors gracefully', async () => {
@@ -524,16 +499,13 @@ describe('EnhancedAuthMiddleware', () => {
 
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('AUTHENTICATION_ERROR');
-    });
 
     it('should handle session validation errors gracefully', async () => {
       mockSessionManager.getSessionStatus.mockImplementation(() => {
         throw new Error('Session error');
-      });
 
       const context = await authMiddleware.validateSession('session-123');
 
       expect(context).toBeNull();
-    });
-  });
-});
+
+

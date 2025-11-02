@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
-import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,41 +12,15 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
  */
 
 
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { } from '@/components/ui/card';
 
 
 
 
 
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
+import { } from 'recharts';
 
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Activity,
-  Server,
-  Shield,
-  TrendingUp,
-  RefreshCw,
-} from 'lucide-react';
+import { } from 'lucide-react';
 interface AuthMetrics {
   total_requests: number;
   success_count: number;
@@ -152,13 +125,13 @@ const ExtensionMonitoringDashboard: React.FC = () => {
     switch (severity) {
       case 'critical':
       case 'error':
-        return <XCircle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <XCircle className="h-4 w-4 " />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 " />;
       case 'info':
-        return <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <CheckCircle className="h-4 w-4 " />;
       default:
-        return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
+        return <Activity className="h-4 w-4 " />;
     }
   };
   const formatTimestamp = (timestamp: string) => {
@@ -173,7 +146,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
     return (
     <ErrorBoundary fallback={<div>Something went wrong in ExtensionMonitoringDashboard</div>}>
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 animate-spin sm:w-auto md:w-full" />
+        <RefreshCw className="h-8 w-8 animate-spin " />
         <span className="ml-2">Loading monitoring data...</span>
       </div>
     );
@@ -181,17 +154,16 @@ const ExtensionMonitoringDashboard: React.FC = () => {
   if (error) {
     return (
       <Alert variant="destructive">
-        <XCircle className="h-4 w-4 sm:w-auto md:w-full" />
+        <XCircle className="h-4 w-4 " />
         <AlertTitle>Error Loading Dashboard</AlertTitle>
         <AlertDescription>
           {error}
-          <button
+          <Button
             variant="outline"
             size="sm"
             className="ml-2"
             onClick={fetchDashboardData}
-           aria-label="Button">
-            Retry
+           >
           </Button>
         </AlertDescription>
       </Alert>
@@ -200,7 +172,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
   if (!dashboardData) {
     return (
       <Alert>
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>No Data Available</AlertTitle>
         <AlertDescription>
           No monitoring data is currently available.
@@ -235,28 +207,25 @@ const ExtensionMonitoringDashboard: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold">Extension Monitoring Dashboard</h1>
           <p className="text-muted-foreground">
-            Monitor extension authentication, service health, and performance
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <Badge variant={dashboardData.monitoring_active ? 'default' : 'secondary'}>
             {dashboardData.monitoring_active ? 'Active' : 'Inactive'}
           </Badge>
-          <button
+          <Button
             variant="outline"
             size="sm"
             onClick={fetchDashboardData}
             disabled={loading}
-           aria-label="Button">
+           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
           </Button>
-          <button
+          <Button
             variant={autoRefresh ? 'default' : 'outline'}
             size="sm"
-            onClick={() = aria-label="Button"> setAutoRefresh(!autoRefresh)}
+            onClick={() => setAutoRefresh(!autoRefresh)}
           >
-            Auto Refresh
           </Button>
         </div>
       </div>
@@ -265,7 +234,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2 text-yellow-500 sm:w-auto md:w-full" />
+              <AlertTriangle className="h-5 w-5 mr-2 text-yellow-500 " />
               Active Alerts ({active_alerts.length})
             </CardTitle>
           </CardHeader>
@@ -297,7 +266,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Auth Success Rate</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Shield className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{authentication.success_rate.toFixed(1)}%</div>
@@ -309,7 +278,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Service Health</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Server className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{service_health.health_percentage.toFixed(1)}%</div>
@@ -321,7 +290,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">API Error Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{api_performance.error_rate.toFixed(1)}%</div>
@@ -333,7 +302,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Avg Response Time</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Clock className="h-4 w-4 text-muted-foreground " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -358,7 +327,6 @@ const ExtensionMonitoringDashboard: React.FC = () => {
               <CardHeader>
                 <CardTitle>Authentication Success/Failure</CardTitle>
                 <CardDescription>
-                  Distribution of authentication attempts
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -387,7 +355,6 @@ const ExtensionMonitoringDashboard: React.FC = () => {
               <CardHeader>
                 <CardTitle>Authentication Metrics</CardTitle>
                 <CardDescription>
-                  Detailed authentication statistics
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -428,7 +395,6 @@ const ExtensionMonitoringDashboard: React.FC = () => {
             <CardHeader>
               <CardTitle>Service Status</CardTitle>
               <CardDescription>
-                Current status of all monitored services
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -464,7 +430,6 @@ const ExtensionMonitoringDashboard: React.FC = () => {
               <CardHeader>
                 <CardTitle>Endpoint Performance</CardTitle>
                 <CardDescription>
-                  Request count and response times by endpoint
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -488,7 +453,6 @@ const ExtensionMonitoringDashboard: React.FC = () => {
               <CardHeader>
                 <CardTitle>Response Time Percentiles</CardTitle>
                 <CardDescription>
-                  API response time distribution
                 </CardDescription>
               </CardHeader>
               <CardContent>

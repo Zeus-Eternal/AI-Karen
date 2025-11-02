@@ -2,6 +2,7 @@
  * Loading component for chat page
  */
 
+import React from 'react';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Brain } from "lucide-react";
 

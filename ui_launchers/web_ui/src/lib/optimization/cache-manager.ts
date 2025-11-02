@@ -328,7 +328,7 @@ export class CacheManager {
         key,
         accessCount: entry.accessCount,
         size: entry.size
-      });
+
       if (entry.compressed) {
         compressedEntries++;
         // Estimate compression ratio (simplified)
@@ -375,7 +375,7 @@ export class CacheManager {
           'Cache-Control': `max-age=${Math.floor(ttl / 1000)}`
         },
         body: JSON.stringify(data)
-      });
+
       if (!response.ok) {
       }
     } catch (error) {
@@ -401,7 +401,7 @@ export class CacheManager {
     try {
       await fetch(`${this.config.cdnEndpoint}/cache/${encodeURIComponent(key)}`, {
         method: 'DELETE'
-      });
+
     } catch (error) {
     }
   }
@@ -418,7 +418,7 @@ export class CacheManager {
           key,
           data,
           ttl
-        });
+
       }
     } catch (error) {
     }
@@ -441,7 +441,7 @@ export class CacheManager {
           }, [messageChannel.port2]);
           // Timeout after 1 second
           setTimeout(() => resolve(null), 1000);
-        });
+
       }
     } catch (error) {
     }
@@ -457,7 +457,7 @@ export class CacheManager {
         registration.active.postMessage({
           type: 'CACHE_DELETE',
           key
-        });
+
       }
     } catch (error) {
     }
@@ -481,7 +481,7 @@ export class CacheManager {
         await this.set(key, data);
       } catch (error) {
       }
-    });
+
     await Promise.allSettled(promises);
   }
   public async preloadCriticalData(criticalKeys: string[], dataLoader: (key: string) => Promise<any>): Promise<void> {

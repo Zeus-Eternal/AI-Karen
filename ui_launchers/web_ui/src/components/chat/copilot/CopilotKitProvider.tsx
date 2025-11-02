@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { CopilotKit } from '@copilotkit/react-core';
@@ -100,6 +100,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
     ...defaultConfig,
     ...initialConfig
   });
+
   const [isEnabled, setIsEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +127,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         origin,
         isClient: typeof window !== 'undefined'
       });
-      
+
       return fullUrl;
     } else {
       // Direct backend URL (fallback)
@@ -140,7 +141,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         fullUrl,
         fallbackUrls: configManager.getFallbackUrls()
       });
-      
+
       return fullUrl;
     }
   }, [configManager, config.endpoints.assist]);
@@ -237,6 +238,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         title: 'CopilotKit Error',
         description: errorMessage
       });
+
       return [];
     } finally {
       setIsLoading(false);
@@ -280,6 +282,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         title: 'Code Analysis Error',
         description: errorMessage
       });
+
       throw err;
     } finally {
       setIsLoading(false);
@@ -323,6 +326,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         title: 'Documentation Generation Error',
         description: errorMessage
       });
+
       throw err;
     } finally {
       setIsLoading(false);

@@ -17,11 +17,9 @@ describe('First-Run Setup API Integration', () => {
   beforeEach(() => {
     setDatabaseClient(mockDb);
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('GET /api/admin/setup/check-first-run', () => {
     it('should return first-run status when no super admin exists', async () => {
@@ -29,7 +27,6 @@ describe('First-Run Setup API Integration', () => {
       vi.spyOn(mockDb, 'query').mockResolvedValue({
         rows: [],
         rowCount: 0
-      });
 
       const request = new NextRequest('http://localhost:3000/api/admin/setup/check-first-run');
       const response = await checkFirstRun(request);
@@ -40,9 +37,8 @@ describe('First-Run Setup API Integration', () => {
       expect(data.data).toMatchObject({
         super_admin_exists: false,
         setup_completed: false
-      });
+
       expect(data.data.setup_token).toMatch(/^setup_\d+_[a-f0-9]{32}$/);
-    });
 
     it('should return setup completed when super admin exists', async () => {
       // Mock database to return existing super admin
@@ -53,7 +49,6 @@ describe('First-Run Setup API Integration', () => {
           role: 'super_admin'
         }],
         rowCount: 1
-      });
 
       const request = new NextRequest('http://localhost:3000/api/admin/setup/check-first-run');
       const response = await checkFirstRun(request);
@@ -64,9 +59,8 @@ describe('First-Run Setup API Integration', () => {
       expect(data.data).toMatchObject({
         super_admin_exists: true,
         setup_completed: true
-      });
+
       expect(data.data.setup_token).toBeUndefined();
-    });
 
     it('should handle database errors gracefully', async () => {
       // Mock database to throw error
@@ -79,8 +73,7 @@ describe('First-Run Setup API Integration', () => {
       expect(response.status).toBe(500);
       expect(data.success).toBe(false);
       expect(data.error.code).toBe('FIRST_RUN_CHECK_FAILED');
-    });
-  });
+
 
   describe('POST /api/admin/setup/create-super-admin', () => {
     const validSuperAdminRequest: CreateSuperAdminRequest = {
@@ -149,8 +142,7 @@ describe('First-Run Setup API Integration', () => {
           }
           
           return { rows: [], rowCount: 0 };
-        });
-    });
+
 
     it('should create super admin successfully with valid data', async () => {
       const request = new NextRequest('http://localhost:3000/api/admin/setup/create-super-admin', {
@@ -161,7 +153,6 @@ describe('First-Run Setup API Integration', () => {
           'x-forwarded-for': '192.168.1.1',
           'user-agent': 'Test Agent'
         }
-      });
 
       const response = await createSuperAdmin(request);
       const data = await response.json();
@@ -174,9 +165,8 @@ describe('First-Run Setup API Integration', () => {
         email: 'admin@example.com',
         full_name: 'System Administrator',
         role: 'super_admin'
-      });
+
       expect(data.data.setup_completed).toBe(true);
-    });
 
     it('should reject creation when super admin already exists', async () => {
       // Mock database to return existing super admin
@@ -195,13 +185,11 @@ describe('First-Run Setup API Integration', () => {
           }
           
           return { rows: [], rowCount: 0 };
-        });
 
       const request = new NextRequest('http://localhost:3000/api/admin/setup/create-super-admin', {
         method: 'POST',
         body: JSON.stringify(validSuperAdminRequest),
         headers: { 'Content-Type': 'application/json' }
-      });
 
       const response = await createSuperAdmin(request);
       const data = await response.json();
@@ -209,7 +197,6 @@ describe('First-Run Setup API Integration', () => {
       expect(response.status).toBe(409);
       expect(data.success).toBe(false);
       expect(data.error.code).toBe('SETUP_ALREADY_COMPLETED');
-    });
 
     it('should reject creation with existing email', async () => {
       // Mock getUsersByRole to return no super admins
@@ -233,13 +220,11 @@ describe('First-Run Setup API Integration', () => {
           }
           
           return { rows: [], rowCount: 0 };
-        });
 
       const request = new NextRequest('http://localhost:3000/api/admin/setup/create-super-admin', {
         method: 'POST',
         body: JSON.stringify(validSuperAdminRequest),
         headers: { 'Content-Type': 'application/json' }
-      });
 
       const response = await createSuperAdmin(request);
       const data = await response.json();
@@ -247,7 +232,6 @@ describe('First-Run Setup API Integration', () => {
       expect(response.status).toBe(409);
       expect(data.success).toBe(false);
       expect(data.error.code).toBe('EMAIL_ALREADY_EXISTS');
-    });
 
     describe('Validation Tests', () => {
       it('should reject weak password', async () => {
@@ -261,7 +245,6 @@ describe('First-Run Setup API Integration', () => {
           method: 'POST',
           body: JSON.stringify(weakPasswordRequest),
           headers: { 'Content-Type': 'application/json' }
-        });
 
         const response = await createSuperAdmin(request);
         const data = await response.json();
@@ -270,7 +253,6 @@ describe('First-Run Setup API Integration', () => {
         expect(data.success).toBe(false);
         expect(data.error.code).toBe('VALIDATION_ERROR');
         expect(data.error.details.password).toBeDefined();
-      });
 
       it('should reject password without special characters', async () => {
         const noSpecialCharsRequest = {
@@ -283,14 +265,12 @@ describe('First-Run Setup API Integration', () => {
           method: 'POST',
           body: JSON.stringify(noSpecialCharsRequest),
           headers: { 'Content-Type': 'application/json' }
-        });
 
         const response = await createSuperAdmin(request);
         const data = await response.json();
 
         expect(response.status).toBe(400);
         expect(data.error.details.password).toContain('special character');
-      });
 
       it('should reject mismatched passwords', async () => {
         const mismatchedPasswordRequest = {
@@ -302,14 +282,12 @@ describe('First-Run Setup API Integration', () => {
           method: 'POST',
           body: JSON.stringify(mismatchedPasswordRequest),
           headers: { 'Content-Type': 'application/json' }
-        });
 
         const response = await createSuperAdmin(request);
         const data = await response.json();
 
         expect(response.status).toBe(400);
         expect(data.error.details.confirm_password).toContain('do not match');
-      });
 
       it('should reject invalid email format', async () => {
         const invalidEmailRequest = {
@@ -321,14 +299,12 @@ describe('First-Run Setup API Integration', () => {
           method: 'POST',
           body: JSON.stringify(invalidEmailRequest),
           headers: { 'Content-Type': 'application/json' }
-        });
 
         const response = await createSuperAdmin(request);
         const data = await response.json();
 
         expect(response.status).toBe(400);
         expect(data.error.details.email).toContain('valid email');
-      });
 
       it('should reject empty full name', async () => {
         const emptyNameRequest = {
@@ -340,15 +316,13 @@ describe('First-Run Setup API Integration', () => {
           method: 'POST',
           body: JSON.stringify(emptyNameRequest),
           headers: { 'Content-Type': 'application/json' }
-        });
 
         const response = await createSuperAdmin(request);
         const data = await response.json();
 
         expect(response.status).toBe(400);
         expect(data.error.details.full_name).toContain('required');
-      });
-    });
+
 
     it('should handle database errors during creation', async () => {
       // Mock database to fail during user creation
@@ -372,13 +346,11 @@ describe('First-Run Setup API Integration', () => {
           }
           
           return { rows: [], rowCount: 0 };
-        });
 
       const request = new NextRequest('http://localhost:3000/api/admin/setup/create-super-admin', {
         method: 'POST',
         body: JSON.stringify(validSuperAdminRequest),
         headers: { 'Content-Type': 'application/json' }
-      });
 
       const response = await createSuperAdmin(request);
       const data = await response.json();
@@ -386,7 +358,6 @@ describe('First-Run Setup API Integration', () => {
       expect(response.status).toBe(500);
       expect(data.success).toBe(false);
       expect(data.error.code).toBe('SUPER_ADMIN_CREATION_FAILED');
-    });
 
     it('should extract client IP from headers correctly', async () => {
       // Reset mocks to ensure clean state
@@ -450,7 +421,6 @@ describe('First-Run Setup API Integration', () => {
           }
           
           return { rows: [], rowCount: 0 };
-        });
 
       const request = new NextRequest('http://localhost:3000/api/admin/setup/create-super-admin', {
         method: 'POST',
@@ -460,7 +430,6 @@ describe('First-Run Setup API Integration', () => {
           'x-forwarded-for': '192.168.1.100, 10.0.0.1',
           'user-agent': 'Mozilla/5.0 Test Browser'
         }
-      });
 
       const response = await createSuperAdmin(request);
       const data = await response.json();
@@ -483,8 +452,7 @@ describe('First-Run Setup API Integration', () => {
       // The IP should be the first one from x-forwarded-for
       // The IP address should be in the 6th parameter (index 5) of the log_audit_event call
       expect(superAdminAuditCall![1][5]).toBe('192.168.1.100');
-    });
-  });
+
 
   describe('Complete First-Run Setup Flow', () => {
     it('should complete the entire first-run setup process', async () => {
@@ -550,7 +518,6 @@ describe('First-Run Setup API Integration', () => {
           }
           
           return { rows: [], rowCount: 0 };
-        });
 
       const createRequest = new NextRequest('http://localhost:3000/api/admin/setup/create-super-admin', {
         method: 'POST',
@@ -561,7 +528,6 @@ describe('First-Run Setup API Integration', () => {
           confirm_password: 'SuperSecure987!@#'
         }),
         headers: { 'Content-Type': 'application/json' }
-      });
 
       const createResponse = await createSuperAdmin(createRequest);
       const createData = await createResponse.json();
@@ -578,7 +544,6 @@ describe('First-Run Setup API Integration', () => {
           role: 'super_admin'
         }],
         rowCount: 1
-      });
 
       const verifyRequest = new NextRequest('http://localhost:3000/api/admin/setup/check-first-run');
       const verifyResponse = await checkFirstRun(verifyRequest);
@@ -587,6 +552,5 @@ describe('First-Run Setup API Integration', () => {
       expect(verifyData.data.super_admin_exists).toBe(true);
       expect(verifyData.data.setup_completed).toBe(true);
       expect(verifyData.data.setup_token).toBeUndefined();
-    });
-  });
-});
+
+

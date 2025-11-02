@@ -5,15 +5,7 @@
  * with detailed context and attribution for security and compliance.
  */
 
-import { 
-  AuditEvent, 
-  AuditEventType, 
-  AuditSeverity, 
-  AuditOutcome,
-  AuditConfig,
-  AuditFilter,
-  AuditSearchResult
-} from '@/types/audit';
+import {  AuditEvent, AuditEventType, AuditSeverity, AuditOutcome, AuditConfig, AuditFilter, AuditSearchResult } from '@/types/audit';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { useAppStore } from '@/store/app-store';
 
@@ -85,7 +77,7 @@ class AuditLoggerService {
       severity: outcome === 'failure' ? 'high' : 'low',
       details,
       riskScore: outcome === 'failure' ? 7 : 1
-    });
+
   }
 
   /**
@@ -106,7 +98,7 @@ class AuditLoggerService {
       resourceName: resource,
       details,
       riskScore: severity === 'critical' ? 9 : severity === 'medium' ? 5 : 2
-    });
+
   }
 
   /**
@@ -129,7 +121,7 @@ class AuditLoggerService {
       resourceId,
       details,
       riskScore: severity === 'high' ? 6 : severity === 'medium' ? 4 : 1
-    });
+
   }
 
   /**
@@ -150,7 +142,7 @@ class AuditLoggerService {
       component,
       details,
       riskScore: severity === 'high' ? 7 : severity === 'medium' ? 4 : 1
-    });
+
   }
 
   /**
@@ -168,7 +160,7 @@ class AuditLoggerService {
       severity,
       details,
       riskScore: 1
-    });
+
   }
 
   /**
@@ -186,7 +178,7 @@ class AuditLoggerService {
       details,
       riskScore: severity === 'critical' ? 10 : severity === 'high' ? 8 : 6,
       threatLevel: severity
-    });
+
   }
 
   /**
@@ -205,8 +197,7 @@ class AuditLoggerService {
       format
     }, {
       responseType: 'blob'
-    });
-    
+
     return response as Blob;
   }
 
@@ -298,7 +289,7 @@ class AuditLoggerService {
     this.flushTimer = setInterval(() => {
       this.flush().catch(error => {
         console.error('Periodic flush failed:', error);
-      });
+
     }, interval);
   }
 
@@ -318,7 +309,7 @@ class AuditLoggerService {
             JSON.stringify({ events })
           );
         }
-      });
+
     }
   }
 
@@ -422,7 +413,7 @@ class AuditLoggerService {
     // Flush remaining events
     this.flush().catch(error => {
       console.error('Final flush failed:', error);
-    });
+
   }
 }
 
@@ -433,5 +424,5 @@ export const auditLogger = new AuditLoggerService();
 if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
   auditLogger.initialize().catch(error => {
     console.error('Failed to initialize audit logger:', error);
-  });
+
 }

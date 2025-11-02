@@ -1,24 +1,14 @@
 "use client";
 
+import React from 'react';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import {
-  AlertCircle,
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  ExternalLink,
-  Info,
-  Lightbulb,
-  RefreshCw,
-  Search,
-  Terminal,
-  Wrench
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 interface ErrorContext {
@@ -293,7 +283,7 @@ export function ErrorMessageDisplay({
     toast({
       title: "Copied to Clipboard",
       description: "Error details copied successfully.",
-    });
+
   };
 
   const searchForSolution = (query: string) => {
@@ -324,29 +314,28 @@ export function ErrorMessageDisplay({
     <div className="space-y-4">
       {/* Main Error Alert */}
       <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertCircle className="h-4 w-4 " />
         <AlertTitle className="flex items-center justify-between">
           <span>{errorInfo.error_type || 'Error'}</span>
           <div className="flex items-center gap-2">
             {onRetry && (
-              <button variant="outline" size="sm" onClick={onRetry} aria-label="Button">
-                <RefreshCw className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                Retry
+              <Button variant="outline" size="sm" onClick={onRetry} >
+                <RefreshCw className="h-3 w-3 mr-1 " />
               </Button>
             )}
-            <button
+            <Button
               variant="outline"
               size="sm"
-              onClick={() = aria-label="Button"> copyToClipboard(errorMessage)}
+              onClick={() => copyToClipboard(errorMessage)}
             >
-              <Copy className="h-3 w-3 sm:w-auto md:w-full" />
+              <Copy className="h-3 w-3 " />
             </Button>
-            <button
+            <Button
               variant="outline"
               size="sm"
-              onClick={() = aria-label="Button"> searchForSolution(errorMessage)}
+              onClick={() => searchForSolution(errorMessage)}
             >
-              <Search className="h-3 w-3 sm:w-auto md:w-full" />
+              <Search className="h-3 w-3 " />
             </Button>
           </div>
         </AlertTitle>
@@ -363,14 +352,14 @@ export function ErrorMessageDisplay({
           )}
 
           {/* Technical Details Toggle */}
-          <button
+          <Button
             variant="link"
             size="sm"
             className="p-0 h-auto text-xs sm:text-sm md:text-base"
-            onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
+            onClick={() => setShowDetails(!showDetails)}
           >
             {showDetails ? 'Hide' : 'Show'} Technical Details
-            {showDetails ? <ChevronDown className="h-3 w-3 ml-1 sm:w-auto md:w-full" /> : <ChevronRight className="h-3 w-3 ml-1 sm:w-auto md:w-full" />}
+            {showDetails ? <ChevronDown className="h-3 w-3 ml-1 " /> : <ChevronRight className="h-3 w-3 ml-1 " />}
           </Button>
 
           {showDetails && (
@@ -393,8 +382,7 @@ export function ErrorMessageDisplay({
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-              <Info className="h-4 w-4 sm:w-auto md:w-full" />
-              Possible Causes
+              <Info className="h-4 w-4 " />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -412,8 +400,7 @@ export function ErrorMessageDisplay({
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-              <Wrench className="h-4 w-4 sm:w-auto md:w-full" />
-              Solutions
+              <Wrench className="h-4 w-4 " />
             </CardTitle>
             <CardDescription>
               Step-by-step solutions to resolve this error
@@ -445,9 +432,9 @@ export function ErrorMessageDisplay({
                         {solution.success_rate}% success
                       </span>
                       {expandedSolution === solution.id ? (
-                        <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
+                        <ChevronDown className="h-4 w-4 " />
                       ) : (
-                        <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />
+                        <ChevronRight className="h-4 w-4 " />
                       )}
                     </div>
                   </div>
@@ -474,7 +461,7 @@ export function ErrorMessageDisplay({
                         {solution.steps.map((step) => (
                           <div key={step.step_number} className="border-l-2 border-primary pl-4">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-medium sm:w-auto md:w-full">
+                              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-medium ">
                                 {step.step_number}
                               </span>
                               <h6 className="text-sm font-medium md:text-base lg:text-lg">{step.title}</h6>
@@ -484,20 +471,20 @@ export function ErrorMessageDisplay({
                             {step.command && (
                               <div className="bg-muted p-2 rounded text-xs font-mono mb-2 sm:text-sm md:text-base">
                                 {step.command}
-                                <button
+                                <Button
                                   variant="ghost"
                                   size="sm"
                                   className="ml-2 h-auto p-1 sm:p-4 md:p-6"
-                                  onClick={() = aria-label="Button"> copyToClipboard(step.command!)}
+                                  onClick={() => copyToClipboard(step.command!)}
                                 >
-                                  <Copy className="h-3 w-3 sm:w-auto md:w-full" />
+                                  <Copy className="h-3 w-3 " />
                                 </Button>
                               </div>
                             )}
                             
                             {step.warning && (
                               <Alert className="mb-2">
-                                <AlertCircle className="h-3 w-3 sm:w-auto md:w-full" />
+                                <AlertCircle className="h-3 w-3 " />
                                 <AlertDescription className="text-xs sm:text-sm md:text-base">
                                   <strong>Warning:</strong> {step.warning}
                                 </AlertDescription>
@@ -520,14 +507,14 @@ export function ErrorMessageDisplay({
                         <h5 className="text-sm font-medium mb-2 md:text-base lg:text-lg">Related Links:</h5>
                         <div className="space-y-1">
                           {solution.related_links.map((link, index) => (
-                            <button
+                            <Button
                               key={index}
                               variant="link"
                               size="sm"
                               className="p-0 h-auto text-xs sm:text-sm md:text-base"
-                              onClick={() = aria-label="Button"> window.open(link.url, '_blank')}
+                              onClick={() => window.open(link.url, '_blank')}
                             >
-                              <ExternalLink className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
+                              <ExternalLink className="h-3 w-3 mr-1 " />
                               {link.title}
                             </Button>
                           ))}
@@ -547,8 +534,7 @@ export function ErrorMessageDisplay({
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
-              <Lightbulb className="h-4 w-4 sm:w-auto md:w-full" />
-              Prevention Tips
+              <Lightbulb className="h-4 w-4 " />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -564,8 +550,7 @@ export function ErrorMessageDisplay({
       {/* Dismiss Button */}
       {onDismiss && (
         <div className="flex justify-end">
-          <button variant="outline" size="sm" onClick={onDismiss} aria-label="Button">
-            Dismiss
+          <Button variant="outline" size="sm" onClick={onDismiss} >
           </Button>
         </div>
       )}

@@ -5,6 +5,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { PluginSecurityManager } from '../PluginSecurityManager';
@@ -110,7 +111,6 @@ const mockProps = {
 describe('PluginSecurityManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders security overview correctly', () => {
     render(<PluginSecurityManager {...mockProps} />);
@@ -119,14 +119,12 @@ describe('PluginSecurityManager', () => {
     expect(screen.getByText('Security Overview')).toBeInTheDocument();
     expect(screen.getByText('Sandboxed')).toBeInTheDocument();
     expect(screen.getByText('Network Access')).toBeInTheDocument();
-  });
 
   it('displays security score and level', () => {
     render(<PluginSecurityManager {...mockProps} />);
     
     // Security score should be displayed
     expect(screen.getByText(/\d+/)).toBeInTheDocument();
-  });
 
   it('shows permission management tab', async () => {
     render(<PluginSecurityManager {...mockProps} />);
@@ -137,8 +135,7 @@ describe('PluginSecurityManager', () => {
     await waitFor(() => {
       expect(screen.getByText('Permission Management')).toBeInTheDocument();
       expect(screen.getByText('Network Access')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles permission toggle', async () => {
     render(<PluginSecurityManager {...mockProps} />);
@@ -151,14 +148,12 @@ describe('PluginSecurityManager', () => {
       if (switches.length > 0) {
         fireEvent.click(switches[0]);
       }
-    });
-    
+
     // Should call the appropriate handler
     await waitFor(() => {
       expect(mockProps.onGrantPermission).toHaveBeenCalled() || 
       expect(mockProps.onRevokePermission).toHaveBeenCalled();
-    });
-  });
+
 
   it('shows security policy configuration', async () => {
     render(<PluginSecurityManager {...mockProps} />);
@@ -169,8 +164,7 @@ describe('PluginSecurityManager', () => {
     await waitFor(() => {
       expect(screen.getByText('Security Policy')).toBeInTheDocument();
       expect(screen.getByText('Access Controls')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles trusted domain management', async () => {
     render(<PluginSecurityManager {...mockProps} />);
@@ -181,8 +175,7 @@ describe('PluginSecurityManager', () => {
     await waitFor(() => {
       expect(screen.getByText('Trusted Domains')).toBeInTheDocument();
       expect(screen.getByText('api.example.com')).toBeInTheDocument();
-    });
-  });
+
 
   it('displays security violations', async () => {
     render(<PluginSecurityManager {...mockProps} />);
@@ -192,8 +185,7 @@ describe('PluginSecurityManager', () => {
     
     await waitFor(() => {
       expect(screen.getByText('Security Violations')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles save policy action', async () => {
     render(<PluginSecurityManager {...mockProps} />);
@@ -203,15 +195,13 @@ describe('PluginSecurityManager', () => {
     
     await waitFor(() => {
       expect(mockProps.onUpdateSecurity).toHaveBeenCalled();
-    });
-  });
+
 
   it('respects read-only mode', () => {
     render(<PluginSecurityManager {...mockProps} readOnly />);
     
     const saveButton = screen.queryByRole('button', { name: /save policy/i });
     expect(saveButton).not.toBeInTheDocument();
-  });
 
   it('shows advanced settings when enabled', async () => {
     render(<PluginSecurityManager {...mockProps} />);
@@ -222,6 +212,5 @@ describe('PluginSecurityManager', () => {
     await waitFor(() => {
       const advancedTab = screen.getByRole('tab', { name: /advanced/i });
       expect(advancedTab).toBeInTheDocument();
-    });
-  });
-});
+
+

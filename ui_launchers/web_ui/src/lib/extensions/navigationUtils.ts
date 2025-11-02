@@ -2,13 +2,7 @@
  * Navigation utilities for the hierarchical extension management system
  */
 import React from 'react';
-import type {
-  ExtensionCategory,
-  NavigationLevel,
-  BreadcrumbItem,
-  NavigationState,
-  ExtensionAction
-} from '../../extensions/types';
+import type { ExtensionCategory, NavigationLevel, BreadcrumbItem, NavigationState, ExtensionAction } from '../../extensions/types';
 /**
  * Creates a breadcrumb item for navigation
  */

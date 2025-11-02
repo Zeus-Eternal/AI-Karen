@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import EnhancedChatInterface from '../EnhancedChatInterface';
@@ -34,7 +35,6 @@ describe('EnhancedChatInterface Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders the complete enhanced chat interface', () => {
     render(
@@ -50,7 +50,6 @@ describe('EnhancedChatInterface Integration', () => {
     expect(screen.getByText('Enhanced Chat')).toBeInTheDocument();
     expect(screen.getByText('Context-Aware')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Type your message...')).toBeInTheDocument();
-  });
 
   it('handles message sending and receiving flow', async () => {
     render(
@@ -74,7 +73,6 @@ describe('EnhancedChatInterface Integration', () => {
     // Check that user message appears
     await waitFor(() => {
       expect(screen.getByText('Hello, how can you help me?')).toBeInTheDocument();
-    });
 
     // Check that onMessageSent was called
     expect(mockOnMessageSent).toHaveBeenCalledWith(
@@ -99,7 +97,6 @@ describe('EnhancedChatInterface Integration', () => {
         status: 'completed'
       })
     );
-  });
 
   it('displays context suggestions after messages', async () => {
     render(
@@ -117,13 +114,11 @@ describe('EnhancedChatInterface Integration', () => {
     // Wait for messages to appear
     await waitFor(() => {
       expect(screen.getByText('Show me some code examples')).toBeInTheDocument();
-    });
 
     // Wait for AI response and suggestions
     await waitFor(() => {
       expect(screen.getByText('Smart Suggestions')).toBeInTheDocument();
     }, { timeout: 3000 });
-  });
 
   it('handles context panel toggle', () => {
     render(
@@ -142,7 +137,6 @@ describe('EnhancedChatInterface Integration', () => {
 
     // Context panel should still be visible (ResizablePanel is mocked)
     expect(screen.getByText('Context')).toBeInTheDocument();
-  });
 
   it('handles conversation threading', async () => {
     render(
@@ -156,7 +150,6 @@ describe('EnhancedChatInterface Integration', () => {
     // Should show conversation threading in context panel
     expect(screen.getByText('Conversations')).toBeInTheDocument();
     expect(screen.getByText('Current Conversation')).toBeInTheDocument();
-  });
 
   it('handles export functionality', async () => {
     const mockExport = vi.fn().mockResolvedValue(undefined);
@@ -185,7 +178,6 @@ describe('EnhancedChatInterface Integration', () => {
     // Should open export dialog
     await waitFor(() => {
       expect(screen.getByText('Export Conversation')).toBeInTheDocument();
-    });
 
     // Click export in dialog
     const exportDialogButton = screen.getByRole('button', { name: /^Export$/ });
@@ -200,8 +192,7 @@ describe('EnhancedChatInterface Integration', () => {
           includeAttachments: true
         })
       );
-    });
-  });
+
 
   it('handles share functionality', async () => {
     const mockShare = vi.fn().mockResolvedValue('https://example.com/share/123');
@@ -230,7 +221,6 @@ describe('EnhancedChatInterface Integration', () => {
     // Should open share dialog
     await waitFor(() => {
       expect(screen.getByText('Share Conversation')).toBeInTheDocument();
-    });
 
     // Click create share link
     const createLinkButton = screen.getByText('Create Share Link');
@@ -245,8 +235,7 @@ describe('EnhancedChatInterface Integration', () => {
           allowDownload: false
         })
       );
-    });
-  });
+
 
   it('handles keyboard shortcuts for message sending', async () => {
     render(
@@ -263,10 +252,8 @@ describe('EnhancedChatInterface Integration', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Test keyboard shortcut')).toBeInTheDocument();
-    });
 
     expect(mockOnMessageSent).toHaveBeenCalled();
-  });
 
   it('prevents sending empty messages', () => {
     render(
@@ -283,7 +270,6 @@ describe('EnhancedChatInterface Integration', () => {
     // Try to send empty message
     fireEvent.click(sendButton);
     expect(mockOnMessageSent).not.toHaveBeenCalled();
-  });
 
   it('shows loading state during message processing', async () => {
     render(
@@ -297,8 +283,7 @@ describe('EnhancedChatInterface Integration', () => {
     // Should show loading indicator
     await waitFor(() => {
       expect(screen.getByText('AI is thinking...')).toBeInTheDocument();
-    });
-  });
+
 
   it('displays message metadata correctly', async () => {
     const messageWithMetadata: EnhancedChatMessage = {
@@ -325,7 +310,6 @@ describe('EnhancedChatInterface Integration', () => {
     expect(screen.getByText('Response with metadata')).toBeInTheDocument();
     expect(screen.getByText('95% confident')).toBeInTheDocument();
     expect(screen.getByText('enhanced-ai-v1')).toBeInTheDocument();
-  });
 
   it('handles context changes and updates', async () => {
     render(
@@ -341,10 +325,8 @@ describe('EnhancedChatInterface Integration', () => {
     // Wait for message to be added and context to update
     await waitFor(() => {
       expect(mockOnContextChange).toHaveBeenCalled();
-    });
 
     const contextCall = mockOnContextChange.mock.calls[0][0];
     expect(contextCall.currentThread.messages).toHaveLength(1);
     expect(contextCall.currentThread.messages[0].content).toBe('Context test message');
-  });
-});
+

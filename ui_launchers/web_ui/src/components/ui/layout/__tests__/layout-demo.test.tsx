@@ -8,6 +8,7 @@
  */
 
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import LayoutDemo from './layout-demo';
@@ -17,8 +18,7 @@ describe('LayoutDemo', () => {
     render(<LayoutDemo />);
     
     expect(screen.getByText('Modern Layout System Demo')).toBeInTheDocument();
-  });
-  
+
   it('renders all section headers', () => {
     render(<LayoutDemo />);
     
@@ -26,31 +26,27 @@ describe('LayoutDemo', () => {
     expect(screen.getByText('Flex Container Examples')).toBeInTheDocument();
     expect(screen.getByText('Container Queries Example')).toBeInTheDocument();
     expect(screen.getByText('Mixed Layout Example')).toBeInTheDocument();
-  });
-  
+
   it('renders grid container items', () => {
     render(<LayoutDemo />);
     
     expect(screen.getByText('Grid Item 1')).toBeInTheDocument();
     expect(screen.getByText('Grid Item 2')).toBeInTheDocument();
     expect(screen.getByText('Grid Item 3')).toBeInTheDocument();
-  });
-  
+
   it('renders flex container items', () => {
     render(<LayoutDemo />);
     
     expect(screen.getByText('HStack Item 1')).toBeInTheDocument();
     expect(screen.getByText('VStack Item 1')).toBeInTheDocument();
     expect(screen.getByText('Responsive Flex 1')).toBeInTheDocument();
-  });
-  
+
   it('renders container query items', () => {
     render(<LayoutDemo />);
     
     expect(screen.getByText('Container Query 1')).toBeInTheDocument();
     expect(screen.getByText('Container Query 2')).toBeInTheDocument();
-  });
-  
+
   it('renders mixed layout content', () => {
     render(<LayoutDemo />);
     
@@ -58,5 +54,4 @@ describe('LayoutDemo', () => {
     expect(screen.getByText('Sidebar')).toBeInTheDocument();
     expect(screen.getByText('Content 1')).toBeInTheDocument();
     expect(screen.getByText('Sidebar Item 1')).toBeInTheDocument();
-  });
-});
+

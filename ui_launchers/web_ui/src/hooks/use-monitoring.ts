@@ -35,7 +35,6 @@ export function useMonitoring() {
       alerts: [],
     },
     lastUpdate: '',
-  });
 
   const updateHealthMetrics = useCallback((metrics: HealthMetrics) => {
     setState(prev => ({
@@ -157,7 +156,6 @@ export function useMonitoring() {
         alerts: [],
       },
       lastUpdate: new Date().toISOString(),
-    });
 
     // Set up listeners
     const unsubscribeHealthMetrics = healthMonitor.onMetricsUpdate(updateHealthMetrics);

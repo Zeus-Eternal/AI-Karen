@@ -42,7 +42,6 @@ describe('Basic Accessibility Tests', () => {
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();
-  });
 
   it('should test button accessibility', async () => {
     const { container } = render(
@@ -55,7 +54,6 @@ describe('Basic Accessibility Tests', () => {
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();
-  });
 
   it('should test form accessibility', async () => {
     const { container } = render(
@@ -89,7 +87,6 @@ describe('Basic Accessibility Tests', () => {
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();
-  });
 
   it('should test table accessibility', async () => {
     const { container } = render(
@@ -119,7 +116,6 @@ describe('Basic Accessibility Tests', () => {
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();
-  });
 
   it('should test ARIA attributes', async () => {
     const { container } = render(
@@ -129,7 +125,6 @@ describe('Basic Accessibility Tests', () => {
           aria-controls="menu"
           aria-haspopup="true"
         >
-          Menu
         </button>
         
         <div id="menu" hidden>
@@ -140,18 +135,15 @@ describe('Basic Accessibility Tests', () => {
         </div>
         
         <div aria-live="polite" id="status">
-          Status messages appear here
         </div>
         
         <div aria-live="assertive" id="errors">
-          Error messages appear here
         </div>
       </div>
     );
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();
-  });
 
   it('should test landmark structure', async () => {
     const { container } = render(
@@ -187,7 +179,6 @@ describe('Basic Accessibility Tests', () => {
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();
-  });
 
   it('should test color contrast requirements', async () => {
     const { container } = render(
@@ -208,9 +199,8 @@ describe('Basic Accessibility Tests', () => {
       rules: {
         'color-contrast': { enabled: true }
       }
-    });
+
     expect(results).toHaveNoViolations();
-  });
 
   it('should test focus management', async () => {
     const { container } = render(
@@ -235,5 +225,4 @@ describe('Basic Accessibility Tests', () => {
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();
-  });
-});
+

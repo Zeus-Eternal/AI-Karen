@@ -48,7 +48,6 @@ class ReasoningService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
-      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

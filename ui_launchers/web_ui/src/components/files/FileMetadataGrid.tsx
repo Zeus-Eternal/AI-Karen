@@ -1,43 +1,20 @@
+
+"use client";
 import React, { useMemo, useCallback, useState } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridReadyEvent, SelectionChangedEvent, CellClickedEvent } from 'ag-grid-community';
-import { 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
-'use client';
+
+import { } from 'lucide-react';
 
 
 
-
-
-  File, 
-  Image, 
-  Video, 
-  Music, 
-  Archive, 
-  Code, 
-  FileText, 
-  Download, 
-  Eye, 
-  Trash2,
-  MoreHorizontal,
-  Calendar,
-  HardDrive,
-  Tag
-} from 'lucide-react';
-
-
-
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
+import { } from '@/components/ui/dropdown-menu';
 
 
 
@@ -94,7 +71,7 @@ const formatDate = (dateString: string): string => {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    });
+
   } catch {
     return dateString;
   }
@@ -104,13 +81,13 @@ const formatDate = (dateString: string): string => {
 const FileIconRenderer = ({ data }: { data: FileMetadata }) => {
   const getIcon = () => {
     switch (data.file_type) {
-      case 'image': return <Image className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
-      case 'video': return <Video className="h-4 w-4 text-purple-600 sm:w-auto md:w-full" />;
-      case 'audio': return <Music className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />;
-      case 'document': return <FileText className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
-      case 'code': return <Code className="h-4 w-4 text-orange-600 sm:w-auto md:w-full" />;
-      case 'archive': return <Archive className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
-      default: return <File className="h-4 w-4 text-gray-400 sm:w-auto md:w-full" />;
+      case 'image': return <Image className="h-4 w-4 text-green-600 " />;
+      case 'video': return <Video className="h-4 w-4 text-purple-600 " />;
+      case 'audio': return <Music className="h-4 w-4 text-blue-600 " />;
+      case 'document': return <FileText className="h-4 w-4 text-gray-600 " />;
+      case 'code': return <Code className="h-4 w-4 text-orange-600 " />;
+      case 'archive': return <Archive className="h-4 w-4 text-yellow-600 " />;
+      default: return <File className="h-4 w-4 text-gray-400 " />;
     }
   };
 
@@ -177,21 +154,19 @@ const ActionsRenderer = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button variant="ghost" size="sm" className="h-8 w-8 p-0 sm:w-auto md:w-full" aria-label="Button">
-          <MoreHorizontal className="h-4 w-4 sm:w-auto md:w-full" />
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 " >
+          <MoreHorizontal className="h-4 w-4 " />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {data.preview_available && onPreview && (
           <DropdownMenuItem onClick={() => onPreview(data.file_id)}>
-            <Eye className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-            Preview
+            <Eye className="mr-2 h-4 w-4 " />
           </DropdownMenuItem>
         )}
         {onDownload && (
           <DropdownMenuItem onClick={() => onDownload(data.file_id)}>
-            <Download className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-            Download
+            <Download className="mr-2 h-4 w-4 " />
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
@@ -200,8 +175,7 @@ const ActionsRenderer = ({
             onClick={() => onDelete(data.file_id)}
             className="text-destructive"
           >
-            <Trash2 className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-            Delete
+            <Trash2 className="mr-2 h-4 w-4 " />
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
@@ -322,14 +296,12 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
         <div className="flex gap-1">
           {data.has_thumbnail && (
             <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-              <Image className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
-              Thumb
+              <Image className="mr-1 h-3 w-3 " />
             </Badge>
           )}
           {data.extracted_content_available && (
             <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-              <FileText className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
-              Text
+              <FileText className="mr-1 h-3 w-3 " />
             </Badge>
           )}
         </div>
@@ -420,7 +392,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <File className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <File className="h-4 w-4 text-muted-foreground " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Total Files</p>
                 <p className="text-2xl font-bold">{stats.totalFiles}</p>
@@ -432,7 +404,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <HardDrive className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <HardDrive className="h-4 w-4 text-muted-foreground " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Total Size</p>
                 <p className="text-2xl font-bold">{stats.totalSize}</p>
@@ -444,7 +416,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Tag className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Tag className="h-4 w-4 text-muted-foreground " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Selected</p>
                 <p className="text-2xl font-bold">{selectedFiles.length}</p>
@@ -456,7 +428,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Calendar className="h-4 w-4 text-muted-foreground " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Most Common</p>
                 <p className="text-lg font-bold capitalize">
@@ -472,7 +444,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <File className="h-5 w-5 sm:w-auto md:w-full" />
+            <File className="h-5 w-5 " />
             File Metadata ({files.length} files)
           </CardTitle>
         </CardHeader>
@@ -492,12 +464,12 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
               loading={loading}
               loadingOverlayComponent={() => (
                 <div className="flex items-center justify-center h-full">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary "></div>
                 </div>
               )}
               noRowsOverlayComponent={() => (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <File className="h-12 w-12 mb-2 sm:w-auto md:w-full" />
+                  <File className="h-12 w-12 mb-2 " />
                   <p>No files found</p>
                 </div>
               )}

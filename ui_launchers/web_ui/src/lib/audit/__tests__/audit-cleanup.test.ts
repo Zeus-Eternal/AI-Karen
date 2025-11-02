@@ -6,12 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
-import { 
-  AuditCleanupManager,
-  getAuditCleanupManager,
-  auditCleanup,
-  DEFAULT_RETENTION_POLICIES
-} from '../audit-cleanup';
+import {  AuditCleanupManager, getAuditCleanupManager, auditCleanup, DEFAULT_RETENTION_POLICIES } from '../audit-cleanup';
 import { getDatabaseClient } from '@/lib/database/client';
 import { getAuditLogger } from '../audit-logger';
 
@@ -36,11 +31,9 @@ describe('AuditCleanupManager', () => {
   beforeEach(() => {
     cleanupManager = new AuditCleanupManager();
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('getCleanupStats', () => {
     it('should return cleanup statistics', async () => {
@@ -56,7 +49,6 @@ describe('AuditCleanupManager', () => {
         })
         .mockResolvedValueOnce({
           rows: [{ logs_to_delete: '200' }]
-        });
 
       const stats = await cleanupManager.getCleanupStats();
 
@@ -67,10 +59,8 @@ describe('AuditCleanupManager', () => {
         oldest_log_date: new Date('2023-01-01T00:00:00Z'),
         newest_log_date: new Date('2024-01-01T00:00:00Z'),
         size_estimate_mb: 0
-      });
 
       expect(mockDb.query).toHaveBeenCalledTimes(2);
-    });
 
     it('should handle null dates gracefully', async () => {
       mockDb.query
@@ -84,21 +74,18 @@ describe('AuditCleanupManager', () => {
         })
         .mockResolvedValueOnce({
           rows: [{ logs_to_delete: '0' }]
-        });
 
       const stats = await cleanupManager.getCleanupStats();
 
       expect(stats.oldest_log_date).toBeNull();
       expect(stats.newest_log_date).toBeNull();
       expect(stats.total_logs).toBe(0);
-    });
-  });
+
 
   describe('cleanupLogs', () => {
     it('should perform dry run cleanup', async () => {
       mockDb.query.mockResolvedValueOnce({
         rows: [{ count: '150' }]
-      });
 
       const result = await cleanupManager.cleanupLogs(90, undefined, undefined, true);
 
@@ -109,7 +96,6 @@ describe('AuditCleanupManager', () => {
 
       // Should only call count query, not delete
       expect(mockDb.query).toHaveBeenCalledTimes(1);
-    });
 
     it('should perform actual cleanup', async () => {
       mockDb.query
@@ -118,7 +104,6 @@ describe('AuditCleanupManager', () => {
         })
         .mockResolvedValueOnce({
           rowCount: 75
-        });
 
       mockAuditLogger.log.mockResolvedValueOnce('audit-cleanup-123');
 
@@ -141,7 +126,6 @@ describe('AuditCleanupManager', () => {
           })
         })
       );
-    });
 
     it('should cleanup with resource type filter', async () => {
       mockDb.query
@@ -150,7 +134,6 @@ describe('AuditCleanupManager', () => {
         })
         .mockResolvedValueOnce({
           rowCount: 25
-        });
 
       mockAuditLogger.log.mockResolvedValueOnce('audit-cleanup-filtered');
 
@@ -169,7 +152,6 @@ describe('AuditCleanupManager', () => {
       expect(countCall[0]).toContain('resource_type IN');
       expect(countCall[1]).toContain('user');
       expect(countCall[1]).toContain('session');
-    });
 
     it('should cleanup with action filter', async () => {
       mockDb.query
@@ -178,7 +160,6 @@ describe('AuditCleanupManager', () => {
         })
         .mockResolvedValueOnce({
           rowCount: 10
-        });
 
       mockAuditLogger.log.mockResolvedValueOnce('audit-cleanup-actions');
 
@@ -197,7 +178,6 @@ describe('AuditCleanupManager', () => {
       expect(countCall[0]).toContain('action IN');
       expect(countCall[1]).toContain('auth.login');
       expect(countCall[1]).toContain('auth.logout');
-    });
 
     it('should handle cleanup errors', async () => {
       const dbError = new Error('Database connection failed');
@@ -209,8 +189,7 @@ describe('AuditCleanupManager', () => {
       expect(result.deleted_count).toBe(0);
       expect(result.error).toBe('Database connection failed');
       expect(result.policy_applied).toContain('failed');
-    });
-  });
+
 
   describe('cleanupWithDefaultPolicies', () => {
     it('should run all enabled default policies', async () => {
@@ -228,8 +207,7 @@ describe('AuditCleanupManager', () => {
       results.forEach((result, index) => {
         expect(result.success).toBe(true);
         expect(result.policy_applied).toBe(DEFAULT_RETENTION_POLICIES[index].name);
-      });
-    });
+
 
     it('should skip disabled policies', async () => {
       // All default policies should be enabled
@@ -238,9 +216,8 @@ describe('AuditCleanupManager', () => {
       expect(results.length).toBeGreaterThan(0);
       results.forEach(result => {
         expect(result.success).toBe(true);
-      });
-    });
-  });
+
+
 
   describe('archiveLogs', () => {
     it('should archive logs successfully', async () => {
@@ -273,7 +250,6 @@ describe('AuditCleanupManager', () => {
           })
         })
       );
-    });
 
     it('should handle archive errors', async () => {
       const archiveError = new Error('Archive operation failed');
@@ -284,8 +260,7 @@ describe('AuditCleanupManager', () => {
       expect(result.success).toBe(false);
       expect(result.archived_count).toBe(0);
       expect(result.error).toBe('Archive operation failed');
-    });
-  });
+
 
   describe('getArchiveStats', () => {
     it('should return archive statistics', async () => {
@@ -296,7 +271,6 @@ describe('AuditCleanupManager', () => {
           newest_archived: '2023-12-31T23:59:59Z',
           archive_size: '5 MB'
         }]
-      });
 
       const stats = await cleanupManager.getArchiveStats();
 
@@ -305,8 +279,7 @@ describe('AuditCleanupManager', () => {
         oldest_archived: new Date('2023-01-01T00:00:00Z'),
         newest_archived: new Date('2023-12-31T23:59:59Z'),
         archive_size_mb: 0
-      });
-    });
+
 
     it('should handle archive table not existing', async () => {
       mockDb.query.mockRejectedValueOnce(new Error('Table does not exist'));
@@ -318,9 +291,8 @@ describe('AuditCleanupManager', () => {
         oldest_archived: null,
         newest_archived: null,
         archive_size_mb: 0
-      });
-    });
-  });
+
+
 
   describe('optimizeAuditTable', () => {
     it('should optimize audit tables successfully', async () => {
@@ -336,7 +308,6 @@ describe('AuditCleanupManager', () => {
 
       expect(mockDb.query).toHaveBeenCalledWith('VACUUM ANALYZE audit_logs');
       expect(mockDb.query).toHaveBeenCalledWith('VACUUM ANALYZE audit_logs_archive');
-    });
 
     it('should handle optimization errors', async () => {
       const optimizeError = new Error('VACUUM failed');
@@ -346,7 +317,6 @@ describe('AuditCleanupManager', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('VACUUM failed');
-    });
 
     it('should continue if archive table optimization fails', async () => {
       mockDb.query
@@ -356,8 +326,7 @@ describe('AuditCleanupManager', () => {
       const result = await cleanupManager.optimizeAuditTable();
 
       expect(result.success).toBe(true); // Should still succeed
-    });
-  });
+
 
   describe('scheduleCleanup', () => {
     it('should run scheduled cleanup', async () => {
@@ -388,9 +357,8 @@ describe('AuditCleanupManager', () => {
           })
         })
       );
-    });
-  });
-});
+
+
 
 describe('DEFAULT_RETENTION_POLICIES', () => {
   it('should have valid retention policies', () => {
@@ -401,8 +369,7 @@ describe('DEFAULT_RETENTION_POLICIES', () => {
       expect(policy.description).toBeDefined();
       expect(policy.retention_days).toBeGreaterThan(0);
       expect(typeof policy.enabled).toBe('boolean');
-    });
-  });
+
 
   it('should have security events with longest retention', () => {
     const securityPolicy = DEFAULT_RETENTION_POLICIES.find(p => 
@@ -411,7 +378,6 @@ describe('DEFAULT_RETENTION_POLICIES', () => {
 
     expect(securityPolicy).toBeDefined();
     expect(securityPolicy!.retention_days).toBe(730); // 2 years
-  });
 
   it('should have authentication events with shortest retention', () => {
     const authPolicy = DEFAULT_RETENTION_POLICIES.find(p => 
@@ -420,8 +386,7 @@ describe('DEFAULT_RETENTION_POLICIES', () => {
 
     expect(authPolicy).toBeDefined();
     expect(authPolicy!.retention_days).toBe(90); // 90 days
-  });
-});
+
 
 describe('getAuditCleanupManager', () => {
   it('should return singleton instance', () => {
@@ -429,8 +394,7 @@ describe('getAuditCleanupManager', () => {
     const instance2 = getAuditCleanupManager();
 
     expect(instance1).toBe(instance2);
-  });
-});
+
 
 describe('auditCleanup convenience functions', () => {
   beforeEach(() => {
@@ -438,7 +402,6 @@ describe('auditCleanup convenience functions', () => {
       .mockResolvedValue({ rows: [{ count: '10' }] })
       .mockResolvedValue({ rowCount: 10 });
     mockAuditLogger.log.mockResolvedValue('cleanup-convenience');
-  });
 
   it('should cleanup logs older than specified days', async () => {
     const result = await auditCleanup.cleanupOlderThan(60, true);
@@ -446,7 +409,6 @@ describe('auditCleanup convenience functions', () => {
     expect(result.success).toBe(true);
     expect(result.deleted_count).toBe(10);
     expect(result.policy_applied).toContain('Dry run');
-  });
 
   it('should cleanup auth logs', async () => {
     const result = await auditCleanup.cleanupAuthLogs(true);
@@ -458,7 +420,6 @@ describe('auditCleanup convenience functions', () => {
     const countCall = mockDb.query.mock.calls[0];
     expect(countCall[0]).toContain('resource_type IN');
     expect(countCall[0]).toContain('action IN');
-  });
 
   it('should cleanup user logs', async () => {
     const result = await auditCleanup.cleanupUserLogs(true);
@@ -470,7 +431,6 @@ describe('auditCleanup convenience functions', () => {
     const countCall = mockDb.query.mock.calls[0];
     expect(countCall[0]).toContain('resource_type IN');
     expect(countCall[1]).toContain('user');
-  });
 
   it('should archive old logs', async () => {
     // Mock archive table creation
@@ -486,7 +446,6 @@ describe('auditCleanup convenience functions', () => {
 
     expect(result.success).toBe(true);
     expect(result.archived_count).toBe(25);
-  });
 
   it('should get cleanup stats', async () => {
     mockDb.query
@@ -500,13 +459,11 @@ describe('auditCleanup convenience functions', () => {
       })
       .mockResolvedValueOnce({
         rows: [{ logs_to_delete: '20' }]
-      });
 
     const stats = await auditCleanup.getStats();
 
     expect(stats.total_logs).toBe(100);
     expect(stats.logs_to_delete).toBe(20);
-  });
 
   it('should optimize audit table', async () => {
     mockDb.query
@@ -516,7 +473,6 @@ describe('auditCleanup convenience functions', () => {
     const result = await auditCleanup.optimize();
 
     expect(result.success).toBe(true);
-  });
 
   it('should run default cleanup', async () => {
     const results = await auditCleanup.runDefaultCleanup(true);
@@ -526,6 +482,5 @@ describe('auditCleanup convenience functions', () => {
     
     results.forEach(result => {
       expect(result.success).toBe(true);
-    });
-  });
-});
+
+

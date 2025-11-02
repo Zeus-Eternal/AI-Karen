@@ -2,9 +2,9 @@
  * Dashboard components exports
  */
 
-export { DashboardContainer } from './DashboardContainer';
-export { WidgetBase } from './WidgetBase';
-export { DraggableWidget } from './DraggableWidget';
+import { export { DashboardContainer } from './DashboardContainer';
+import { export { WidgetBase } from './WidgetBase';
+import { export { DraggableWidget } from './DraggableWidget';
 export { 
   widgetRegistry,
   getWidgetComponent,
@@ -12,12 +12,12 @@ export {
   getAvailableWidgetTypes,
   getWidgetInfo,
   createWidgetConfig
-} from './WidgetRegistry';
+import { } from './WidgetRegistry';
 
 // Dashboard customization components
-export { TimeRangeSelector } from './TimeRangeSelector';
-export { DashboardFilters } from './DashboardFilters';
-export { DashboardTemplateSelector } from './DashboardTemplateSelector';
-export { DashboardExportImport } from './DashboardExportImport';
+import { export { TimeRangeSelector } from './TimeRangeSelector';
+import { export { DashboardFilters } from './DashboardFilters';
+import { export { DashboardTemplateSelector } from './DashboardTemplateSelector';
+import { export { DashboardExportImport } from './DashboardExportImport';
 
-export type { WidgetBaseProps } from './WidgetBase';
+import { export type { WidgetBaseProps } from './WidgetBase';

@@ -1,8 +1,7 @@
-import * as React from "react"
-import { render, screen } from "@testing-library/react"
-import { describe, it, expect } from "vitest"
-import { Container, FlexContainer, GridContainer, CenteredContainer } from "../container"
-
+import * as React from "react";
+import { render, screen } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+import { Container, FlexContainer, GridContainer, CenteredContainer } from "../container";
 describe("Container Polymorphic Component", () => {
   it("should render as div by default", () => {
     render(<Container data-testid="container">Default container</Container>)

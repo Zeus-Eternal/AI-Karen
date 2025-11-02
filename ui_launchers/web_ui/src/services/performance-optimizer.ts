@@ -199,7 +199,7 @@ export class PerformanceOptimizer {
     routes.forEach(route => {
       // Preload next likely routes based on user behavior
       this.preloadRoute(route);
-    });
+
   }
   /**
    * Implement component-based code splitting
@@ -217,8 +217,8 @@ export class PerformanceOptimizer {
         impact: 'Reduces initial bundle size and improves loading performance',
         implementation: 'Use React.lazy() and Suspense to split this component',
         estimatedGain: Math.min(30, (component.size / 1024) * 5),
-      });
-    });
+
+
   }
   /**
    * Set up lazy loading for images
@@ -236,15 +236,15 @@ export class PerformanceOptimizer {
               this.metrics.imageOptimization.imagesOptimized++;
             }
           }
-        });
+
       }, {
         rootMargin: '50px 0px',
         threshold: 0.01,
-      });
+
       // Observe all images with data-src attribute
       document.querySelectorAll('img[data-src]').forEach(img => {
         imageObserver.observe(img);
-      });
+
     }
   }
   /**
@@ -262,8 +262,8 @@ export class PerformanceOptimizer {
             img.src = webpSrc;
             this.metrics.imageOptimization.webpConversions++;
           }
-        });
-      });
+
+
     }
   }
   /**
@@ -276,7 +276,7 @@ export class PerformanceOptimizer {
           this.monitorServiceWorkerCache(registration);
         })
         .catch(error => {
-        });
+
     }
   }
   /**
@@ -295,7 +295,7 @@ export class PerformanceOptimizer {
           this.preloadBasedOnBehavior();
           break;
       }
-    });
+
   }
   /**
    * Monitor garbage collection
@@ -310,7 +310,7 @@ export class PerformanceOptimizer {
               this.analyzeGCPattern(entry);
             }
           }
-        });
+
         gcObserver.observe({ entryTypes: ['measure'] });
         this.observers.push(gcObserver);
       } catch (error) {
@@ -336,7 +336,7 @@ export class PerformanceOptimizer {
         for (const entry of list.getEntries()) {
           this.analyzeResourcePerformance(entry as PerformanceResourceTiming);
         }
-      });
+
       try {
         resourceObserver.observe({ entryTypes: ['resource'] });
         this.observers.push(resourceObserver);
@@ -357,7 +357,7 @@ export class PerformanceOptimizer {
     return this.recommendations.sort((a, b) => {
       const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
       return priorityOrder[b.priority] - priorityOrder[a.priority];
-    });
+
   }
   /**
    * Apply automatic optimizations
@@ -428,7 +428,7 @@ export class PerformanceOptimizer {
           const navEntry = entry as PerformanceNavigationTiming;
           this.metrics.bundleSize.after = navEntry.transferSize || 0;
         }
-      });
+
       try {
         navigationObserver.observe({ entryTypes: ['navigation'] });
         this.observers.push(navigationObserver);
@@ -458,7 +458,7 @@ export class PerformanceOptimizer {
             this.metrics.cachePerformance.missRate++;
           }
         }
-      });
+
       try {
         resourceObserver.observe({ entryTypes: ['resource'] });
         this.observers.push(resourceObserver);
@@ -469,7 +469,7 @@ export class PerformanceOptimizer {
   private monitorServiceWorkerCache(registration: ServiceWorkerRegistration): void {
     // Monitor service worker cache performance
     registration.addEventListener('updatefound', () => {
-    });
+
   }
   private monitorComponentCleanup(): void {
     // Monitor React component cleanup
@@ -482,7 +482,7 @@ export class PerformanceOptimizer {
       link.rel = 'prefetch';
       link.href = resource;
       document.head.appendChild(link);
-    });
+
   }
   private preloadNextPage(): void {
     // Predict and preload the next likely page based on current route
@@ -519,7 +519,7 @@ export class PerformanceOptimizer {
           impact: 'High memory usage can cause performance degradation and crashes',
           implementation: 'Review component cleanup and event listener removal',
           estimatedGain: 25,
-        });
+
       }
     }
   }
@@ -535,7 +535,7 @@ export class PerformanceOptimizer {
         impact: 'Slow resources delay page rendering and user interaction',
         implementation: 'Consider caching, compression, or CDN optimization',
         estimatedGain: 15,
-      });
+
     }
   }
   private analyzeGCPattern(entry: PerformanceEntry): void {
@@ -550,7 +550,7 @@ export class PerformanceOptimizer {
         impact: 'Frequent or long GC pauses can cause UI freezing',
         implementation: 'Optimize object creation and memory usage patterns',
         estimatedGain: 20,
-      });
+
     }
   }
   private generateInitialRecommendations(): void {
@@ -565,7 +565,7 @@ export class PerformanceOptimizer {
         impact: 'Faster image loading and reduced bandwidth usage',
         implementation: 'Enable WebP conversion in image optimization settings',
         estimatedGain: 30,
-      });
+
     }
     if (!this.config.caching.serviceWorker) {
       this.recommendations.push({
@@ -577,7 +577,7 @@ export class PerformanceOptimizer {
         impact: 'Faster loading for returning users and offline capability',
         implementation: 'Enable Service Worker in caching settings',
         estimatedGain: 40,
-      });
+
     }
   }
   private analyzeBundleSize(): void {
@@ -592,7 +592,7 @@ export class PerformanceOptimizer {
         impact: 'Large bundles increase initial loading time',
         implementation: 'Enable code splitting and tree shaking',
         estimatedGain: 35,
-      });
+
     }
   }
   private analyzeImageOptimization(): void {
@@ -603,7 +603,7 @@ export class PerformanceOptimizer {
       if (!img.loading || img.loading !== 'lazy') {
         unoptimizedImages++;
       }
-    });
+
     if (unoptimizedImages > 0) {
       this.recommendations.push({
         id: 'lazy-loading-images',
@@ -614,7 +614,7 @@ export class PerformanceOptimizer {
         impact: 'Faster initial page load and reduced bandwidth usage',
         implementation: 'Add loading="lazy" attribute to images',
         estimatedGain: 20,
-      });
+
     }
   }
   private analyzeCachePerformance(): void {
@@ -632,7 +632,7 @@ export class PerformanceOptimizer {
           impact: 'Better caching reduces server load and improves performance',
           implementation: 'Review and optimize caching headers and strategies',
           estimatedGain: 25,
-        });
+
       }
     }
   }
@@ -651,7 +651,7 @@ export class PerformanceOptimizer {
           impact: 'Optimizing memory usage improves overall performance',
           implementation: 'Review component lifecycle and memory management',
           estimatedGain: 30,
-        });
+
       }
     }
   }
@@ -676,7 +676,7 @@ export class PerformanceOptimizer {
     if (recommendation.id === 'lazy-loading-images') {
       document.querySelectorAll('img:not([loading])').forEach(img => {
         img.setAttribute('loading', 'lazy');
-      });
+
     }
   }
   private async applyCacheOptimization(recommendation: OptimizationRecommendation): Promise<void> {

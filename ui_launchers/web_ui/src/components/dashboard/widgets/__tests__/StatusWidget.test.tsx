@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import StatusWidget from '../StatusWidget';
@@ -61,7 +62,6 @@ describe('StatusWidget', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders status widget with healthy status', () => {
     render(<StatusWidget {...mockProps} />);
@@ -69,7 +69,6 @@ describe('StatusWidget', () => {
     expect(screen.getByText('Healthy')).toBeInTheDocument();
     expect(screen.getByText('All systems operational')).toBeInTheDocument();
     expect(screen.getByText(/Last checked:/)).toBeInTheDocument();
-  });
 
   it('displays warning status correctly', () => {
     const warningData = {
@@ -85,7 +84,6 @@ describe('StatusWidget', () => {
     
     expect(screen.getByText('Warning')).toBeInTheDocument();
     expect(screen.getByText('High CPU usage detected')).toBeInTheDocument();
-  });
 
   it('displays critical status correctly', () => {
     const criticalData = {
@@ -101,7 +99,6 @@ describe('StatusWidget', () => {
     
     expect(screen.getByText('Critical')).toBeInTheDocument();
     expect(screen.getByText('Service unavailable')).toBeInTheDocument();
-  });
 
   it('displays unknown status correctly', () => {
     const unknownData = {
@@ -117,7 +114,6 @@ describe('StatusWidget', () => {
     
     expect(screen.getByText('Unknown')).toBeInTheDocument();
     expect(screen.getByText('Status check failed')).toBeInTheDocument();
-  });
 
   it('displays status details when available', () => {
     render(<StatusWidget {...mockProps} />);
@@ -127,7 +123,6 @@ describe('StatusWidget', () => {
     expect(screen.getByText('Cpu')).toBeInTheDocument();
     expect(screen.getByText('Memory')).toBeInTheDocument();
     expect(screen.getByText('Connections')).toBeInTheDocument();
-  });
 
   it('formats detail values correctly', () => {
     render(<StatusWidget {...mockProps} />);
@@ -140,7 +135,6 @@ describe('StatusWidget', () => {
     expect(screen.getByText('2.0K')).toBeInTheDocument();
     // Connections should be formatted as number
     expect(screen.getByText('150')).toBeInTheDocument();
-  });
 
   it('limits displayed details to 4 items', () => {
     const manyDetailsData = {
@@ -163,7 +157,6 @@ describe('StatusWidget', () => {
     
     // Should show "+3 more details" indicator
     expect(screen.getByText('+3 more details')).toBeInTheDocument();
-  });
 
   it('renders without details when details are not available', () => {
     const noDetailsData = {
@@ -177,7 +170,6 @@ describe('StatusWidget', () => {
     render(<StatusWidget {...mockProps} data={noDetailsData} />);
     
     expect(screen.queryByText('Details')).not.toBeInTheDocument();
-  });
 
   it('renders without details when details object is empty', () => {
     const emptyDetailsData = {
@@ -191,7 +183,6 @@ describe('StatusWidget', () => {
     render(<StatusWidget {...mockProps} data={emptyDetailsData} />);
     
     expect(screen.queryByText('Details')).not.toBeInTheDocument();
-  });
 
   it('displays status history indicators', () => {
     render(<StatusWidget {...mockProps} />);
@@ -200,20 +191,17 @@ describe('StatusWidget', () => {
     // Should render 10 status history dots
     const historyDots = screen.getAllByTitle(/periods ago/);
     expect(historyDots).toHaveLength(10);
-  });
 
   it('formats last check time correctly', () => {
     render(<StatusWidget {...mockProps} />);
     
     // Should display formatted date/time
     expect(screen.getByText(/Last checked: 1\/1\/2024/)).toBeInTheDocument();
-  });
 
   it('shows no data message when data is not available', () => {
     render(<StatusWidget {...mockProps} data={undefined} />);
     
     expect(screen.getByText('No status data available')).toBeInTheDocument();
-  });
 
   it('handles boolean detail values', () => {
     const booleanDetailsData = {
@@ -231,12 +219,10 @@ describe('StatusWidget', () => {
     
     expect(screen.getByText('Yes')).toBeInTheDocument();
     expect(screen.getByText('No')).toBeInTheDocument();
-  });
 
   it('passes props correctly to WidgetBase', () => {
     render(<StatusWidget {...mockProps} />);
     
     const widgetBase = screen.getByTestId('widget-base');
     expect(widgetBase).toBeInTheDocument();
-  });
-});
+

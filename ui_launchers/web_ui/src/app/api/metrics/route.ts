@@ -40,7 +40,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       errors: errorMetrics,
       system: systemMetrics,
       business: businessMetrics
-    });
+
     // Track metrics collection time
     const collectionTime = Date.now() - startTime;
     metricsCollector.recordMetricsCollectionTime(collectionTime);
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         'Pragma': 'no-cache',
         'Expires': '0'
       }
-    });
+
   } catch (error) {
     // Return basic error metrics
     const errorMetrics = `
@@ -68,7 +68,7 @@ kari_metrics_collection_timestamp_seconds ${Date.now() / 1000}
       headers: {
         'Content-Type': 'text/plain; version=0.0.4; charset=utf-8'
       }
-    });
+
   }
 }
 /**
@@ -85,8 +85,8 @@ function formatPrometheusMetrics(metrics: any): string {
   Object.entries(metrics.application.httpRequests || {}).forEach(([path, data]: [string, any]) => {
     Object.entries(data.methods || {}).forEach(([method, count]) => {
       lines.push(`kari_http_requests_total{path="${path}",method="${method}"} ${count}`);
-    });
-  });
+
+
   lines.push('');
   lines.push('# HELP kari_http_request_duration_seconds HTTP request duration in seconds');
   lines.push('# TYPE kari_http_request_duration_seconds histogram');
@@ -95,11 +95,11 @@ function formatPrometheusMetrics(metrics: any): string {
     buckets.forEach(bucket => {
       const count = data.buckets?.[bucket] || 0;
       lines.push(`kari_http_request_duration_seconds_bucket{path="${path}",le="${bucket}"} ${count}`);
-    });
+
     lines.push(`kari_http_request_duration_seconds_bucket{path="${path}",le="+Inf"} ${data.total || 0}`);
     lines.push(`kari_http_request_duration_seconds_sum{path="${path}"} ${data.sum || 0}`);
     lines.push(`kari_http_request_duration_seconds_count{path="${path}"} ${data.count || 0}`);
-  });
+
   lines.push('');
   lines.push('# HELP kari_active_sessions_total Number of active user sessions');
   lines.push('# TYPE kari_active_sessions_total gauge');
@@ -130,13 +130,13 @@ function formatPrometheusMetrics(metrics: any): string {
   lines.push('# TYPE kari_errors_total counter');
   Object.entries(metrics.errors.errorCounts || {}).forEach(([type, count]) => {
     lines.push(`kari_errors_total{type="${type}"} ${count}`);
-  });
+
   lines.push('');
   lines.push('# HELP kari_error_boundary_triggered_total Total number of error boundary triggers');
   lines.push('# TYPE kari_error_boundary_triggered_total counter');
   Object.entries(metrics.errors.errorBoundaries || {}).forEach(([component, count]) => {
     lines.push(`kari_error_boundary_triggered_total{component="${component}"} ${count}`);
-  });
+
   lines.push('');
   lines.push('# HELP kari_error_recovery_attempts_total Total number of error recovery attempts');
   lines.push('# TYPE kari_error_recovery_attempts_total counter');
@@ -151,7 +151,7 @@ function formatPrometheusMetrics(metrics: any): string {
   lines.push('# TYPE kari_health_check_status gauge');
   Object.entries(metrics.system.healthChecks || {}).forEach(([check, status]) => {
     lines.push(`kari_health_check_status{check_name="${check}"} ${status === 'healthy' ? 1 : 0}`);
-  });
+
   lines.push('');
   lines.push('# HELP kari_database_connections_total Number of database connections');
   lines.push('# TYPE kari_database_connections_total gauge');
@@ -191,7 +191,7 @@ function formatPrometheusMetrics(metrics: any): string {
   lines.push('# TYPE kari_failed_login_attempts_total counter');
   Object.entries(metrics.business.failedLogins || {}).forEach(([sourceIp, count]) => {
     lines.push(`kari_failed_login_attempts_total{source_ip="${sourceIp}"} ${count}`);
-  });
+
   lines.push('');
   lines.push('# HELP kari_evil_mode_activations_total Total number of Evil Mode activations');
   lines.push('# TYPE kari_evil_mode_activations_total counter');
@@ -205,31 +205,31 @@ function formatPrometheusMetrics(metrics: any): string {
     buckets.forEach(bucket => {
       const count = data.buckets?.[bucket] || 0;
       lines.push(`kari_database_query_duration_seconds_bucket{query="${query}",le="${bucket}"} ${count}`);
-    });
+
     lines.push(`kari_database_query_duration_seconds_bucket{query="${query}",le="+Inf"} ${data.total || 0}`);
     lines.push(`kari_database_query_duration_seconds_sum{query="${query}"} ${data.sum || 0}`);
     lines.push(`kari_database_query_duration_seconds_count{query="${query}"} ${data.count || 0}`);
-  });
+
   lines.push('');
   // Custom Application Metrics
   lines.push('# HELP kari_feature_usage_total Total usage count for application features');
   lines.push('# TYPE kari_feature_usage_total counter');
   Object.entries(metrics.application.featureUsage || {}).forEach(([feature, count]) => {
     lines.push(`kari_feature_usage_total{feature="${feature}"} ${count}`);
-  });
+
   lines.push('');
   lines.push('# HELP kari_plugin_executions_total Total number of plugin executions');
   lines.push('# TYPE kari_plugin_executions_total counter');
   Object.entries(metrics.application.pluginExecutions || {}).forEach(([plugin, data]: [string, any]) => {
     lines.push(`kari_plugin_executions_total{plugin="${plugin}",status="success"} ${data.success || 0}`);
     lines.push(`kari_plugin_executions_total{plugin="${plugin}",status="failure"} ${data.failure || 0}`);
-  });
+
   lines.push('');
   lines.push('# HELP kari_model_requests_total Total number of model requests');
   lines.push('# TYPE kari_model_requests_total counter');
   Object.entries(metrics.application.modelRequests || {}).forEach(([model, count]) => {
     lines.push(`kari_model_requests_total{model="${model}"} ${count}`);
-  });
+
   lines.push('');
   lines.push('# HELP kari_model_response_time_seconds Model response time in seconds');
   lines.push('# TYPE kari_model_response_time_seconds histogram');
@@ -238,11 +238,11 @@ function formatPrometheusMetrics(metrics: any): string {
     buckets.forEach(bucket => {
       const count = data.buckets?.[bucket] || 0;
       lines.push(`kari_model_response_time_seconds_bucket{model="${model}",le="${bucket}"} ${count}`);
-    });
+
     lines.push(`kari_model_response_time_seconds_bucket{model="${model}",le="+Inf"} ${data.total || 0}`);
     lines.push(`kari_model_response_time_seconds_sum{model="${model}"} ${data.sum || 0}`);
     lines.push(`kari_model_response_time_seconds_count{model="${model}"} ${data.count || 0}`);
-  });
+
   lines.push('');
   // Metrics collection metadata
   lines.push('# HELP kari_metrics_collection_duration_seconds Time spent collecting metrics');

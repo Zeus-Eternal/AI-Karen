@@ -91,7 +91,7 @@ vi.mock('@/components/ui/form-field', () => ({
                 id={name}
                 name={name}
                 value={value}
-                onChange={(e) = aria-label="Input"> onValueChange(e.target.value)}
+                onChange={(e) => onValueChange(e.target.value)}
                 placeholder={placeholder}
                 disabled={disabled}
                 aria-invalid={error ? 'true' : 'false'}
@@ -121,7 +121,6 @@ describe('LoginForm', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-    });
 
     describe('Component Rendering', () => {
         it('renders the login form with all required elements', () => {
@@ -144,7 +143,6 @@ describe('LoginForm', () => {
 
             // Check for helper text
             expect(screen.getByText("We'll never share your email with anyone else")).toBeInTheDocument();
-        });
 
         it('renders with proper accessibility attributes', () => {
             render(
@@ -158,7 +156,6 @@ describe('LoginForm', () => {
 
             expect(emailInput).toHaveAttribute('required');
             expect(passwordInput).toHaveAttribute('required');
-        });
 
         it('shows password strength indicator when password is entered', async () => {
             const user = userEvent.setup();
@@ -173,8 +170,7 @@ describe('LoginForm', () => {
             await user.type(passwordInput, 'testpassword');
 
             expect(screen.getByTestId('password-strength')).toBeInTheDocument();
-        });
-    });
+
 
     describe('Form Submission with Valid Credentials', () => {
         it('submits form with valid email and password', async () => {
@@ -187,7 +183,6 @@ describe('LoginForm', () => {
                 tenant_id: 'tenant-123',
                 preferences: {},
                 two_factor_enabled: false,
-            });
 
             render(
                 <TestWrapper>
@@ -207,14 +202,12 @@ describe('LoginForm', () => {
                 expect(mockLogin).toHaveBeenCalledWith({
                     email: 'test@example.com',
                     password: 'validpassword123',
-                });
-            });
+
 
             // Verify success callback was called
             await waitFor(() => {
                 expect(mockOnSuccess).toHaveBeenCalled();
-            });
-        });
+
 
         it('shows loading state during form submission', async () => {
             const user = userEvent.setup();
@@ -242,8 +235,7 @@ describe('LoginForm', () => {
             // Button should be disabled during loading
             const loadingButton = screen.getByRole('button');
             expect(loadingButton).toBeDisabled();
-        });
-    });
+
 
     describe('Form Validation and Error Handling', () => {
         it('displays authentication error messages', async () => {
@@ -267,8 +259,7 @@ describe('LoginForm', () => {
             // Check for error message
             await waitFor(() => {
                 expect(screen.getByText(errorMessage)).toBeInTheDocument();
-            });
-        });
+
 
         it('handles network errors gracefully', async () => {
             const user = userEvent.setup();
@@ -290,9 +281,8 @@ describe('LoginForm', () => {
             // Check for network error message
             await waitFor(() => {
                 expect(screen.getByText('Network error')).toBeInTheDocument();
-            });
-        });
-    });
+
+
 
     describe('Two-Factor Authentication Flow', () => {
         it('shows 2FA field when 2FA is required', async () => {
@@ -315,11 +305,9 @@ describe('LoginForm', () => {
             // Wait for 2FA field to appear
             await waitFor(() => {
                 expect(screen.getByLabelText(/two-factor authentication code/i)).toBeInTheDocument();
-            });
 
             // Check for helper text
             expect(screen.getByText('Enter the 6-digit code from your authenticator app')).toBeInTheDocument();
-        });
 
         it('handles invalid 2FA code error', async () => {
             const user = userEvent.setup();
@@ -342,7 +330,6 @@ describe('LoginForm', () => {
             // Fill 2FA code
             await waitFor(() => {
                 expect(screen.getByLabelText(/two-factor authentication code/i)).toBeInTheDocument();
-            });
 
             await user.type(screen.getByLabelText(/two-factor authentication code/i), '000000');
             await user.click(screen.getByRole('button', { name: /sign in/i }));
@@ -350,9 +337,8 @@ describe('LoginForm', () => {
             // Check for error message
             await waitFor(() => {
                 expect(screen.getByText('Invalid 2FA code')).toBeInTheDocument();
-            });
-        });
-    });
+
+
 
     describe('Form Interaction and UX', () => {
         it('handles form field interactions', async () => {
@@ -371,7 +357,6 @@ describe('LoginForm', () => {
 
             // Verify the input has the expected value
             expect(emailInput).toHaveValue('test@example.com');
-        });
 
         it('prevents multiple form submissions', async () => {
             const user = userEvent.setup();
@@ -401,8 +386,7 @@ describe('LoginForm', () => {
 
             // Login should only be called once
             expect(mockLogin).toHaveBeenCalledTimes(1);
-        });
-    });
+
 
     describe('Accessibility', () => {
         it('has proper ARIA labels and roles', () => {
@@ -418,7 +402,6 @@ describe('LoginForm', () => {
 
             // Check for submit button
             expect(screen.getByRole('button')).toBeInTheDocument();
-        });
 
         it('provides helpful form field descriptions', () => {
             render(
@@ -429,6 +412,5 @@ describe('LoginForm', () => {
 
             // Check for helper text
             expect(screen.getByText("We'll never share your email with anyone else")).toBeInTheDocument();
-        });
-    });
-});
+
+

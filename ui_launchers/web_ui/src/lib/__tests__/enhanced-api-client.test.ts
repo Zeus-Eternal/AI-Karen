@@ -21,7 +21,6 @@ const localStorageMock = {
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
-});
 
 // Mock useAppStore
 vi.mock('@/store/app-store', () => ({
@@ -51,23 +50,19 @@ describe('EnhancedApiClient', () => {
     apiClient = new EnhancedApiClient('http://localhost:3000/api');
     vi.clearAllMocks();
     localStorageMock.getItem.mockReturnValue(null);
-  });
 
   afterEach(() => {
     vi.clearAllTimers();
-  });
 
   describe('Constructor and Setup', () => {
     it('should initialize with default base URL', () => {
       const client = new EnhancedApiClient();
       expect(client).toBeInstanceOf(EnhancedApiClient);
-    });
 
     it('should initialize with custom base URL', () => {
       const client = new EnhancedApiClient('https://api.example.com');
       expect(client).toBeInstanceOf(EnhancedApiClient);
-    });
-  });
+
 
   describe('Request Interceptors', () => {
     it('should add authentication header when token is available', async () => {
@@ -78,7 +73,6 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: 'test', status: 'success' }),
         headers: new Headers(),
-      });
 
       await apiClient.get('/test');
 
@@ -90,7 +84,6 @@ describe('EnhancedApiClient', () => {
           }),
         })
       );
-    });
 
     it('should add default headers', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -98,7 +91,6 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: 'test', status: 'success' }),
         headers: new Headers(),
-      });
 
       await apiClient.get('/test');
 
@@ -112,13 +104,11 @@ describe('EnhancedApiClient', () => {
           }),
         })
       );
-    });
 
     it('should add custom request interceptor', async () => {
       const interceptor = vi.fn((config) => {
         config.headers = { ...config.headers, 'X-Custom': 'test' };
         return config;
-      });
 
       apiClient.addRequestInterceptor(interceptor);
 
@@ -127,7 +117,6 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: 'test', status: 'success' }),
         headers: new Headers(),
-      });
 
       await apiClient.get('/test');
 
@@ -140,8 +129,7 @@ describe('EnhancedApiClient', () => {
           }),
         })
       );
-    });
-  });
+
 
   describe('HTTP Methods', () => {
     it('should make GET request', async () => {
@@ -150,7 +138,6 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: 'test', status: 'success' }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       const response = await apiClient.get('/test');
 
@@ -162,7 +149,6 @@ describe('EnhancedApiClient', () => {
       );
       expect(response.data).toBe('test');
       expect(response.status).toBe('success');
-    });
 
     it('should make POST request with data', async () => {
       const testData = { name: 'test' };
@@ -172,7 +158,6 @@ describe('EnhancedApiClient', () => {
         status: 201,
         json: async () => ({ data: testData, status: 'success' }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       const response = await apiClient.post('/test', testData);
 
@@ -184,7 +169,6 @@ describe('EnhancedApiClient', () => {
         })
       );
       expect(response.data).toEqual(testData);
-    });
 
     it('should make PUT request', async () => {
       const testData = { id: 1, name: 'updated' };
@@ -194,7 +178,6 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: testData, status: 'success' }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       const response = await apiClient.put('/test/1', testData);
 
@@ -206,7 +189,6 @@ describe('EnhancedApiClient', () => {
         })
       );
       expect(response.data).toEqual(testData);
-    });
 
     it('should make DELETE request', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -214,7 +196,6 @@ describe('EnhancedApiClient', () => {
         status: 204,
         json: async () => ({ status: 'success' }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       const response = await apiClient.delete('/test/1');
 
@@ -225,8 +206,7 @@ describe('EnhancedApiClient', () => {
         })
       );
       expect(response.status).toBe('success');
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle HTTP 404 error', async () => {
@@ -235,10 +215,8 @@ describe('EnhancedApiClient', () => {
         status: 404,
         json: async () => ({ message: 'Not found' }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       await expect(apiClient.get('/test')).rejects.toThrow('Not found');
-    });
 
     it('should handle HTTP 500 error', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -246,16 +224,13 @@ describe('EnhancedApiClient', () => {
         status: 500,
         json: async () => ({ message: 'Internal server error' }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       await expect(apiClient.get('/test')).rejects.toThrow('Internal server error');
-    });
 
     it('should handle network error', async () => {
       mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
       await expect(apiClient.get('/test')).rejects.toThrow('Network error');
-    });
 
     it('should handle timeout error', async () => {
       vi.useFakeTimers();
@@ -277,8 +252,7 @@ describe('EnhancedApiClient', () => {
       await expect(promise).rejects.toThrow('Request timeout');
 
       vi.useRealTimers();
-    });
-  });
+
 
   describe('Retry Logic', () => {
     it('should retry on server error', async () => {
@@ -290,13 +264,11 @@ describe('EnhancedApiClient', () => {
           status: 200,
           json: async () => ({ data: 'success', status: 'success' }),
           headers: new Headers({ 'content-type': 'application/json' }),
-        });
 
       const response = await apiClient.get('/test', { retries: 2 });
 
       expect(mockFetch).toHaveBeenCalledTimes(3);
       expect(response.data).toBe('success');
-    });
 
     it('should not retry on client error', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -304,11 +276,9 @@ describe('EnhancedApiClient', () => {
         status: 400,
         json: async () => ({ message: 'Bad request' }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       await expect(apiClient.get('/test', { retries: 2 })).rejects.toThrow('Bad request');
       expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
 
     it('should respect custom retry condition', async () => {
       const customRetryCondition = vi.fn(() => false);
@@ -324,8 +294,7 @@ describe('EnhancedApiClient', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(customRetryCondition).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Response Parsing', () => {
     it('should parse JSON response', async () => {
@@ -336,13 +305,11 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: testData, status: 'success' }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       const response = await apiClient.get('/test');
 
       expect(response.data).toEqual(testData);
       expect(response.status).toBe('success');
-    });
 
     it('should parse plain JSON response', async () => {
       const testData = { id: 1, name: 'test' };
@@ -352,13 +319,11 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => testData,
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       const response = await apiClient.get('/test');
 
       expect(response.data).toEqual(testData);
       expect(response.status).toBe('success');
-    });
 
     it('should parse text response', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -366,14 +331,12 @@ describe('EnhancedApiClient', () => {
         status: 200,
         text: async () => 'plain text response',
         headers: new Headers({ 'content-type': 'text/plain' }),
-      });
 
       const response = await apiClient.get('/test');
 
       expect(response.data).toBe('plain text response');
       expect(response.status).toBe('success');
-    });
-  });
+
 
   describe('File Upload', () => {
     it('should upload file with progress tracking', async () => {
@@ -406,7 +369,6 @@ describe('EnhancedApiClient', () => {
       expect(mockXHR.open).toHaveBeenCalledWith('POST', 'http://localhost:3000/api/upload');
       expect(mockXHR.send).toHaveBeenCalled();
       expect(response.data).toBe('uploaded');
-    });
 
     it('should fallback to regular request for upload without progress', async () => {
       const file = new File(['test content'], 'test.txt', { type: 'text/plain' });
@@ -416,7 +378,6 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: 'uploaded', status: 'success' }),
         headers: new Headers({ 'content-type': 'application/json' }),
-      });
 
       const response = await apiClient.upload('/upload', file);
 
@@ -428,8 +389,7 @@ describe('EnhancedApiClient', () => {
         })
       );
       expect(response.data).toBe('uploaded');
-    });
-  });
+
 
   describe('Request Configuration', () => {
     it('should skip authentication when specified', async () => {
@@ -440,7 +400,6 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: 'test', status: 'success' }),
         headers: new Headers(),
-      });
 
       await apiClient.get('/test', { skipAuth: true });
 
@@ -452,7 +411,6 @@ describe('EnhancedApiClient', () => {
           }),
         })
       );
-    });
 
     it('should skip loading states when specified', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -460,14 +418,12 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: 'test', status: 'success' }),
         headers: new Headers(),
-      });
 
       await apiClient.get('/test', { skipLoading: true });
 
       // Loading state management should be skipped
       // This would be tested by checking that setLoading was not called
       // but since we're mocking the store, we can't easily verify this
-    });
 
     it('should invalidate queries when specified', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -475,14 +431,12 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: 'test', status: 'success' }),
         headers: new Headers(),
-      });
 
       await apiClient.get('/test', { invalidateQueries: ['users', 'posts'] });
 
       // Query invalidation would be tested by checking queryClient calls
       // but since we're mocking it, we can't easily verify this
-    });
-  });
+
 
   describe('Request Logging', () => {
     it('should log requests', async () => {
@@ -491,7 +445,6 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: 'test', status: 'success' }),
         headers: new Headers(),
-      });
 
       await apiClient.get('/test');
 
@@ -501,7 +454,6 @@ describe('EnhancedApiClient', () => {
       expect(logs[0].url).toBe('http://localhost:3000/api/test');
       expect(logs[0].status).toBe(200);
       expect(logs[0].duration).toBeGreaterThan(0);
-    });
 
     it('should clear request logs', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -509,15 +461,13 @@ describe('EnhancedApiClient', () => {
         status: 200,
         json: async () => ({ data: 'test', status: 'success' }),
         headers: new Headers(),
-      });
 
       await apiClient.get('/test');
       expect(apiClient.getRequestLogs()).toHaveLength(1);
 
       apiClient.clearRequestLogs();
       expect(apiClient.getRequestLogs()).toHaveLength(0);
-    });
-  });
+
 
   describe('Rate Limiting', () => {
     it('should handle rate limiting', async () => {
@@ -526,12 +476,10 @@ describe('EnhancedApiClient', () => {
         status: 429,
         headers: new Headers({ 'Retry-After': '60' }),
         json: async () => ({ message: 'Rate limited' }),
-      });
 
       await expect(apiClient.get('/test')).rejects.toThrow('Rate limited');
 
       // Subsequent request should be blocked
       await expect(apiClient.get('/test')).rejects.toThrow('Rate limited');
-    });
-  });
-});
+
+

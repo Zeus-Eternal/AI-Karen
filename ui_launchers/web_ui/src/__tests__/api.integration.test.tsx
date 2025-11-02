@@ -16,4 +16,3 @@ test('fetches data from mocked api', async () => {
   const response = await fetch('/api/hello');
   const data = await response.json();
   expect(data).toEqual({ message: 'hello' });
-});

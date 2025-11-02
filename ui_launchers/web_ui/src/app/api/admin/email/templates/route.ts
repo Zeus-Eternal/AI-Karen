@@ -6,12 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
-import { 
-  EmailTemplate, 
-  CreateEmailTemplateRequest, 
-  UpdateEmailTemplateRequest,
-  EmailTemplateFilter
-} from '@/lib/email/types';
+import {  EmailTemplate, CreateEmailTemplateRequest, UpdateEmailTemplateRequest, EmailTemplateFilter } from '@/lib/email/types';
 import { PaginatedResponse } from '@/types/admin';
 import { EmailTemplateManager, TemplateEngine } from '@/lib/email/template-engine';
 import { auditLogger } from '@/lib/audit/audit-logger';

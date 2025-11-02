@@ -14,7 +14,6 @@ describe('AdminDatabaseUtils', () => {
   beforeEach(() => {
     mockClient = new MockDatabaseClient();
     adminUtils = new AdminDatabaseUtils(mockClient);
-  });
 
   describe('getUserWithRole', () => {
     it('should return user with role information', async () => {
@@ -24,14 +23,12 @@ describe('AdminDatabaseUtils', () => {
       expect(user).toBeDefined();
       expect(user?.user_id).toBe(userId);
       expect(user?.role).toBe('super_admin');
-    });
 
     it('should return null for non-existent user', async () => {
       // Mock client returns empty result for non-matching queries
       const user = await adminUtils.getUserWithRole('non-existent');
       expect(user).toBeNull();
-    });
-  });
+
 
   describe('getUsersWithRoleFilter', () => {
     it('should return paginated users with default parameters', async () => {
@@ -42,7 +39,6 @@ describe('AdminDatabaseUtils', () => {
       expect(result.pagination).toBeDefined();
       expect(result.pagination.page).toBe(1);
       expect(result.pagination.limit).toBe(20);
-    });
 
     it('should apply role filter', async () => {
       const filter: UserListFilter = { role: 'admin' };
@@ -51,7 +47,6 @@ describe('AdminDatabaseUtils', () => {
       const result = await adminUtils.getUsersWithRoleFilter(filter, pagination);
       
       expect(result.pagination.limit).toBe(10);
-    });
 
     it('should apply search filter', async () => {
       const filter: UserListFilter = { search: 'admin' };
@@ -59,8 +54,7 @@ describe('AdminDatabaseUtils', () => {
       const result = await adminUtils.getUsersWithRoleFilter(filter);
       
       expect(result).toBeDefined();
-    });
-  });
+
 
   describe('createAuditLog', () => {
     it('should create audit log entry', async () => {
@@ -75,8 +69,7 @@ describe('AdminDatabaseUtils', () => {
       const auditId = await adminUtils.createAuditLog(auditEntry);
       
       expect(auditId).toBeDefined();
-    });
-  });
+
 
   describe('userHasPermission', () => {
     it('should check user permissions', async () => {
@@ -86,22 +79,19 @@ describe('AdminDatabaseUtils', () => {
       const hasPermission = await adminUtils.userHasPermission(userId, permission);
       
       expect(typeof hasPermission).toBe('boolean');
-    });
-  });
+
 
   describe('getSystemConfig', () => {
     it('should return system configuration', async () => {
       const config = await adminUtils.getSystemConfig();
       
       expect(config).toBeInstanceOf(Array);
-    });
 
     it('should filter by category', async () => {
       const config = await adminUtils.getSystemConfig('security');
       
       expect(config).toBeInstanceOf(Array);
-    });
-  });
+
 
   describe('canUserPerformAction', () => {
     it('should check if user can perform action', async () => {
@@ -114,21 +104,18 @@ describe('AdminDatabaseUtils', () => {
       );
       
       expect(typeof canPerform).toBe('boolean');
-    });
-  });
+
 
   describe('convenience function', () => {
     it('should create AdminDatabaseUtils instance', () => {
       const utils = getAdminDatabaseUtils();
       
       expect(utils).toBeInstanceOf(AdminDatabaseUtils);
-    });
 
     it('should use provided client', () => {
       const customClient = new MockDatabaseClient();
       const utils = getAdminDatabaseUtils(customClient);
       
       expect(utils).toBeInstanceOf(AdminDatabaseUtils);
-    });
-  });
-});
+
+

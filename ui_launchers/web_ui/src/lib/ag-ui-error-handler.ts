@@ -72,8 +72,8 @@ export class AGUIErrorHandler {
         failureCount: 0,
         lastFailureTime: 0,
         halfOpenAttempts: 0
-      });
-    });
+
+
   }
   /**
    * Handle AG-Grid specific errors
@@ -413,7 +413,7 @@ export class AGUIErrorHandler {
       data,
       columns,
       timestamp: new Date().toISOString()
-    });
+
   }
   /**
    * Clear error state and reset circuit breaker

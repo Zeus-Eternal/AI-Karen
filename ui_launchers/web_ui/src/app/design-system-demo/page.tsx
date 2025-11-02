@@ -1,5 +1,6 @@
-'use client';
+"use client";
 
+import React from 'react';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { ButtonEnhanced } from '@/components/ui/enhanced/button-enhanced';
 import { CardEnhanced, CardHeaderEnhanced, CardTitleEnhanced, CardContentEnhanced } from '@/components/ui/enhanced/card-enhanced';
@@ -15,7 +16,6 @@ function DemoContent() {
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-primary">Design System Demo</h1>
           <p className="text-muted-foreground">
-            Testing the design token system with theme switching and enhanced components
           </p>
         </div>
         {/* Theme Controls */}
@@ -23,7 +23,6 @@ function DemoContent() {
           <CardHeaderEnhanced>
             <CardTitleEnhanced className="flex items-center gap-2">
               <Palette className="h-5 w-5" />
-              Theme Controls
             </CardTitleEnhanced>
           </CardHeaderEnhanced>
           <CardContentEnhanced className="space-y-4">
@@ -41,21 +40,18 @@ function DemoContent() {
                   variant={density === 'compact' ? 'default' : 'outline'}
                   onClick={() => setDensity('compact')}
                 >
-                  Compact
                 </ButtonEnhanced>
                 <ButtonEnhanced
                   size="sm"
                   variant={density === 'comfortable' ? 'default' : 'outline'}
                   onClick={() => setDensity('comfortable')}
                 >
-                  Comfortable
                 </ButtonEnhanced>
                 <ButtonEnhanced
                   size="sm"
                   variant={density === 'spacious' ? 'default' : 'outline'}
                   onClick={() => setDensity('spacious')}
                 >
-                  Spacious
                 </ButtonEnhanced>
               </div>
             </div>

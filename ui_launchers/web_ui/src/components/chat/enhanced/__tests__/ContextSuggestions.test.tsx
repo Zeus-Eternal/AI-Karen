@@ -1,12 +1,10 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ContextSuggestions from '../ContextSuggestions';
-import {
-  EnhancedChatMessage,
-  ConversationContext,
-  ContextSuggestion
-} from '@/types/enhanced-chat';
+
+import { } from '@/types/enhanced-chat';
 
 const mockMessages: EnhancedChatMessage[] = [
   {
@@ -110,7 +108,6 @@ describe('ContextSuggestions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders suggestions based on conversation context', async () => {
     render(
@@ -124,13 +121,11 @@ describe('ContextSuggestions', () => {
     // Wait for suggestions to be generated
     await waitFor(() => {
       expect(screen.getByText('Smart Suggestions')).toBeInTheDocument();
-    });
 
     // Should show suggestions based on the code response
     await waitFor(() => {
       expect(screen.getByText('Can you explain this code in more detail?')).toBeInTheDocument();
-    });
-  });
+
 
   it('generates follow-up suggestions for code responses', async () => {
     render(
@@ -144,8 +139,7 @@ describe('ContextSuggestions', () => {
     await waitFor(() => {
       expect(screen.getByText('Can you explain this code in more detail?')).toBeInTheDocument();
       expect(screen.getByText('How can I modify this code for my use case?')).toBeInTheDocument();
-    });
-  });
+
 
   it('generates pattern-based suggestions from user behavior', async () => {
     render(
@@ -158,8 +152,7 @@ describe('ContextSuggestions', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Would you like help with detailed code examples?')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles suggestion selection', async () => {
     render(
@@ -173,7 +166,6 @@ describe('ContextSuggestions', () => {
     await waitFor(() => {
       const suggestionButton = screen.getByText('Can you explain this code in more detail?');
       fireEvent.click(suggestionButton);
-    });
 
     expect(mockOnSuggestionSelect).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -182,7 +174,6 @@ describe('ContextSuggestions', () => {
         confidence: 0.85
       })
     );
-  });
 
   it('shows loading state while generating suggestions', () => {
     render(
@@ -194,7 +185,6 @@ describe('ContextSuggestions', () => {
     );
 
     expect(screen.getByText('Generating...')).toBeInTheDocument();
-  });
 
   it('limits suggestions to maxSuggestions prop', async () => {
     render(
@@ -215,8 +205,7 @@ describe('ContextSuggestions', () => {
         button.textContent?.includes('What are')
       );
       expect(suggestionTexts.length).toBeLessThanOrEqual(2);
-    });
-  });
+
 
   it('generates action suggestions based on user queries', async () => {
     const messagesWithHowQuery: EnhancedChatMessage[] = [
@@ -240,8 +229,7 @@ describe('ContextSuggestions', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Would you like a step-by-step tutorial?')).toBeInTheDocument();
-    });
-  });
+
 
   it('generates memory-based suggestions when relevant memories exist', async () => {
     const contextWithMemories: ConversationContext = {
@@ -271,8 +259,7 @@ describe('ContextSuggestions', () => {
 
     await waitFor(() => {
       expect(screen.getByText('This reminds me of something we discussed before...')).toBeInTheDocument();
-    });
-  });
+
 
   it('displays confidence scores for suggestions', async () => {
     render(
@@ -286,8 +273,7 @@ describe('ContextSuggestions', () => {
     await waitFor(() => {
       // Should show confidence percentages
       expect(screen.getByText('85%')).toBeInTheDocument();
-    });
-  });
+
 
   it('categorizes suggestions by type', async () => {
     render(
@@ -301,8 +287,7 @@ describe('ContextSuggestions', () => {
     await waitFor(() => {
       expect(screen.getAllByText('follow up')).toHaveLength(2);
       expect(screen.getByText('action')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles complex conversation context for suggestion generation', async () => {
     const complexContext: ConversationContext = {
@@ -326,8 +311,7 @@ describe('ContextSuggestions', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Can you break this down into simpler steps?')).toBeInTheDocument();
-    });
-  });
+
 
   it('does not render when no suggestions are available', async () => {
     const emptyMessages: EnhancedChatMessage[] = [];
@@ -359,5 +343,4 @@ describe('ContextSuggestions', () => {
       const suggestionButtons = container.querySelectorAll('button');
       expect(suggestionButtons.length).toBe(0);
     }, { timeout: 1000 });
-  });
-});
+

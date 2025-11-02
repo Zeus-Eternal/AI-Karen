@@ -13,7 +13,6 @@ jest.mock('@/lib/model-selection-service', () => ({
 describe('/api/models/load', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
 
   describe('POST - Load Model', () => {
     it('should load a model successfully', async () => {
@@ -32,11 +31,9 @@ describe('/api/models/load', () => {
       (modelSelectionService.getSelectionStats as jest.Mock).mockResolvedValue({
         selectedModel: null,
         isLoading: false
-      });
 
       (modelSelectionService.selectModel as jest.Mock).mockResolvedValue({
         success: true
-      });
 
       const request = new NextRequest('http://localhost:3000/api/models/load', {
         method: 'POST',
@@ -44,7 +41,6 @@ describe('/api/models/load', () => {
           model_id: 'test-model',
           options: { preserve_context: true }
         })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -56,20 +52,17 @@ describe('/api/models/load', () => {
       expect(data.capabilities).toEqual(['chat', 'text-generation']);
       expect(data.load_time).toBeGreaterThan(0);
       expect(response.headers.get('X-Model-Provider')).toBe('llama-cpp');
-    });
 
     it('should return error for missing model_id', async () => {
       const request = new NextRequest('http://localhost:3000/api/models/load', {
         method: 'POST',
         body: JSON.stringify({})
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing required field: model_id');
-    });
 
     it('should return error for non-existent model', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -79,14 +72,12 @@ describe('/api/models/load', () => {
       const request = new NextRequest('http://localhost:3000/api/models/load', {
         method: 'POST',
         body: JSON.stringify({ model_id: 'non-existent' })
-      });
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(404);
       expect(data.error).toBe('Model not found');
-    });
 
     it('should handle already loaded model', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -102,12 +93,10 @@ describe('/api/models/load', () => {
 
       (modelSelectionService.getSelectionStats as jest.Mock).mockResolvedValue({
         selectedModel: { id: 'loaded-model' }
-      });
 
       const request = new NextRequest('http://localhost:3000/api/models/load', {
         method: 'POST',
         body: JSON.stringify({ model_id: 'loaded-model' })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -115,7 +104,6 @@ describe('/api/models/load', () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.message).toBe('Model already loaded');
-    });
 
     it('should handle model loading failure', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -126,17 +114,14 @@ describe('/api/models/load', () => {
 
       (modelSelectionService.getSelectionStats as jest.Mock).mockResolvedValue({
         selectedModel: null
-      });
 
       (modelSelectionService.selectModel as jest.Mock).mockResolvedValue({
         success: false,
         error: 'Loading failed'
-      });
 
       const request = new NextRequest('http://localhost:3000/api/models/load', {
         method: 'POST',
         body: JSON.stringify({ model_id: 'failing-model' })
-      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -144,8 +129,7 @@ describe('/api/models/load', () => {
       expect(response.status).toBe(500);
       expect(data.error).toBe('Model loading failed');
       expect(data.message).toBe('Loading failed');
-    });
-  });
+
 
   describe('GET - Load Status', () => {
     it('should return current loading status', async () => {
@@ -155,7 +139,6 @@ describe('/api/models/load', () => {
         selectedModel: { id: 'current-model', name: 'Current Model' },
         isLoading: false,
         lastLoadTime: 1500
-      });
 
       const request = new NextRequest('http://localhost:3000/api/models/load');
       const response = await GET(request);
@@ -167,7 +150,6 @@ describe('/api/models/load', () => {
       expect(data.last_load_time).toBe(1500);
       expect(data.available_providers).toContain('llama-cpp');
       expect(data.available_providers).toContain('stable-diffusion');
-    });
 
     it('should handle status check errors', async () => {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -183,6 +165,5 @@ describe('/api/models/load', () => {
       expect(response.status).toBe(500);
       expect(data.error).toBe('Status check failed');
       expect(data.message).toBe('Stats unavailable');
-    });
-  });
-});
+
+

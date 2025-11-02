@@ -346,7 +346,7 @@ export class ExtensionAuthErrorFactory {
           ...context,
           httpStatus: status,
           httpMessage: message
-        });
+
     }
   }
 
@@ -375,7 +375,7 @@ export class ExtensionAuthErrorFactory {
       return this.createNetworkError({
         ...context,
         errorType: 'timeout'
-      });
+
     }
 
     if (errorMessage.includes('permission') || errorMessage.includes('forbidden')) {
@@ -395,7 +395,7 @@ export class ExtensionAuthErrorFactory {
       ...context,
       originalError: error.message,
       errorName: error.name
-    });
+
   }
 }
 

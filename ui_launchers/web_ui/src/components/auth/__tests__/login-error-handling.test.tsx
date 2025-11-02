@@ -49,7 +49,7 @@ vi.mock('@/components/ui/form-field', () => ({
         id={name}
         name={name}
         value={value || ''}
-        onChange={(e) = aria-label="Input"> onValueChange?.(e.target.value)}
+        onChange={(e) => onValueChange?.(e.target.value)}
         data-testid={`input-${name}`}
       />
     </div>
@@ -97,7 +97,6 @@ describe('Login Form Error Handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthService.getCurrentUser.mockRejectedValue(new Error('Not authenticated'));
-  });
 
   it('should display network error when backend is unreachable', async () => {
     const user = userEvent.setup();
@@ -121,11 +120,9 @@ describe('Login Form Error Handling', () => {
     // Wait for error message to appear
     await waitFor(() => {
       expect(screen.getByTestId('alert')).toBeInTheDocument();
-    });
 
     // Check that the error message is displayed
     expect(screen.getByTestId('alert-description')).toHaveTextContent('Network error. Please try again.');
-  });
 
   it('should display invalid credentials error', async () => {
     const user = userEvent.setup();
@@ -149,11 +146,9 @@ describe('Login Form Error Handling', () => {
     // Wait for error message to appear
     await waitFor(() => {
       expect(screen.getByTestId('alert')).toBeInTheDocument();
-    });
 
     // Check that the error message is displayed
     expect(screen.getByTestId('alert-description')).toHaveTextContent('Invalid credentials');
-  });
 
   it('should display 2FA required message and show 2FA field', async () => {
     const user = userEvent.setup();
@@ -177,11 +172,9 @@ describe('Login Form Error Handling', () => {
     // Wait for 2FA field to appear
     await waitFor(() => {
       expect(screen.getByTestId('input-totp_code')).toBeInTheDocument();
-    });
 
     // Check that the error message is displayed
     expect(screen.getByTestId('alert-description')).toHaveTextContent('Two-factor authentication required');
-  });
 
   it('should clear error message on successful login', async () => {
     const user = userEvent.setup();
@@ -195,7 +188,6 @@ describe('Login Form Error Handling', () => {
       tenant_id: 'default',
       two_factor_enabled: false,
       preferences: {},
-    });
 
     renderWithAuthProvider(<LoginForm onSuccess={onSuccess} />);
 
@@ -213,9 +205,7 @@ describe('Login Form Error Handling', () => {
     // Wait for success callback
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalled();
-    });
 
     // Check that no error message is displayed
     expect(screen.queryByTestId('alert')).not.toBeInTheDocument();
-  });
-});
+

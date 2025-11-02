@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useMemo } from 'react';
 import { useTelemetry } from '@/hooks/use-telemetry';
@@ -132,7 +132,6 @@ export const SecureLink: React.FC<SecureLinkProps> = ({
       reason: linkAnalysis.reason,
       isValid: linkAnalysis.isValid,
       isSafe: linkAnalysis.isSafe
-    });
 
     onSecurityViolation?.(linkAnalysis.reason, href);
 
@@ -154,7 +153,6 @@ export const SecureLink: React.FC<SecureLinkProps> = ({
     href: linkAnalysis.sanitizedHref,
     isExternal: linkAnalysis.isExternal,
     protocol: new URL(linkAnalysis.sanitizedHref).protocol
-  });
 
   // Render secure link
   const linkProps: React.AnchorHTMLAttributes<HTMLAnchorElement> = {
@@ -287,7 +285,7 @@ export const secureExistingLinks = (container: HTMLElement): void => {
     }
 
     link.setAttribute('data-secure', 'true');
-  });
+
 };
 
 // React hook for secure link handling

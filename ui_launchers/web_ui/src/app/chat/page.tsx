@@ -1,7 +1,8 @@
+"use client";
+import React from 'react';
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import {
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { MetaBar } from "@/components/chat";
@@ -11,49 +12,22 @@ import { Button, IconButton } from "@/components/ui/polymorphic/button";
 import { GridContainer } from "@/components/ui/layout/grid-container";
 import { FlexContainer } from "@/components/ui/layout/flex-container";
 import { Separator } from "@/components/ui/separator";
-"use client";
+import { Bell, Brain, LayoutGrid, MessageSquare, PlugZap, Settings as SettingsIconLucide, SlidersHorizontal } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
-
-
-
-
-  Brain,
-  MessageSquare,
-  LayoutGrid,
-  SettingsIcon as SettingsIconLucide,
-  Bell,
-  SlidersHorizontal,
-  PlugZap,
-} from "lucide-react";
-
-
-
-
-
-
-
-
-
-
-  Sheet,
-  SheetTrigger,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-
-  Sidebar,
+import {
   SidebarProvider,
-  SidebarTrigger as AppSidebarTrigger,
+  Sidebar,
+  SidebarTrigger,
+  SidebarHeader,
+  SidebarContent,
+  SidebarFooter,
   SidebarInset,
-  SidebarHeader as AppSidebarHeader,
-  SidebarContent as AppSidebarContent,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarFooter as AppSidebarFooter,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarGroup,
+  SidebarGroupLabel,
 } from "@/components/ui/sidebar";
 
 
@@ -76,19 +50,17 @@ function ChatView() {
         <header className="chat-header header-enhanced" role="banner">
           <FlexContainer className="container-fluid" justify="between" align="center">
             <FlexContainer className="space-x-3" align="center">
-              <AppSidebarTrigger className="mr-1 md:mr-2 smooth-transition interactive">
+              <SidebarTrigger className="mr-1 md:mr-2 smooth-transition interactive">
                 <span className="sr-only">Toggle sidebar</span>
-              </AppSidebarTrigger>
+              </SidebarTrigger>
               <Brain className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0 smooth-transform" />
               <h1 className="text-xl md:text-2xl font-semibold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                Karen AI
               </h1>
             </FlexContainer>
             <FlexContainer className="gap-2" align="center">
               <Sheet>
                 <SheetTrigger asChild>
                   <IconButton variant="ghost" aria-label="Settings" className="focus-ring smooth-transition" icon={<SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground smooth-transition" />}>
-                    Settings
                   </IconButton>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[90vw] max-w-sm sm:w-[480px] p-0 flex flex-col modern-card-glass">
@@ -113,20 +85,18 @@ function ChatView() {
               className="border-r z-20 sidebar-enhanced"
               aria-label="Main navigation"
             >
-              <AppSidebarHeader className="p-4">
+              <SidebarHeader className="p-4">
                 <h2 id="chat-primary-nav-title" className="text-lg font-semibold tracking-tight">
-                  Navigation
                 </h2>
-              </AppSidebarHeader>
+              </SidebarHeader>
               <Separator className="my-1" />
-              <AppSidebarContent className="p-2 scroll-smooth">
+              <SidebarContent className="p-2 scroll-smooth">
                 <nav aria-labelledby="chat-primary-nav-title">
                   <SidebarMenu>
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild isActive={pathname === "/chat"} className="w-full">
                         <Link href="/chat">
                           <MessageSquare />
-                          Chat
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -134,7 +104,6 @@ function ChatView() {
                       <SidebarMenuButton asChild className="w-full">
                         <Link href="/?view=dashboard">
                           <LayoutGrid />
-                          Dashboard
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -142,7 +111,6 @@ function ChatView() {
                       <SidebarMenuButton asChild className="w-full">
                         <Link href="/?view=settings">
                           <SettingsIconLucide />
-                          Settings
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -150,7 +118,6 @@ function ChatView() {
                       <SidebarMenuButton asChild className="w-full">
                         <Link href="/?view=commsCenter">
                           <Bell />
-                          Comms Center
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -167,17 +134,16 @@ function ChatView() {
                         <SidebarMenuButton asChild className="w-full">
                           <Link href="/?view=pluginOverview">
                             <PlugZap />
-                            Plugin Overview
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     </SidebarMenu>
                   </nav>
                 </SidebarGroup>
-              </AppSidebarContent>
-              <AppSidebarFooter className="p-2 border-t">
+              </SidebarContent>
+              <SidebarFooter className="p-2 border-t">
                 <p className="text-xs text-muted-foreground text-center">Karen AI Menu</p>
-              </AppSidebarFooter>
+              </SidebarFooter>
             </Sidebar>
           )}
 

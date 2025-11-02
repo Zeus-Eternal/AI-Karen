@@ -2,12 +2,7 @@
  * Enhanced backend service with graceful degradation support
  * Wraps the existing KarenBackendService with graceful degradation capabilities
  */
-import { 
-  featureFlagManager, 
-  extensionCache, 
-  CacheAwareDataFetcher,
-  type FeatureFlag 
-} from './index';
+import {  featureFlagManager, extensionCache, CacheAwareDataFetcher, type FeatureFlag } from './index';
 export interface EnhancedRequestOptions {
   endpoint: string;
   options?: RequestInit;
@@ -73,7 +68,7 @@ export class EnhancedBackendService {
             useStaleOnError,
             maxStaleAge,
             ttl: 5 * 60 * 1000 // 5 minutes default TTL
-          });
+
         } else {
           result = await this.originalService.makeRequest(endpoint, requestOptions);
         }
@@ -265,7 +260,7 @@ export class EnhancedBackendService {
       this.serviceHealth.set(serviceName, {
         isHealthy: true,
         consecutiveFailures: 0
-      });
+
     }
     return this.serviceHealth.get(serviceName)!;
   }
@@ -298,7 +293,7 @@ export class EnhancedBackendService {
       enableCaching: useCache,
       serviceName: 'extension-api',
       fallbackData: []
-    });
+
   }
   async getBackgroundTasks(useCache: boolean = true): Promise<any[]> {
     return this.makeEnhancedRequest({
@@ -307,7 +302,7 @@ export class EnhancedBackendService {
       enableCaching: useCache,
       serviceName: 'background-tasks',
       fallbackData: []
-    });
+
   }
   async getModelProviders(useCache: boolean = true): Promise<any[]> {
     return this.makeEnhancedRequest({
@@ -316,7 +311,7 @@ export class EnhancedBackendService {
       enableCaching: useCache,
       serviceName: 'model-provider',
       fallbackData: []
-    });
+
   }
   async getExtensionHealth(extensionName: string, useCache: boolean = true): Promise<any> {
     return this.makeEnhancedRequest({
@@ -325,7 +320,7 @@ export class EnhancedBackendService {
       enableCaching: useCache,
       serviceName: 'extension-health',
       fallbackData: { status: 'unknown', message: 'Health check unavailable' }
-    });
+
   }
   // Get service health status
   getServiceHealthStatus(): Record<string, ServiceHealthStatus> {

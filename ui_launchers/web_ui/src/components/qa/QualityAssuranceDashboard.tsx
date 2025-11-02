@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,20 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle, 
-  TrendingUp, 
-  TrendingDown,
-  RefreshCw,
-  Download,
-  Eye,
-  Bug,
-  Zap,
-  Shield,
-  Target
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 interface QualityMetrics {
   testCoverage: {
     unit: number;
@@ -122,17 +111,17 @@ export function QualityAssuranceDashboard() {
   };
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'passed': return <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'failed': return <XCircle className="h-4 w-4 sm:w-auto md:w-full" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'passed': return <CheckCircle className="h-4 w-4 " />;
+      case 'failed': return <XCircle className="h-4 w-4 " />;
+      case 'warning': return <AlertTriangle className="h-4 w-4 " />;
       default: return null;
     }
   };
   const getTrendIcon = (current: number, previous: number) => {
     if (current > previous) {
-      return <TrendingUp className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+      return <TrendingUp className="h-4 w-4 text-green-600 " />;
     } else if (current < previous) {
-      return <TrendingDown className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+      return <TrendingDown className="h-4 w-4 text-red-600 " />;
     }
     return null;
   };
@@ -142,7 +131,7 @@ export function QualityAssuranceDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ format: 'pdf', includeCharts: true })
-      });
+
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -161,7 +150,7 @@ export function QualityAssuranceDashboard() {
     return (
     <ErrorBoundary fallback={<div>Something went wrong in QualityAssuranceDashboard</div>}>
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 animate-spin sm:w-auto md:w-full" />
+        <RefreshCw className="h-8 w-8 animate-spin " />
         <span className="ml-2">Loading quality metrics...</span>
       </div>
     );
@@ -180,17 +169,14 @@ export function QualityAssuranceDashboard() {
         <div>
           <h1 className="text-3xl font-bold">Quality Assurance Dashboard</h1>
           <p className="text-muted-foreground">
-            Comprehensive quality metrics and testing insights
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <button variant="outline" onClick={loadQualityMetrics} disabled={loading} aria-label="Button">
+          <Button variant="outline" onClick={loadQualityMetrics} disabled={loading} >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
           </Button>
-          <button variant="outline" onClick={exportReport} aria-label="Button">
-            <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-            Export Report
+          <Button variant="outline" onClick={exportReport} >
+            <Download className="h-4 w-4 mr-2 " />
           </Button>
         </div>
       </div>
@@ -198,11 +184,9 @@ export function QualityAssuranceDashboard() {
       <Card data-testid="overall-quality-score">
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Target className="h-5 w-5 mr-2 sm:w-auto md:w-full" />
-            Overall Quality Score
+            <Target className="h-5 w-5 mr-2 " />
           </CardTitle>
           <CardDescription>
-            Composite score based on all quality metrics
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -229,7 +213,6 @@ export function QualityAssuranceDashboard() {
         <CardHeader>
           <CardTitle>Quality Gates</CardTitle>
           <CardDescription>
-            Automated quality checks that must pass for deployment
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -275,8 +258,7 @@ export function QualityAssuranceDashboard() {
             <Card data-testid="test-coverage-card">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Eye className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Test Coverage
+                  <Eye className="h-4 w-4 mr-2 " />
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -321,8 +303,7 @@ export function QualityAssuranceDashboard() {
             <Card data-testid="test-results-card">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <CheckCircle className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Test Results
+                  <CheckCircle className="h-4 w-4 mr-2 " />
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -415,8 +396,7 @@ export function QualityAssuranceDashboard() {
             <Card data-testid="accessibility-score-card">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Shield className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Accessibility Score
+                  <Shield className="h-4 w-4 mr-2 " />
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -437,22 +417,19 @@ export function QualityAssuranceDashboard() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="flex items-center">
-                      <XCircle className="h-4 w-4 mr-2 text-red-600 sm:w-auto md:w-full" />
-                      Violations
+                      <XCircle className="h-4 w-4 mr-2 text-red-600 " />
                     </span>
                     <Badge variant="destructive">{metrics.accessibility.violations}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="flex items-center">
-                      <AlertTriangle className="h-4 w-4 mr-2 text-yellow-600 sm:w-auto md:w-full" />
-                      Warnings
+                      <AlertTriangle className="h-4 w-4 mr-2 text-yellow-600 " />
                     </span>
                     <Badge variant="secondary">{metrics.accessibility.warnings}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="flex items-center">
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-600 sm:w-auto md:w-full" />
-                      Passes
+                      <CheckCircle className="h-4 w-4 mr-2 text-green-600 " />
                     </span>
                     <Badge variant="default">{metrics.accessibility.passes}</Badge>
                   </div>
@@ -467,8 +444,7 @@ export function QualityAssuranceDashboard() {
             <Card data-testid="security-score-card">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Shield className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Security Score
+                  <Shield className="h-4 w-4 mr-2 " />
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -553,7 +529,7 @@ export function QualityAssuranceDashboard() {
       {/* Alerts */}
       {qualityGates.some(gate => gate.status === 'failed') && (
         <Alert variant="destructive" data-testid="quality-gate-failures">
-          <Bug className="h-4 w-4 sm:w-auto md:w-full" />
+          <Bug className="h-4 w-4 " />
           <AlertTitle>Quality Gate Failures</AlertTitle>
           <AlertDescription>
             Some quality gates are failing. Review the issues above and address them before deployment.

@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TextSelectionTest from '@/components/debug/TextSelectionTest';
 import ModelAvailabilityCheck from '@/components/debug/ModelAvailabilityCheck';

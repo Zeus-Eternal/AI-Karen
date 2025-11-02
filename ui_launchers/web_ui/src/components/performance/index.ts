@@ -3,43 +3,26 @@
  * Exports all performance monitoring and analytics components
  */
 
-export { PerformanceAnalyticsDashboard } from './PerformanceAnalyticsDashboard';
-export { PerformanceAlertSystem } from './PerformanceAlertSystem';
-export { PerformanceOptimizationDashboard } from './PerformanceOptimizationDashboard';
-export { ResourceMonitoringDashboard } from './ResourceMonitoringDashboard';
+import { export { PerformanceAnalyticsDashboard } from './PerformanceAnalyticsDashboard';
+import { export { PerformanceAlertSystem } from './PerformanceAlertSystem';
+import { export { PerformanceOptimizationDashboard } from './PerformanceOptimizationDashboard';
+import { export { ResourceMonitoringDashboard } from './ResourceMonitoringDashboard';
 
 // Re-export performance services for convenience
-export { performanceMonitor } from '@/services/performance-monitor';
-export { performanceOptimizer } from '@/services/performance-optimizer';
-export { resourceMonitor } from '@/services/resource-monitor';
-export { performanceProfiler } from '@/services/performance-profiler';
+import { export { performanceMonitor } from '@/services/performance-monitor';
+import { export { performanceOptimizer } from '@/services/performance-optimizer';
+import { export { resourceMonitor } from '@/services/resource-monitor';
+import { export { performanceProfiler } from '@/services/performance-profiler';
 
 // Re-export types
 export type {
-  PerformanceMetric,
-  PerformanceAlert,
-  WebVitalsMetrics,
-  ResourceUsage,
-  PerformanceThresholds,
-} from '@/services/performance-monitor';
+import { } from '@/services/performance-monitor';
 
 export type {
-  OptimizationConfig,
-  OptimizationMetrics,
-  OptimizationRecommendation,
-} from '@/services/performance-optimizer';
+import { } from '@/services/performance-optimizer';
 
 export type {
-  ResourceMetrics,
-  ResourceAlert,
-  ScalingRecommendation,
-  CapacityPlan,
-} from '@/services/resource-monitor';
+import { } from '@/services/resource-monitor';
 
 export type {
-  PerformanceProfile,
-  Bottleneck,
-  OptimizationSuggestion,
-  PerformanceComparison,
-  RegressionTest,
-} from '@/services/performance-profiler';
+import { } from '@/services/performance-profiler';

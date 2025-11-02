@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 // Lazy-load heavy grid/chart libraries only when this component renders
@@ -11,18 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { 
-  Terminal, 
-  Zap, 
-  Activity, 
-  Database, 
-  Play, 
-  RefreshCw,
-  MessageSquare,
-  Bot,
-  Layers,
-  GitBranch
-} from "lucide-react";
+
+import { } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 interface DevMetrics {
   plugins: {
@@ -72,7 +63,7 @@ export default function KariDevConsole() {
     extensions: { total: 0, active: 0, memoryUsage: 0, cpuUsage: 0 },
     hooks: { total: 0, enabled: 0, executions: 0, failures: 0 },
     chat: { totalMessages: 0, aiSuggestions: 0, toolCalls: 0, avgLatency: 0 }
-  });
+
   const [liveLogs, setLiveLogs] = useState<LiveLog[]>([]);
   const [selectedTab, setSelectedTab] = useState("overview");
   const [commandInput, setCommandInput] = useState("");
@@ -82,7 +73,7 @@ export default function KariDevConsole() {
   useCopilotReadable({
     description: "Current Kari development metrics and system status",
     value: metrics,
-  });
+
   // CopilotKit actions for developer assistance
   useCopilotAction({
     name: "analyzeSystemHealth",
@@ -100,10 +91,10 @@ export default function KariDevConsole() {
       toast({
         title: "System Analysis Complete",
         description: `Found ${analysis.issues} issues and ${analysis.recommendations} recommendations`,
-      });
+
       return analysis;
     },
-  });
+
   useCopilotAction({
     name: "executeDevCommand",
     description: "Execute a development command or script",
@@ -118,7 +109,7 @@ export default function KariDevConsole() {
     handler: async ({ command }) => {
       return await executeCommand(command);
     },
-  });
+
   useCopilotAction({
     name: "generateDebugReport",
     description: "Generate a comprehensive debug report for troubleshooting",
@@ -139,48 +130,48 @@ export default function KariDevConsole() {
     handler: async ({ includeMetrics = true, includeLogs = true }) => {
       return await generateDebugReport(includeMetrics, includeLogs);
     },
-  });
+
   const quickActions: QuickAction[] = [
     {
       id: "restart-chat",
       title: "Restart Chat Runtime",
       description: "Restart the CopilotKit chat runtime",
-      icon: <MessageSquare className="h-4 w-4 sm:w-auto md:w-full" />,
+      icon: <MessageSquare className="h-4 w-4 " />,
       action: () => executeCommand("restart chat-runtime"),
     },
     {
       id: "reload-plugins",
       title: "Reload All Plugins",
       description: "Hot reload all active plugins",
-      icon: <Zap className="h-4 w-4 sm:w-auto md:w-full" />,
+      icon: <Zap className="h-4 w-4 " />,
       action: () => executeCommand("reload plugins --all"),
     },
     {
       id: "refresh-extensions",
       title: "Refresh Extensions",
       description: "Refresh extension registry and health checks",
-      icon: <Layers className="h-4 w-4 sm:w-auto md:w-full" />,
+      icon: <Layers className="h-4 w-4 " />,
       action: () => executeCommand("refresh extensions"),
     },
     {
       id: "clear-hooks",
       title: "Clear Failed Hooks",
       description: "Clear and reset failed hook executions",
-      icon: <GitBranch className="h-4 w-4 sm:w-auto md:w-full" />,
+      icon: <GitBranch className="h-4 w-4 " />,
       action: () => executeCommand("hooks clear-failed"),
     },
     {
       id: "optimize-memory",
       title: "Optimize Memory",
       description: "Run memory optimization and garbage collection",
-      icon: <Database className="h-4 w-4 sm:w-auto md:w-full" />,
+      icon: <Database className="h-4 w-4 " />,
       action: () => executeCommand("system optimize-memory"),
     },
     {
       id: "test-ai-integration",
       title: "Test AI Integration",
       description: "Run AI integration health checks",
-      icon: <Bot className="h-4 w-4 sm:w-auto md:w-full" />,
+      icon: <Bot className="h-4 w-4 " />,
       action: () => executeCommand("test ai-integration"),
     },
   ];
@@ -301,13 +292,13 @@ export default function KariDevConsole() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ command }),
-      });
+
       const result = await response.json();
       if (response.ok) {
         toast({
           title: "Command Executed",
           description: `Successfully executed: ${command}`,
-        });
+
         // Add to logs
         setLiveLogs(prev => [{
           id: Date.now().toString(),
@@ -326,7 +317,7 @@ export default function KariDevConsole() {
         title: "Command Failed",
         description: `Error executing ${command}: ${error}`,
         variant: "destructive",
-      });
+
       setLiveLogs(prev => [{
         id: Date.now().toString(),
         timestamp: new Date().toISOString(),
@@ -410,7 +401,7 @@ export default function KariDevConsole() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Terminal className="h-6 w-6 sm:w-auto md:w-full" />
+          <Terminal className="h-6 w-6 " />
           <div>
             <h1 className="text-2xl font-bold">Kari Dev Console</h1>
             <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -420,11 +411,11 @@ export default function KariDevConsole() {
         </div>
         <div className="flex items-center space-x-2">
           <Badge variant="outline" className="flex items-center space-x-1">
-            <Activity className="h-3 w-3 sm:w-auto md:w-full" />
+            <Activity className="h-3 w-3 " />
             <span>Live</span>
           </Badge>
-          <button variant="outline" size="sm" onClick={fetchMetrics} aria-label="Button">
-            <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
+          <Button variant="outline" size="sm" onClick={fetchMetrics} >
+            <RefreshCw className="h-4 w-4 " />
           </Button>
         </div>
       </div>
@@ -432,7 +423,7 @@ export default function KariDevConsole() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Zap className="h-4 w-4 sm:w-auto md:w-full" />
+            <Zap className="h-4 w-4 " />
             <span>Quick Actions</span>
           </CardTitle>
           <CardDescription>
@@ -442,13 +433,13 @@ export default function KariDevConsole() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {quickActions.map((action) => (
-              <button
+              <Button
                 key={action.id}
                 variant="outline"
                 className="h-auto p-3 flex flex-col items-center space-y-2 sm:p-4 md:p-6"
                 onClick={action.action}
                 disabled={isExecuting}
-               aria-label="Button">
+               >
                 {action.icon}
                 <div className="text-center">
                   <div className="text-xs font-medium sm:text-sm md:text-base">{action.title}</div>
@@ -468,15 +459,15 @@ export default function KariDevConsole() {
             <input
               placeholder="Type a command or ask Kari for help... (e.g., 'restart plugin weather')"
               value={commandInput}
-              onChange={(e) = aria-label="Input"> setCommandInput(e.target.value)}
+              onChange={(e) => setCommandInput(e.target.value)}
               className="font-mono"
               disabled={isExecuting}
             />
             <button type="submit" disabled={isExecuting || !commandInput.trim()} aria-label="Submit form">
               {isExecuting ? (
-                <RefreshCw className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                <RefreshCw className="h-4 w-4 animate-spin " />
               ) : (
-                <Play className="h-4 w-4 sm:w-auto md:w-full" />
+                <Play className="h-4 w-4 " />
               )}
             </Button>
           </form>
@@ -496,7 +487,7 @@ export default function KariDevConsole() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Plugins</CardTitle>
-                  <Zap className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Zap className="h-4 w-4 text-muted-foreground " />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.plugins.active}</div>
@@ -508,7 +499,7 @@ export default function KariDevConsole() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Extensions</CardTitle>
-                  <Layers className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Layers className="h-4 w-4 text-muted-foreground " />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.extensions.active}</div>
@@ -520,7 +511,7 @@ export default function KariDevConsole() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Hooks</CardTitle>
-                  <GitBranch className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <GitBranch className="h-4 w-4 text-muted-foreground " />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.hooks.enabled}</div>
@@ -532,7 +523,7 @@ export default function KariDevConsole() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Chat Runtime</CardTitle>
-                  <MessageSquare className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <MessageSquare className="h-4 w-4 text-muted-foreground " />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.chat.avgLatency}ms</div>
@@ -594,7 +585,7 @@ export default function KariDevConsole() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Bot className="h-4 w-4 sm:w-auto md:w-full" />
+                  <Bot className="h-4 w-4 " />
                   <span>AI Development Assistant</span>
                 </CardTitle>
                 <CardDescription>
@@ -614,16 +605,14 @@ export default function KariDevConsole() {
                     </ul>
                   </div>
                   <div className="text-center py-8">
-                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4 sm:w-auto md:w-full" />
+                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4 " />
                     <p className="text-muted-foreground">
-                      Open the Kari chat to get AI assistance with development tasks
                     </p>
-                    <button className="mt-4" onClick={() = aria-label="Button"> {
+                    <button className="mt-4" onClick={() => {
                       // This would trigger the CopilotKit sidebar
                       window.dispatchEvent(new CustomEvent('openKariChat'));
                     }}>
-                      <MessageSquare className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Open Kari Chat
+                      <MessageSquare className="h-4 w-4 mr-2 " />
                     </Button>
                   </div>
                 </div>

@@ -1,7 +1,8 @@
+
+"use client";
 import React, { useState, useRef } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { useEffect } from 'react';
-import { 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,22 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
 import { cn } from '@/lib/utils';
 import { useDashboardStore } from '@/store/dashboard-store';
 import type { DashboardConfig } from '@/types/dashboard';
-'use client';
 
-
-  Download, 
-  Upload, 
-  FileText, 
-  Share2, 
-  Copy,
-  Check,
-  AlertCircle,
-  Loader2
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 
 
@@ -33,18 +23,8 @@ import type { DashboardConfig } from '@/types/dashboard';
 
 
 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
+import { } from '@/components/ui/dialog';
+import { } from '@/components/ui/tabs';
 
 
 
@@ -203,12 +183,12 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
     <ErrorBoundary fallback={<div>Something went wrong in DashboardExportImport</div>}>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <button variant="outline" className={className} aria-label="Button">
-          <Share2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+        <Button variant="outline" className={className} >
+          <Share2 className="h-4 w-4 mr-2 " />
           Export/Import
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl sm:w-auto md:w-full">
+      <DialogContent className="max-w-2xl ">
         <DialogHeader>
           <DialogTitle>Dashboard Export & Import</DialogTitle>
         </DialogHeader>
@@ -236,11 +216,10 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                         className="w-full"
                        aria-label="Button">
                         {exportInProgress ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                         ) : (
-                          <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                          <Download className="h-4 w-4 mr-2 " />
                         )}
-                        Export Dashboard
                       </Button>
                     </CardContent>
                   </Card>
@@ -249,22 +228,20 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Export All Dashboards</CardTitle>
                     <CardDescription className="text-sm md:text-base lg:text-lg">
-                      Export all your dashboards and custom templates
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <button 
+                    <Button 
                       onClick={handleExportAll}
                       disabled={exportInProgress}
                       className="w-full"
                       variant="outline"
-                     aria-label="Button">
+                     >
                       {exportInProgress ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                       ) : (
-                        <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                        <Download className="h-4 w-4 mr-2 " />
                       )}
-                      Export All
                     </Button>
                   </CardContent>
                 </Card>
@@ -273,8 +250,7 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
-                      <FileText className="h-4 w-4 sm:w-auto md:w-full" />
-                      Export Data
+                      <FileText className="h-4 w-4 " />
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -285,18 +261,17 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                       placeholder="Export data will appear here..." />
                     <div className="flex gap-2">
                       <button onClick={handleDownloadExport} className="flex-1" aria-label="Button">
-                        <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                        Download File
+                        <Download className="h-4 w-4 mr-2 " />
                       </Button>
-                      <button 
+                      <Button 
                         variant="outline" 
                         onClick={handleCopyExport}
                         className="flex-1"
-                       aria-label="Button">
+                       >
                         {copied ? (
-                          <Check className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                          <Check className="h-4 w-4 mr-2 " />
                         ) : (
-                          <Copy className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                          <Copy className="h-4 w-4 mr-2 " />
                         )}
                         {copied ? 'Copied!' : 'Copy to Clipboard'}
                       </Button>
@@ -313,7 +288,6 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                 <CardHeader>
                   <CardTitle className="text-base">Import Dashboard</CardTitle>
                   <CardDescription>
-                    Import a dashboard from a JSON file or paste the export data
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -327,12 +301,11 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                         onChange={handleFileUpload}
                         ref={fileInputRef}
                         className="flex-1" />
-                      <button
+                      <Button
                         variant="outline"
-                        onClick={() = aria-label="Button"> fileInputRef.current?.click()}
+                        onClick={() => fileInputRef.current?.click()}
                       >
-                        <Upload className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                        Browse
+                        <Upload className="h-4 w-4 mr-2 " />
                       </Button>
                     </div>
                   </div>
@@ -342,7 +315,6 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                     </div>
                     <div className="relative flex justify-center text-xs uppercase sm:text-sm md:text-base">
                       <span className="bg-background px-2 text-muted-foreground">
-                        Or paste data
                       </span>
                     </div>
                   </div>
@@ -351,7 +323,7 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                     <textarea
                       id="import-data"
                       value={importData}
-                      onChange={(e) = aria-label="Textarea"> {
+                      onChange={(e) => {
                         setImportData(e.target.value);
                         setImportError('');
                       }}
@@ -361,13 +333,13 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                   </div>
                   {importValidationError && (
                     <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                      <AlertCircle className="h-4 w-4 " />
                       <AlertDescription>{importValidationError}</AlertDescription>
                     </Alert>
                   )}
                   {importError && (
                     <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                      <AlertCircle className="h-4 w-4 " />
                       <AlertDescription>{importError}</AlertDescription>
                     </Alert>
                   )}
@@ -406,11 +378,10 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                     className="w-full"
                    aria-label="Button">
                     {importInProgress ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                     ) : (
-                      <Upload className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                      <Upload className="h-4 w-4 mr-2 " />
                     )}
-                    Import Dashboard
                   </Button>
                 </CardContent>
               </Card>

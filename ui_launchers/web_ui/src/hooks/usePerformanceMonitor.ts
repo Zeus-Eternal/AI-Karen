@@ -31,7 +31,7 @@ export function usePerformanceMonitor(name: string, enabled = process.env.NODE_E
       (window as any).gtag('event', 'timing_complete', {
         name: metrics.name,
         value: Math.round(duration),
-      });
+
     }
     startTimeRef.current = undefined;
   };
@@ -92,9 +92,9 @@ export function useWebVitals() {
         (window as any).gtag('event', 'web_vitals', {
           metric_name: 'LCP',
           metric_value: Math.round(lastEntry.startTime),
-        });
+
       }
-    });
+
     try {
       observer.observe({ entryTypes: ['largest-contentful-paint'] });
     } catch (e) {
@@ -110,10 +110,10 @@ export function useWebVitals() {
           (window as any).gtag('event', 'web_vitals', {
             metric_name: 'FID',
             metric_value: Math.round(fid),
-          });
+
         }
-      });
-    });
+
+
     try {
       fidObserver.observe({ entryTypes: ['first-input'] });
     } catch (e) {

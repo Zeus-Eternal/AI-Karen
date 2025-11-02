@@ -6,17 +6,8 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  CheckCircle, 
-  AlertTriangle, 
-  XCircle, 
-  RefreshCw, 
-  Brain, 
-  Cpu, 
-  Database,
-  Wifi,
-  WifiOff
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { useReasoning } from '@/hooks/useReasoning';
 
 export function SystemStatus() {
@@ -35,13 +26,13 @@ export function SystemStatus() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
+        return <CheckCircle className="h-4 w-4 text-green-500 " />;
       case 'degraded':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-500 " />;
       case 'unavailable':
-        return <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
+        return <XCircle className="h-4 w-4 text-red-500 " />;
       default:
-        return <AlertTriangle className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
+        return <AlertTriangle className="h-4 w-4 text-gray-500 " />;
     }
   };
 
@@ -59,11 +50,10 @@ export function SystemStatus() {
   };
 
   return (
-    <Card className="w-full max-w-2xl sm:w-auto md:w-full">
+    <Card className="w-full max-w-2xl ">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Brain className="h-5 w-5 sm:w-auto md:w-full" />
-          AI Karen System Status
+          <Brain className="h-5 w-5 " />
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -71,9 +61,9 @@ export function SystemStatus() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isConnected ? (
-              <Wifi className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+              <Wifi className="h-4 w-4 text-green-500 " />
             ) : (
-              <WifiOff className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
+              <WifiOff className="h-4 w-4 text-red-500 " />
             )}
             <span className="font-medium">Backend Connection</span>
           </div>
@@ -90,7 +80,7 @@ export function SystemStatus() {
             {/* Overall Status */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Cpu className="h-4 w-4 sm:w-auto md:w-full" />
+                <Cpu className="h-4 w-4 " />
                 <span>Overall System</span>
               </div>
               <Badge className={getStatusColor(systemStatus.degraded ? 'degraded' : 'healthy')}>
@@ -110,7 +100,7 @@ export function SystemStatus() {
             {/* Fallback Systems */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Database className="h-4 w-4 sm:w-auto md:w-full" />
+                <Database className="h-4 w-4 " />
                 <span>Fallback Systems</span>
               </div>
               <Badge className="bg-blue-100 text-blue-800">
@@ -121,7 +111,7 @@ export function SystemStatus() {
             {/* Local Models */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Brain className="h-4 w-4 sm:w-auto md:w-full" />
+                <Brain className="h-4 w-4 " />
                 <span>Local AI Models</span>
               </div>
               <Badge className={getStatusColor(systemStatus.local_models_available ? 'healthy' : 'unavailable')}>
@@ -135,14 +125,14 @@ export function SystemStatus() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="font-medium">Reasoning System Test</h4>
-            <button 
+            <Button 
               onClick={handleTestReasoning} 
               disabled={isLoading}
               size="sm"
               variant="outline"
-             aria-label="Button">
+             >
               {isLoading ? (
-                <RefreshCw className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                <RefreshCw className="h-4 w-4 animate-spin " />
               ) : (
                 'Test System'
               )}

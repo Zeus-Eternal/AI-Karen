@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { testClipboardWithUserInteraction } from '@/utils/text-selection-test';
@@ -20,7 +20,7 @@ export function ClipboardTest({ className = '' }: ClipboardTestProps) {
       success: result.success,
       error: result.error,
       tested: true,
-    });
+
   };
 
   return (
@@ -30,7 +30,6 @@ export function ClipboardTest({ className = '' }: ClipboardTestProps) {
           onClick={handleTestClipboard}
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
          aria-label="Button">
-          Test Clipboard
         </button>
         
         {testResult.tested && (

@@ -1,21 +1,7 @@
-'use client';
+"use client";
+
 import React, { useCallback, useMemo, useState, useRef } from 'react';
-import ReactFlow, {
-  Node,
-  Edge,
-  addEdge,
-  useNodesState,
-  useEdgesState,
-  Controls,
-  MiniMap,
-  Background,
-  BackgroundVariant,
-  Connection,
-  ReactFlowProvider,
-  ReactFlowInstance,
-  NodeTypes,
-  EdgeTypes,
-} from 'reactflow';
+import ReactFlow, { Node, Edge, addEdge, useNodesState, useEdgesState, Controls, MiniMap, Background, BackgroundVariant, Connection, ReactFlowProvider, ReactFlowInstance, NodeTypes, EdgeTypes } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { WorkflowDefinition, WorkflowNode, WorkflowEdge, NodeTemplate, WorkflowValidationResult } from '@/types/workflows';
 import { Button } from '@/components/ui/button';
@@ -25,20 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Play, 
-  Save, 
-  Download, 
-  Upload, 
-  Trash2, 
-  Settings, 
-  AlertTriangle,
-  CheckCircle,
-  Plus,
-  Copy,
-  Eye,
-  EyeOff
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { WorkflowNodeComponent } from './WorkflowNodeComponent';
 import { NodeLibrary } from './NodeLibrary';
 import { WorkflowValidator } from './WorkflowValidator';
@@ -119,7 +93,7 @@ export function WorkflowBuilder({
       const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
-      });
+
       const newNode: Node = {
         id: `${nodeTemplate.id}-${Date.now()}`,
         type: 'workflowNode',
@@ -229,7 +203,7 @@ export function WorkflowBuilder({
   return (
     <div className={`flex h-full ${className}`}>
       {/* Node Library Sidebar */}
-      <div className="w-80 border-r bg-background sm:w-auto md:w-full">
+      <div className="w-80 border-r bg-background ">
         <div className="p-4 sm:p-4 md:p-6">
           <h3 className="text-lg font-semibold mb-4">Node Library</h3>
           <NodeLibrary readOnly={readOnly} />
@@ -251,41 +225,37 @@ export function WorkflowBuilder({
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setShowMiniMap(!showMiniMap)}
+                onClick={() => setShowMiniMap(!showMiniMap)}
               >
-                {showMiniMap ? <EyeOff className="h-4 w-4 sm:w-auto md:w-full" /> : <Eye className="h-4 w-4 sm:w-auto md:w-full" />}
-                MiniMap
+                {showMiniMap ? <EyeOff className="h-4 w-4 " /> : <Eye className="h-4 w-4 " />}
               </Button>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setShowBackground(!showBackground)}
+                onClick={() => setShowBackground(!showBackground)}
               >
-                {showBackground ? <EyeOff className="h-4 w-4 sm:w-auto md:w-full" /> : <Eye className="h-4 w-4 sm:w-auto md:w-full" />}
-                Grid
+                {showBackground ? <EyeOff className="h-4 w-4 " /> : <Eye className="h-4 w-4 " />}
               </Button>
               <Separator orientation="vertical" className="h-6" />
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={validateWorkflow}
                 disabled={isValidating}
-               aria-label="Button">
-                <CheckCircle className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Validate
+               >
+                <CheckCircle className="h-4 w-4 mr-2 " />
               </Button>
               {onTest && (
-                <button
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={testWorkflow}
                   disabled={isTesting}
-                 aria-label="Button">
-                  <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Test
+                 >
+                  <Play className="h-4 w-4 mr-2 " />
                 </Button>
               )}
               {onSave && !readOnly && (
@@ -293,8 +263,7 @@ export function WorkflowBuilder({
                   size="sm"
                   onClick={handleSave}
                  aria-label="Button">
-                  <Save className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Save
+                  <Save className="h-4 w-4 mr-2 " />
                 </Button>
               )}
             </div>
@@ -304,7 +273,7 @@ export function WorkflowBuilder({
             <div className="mt-4">
               {validationResult.errors.length > 0 && (
                 <Alert variant="destructive" className="mb-2">
-                  <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                  <AlertTriangle className="h-4 w-4 " />
                   <AlertDescription>
                     {validationResult.errors.length} error(s) found. Please fix them before saving.
                   </AlertDescription>
@@ -312,7 +281,7 @@ export function WorkflowBuilder({
               )}
               {validationResult.warnings.length > 0 && (
                 <Alert className="mb-2">
-                  <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                  <AlertTriangle className="h-4 w-4 " />
                   <AlertDescription>
                     {validationResult.warnings.length} warning(s) found.
                   </AlertDescription>
@@ -320,7 +289,7 @@ export function WorkflowBuilder({
               )}
               {validationResult.valid && (
                 <Alert className="mb-2">
-                  <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-4 w-4 " />
                   <AlertDescription>
                     Workflow validation passed successfully.
                   </AlertDescription>
@@ -354,26 +323,26 @@ export function WorkflowBuilder({
       </div>
       {/* Properties Panel */}
       {selectedNode && (
-        <div className="w-80 border-l bg-background sm:w-auto md:w-full">
+        <div className="w-80 border-l bg-background ">
           <div className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Node Properties</h3>
               <div className="flex gap-2">
                 {!readOnly && (
                   <>
-                    <button
+                    <Button
                       variant="outline"
                       size="sm"
                       onClick={duplicateSelectedNode}
-                     aria-label="Button">
-                      <Copy className="h-4 w-4 sm:w-auto md:w-full" />
+                     >
+                      <Copy className="h-4 w-4 " />
                     </Button>
-                    <button
+                    <Button
                       variant="outline"
                       size="sm"
                       onClick={deleteSelectedNode}
-                     aria-label="Button">
-                      <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
+                     >
+                      <Trash2 className="h-4 w-4 " />
                     </Button>
                   </>
                 )}

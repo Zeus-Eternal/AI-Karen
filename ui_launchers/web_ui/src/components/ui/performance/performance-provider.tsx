@@ -82,7 +82,7 @@ export function withPerformanceMeasurement(
     return measureFunction(`${componentName}-render`, () =>
       React.createElement(Component, { ...props, ref })
     );
-  });
+
   WrappedComponent.displayName = `withPerformanceMeasurement(${Component.displayName || Component.name})`;
   return WrappedComponent;
 }
@@ -99,7 +99,7 @@ export function useComponentPerformance(componentName: string) {
         value: mountEnd - mountStart,
         type: 'component-lifecycle',
         metadata: { componentName, phase: 'mount-unmount' }
-      });
+
     };
   }, [componentName, recordMetric]);
   const measureRender = useCallback((fn: () => any): any => {
@@ -111,7 +111,7 @@ export function useComponentPerformance(componentName: string) {
       value: end - start,
       type: 'component-lifecycle',
       metadata: { componentName }
-    });
+
     return result;
   }, [componentName, recordMetric]);
   const measureAsync = useCallback(async (name: string, fn: () => Promise<any>): Promise<any> => {
@@ -123,7 +123,7 @@ export function useComponentPerformance(componentName: string) {
       value: end - start,
       type: 'component-async',
       metadata: { componentName, operation: name }
-    });
+
     return result;
   }, [componentName, recordMetric]);
   return {
@@ -146,7 +146,7 @@ export function useInteractionPerformance() {
         value: end - start,
         type: 'user-interaction',
         metadata: { elementName, interaction: 'click' }
-      });
+
     };
   }, [recordMetric]);
   const measureAsyncClick = useCallback((elementName: string, handler: () => Promise<void>) => {
@@ -159,7 +159,7 @@ export function useInteractionPerformance() {
         value: end - start,
         type: 'user-interaction',
         metadata: { elementName, interaction: 'async-click' }
-      });
+
     };
   }, [recordMetric]);
   const measureFormSubmit = useCallback((formName: string, handler: () => void | Promise<void>) => {
@@ -172,7 +172,7 @@ export function useInteractionPerformance() {
         value: end - start,
         type: 'user-interaction',
         metadata: { formName, interaction: 'form-submit' }
-      });
+
     };
   }, [recordMetric]);
   return {
@@ -195,7 +195,7 @@ async function reportToAnalytics(metric: {
         type: metric.type,
         metadata: metric.metadata,
         timestamp: new Date().toISOString(),
-      });
+
     }
   } catch (error) {
   }

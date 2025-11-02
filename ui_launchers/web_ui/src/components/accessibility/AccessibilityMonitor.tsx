@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -7,15 +7,8 @@ import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import { Alert, AlertDescription } from '../ui/alert';
-import { 
-  Eye, 
-  AlertTriangle, 
-  CheckCircle, 
-  Settings, 
-  Monitor,
-  Bell,
-  BellOff,
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { useAccessibilityMonitor } from '../../hooks/use-accessibility-testing';
 import { cn } from '../../lib/utils';
 
@@ -83,9 +76,9 @@ export function AccessibilityMonitor({
             
             <div className="flex items-center space-x-2">
               {enabled ? (
-                <Bell className="h-4 w-4 text-primary sm:w-auto md:w-full" />
+                <Bell className="h-4 w-4 text-primary " />
               ) : (
-                <BellOff className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                <BellOff className="h-4 w-4 text-muted-foreground " />
               )}
               <Switch
                 checked={enabled}
@@ -110,10 +103,10 @@ export function AccessibilityMonitor({
             </div>
             
             {enabled && hasIssues && (
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
+                onClick={() => setShowDetails(!showDetails)}
               >
                 {showDetails ? 'Hide' : 'Show'} Details
               </Button>
@@ -130,7 +123,7 @@ export function AccessibilityMonitor({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2 text-red-600">
-                  <AlertTriangle className="h-5 w-5 sm:w-auto md:w-full" />
+                  <AlertTriangle className="h-5 w-5 " />
                   <span>Accessibility Violations</span>
                   <Badge variant="destructive">{violations.length}</Badge>
                 </CardTitle>
@@ -139,7 +132,7 @@ export function AccessibilityMonitor({
                 <div className="space-y-2">
                   {violations.map((violation, index) => (
                     <Alert key={index} variant="destructive">
-                      <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                      <AlertTriangle className="h-4 w-4 " />
                       <AlertDescription>{violation}</AlertDescription>
                     </Alert>
                   ))}
@@ -153,7 +146,7 @@ export function AccessibilityMonitor({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2 text-yellow-600">
-                  <AlertTriangle className="h-5 w-5 sm:w-auto md:w-full" />
+                  <AlertTriangle className="h-5 w-5 " />
                   <span>Accessibility Warnings</span>
                   <Badge variant="secondary">{warnings.length}</Badge>
                 </CardTitle>
@@ -162,7 +155,7 @@ export function AccessibilityMonitor({
                 <div className="space-y-2">
                   {warnings.map((warning, index) => (
                     <Alert key={index}>
-                      <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                      <AlertTriangle className="h-4 w-4 " />
                       <AlertDescription>{warning}</AlertDescription>
                     </Alert>
                   ))}
@@ -178,7 +171,7 @@ export function AccessibilityMonitor({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Settings className="h-5 w-5 sm:w-auto md:w-full" />
+              <Settings className="h-5 w-5 " />
               <span>Monitor Settings</span>
             </CardTitle>
           </CardHeader>
@@ -187,7 +180,6 @@ export function AccessibilityMonitor({
               <div className="space-y-0.5">
                 <Label>Real-time Monitoring</Label>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                  Continuously monitor for accessibility issues
                 </p>
               </div>
               <Switch
@@ -200,21 +192,19 @@ export function AccessibilityMonitor({
               <div className="space-y-0.5">
                 <Label>Console Logging</Label>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                  Log accessibility issues to browser console
                 </p>
               </div>
               <Switch defaultChecked />
             </div>
             
             <div className="pt-4 border-t">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> runTest()}
+                onClick={() => runTest()}
                 className="w-full"
               >
-                <Eye className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Run Manual Test
+                <Eye className="h-4 w-4 mr-2 " />
               </Button>
             </div>
           </CardContent>
@@ -224,7 +214,7 @@ export function AccessibilityMonitor({
       {/* Development Mode Notice */}
       {process.env.NODE_ENV === 'development' && (
         <Alert>
-          <Monitor className="h-4 w-4 sm:w-auto md:w-full" />
+          <Monitor className="h-4 w-4 " />
           <AlertDescription>
             Accessibility monitoring is automatically enabled in development mode.
             It will be disabled in production builds.

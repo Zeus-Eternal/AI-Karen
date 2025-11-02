@@ -3,6 +3,7 @@
  */
 
 
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
@@ -42,8 +43,7 @@ describe('AdminRoute Component', () => {
         search: '',
       },
       writable: true,
-    });
-    
+
     // Mock sessionStorage
     Object.defineProperty(window, 'sessionStorage', {
       value: {
@@ -52,8 +52,7 @@ describe('AdminRoute Component', () => {
         removeItem: vi.fn(),
       },
       writable: true,
-    });
-  });
+
 
   it('should render children for authenticated super admin', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(true);
@@ -67,7 +66,6 @@ describe('AdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     render(
       <AdminRoute>
@@ -77,13 +75,11 @@ describe('AdminRoute Component', () => {
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     await waitFor(() => {
       expect(screen.getByText('Admin Content')).toBeInTheDocument();
     }, { timeout: 3000 });
     expect(mockReplace).not.toHaveBeenCalled();
-  });
 
   it('should render children for authenticated admin', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(true);
@@ -97,7 +93,6 @@ describe('AdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     render(
       <AdminRoute>
@@ -107,13 +102,11 @@ describe('AdminRoute Component', () => {
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     await waitFor(() => {
       expect(screen.getByText('Admin Content')).toBeInTheDocument();
-    });
+
     expect(mockReplace).not.toHaveBeenCalled();
-  });
 
   it('should redirect to login for unauthenticated user', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(false);
@@ -127,7 +120,6 @@ describe('AdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     await act(async () => {
       render(
@@ -135,15 +127,12 @@ describe('AdminRoute Component', () => {
           <div>Admin Content</div>
         </AdminRoute>
       );
-    });
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     expect(screen.queryByText('Admin Content')).not.toBeInTheDocument();
     expect(mockReplace).toHaveBeenCalledWith('/login');
-  });
 
   it('should show access denied for regular user', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(true);
@@ -157,7 +146,6 @@ describe('AdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     render(
       <AdminRoute>
@@ -167,11 +155,9 @@ describe('AdminRoute Component', () => {
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     // Should show loading state instead of access denied text
     expect(screen.queryByText('Admin Content')).not.toBeInTheDocument();
-  });
 
   it('should use custom redirect path', async () => {
     const mockCheckAuth = vi.fn().mockResolvedValue(true);
@@ -185,7 +171,6 @@ describe('AdminRoute Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       checkAuth: mockCheckAuth
-    });
 
     render(
       <AdminRoute redirectTo="/custom-unauthorized">
@@ -195,11 +180,9 @@ describe('AdminRoute Component', () => {
 
     await waitFor(() => {
       expect(mockCheckAuth).toHaveBeenCalled();
-    });
 
     // Should redirect to custom path instead of default
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/custom-unauthorized');
-    });
-  });
-});
+
+

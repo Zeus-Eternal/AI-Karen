@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AgentDashboard } from '../AgentDashboard';
@@ -116,7 +117,6 @@ describe('AgentDashboard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('rendering', () => {
     it('should render dashboard header and stats', () => {
@@ -126,7 +126,6 @@ describe('AgentDashboard', () => {
       expect(screen.getByText('Monitor and control your AI agents')).toBeInTheDocument();
       expect(screen.getByText('Total Agents')).toBeInTheDocument();
       expect(screen.getByText('2')).toBeInTheDocument(); // Total agents count
-    });
 
     it('should display agent statistics correctly', () => {
       render(<AgentDashboard agents={mockAgents} {...mockHandlers} />);
@@ -135,7 +134,6 @@ describe('AgentDashboard', () => {
       expect(screen.getByText('1')).toBeInTheDocument(); // 1 running agent
       expect(screen.getByText('Tasks Completed')).toBeInTheDocument();
       expect(screen.getByText('150')).toBeInTheDocument(); // 100 + 50 completed tasks
-    });
 
     it('should render agent cards with correct information', () => {
       render(<AgentDashboard agents={mockAgents} {...mockHandlers} />);
@@ -144,8 +142,7 @@ describe('AgentDashboard', () => {
       expect(screen.getByText('Test Agent 2')).toBeInTheDocument();
       expect(screen.getByText('A test agent for unit testing')).toBeInTheDocument();
       expect(screen.getByText('Another test agent')).toBeInTheDocument();
-    });
-  });
+
 
   describe('search and filtering', () => {
     it('should filter agents by search term', async () => {
@@ -157,8 +154,7 @@ describe('AgentDashboard', () => {
       await waitFor(() => {
         expect(screen.getByText('Test Agent 1')).toBeInTheDocument();
         expect(screen.queryByText('Test Agent 2')).not.toBeInTheDocument();
-      });
-    });
+
 
     it('should filter agents by status', async () => {
       render(<AgentDashboard agents={mockAgents} {...mockHandlers} />);
@@ -169,8 +165,7 @@ describe('AgentDashboard', () => {
       await waitFor(() => {
         expect(screen.getByText('Test Agent 1')).toBeInTheDocument();
         expect(screen.queryByText('Test Agent 2')).not.toBeInTheDocument();
-      });
-    });
+
 
     it('should show no results message when no agents match', async () => {
       render(<AgentDashboard agents={mockAgents} {...mockHandlers} />);
@@ -180,9 +175,8 @@ describe('AgentDashboard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('No agents found matching your criteria.')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('agent actions', () => {
     it('should call onStartAgent when start button is clicked', async () => {
@@ -194,9 +188,8 @@ describe('AgentDashboard', () => {
         fireEvent.click(startButtons[0]);
         await waitFor(() => {
           expect(mockHandlers.onStartAgent).toHaveBeenCalled();
-        });
+
       }
-    });
 
     it('should call onStopAgent when stop button is clicked', async () => {
       render(<AgentDashboard agents={mockAgents} {...mockHandlers} />);
@@ -206,9 +199,8 @@ describe('AgentDashboard', () => {
         fireEvent.click(stopButtons[0]);
         await waitFor(() => {
           expect(mockHandlers.onStopAgent).toHaveBeenCalled();
-        });
+
       }
-    });
 
     it('should call onRestartAgent when restart button is clicked', async () => {
       render(<AgentDashboard agents={mockAgents} {...mockHandlers} />);
@@ -218,8 +210,7 @@ describe('AgentDashboard', () => {
 
       await waitFor(() => {
         expect(mockHandlers.onRestartAgent).toHaveBeenCalledWith('agent-1');
-      });
-    });
+
 
     it('should call onConfigureAgent when config button is clicked', async () => {
       render(<AgentDashboard agents={mockAgents} {...mockHandlers} />);
@@ -229,9 +220,8 @@ describe('AgentDashboard', () => {
 
       await waitFor(() => {
         expect(mockHandlers.onConfigureAgent).toHaveBeenCalledWith('agent-1');
-      });
-    });
-  });
+
+
 
   describe('agent selection and details', () => {
     it('should show agent details when agent is selected', async () => {
@@ -245,16 +235,14 @@ describe('AgentDashboard', () => {
           expect(screen.getByText('Overview')).toBeInTheDocument();
           expect(screen.getByText('Tasks')).toBeInTheDocument();
           expect(screen.getByText('Health')).toBeInTheDocument();
-        });
+
       }
-    });
 
     it('should show select agent message when no agent is selected', () => {
       render(<AgentDashboard agents={mockAgents} {...mockHandlers} />);
 
       expect(screen.getByText('Select an agent to view details')).toBeInTheDocument();
-    });
-  });
+
 
   describe('resource usage display', () => {
     it('should display CPU and memory usage correctly', () => {
@@ -264,8 +252,7 @@ describe('AgentDashboard', () => {
       expect(screen.getByText('Memory')).toBeInTheDocument();
       expect(screen.getByText('30.0%')).toBeInTheDocument(); // CPU usage for agent 1
       expect(screen.getByText('60.0%')).toBeInTheDocument(); // Memory usage for agent 1
-    });
-  });
+
 
   describe('health status display', () => {
     it('should display health status icons correctly', () => {
@@ -277,8 +264,7 @@ describe('AgentDashboard', () => {
       
       // At least one of each type should be present based on mock data
       expect(healthyIcons.length + criticalIcons.length).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('empty state', () => {
     it('should show empty state when no agents are provided', () => {
@@ -286,8 +272,7 @@ describe('AgentDashboard', () => {
 
       expect(screen.getByText('No agents found matching your criteria.')).toBeInTheDocument();
       expect(screen.getByText('0')).toBeInTheDocument(); // Total agents count
-    });
-  });
+
 
   describe('loading states', () => {
     it('should disable buttons during loading', async () => {
@@ -299,6 +284,5 @@ describe('AgentDashboard', () => {
 
       // Button should be disabled during loading
       expect(restartButton).toBeDisabled();
-    });
-  });
-});
+
+

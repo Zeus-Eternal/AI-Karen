@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
@@ -157,7 +158,7 @@ const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
         }))}>
           {leftIcon && (
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              <div className="h-4 w-4 flex items-center justify-center sm:w-auto md:w-full">
+              <div className="h-4 w-4 flex items-center justify-center ">
                 {leftIcon}
               </div>
             </div>
@@ -190,7 +191,7 @@ const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
             {showPasswordToggle && type === 'password' && (
               <button
                 type="button"
-                onClick={() = aria-label="Button"> setShowPassword(!showPassword)}
+                onClick={() => setShowPassword(!showPassword)}
                 className={cn(
                   'text-muted-foreground hover:text-foreground',
                   'focus-visible:outline-none focus-visible:ring-2',
@@ -201,15 +202,15 @@ const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
                 tabIndex={-1}
               >
                 {showPassword ? (
-                  <EyeOff className="h-4 w-4 sm:w-auto md:w-full" />
+                  <EyeOff className="h-4 w-4 " />
                 ) : (
-                  <Eye className="h-4 w-4 sm:w-auto md:w-full" />
+                  <Eye className="h-4 w-4 " />
                 )}
               </button>
             )}
             {rightIcon && !StatusIcon && (
               <div className="text-muted-foreground">
-                <div className="h-4 w-4 flex items-center justify-center sm:w-auto md:w-full">
+                <div className="h-4 w-4 flex items-center justify-center ">
                   {rightIcon}
                 </div>
               </div>

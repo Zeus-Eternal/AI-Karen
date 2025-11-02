@@ -59,31 +59,26 @@ describe('EmailService', () => {
     // Mock the config getter
     const configModule = await import('../config');
     vi.mocked(configModule.getEmailServiceConfig).mockResolvedValue(mockConfig);
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('initialize', () => {
     it('should initialize email service with configuration', async () => {
       await emailService.initialize();
       
       expect(emailService.getConfig()).toEqual(mockConfig);
-    });
 
     it('should handle initialization errors', async () => {
       const configModule = await import('../config');
       vi.mocked(configModule.getEmailServiceConfig).mockRejectedValue(new Error('Config error'));
 
       await expect(emailService.initialize()).rejects.toThrow('Config error');
-    });
-  });
+
 
   describe('sendEmail', () => {
     beforeEach(async () => {
       await emailService.initialize();
-    });
 
     it('should send simple email successfully', async () => {
       const result = await emailService.sendEmail(
@@ -96,7 +91,6 @@ describe('EmailService', () => {
       expect(result.success).toBe(true);
       expect(result.message_id).toBeDefined();
       expect(result.error).toBeUndefined();
-    });
 
     it('should generate text content from HTML if not provided', async () => {
       const result = await emailService.sendEmail(
@@ -106,7 +100,6 @@ describe('EmailService', () => {
       );
 
       expect(result.success).toBe(true);
-    });
 
     it('should handle disabled email service', async () => {
       mockConfig.enabled = false;
@@ -120,7 +113,6 @@ describe('EmailService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Email service is disabled');
-    });
 
     it('should handle uninitialized service', async () => {
       const uninitializedService = new EmailService();
@@ -132,8 +124,7 @@ describe('EmailService', () => {
           '<p>Test content</p>'
         )
       ).rejects.toThrow('Email service not initialized');
-    });
-  });
+
 
   describe('sendTemplateEmail', () => {
     let mockTemplate: EmailTemplate;
@@ -161,7 +152,6 @@ describe('EmailService', () => {
         .mockReturnValueOnce('Hello John Doe') // subject
         .mockReturnValueOnce('<p>Hello John Doe, welcome to Test System!</p>') // html
         .mockReturnValueOnce('Hello John Doe, welcome to Test System!'); // text
-    });
 
     it('should send template email successfully', async () => {
       const variables = {
@@ -181,7 +171,6 @@ describe('EmailService', () => {
       // Verify template rendering was called
       const templateModule = await import('../template-engine');
       expect(templateModule.TemplateEngine.render).toHaveBeenCalledTimes(3);
-    });
 
     it('should handle template rendering with options', async () => {
       const variables = { name: 'John', system: 'Test' };
@@ -199,8 +188,7 @@ describe('EmailService', () => {
       );
 
       expect(result.success).toBe(true);
-    });
-  });
+
 
   describe('sendAdminInvitation', () => {
     beforeEach(async () => {
@@ -226,7 +214,6 @@ describe('EmailService', () => {
       // Mock template rendering
       vi.mocked(templateModule.TemplateEngine.render)
         .mockReturnValue('Rendered content');
-    });
 
     it('should send admin invitation email', async () => {
       const result = await emailService.sendAdminInvitation(
@@ -238,7 +225,6 @@ describe('EmailService', () => {
       );
 
       expect(result.success).toBe(true);
-    });
 
     it('should handle missing admin invitation template', async () => {
       const templateModule = await import('../template-engine');
@@ -254,8 +240,7 @@ describe('EmailService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Admin invitation template not found');
-    });
-  });
+
 
   describe('sendUserWelcome', () => {
     beforeEach(async () => {
@@ -280,7 +265,6 @@ describe('EmailService', () => {
 
       // Mock template rendering
       vi.mocked(templateModule.TemplateEngine.render).mockReturnValue('Rendered content');
-    });
 
     it('should send user welcome email', async () => {
       const result = await emailService.sendUserWelcome(
@@ -292,8 +276,7 @@ describe('EmailService', () => {
       );
 
       expect(result.success).toBe(true);
-    });
-  });
+
 
   describe('sendSecurityAlert', () => {
     beforeEach(async () => {
@@ -318,7 +301,6 @@ describe('EmailService', () => {
 
       // Mock template rendering
       vi.mocked(templateModule.TemplateEngine.render).mockReturnValue('Rendered content');
-    });
 
     it('should send security alert email', async () => {
       const result = await emailService.sendSecurityAlert(
@@ -330,13 +312,11 @@ describe('EmailService', () => {
       );
 
       expect(result.success).toBe(true);
-    });
-  });
+
 
   describe('testConnection', () => {
     beforeEach(async () => {
       await emailService.initialize();
-    });
 
     it('should test email service connection', async () => {
       const configModule = await import('../config');
@@ -355,13 +335,11 @@ describe('EmailService', () => {
 
       expect(result).toEqual(mockHealthResult);
       expect(configModule.testEmailService).toHaveBeenCalledWith(mockConfig);
-    });
-  });
+
 
   describe('updateConfig', () => {
     beforeEach(async () => {
       await emailService.initialize();
-    });
 
     it('should update email service configuration', async () => {
       const newConfig = {
@@ -374,9 +352,8 @@ describe('EmailService', () => {
       const updatedConfig = emailService.getConfig();
       expect(updatedConfig?.enabled).toBe(false);
       expect(updatedConfig?.test_mode).toBe(false);
-    });
-  });
-});
+
+
 
 describe('NotificationService', () => {
   let notificationService: NotificationService;
@@ -390,20 +367,18 @@ describe('NotificationService', () => {
     vi.spyOn(mockEmailService, 'sendAdminInvitation').mockResolvedValue({
       success: true,
       message_id: 'test-message-id',
-    });
+
     vi.spyOn(mockEmailService, 'sendUserWelcome').mockResolvedValue({
       success: true,
       message_id: 'test-message-id',
-    });
+
     vi.spyOn(mockEmailService, 'sendSecurityAlert').mockResolvedValue({
       success: true,
       message_id: 'test-message-id',
-    });
-  });
+
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('sendAdminActionNotification', () => {
     it('should send admin invitation notification', async () => {
@@ -428,7 +403,6 @@ describe('NotificationService', () => {
         data.invitationLink,
         data.expiryDate
       );
-    });
 
     it('should send user welcome notification', async () => {
       const data = {
@@ -452,7 +426,6 @@ describe('NotificationService', () => {
         data.createdByName,
         data.setupLink
       );
-    });
 
     it('should send security alert notification', async () => {
       const data = {
@@ -476,7 +449,6 @@ describe('NotificationService', () => {
         data.ipAddress,
         data.actionRequired
       );
-    });
 
     it('should handle unsupported notification type', async () => {
       const result = await notificationService.sendAdminActionNotification(
@@ -487,8 +459,7 @@ describe('NotificationService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Unsupported notification type');
-    });
-  });
+
 
   describe('sendBulkNotifications', () => {
     it('should send bulk notifications successfully', async () => {
@@ -509,7 +480,6 @@ describe('NotificationService', () => {
       expect(result.failed).toBe(0);
       expect(result.errors).toHaveLength(0);
       expect(mockEmailService.sendUserWelcome).toHaveBeenCalledTimes(2);
-    });
 
     it('should handle partial failures in bulk notifications', async () => {
       // Mock one success and one failure
@@ -534,7 +504,6 @@ describe('NotificationService', () => {
       expect(result.failed).toBe(1);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]).toContain('user2@example.com: Send failed');
-    });
 
     it('should handle exceptions in bulk notifications', async () => {
       vi.mocked(mockEmailService.sendUserWelcome)
@@ -553,6 +522,5 @@ describe('NotificationService', () => {
       expect(result.failed).toBe(1);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]).toContain('Network error');
-    });
-  });
-});
+
+

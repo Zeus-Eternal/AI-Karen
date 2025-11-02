@@ -1,50 +1,19 @@
 // Polymorphic Components Export
 export {
-  Text,
-  Heading,
-  Paragraph,
-  Label,
-  Caption,
-  Code,
-} from "./text"
+import { } from "./text"
 
 export {
-  Button,
-  IconButton,
-  LinkButton,
-  SubmitButton,
-  ResetButton,
-  CancelButton,
-  DestructiveButton,
-} from "./button"
+import { } from "./button"
 
 export {
-  Container,
-  FlexContainer,
-  GridContainer,
-  CenteredContainer,
-  ConstrainedContainer,
-  FluidContainer,
-} from "./container"
+import { } from "./container"
 
 // Types export
 export type {
-  TextProps,
-  TextVariant,
-  TextSize,
-  TextWeight,
-  TextAlign,
-} from "./text"
+import { } from "./text"
 
 export type {
-  ButtonProps,
-  ButtonVariant,
-  ButtonSize,
-} from "./button"
+import { } from "./button"
 
 export type {
-  ContainerProps,
-  ContainerVariant,
-  ContainerSize,
-  ContainerDisplay,
-} from "./container"
+import { } from "./container"

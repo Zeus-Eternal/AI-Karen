@@ -1,6 +1,5 @@
 import { logger } from '@/lib/logger';
 import { errorHandler, type ErrorInfo } from '@/lib/error-handler';
-import { 
 import { getExtensionAuthManager } from './extension-auth-manager';
 /**
  * Extension Authentication Error Recovery Manager
@@ -19,15 +18,11 @@ import { getExtensionAuthManager } from './extension-auth-manager';
 
 
 
-  ExtensionAuthError, 
-  ExtensionAuthRecoveryStrategy,
-  ExtensionAuthErrorFactory,
   extensionAuthErrorHandler
-} from './extension-auth-errors';
+import { } from './extension-auth-errors';
 
   extensionAuthDegradationManager,
-  ExtensionFeatureLevel
-} from './extension-auth-degradation';
+import { } from './extension-auth-degradation';
 
 
 /**
@@ -118,7 +113,6 @@ export class ExtensionAuthRecoveryManager {
       endpoint,
       operation,
       errorCategory: error.category
-    });
 
     let result: RecoveryAttemptResult;
 

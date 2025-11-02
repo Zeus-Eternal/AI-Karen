@@ -82,7 +82,6 @@ const createMockAuthContext = (user: any = null, isAuthenticated: boolean = fals
       return user.role === role;
     }
     return user.roles.includes(role);
-  });
 
   const hasPermission = vi.fn((permission: string): boolean => {
     if (!user) return false;
@@ -91,15 +90,12 @@ const createMockAuthContext = (user: any = null, isAuthenticated: boolean = fals
     }
     const rolePermissions = getRolePermissions(user.role || user.roles[0]);
     return rolePermissions.includes(permission);
-  });
 
   const isAdmin = vi.fn((): boolean => {
     return hasRole('admin') || hasRole('super_admin');
-  });
 
   const isSuperAdmin = vi.fn((): boolean => {
     return hasRole('super_admin');
-  });
 
   const baseContext = {
     user,
@@ -130,22 +126,19 @@ describe('Enhanced Mock Utilities', () => {
       expect(typeof authContext.hasPermission).toBe('function');
       expect(typeof authContext.isAdmin).toBe('function');
       expect(typeof authContext.isSuperAdmin).toBe('function');
-    });
 
     it('should create AuthContext with provided user and authentication state', () => {
       const authContext = createMockAuthContext(mockSuperAdminUser, true);
       
       expect(authContext.user).toEqual(mockSuperAdminUser);
       expect(authContext.isAuthenticated).toBe(true);
-    });
 
     it('should apply overrides correctly', () => {
       const customLogin = vi.fn();
       const authContext = createMockAuthContext(null, false, { login: customLogin });
       
       expect(authContext.login).toBe(customLogin);
-    });
-  });
+
 
   describe('Mock function behavior', () => {
     it('should have realistic hasRole implementation for super admin', () => {
@@ -154,7 +147,6 @@ describe('Enhanced Mock Utilities', () => {
       expect(authContext.hasRole('super_admin')).toBe(true);
       expect(authContext.hasRole('admin')).toBe(false);
       expect(authContext.hasRole('user')).toBe(false);
-    });
 
     it('should have realistic hasRole implementation for admin', () => {
       const authContext = createMockAuthContext(mockAdminUser, true);
@@ -162,7 +154,6 @@ describe('Enhanced Mock Utilities', () => {
       expect(authContext.hasRole('admin')).toBe(true);
       expect(authContext.hasRole('super_admin')).toBe(false);
       expect(authContext.hasRole('user')).toBe(false);
-    });
 
     it('should have realistic hasRole implementation for user', () => {
       const authContext = createMockAuthContext(mockRegularUser, true);
@@ -170,7 +161,6 @@ describe('Enhanced Mock Utilities', () => {
       expect(authContext.hasRole('user')).toBe(true);
       expect(authContext.hasRole('admin')).toBe(false);
       expect(authContext.hasRole('super_admin')).toBe(false);
-    });
 
     it('should have realistic hasPermission implementation for admin', () => {
       const authContext = createMockAuthContext(mockAdminUser, true);
@@ -178,7 +168,6 @@ describe('Enhanced Mock Utilities', () => {
       expect(authContext.hasPermission('user_management')).toBe(true);
       expect(authContext.hasPermission('admin_management')).toBe(false);
       expect(authContext.hasPermission('nonexistent_permission')).toBe(false);
-    });
 
     it('should have realistic hasPermission implementation for super admin', () => {
       const authContext = createMockAuthContext(mockSuperAdminUser, true);
@@ -187,7 +176,6 @@ describe('Enhanced Mock Utilities', () => {
       expect(authContext.hasPermission('admin_management')).toBe(true);
       expect(authContext.hasPermission('system_config')).toBe(true);
       expect(authContext.hasPermission('nonexistent_permission')).toBe(false);
-    });
 
     it('should have realistic isAdmin implementation', () => {
       const superAdminContext = createMockAuthContext(mockSuperAdminUser, true);
@@ -197,7 +185,6 @@ describe('Enhanced Mock Utilities', () => {
       expect(superAdminContext.isAdmin()).toBe(true);
       expect(adminContext.isAdmin()).toBe(true);
       expect(userContext.isAdmin()).toBe(false);
-    });
 
     it('should have realistic isSuperAdmin implementation', () => {
       const superAdminContext = createMockAuthContext(mockSuperAdminUser, true);
@@ -207,7 +194,6 @@ describe('Enhanced Mock Utilities', () => {
       expect(superAdminContext.isSuperAdmin()).toBe(true);
       expect(adminContext.isSuperAdmin()).toBe(false);
       expect(userContext.isSuperAdmin()).toBe(false);
-    });
 
     it('should handle unauthenticated users correctly', () => {
       const authContext = createMockAuthContext(null, false);
@@ -218,7 +204,6 @@ describe('Enhanced Mock Utilities', () => {
       expect(authContext.hasPermission('user_management')).toBe(false);
       expect(authContext.isAdmin()).toBe(false);
       expect(authContext.isSuperAdmin()).toBe(false);
-    });
 
     it('should handle async functions correctly', async () => {
       const authContext = createMockAuthContext(mockRegularUser, true);
@@ -229,7 +214,6 @@ describe('Enhanced Mock Utilities', () => {
       // Test that login function can be called without throwing
       const loginResult = authContext.login({ email: 'test@example.com', password: 'password' });
       expect(loginResult).toBeUndefined();
-    });
 
     it('should handle users without explicit permissions by falling back to role permissions', () => {
       const userWithoutPermissions = {
@@ -240,8 +224,7 @@ describe('Enhanced Mock Utilities', () => {
       
       // Should fall back to role-based permissions (user role has no permissions)
       expect(authContext.hasPermission('user_management')).toBe(false);
-    });
-  });
+
 
   describe('Enhanced mock user data', () => {
     it('should have complete and realistic mock users', () => {
@@ -252,14 +235,12 @@ describe('Enhanced Mock Utilities', () => {
         expect(user.roles).toBeInstanceOf(Array);
         expect(user.role).toBeDefined();
         expect(user.permissions).toBeInstanceOf(Array);
-      });
-    });
+
 
     it('should have unique user IDs', () => {
       const userIds = [mockSuperAdminUser, mockAdminUser, mockRegularUser].map(u => u.user_id);
       const uniqueIds = new Set(userIds);
       expect(uniqueIds.size).toBe(userIds.length);
-    });
 
     it('should have appropriate permissions for each role', () => {
       expect(mockSuperAdminUser.permissions).toContain('admin_management');
@@ -270,7 +251,6 @@ describe('Enhanced Mock Utilities', () => {
       expect(mockAdminUser.permissions).not.toContain('admin_management');
       
       expect(mockRegularUser.permissions).toHaveLength(0);
-    });
 
     it('should have consistent role and roles fields', () => {
       expect(mockSuperAdminUser.role).toBe('super_admin');
@@ -281,8 +261,7 @@ describe('Enhanced Mock Utilities', () => {
       
       expect(mockRegularUser.role).toBe('user');
       expect(mockRegularUser.roles).toContain('user');
-    });
-  });
+
 
   describe('Interface compatibility', () => {
     it('should match the actual AuthContextType interface structure', () => {
@@ -298,7 +277,6 @@ describe('Enhanced Mock Utilities', () => {
       expect(authContext).toHaveProperty('hasPermission');
       expect(authContext).toHaveProperty('isAdmin');
       expect(authContext).toHaveProperty('isSuperAdmin');
-    });
 
     it('should have correct function signatures', () => {
       const authContext = createMockAuthContext(mockSuperAdminUser, true);
@@ -308,6 +286,5 @@ describe('Enhanced Mock Utilities', () => {
       expect(() => authContext.hasPermission('user_management')).not.toThrow();
       expect(() => authContext.isAdmin()).not.toThrow();
       expect(() => authContext.isSuperAdmin()).not.toThrow();
-    });
-  });
-});
+
+

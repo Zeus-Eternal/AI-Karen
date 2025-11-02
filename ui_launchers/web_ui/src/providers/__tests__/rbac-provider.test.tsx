@@ -48,7 +48,6 @@ function createWrapper() {
       queries: { retry: false },
       mutations: { retry: false },
     },
-  });
 
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
@@ -118,7 +117,7 @@ describe('RBACProvider', () => {
           auditLevel: 'detailed',
           cachePermissions: true,
           cacheTTL: 5 * 60 * 1000
-        });
+
       }
       
       if (url === '/api/rbac/evil-mode/config') {
@@ -131,7 +130,7 @@ describe('RBACProvider', () => {
           restrictions: [],
           warningMessage: 'Evil Mode Warning',
           timeLimit: 60
-        });
+
       }
       
       if (url === `/api/rbac/users/${mockUser.id}/roles`) {
@@ -143,8 +142,7 @@ describe('RBACProvider', () => {
       }
       
       return Promise.reject(new Error('Unknown endpoint'));
-    });
-  });
+
 
   it('provides current user information', async () => {
     const Wrapper = createWrapper();
@@ -157,8 +155,7 @@ describe('RBACProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('current-user')).toHaveTextContent('testuser');
-    });
-  });
+
 
   it('loads user roles correctly', async () => {
     const Wrapper = createWrapper();
@@ -171,8 +168,7 @@ describe('RBACProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('user-roles')).toHaveTextContent('2');
-    });
-  });
+
 
   it('calculates effective permissions correctly', async () => {
     const Wrapper = createWrapper();
@@ -186,8 +182,7 @@ describe('RBACProvider', () => {
     await waitFor(() => {
       // Should have 4 unique permissions from both roles
       expect(screen.getByTestId('effective-permissions')).toHaveTextContent('4');
-    });
-  });
+
 
   it('checks individual permissions correctly', async () => {
     const Wrapper = createWrapper();
@@ -200,8 +195,7 @@ describe('RBACProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('has-dashboard-view')).toHaveTextContent('true');
-    });
-  });
+
 
   it('checks multiple permissions with hasAllPermissions', async () => {
     const Wrapper = createWrapper();
@@ -215,8 +209,7 @@ describe('RBACProvider', () => {
     await waitFor(() => {
       // User doesn't have admin permissions
       expect(screen.getByTestId('has-admin-permissions')).toHaveTextContent('false');
-    });
-  });
+
 
   it('checks multiple permissions with hasAnyPermission', async () => {
     const Wrapper = createWrapper();
@@ -230,8 +223,7 @@ describe('RBACProvider', () => {
     await waitFor(() => {
       // User has both chat:basic and chat:advanced
       expect(screen.getByTestId('has-any-chat-permissions')).toHaveTextContent('true');
-    });
-  });
+
 
   it('handles Evil Mode state correctly', async () => {
     const Wrapper = createWrapper();
@@ -245,8 +237,7 @@ describe('RBACProvider', () => {
     await waitFor(() => {
       expect(screen.getByTestId('evil-mode-enabled')).toHaveTextContent('false');
       expect(screen.getByTestId('can-enable-evil-mode')).toHaveTextContent('false');
-    });
-  });
+
 
   it('handles user without roles', async () => {
     mockUseAppStore.mockReturnValue({
@@ -258,7 +249,6 @@ describe('RBACProvider', () => {
         return Promise.resolve([]);
       }
       return mockApiClient.get(url);
-    });
 
     const Wrapper = createWrapper();
     
@@ -272,8 +262,7 @@ describe('RBACProvider', () => {
       expect(screen.getByTestId('user-roles')).toHaveTextContent('0');
       expect(screen.getByTestId('effective-permissions')).toHaveTextContent('0');
       expect(screen.getByTestId('has-dashboard-view')).toHaveTextContent('false');
-    });
-  });
+
 
   it('handles unauthenticated user', async () => {
     mockUseAppStore.mockReturnValue({
@@ -290,39 +279,33 @@ describe('RBACProvider', () => {
 
     expect(screen.getByTestId('current-user')).toHaveTextContent('No user');
     expect(screen.getByTestId('has-dashboard-view')).toHaveTextContent('false');
-  });
-});
+
 
 describe('Permission checking logic', () => {
   it('should handle time-based restrictions', () => {
     // This would be tested with a more complex setup involving context
     // For now, we'll test the basic structure
     expect(true).toBe(true);
-  });
 
   it('should handle IP-based restrictions', () => {
     // This would be tested with a more complex setup involving context
     // For now, we'll test the basic structure
     expect(true).toBe(true);
-  });
 
   it('should resolve role conflicts correctly', () => {
     // This would be tested with a more complex setup involving role hierarchy
     // For now, we'll test the basic structure
     expect(true).toBe(true);
-  });
-});
+
 
 describe('Role hierarchy', () => {
   it('should inherit permissions from parent roles', () => {
     // This would be tested with a more complex setup involving role hierarchy
     // For now, we'll test the basic structure
     expect(true).toBe(true);
-  });
 
   it('should resolve permission conflicts based on priority', () => {
     // This would be tested with a more complex setup involving role conflicts
     // For now, we'll test the basic structure
     expect(true).toBe(true);
-  });
-});
+

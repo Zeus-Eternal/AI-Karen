@@ -44,7 +44,6 @@ const mockLocation = {
 Object.defineProperty(window, 'location', {
   value: mockLocation,
   writable: true,
-});
 
 // Mock document.cookie
 let mockCookie = '';
@@ -54,7 +53,6 @@ Object.defineProperty(document, 'cookie', {
     mockCookie = value;
   },
   configurable: true,
-});
 
 // Mock UI components to avoid dependency issues
 vi.mock('@/components/ui/button', () => ({
@@ -113,7 +111,6 @@ const ProtectedContent: React.FC = () => (
         }
       }}
     >
-      Test API Call
     </button>
   </div>
 );
@@ -149,11 +146,9 @@ describe('Complete Authentication Flow Integration Tests', () => {
     mockLocation.replace.mockClear();
     mockCookie = '';
     mockFetch.mockClear();
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Complete Authentication Flow from Login to Protected Pages', () => {
     it('should complete full flow: login form → authentication → protected content access', async () => {
@@ -173,7 +168,6 @@ describe('Complete Authentication Flow Integration Tests', () => {
       // Render login form initially
       await act(async () => {
         render(<TestApp showProtected={false} />);
-      });
 
       // Verify login form is rendered
       expect(screen.getByText('Welcome to AI Karen')).toBeInTheDocument();
@@ -185,7 +179,6 @@ describe('Complete Authentication Flow Integration Tests', () => {
         await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
         await user.type(screen.getByLabelText(/password/i), 'validpassword123');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       // Verify login API call was made with correct credentials and cookie handling
       await waitFor(() => {
@@ -200,15 +193,13 @@ describe('Complete Authentication Flow Integration Tests', () => {
             password: 'validpassword123',
           }),
           credentials: 'include', // Verify cookies are included
-        });
-      });
+
 
       // Simulate session cookie being set after login
       mockCookie = 'session_id=abc123; Path=/';
 
       // Test that we can now access protected content in a separate test
       // This simulates the user navigating to a protected page after login
-    });
 
     it('should render protected content when user has valid session', async () => {
       // Set up authenticated state with session cookie
@@ -227,7 +218,6 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={true} />);
-      });
 
       // Verify session validation is called
       await waitFor(() => {
@@ -238,20 +228,17 @@ describe('Complete Authentication Flow Integration Tests', () => {
             'Accept': 'application/json',
           },
           credentials: 'include',
-        });
-      });
+
 
       // Verify protected content is rendered
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
         expect(screen.getByText('Protected Dashboard')).toBeInTheDocument();
         expect(screen.getByText('This content requires authentication')).toBeInTheDocument();
-      });
 
       // Verify no redirects occurred
       expect(mockReplace).not.toHaveBeenCalled();
       expect(mockLocation.href).toBe('');
-    });
 
     it('should handle complete flow with 2FA requirement', async () => {
       const user = userEvent.setup();
@@ -266,19 +253,16 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={false} />);
-      });
 
       // Initial login attempt
       await act(async () => {
         await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
         await user.type(screen.getByLabelText(/password/i), 'validpassword123');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       // Wait for 2FA field to appear
       await waitFor(() => {
         expect(screen.getByLabelText(/two-factor authentication code/i)).toBeInTheDocument();
-      });
 
       // Mock successful 2FA login
       mockFetch.mockResolvedValueOnce(
@@ -295,7 +279,6 @@ describe('Complete Authentication Flow Integration Tests', () => {
       await act(async () => {
         await user.type(screen.getByLabelText(/two-factor authentication code/i), '123456');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       // Verify 2FA login API call
       await waitFor(() => {
@@ -311,9 +294,8 @@ describe('Complete Authentication Flow Integration Tests', () => {
             totp_code: '123456',
           }),
           credentials: 'include',
-        });
-      });
-    });
+
+
 
     it('should handle login failure and remain on login form', async () => {
       const user = userEvent.setup();
@@ -328,19 +310,16 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={false} />);
-      });
 
       // Attempt login with invalid credentials
       await act(async () => {
         await user.type(screen.getByLabelText(/email address/i), 'wrong@example.com');
         await user.type(screen.getByLabelText(/password/i), 'wrongpassword');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       // Verify error is displayed
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Verify still on login form
       expect(screen.getByText('Welcome to AI Karen')).toBeInTheDocument();
@@ -348,8 +327,7 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       // Verify no session cookie was set
       expect(mockCookie).toBe('');
-    });
-  });
+
 
   describe('API Requests Include Cookies Automatically', () => {
     it('should include credentials in all API requests made through API client', async () => {
@@ -371,12 +349,10 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={true} />);
-      });
 
       // Wait for protected content to load
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       // Mock API response for profile request
       mockFetch.mockResolvedValueOnce(
@@ -389,7 +365,6 @@ describe('Complete Authentication Flow Integration Tests', () => {
       // Trigger API call through button
       await act(async () => {
         await user.click(screen.getByTestId('api-test-button'));
-      });
 
       // Verify API call includes credentials (should be the second call after session validation)
       await waitFor(() => {
@@ -402,8 +377,7 @@ describe('Complete Authentication Flow Integration Tests', () => {
             credentials: 'include',
           })
         );
-      });
-    });
+
 
     it('should include credentials in direct fetch calls from session module', async () => {
       // Mock session validation call
@@ -429,8 +403,7 @@ describe('Complete Authentication Flow Integration Tests', () => {
           'Accept': 'application/json',
         },
         credentials: 'include',
-      });
-    });
+
 
     it('should include credentials in login API calls', async () => {
       // Mock successful login
@@ -457,8 +430,7 @@ describe('Complete Authentication Flow Integration Tests', () => {
           password: 'password123',
         }),
         credentials: 'include',
-      });
-    });
+
 
     it('should include credentials in logout API calls', async () => {
       // Mock logout response
@@ -476,9 +448,8 @@ describe('Complete Authentication Flow Integration Tests', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
-      });
-    });
-  });
+
+
 
   describe('401 Response Handling and Redirect Behavior', () => {
     it('should redirect to login when API client receives 401 response', async () => {
@@ -500,12 +471,10 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={true} />);
-      });
 
       // Wait for protected content to load
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       // Mock 401 response for API call
       mockFetch.mockResolvedValueOnce(
@@ -518,13 +487,11 @@ describe('Complete Authentication Flow Integration Tests', () => {
       // Trigger API call that will receive 401
       await act(async () => {
         await user.click(screen.getByTestId('api-test-button'));
-      });
 
       // Verify redirect to login occurred
       await waitFor(() => {
         expect(mockLocation.href).toBe('/login');
-      });
-    });
+
 
     it('should redirect to login when session validation returns 401', async () => {
       // Set up session cookie but mock 401 validation response
@@ -539,16 +506,13 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={true} />);
-      });
 
       // Should redirect to login due to invalid session
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
 
       // Should not render protected content
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
 
     it('should redirect to login when login attempt returns 401 (invalid credentials)', async () => {
       const user = userEvent.setup();
@@ -563,19 +527,16 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={false} />);
-      });
 
       // Attempt login
       await act(async () => {
         await user.type(screen.getByLabelText(/email address/i), 'wrong@example.com');
         await user.type(screen.getByLabelText(/password/i), 'wrongpassword');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       // Should show error but remain on login form (not redirect)
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      });
 
       // Should still be on login form
       expect(screen.getByText('Welcome to AI Karen')).toBeInTheDocument();
@@ -583,7 +544,6 @@ describe('Complete Authentication Flow Integration Tests', () => {
       // Should not redirect (login form handles 401 differently)
       expect(mockLocation.href).toBe('');
       expect(mockReplace).not.toHaveBeenCalled();
-    });
 
     it('should handle multiple 401 responses consistently', async () => {
       const user = userEvent.setup();
@@ -604,12 +564,10 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={true} />);
-      });
 
       // Wait for protected content to load
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       // Mock multiple 401 responses
       mockFetch
@@ -629,12 +587,10 @@ describe('Complete Authentication Flow Integration Tests', () => {
       // Trigger first API call
       await act(async () => {
         await user.click(screen.getByTestId('api-test-button'));
-      });
 
       // Verify first redirect
       await waitFor(() => {
         expect(mockLocation.href).toBe('/login');
-      });
 
       // Reset location for second test
       mockLocation.href = '';
@@ -650,9 +606,8 @@ describe('Complete Authentication Flow Integration Tests', () => {
       // Verify second redirect also occurs
       await waitFor(() => {
         expect(mockLocation.href).toBe('/login');
-      });
-    });
-  });
+
+
 
   describe('Network Error Handling Defaults to Logout', () => {
     it('should treat network errors during session validation as logout', async () => {
@@ -664,16 +619,13 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={true} />);
-      });
 
       // Should redirect to login due to network error
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
 
       // Should not render protected content
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
 
     it('should handle network errors during API calls gracefully', async () => {
       const user = userEvent.setup();
@@ -694,12 +646,10 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={true} />);
-      });
 
       // Wait for protected content to load
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       // Mock network error for API call
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
@@ -707,18 +657,15 @@ describe('Complete Authentication Flow Integration Tests', () => {
       // Trigger API call that will fail with network error
       await act(async () => {
         await user.click(screen.getByTestId('api-test-button'));
-      });
 
       // Network errors in API calls should not automatically redirect
       // (only 401 responses should redirect)
       await waitFor(() => {
         expect(mockLocation.href).toBe('');
         expect(mockReplace).not.toHaveBeenCalled();
-      });
 
       // Protected content should still be visible
       expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-    });
 
     it('should handle network errors during login and show error message', async () => {
       const user = userEvent.setup();
@@ -728,23 +675,19 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={false} />);
-      });
 
       // Attempt login
       await act(async () => {
         await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
         await user.type(screen.getByLabelText(/password/i), 'password123');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       // Should show network error
       await waitFor(() => {
         expect(screen.getByText('Network error')).toBeInTheDocument();
-      });
 
       // Should remain on login form
       expect(screen.getByText('Welcome to AI Karen')).toBeInTheDocument();
-    });
 
     it('should handle timeout errors as network errors', async () => {
       // Set up session cookie
@@ -757,16 +700,13 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={true} />);
-      });
 
       // Should redirect to login due to timeout
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
 
       // Should not render protected content
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
 
     it('should handle CORS errors as network errors', async () => {
       // Set up session cookie
@@ -778,16 +718,13 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={true} />);
-      });
 
       // Should redirect to login due to CORS error
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
 
       // Should not render protected content
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
 
     it('should handle logout network errors gracefully without throwing', async () => {
       // Mock network error during logout
@@ -803,9 +740,8 @@ describe('Complete Authentication Flow Integration Tests', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
-      });
-    });
-  });
+
+
 
   describe('Edge Cases and Error Recovery', () => {
     it('should handle malformed JSON responses gracefully', async () => {
@@ -821,20 +757,17 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={false} />);
-      });
 
       // Attempt login
       await act(async () => {
         await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
         await user.type(screen.getByLabelText(/password/i), 'password123');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       // Should handle JSON parsing error
       await waitFor(() => {
         expect(screen.getByText(/Unexpected token/i)).toBeInTheDocument();
-      });
-    });
+
 
     it('should handle missing session cookie gracefully', async () => {
       // No session cookie
@@ -842,16 +775,13 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={true} />);
-      });
 
       // Should redirect to login immediately without API call
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
 
       // Should not make session validation call
       expect(mockFetch).not.toHaveBeenCalled();
-    });
 
     it('should handle empty or invalid session cookie', async () => {
       // Invalid session cookie format
@@ -859,13 +789,11 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={true} />);
-      });
 
       // Should redirect to login immediately
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login');
-      });
-    });
+
 
     it('should handle server errors (5xx) appropriately', async () => {
       const user = userEvent.setup();
@@ -880,23 +808,19 @@ describe('Complete Authentication Flow Integration Tests', () => {
 
       await act(async () => {
         render(<TestApp showProtected={false} />);
-      });
 
       // Attempt login
       await act(async () => {
         await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
         await user.type(screen.getByLabelText(/password/i), 'password123');
         await user.click(screen.getByRole('button', { name: /sign in/i }));
-      });
 
       // Should show server error
       await waitFor(() => {
         expect(screen.getByText(/server error/i)).toBeInTheDocument();
-      });
 
       // Should remain on login form (not redirect)
       expect(screen.getByText('Welcome to AI Karen')).toBeInTheDocument();
       expect(mockLocation.href).toBe('');
-    });
-  });
-});
+
+

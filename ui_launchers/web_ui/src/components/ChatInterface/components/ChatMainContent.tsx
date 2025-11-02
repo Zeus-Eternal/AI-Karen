@@ -6,13 +6,7 @@ import ProfileSelector from "@/components/chat/ProfileSelector";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import CopilotArtifacts from "./CopilotArtifacts";
-import type {
-  ChatMessage,
-  ChatSettings,
-  ChatContext,
-  CopilotArtifact,
-  CopilotAction,
-} from "../types";
+import type { ChatMessage, ChatSettings, ChatContext, CopilotArtifact, CopilotAction } from "../types";
 
 interface ChatMainContentProps {
   messages: ChatMessage[];

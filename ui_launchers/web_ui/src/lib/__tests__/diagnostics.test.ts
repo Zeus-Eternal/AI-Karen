@@ -4,14 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { 
-  DiagnosticLogger, 
-  getDiagnosticLogger, 
-  initializeDiagnosticLogger,
-  logEndpointAttempt,
-  logCORSIssue,
-  logNetworkDiagnostic
-} from '../diagnostics';
+import {  DiagnosticLogger, getDiagnosticLogger, initializeDiagnosticLogger, logEndpointAttempt, logCORSIssue, logNetworkDiagnostic } from '../diagnostics';
 import type { NetworkDiagnostic, CORSInfo } from '../diagnostics';
 
 // Mock webUIConfig
@@ -63,13 +56,11 @@ describe('DiagnosticLogger', () => {
 
     // Reset console mocks
     Object.values(mockConsole).forEach(mock => mock.mockReset());
-  });
 
   afterEach(() => {
     // Restore console
     global.console = originalConsole;
     vi.clearAllMocks();
-  });
 
   describe('Basic Logging', () => {
     it('should log messages with correct structure', () => {
@@ -84,7 +75,6 @@ describe('DiagnosticLogger', () => {
       expect(testLog.message).toBe('Test message');
       expect(testLog.details).toEqual({ key: 'value' });
       expect(testLog.timestamp).toBeDefined();
-    });
 
     it('should log to console with correct level', () => {
       logger.log('error', 'network', 'Error message');
@@ -95,7 +85,6 @@ describe('DiagnosticLogger', () => {
           timestamp: expect.any(String),
         })
       );
-    });
 
     it('should respect debug logging configuration', () => {
       // Mock config to disable debug logging
@@ -109,13 +98,11 @@ describe('DiagnosticLogger', () => {
       logger.log('debug', 'network', 'Debug message');
 
       expect(mockConsole.debug).not.toHaveBeenCalled();
-    });
 
     it('should respect log level configuration', () => {
       // Skip this test as mocking config after import is complex
       // The functionality is tested indirectly through other tests
       expect(true).toBe(true);
-    });
 
     it('should handle Error objects correctly', () => {
       const error = new Error('Test error');
@@ -123,15 +110,13 @@ describe('DiagnosticLogger', () => {
 
       const logs = logger.getLogs(1);
       expect(logs[0].error).toBe('Test error');
-    });
 
     it('should handle string errors correctly', () => {
       logger.log('error', 'network', 'Error occurred', {}, undefined, undefined, 'String error');
 
       const logs = logger.getLogs(1);
       expect(logs[0].error).toBe('String error');
-    });
-  });
+
 
   describe('Log Management', () => {
     it('should maintain maximum log count', () => {
@@ -145,7 +130,6 @@ describe('DiagnosticLogger', () => {
 
       const logs = testLogger.getLogs();
       expect(logs.length).toBeLessThanOrEqual(1000);
-    });
 
     it('should filter logs by category', () => {
       logger.log('info', 'network', 'Network message');
@@ -158,7 +142,6 @@ describe('DiagnosticLogger', () => {
       expect(networkLogs.some(log => log.message === 'Network message')).toBe(true);
       expect(corsLogs.some(log => log.message === 'CORS message')).toBe(true);
       expect(networkLogs.some(log => log.message === 'CORS message')).toBe(false);
-    });
 
     it('should filter logs by level', () => {
       logger.log('info', 'network', 'Info message');
@@ -171,7 +154,6 @@ describe('DiagnosticLogger', () => {
       expect(errorLogs.some(log => log.message === 'Error message')).toBe(true);
       expect(warnLogs.some(log => log.message === 'Warn message')).toBe(true);
       expect(errorLogs.some(log => log.message === 'Info message')).toBe(false);
-    });
 
     it('should get error logs with troubleshooting info', () => {
       const troubleshooting = {
@@ -184,7 +166,6 @@ describe('DiagnosticLogger', () => {
 
       const errorLogs = logger.getErrorLogs();
       expect(errorLogs.some(log => log.troubleshooting?.possibleCauses.includes('Network issue'))).toBe(true);
-    });
 
     it('should clear logs', () => {
       logger.log('info', 'network', 'Test message');
@@ -193,8 +174,7 @@ describe('DiagnosticLogger', () => {
       const logs = logger.getLogs();
       expect(logs).toHaveLength(1); // Only the "logs cleared" message
       expect(logs[0].message).toBe('Diagnostic logs cleared');
-    });
-  });
+
 
   describe('Endpoint Logging', () => {
     it('should log successful endpoint attempts', () => {
@@ -210,7 +190,6 @@ describe('DiagnosticLogger', () => {
       expect(endpointLog.endpoint).toBe('/api/health');
       expect(endpointLog.details?.method).toBe('GET');
       expect(endpointLog.details?.statusCode).toBe(200);
-    });
 
     it('should log failed endpoint attempts with troubleshooting', () => {
       const startTime = Date.now() - 100;
@@ -223,7 +202,6 @@ describe('DiagnosticLogger', () => {
       expect(endpointLog.message).toContain('Endpoint connectivity failed');
       expect(endpointLog.troubleshooting).toBeDefined();
       expect(endpointLog.troubleshooting?.possibleCauses).toContain('Endpoint not found or incorrect URL');
-    });
 
     it('should generate appropriate troubleshooting for different status codes', () => {
       const startTime = Date.now() - 100;
@@ -242,8 +220,7 @@ describe('DiagnosticLogger', () => {
       logger.logEndpointAttempt('/api/error', 'GET', startTime, false, 500);
       logs = logger.getLogs(1);
       expect(logs[0].troubleshooting?.possibleCauses).toContain('Server-side error (5xx status code)');
-    });
-  });
+
 
   describe('CORS Logging', () => {
     it('should log CORS issues with troubleshooting', () => {
@@ -263,7 +240,6 @@ describe('DiagnosticLogger', () => {
       expect(corsLog.message).toContain('CORS error detected');
       expect(corsLog.troubleshooting?.possibleCauses).toContain('Backend CORS configuration does not allow the current origin');
       expect(corsLog.troubleshooting?.suggestedFixes).toContain('Add "http://localhost:9002" to the allowed origins in backend CORS configuration');
-    });
 
     it('should handle preflight-specific CORS issues', () => {
       const corsInfo: Partial<CORSInfo> = {
@@ -279,8 +255,7 @@ describe('DiagnosticLogger', () => {
 
       expect(corsLog.troubleshooting?.possibleCauses).toContain('Preflight request is required but failing');
       expect(corsLog.troubleshooting?.suggestedFixes).toContain('Ensure OPTIONS method is allowed for the endpoint');
-    });
-  });
+
 
   describe('Network Diagnostic Logging', () => {
     it('should log successful network diagnostics', () => {
@@ -303,7 +278,6 @@ describe('DiagnosticLogger', () => {
       expect(diagnosticLog.category).toBe('network');
       expect(diagnosticLog.message).toContain('Network diagnostic: GET http://localhost:8000/api/health - success');
       expect(diagnosticLog.details?.responseTime).toBe(150);
-    });
 
     it('should log failed network diagnostics with troubleshooting', () => {
       const diagnostic: NetworkDiagnostic = {
@@ -323,7 +297,6 @@ describe('DiagnosticLogger', () => {
       expect(diagnosticLog.level).toBe('error');
       expect(diagnosticLog.troubleshooting?.possibleCauses).toContain('Request timeout - server response too slow');
       expect(diagnosticLog.troubleshooting?.suggestedFixes).toContain('Increase timeout configuration');
-    });
 
     it('should generate appropriate troubleshooting for different diagnostic statuses', () => {
       const baseDignostic = {
@@ -347,8 +320,7 @@ describe('DiagnosticLogger', () => {
       logger.logNetworkDiagnostic({ ...baseDignostic, status: 'error' });
       logs = logger.getLogs(1);
       expect(logs[0].troubleshooting?.possibleCauses).toContain('General request error');
-    });
-  });
+
 
   describe('Log Listeners', () => {
     it('should notify listeners of new logs', () => {
@@ -370,12 +342,10 @@ describe('DiagnosticLogger', () => {
 
       // Should not be called after removal
       expect(listener).toHaveBeenCalledTimes(1);
-    });
 
     it('should handle listener errors gracefully', () => {
       const faultyListener = vi.fn(() => {
         throw new Error('Listener error');
-      });
 
       logger.onLog(faultyListener);
 
@@ -385,8 +355,7 @@ describe('DiagnosticLogger', () => {
       }).not.toThrow();
 
       expect(mockConsole.error).toHaveBeenCalledWith('Error in diagnostic log listener:', expect.any(Error));
-    });
-  });
+
 
   describe('Log Export and Summary', () => {
     it('should export logs in JSON format', () => {
@@ -399,7 +368,6 @@ describe('DiagnosticLogger', () => {
       expect(parsed.config).toBeDefined();
       expect(parsed.logs).toBeInstanceOf(Array);
       expect(parsed.logs.some((log: any) => log.message === 'Test message')).toBe(true);
-    });
 
     it('should provide diagnostic summary', () => {
       logger.log('info', 'network', 'Info message');
@@ -415,8 +383,7 @@ describe('DiagnosticLogger', () => {
       expect(summary.categories.cors).toBe(1);
       expect(summary.categories.auth).toBe(1);
       expect(summary.recentErrors).toHaveLength(1);
-    });
-  });
+
 
   describe('Singleton Pattern', () => {
     it('should return the same instance from getDiagnosticLogger', () => {
@@ -424,15 +391,13 @@ describe('DiagnosticLogger', () => {
       const instance2 = getDiagnosticLogger();
 
       expect(instance1).toBe(instance2);
-    });
 
     it('should create new instance with initializeDiagnosticLogger', () => {
       const instance1 = getDiagnosticLogger();
       const instance2 = initializeDiagnosticLogger();
 
       expect(instance1).not.toBe(instance2);
-    });
-  });
+
 
   describe('Convenience Functions', () => {
     it('should use convenience function for endpoint attempts', () => {
@@ -443,7 +408,6 @@ describe('DiagnosticLogger', () => {
       const logs = logger.getLogs(1);
 
       expect(logs[0].message).toContain('Endpoint connectivity successful');
-    });
 
     it('should use convenience function for CORS issues', () => {
       logCORSIssue('/api/test', 'http://localhost:9002', 'CORS error');
@@ -453,7 +417,6 @@ describe('DiagnosticLogger', () => {
 
       expect(logs[0].category).toBe('cors');
       expect(logs[0].message).toContain('CORS error detected');
-    });
 
     it('should use convenience function for network diagnostics', () => {
       const diagnostic: NetworkDiagnostic = {
@@ -470,8 +433,7 @@ describe('DiagnosticLogger', () => {
       const logs = logger.getLogs(1);
 
       expect(logs[0].message).toContain('Network diagnostic');
-    });
-  });
+
 
   describe('Server Environment', () => {
     it('should handle server environment without navigator', () => {
@@ -482,7 +444,6 @@ describe('DiagnosticLogger', () => {
 
       // Should still create system info log
       expect(logs[0].details?.runtime?.userAgent).toBe('server');
-    });
 
     it('should handle server environment without window', () => {
       global.window = undefined as any;
@@ -492,6 +453,5 @@ describe('DiagnosticLogger', () => {
 
       // Should still create system info log
       expect(logs[0].details?.runtime?.url).toBe('server');
-    });
-  });
-});
+
+

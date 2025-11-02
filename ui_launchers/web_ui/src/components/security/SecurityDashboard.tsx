@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
@@ -8,78 +10,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-'use client';
+
+import { } from '@/components/ui/select';
 
 
 
+import { } from '@/components/ui/table';
 
 
+import { } from 'recharts';
 
 
-
-
-
-
-
-
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-
-
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-
-
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  Area,
-  AreaChart,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
-
-
-  Shield, 
-  AlertTriangle, 
-  TrendingUp, 
-  TrendingDown,
-  Activity,
-  Eye,
-  Lock,
-  Unlock,
-  Target,
-  Zap,
-  Clock,
-  Users,
-  Server,
-  Database,
-  Network,
-  FileText,
-  CheckCircle,
-  XCircle,
-  RefreshCw
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 interface SecurityDashboardProps {
   className?: string;
@@ -149,19 +93,16 @@ export function SecurityDashboard({ className }: SecurityDashboardProps) {
     queryKey: ['security', 'metrics', timeframe],
     queryFn: () => getSecurityMetrics(timeframe),
     refetchInterval: 30000, // Refresh every 30 seconds
-  });
 
   const { data: alerts } = useQuery({
     queryKey: ['security', 'alerts'],
     queryFn: () => getSecurityAlerts(),
     refetchInterval: 10000, // Refresh every 10 seconds
-  });
 
   const { data: threats } = useQuery({
     queryKey: ['security', 'threat-intelligence'],
     queryFn: () => getThreatIntelligence(),
     refetchInterval: 60000, // Refresh every minute
-  });
 
   return (
     <PermissionGate permission="security:view">
@@ -169,16 +110,15 @@ export function SecurityDashboard({ className }: SecurityDashboardProps) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold flex items-center space-x-2">
-              <Shield className="h-6 w-6 text-blue-600 sm:w-auto md:w-full" />
+              <Shield className="h-6 w-6 text-blue-600 " />
               <span>Security Dashboard</span>
             </h2>
             <p className="text-muted-foreground">
-              Monitor security metrics, threats, and compliance status
             </p>
           </div>
           <div className="flex items-center space-x-2">
             <select value={timeframe} onValueChange={(value: '24h' | '7d' | '30d') = aria-label="Select option"> setTimeframe(value)}>
-              <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-40 " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
@@ -187,15 +127,15 @@ export function SecurityDashboard({ className }: SecurityDashboardProps) {
                 ))}
               </SelectContent>
             </Select>
-            <button variant="outline" size="sm" aria-label="Button">
-              <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
+            <Button variant="outline" size="sm" >
+              <RefreshCw className="h-4 w-4 " />
             </Button>
           </div>
         </div>
 
         {metricsLoading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary "></div>
           </div>
         ) : (
           <Tabs defaultValue="overview" className="space-y-4">
@@ -257,10 +197,10 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
 
   const getHealthIcon = (status: string) => {
     switch (status) {
-      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
-      case 'critical': return <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
-      default: return <Clock className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
+      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-500 " />;
+      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-500 " />;
+      case 'critical': return <XCircle className="h-4 w-4 text-red-500 " />;
+      default: return <Clock className="h-4 w-4 text-gray-500 " />;
     }
   };
 
@@ -273,7 +213,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Security Score</CardTitle>
-            <Shield className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />
+            <Shield className="h-4 w-4 text-blue-600 " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.overallSecurityScore}%</div>
@@ -296,8 +236,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
               {metrics.threatLevel}
             </div>
             <div className="flex items-center text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-              <TrendingDown className="h-3 w-3 mr-1 text-green-500 sm:w-auto md:w-full" />
-              Decreased from yesterday
+              <TrendingDown className="h-3 w-3 mr-1 text-green-500 " />
             </div>
           </CardContent>
         </Card>
@@ -305,7 +244,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Active Threats</CardTitle>
-            <Target className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
+            <Target className="h-4 w-4 text-red-600 " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{metrics.activeThreats}</div>
@@ -318,13 +257,12 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Compliance</CardTitle>
-            <FileText className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+            <FileText className="h-4 w-4 text-green-600 " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.complianceScore}%</div>
             <Progress value={metrics.complianceScore} className="mt-2" />
             <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-              Meeting regulatory requirements
             </p>
           </CardContent>
         </Card>
@@ -342,7 +280,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
               <div className="flex items-center space-x-2">
-                <Lock className="h-4 w-4 sm:w-auto md:w-full" />
+                <Lock className="h-4 w-4 " />
                 <span className="font-medium">Authentication</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -358,7 +296,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
 
             <div className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
               <div className="flex items-center space-x-2">
-                <Shield className="h-4 w-4 sm:w-auto md:w-full" />
+                <Shield className="h-4 w-4 " />
                 <span className="font-medium">Authorization</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -374,7 +312,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
 
             <div className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
               <div className="flex items-center space-x-2">
-                <Database className="h-4 w-4 sm:w-auto md:w-full" />
+                <Database className="h-4 w-4 " />
                 <span className="font-medium">Data Protection</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -390,7 +328,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
 
             <div className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
               <div className="flex items-center space-x-2">
-                <Network className="h-4 w-4 sm:w-auto md:w-full" />
+                <Network className="h-4 w-4 " />
                 <span className="font-medium">Network Security</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -412,7 +350,6 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
         <CardHeader>
           <CardTitle>Recent Security Alerts</CardTitle>
           <CardDescription>
-            Latest security events requiring attention
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -515,7 +452,7 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
             <div className="space-y-3">
               {threatAlerts.slice(0, 5).map((alert) => (
                 <Alert key={alert.id} variant={alert.severity === 'critical' ? 'destructive' : 'default'}>
-                  <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                  <AlertTriangle className="h-4 w-4 " />
                   <AlertDescription>
                     <div className="flex items-center justify-between">
                       <div>
@@ -718,7 +655,6 @@ function ComplianceMonitoring({ metrics }: ComplianceMonitoringProps) {
             <div className="flex-1">
               <Progress value={metrics.complianceScore} className="h-3" />
               <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
-                Meeting regulatory requirements across all frameworks
               </p>
             </div>
           </div>
@@ -756,13 +692,13 @@ function ComplianceMonitoring({ metrics }: ComplianceMonitoringProps) {
         <CardContent>
           <div className="space-y-3">
             <Alert>
-              <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+              <AlertTriangle className="h-4 w-4 " />
               <AlertDescription>
                 PCI DSS: Credit card data encryption needs to be updated to latest standards
               </AlertDescription>
             </Alert>
             <Alert>
-              <Eye className="h-4 w-4 sm:w-auto md:w-full" />
+              <Eye className="h-4 w-4 " />
               <AlertDescription>
                 GDPR: Data retention policy review required for user analytics data
               </AlertDescription>
@@ -870,7 +806,6 @@ function EvilModeManagement() {
         <CardHeader>
           <CardTitle>Evil Mode Security Controls</CardTitle>
           <CardDescription>
-            Enhanced security measures and monitoring for elevated privilege access
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -880,19 +815,19 @@ function EvilModeManagement() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span>Multi-factor Authentication</span>
-                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-4 w-4 text-green-500 " />
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Session Time Limits</span>
-                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-4 w-4 text-green-500 " />
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Real-time Monitoring</span>
-                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-4 w-4 text-green-500 " />
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Audit Logging</span>
-                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-4 w-4 text-green-500 " />
                 </div>
               </div>
             </div>

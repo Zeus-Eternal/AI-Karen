@@ -1,12 +1,10 @@
 
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { WorkflowScheduler } from '../WorkflowScheduler';
-import { 
-  WorkflowTrigger, 
-  WorkflowQueue, 
-  WorkflowAutomationAnalytics 
-} from '@/types/workflows';
+
+import { } from '@/types/workflows';
 
 const mockTriggers: WorkflowTrigger[] = [
   {
@@ -209,7 +207,6 @@ describe('WorkflowScheduler Integration Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('complete workflow scheduling', () => {
     it('should render all scheduler components and data', () => {
@@ -238,7 +235,6 @@ describe('WorkflowScheduler Integration Tests', () => {
       expect(screen.getByText('Queues')).toBeInTheDocument();
       expect(screen.getByText('Analytics')).toBeInTheDocument();
       expect(screen.getByText('Optimization')).toBeInTheDocument();
-    });
 
     it('should display trigger information correctly', () => {
       render(
@@ -263,7 +259,6 @@ describe('WorkflowScheduler Integration Tests', () => {
       expect(screen.getByText('schedule')).toBeInTheDocument();
       expect(screen.getByText('file')).toBeInTheDocument();
       expect(screen.getByText('webhook')).toBeInTheDocument();
-    });
 
     it('should handle trigger toggle correctly', async () => {
       render(
@@ -281,8 +276,7 @@ describe('WorkflowScheduler Integration Tests', () => {
 
       await waitFor(() => {
         expect(mockHandlers.onToggleTrigger).toHaveBeenCalledWith('trigger-1', false);
-      });
-    });
+
 
     it('should navigate between tabs correctly', async () => {
       render(
@@ -300,7 +294,6 @@ describe('WorkflowScheduler Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByText('High Priority Queue')).toBeInTheDocument();
         expect(screen.getByText('Background Processing')).toBeInTheDocument();
-      });
 
       // Click on Analytics tab
       fireEvent.click(screen.getByText('Analytics'));
@@ -308,7 +301,6 @@ describe('WorkflowScheduler Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByText('Execution Trends')).toBeInTheDocument();
         expect(screen.getByText('Resource Utilization')).toBeInTheDocument();
-      });
 
       // Click on Optimization tab
       fireEvent.click(screen.getByText('Optimization'));
@@ -316,9 +308,8 @@ describe('WorkflowScheduler Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByText('Performance Bottlenecks')).toBeInTheDocument();
         expect(screen.getByText('Optimization Suggestions')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('queue management', () => {
     it('should display queue information and metrics', async () => {
@@ -346,8 +337,7 @@ describe('WorkflowScheduler Integration Tests', () => {
         expect(screen.getByText('7/10')).toBeInTheDocument(); // Current load for queue 2
         expect(screen.getByText('4.2/min')).toBeInTheDocument(); // Throughput for queue 1
         expect(screen.getByText('8.5/min')).toBeInTheDocument(); // Throughput for queue 2
-      });
-    });
+
 
     it('should show queue capacity usage correctly', async () => {
       render(
@@ -365,8 +355,7 @@ describe('WorkflowScheduler Integration Tests', () => {
         // Capacity percentages
         expect(screen.getByText('60%')).toBeInTheDocument(); // 3/5 = 60%
         expect(screen.getByText('70%')).toBeInTheDocument(); // 7/10 = 70%
-      });
-    });
+
 
     it('should display recent tasks in queues', async () => {
       render(
@@ -384,9 +373,8 @@ describe('WorkflowScheduler Integration Tests', () => {
         expect(screen.getByText('Recent Tasks')).toBeInTheDocument();
         expect(screen.getByText('workflow-1')).toBeInTheDocument();
         expect(screen.getByText('workflow-2')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('analytics and optimization', () => {
     it('should display analytics data correctly', async () => {
@@ -419,8 +407,7 @@ describe('WorkflowScheduler Integration Tests', () => {
         expect(screen.getByText('$125.50')).toBeInTheDocument();
         expect(screen.getByText('Cost per Execution:')).toBeInTheDocument();
         expect(screen.getByText('$0.0250')).toBeInTheDocument();
-      });
-    });
+
 
     it('should display bottlenecks and optimization suggestions', async () => {
       render(
@@ -447,9 +434,8 @@ describe('WorkflowScheduler Integration Tests', () => {
         expect(screen.getByText('Optimize Resource Allocation')).toBeInTheDocument();
         expect(screen.getByText('40% reduction in execution time')).toBeInTheDocument();
         expect(screen.getByText('25% cost reduction')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('trigger management actions', () => {
     it('should handle trigger deletion', async () => {
@@ -473,9 +459,8 @@ describe('WorkflowScheduler Integration Tests', () => {
 
         await waitFor(() => {
           expect(mockHandlers.onDeleteTrigger).toHaveBeenCalled();
-        });
+
       }
-    });
 
     it('should show create trigger modal', async () => {
       render(
@@ -494,8 +479,7 @@ describe('WorkflowScheduler Integration Tests', () => {
       await waitFor(() => {
         // This would test the actual modal when implemented
         expect(newTriggerButton).toBeInTheDocument();
-      });
-    });
+
 
     it('should show create queue modal', async () => {
       render(
@@ -514,9 +498,8 @@ describe('WorkflowScheduler Integration Tests', () => {
       await waitFor(() => {
         // This would test the actual modal when implemented
         expect(newQueueButton).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('empty states', () => {
     it('should show empty state for triggers', () => {
@@ -531,7 +514,6 @@ describe('WorkflowScheduler Integration Tests', () => {
 
       expect(screen.getByText('No triggers configured.')).toBeInTheDocument();
       expect(screen.getByText('Create your first trigger')).toBeInTheDocument();
-    });
 
     it('should show empty state for queues', async () => {
       render(
@@ -548,8 +530,7 @@ describe('WorkflowScheduler Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByText('No queues configured.')).toBeInTheDocument();
         expect(screen.getByText('Create your first queue')).toBeInTheDocument();
-      });
-    });
+
 
     it('should show empty state for bottlenecks', async () => {
       const emptyAnalytics = {
@@ -572,9 +553,8 @@ describe('WorkflowScheduler Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByText('No performance bottlenecks detected.')).toBeInTheDocument();
         expect(screen.getByText('No optimization suggestions available.')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('data formatting', () => {
     it('should format time durations correctly', () => {
@@ -589,7 +569,6 @@ describe('WorkflowScheduler Integration Tests', () => {
 
       // Should show formatted duration in stats
       expect(screen.getByText('25.0s')).toBeInTheDocument(); // 25000ms formatted
-    });
 
     it('should format next run times correctly', () => {
       render(
@@ -603,7 +582,6 @@ describe('WorkflowScheduler Integration Tests', () => {
 
       // Should show "In < 1 minute" or similar for next run
       expect(screen.getByText(/In \d+/)).toBeInTheDocument();
-    });
 
     it('should format cron expressions correctly', () => {
       render(
@@ -617,6 +595,5 @@ describe('WorkflowScheduler Integration Tests', () => {
 
       // Should show cron expression
       expect(screen.getByText('0 9 * * *')).toBeInTheDocument();
-    });
-  });
-});
+
+

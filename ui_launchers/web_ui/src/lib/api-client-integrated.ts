@@ -76,7 +76,7 @@ export class IntegratedApiClient {
       endpoint,
       method: 'GET',
       ...options,
-    });
+
   }
   /**
    * POST request
@@ -91,7 +91,7 @@ export class IntegratedApiClient {
       method: 'POST',
       body,
       ...options,
-    });
+
   }
   /**
    * PUT request
@@ -106,7 +106,7 @@ export class IntegratedApiClient {
       method: 'PUT',
       body,
       ...options,
-    });
+
   }
   /**
    * DELETE request
@@ -119,7 +119,7 @@ export class IntegratedApiClient {
       endpoint,
       method: 'DELETE',
       ...options,
-    });
+
   }
   /**
    * PATCH request
@@ -134,7 +134,7 @@ export class IntegratedApiClient {
       method: 'PATCH',
       body,
       ...options,
-    });
+
   }
   /**
    * Upload file
@@ -152,14 +152,14 @@ export class IntegratedApiClient {
     if (additionalFields) {
       Object.entries(additionalFields).forEach(([key, value]) => {
         formData.append(key, value);
-      });
+
     }
     return this.makeAuthenticatedRequest<T>({
       endpoint,
       method: 'POST',
       body: formData,
       ...options,
-    });
+
   }
   /**
    * Make a public request (no authentication)
@@ -233,9 +233,6 @@ export function useIntegratedApiClient(options?: IntegratedApiClientOptions) {
 }
 // Re-export types for convenience
 export type {
-  ApiResponse,
-  ApiError,
-  IntegratedApiClientOptions as IntegratedApiClientOptionsType,
 };
 // Default export
 export default IntegratedApiClient;

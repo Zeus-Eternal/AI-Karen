@@ -1,60 +1,19 @@
-import type {
-/**
- * Enhanced Authentication Types and Interfaces
- *
- * This module exports all enhanced authentication types, interfaces, and utilities
- * for the comprehensive login feedback system.
- */
-
-// Re-export all base authentication types
-export * from './auth';
-
-// Re-export authentication utilities
-export * from './auth-utils';
-
-// Re-export feedback types (excluding conflicting FeedbackState)
-export type {
-  SuccessMessageProps,
-  ErrorMessageProps,
-  LoadingIndicatorProps,
-  FeedbackContainerProps,
-  ToastNotificationProps,
-  ProgressIndicatorProps,
-  CountdownTimerProps,
-  AlertBannerProps,
-  StatusIndicatorProps,
-  FeedbackAnimationConfig,
-  FeedbackAction
-} from './auth-feedback';
+import type { /** * Enhanced Authentication Types and Interfaces * * This module exports all enhanced authentication types, interfaces, and utilities * for the comprehensive login feedback system. */  // Re-export all base authentication types export * from './auth';  // Re-export authentication utilities export * from './auth-utils';  // Re-export feedback types (excluding conflicting FeedbackState) export type { SuccessMessageProps, ErrorMessageProps, LoadingIndicatorProps, FeedbackContainerProps, ToastNotificationProps, ProgressIndicatorProps, CountdownTimerProps, AlertBannerProps, StatusIndicatorProps, FeedbackAnimationConfig, FeedbackAction } from './auth-feedback';
 
 export {
-  DEFAULT_FEEDBACK_ANIMATIONS,
-  FeedbackMessageFactory,
   feedbackReducer,
   initialFeedbackState
-} from './auth-feedback';
+import { } from './auth-feedback';
 
 // Re-export form management types
 export * from './auth-form';
 
 // Import types for use in this file
 
-  AuthenticationError,
-  AuthenticationState,
-  LoginCredentials,
-  AuthServiceResponse,
-  LoginResponse,
-  ValidationErrors,
-  ErrorClassification,
-  SecurityFlags,
-  FeedbackMessage,
-  User
-} from './auth';
+import { } from './auth';
 
 
-  FormFieldType,
-  AuthFormState
-} from './auth-form';
+import { } from './auth-form';
 
 // Additional type definitions for enhanced authentication system
 

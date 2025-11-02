@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { useUIStore } from '../../store';
 interface OptimisticErrorBoundaryState {
@@ -26,8 +27,6 @@ interface OptimisticErrorBoundaryProps {
   resetOnPropsChange?: boolean;
 }
 class OptimisticErrorBoundaryClass extends Component<
-  OptimisticErrorBoundaryProps,
-  OptimisticErrorBoundaryState
 > {
   private resetTimeoutId: number | null = null;
   private maxRetries: number;
@@ -98,7 +97,7 @@ class OptimisticErrorBoundaryClass extends Component<
       errorInfo: null,
       retryCount: 0,
       errorId: '',
-    });
+
     if (this.props.onReset) {
       this.props.onReset();
     }
@@ -130,7 +129,7 @@ class OptimisticErrorBoundaryClass extends Component<
           reset: this.resetErrorBoundary,
           retryCount,
           canRetry,
-        });
+
       }
       return (
         <DefaultErrorFallback
@@ -164,7 +163,7 @@ function DefaultErrorFallback({
   return (
     <div className="flex flex-col items-center justify-center p-8 bg-red-50 border border-red-200 rounded-lg sm:p-4 md:p-6">
       <div className="text-red-600 mb-4">
-        <svg className="w-12 h-12 sm:w-auto md:w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-12 h-12 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -174,7 +173,6 @@ function DefaultErrorFallback({
         </svg>
       </div>
       <h3 className="text-lg font-semibold text-red-800 mb-2">
-        Something went wrong
       </h3>
       <p className="text-red-600 text-center mb-4 max-w-md">
         {error?.message || 'An unexpected error occurred'}
@@ -190,18 +188,16 @@ function DefaultErrorFallback({
             onClick={retry}
             className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
            aria-label="Button">
-            Try Again
           </button>
         )}
         <button
           onClick={reset}
           className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
          aria-label="Button">
-          Reset
         </button>
       </div>
       {process.env.NODE_ENV === 'development' && error && (
-        <details className="mt-4 w-full max-w-2xl sm:w-auto md:w-full">
+        <details className="mt-4 w-full max-w-2xl ">
           <summary className="cursor-pointer text-sm text-red-600 hover:text-red-800 md:text-base lg:text-lg">
             Error Details (Development)
           </summary>

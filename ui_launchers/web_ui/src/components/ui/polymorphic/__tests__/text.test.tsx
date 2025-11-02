@@ -1,8 +1,7 @@
-import * as React from "react"
-import { render, screen } from "@testing-library/react"
-import { describe, it, expect } from "vitest"
-import { Text, Heading, Paragraph, Label, Caption, Code } from "../text"
-
+import * as React from "react";
+import { render, screen } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+import { Text, Heading, Paragraph, Label, Caption, Code } from "../text";
 describe("Text Polymorphic Component", () => {
   it("should render as span by default", () => {
     render(<Text data-testid="text">Default text</Text>)

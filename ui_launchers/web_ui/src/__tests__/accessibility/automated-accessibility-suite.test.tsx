@@ -10,14 +10,14 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { axe, toHaveNoViolations } from 'jest-axe';
-import { 
+
   runAccessibilityTest, 
   testKeyboardAccessibility, 
   testScreenReaderAccessibility,
   validateColorContrast,
   validateAriaAttributes,
   accessibilityTestConfigs
-} from '@/utils/accessibility-testing';
+import { } from '@/utils/accessibility-testing';
 
 // Import all components to test
 import { Card } from '@/components/ui/compound/card';
@@ -53,12 +53,10 @@ describe('Automated Accessibility Test Suite', () => {
 
   beforeEach(() => {
     user = userEvent.setup();
-  });
 
   afterEach(() => {
     // Clean up any DOM modifications
     document.body.innerHTML = '';
-  });
 
   describe('Core Accessibility Testing', () => {
     it('should run comprehensive accessibility tests on all components', async () => {
@@ -111,7 +109,6 @@ describe('Automated Accessibility Test Suite', () => {
 
           {/* Interactive Components */}
           <InteractiveButton aria-label="Interactive button">
-            Click me
           </InteractiveButton>
 
           <label htmlFor="interactive-input">Interactive Input</label>
@@ -126,7 +123,6 @@ describe('Automated Accessibility Test Suite', () => {
             aria-describedby="button-help"
             onClick={() => {}}
           >
-            Enhanced Button
           </AriaEnhancedButton>
           <div id="button-help">Additional button information</div>
 
@@ -140,7 +136,6 @@ describe('Automated Accessibility Test Suite', () => {
           {/* Polymorphic Components */}
           <PolymorphicText as="h3">Polymorphic Heading</PolymorphicText>
           <PolymorphicButton as="button" onClick={() => {}}>
-            Polymorphic Button
           </PolymorphicButton>
           <PolymorphicContainer as="section">
             <p>Polymorphic container content</p>
@@ -166,7 +161,6 @@ describe('Automated Accessibility Test Suite', () => {
       // Also run axe directly for additional validation
       const axeResults = await axe(container);
       expect(axeResults).toHaveNoViolations();
-    });
 
     it('should validate keyboard accessibility', async () => {
       const { container } = render(
@@ -187,7 +181,6 @@ describe('Automated Accessibility Test Suite', () => {
       expect(keyboardTest.allReachable).toBe(true);
       expect(keyboardTest.unreachableElements).toHaveLength(0);
       expect(keyboardTest.focusOrderIssues).toHaveLength(0);
-    });
 
     it('should validate screen reader accessibility', async () => {
       const { container } = render(
@@ -215,8 +208,7 @@ describe('Automated Accessibility Test Suite', () => {
       expect(screenReaderTest.hasLabels).toBe(true);
       expect(screenReaderTest.missingLabels).toHaveLength(0);
       expect(screenReaderTest.landmarkIssues).toHaveLength(0);
-    });
-  });
+
 
   describe('Color Contrast Validation', () => {
     it('should validate color contrast ratios', () => {
@@ -234,7 +226,6 @@ describe('Automated Accessibility Test Suite', () => {
       // Test brand colors
       const brandContrast = validateColorContrast('#0066cc', '#ffffff');
       expect(brandContrast.passes.aa).toBe(true);
-    });
 
     it('should test color contrast in rendered components', async () => {
       const { container } = render(
@@ -267,11 +258,9 @@ describe('Automated Accessibility Test Suite', () => {
         rules: {
           'color-contrast': { enabled: true }
         }
-      });
-      
+
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('ARIA Validation', () => {
     it('should validate ARIA attributes', () => {
@@ -282,7 +271,6 @@ describe('Automated Accessibility Test Suite', () => {
 
       const issues = validateAriaAttributes(validElement);
       expect(issues).toHaveLength(0);
-    });
 
     it('should detect ARIA attribute issues', () => {
       const invalidElement = document.createElement('div');
@@ -295,8 +283,7 @@ describe('Automated Accessibility Test Suite', () => {
       expect(issues).toContain('aria-expanded must be "true" or "false"');
       expect(issues).toContain('aria-level must be a positive integer');
       expect(issues).toContain('aria-describedby has empty value');
-    });
-  });
+
 
   describe('Form Accessibility', () => {
     it('should test complex form accessibility', async () => {
@@ -327,7 +314,6 @@ describe('Automated Accessibility Test Suite', () => {
                   aria-invalid="true"
                 />
                 <div id="email-error" role="alert">
-                  Please enter a valid email address
                 </div>
               </div>
             </fieldset>
@@ -339,11 +325,9 @@ describe('Automated Accessibility Test Suite', () => {
                 <div id="notification-legend">Notification Preferences</div>
                 <label>
                   <input type="checkbox" name="notifications" value="email" />
-                  Email notifications
                 </label>
                 <label>
                   <input type="checkbox" name="notifications" value="sms" />
-                  SMS notifications
                 </label>
               </div>
             </fieldset>
@@ -358,8 +342,7 @@ describe('Automated Accessibility Test Suite', () => {
 
       const axeResults = await axe(container);
       expect(axeResults).toHaveNoViolations();
-    });
-  });
+
 
   describe('Navigation Accessibility', () => {
     it('should test navigation accessibility', async () => {
@@ -415,8 +398,7 @@ describe('Automated Accessibility Test Suite', () => {
 
       const axeResults = await axe(container);
       expect(axeResults).toHaveNoViolations();
-    });
-  });
+
 
   describe('Modal and Dialog Accessibility', () => {
     it('should test modal accessibility', async () => {
@@ -445,7 +427,6 @@ describe('Automated Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
 
     it('should test focus trap accessibility', async () => {
       const { container } = render(
@@ -464,8 +445,7 @@ describe('Automated Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('Data Table Accessibility', () => {
     it('should test data table accessibility', async () => {
@@ -507,8 +487,7 @@ describe('Automated Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('Live Region Accessibility', () => {
     it('should test live regions and announcements', async () => {
@@ -531,7 +510,6 @@ describe('Automated Accessibility Test Suite', () => {
             aria-controls="collapsible-content"
             aria-describedby="expand-help"
           >
-            Expand Content
           </button>
           <div id="expand-help">Click to reveal additional information</div>
           
@@ -543,8 +521,7 @@ describe('Automated Accessibility Test Suite', () => {
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
-    });
-  });
+
 
   describe('Keyboard Navigation Testing', () => {
     it('should test keyboard navigation patterns', async () => {
@@ -557,7 +534,6 @@ describe('Automated Accessibility Test Suite', () => {
               aria-controls="general-panel"
               id="general-tab"
             >
-              General
             </button>
             <button 
               role="tab" 
@@ -565,7 +541,6 @@ describe('Automated Accessibility Test Suite', () => {
               aria-controls="privacy-panel"
               id="privacy-tab"
             >
-              Privacy
             </button>
           </div>
           
@@ -603,8 +578,7 @@ describe('Automated Accessibility Test Suite', () => {
 
       await user.keyboard('{Tab}');
       expect(document.activeElement).toBe(secondTab);
-    });
-  });
+
 
   describe('Performance and Accessibility', () => {
     it('should complete accessibility tests within reasonable time', async () => {
@@ -629,6 +603,5 @@ describe('Automated Accessibility Test Suite', () => {
       // Test should complete within 5 seconds
       expect(endTime - startTime).toBeLessThan(5000);
       expect(report.violations).toHaveLength(0);
-    });
-  });
-});
+
+

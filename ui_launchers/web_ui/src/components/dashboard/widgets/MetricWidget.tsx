@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, AlertCircle } from 'lucide-react';
@@ -47,12 +47,12 @@ const formatValue = (value: number, format?: string, unit?: string): string => {
 const getTrendIcon = (direction: 'up' | 'down' | 'stable') => {
   switch (direction) {
     case 'up':
-      return <TrendingUp className="h-4 w-4 sm:w-auto md:w-full" />;
+      return <TrendingUp className="h-4 w-4 " />;
     case 'down':
-      return <TrendingDown className="h-4 w-4 sm:w-auto md:w-full" />;
+      return <TrendingDown className="h-4 w-4 " />;
     case 'stable':
     default:
-      return <Minus className="h-4 w-4 sm:w-auto md:w-full" />;
+      return <Minus className="h-4 w-4 " />;
   }
 };
 
@@ -82,7 +82,6 @@ export const MetricWidget: React.FC<MetricWidgetProps> = (props) => {
     return (
       <WidgetBase {...props}>
         <div className="flex items-center justify-center h-full text-muted-foreground">
-          No metric data available
         </div>
       </WidgetBase>
     );
@@ -105,7 +104,7 @@ export const MetricWidget: React.FC<MetricWidgetProps> = (props) => {
                 thresholdStatus.bgColor,
                 thresholdStatus.color
               )}>
-                <ThresholdIcon className="h-3 w-3 sm:w-auto md:w-full" />
+                <ThresholdIcon className="h-3 w-3 " />
                 {thresholdStatus.status === 'critical' ? 'Critical' : 'Warning'}
               </div>
             )}
@@ -151,11 +150,11 @@ export const MetricWidget: React.FC<MetricWidgetProps> = (props) => {
               <span>Thresholds:</span>
               <div className="flex gap-3">
                 <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-yellow-500 sm:w-auto md:w-full"></div>
+                  <div className="w-2 h-2 rounded-full bg-yellow-500 "></div>
                   {formatValue(metric.threshold.warning, metric.format, metric.unit)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-red-500 sm:w-auto md:w-full"></div>
+                  <div className="w-2 h-2 rounded-full bg-red-500 "></div>
                   {formatValue(metric.threshold.critical, metric.format, metric.unit)}
                 </span>
               </div>

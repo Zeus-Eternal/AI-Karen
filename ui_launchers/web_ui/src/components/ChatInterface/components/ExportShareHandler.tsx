@@ -42,10 +42,10 @@ const ExportShareHandler: React.FC<ExportShareHandlerProps> = ({
           variant="ghost"
           size="sm"
           onClick={handleExport}
-          className="h-8 w-8 p-0 sm:w-auto md:w-full"
+          className="h-8 w-8 p-0 "
           title="Export Chat"
         >
-          <Download className="h-4 w-4 sm:w-auto md:w-full" />
+          <Download className="h-4 w-4 " />
         </Button>
       )}
       {enableSharing && (
@@ -53,10 +53,10 @@ const ExportShareHandler: React.FC<ExportShareHandlerProps> = ({
           variant="ghost"
           size="sm"
           onClick={handleShare}
-          className="h-8 w-8 p-0 sm:w-auto md:w-full"
+          className="h-8 w-8 p-0 "
           title="Share Chat"
         >
-          <Share className="h-4 w-4 sm:w-auto md:w-full" />
+          <Share className="h-4 w-4 " />
         </Button>
       )}
     </React.Fragment>

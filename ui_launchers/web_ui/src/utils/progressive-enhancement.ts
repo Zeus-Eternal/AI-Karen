@@ -297,7 +297,7 @@ export function useProgressiveEnhancement() {
     layout: progressiveEnhancement.getLayoutEnhancements(),
     performance: progressiveEnhancement.getPerformanceEnhancements(),
     accessibility: progressiveEnhancement.getAccessibilityEnhancements(),
-  });
+
   React.useEffect(() => {
     const unsubscribe = featureDetection.onFeaturesReady(() => {
       setEnhancements({
@@ -308,8 +308,8 @@ export function useProgressiveEnhancement() {
         layout: progressiveEnhancement.getLayoutEnhancements(),
         performance: progressiveEnhancement.getPerformanceEnhancements(),
         accessibility: progressiveEnhancement.getAccessibilityEnhancements(),
-      });
-    });
+
+
     return unsubscribe;
   }, []);
   return {

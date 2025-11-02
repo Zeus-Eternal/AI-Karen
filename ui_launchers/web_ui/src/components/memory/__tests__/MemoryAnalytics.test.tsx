@@ -127,11 +127,9 @@ describe('MemoryAnalytics', () => {
     vi.clearAllMocks();
     (getMemoryService as any).mockReturnValue(mockMemoryService);
     mockMemoryService.getMemoryStats.mockResolvedValue(mockMemoryStats);
-  });
 
   afterEach(() => {
     vi.clearAllTimers();
-  });
 
   describe('Component Rendering', () => {
     it('renders the component with loading state initially', async () => {
@@ -143,21 +141,18 @@ describe('MemoryAnalytics', () => {
       // Should show loading states for metric cards
       const loadingElements = screen.getAllByTestId('card');
       expect(loadingElements.length).toBeGreaterThan(0);
-    });
 
     it('renders metric cards with correct data after loading', async () => {
       render(<MemoryAnalytics {...defaultProps} />);
       
       await waitFor(() => {
         expect(screen.getByText('1,500')).toBeInTheDocument(); // Total memories
-      });
 
       // Check for metric card titles
       expect(screen.getByText('Total Memories')).toBeInTheDocument();
       expect(screen.getByText('Storage Size')).toBeInTheDocument();
       expect(screen.getByText('Avg Search Latency')).toBeInTheDocument();
       expect(screen.getByText('Search Accuracy')).toBeInTheDocument();
-    });
 
     it('renders tabs for different analytics views', async () => {
       render(<MemoryAnalytics {...defaultProps} />);
@@ -167,8 +162,7 @@ describe('MemoryAnalytics', () => {
         expect(screen.getByText('Performance')).toBeInTheDocument();
         expect(screen.getByText('Content')).toBeInTheDocument();
         expect(screen.getByText('Trends')).toBeInTheDocument();
-      });
-    });
+
 
     it('renders charts in overview tab', async () => {
       render(<MemoryAnalytics {...defaultProps} />);
@@ -176,12 +170,10 @@ describe('MemoryAnalytics', () => {
       await waitFor(() => {
         expect(screen.getByText('Memory Growth')).toBeInTheDocument();
         expect(screen.getByText('Cluster Distribution')).toBeInTheDocument();
-      });
 
       const charts = screen.getAllByTestId('ag-chart');
       expect(charts.length).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('Data Loading and Error Handling', () => {
     it('handles loading state correctly', async () => {
@@ -195,7 +187,6 @@ describe('MemoryAnalytics', () => {
       // Should show loading indicators
       const refreshButton = screen.getByTestId('button');
       expect(refreshButton).toBeDisabled();
-    });
 
     it('handles service errors gracefully', async () => {
       const errorMessage = 'Failed to fetch memory stats';
@@ -207,10 +198,8 @@ describe('MemoryAnalytics', () => {
       await waitFor(() => {
         expect(screen.getByText('Analytics Error')).toBeInTheDocument();
         expect(screen.getByText(errorMessage)).toBeInTheDocument();
-      });
 
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
-    });
 
     it('allows retry after error', async () => {
       mockMemoryService.getMemoryStats
@@ -221,16 +210,14 @@ describe('MemoryAnalytics', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Analytics Error')).toBeInTheDocument();
-      });
 
       const retryButton = screen.getByText('Retry');
       fireEvent.click(retryButton);
 
       await waitFor(() => {
         expect(screen.getByText('1,500')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('User Interactions', () => {
     it('refreshes data when refresh button is clicked', async () => {
@@ -238,7 +225,6 @@ describe('MemoryAnalytics', () => {
       
       await waitFor(() => {
         expect(screen.getByText('1,500')).toBeInTheDocument();
-      });
 
       expect(mockMemoryService.getMemoryStats).toHaveBeenCalledTimes(1);
 
@@ -247,15 +233,13 @@ describe('MemoryAnalytics', () => {
 
       await waitFor(() => {
         expect(mockMemoryService.getMemoryStats).toHaveBeenCalledTimes(2);
-      });
-    });
+
 
     it('switches between tabs correctly', async () => {
       render(<MemoryAnalytics {...defaultProps} />);
       
       await waitFor(() => {
         expect(screen.getByTestId('tabs')).toHaveAttribute('data-value', 'overview');
-      });
 
       // Tab switching is mocked, but we can test the structure
       const tabTriggers = screen.getAllByTestId('tab-trigger');
@@ -264,8 +248,7 @@ describe('MemoryAnalytics', () => {
       expect(tabTriggers[1]).toHaveAttribute('data-value', 'performance');
       expect(tabTriggers[2]).toHaveAttribute('data-value', 'content');
       expect(tabTriggers[3]).toHaveAttribute('data-value', 'trends');
-    });
-  });
+
 
   describe('Analytics Calculations', () => {
     it('calculates storage size correctly', async () => {
@@ -274,8 +257,7 @@ describe('MemoryAnalytics', () => {
       await waitFor(() => {
         // Storage size should be calculated as totalMemories * 1024 / 1024 / 1024 = 1.5 MB
         expect(screen.getByText(/1\.5 MB/)).toBeInTheDocument();
-      });
-    });
+
 
     it('displays confidence distribution correctly', async () => {
       render(<MemoryAnalytics {...defaultProps} />);
@@ -287,8 +269,7 @@ describe('MemoryAnalytics', () => {
           chart.textContent?.includes('Confidence Score Distribution')
         );
         expect(confidenceChart).toBeInTheDocument();
-      });
-    });
+
 
     it('shows top tags with correct counts', async () => {
       render(<MemoryAnalytics {...defaultProps} />);
@@ -296,8 +277,7 @@ describe('MemoryAnalytics', () => {
       await waitFor(() => {
         // Switch to content tab to see tags
         expect(screen.getByText('Top Tags')).toBeInTheDocument();
-      });
-    });
+
 
     it('calculates memory decay patterns', async () => {
       render(<MemoryAnalytics {...defaultProps} />);
@@ -306,9 +286,8 @@ describe('MemoryAnalytics', () => {
         // Should show memory decay patterns in trends tab
         expect(screen.getByText('Memory Retention Curve')).toBeInTheDocument();
         expect(screen.getByText('Memory Decay Patterns')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Performance Metrics', () => {
     it('displays performance metrics correctly', async () => {
@@ -318,8 +297,7 @@ describe('MemoryAnalytics', () => {
         // Should show latency metrics
         expect(screen.getByText(/\d+ms/)).toBeInTheDocument(); // Search latency
         expect(screen.getByText(/\d+\.\d+%/)).toBeInTheDocument(); // Search accuracy
-      });
-    });
+
 
     it('shows cache hit rate and error rate', async () => {
       render(<MemoryAnalytics {...defaultProps} />);
@@ -328,8 +306,7 @@ describe('MemoryAnalytics', () => {
         // Performance metrics should be visible
         expect(screen.getByText('Cache Hit Rate')).toBeInTheDocument();
         expect(screen.getByText('Error Rate')).toBeInTheDocument();
-      });
-    });
+
 
     it('displays throughput metrics', async () => {
       render(<MemoryAnalytics {...defaultProps} />);
@@ -337,52 +314,43 @@ describe('MemoryAnalytics', () => {
       await waitFor(() => {
         expect(screen.getByText('Searches/sec')).toBeInTheDocument();
         expect(screen.getByText('Indexing/sec')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Auto-refresh Functionality', () => {
     beforeEach(() => {
       vi.useFakeTimers();
-    });
 
     afterEach(() => {
       vi.useRealTimers();
-    });
 
     it('auto-refreshes data at specified interval', async () => {
       render(<MemoryAnalytics {...defaultProps} refreshInterval={5000} />);
       
       await waitFor(() => {
         expect(mockMemoryService.getMemoryStats).toHaveBeenCalledTimes(1);
-      });
 
       // Fast-forward time by 5 seconds
       act(() => {
         vi.advanceTimersByTime(5000);
-      });
 
       await waitFor(() => {
         expect(mockMemoryService.getMemoryStats).toHaveBeenCalledTimes(2);
-      });
-    });
+
 
     it('does not auto-refresh when interval is 0', async () => {
       render(<MemoryAnalytics {...defaultProps} refreshInterval={0} />);
       
       await waitFor(() => {
         expect(mockMemoryService.getMemoryStats).toHaveBeenCalledTimes(1);
-      });
 
       // Fast-forward time
       act(() => {
         vi.advanceTimersByTime(10000);
-      });
 
       // Should not have called again
       expect(mockMemoryService.getMemoryStats).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('has proper ARIA labels and roles', async () => {
@@ -391,11 +359,9 @@ describe('MemoryAnalytics', () => {
       await waitFor(() => {
         const refreshButton = screen.getByTestId('button');
         expect(refreshButton).toBeInTheDocument();
-      });
 
       // Check for proper heading structure
       expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Memory Analytics');
-    });
 
     it('supports keyboard navigation', async () => {
       render(<MemoryAnalytics {...defaultProps} />);
@@ -407,9 +373,8 @@ describe('MemoryAnalytics', () => {
         // Button should be focusable
         refreshButton.focus();
         expect(document.activeElement).toBe(refreshButton);
-      });
-    });
-  });
+
+
 
   describe('Responsive Design', () => {
     it('adapts to different screen sizes', async () => {
@@ -418,8 +383,7 @@ describe('MemoryAnalytics', () => {
       await waitFor(() => {
         const container = screen.getByText('Memory Analytics').closest('div');
         expect(container).toHaveStyle({ height: '600px' });
-      });
-    });
+
 
     it('handles mobile layout correctly', async () => {
       // Mock mobile viewport
@@ -427,16 +391,14 @@ describe('MemoryAnalytics', () => {
         writable: true,
         configurable: true,
         value: 375,
-      });
 
       render(<MemoryAnalytics {...defaultProps} />);
       
       await waitFor(() => {
         // Should render without errors on mobile
         expect(screen.getByText('Memory Analytics')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Data Validation', () => {
     it('handles empty or null data gracefully', async () => {
@@ -455,8 +417,7 @@ describe('MemoryAnalytics', () => {
       await waitFor(() => {
         expect(screen.getByText('0')).toBeInTheDocument(); // Total memories
         expect(screen.getByText('0 MB')).toBeInTheDocument(); // Storage size
-      });
-    });
+
 
     it('validates numeric data ranges', async () => {
       const invalidStats: MemoryStats = {
@@ -472,7 +433,6 @@ describe('MemoryAnalytics', () => {
       await waitFor(() => {
         // Component should handle invalid data gracefully
         expect(screen.getByText('Memory Analytics')).toBeInTheDocument();
-      });
-    });
-  });
-});
+
+
+

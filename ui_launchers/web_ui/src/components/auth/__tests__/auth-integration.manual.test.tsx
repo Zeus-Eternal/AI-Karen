@@ -5,6 +5,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -58,7 +59,7 @@ vi.mock('@/components/ui/form-field', () => ({
         id={name}
         name={name}
         value={value || ''}
-        onChange={(e) = aria-label="Input"> onValueChange?.(e.target.value)}
+        onChange={(e) => onValueChange?.(e.target.value)}
         data-testid={`input-${name}`}
       />
     </div>
@@ -113,7 +114,6 @@ const ProtectedContent = () => (
 describe('Authentication System Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('AuthContext Integration', () => {
     it('should provide authentication state to components', async () => {
@@ -132,11 +132,9 @@ describe('Authentication System Integration', () => {
       // Wait for auth check to complete
       await waitFor(() => {
         expect(screen.getByTestId('auth-status')).toHaveTextContent('unauthenticated');
-      });
 
       // Verify authService was called
       expect(mockAuthService.getCurrentUser).toHaveBeenCalled();
-    });
 
     it('should handle authenticated state correctly', async () => {
       const mockUser = {
@@ -170,12 +168,10 @@ describe('Authentication System Integration', () => {
       // Wait for auth check to complete
       await waitFor(() => {
         expect(screen.getByTestId('auth-status')).toHaveTextContent('authenticated');
-      });
 
       // Verify user data is available
       expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com');
-    });
-  });
+
 
   describe('ProtectedRoute Integration', () => {
     it('should show LoginForm when unauthenticated', async () => {
@@ -192,7 +188,6 @@ describe('Authentication System Integration', () => {
       // Wait for auth check and login form to appear
       await waitFor(() => {
         expect(screen.getByTestId('card')).toBeInTheDocument();
-      });
 
       // Verify login form elements are present
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
@@ -201,7 +196,6 @@ describe('Authentication System Integration', () => {
 
       // Verify protected content is not shown
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
 
     it('should show protected content when authenticated', async () => {
       const mockUser = {
@@ -237,12 +231,10 @@ describe('Authentication System Integration', () => {
       // Wait for auth check and protected content to appear
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       // Verify login form is not shown
       expect(screen.queryByTestId('card')).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('LoginForm Component Integration', () => {
     it('should render with proper form elements', () => {
@@ -258,7 +250,6 @@ describe('Authentication System Integration', () => {
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
       expect(screen.getByTestId('submit-button')).toBeInTheDocument();
-    });
 
     it('should integrate with AuthContext for login attempts', async () => {
       mockAuthService.getCurrentUser.mockRejectedValue(new Error('Not authenticated'));
@@ -269,7 +260,6 @@ describe('Authentication System Integration', () => {
         tenant_id: 'test-tenant',
         two_factor_enabled: false,
         preferences: {},
-      });
 
       const onSuccess = vi.fn();
 
@@ -286,8 +276,7 @@ describe('Authentication System Integration', () => {
       // This test verifies the component structure and integration points
       // The actual login flow would require more complex event simulation
       // which is better tested in the e2e environment
-    });
-  });
+
 
   describe('Authentication Service Integration', () => {
     it('should call authService methods through AuthContext', async () => {
@@ -302,10 +291,8 @@ describe('Authentication System Integration', () => {
       // Wait for initial auth check
       await waitFor(() => {
         expect(mockAuthService.getCurrentUser).toHaveBeenCalled();
-      });
 
       // Verify the service integration works
       expect(mockAuthService.getCurrentUser).toHaveBeenCalledTimes(1);
-    });
-  });
-});
+
+

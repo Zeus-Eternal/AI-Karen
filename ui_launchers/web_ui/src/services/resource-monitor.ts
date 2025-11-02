@@ -237,7 +237,7 @@ export class ResourceMonitor {
     resourceTimings.forEach(timing => {
       bytesReceived += timing.transferSize || 0;
       bytesSent += timing.encodedBodySize || 0;
-    });
+
     // Estimate latency from recent requests
     const latency = this.calculateAverageLatency(resourceTimings);
     return {
@@ -407,7 +407,7 @@ export class ResourceMonitor {
         estimatedCost: 50,
         estimatedSavings: 0,
         confidence: this.calculateConfidence(trend.cpu, latestMetrics.cpu.usage),
-      });
+
     } else if (latestMetrics.cpu.usage < this.thresholds.cpu.scaleDown && trend.cpu < 0) {
       this.recommendations.push({
         id: 'cpu-scale-down',
@@ -421,7 +421,7 @@ export class ResourceMonitor {
         estimatedCost: 0,
         estimatedSavings: 30,
         confidence: this.calculateConfidence(Math.abs(trend.cpu), 100 - latestMetrics.cpu.usage),
-      });
+
     }
     // Memory scaling recommendations
     if (latestMetrics.memory.percentage > this.thresholds.memory.scaleUp) {
@@ -437,7 +437,7 @@ export class ResourceMonitor {
         estimatedCost: 40,
         estimatedSavings: 0,
         confidence: this.calculateConfidence(trend.memory, latestMetrics.memory.percentage),
-      });
+
     } else if (latestMetrics.memory.percentage < this.thresholds.memory.scaleDown && trend.memory < 0) {
       this.recommendations.push({
         id: 'memory-scale-down',
@@ -451,7 +451,7 @@ export class ResourceMonitor {
         estimatedCost: 0,
         estimatedSavings: 25,
         confidence: this.calculateConfidence(Math.abs(trend.memory), 100 - latestMetrics.memory.percentage),
-      });
+
     }
     // Network optimization recommendations
     if (latestMetrics.network.latency > this.thresholds.network.latencyWarning) {
@@ -467,7 +467,7 @@ export class ResourceMonitor {
         estimatedCost: 20,
         estimatedSavings: 0,
         confidence: 80,
-      });
+
     }
     // Storage scaling recommendations
     if (latestMetrics.storage.percentage > this.thresholds.storage.scaleUp) {
@@ -483,7 +483,7 @@ export class ResourceMonitor {
         estimatedCost: 15,
         estimatedSavings: 0,
         confidence: 95,
-      });
+
     }
     // Sort recommendations by priority and confidence
     this.recommendations.sort((a, b) => {
@@ -491,7 +491,7 @@ export class ResourceMonitor {
       const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
       if (priorityDiff !== 0) return priorityDiff;
       return b.confidence - a.confidence;
-    });
+
   }
   /**
    * Calculate resource usage trends
@@ -564,7 +564,7 @@ export class ResourceMonitor {
       growthRate: cpuGrowthRate,
       recommendedCapacity: projectedCpuUsage > 80 ? latestMetrics.cpu.cores * 2 : latestMetrics.cpu.cores,
       costImpact: projectedCpuUsage > 80 ? 100 : 0,
-    });
+
     // Memory capacity planning
     const memoryGrowthRate = trends.memory > 0 ? Math.min(15, trends.memory * 1.5) : 0;
     const projectedMemoryUsage = Math.min(100, latestMetrics.memory.percentage + (memoryGrowthRate * months));
@@ -576,7 +576,7 @@ export class ResourceMonitor {
       growthRate: memoryGrowthRate,
       recommendedCapacity: projectedMemoryUsage > 80 ? latestMetrics.memory.total * 2 : latestMetrics.memory.total,
       costImpact: projectedMemoryUsage > 80 ? 80 : 0,
-    });
+
     // Storage capacity planning
     const storageGrowthRate = trends.storage > 0 ? Math.min(10, trends.storage) : 2; // Assume 2% growth minimum
     const projectedStorageUsage = Math.min(100, latestMetrics.storage.percentage + (storageGrowthRate * months));
@@ -588,7 +588,7 @@ export class ResourceMonitor {
       growthRate: storageGrowthRate,
       recommendedCapacity: projectedStorageUsage > 80 ? latestMetrics.storage.total * 1.5 : latestMetrics.storage.total,
       costImpact: projectedStorageUsage > 80 ? 30 : 0,
-    });
+
     return plans;
   }
   /**

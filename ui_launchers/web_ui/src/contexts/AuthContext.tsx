@@ -1,31 +1,10 @@
-import React, {
-import {
-import { connectivityLogger } from "@/lib/logging";
+
 "use client";
-
-
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-  useCallback,
-  useRef,
-} from "react";
-
-  logout as sessionLogout,
-  getCurrentUser,
-  hasSessionCookie,
-} from "@/lib/auth/session";
-
-  getConnectionManager,
-  ConnectionError,
-  ErrorCategory,
-} from "@/lib/connection/connection-manager";
-
-  getTimeoutManager,
-  OperationType,
-} from "@/lib/connection/timeout-manager";
+import React, {  createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
+import { connectivityLogger } from "@/lib/logging";
+import { logout as sessionLogout, getCurrentUser, hasSessionCookie } from "@/lib/auth/session";
+import { getConnectionManager, ConnectionError, ErrorCategory } from "@/lib/connection/connection-manager";
+import { getTimeoutManager, OperationType } from "@/lib/connection/timeout-manager";
 
 
 export interface User {
@@ -99,7 +78,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     error: null,
     isRefreshing: false,
     lastActivity: null,
-  });
 
   // Connection manager and timeout configuration
   const connectionManager = getConnectionManager();
@@ -226,7 +204,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       error: null,
       isRefreshing: false,
       lastActivity: null,
-    });
 
     // Call session logout to clear server-side session cookie
     sessionLogout().catch((error) => {
@@ -243,7 +220,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         "logout",
         errorObject
       );
-    });
 
     connectivityLogger.logAuthentication(
       "info",
@@ -805,7 +781,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       checkAuth().finally(() => {
         // Ensure loading state is cleared even if checkAuth fails
         setAuthState((prev) => ({ ...prev, isLoading: false }));
-      });
+
     } else {
       // If already authenticated, clear loading state
       setAuthState((prev) => ({ ...prev, isLoading: false }));
@@ -835,12 +811,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     ];
     events.forEach((event) => {
       document.addEventListener(event, updateActivity, { passive: true });
-    });
 
     return () => {
       events.forEach((event) => {
         document.removeEventListener(event, updateActivity);
-      });
+
     };
   }, [isAuthenticated]);
 

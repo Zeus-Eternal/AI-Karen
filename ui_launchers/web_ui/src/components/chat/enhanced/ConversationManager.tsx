@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useMemo } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { useEffect } from 'react';
@@ -7,67 +9,19 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
 import { format, formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-'use client';
+
+import { } from '@/components/ui/select';
+
+import { } from '@/components/ui/dropdown-menu';
+
+import { } from '@/components/ui/dialog';
+import { } from 'lucide-react';
 
 
 
-
-
-
-
-
-
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
-
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-
-  Search,
-  Filter,
-  MoreHorizontal,
-  Star,
-  Archive,
-  Trash2,
-  Tag,
-  Calendar,
-  MessageSquare,
-  TrendingUp,
-  Users,
-  Clock,
-  BarChart3,
-  Download,
-  Share2,
-  Copy,
-  Plus
-} from 'lucide-react';
-
-
-
-  ConversationThread,
-  ThreadMetadata,
-  EnhancedChatMessage
-} from '@/types/enhanced-chat';
+import { } from '@/types/enhanced-chat';
 
 interface ConversationAnalytics {
   totalConversations: number;
@@ -126,7 +80,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
     conversations.forEach(conv => {
       conv.metadata.tags.forEach(tag => topics.add(tag));
       if (conv.topic) topics.add(conv.topic);
-    });
+
     return Array.from(topics).sort();
   }, [conversations]);
 
@@ -145,7 +99,6 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
         conv.metadata.tags.includes(topicFilter);
       
       return matchesSearch && matchesStatus && matchesTopic;
-    });
 
     // Sort conversations
     filtered.sort((a, b) => {
@@ -160,7 +113,6 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
         default:
           return b.updatedAt.getTime() - a.updatedAt.getTime();
       }
-    });
 
     return filtered;
   }, [conversations, searchQuery, statusFilter, topicFilter, sortBy]);
@@ -175,7 +127,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
         newSet.add(conversationId);
       }
       return newSet;
-    });
+
   };
 
   // Handle bulk operations
@@ -185,7 +137,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
         variant: 'destructive',
         title: 'No Selection',
         description: 'Please select conversations to export'
-      });
+
       return;
     }
     
@@ -202,7 +154,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
     toast({
       title: 'Conversations Archived',
       description: `${selectedConversations.size} conversations have been archived`
-    });
+
   };
 
   // Get sentiment color
@@ -265,7 +217,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
             <input
               type="checkbox"
               checked={isSelected}
-              onChange={(e) = aria-label="Input"> {
+              onChange={(e) => {
                 e.stopPropagation();
                 toggleConversationSelection(conversation.id);
               }}
@@ -273,9 +225,9 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
             />
 
             {/* Conversation Content */}
-            <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+            <div className="flex-1 min-w-0 ">
               <div className="flex items-start justify-between mb-2">
-                <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                <div className="flex-1 min-w-0 ">
                   <h3 className="text-sm font-medium truncate md:text-base lg:text-lg">
                     {conversation.title}
                   </h3>
@@ -286,30 +238,27 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <button variant="ghost" size="sm" className="h-6 w-6 p-0 sm:w-auto md:w-full" aria-label="Button">
-                      <MoreHorizontal className="h-3 w-3 sm:w-auto md:w-full" />
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 " >
+                      <MoreHorizontal className="h-3 w-3 " />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onConversationShare(conversation.id)}>
-                      <Share2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Share
+                      <Share2 className="h-4 w-4 mr-2 " />
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onConversationExport([conversation.id])}>
-                      <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Export
+                      <Download className="h-4 w-4 mr-2 " />
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => onConversationArchive(conversation.id)}>
-                      <Archive className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                      <Archive className="h-4 w-4 mr-2 " />
                       {conversation.status === 'archived' ? 'Unarchive' : 'Archive'}
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => onConversationDelete(conversation.id)}
                       className="text-destructive"
                     >
-                      <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Delete
+                      <Trash2 className="h-4 w-4 mr-2 " />
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -357,18 +306,18 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
               <div className="flex items-center justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3 sm:w-auto md:w-full" />
+                    <Clock className="h-3 w-3 " />
                     {formatDistanceToNow(conversation.updatedAt, { addSuffix: true })}
                   </span>
                   
                   <span className="flex items-center gap-1">
-                    <Users className="h-3 w-3 sm:w-auto md:w-full" />
+                    <Users className="h-3 w-3 " />
                     {conversation.participants.length}
                   </span>
                 </div>
                 
                 <div className="flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3 sm:w-auto md:w-full" />
+                  <TrendingUp className="h-3 w-3 " />
                   <span>{Math.round(conversation.metadata.averageResponseTime)}ms</span>
                 </div>
               </div>
@@ -393,7 +342,6 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
                 {analytics.totalConversations}
               </div>
               <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Total Conversations
               </div>
             </CardContent>
           </Card>
@@ -404,7 +352,6 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
                 {analytics.totalMessages}
               </div>
               <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Total Messages
               </div>
             </CardContent>
           </Card>
@@ -415,7 +362,6 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
                 {Math.round(analytics.averageLength)}
               </div>
               <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Avg Length
               </div>
             </CardContent>
           </Card>
@@ -426,7 +372,6 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
                 {analytics.topTopics.length}
               </div>
               <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Unique Topics
               </div>
             </CardContent>
           </Card>
@@ -443,7 +388,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
                 <div key={topic.topic} className="flex items-center justify-between">
                   <span className="text-sm md:text-base lg:text-lg">{topic.topic}</span>
                   <div className="flex items-center gap-2">
-                    <div className="w-20 bg-muted rounded-full h-2 sm:w-auto md:w-full">
+                    <div className="w-20 bg-muted rounded-full h-2 ">
                       <div 
                         className="bg-primary h-2 rounded-full"
                         style={{ 
@@ -451,7 +396,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
                         }}
                       />
                     </div>
-                    <span className="text-xs text-muted-foreground w-8 sm:w-auto md:w-full">
+                    <span className="text-xs text-muted-foreground w-8 ">
                       {topic.count}
                     </span>
                   </div>
@@ -498,8 +443,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 sm:w-auto md:w-full" />
-            Conversation Manager
+            <MessageSquare className="h-5 w-5 " />
           </CardTitle>
           
           <div className="flex items-center gap-2">
@@ -510,18 +454,16 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
             {selectedConversations.size > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button variant="outline" size="sm" aria-label="Button">
+                  <Button variant="outline" size="sm" >
                     Actions ({selectedConversations.size})
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem onClick={handleBulkExport}>
-                    <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    Export Selected
+                    <Download className="h-4 w-4 mr-2 " />
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleBulkArchive}>
-                    <Archive className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    Archive Selected
+                    <Archive className="h-4 w-4 mr-2 " />
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -532,20 +474,20 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
         {/* Filters */}
         <div className="space-y-3">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground " />
             <input
               placeholder="Search conversations..."
               value={searchQuery}
-              onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 h-9"
             />
           </div>
           
           <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <Filter className="h-4 w-4 text-muted-foreground " />
             
             <select value={statusFilter} onValueChange={(value) = aria-label="Select option"> setStatusFilter(value as any)}>
-              <selectTrigger className="w-32 h-8 text-xs sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-32 h-8 text-xs " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
@@ -556,7 +498,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
             </Select>
             
             <select value={topicFilter} onValueChange={setTopicFilter} aria-label="Select option">
-              <selectTrigger className="w-32 h-8 text-xs sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-32 h-8 text-xs " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
@@ -568,7 +510,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
             </Select>
             
             <select value={sortBy} onValueChange={(value) = aria-label="Select option"> setSortBy(value as any)}>
-              <selectTrigger className="w-32 h-8 text-xs sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-32 h-8 text-xs " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
@@ -590,8 +532,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
             </TabsTrigger>
             {analytics && (
               <TabsTrigger value="analytics">
-                <BarChart3 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Analytics
+                <BarChart3 className="h-4 w-4 mr-2 " />
               </TabsTrigger>
             )}
           </TabsList>
@@ -602,7 +543,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
                 <div className="space-y-3 pb-4">
                   {filteredAndSortedConversations.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                      <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50 " />
                       <p className="text-sm md:text-base lg:text-lg">
                         {searchQuery || statusFilter !== 'all' || topicFilter !== 'all'
                           ? 'No conversations match your filters'

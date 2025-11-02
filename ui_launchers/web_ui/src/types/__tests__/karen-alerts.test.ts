@@ -2,22 +2,7 @@
  * Test file to verify all Karen Alert type definitions are properly implemented
  */
 
-import {
-  AlertType,
-  AlertVariant,
-  AlertPriority,
-  AlertAction,
-  KarenAlert,
-  AlertSettings,
-  AlertHistory,
-  StoredAlert,
-  AlertMetrics,
-  AlertSettingsStorage,
-  AlertResult,
-  ErrorRecoveryConfig,
-  DEFAULT_ALERT_SETTINGS,
-  DEFAULT_ERROR_RECOVERY_CONFIG,
-} from '../karen-alerts';
+import { AlertType, AlertVariant, AlertPriority, AlertAction, KarenAlert, AlertSettings, AlertHistory, StoredAlert, AlertMetrics, AlertSettingsStorage, AlertResult, ErrorRecoveryConfig, DEFAULT_ALERT_SETTINGS, DEFAULT_ERROR_RECOVERY_CONFIG } from '../karen-alerts';
 
 describe('Karen Alert Type Definitions', () => {
   test('AlertType union includes all required types', () => {
@@ -33,7 +18,6 @@ describe('Karen Alert Type Definitions', () => {
     
     // This test passes if TypeScript compilation succeeds
     expect(validTypes).toHaveLength(7);
-  });
 
   test('AlertVariant union includes all Karen variants', () => {
     const validVariants: AlertVariant[] = [
@@ -45,7 +29,6 @@ describe('Karen Alert Type Definitions', () => {
     ];
     
     expect(validVariants).toHaveLength(5);
-  });
 
   test('AlertPriority union includes all priority levels', () => {
     const validPriorities: AlertPriority[] = [
@@ -56,7 +39,6 @@ describe('Karen Alert Type Definitions', () => {
     ];
     
     expect(validPriorities).toHaveLength(4);
-  });
 
   test('AlertAction interface has required properties', () => {
     const mockAction: AlertAction = {
@@ -68,7 +50,6 @@ describe('Karen Alert Type Definitions', () => {
     
     expect(mockAction.label).toBe('Test Action');
     expect(typeof mockAction.action).toBe('function');
-  });
 
   test('KarenAlert interface has all required properties', () => {
     const mockAlert: KarenAlert = {
@@ -94,7 +75,6 @@ describe('Karen Alert Type Definitions', () => {
     expect(mockAlert.message).toBe('This is a test alert message');
     expect(mockAlert.priority).toBe('normal');
     expect(mockAlert.source).toBe('test-component');
-  });
 
   test('AlertSettings interface has all required configuration options', () => {
     const mockSettings: AlertSettings = {
@@ -124,7 +104,6 @@ describe('Karen Alert Type Definitions', () => {
     expect(mockSettings.maxConcurrentAlerts).toBe(3);
     expect(mockSettings.position).toBe('top-right');
     expect(mockSettings.categories.performance).toBe(true);
-  });
 
   test('StoredAlert extends KarenAlert with tracking properties', () => {
     const mockStoredAlert: StoredAlert = {
@@ -145,7 +124,6 @@ describe('Karen Alert Type Definitions', () => {
     expect(mockStoredAlert.dismissed).toBe(true);
     expect(typeof mockStoredAlert.dismissedAt).toBe('number');
     expect(mockStoredAlert.interactionCount).toBe(2);
-  });
 
   test('AlertHistory interface has required properties', () => {
     const mockHistory: AlertHistory = {
@@ -157,7 +135,6 @@ describe('Karen Alert Type Definitions', () => {
     expect(Array.isArray(mockHistory.alerts)).toBe(true);
     expect(mockHistory.maxHistory).toBe(100);
     expect(mockHistory.retentionDays).toBe(30);
-  });
 
   test('AlertMetrics interface has all tracking properties', () => {
     const mockMetrics: AlertMetrics = {
@@ -180,7 +157,6 @@ describe('Karen Alert Type Definitions', () => {
     expect(mockMetrics.totalShown).toBe(150);
     expect(mockMetrics.actionClickRate).toBe(0.25);
     expect(mockMetrics.categoryBreakdown.system).toBe(20);
-  });
 
   test('DEFAULT_ALERT_SETTINGS has proper default values', () => {
     expect(DEFAULT_ALERT_SETTINGS.durations.success).toBe(4000);
@@ -188,12 +164,10 @@ describe('Karen Alert Type Definitions', () => {
     expect(DEFAULT_ALERT_SETTINGS.enableAnimations).toBe(true);
     expect(DEFAULT_ALERT_SETTINGS.position).toBe('top-right');
     expect(DEFAULT_ALERT_SETTINGS.announceAlerts).toBe(true);
-  });
 
   test('DEFAULT_ERROR_RECOVERY_CONFIG has proper default values', () => {
     expect(DEFAULT_ERROR_RECOVERY_CONFIG.maxRetries).toBe(3);
     expect(DEFAULT_ERROR_RECOVERY_CONFIG.retryDelay).toBe(1000);
     expect(DEFAULT_ERROR_RECOVERY_CONFIG.fallbackBehavior).toBe('console');
     expect(DEFAULT_ERROR_RECOVERY_CONFIG.errorReporting).toBe(true);
-  });
-});
+

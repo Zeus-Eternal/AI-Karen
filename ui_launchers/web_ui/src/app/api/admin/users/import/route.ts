@@ -90,13 +90,13 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         const row: any = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
-        });
+
         if (row.email) {
           userData.push({
             email: row.email,
             full_name: row.full_name || row.name || '',
             role: (row.role === 'admin' ? 'admin' : 'user') as 'admin' | 'user'
-          });
+
         }
       }
     } else if (format === 'json') {
@@ -147,7 +147,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             row: rowNumber,
             email: user.email,
             error: 'Invalid email address'
-          });
+
           result.error_count++;
           continue;
         }
@@ -162,7 +162,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               row: rowNumber,
               email: user.email,
               error: 'User already exists'
-            });
+
             result.error_count++;
             continue;
           }
@@ -175,7 +175,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             row: rowNumber,
             email: user.email,
             error: 'Insufficient permissions to create admin user'
-          });
+
           result.error_count++;
           continue;
         }
@@ -186,7 +186,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           role: finalRole,
           tenant_id: 'default',
           created_by: context.user.user_id
-        });
+
         // Log user creation
         await adminUtils.createAuditLog({
           user_id: context.user.user_id,
@@ -202,7 +202,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           },
           ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
           user_agent: request.headers.get('user-agent') || undefined
-        });
+
         result.imported_count++;
         // TODO: Send invitation email if requested
         // if (sendInvitations) {
@@ -213,7 +213,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           row: rowNumber,
           email: user.email,
           error: error instanceof Error ? error.message : 'Unknown error'
-        });
+
         result.error_count++;
       }
     }
@@ -233,7 +233,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       },
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
-    });
+
     const response: AdminApiResponse<ImportResult> = {
       success: true,
       data: result,
@@ -244,11 +244,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           size: file.size,
           format
         },
-        import_settings: {
-          skip_duplicates: skipDuplicates,
-          send_invitations: sendInvitations,
-          default_role: defaultRole
-        }
+        import_settings: { skip_duplicates: skipDuplicates, send_invitations: sendInvitations, default_role: defaultRole } from "@/lib/placeholder";
       }
     };
     return NextResponse.json(response);
@@ -262,4 +258,3 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});

@@ -41,7 +41,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       limit: 1000, // Get more logs for analysis
       sort_by: 'timestamp',
       sort_order: 'desc'
-    });
+
     const auditLogs = auditLogsResult.data;
     // Count user registrations (user.create actions)
     const userRegistrations = auditLogs.filter(log => 
@@ -73,7 +73,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
     const actionCounts: Record<string, number> = {};
     auditLogs.forEach(log => {
       actionCounts[log.action] = (actionCounts[log.action] || 0) + 1;
-    });
+
     const topActions = Object.entries(actionCounts)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
@@ -87,7 +87,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         }
         userCounts[log.user_id].count++;
       }
-    });
+
     const topUsers = Object.entries(userCounts)
       .sort(([, a], [, b]) => b.count - a.count)
       .slice(0, 10)
@@ -127,4 +127,3 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});

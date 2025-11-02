@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { createLazyRoute } from '@/components/ui/lazy-loading';
 

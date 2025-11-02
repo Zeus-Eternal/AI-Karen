@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,50 +8,20 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import {
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import ContextPanel from './ContextPanel';
 import ContextSuggestions from './ContextSuggestions';
 import ConversationThreading from './ConversationThreading';
 import ConversationExportShare from './ConversationExportShare';
-'use client';
+
+import { } from '@/components/ui/resizable';
+
+import { } from 'lucide-react';
 
 
 
-
-
-
-
-
-
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable';
-
-  MessageSquare,
-  Send,
-  Bot,
-  User,
-  Brain,
-  Sparkles,
-  Settings,
-  MoreHorizontal,
-  PanelRightOpen,
-  PanelRightClose
-} from 'lucide-react';
-
-
-
-  EnhancedChatMessage,
-  ConversationContext,
-  ConversationThread,
-  ContextSuggestion,
-  ConversationExport,
-  ConversationShare,
-  EnhancedChatInterfaceProps
-} from '@/types/enhanced-chat';
+import { } from '@/types/enhanced-chat';
 
 
 
@@ -180,7 +152,6 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
         averageRelevance: 0.72
       }
     }
-  });
 
   // Update conversation context when messages change
   useEffect(() => {
@@ -318,7 +289,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
         variant: 'destructive',
         title: 'Message Failed',
         description: 'Failed to send message. Please try again.'
-      });
+
     } finally {
       setIsLoading(false);
     }
@@ -336,7 +307,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
     toast({
       title: 'Thread Selected',
       description: `Switched to conversation thread: ${threadId}`
-    });
+
   }, [toast]);
 
   const handleThreadCreate = useCallback((topic: string) => {
@@ -346,28 +317,28 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
     toast({
       title: 'New Conversation',
       description: `Started new conversation about: ${topic}`
-    });
+
   }, [toast]);
 
   const handleThreadUpdate = useCallback((threadId: string, updates: Partial<ConversationThread>) => {
     toast({
       title: 'Thread Updated',
       description: 'Conversation thread has been updated'
-    });
+
   }, [toast]);
 
   const handleThreadDelete = useCallback((threadId: string) => {
     toast({
       title: 'Thread Deleted',
       description: 'Conversation thread has been deleted'
-    });
+
   }, [toast]);
 
   const handleThreadArchive = useCallback((threadId: string) => {
     toast({
       title: 'Thread Archived',
       description: 'Conversation thread has been archived'
-    });
+
   }, [toast]);
 
   // Handle export and share
@@ -385,8 +356,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       
       const blob = new Blob([JSON.stringify(exportData, null, 2)], {
         type: 'application/json'
-      });
-      
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -419,8 +389,8 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
     <ErrorBoundary fallback={<div>Something went wrong in EnhancedChatInterface</div>}>
       <div key={message.id} className={`flex gap-3 mb-4 ${isUser ? 'justify-end' : ''}`}>
         {!isUser && (
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center sm:w-auto md:w-full">
-            <Bot className="h-4 w-4 text-primary sm:w-auto md:w-full" />
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center ">
+            <Bot className="h-4 w-4 text-primary " />
           </div>
         )}
         
@@ -452,8 +422,8 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
         </div>
         
         {isUser && (
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center sm:w-auto md:w-full">
-            <User className="h-4 w-4 sm:w-auto md:w-full" />
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center ">
+            <User className="h-4 w-4 " />
           </div>
         )}
       </div>
@@ -469,10 +439,9 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary sm:w-auto md:w-full" />
-                  Enhanced Chat
+                  <Sparkles className="h-5 w-5 text-primary " />
                   <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
-                    <Brain className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
+                    <Brain className="h-3 w-3 mr-1 " />
                     Context-Aware
                   </Badge>
                 </CardTitle>
@@ -487,15 +456,15 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
                   )}
                   
                   {enableContextPanel && (
-                    <button
+                    <Button
                       variant="outline"
                       size="sm"
-                      onClick={() = aria-label="Button"> setShowContextPanel(!showContextPanel)}
+                      onClick={() => setShowContextPanel(!showContextPanel)}
                     >
                       {showContextPanel ? (
-                        <PanelRightClose className="h-4 w-4 sm:w-auto md:w-full" />
+                        <PanelRightClose className="h-4 w-4 " />
                       ) : (
-                        <PanelRightOpen className="h-4 w-4 sm:w-auto md:w-full" />
+                        <PanelRightOpen className="h-4 w-4 " />
                       )}
                     </Button>
                   )}
@@ -510,8 +479,8 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
                   {messages.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <div className="flex items-center justify-center gap-2 mb-4">
-                        <Bot className="h-12 w-12 opacity-50 sm:w-auto md:w-full" />
-                        <Sparkles className="h-8 w-8 text-primary sm:w-auto md:w-full" />
+                        <Bot className="h-12 w-12 opacity-50 " />
+                        <Sparkles className="h-8 w-8 text-primary " />
                       </div>
                       <p className="text-lg font-medium mb-2">Enhanced AI Chat</p>
                       <p className="text-sm md:text-base lg:text-lg">
@@ -524,16 +493,16 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
                   
                   {isLoading && (
                     <div className="flex gap-3 mb-4">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center sm:w-auto md:w-full">
-                        <Bot className="h-4 w-4 text-primary sm:w-auto md:w-full" />
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center ">
+                        <Bot className="h-4 w-4 text-primary " />
                       </div>
                       <div className="flex-1">
                         <div className="inline-block p-3 rounded-lg bg-muted border sm:p-4 md:p-6">
                           <div className="flex items-center gap-2">
                             <div className="flex space-x-1">
-                              <div className="w-2 h-2 bg-primary rounded-full animate-bounce sm:w-auto md:w-full"></div>
-                              <div className="w-2 h-2 bg-primary rounded-full animate-bounce sm:w-auto md:w-full" style={{ animationDelay: '0.1s' }}></div>
-                              <div className="w-2 h-2 bg-primary rounded-full animate-bounce sm:w-auto md:w-full" style={{ animationDelay: '0.2s' }}></div>
+                              <div className="w-2 h-2 bg-primary rounded-full animate-bounce "></div>
+                              <div className="w-2 h-2 bg-primary rounded-full animate-bounce " style={{ animationDelay: '0.1s' }}></div>
+                              <div className="w-2 h-2 bg-primary rounded-full animate-bounce " style={{ animationDelay: '0.2s' }}></div>
                             </div>
                             <span className="text-sm text-muted-foreground md:text-base lg:text-lg">AI is thinking...</span>
                           </div>
@@ -561,7 +530,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
                 <div className="flex gap-2">
                   <input
                     value={inputValue}
-                    onChange={(e) = aria-label="Input"> setInputValue(e.target.value)}
+                    onChange={(e) => setInputValue(e.target.value)}
                     placeholder="Type your message..."
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -577,7 +546,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
                     disabled={!inputValue.trim() || isLoading}
                     size="sm"
                    aria-label="Button">
-                    <Send className="h-4 w-4 sm:w-auto md:w-full" />
+                    <Send className="h-4 w-4 " />
                   </Button>
                 </div>
               </div>
@@ -617,7 +586,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
                       toast({
                         title: 'Memory Selected',
                         description: `Viewing memory: ${memoryId}`
-                      });
+
                     }}
                     onSuggestionSelect={handleSuggestionSelect}
                   />

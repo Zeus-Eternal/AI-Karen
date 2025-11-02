@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
     this.setState({
       error,
       errorInfo,
-    });
+
     // Call optional error handler
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
@@ -82,7 +83,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
       error: undefined,
       errorInfo: undefined,
       errorId: '',
-    });
+
   };
   private handleGoHome = () => {
     window.location.href = '/';
@@ -98,13 +99,12 @@ export class ChatErrorBoundary extends Component<Props, State> {
           <Card className="w-full max-w-md">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-red-600">
-                <AlertTriangle className="h-5 w-5 sm:w-auto md:w-full" />
-                Something went wrong
+                <AlertTriangle className="h-5 w-5 " />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <Alert>
-                <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                <AlertTriangle className="h-4 w-4 " />
                 <AlertDescription>
                   The chat interface encountered an unexpected error. Your conversation data has been preserved.
                 </AlertDescription>
@@ -133,12 +133,10 @@ export class ChatErrorBoundary extends Component<Props, State> {
               )}
               <div className="flex gap-2">
                 <button onClick={this.handleRetry} className="flex-1" aria-label="Button">
-                  <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Try Again
+                  <RefreshCw className="h-4 w-4 mr-2 " />
                 </Button>
-                <button variant="outline" onClick={this.handleGoHome} aria-label="Button">
-                  <Home className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Home
+                <Button variant="outline" onClick={this.handleGoHome} >
+                  <Home className="h-4 w-4 mr-2 " />
                 </Button>
               </div>
             </CardContent>

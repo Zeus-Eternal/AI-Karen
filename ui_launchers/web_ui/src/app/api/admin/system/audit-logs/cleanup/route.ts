@@ -40,7 +40,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               cleanup_stats: stats,
               archive_stats: archiveStats
             }
-          });
+
         }
       case 'cleanup':
         {
@@ -83,7 +83,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               dry_run,
               warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined
             }
-          });
+
         }
       case 'cleanup_default_policies':
         {
@@ -110,7 +110,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               total_deleted: results.reduce((sum, r) => sum + r.deleted_count, 0),
               warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined
             }
-          });
+
         }
       case 'archive':
         {
@@ -134,7 +134,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             data: {
               archive_result: result
             }
-          });
+
         }
       case 'optimize':
         {
@@ -154,7 +154,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             data: {
               optimization_result: result
             }
-          });
+
         }
       case 'schedule_cleanup':
         {
@@ -164,7 +164,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             data: {
               message: 'Scheduled cleanup executed successfully'
             }
-          });
+
         }
       case 'cleanup_auth_logs':
         {
@@ -176,7 +176,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               dry_run,
               warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined
             }
-          });
+
         }
       case 'cleanup_user_logs':
         {
@@ -188,7 +188,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               dry_run,
               warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined
             }
-          });
+
         }
       case 'cleanup_older_than':
         {
@@ -211,7 +211,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               dry_run,
               warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined
             }
-          });
+
         }
       default:
         return NextResponse.json({
@@ -240,7 +240,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});
+
 /**
  * GET /api/admin/system/audit-logs/cleanup - Get cleanup statistics and status
  */
@@ -272,7 +272,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         message: `${cleanupStats.logs_to_delete} logs are older than 90 days and can be cleaned up`,
         action: 'cleanup_older_than',
         parameters: { days: 90 }
-      });
+
     }
     if (cleanupStats.total_logs > 50000) {
       recommendations.push({
@@ -281,7 +281,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         message: 'Large number of audit logs detected. Consider archiving old logs.',
         action: 'archive',
         parameters: { retention_days: 365 }
-      });
+
     }
     if (cleanupStats.oldest_log_date && cleanupStats.oldest_log_date < new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)) {
       recommendations.push({
@@ -290,7 +290,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         message: 'Audit table may benefit from optimization due to age of data',
         action: 'optimize',
         parameters: {}
-      });
+
     }
     return NextResponse.json({
       success: true,
@@ -310,7 +310,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         message: 'Audit cleanup information retrieved successfully',
         last_updated: new Date().toISOString()
       }
-    });
+
   } catch (error) {
     return NextResponse.json({
       success: false,
@@ -321,4 +321,3 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});

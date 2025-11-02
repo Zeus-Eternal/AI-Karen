@@ -31,7 +31,6 @@ configure({
     error.name = 'TestingLibraryElementError';
     return error;
   },
-});
 
 // Note: toHaveNoViolations would be extended in test setup for Vitest
 
@@ -170,8 +169,7 @@ export const validateAccessibilityPattern = {
       if (!ariaLabel && !ariaLabelledBy && !hasLabel) {
         issues.push(`Form control ${index + 1} is missing a label`);
       }
-    });
-    
+
     // Check for fieldsets with legends
     const fieldsets = container.querySelectorAll('fieldset');
     fieldsets.forEach((fieldset, index) => {
@@ -179,8 +177,7 @@ export const validateAccessibilityPattern = {
       if (!legend) {
         issues.push(`Fieldset ${index + 1} is missing a legend`);
       }
-    });
-    
+
     return issues;
   },
   
@@ -206,8 +203,7 @@ export const validateAccessibilityPattern = {
       }
       
       previousLevel = level;
-    });
-    
+
     return issues;
   },
   
@@ -232,8 +228,7 @@ export const validateAccessibilityPattern = {
       if (navLandmarks.length > 1 && !ariaLabel && !ariaLabelledBy) {
         issues.push(`Navigation landmark ${index + 1} needs aria-label or aria-labelledby`);
       }
-    });
-    
+
     return issues;
   },
   
@@ -255,11 +250,10 @@ export const validateAccessibilityPattern = {
             if (id && !container.querySelector(`#${id}`)) {
               issues.push(`Element ${index + 1} references non-existent ID: ${id}`);
             }
-          });
+
         }
-      });
-    });
-    
+
+
     // Check for proper ARIA roles
     const elementsWithRoles = container.querySelectorAll('[role]');
     elementsWithRoles.forEach((element, index) => {
@@ -267,8 +261,7 @@ export const validateAccessibilityPattern = {
       if (role && !isValidAriaRole(role)) {
         issues.push(`Element ${index + 1} has invalid ARIA role: ${role}`);
       }
-    });
-    
+
     return issues;
   },
 };

@@ -43,7 +43,7 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
             return null;
           }
           return prev - 1;
-        });
+
       }, 1000);
       return () => clearInterval(interval);
     }
@@ -77,8 +77,8 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md mx-4">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center sm:w-auto md:w-full">
-            <AlertTriangle className="w-6 h-6 text-destructive sm:w-auto md:w-full" />
+          <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center ">
+            <AlertTriangle className="w-6 h-6 text-destructive " />
           </div>
           <CardTitle className="text-xl">Application Error</CardTitle>
           <CardDescription>
@@ -87,21 +87,20 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
         </CardHeader>
         <CardContent className="space-y-4">
           <button 
-            onClick={() = aria-label="Button"> window.location.reload()} 
+            onClick={() => window.location.reload()} 
             className="w-full"
             size="lg"
           >
-            <RefreshCw className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-            Refresh Page
+            <RefreshCw className="w-4 h-4 mr-2 " />
           </Button>
           <div className="text-center">
-            <button 
+            <Button 
               variant="outline" 
               size="sm"
               onClick={handleSendReport}
               disabled={reportSent}
-             aria-label="Button">
-              <Send className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
+             >
+              <Send className="w-4 h-4 mr-2 " />
               {reportSent ? 'Report Sent' : 'Send Error Report'}
             </Button>
           </div>
@@ -119,13 +118,12 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
       <Card className="w-full max-w-lg">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center sm:w-auto md:w-full">
-              <AlertTriangle className="w-5 h-5 text-destructive sm:w-auto md:w-full" />
+            <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center ">
+              <AlertTriangle className="w-5 h-5 text-destructive " />
             </div>
             <div>
               <CardTitle className="text-lg">Component Error</CardTitle>
               <CardDescription>
-                This section is temporarily unavailable
               </CardDescription>
             </div>
           </div>
@@ -144,7 +142,7 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
           {autoRetryCountdown && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 md:p-6">
               <div className="flex items-center gap-2 text-blue-700">
-                <RefreshCw className="w-4 h-4 animate-spin sm:w-auto md:w-full" />
+                <RefreshCw className="w-4 h-4 animate-spin " />
                 <span className="text-sm md:text-base lg:text-lg">
                   Auto-retry in {autoRetryCountdown} seconds...
                 </span>
@@ -159,35 +157,34 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
              aria-label="Button">
               {isRecovering ? (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin " />
                   Recovering...
                 </>
               ) : (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                  Try Again
+                  <RefreshCw className="w-4 h-4 mr-2 " />
                 </>
               )}
             </Button>
             {recoveryAttempts < maxRecoveryAttempts && (
-              <button 
+              <Button 
                 variant="outline" 
                 onClick={onRecover}
                 disabled={isRecovering || autoRetryCountdown !== null}
-               aria-label="Button">
+               >
                 Auto-Recover
               </Button>
             )}
           </div>
           <Collapsible open={showDetails} onOpenChange={setShowDetails}>
             <CollapsibleTrigger asChild>
-              <button variant="ghost" size="sm" className="w-full" aria-label="Button">
-                <Bug className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
+              <Button variant="ghost" size="sm" className="w-full" >
+                <Bug className="w-4 h-4 mr-2 " />
                 {showDetails ? 'Hide' : 'Show'} Details
                 {showDetails ? (
-                  <ChevronUp className="w-4 h-4 ml-2 sm:w-auto md:w-full" />
+                  <ChevronUp className="w-4 h-4 ml-2 " />
                 ) : (
-                  <ChevronDown className="w-4 h-4 ml-2 sm:w-auto md:w-full" />
+                  <ChevronDown className="w-4 h-4 ml-2 " />
                 )}
               </Button>
             </CollapsibleTrigger>
@@ -209,14 +206,14 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
                   </div>
                 </div>
               )}
-              <button 
+              <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleSendReport}
                 disabled={reportSent}
                 className="w-full"
-               aria-label="Button">
-                <Send className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
+               >
+                <Send className="w-4 h-4 mr-2 " />
                 {reportSent ? 'Report Sent' : 'Send Detailed Report'}
               </Button>
             </CollapsibleContent>
@@ -226,12 +223,12 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
     </div>
   );
   const renderFullFallback = () => (
-    <div className="p-6 max-w-2xl mx-auto sm:w-auto md:w-full">
+    <div className="p-6 max-w-2xl mx-auto ">
       <Card>
         <CardHeader>
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0 sm:w-auto md:w-full">
-              <AlertTriangle className="w-6 h-6 text-destructive sm:w-auto md:w-full" />
+            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0 ">
+              <AlertTriangle className="w-6 h-6 text-destructive " />
             </div>
             <div className="flex-1">
               <CardTitle className="text-xl mb-2">Something went wrong</CardTitle>
@@ -258,7 +255,7 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
           {autoRetryCountdown && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-4 md:p-6">
               <div className="flex items-center gap-3">
-                <RefreshCw className="w-5 h-5 text-blue-600 animate-spin sm:w-auto md:w-full" />
+                <RefreshCw className="w-5 h-5 text-blue-600 animate-spin " />
                 <div>
                   <div className="font-medium text-blue-900">Automatic Recovery</div>
                   <div className="text-sm text-blue-700 md:text-base lg:text-lg">
@@ -276,43 +273,40 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
              aria-label="Button">
               {isRecovering ? (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin " />
                   Recovering...
                 </>
               ) : (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                  Try Again
+                  <RefreshCw className="w-4 h-4 mr-2 " />
                 </>
               )}
             </Button>
-            <button 
+            <Button 
               variant="outline" 
-              onClick={() = aria-label="Button"> window.location.reload()}
+              onClick={() => window.location.reload()}
               size="lg"
             >
-              Refresh Page
             </Button>
           </div>
           {recoveryAttempts < maxRecoveryAttempts && (
-            <button 
+            <Button 
               variant="secondary" 
               onClick={onRecover}
               disabled={isRecovering || autoRetryCountdown !== null}
               className="w-full"
-             aria-label="Button">
-              Attempt Smart Recovery
+             >
             </Button>
           )}
           <Collapsible open={showDetails} onOpenChange={setShowDetails}>
             <CollapsibleTrigger asChild>
-              <button variant="ghost" className="w-full" aria-label="Button">
-                <Bug className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
+              <Button variant="ghost" className="w-full" >
+                <Bug className="w-4 h-4 mr-2 " />
                 {showDetails ? 'Hide' : 'Show'} Technical Details
                 {showDetails ? (
-                  <ChevronUp className="w-4 h-4 ml-2 sm:w-auto md:w-full" />
+                  <ChevronUp className="w-4 h-4 ml-2 " />
                 ) : (
-                  <ChevronDown className="w-4 h-4 ml-2 sm:w-auto md:w-full" />
+                  <ChevronDown className="w-4 h-4 ml-2 " />
                 )}
               </Button>
             </CollapsibleTrigger>
@@ -353,26 +347,25 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
                 </div>
               )}
               <div className="flex gap-2">
-                <button 
+                <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={handleSendReport}
                   disabled={reportSent}
                   className="flex-1"
-                 aria-label="Button">
-                  <Send className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
+                 >
+                  <Send className="w-4 h-4 mr-2 " />
                   {reportSent ? 'Report Sent' : 'Send Error Report'}
                 </Button>
-                <button 
+                <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() = aria-label="Button"> {
+                  onClick={() => {
                     if (errorReport) {
                       navigator.clipboard.writeText(JSON.stringify(errorReport, null, 2));
                     }
                   }}
                 >
-                  Copy Details
                 </Button>
               </div>
             </CollapsibleContent>

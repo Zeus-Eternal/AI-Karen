@@ -1,5 +1,4 @@
 import { generateUUID } from './uuid';
-import type {
 import { webUIConfig, type WebUIConfig } from './config';
 import { logger } from './logger';
 import { getPerformanceMonitor } from './performance-monitor';
@@ -7,39 +6,10 @@ import { getStoredApiKey } from './secure-api-key';
 import { ErrorHandler, errorHandler, type ErrorInfo } from './error-handler';
 import type { ApiError } from './api-client';
 import { getExtensionAuthManager } from './auth/extension-auth-manager';
-import { 
-/**
- * AI Karen Backend Integration Layer
- * Connects the web UI with existing AI Karen backend services
- */
-
-
-  ChatMessage,
-  KarenSettings,
-  HandleUserMessageResult,
-  AiData
-} from './types';
-
-
-
-
-
-
-
-
-  ExtensionAuthErrorFactory,
-  extensionAuthErrorHandler,
-  type ExtensionAuthError
-} from './auth/extension-auth-errors';
-
-  extensionAuthRecoveryManager,
-  type RecoveryAttemptResult
-} from './auth/extension-auth-recovery';
-
-  extensionAuthDegradationManager,
-  isExtensionFeatureAvailable,
-  getExtensionFallbackData
-} from './auth/extension-auth-degradation';
+import {  /** * AI Karen Backend Integration Layer * Connects the web UI with existing AI Karen backend services */   ChatMessage, KarenSettings, HandleUserMessageResult, AiData } from './types';
+import { ExtensionAuthErrorFactory, extensionAuthErrorHandler, type ExtensionAuthError } from './auth/extension-auth-errors';
+import { extensionAuthRecoveryManager, type RecoveryAttemptResult } from './auth/extension-auth-recovery';
+import { extensionAuthDegradationManager, isExtensionFeatureAvailable, getExtensionFallbackData } from './auth/extension-auth-degradation';
 export const SESSION_ID_KEY = 'auth_session_id';
 export function initializeSessionId(): string {
   if (typeof window === 'undefined') return '';
@@ -251,7 +221,7 @@ class KarenBackendService {
       logLevel: this.logLevel,
       fallbackUrls: webUIConfig.fallbackBackendUrls,
       windowLocation: typeof window !== 'undefined' ? window.location.href : 'server-side',
-    });
+
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.replayOfflineQueue);
     }
@@ -318,14 +288,14 @@ class KarenBackendService {
             attempt: attempt + 1,
             maxRetries,
             httpStatus: response.status
-          });
+
         } else {
           authError = ExtensionAuthErrorFactory.createPermissionDeniedError({
             endpoint,
             attempt: attempt + 1,
             maxRetries,
             httpStatus: response.status
-          });
+
         }
         // Attempt recovery using the recovery manager
         const recoveryResult = await extensionAuthRecoveryManager.attemptRecovery(
@@ -343,7 +313,7 @@ class KarenBackendService {
           attempt: attempt + 1,
           maxRetries,
           originalError: recoveryError
-        });
+
         // Handle the recovery failure
         extensionAuthErrorHandler.handleError(recoveryFailureError);
       }
@@ -353,7 +323,7 @@ class KarenBackendService {
       try {
         const meResp = await fetch(`${this.config.baseUrl}/api/auth/me`, {
           headers: await this.getAuthHeaders('/api/auth/me'),
-        });
+
         if (meResp.status === 401 && typeof window !== 'undefined') {
           window.location.assign('/login');
         }
@@ -401,21 +371,21 @@ class KarenBackendService {
             endpoint,
             httpStatus: response.status,
             errorDetails
-          });
+
           break;
         case 403:
           authError = ExtensionAuthErrorFactory.createPermissionDeniedError({
             endpoint,
             httpStatus: response.status,
             errorDetails
-          });
+
           break;
         case 503:
           authError = ExtensionAuthErrorFactory.createServiceUnavailableError({
             endpoint,
             httpStatus: response.status,
             errorDetails
-          });
+
           break;
         default:
           authError = ExtensionAuthErrorFactory.createFromHttpStatus(
@@ -435,7 +405,7 @@ class KarenBackendService {
         logger.info(`Using fallback data for ${endpoint}:`, {
           strategy: recoveryResult.strategy,
           message: recoveryResult.message
-        });
+
         return recoveryResult.fallbackData;
       }
       // If no fallback data but recovery was successful, return null to allow retry
@@ -492,7 +462,7 @@ class KarenBackendService {
         method: interceptedOptions.method || 'GET',
         hasAuth: !!headers['Authorization'],
         correlationId: headers['X-Correlation-ID'],
-      });
+
     }
     return interceptedOptions;
   }
@@ -565,7 +535,7 @@ class KarenBackendService {
         body: bodyLog,
         correlationId,
         timeoutMs: perRequestTimeout,
-      });
+
     }
     const performanceStart = this.performanceMonitoring ? performance.now() : 0;
     // Candidate base URLs (primary + configured fallbacks)
@@ -603,7 +573,7 @@ class KarenBackendService {
             response = await fetch(primaryUrl, {
               ...interceptedOptions,
               signal: controller.signal,
-            });
+
             clearTimeout(timeoutId);
           } catch (fetchErr) {
             lastFetchError = fetchErr;
@@ -618,7 +588,7 @@ class KarenBackendService {
               response = await fetch(url, {
                 ...interceptedOptions,
                 signal: controller.signal,
-              });
+
               clearTimeout(timeoutId);
               if (response && response.ok) {
                 // If fallback succeeded, promote it to primary for future requests
@@ -706,7 +676,7 @@ class KarenBackendService {
                 const publicResp = await fetch(`${this.config.baseUrl}${publicEndpoint}`, {
                   ...interceptedOptions,
                   signal: controller.signal,
-                });
+
                 clearTimeout(timeoutId);
                 if (publicResp.ok) {
                   const ct = publicResp.headers.get('content-type') || '';
@@ -791,7 +761,7 @@ class KarenBackendService {
             dataSize: JSON.stringify(data).length,
             cached: useCache,
             correlationId,
-          });
+
         }
         // Cache successful responses
         if (useCache) {
@@ -799,7 +769,7 @@ class KarenBackendService {
             data,
             timestamp: Date.now(),
             ttl: cacheTtl,
-          });
+
         }
         this.failureCount = 0;
         this.circuitOpenUntil = 0;
@@ -981,7 +951,7 @@ class KarenBackendService {
         await this.makeRequest('/api/auth/me', {
           headers: { Authorization: `Bearer ${existingToken}` },
           signal: controller.signal
-        });
+
         clearTimeout(timeoutId);
         if (this.debugLogging) {
         }
@@ -999,7 +969,7 @@ class KarenBackendService {
       const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
       await this.makeRequest('/api/auth/validate-session', {
         signal: controller.signal
-      });
+
       clearTimeout(timeoutId);
       if (this.debugLogging) {
       }
@@ -1041,7 +1011,7 @@ class KarenBackendService {
       const response = await this.makeRequest<{ memory_id: string }>('/api/memory/commit', {
         method: 'POST',
         body: JSON.stringify(requestPayload),
-      });
+
   logger.info('Memory store response:', response);
       return response.memory_id;
     } catch (error) {
@@ -1079,7 +1049,7 @@ class KarenBackendService {
       const response = await this.makeRequest<{ memories: any[] }>('/api/memory/search', {
         method: 'POST',
         body: JSON.stringify(backendQuery),
-      });
+
       // Transform the response to match the expected format
       const memories = (response.memories || []).map(mem => ({
         id: mem.id,
@@ -1143,7 +1113,7 @@ class KarenBackendService {
         data: response,
         timestamp: Date.now(),
         ttl: webUIConfig.cacheTtl,
-      });
+
       return response.plugins || [];
     } catch (error) {
       if (error instanceof APIError && error.details?.type === 'SERVICE_UNAVAILABLE') {
@@ -1168,7 +1138,7 @@ class KarenBackendService {
           parameters,
           user_id: userId,
         }),
-      });
+
     } catch (error) {
       let errorMessage = 'Unknown error';
       if (error instanceof APIError) {
@@ -1321,7 +1291,7 @@ class KarenBackendService {
         userId,
         sessionId: sid,
         historyLength: conversationHistory.length,
-      });
+
       // First, query relevant memories
       const relevantMemories = await this.queryMemories({
         text: message,
@@ -1329,7 +1299,7 @@ class KarenBackendService {
         session_id: sid,
         top_k: 5,
         similarity_threshold: 0.7,
-      });
+
       // Use the secure AI orchestrator endpoint with proper authentication
       const startTime = Date.now();
       const aiResponse = await this.makeRequest<{
@@ -1369,7 +1339,7 @@ class KarenBackendService {
             preferred_model: llmPreferences?.preferredModel || 'llama3.2:latest',
           },
         }),
-      });
+
       // Transform the AI orchestrator response to match the expected HandleUserMessageResult format
       const response: HandleUserMessageResult = {
         finalResponse: aiResponse.response,
@@ -1385,7 +1355,7 @@ class KarenBackendService {
         hasAiData: !!response.aiDataForFinalResponse,
         hasSuggestions: !!response.suggestedNewFacts,
         hasProactiveSuggestion: !!response.proactiveSuggestion,
-      });
+
       // Store the conversation in memory if successful
       if (response.finalResponse) {
         const conversationText = `User: ${message}\nAssistant: ${response.finalResponse}`;
@@ -1481,7 +1451,7 @@ class KarenBackendService {
       await this.makeRequest(`/api/users/${encodeURIComponent(userId)}/preferences`, {
         method: 'PUT',
         body: JSON.stringify(preferences),
-      });
+
       return true;
     } catch (error) {
       if (error instanceof APIError) {
@@ -1610,7 +1580,7 @@ class KarenBackendService {
       return await this.makeRequest('/api/extensions/background-tasks/', {
         method: 'POST',
         body: JSON.stringify(taskData),
-      });
+
     } catch (error) {
       logger.error('Failed to register extension background task:', error);
       if (error instanceof APIError && error.status === 403) {
@@ -1626,7 +1596,7 @@ class KarenBackendService {
     try {
       return await this.makeRequest(`/api/extensions/${encodeURIComponent(extensionName)}/load`, {
         method: 'POST',
-      });
+
     } catch (error) {
       logger.error(`Failed to load extension ${extensionName}:`, error);
       if (error instanceof APIError && error.status === 403) {
@@ -1642,7 +1612,7 @@ class KarenBackendService {
     try {
       return await this.makeRequest(`/api/extensions/${encodeURIComponent(extensionName)}/unload`, {
         method: 'POST',
-      });
+
     } catch (error) {
       logger.error(`Failed to unload extension ${extensionName}:`, error);
       if (error instanceof APIError && error.status === 403) {
@@ -1841,13 +1811,5 @@ export function initializeKarenBackend(config?: Partial<BackendConfig>): KarenBa
 }
 // Export types (interfaces are already exported via export interface declarations)
 export type {
-  BackendConfig,
-  MemoryEntry,
-  MemoryQuery,
-  PluginInfo,
-  PluginExecutionResult,
-  SystemMetrics,
-  UsageAnalytics,
-  WebUIErrorResponse,
 };
 export { KarenBackendService, APIError };

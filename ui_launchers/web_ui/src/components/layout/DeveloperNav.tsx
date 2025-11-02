@@ -1,20 +1,12 @@
 "use client";
 
-
+import React from 'react';
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Code, 
-  Terminal, 
-  Activity, 
-  Brain, 
-  MessageSquare, 
-  Settings,
-  Zap,
-  Monitor
-} from "lucide-react";
+
+import { } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DeveloperNavProps {
@@ -73,8 +65,7 @@ export default function DeveloperNav({ className }: DeveloperNavProps) {
     <nav className={cn("space-y-2", className)}>
       <div className="px-3 py-2">
         <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight flex items-center gap-2">
-          <Zap className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />
-          Developer Tools
+          <Zap className="h-5 w-5 text-blue-500 " />
         </h2>
         <div className="space-y-1">
           {navItems.map((item) => {
@@ -91,7 +82,7 @@ export default function DeveloperNav({ className }: DeveloperNavProps) {
                   )}
                  aria-label="Button">
                   <div className="flex items-center gap-3 w-full">
-                    <Icon className="h-4 w-4 flex-shrink-0 sm:w-auto md:w-full" />
+                    <Icon className="h-4 w-4 flex-shrink-0 " />
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{item.label}</span>
@@ -122,7 +113,7 @@ export default function DeveloperNav({ className }: DeveloperNavProps) {
       <div className="px-3 py-2">
         <div className="px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 rounded-lg border">
           <div className="flex items-center gap-2 mb-1">
-            <Brain className="h-4 w-4 text-purple-500 sm:w-auto md:w-full" />
+            <Brain className="h-4 w-4 text-purple-500 " />
             <span className="text-sm font-medium md:text-base lg:text-lg">AI Assistant</span>
           </div>
           <p className="text-xs text-muted-foreground sm:text-sm md:text-base">

@@ -77,8 +77,7 @@ describe('Admin API Integration Tests', () => {
           is_verified: true
         }
       })
-    });
-  });
+
 
   describe('User Management API', () => {
     describe('GET /api/admin/users', () => {
@@ -105,7 +104,6 @@ describe('Admin API Integration Tests', () => {
             has_next: false,
             has_prev: false
           }
-        });
 
         const request = new NextRequest('http://localhost/api/admin/users?page=1&limit=20');
         const response = await getUsersGET(request);
@@ -115,7 +113,6 @@ describe('Admin API Integration Tests', () => {
         expect(data.success).toBe(true);
         expect(data.data.data).toHaveLength(1);
         expect(data.data.data[0].email).toBe('user1@example.com');
-      });
 
       it('should prevent non-super admin from viewing super admin users', async () => {
         const request = new NextRequest('http://localhost/api/admin/users?role=super_admin');
@@ -125,14 +122,12 @@ describe('Admin API Integration Tests', () => {
         expect(response.status).toBe(403);
         expect(data.success).toBe(false);
         expect(data.error.code).toBe('INSUFFICIENT_PERMISSIONS');
-      });
 
       it('should handle unauthorized access', async () => {
         // Mock failed session validation
         vi.mocked(global.fetch).mockResolvedValue({
           ok: false,
           status: 401
-        });
 
         const request = new NextRequest('http://localhost/api/admin/users');
         const response = await getUsersGET(request);
@@ -141,8 +136,7 @@ describe('Admin API Integration Tests', () => {
         expect(response.status).toBe(401);
         expect(data.success).toBe(false);
         expect(data.error.code).toBe('UNAUTHORIZED');
-      });
-    });
+
 
     describe('POST /api/admin/users', () => {
       it('should create new user successfully', async () => {
@@ -167,7 +161,6 @@ describe('Admin API Integration Tests', () => {
             full_name: 'New User',
             role: 'user'
           })
-        });
 
         const response = await createUserPOST(request);
         const data = await response.json();
@@ -182,8 +175,7 @@ describe('Admin API Integration Tests', () => {
           tenant_id: 'default',
           created_by: 'admin_user_id',
           password_hash: 'hashed_password'
-        });
-      });
+
 
       it('should prevent creating super admin users', async () => {
         const request = new NextRequest('http://localhost/api/admin/users', {
@@ -192,7 +184,6 @@ describe('Admin API Integration Tests', () => {
             email: 'superadmin@example.com',
             role: 'super_admin'
           })
-        });
 
         const response = await createUserPOST(request);
         const data = await response.json();
@@ -200,12 +191,10 @@ describe('Admin API Integration Tests', () => {
         expect(response.status).toBe(400);
         expect(data.success).toBe(false);
         expect(data.error.code).toBe('INVALID_ROLE');
-      });
 
       it('should prevent duplicate email addresses', async () => {
         mockAdminUtils.getUsersWithRoleFilter.mockResolvedValue({
           data: [{ email: 'existing@example.com' }]
-        });
 
         const request = new NextRequest('http://localhost/api/admin/users', {
           method: 'POST',
@@ -213,7 +202,6 @@ describe('Admin API Integration Tests', () => {
             email: 'existing@example.com',
             role: 'user'
           })
-        });
 
         const response = await createUserPOST(request);
         const data = await response.json();
@@ -221,8 +209,7 @@ describe('Admin API Integration Tests', () => {
         expect(response.status).toBe(409);
         expect(data.success).toBe(false);
         expect(data.error.code).toBe('EMAIL_ALREADY_EXISTS');
-      });
-    });
+
 
     describe('PUT /api/admin/users/[id]', () => {
       it('should update user successfully', async () => {
@@ -249,12 +236,10 @@ describe('Admin API Integration Tests', () => {
           body: JSON.stringify({
             full_name: 'New Name'
           })
-        });
 
         // Mock the pathname
         Object.defineProperty(request, 'nextUrl', {
           value: { pathname: '/api/admin/users/user_id' }
-        });
 
         const response = await updateUserPUT(request);
         const data = await response.json();
@@ -262,7 +247,6 @@ describe('Admin API Integration Tests', () => {
         expect(response.status).toBe(200);
         expect(data.success).toBe(true);
         expect(data.data.user.full_name).toBe('New Name');
-      });
 
       it('should prevent self-modification of critical fields', async () => {
         // Mock session validation to return the same user being modified
@@ -276,7 +260,6 @@ describe('Admin API Integration Tests', () => {
               role: 'admin'
             }
           })
-        });
 
         const existingUser = {
           user_id: 'user_id',
@@ -292,11 +275,9 @@ describe('Admin API Integration Tests', () => {
             role: 'user',
             is_active: false
           })
-        });
 
         Object.defineProperty(request, 'nextUrl', {
           value: { pathname: '/api/admin/users/user_id' }
-        });
 
         const response = await updateUserPUT(request);
         const data = await response.json();
@@ -304,8 +285,7 @@ describe('Admin API Integration Tests', () => {
         expect(response.status).toBe(400);
         expect(data.success).toBe(false);
         expect(data.error.code).toBe('CANNOT_MODIFY_SELF');
-      });
-    });
+
 
     describe('POST /api/admin/users/bulk', () => {
       it('should perform bulk activation successfully', async () => {
@@ -324,7 +304,6 @@ describe('Admin API Integration Tests', () => {
             operation: 'activate',
             user_ids: userIds
           })
-        });
 
         const response = await bulkUserOperationPOST(request);
         const data = await response.json();
@@ -333,7 +312,6 @@ describe('Admin API Integration Tests', () => {
         expect(data.success).toBe(true);
         expect(data.data.activated_count).toBe(3);
         expect(mockAdminUtils.bulkUpdateUserStatus).toHaveBeenCalledWith(userIds, true, 'admin_user_id');
-      });
 
       it('should prevent bulk operations on super admin users by regular admin', async () => {
         const userIds = ['user1', 'super_admin_user'];
@@ -352,7 +330,6 @@ describe('Admin API Integration Tests', () => {
             operation: 'deactivate',
             user_ids: userIds
           })
-        });
 
         const response = await bulkUserOperationPOST(request);
         const data = await response.json();
@@ -360,7 +337,6 @@ describe('Admin API Integration Tests', () => {
         expect(response.status).toBe(403);
         expect(data.success).toBe(false);
         expect(data.error.code).toBe('INSUFFICIENT_PERMISSIONS');
-      });
 
       it('should limit bulk operations to 100 users', async () => {
         const userIds = Array.from({ length: 101 }, (_, i) => `user${i}`);
@@ -371,7 +347,6 @@ describe('Admin API Integration Tests', () => {
             operation: 'activate',
             user_ids: userIds
           })
-        });
 
         const response = await bulkUserOperationPOST(request);
         const data = await response.json();
@@ -379,9 +354,8 @@ describe('Admin API Integration Tests', () => {
         expect(response.status).toBe(400);
         expect(data.success).toBe(false);
         expect(data.error.code).toBe('BULK_LIMIT_EXCEEDED');
-      });
-    });
-  });
+
+
 
   describe('Admin Management API', () => {
     beforeEach(() => {
@@ -398,8 +372,7 @@ describe('Admin API Integration Tests', () => {
             is_verified: true
           }
         })
-      });
-    });
+
 
     describe('GET /api/admin/admins', () => {
       it('should return list of admin users for super admin', async () => {
@@ -424,8 +397,7 @@ describe('Admin API Integration Tests', () => {
         expect(data.data.statistics.total_admins).toBe(2);
         expect(data.data.statistics.super_admins).toBe(1);
         expect(data.data.statistics.regular_admins).toBe(1);
-      });
-    });
+
 
     describe('POST /api/admin/admins/promote/[id]', () => {
       it('should promote user to admin successfully', async () => {
@@ -445,11 +417,9 @@ describe('Admin API Integration Tests', () => {
 
         const request = new NextRequest('http://localhost/api/admin/admins/promote/user_id/route', {
           method: 'POST'
-        });
 
         Object.defineProperty(request, 'nextUrl', {
           value: { pathname: '/api/admin/admins/promote/user_id/route' }
-        });
 
         const response = await promoteUserPOST(request);
         const data = await response.json();
@@ -458,7 +428,6 @@ describe('Admin API Integration Tests', () => {
         expect(data.success).toBe(true);
         expect(data.data.promoted_user.role).toBe('admin');
         expect(mockAdminUtils.updateUserRole).toHaveBeenCalledWith('user_id', 'admin', 'super_admin_id');
-      });
 
       it('should prevent promoting already admin users', async () => {
         const adminUser = {
@@ -470,11 +439,9 @@ describe('Admin API Integration Tests', () => {
 
         const request = new NextRequest('http://localhost/api/admin/admins/promote/admin_id/route', {
           method: 'POST'
-        });
 
         Object.defineProperty(request, 'nextUrl', {
           value: { pathname: '/api/admin/admins/promote/admin_id/route' }
-        });
 
         const response = await promoteUserPOST(request);
         const data = await response.json();
@@ -482,8 +449,7 @@ describe('Admin API Integration Tests', () => {
         expect(response.status).toBe(400);
         expect(data.success).toBe(false);
         expect(data.error.code).toBe('ALREADY_ADMIN');
-      });
-    });
+
 
     describe('POST /api/admin/admins/demote/[id]', () => {
       it('should demote admin to user successfully', async () => {
@@ -504,11 +470,9 @@ describe('Admin API Integration Tests', () => {
 
         const request = new NextRequest('http://localhost/api/admin/admins/demote/admin_id/route', {
           method: 'POST'
-        });
 
         Object.defineProperty(request, 'nextUrl', {
           value: { pathname: '/api/admin/admins/demote/admin_id/route' }
-        });
 
         const response = await demoteAdminPOST(request);
         const data = await response.json();
@@ -517,7 +481,6 @@ describe('Admin API Integration Tests', () => {
         expect(data.success).toBe(true);
         expect(data.data.demoted_user.role).toBe('user');
         expect(mockAdminUtils.updateUserRole).toHaveBeenCalledWith('admin_id', 'user', 'super_admin_id');
-      });
 
       it('should prevent demoting the last super admin', async () => {
         const superAdminUser = {
@@ -530,11 +493,9 @@ describe('Admin API Integration Tests', () => {
 
         const request = new NextRequest('http://localhost/api/admin/admins/demote/super_admin_id/route', {
           method: 'POST'
-        });
 
         Object.defineProperty(request, 'nextUrl', {
           value: { pathname: '/api/admin/admins/demote/super_admin_id/route' }
-        });
 
         const response = await demoteAdminPOST(request);
         const data = await response.json();
@@ -542,9 +503,8 @@ describe('Admin API Integration Tests', () => {
         expect(response.status).toBe(400);
         expect(data.success).toBe(false);
         expect(data.error.code).toBe('CANNOT_DEMOTE_LAST_SUPER_ADMIN');
-      });
-    });
-  });
+
+
 
   describe('System Configuration API', () => {
     beforeEach(() => {
@@ -559,8 +519,7 @@ describe('Admin API Integration Tests', () => {
             role: 'super_admin'
           }
         })
-      });
-    });
+
 
     describe('GET /api/admin/system/config', () => {
       it('should return system configuration for super admin', async () => {
@@ -593,8 +552,7 @@ describe('Admin API Integration Tests', () => {
         expect(data.success).toBe(true);
         expect(data.data.configurations).toHaveLength(2);
         expect(data.data.categories).toContain('security');
-      });
-    });
+
 
     describe('PUT /api/admin/system/config', () => {
       it('should update system configuration successfully', async () => {
@@ -629,7 +587,6 @@ describe('Admin API Integration Tests', () => {
               description: 'Updated minimum password length'
             }
           })
-        });
 
         const response = await updateSystemConfigPUT(request);
         const data = await response.json();
@@ -643,9 +600,8 @@ describe('Admin API Integration Tests', () => {
           'super_admin_id',
           'Updated minimum password length'
         );
-      });
-    });
-  });
+
+
 
   describe('Audit Logs API', () => {
     describe('GET /api/admin/system/audit-logs', () => {
@@ -679,7 +635,6 @@ describe('Admin API Integration Tests', () => {
             has_next: false,
             has_prev: false
           }
-        });
 
         const request = new NextRequest('http://localhost/api/admin/system/audit-logs');
         const response = await getAuditLogsGET(request);
@@ -691,7 +646,6 @@ describe('Admin API Integration Tests', () => {
         expect(data.data.statistics.action_breakdown).toHaveProperty('user.create', 1);
         expect(data.data.statistics.action_breakdown).toHaveProperty('user.update', 1);
         expect(data.data.statistics.unique_users).toBe(1);
-      });
 
       it('should restrict regular admin access to own audit logs', async () => {
         // Mock regular admin session
@@ -705,12 +659,10 @@ describe('Admin API Integration Tests', () => {
               role: 'admin'
             }
           })
-        });
 
         mockAdminUtils.getAuditLogs.mockResolvedValue({
           data: [],
           pagination: { page: 1, limit: 50, total: 0, total_pages: 0, has_next: false, has_prev: false }
-        });
 
         const request = new NextRequest('http://localhost/api/admin/system/audit-logs?user_id=other_admin');
         const response = await getAuditLogsGET(request);
@@ -719,9 +671,8 @@ describe('Admin API Integration Tests', () => {
         expect(response.status).toBe(403);
         expect(data.success).toBe(false);
         expect(data.error.code).toBe('INSUFFICIENT_PERMISSIONS');
-      });
-    });
-  });
+
+
 
   describe('Rate Limiting', () => {
     it('should enforce rate limits on admin endpoints', async () => {
@@ -739,9 +690,8 @@ describe('Admin API Integration Tests', () => {
       // All should succeed initially (rate limit not exceeded in test)
       responses.forEach(response => {
         expect(response.status).not.toBe(429);
-      });
-    });
-  });
+
+
 
   describe('Security Measures', () => {
     it('should log all admin API access', async () => {
@@ -755,7 +705,6 @@ describe('Admin API Integration Tests', () => {
           resource_id: '/api/admin/users'
         })
       );
-    });
 
     it('should validate session on every request', async () => {
       const request = new NextRequest('http://localhost/api/admin/users');
@@ -770,7 +719,6 @@ describe('Admin API Integration Tests', () => {
           })
         })
       );
-    });
 
     it('should include security headers in responses', async () => {
       const request = new NextRequest('http://localhost/api/admin/users');
@@ -778,6 +726,5 @@ describe('Admin API Integration Tests', () => {
 
       // Check that response doesn't cache sensitive data
       expect(response.headers.get('Cache-Control')).toBeFalsy();
-    });
-  });
-});
+
+

@@ -6,15 +6,11 @@
  * 
  * Requirements: 4.5, 4.6, 7.3
  */
-'use client';
+"use client";
+
 import React, { useState } from 'react';
 import { useRole } from '@/hooks/useRole';
-import type { 
-  BulkUserOperation, 
-  AdminApiResponse, 
-  ExportConfig, 
-  ImportConfig 
-} from '@/types/admin';
+import type {  BulkUserOperation, AdminApiResponse, ExportConfig, ImportConfig } from '@/types/admin';
 interface BulkUserOperationsProps {
   selectedUserIds: string[];
   onOperationComplete: () => void;
@@ -60,7 +56,7 @@ export function BulkUserOperations({
       completed: 0,
       failed: 0,
       errors: []
-    });
+
     try {
       const operationData: BulkUserOperation = {
         operation: selectedOperation,
@@ -79,7 +75,7 @@ export function BulkUserOperations({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(operationData),
-      });
+
       const data: AdminApiResponse<any> = await response.json();
       if (!response.ok || !data.success) {
         throw new Error(data.error?.message || 'Bulk operation failed');
@@ -130,7 +126,7 @@ export function BulkUserOperations({
       const response = await fetch('/api/admin/users/import', {
         method: 'POST',
         body: formData,
-      });
+
       const data: AdminApiResponse<any> = await response.json();
       if (!response.ok || !data.success) {
         throw new Error(data.error?.message || 'Import failed');
@@ -165,12 +161,11 @@ export function BulkUserOperations({
           <div className="space-y-4">
             <div>
               <label htmlFor="new_role" className="block text-sm font-medium text-gray-700 mb-1 md:text-base lg:text-lg">
-                New Role
               </label>
               <select
                 id="new_role"
                 value={newRole}
-                onChange={(e) = aria-label="Select option"> setNewRole(e.target.value as 'admin' | 'user')}
+                onChange={(e) => setNewRole(e.target.value as 'admin' | 'user')}
                 className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
               >
@@ -187,12 +182,11 @@ export function BulkUserOperations({
           <div className="space-y-4">
             <div>
               <label htmlFor="export_format" className="block text-sm font-medium text-gray-700 mb-1 md:text-base lg:text-lg">
-                Export Format
               </label>
               <select
                 id="export_format"
                 value={exportFormat}
-                onChange={(e) = aria-label="Select option"> setExportFormat(e.target.value as 'csv' | 'json' | 'xlsx')}
+                onChange={(e) => setExportFormat(e.target.value as 'csv' | 'json' | 'xlsx')}
                 className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
               >
@@ -208,7 +202,7 @@ export function BulkUserOperations({
           <div className="space-y-4">
             <div className="bg-red-50 border border-red-200 rounded-md p-4 sm:p-4 md:p-6">
               <div className="flex">
-                <svg className="h-5 w-5 text-red-400 sm:w-auto md:w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 text-red-400 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="ml-3">
@@ -225,12 +219,11 @@ export function BulkUserOperations({
                 id="confirm_delete"
                 type="checkbox"
                 checked={confirmDelete}
-                onChange={(e) = aria-label="Input"> setConfirmDelete(e.target.checked)}
-                className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded sm:w-auto md:w-full"
+                onChange={(e) => setConfirmDelete(e.target.checked)}
+                className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded "
                 disabled={loading}
               />
               <label htmlFor="confirm_delete" className="ml-2 block text-sm text-gray-900 md:text-base lg:text-lg">
-                I understand this action is permanent and cannot be undone
               </label>
             </div>
           </div>
@@ -251,7 +244,7 @@ export function BulkUserOperations({
             id="import_file"
             type="file"
             accept=".csv,.json"
-            onChange={(e) = aria-label="Input"> setImportFile(e.target.files?.[0] || null)}
+            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 md:text-base lg:text-lg"
             disabled={loading}
           />
@@ -310,7 +303,6 @@ export function BulkUserOperations({
         {/* Operation Selection */}
         <div>
           <label htmlFor="operation" className="block text-sm font-medium text-gray-700 mb-2 md:text-base lg:text-lg">
-            Select Operation
           </label>
           <div className="space-y-2">
             {operations.map((op) => (
@@ -321,9 +313,9 @@ export function BulkUserOperations({
                   name="operation"
                   value={op.id}
                   checked={selectedOperation === op.id}
-                  onChange={(e) = aria-label="Input"> setSelectedOperation(e.target.value as OperationType)}
+                  onChange={(e) => setSelectedOperation(e.target.value as OperationType)}
                   disabled={!canPerformOperation(op.id as OperationType) || loading}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 sm:w-auto md:w-full"
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 "
                 />
                 <label htmlFor={op.id} className="ml-2 block text-sm text-gray-900 md:text-base lg:text-lg">
                   <span className={op.dangerous ? 'text-red-600 font-medium' : ''}>{op.label}</span>
@@ -347,7 +339,6 @@ export function BulkUserOperations({
             disabled={loading}
             className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
            aria-label="Button">
-            Cancel
           </button>
           <button
             onClick={handleBulkOperation}
@@ -360,7 +351,7 @@ export function BulkUserOperations({
            aria-label="Button">
             {loading ? (
               <div className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white sm:w-auto md:w-full" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white " fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>

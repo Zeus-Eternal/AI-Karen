@@ -5,7 +5,7 @@
 import type { Model, ModelHealth } from "../model-utils";
 
 // Re-export Model for convenience
-export type { Model, ModelHealth } from "../model-utils";
+import { export type { Model, ModelHealth } from "../model-utils";
 
 export interface ModelSelectionPreferences {
   lastSelectedModel?: string;

@@ -7,6 +7,7 @@
  */
 
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi, expect, describe, it } from 'vitest';
 import { RightPanel, RightPanelView } from '../right-panel';
@@ -69,7 +70,6 @@ describe('Basic Responsive Panel Behavior', () => {
       expect(panel).toHaveClass('max-w-[90vw]');
       expect(panel).toHaveClass('sm:max-w-[85vw]');
       expect(panel).toHaveClass('lg:max-w-[75vw]');
-    });
 
     it('should apply responsive width classes for medium panels', () => {
       render(
@@ -87,7 +87,6 @@ describe('Basic Responsive Panel Behavior', () => {
       expect(panel).toHaveClass('max-w-[90vw]');
       expect(panel).toHaveClass('md:max-w-[80vw]');
       expect(panel).toHaveClass('lg:max-w-[70vw]');
-    });
 
     it('should apply responsive width classes for large panels', () => {
       render(
@@ -105,8 +104,7 @@ describe('Basic Responsive Panel Behavior', () => {
       expect(panel).toHaveClass('max-w-[90vw]');
       expect(panel).toHaveClass('md:max-w-[75vw]');
       expect(panel).toHaveClass('lg:max-w-[65vw]');
-    });
-  });
+
 
   describe('Responsive Header', () => {
     it('should apply responsive padding to header', () => {
@@ -126,7 +124,6 @@ describe('Basic Responsive Panel Behavior', () => {
       expect(header).toHaveClass('px-3');
       expect(header).toHaveClass('sm:px-4');
       expect(header).toHaveClass('md:px-6');
-    });
 
     it('should apply responsive text sizing to title', () => {
       render(
@@ -144,7 +141,6 @@ describe('Basic Responsive Panel Behavior', () => {
       const title = screen.getByRole('heading', { level: 2 });
       expect(title).toHaveClass('text-base');
       expect(title).toHaveClass('sm:text-lg');
-    });
 
     it('should apply touch-optimized close button sizing', () => {
       const mockClose = vi.fn();
@@ -164,8 +160,7 @@ describe('Basic Responsive Panel Behavior', () => {
       expect(closeButton).toHaveClass('min-w-[44px]');
       expect(closeButton).toHaveClass('sm:min-h-[32px]');
       expect(closeButton).toHaveClass('sm:min-w-[32px]');
-    });
-  });
+
 
   describe('Responsive Navigation', () => {
     it('should apply responsive padding to navigation', () => {
@@ -185,7 +180,6 @@ describe('Basic Responsive Panel Behavior', () => {
       expect(navigation).toHaveClass('px-3');
       expect(navigation).toHaveClass('sm:px-4');
       expect(navigation).toHaveClass('md:px-6');
-    });
 
     it('should apply touch-optimized button sizing', () => {
       render(
@@ -210,9 +204,8 @@ describe('Basic Responsive Panel Behavior', () => {
         expect(button).toHaveClass('sm:min-h-[32px]');
         expect(button).toHaveClass('px-2');
         expect(button).toHaveClass('sm:px-3');
-      });
-    });
-  });
+
+
 
   describe('Responsive Content', () => {
     it('should apply responsive padding to content', () => {
@@ -227,7 +220,6 @@ describe('Basic Responsive Panel Behavior', () => {
       // Check that content container has responsive padding
       const content = screen.getByTestId('view1-content').closest('.p-3');
       expect(content).toBeInTheDocument();
-    });
 
     it('should apply responsive grid gaps', () => {
       render(
@@ -242,8 +234,7 @@ describe('Basic Responsive Panel Behavior', () => {
       expect(gridContainer).toHaveClass('gap-2');
       expect(gridContainer).toHaveClass('sm:gap-3');
       expect(gridContainer).toHaveClass('md:gap-4');
-    });
-  });
+
 
   describe('Data Attributes', () => {
     it('should set proper data attributes for responsive behavior', () => {
@@ -262,7 +253,6 @@ describe('Basic Responsive Panel Behavior', () => {
       expect(panel).toHaveAttribute('data-state', 'open');
       expect(panel).toHaveAttribute('data-mobile-overlay', 'false'); // false because mock shows desktop
       expect(panel).toHaveAttribute('data-collapsible', 'false'); // false because mock shows desktop
-    });
 
     it('should apply responsive classes from hook', () => {
       render(
@@ -277,8 +267,7 @@ describe('Basic Responsive Panel Behavior', () => {
       const panel = screen.getByTestId('right-panel');
       expect(panel).toHaveClass('panel-responsive');
       expect(panel).toHaveClass('panel-desktop');
-    });
-  });
+
 
   describe('Touch Optimization', () => {
     it('should have touch gesture support enabled', () => {
@@ -295,7 +284,6 @@ describe('Basic Responsive Panel Behavior', () => {
       const panel = screen.getByTestId('right-panel');
       // Verify the component renders with touch gestures enabled
       expect(panel).toBeInTheDocument();
-    });
 
     it('should apply performance optimization styles', () => {
       render(
@@ -310,7 +298,6 @@ describe('Basic Responsive Panel Behavior', () => {
       const panel = screen.getByTestId('right-panel');
       expect(panel).toHaveStyle({
         contain: 'layout style paint',
-      });
-    });
-  });
-});
+
+
+

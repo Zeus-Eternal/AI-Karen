@@ -6,7 +6,7 @@
  * Based on requirements: 2.1, 2.2, 2.3, 2.4, 11.1, 11.2
  */
 
-'use client';
+"use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
@@ -92,14 +92,12 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
       if (!persistSidebarState || typeof window === 'undefined') return defaultSidebarOpen;
       const stored = localStorage.getItem('appshell-sidebar-open');
       return stored ? JSON.parse(stored) : defaultSidebarOpen;
-    });
-    
+
     const [sidebarCollapsed, setSidebarCollapsedState] = useState(() => {
       if (!persistSidebarState || typeof window === 'undefined') return defaultSidebarCollapsed;
       const stored = localStorage.getItem('appshell-sidebar-collapsed');
       return stored ? JSON.parse(stored) : defaultSidebarCollapsed;
-    });
-    
+
     const [isMobile, setIsMobile] = useState(false);
     const [isTablet, setIsTablet] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -250,7 +248,7 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
           )}
           
           {/* Main content area */}
-          <div className="flex flex-col flex-1 min-w-0 sm:w-auto md:w-full">
+          <div className="flex flex-col flex-1 min-w-0 ">
             {/* Header */}
             {header && (
               <AppShellHeader>

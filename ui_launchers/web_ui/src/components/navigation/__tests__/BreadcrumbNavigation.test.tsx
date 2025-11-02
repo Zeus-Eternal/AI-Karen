@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -74,7 +75,6 @@ describe('BreadcrumbNavigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (usePathname as any).mockReturnValue('/memory/analytics');
-  });
 
   describe('Basic Rendering', () => {
     it('renders breadcrumb items correctly', () => {
@@ -83,7 +83,6 @@ describe('BreadcrumbNavigation', () => {
       expect(screen.getByText('Home')).toBeInTheDocument();
       expect(screen.getByText('Memory & Analytics')).toBeInTheDocument();
       expect(screen.getByText('Memory Analytics')).toBeInTheDocument();
-    });
 
     it('applies correct ARIA attributes', () => {
       renderBreadcrumbNavigation();
@@ -93,14 +92,12 @@ describe('BreadcrumbNavigation', () => {
 
       const list = screen.getByRole('list');
       expect(list).toBeInTheDocument();
-    });
 
     it('shows current page with aria-current', () => {
       renderBreadcrumbNavigation();
 
       const currentItem = screen.getByText('Memory Analytics');
       expect(currentItem.closest('span')).toHaveAttribute('aria-current', 'page');
-    });
 
     it('shows clickable items as buttons', () => {
       renderBreadcrumbNavigation();
@@ -110,8 +107,7 @@ describe('BreadcrumbNavigation', () => {
 
       const memoryButton = screen.getByRole('button', { name: /memory & analytics/i });
       expect(memoryButton).toBeInTheDocument();
-    });
-  });
+
 
   describe('Navigation Interaction', () => {
     it('navigates when clicking breadcrumb items', async () => {
@@ -122,7 +118,6 @@ describe('BreadcrumbNavigation', () => {
       await user.click(homeButton);
 
       expect(mockPush).toHaveBeenCalledWith('/');
-    });
 
     it('navigates to parent routes', async () => {
       const user = userEvent.setup();
@@ -132,7 +127,6 @@ describe('BreadcrumbNavigation', () => {
       await user.click(memoryButton);
 
       expect(mockPush).toHaveBeenCalledWith('/memory');
-    });
 
     it('does not navigate when clicking current item', async () => {
       const user = userEvent.setup();
@@ -142,8 +136,7 @@ describe('BreadcrumbNavigation', () => {
       await user.click(currentItem);
 
       expect(mockPush).not.toHaveBeenCalled();
-    });
-  });
+
 
   describe('Custom Items', () => {
     it('renders custom breadcrumb items', () => {
@@ -158,7 +151,6 @@ describe('BreadcrumbNavigation', () => {
       expect(screen.getByText('Custom Home')).toBeInTheDocument();
       expect(screen.getByText('Custom Page')).toBeInTheDocument();
       expect(screen.getByText('Current Page')).toBeInTheDocument();
-    });
 
     it('handles custom items with icons', () => {
       const HomeIcon = () => <span data-testid="home-icon">🏠</span>;
@@ -171,8 +163,7 @@ describe('BreadcrumbNavigation', () => {
       renderBreadcrumbNavigation({ items: customItems });
 
       expect(screen.getByTestId('home-icon')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Route Generation', () => {
     it('generates breadcrumbs from current route', () => {
@@ -183,7 +174,6 @@ describe('BreadcrumbNavigation', () => {
       expect(screen.getByText('Home')).toBeInTheDocument();
       expect(screen.getByText('Agents')).toBeInTheDocument();
       expect(screen.getByText('Workflows')).toBeInTheDocument();
-    });
 
     it('handles root route correctly', () => {
       (usePathname as any).mockReturnValue('/');
@@ -193,7 +183,6 @@ describe('BreadcrumbNavigation', () => {
       expect(screen.getByText('Home')).toBeInTheDocument();
       // Should only show home for root route
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    });
 
     it('handles unconfigured routes with fallback labels', () => {
       (usePathname as any).mockReturnValue('/unknown/route');
@@ -203,7 +192,6 @@ describe('BreadcrumbNavigation', () => {
       expect(screen.getByText('Home')).toBeInTheDocument();
       expect(screen.getByText('Unknown')).toBeInTheDocument();
       expect(screen.getByText('Route')).toBeInTheDocument();
-    });
 
     it('optionally hides home breadcrumb', () => {
       renderBreadcrumbNavigation({ showHome: false });
@@ -211,8 +199,7 @@ describe('BreadcrumbNavigation', () => {
       expect(screen.queryByText('Home')).not.toBeInTheDocument();
       expect(screen.getByText('Memory & Analytics')).toBeInTheDocument();
       expect(screen.getByText('Memory Analytics')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Truncation', () => {
     it('truncates long breadcrumb trails', () => {
@@ -232,14 +219,12 @@ describe('BreadcrumbNavigation', () => {
       renderBreadcrumbNavigation({ 
         routeConfig: longRouteConfig,
         maxItems: 4 
-      });
 
       expect(screen.getByText('Home')).toBeInTheDocument();
       expect(screen.getByText('...')).toBeInTheDocument();
       expect(screen.getByText('Level 5')).toBeInTheDocument();
       expect(screen.getByText('Level 6')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Keyboard Navigation', () => {
     it('navigates between breadcrumb items with arrow keys', async () => {
@@ -258,7 +243,6 @@ describe('BreadcrumbNavigation', () => {
       // Arrow left should go back
       await user.keyboard('{ArrowLeft}');
       expect(homeButton).toHaveFocus();
-    });
 
     it('jumps to first/last items with Home/End keys', async () => {
       const user = userEvent.setup();
@@ -275,7 +259,6 @@ describe('BreadcrumbNavigation', () => {
       // End should go to last clickable item
       await user.keyboard('{End}');
       expect(memoryButton).toHaveFocus();
-    });
 
     it('can disable keyboard navigation', async () => {
       const user = userEvent.setup();
@@ -287,8 +270,7 @@ describe('BreadcrumbNavigation', () => {
       // Arrow keys should not change focus when disabled
       await user.keyboard('{ArrowRight}');
       expect(homeButton).toHaveFocus();
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('supports custom aria-label', () => {
@@ -296,7 +278,6 @@ describe('BreadcrumbNavigation', () => {
 
       const nav = screen.getByRole('navigation');
       expect(nav).toHaveAttribute('aria-label', 'Custom breadcrumb');
-    });
 
     it('has proper semantic structure', () => {
       renderBreadcrumbNavigation();
@@ -309,7 +290,6 @@ describe('BreadcrumbNavigation', () => {
 
       const listItems = screen.getAllByRole('listitem');
       expect(listItems.length).toBeGreaterThan(0);
-    });
 
     it('provides proper focus indicators', async () => {
       const user = userEvent.setup();
@@ -319,8 +299,7 @@ describe('BreadcrumbNavigation', () => {
       
       await user.tab();
       expect(homeButton).toHaveFocus();
-    });
-  });
+
 
   describe('Separators', () => {
     it('shows default chevron separators', () => {
@@ -329,7 +308,6 @@ describe('BreadcrumbNavigation', () => {
       // Check for chevron icons (they should be present between items)
       const separators = document.querySelectorAll('[aria-hidden="true"]');
       expect(separators.length).toBeGreaterThan(0);
-    });
 
     it('supports custom separators', () => {
       const customSeparator = <span data-testid="custom-separator">→</span>;
@@ -337,8 +315,7 @@ describe('BreadcrumbNavigation', () => {
       renderBreadcrumbNavigation({ separator: customSeparator });
 
       expect(screen.getAllByTestId('custom-separator')).toHaveLength(2); // Between 3 items
-    });
-  });
+
 
   describe('Size Variants', () => {
     it('applies size variants correctly', () => {
@@ -355,14 +332,12 @@ describe('BreadcrumbNavigation', () => {
 
       nav = screen.getByRole('navigation');
       expect(nav).toHaveClass('text-[var(--text-base)]');
-    });
-  });
+
 
   describe('useBreadcrumbs Hook', () => {
     it('returns correct breadcrumb items', () => {
       // This would need to be tested in a separate component that uses the hook
       // For now, we'll just verify the hook exists and can be imported
       expect(typeof require('../BreadcrumbNavigation').useBreadcrumbs).toBe('function');
-    });
-  });
-});
+
+

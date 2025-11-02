@@ -70,7 +70,6 @@ export class ErrorRecoveryManager {
           { type: 'notify_user', params: { message: 'Checking network connection...' } }
         ]
       }
-    });
 
     // Chunk loading errors (common in SPAs)
     this.errorPatterns.set('chunk_loading', {
@@ -89,7 +88,6 @@ export class ErrorRecoveryManager {
           { type: 'notify_user', params: { message: 'Updating application...' } }
         ]
       }
-    });
 
     // Authentication errors
     this.errorPatterns.set('auth', {
@@ -110,7 +108,6 @@ export class ErrorRecoveryManager {
           { type: 'notify_user', params: { message: 'Please log in again.' } }
         ]
       }
-    });
 
     // Memory/Performance errors
     this.errorPatterns.set('memory', {
@@ -130,7 +127,6 @@ export class ErrorRecoveryManager {
           { type: 'fallback_ui', params: { mode: 'minimal' } }
         ]
       }
-    });
 
     // Component rendering errors
     this.errorPatterns.set('render', {
@@ -150,7 +146,7 @@ export class ErrorRecoveryManager {
           { type: 'fallback_ui', params: { mode: 'degraded' } }
         ]
       }
-    });
+
   }
 
   public async getRecoveryStrategy(
@@ -206,7 +202,6 @@ export class ErrorRecoveryManager {
       attemptCount,
       errorMessage: error.message,
       success: false // Will be updated when recovery succeeds
-    });
 
     // Keep only recent attempts (last 10)
     if (attempts.length > 10) {

@@ -1,8 +1,7 @@
 "use client"
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
-
+import * as React from "react";
+import { cn } from "@/lib/utils";
 // Container component variants and sizes
 type ContainerVariant = "default" | "fluid" | "constrained" | "centered" | "padded"
 type ContainerSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "full"
@@ -18,7 +17,6 @@ interface ContainerProps {
 
 // Polymorphic Container Component
 const Container = React.forwardRef<
-  HTMLDivElement,
   ContainerProps & React.HTMLAttributes<HTMLDivElement> & { as?: React.ElementType }
 >(
   (
@@ -98,7 +96,6 @@ Container.displayName = "Container"
 
 // Predefined container components for common use cases
 const FlexContainer = React.forwardRef<
-  HTMLDivElement,
   ContainerProps & React.HTMLAttributes<HTMLDivElement> & {
     direction?: "row" | "column" | "row-reverse" | "column-reverse"
     align?: "start" | "center" | "end" | "stretch" | "baseline"
@@ -169,7 +166,6 @@ const FlexContainer = React.forwardRef<
 FlexContainer.displayName = "FlexContainer"
 
 const GridContainer = React.forwardRef<
-  HTMLDivElement,
   ContainerProps & React.HTMLAttributes<HTMLDivElement> & {
     columns?: number | string
     rows?: number | string
@@ -220,7 +216,6 @@ const GridContainer = React.forwardRef<
 GridContainer.displayName = "GridContainer"
 
 const CenteredContainer = React.forwardRef<
-  HTMLDivElement,
   ContainerProps & React.HTMLAttributes<HTMLDivElement>
 >(({ variant = "centered", ...props }, ref) => (
   <Container ref={ref} variant={variant} {...props} />
@@ -228,7 +223,6 @@ const CenteredContainer = React.forwardRef<
 CenteredContainer.displayName = "CenteredContainer"
 
 const ConstrainedContainer = React.forwardRef<
-  HTMLDivElement,
   ContainerProps & React.HTMLAttributes<HTMLDivElement>
 >(({ variant = "constrained", ...props }, ref) => (
   <Container ref={ref} variant={variant} {...props} />
@@ -236,7 +230,6 @@ const ConstrainedContainer = React.forwardRef<
 ConstrainedContainer.displayName = "ConstrainedContainer"
 
 const FluidContainer = React.forwardRef<
-  HTMLDivElement,
   ContainerProps & React.HTMLAttributes<HTMLDivElement>
 >(({ variant = "fluid", size = "full", ...props }, ref) => (
   <Container ref={ref} variant={variant} size={size} {...props} />
@@ -244,17 +237,7 @@ const FluidContainer = React.forwardRef<
 FluidContainer.displayName = "FluidContainer"
 
 export {
-  Container,
-  FlexContainer,
-  GridContainer,
-  CenteredContainer,
-  ConstrainedContainer,
-  FluidContainer,
 }
 
 export type {
-  ContainerProps,
-  ContainerVariant,
-  ContainerSize,
-  ContainerDisplay,
 }

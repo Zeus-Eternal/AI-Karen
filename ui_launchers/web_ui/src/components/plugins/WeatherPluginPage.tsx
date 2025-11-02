@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +28,7 @@ export default function WeatherPluginPage() {
     weatherApiKey: DEFAULT_KAREN_SETTINGS.weatherApiKey,
     defaultWeatherLocation: DEFAULT_KAREN_SETTINGS.defaultWeatherLocation,
   });
+
   const { toast } = useToast();
   useEffect(() => {
     try {
@@ -81,12 +84,12 @@ export default function WeatherPluginPage() {
         title: "Save Error",
         description: "Could not save weather preferences.",
       });
-    } // Ensure catch block is properly closed
+    }
   };
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3">
-        <CloudSun className="h-8 w-8 text-primary sm:w-auto md:w-full" />
+        <CloudSun className="h-8 w-8 text-primary " />
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Weather Service Configuration</h2>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -95,7 +98,7 @@ export default function WeatherPluginPage() {
         </div>
       </div>
        <Alert>
-        <Info className="h-4 w-4 sm:w-auto md:w-full" />
+        <Info className="h-4 w-4 " />
         <AlertTitle>How to Use Weather Features</AlertTitle>
         <AlertDescription>
           Ask Karen for the weather in a specific location directly in the chat (e.g., "What's the weather in London?").
@@ -112,17 +115,17 @@ export default function WeatherPluginPage() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="weather-service-select">Weather Service Source</Label>
-            <select
+            <Select
               value={settings.weatherService}
-              onValueChange={(value) = aria-label="Select option"> handleServiceChange(value as WeatherServiceOption)}
+              onValueChange={(value) => handleServiceChange(value as WeatherServiceOption)}
             >
-              <selectTrigger id="weather-service-select" aria-label="Select option">
-                <selectValue placeholder="Select a weather service" />
+              <SelectTrigger id="weather-service-select">
+                <SelectValue placeholder="Select a weather service" />
               </SelectTrigger>
-              <selectContent aria-label="Select option">
-                <selectItem value="wttr_in" aria-label="Select option">wttr.in (Free, Recommended)</SelectItem>
-                <selectItem value="openweather" aria-label="Select option">OpenWeatherMap</SelectItem>
-                <selectItem value="custom_api" aria-label="Select option">Custom API (Conceptual)</SelectItem>
+              <SelectContent>
+                <SelectItem value="wttr_in">wttr.in (Free, Recommended)</SelectItem>
+                <SelectItem value="openweather">OpenWeatherMap</SelectItem>
+                <SelectItem value="custom_api">Custom API (Conceptual)</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
@@ -131,12 +134,12 @@ export default function WeatherPluginPage() {
           </div>
           {['custom_api', 'openweather'].includes(settings.weatherService) && (
             <div className="space-y-2 pl-4 border-l-2 border-primary/20 py-3">
-              <Label htmlFor="weather-api-key" className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-primary/80 sm:w-auto md:w-full"/>Weather API Key</Label>
-              <input
+              <Label htmlFor="weather-api-key" className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-primary/80 "/>Weather API Key</Label>
+              <Input
                 id="weather-api-key"
                 type="password"
                 value={settings.weatherApiKey || ''}
-                onChange={(e) = aria-label="Input"> setSettings(prev => ({ ...prev, weatherApiKey: e.target.value }))}
+                onChange={(e) => setSettings(prev => ({ ...prev, weatherApiKey: e.target.value }))}
                 placeholder="Enter your API key"
                 disabled /* Keep disabled until actual service logic is implemented */
               />
@@ -148,10 +151,10 @@ export default function WeatherPluginPage() {
           <Separator />
           <div className="space-y-2">
             <Label htmlFor="default-weather-location">Default Weather Location (Optional)</Label>
-            <input
+            <Input
               id="default-weather-location"
               value={settings.defaultWeatherLocation || ''}
-              onChange={(e) = aria-label="Input"> setSettings(prev => ({ ...prev, defaultWeatherLocation: e.target.value.trim() ? e.target.value : null }))}
+              onChange={(e) => setSettings(prev => ({ ...prev, defaultWeatherLocation: e.target.value.trim() ? e.target.value : null }))}
               placeholder="e.g., London, UK or New York, US"
             />
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
@@ -162,18 +165,18 @@ export default function WeatherPluginPage() {
           <div className="space-y-2">
             <Label>Preferred Temperature Unit</Label>
             <div className="flex items-center space-x-2">
-                <button
+                <Button
                   variant={settings.temperatureUnit === 'C' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() = aria-label="Button"> handleUnitChange('C')}
+                  onClick={() => handleUnitChange('C')}
                   className="rounded-md"
                 >
                   Celsius (°C)
                 </Button>
-                <button
+                <Button
                   variant={settings.temperatureUnit === 'F' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() = aria-label="Button"> handleUnitChange('F')}
+                  onClick={() => handleUnitChange('F')}
                   className="rounded-md"
                 >
                   Fahrenheit (°F)
@@ -185,13 +188,13 @@ export default function WeatherPluginPage() {
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <button onClick={savePreferences} aria-label="Button">
-            <Save className="mr-2 h-4 w-4 sm:w-auto md:w-full" /> Save Weather Preferences
+          <Button onClick={savePreferences}>
+            <Save className="mr-2 h-4 w-4 " /> Save Weather Preferences
           </Button>
         </CardFooter>
       </Card>
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>About Weather Integration</AlertTitle>
         <AlertDescription>
           <p>
@@ -200,7 +203,6 @@ export default function WeatherPluginPage() {
             the plugin returns mocked results for demo purposes.
           </p>
           <p className="mt-1 text-xs sm:text-sm md:text-base">
-            The location preference below will be used when you ask for the weather
             without specifying a city.
           </p>
         </AlertDescription>

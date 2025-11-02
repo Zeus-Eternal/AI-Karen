@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -10,22 +12,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import {
-  Upload,
-  FileText,
-  Settings,
-  Zap,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  X,
-  Plus,
-  Download,
-  Archive,
-  HardDrive,
-  Cpu,
-  Database
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
 interface UploadJob {
@@ -53,14 +41,14 @@ interface ModelUploadInterfaceProps {
   onJobCreated?: (jobId: string) => void;
 }
 const SUPPORTED_FORMATS = {
-  '.gguf': { name: 'GGUF', description: 'llama.cpp quantized format', icon: <Cpu className="h-4 w-4 sm:w-auto md:w-full" /> },
-  '.safetensors': { name: 'SafeTensors', description: 'Safe tensor format', icon: <Database className="h-4 w-4 sm:w-auto md:w-full" /> },
-  '.bin': { name: 'PyTorch Binary', description: 'PyTorch model binary', icon: <FileText className="h-4 w-4 sm:w-auto md:w-full" /> },
-  '.pt': { name: 'PyTorch', description: 'PyTorch model file', icon: <FileText className="h-4 w-4 sm:w-auto md:w-full" /> },
-  '.pth': { name: 'PyTorch', description: 'PyTorch model file', icon: <FileText className="h-4 w-4 sm:w-auto md:w-full" /> },
-  '.zip': { name: 'Archive', description: 'Compressed model archive', icon: <Archive className="h-4 w-4 sm:w-auto md:w-full" /> },
-  '.tar': { name: 'Archive', description: 'Tar archive', icon: <Archive className="h-4 w-4 sm:w-auto md:w-full" /> },
-  '.tar.gz': { name: 'Archive', description: 'Compressed tar archive', icon: <Archive className="h-4 w-4 sm:w-auto md:w-full" /> }
+  '.gguf': { name: 'GGUF', description: 'llama.cpp quantized format', icon: <Cpu className="h-4 w-4 " /> },
+  '.safetensors': { name: 'SafeTensors', description: 'Safe tensor format', icon: <Database className="h-4 w-4 " /> },
+  '.bin': { name: 'PyTorch Binary', description: 'PyTorch model binary', icon: <FileText className="h-4 w-4 " /> },
+  '.pt': { name: 'PyTorch', description: 'PyTorch model file', icon: <FileText className="h-4 w-4 " /> },
+  '.pth': { name: 'PyTorch', description: 'PyTorch model file', icon: <FileText className="h-4 w-4 " /> },
+  '.zip': { name: 'Archive', description: 'Compressed model archive', icon: <Archive className="h-4 w-4 " /> },
+  '.tar': { name: 'Archive', description: 'Tar archive', icon: <Archive className="h-4 w-4 " /> },
+  '.tar.gz': { name: 'Archive', description: 'Compressed tar archive', icon: <Archive className="h-4 w-4 " /> }
 };
 const QUANTIZATION_FORMATS = [
   { value: 'Q2_K', label: 'Q2_K - 2-bit (smallest, lowest quality)', description: '~25% original size' },
@@ -129,13 +117,13 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
     const validFiles = files.filter(file => {
       const ext = file.name.toLowerCase();
       return Object.keys(SUPPORTED_FORMATS).some(format => ext.endsWith(format));
-    });
+
     if (validFiles.length !== files.length) {
       toast({
         variant: 'destructive',
         title: 'Invalid Files',
         description: 'Some files were skipped. Only model files are supported.',
-      });
+
     }
     setUploadFiles(prev => [...prev, ...validFiles]);
   }, [toast]);
@@ -161,7 +149,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         variant: 'destructive',
         title: 'No Files Selected',
         description: 'Please select at least one model file to upload.',
-      });
+
       return;
     }
     setLoading(true);
@@ -186,7 +174,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           const response = await backend.makeRequestPublic('/api/models/local/upload', {
             method: 'POST',
             body: formData
-          });
+
           // Update job status
           setUploadJobs(prev => prev.map(job => 
             job.id === jobId 
@@ -197,7 +185,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           toast({
             title: 'Upload Started',
             description: `${file.name} upload initiated successfully.`,
-          });
+
         } catch (error) {
           setUploadJobs(prev => prev.map(job => 
             job.id === jobId 
@@ -209,7 +197,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
             variant: 'destructive',
             title: info.title,
             description: `Failed to upload ${file.name}: ${info.message}`,
-          });
+
         }
       }
       // Reset form
@@ -227,7 +215,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         variant: 'destructive',
         title: 'Missing Information',
         description: 'Please provide both source path and output name.',
-      });
+
       return;
     }
     setLoading(true);
@@ -240,12 +228,12 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           architecture: conversionArchitecture === 'auto' ? null : conversionArchitecture,
           vocab_only: vocabOnly
         })
-      });
+
       onJobCreated?.((response as any).job_id);
       toast({
         title: 'Conversion Started',
         description: 'Model conversion job has been queued. Check the job center for progress.',
-      });
+
       // Reset form
       setConversionSource('');
       setConversionOutput('');
@@ -257,7 +245,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         variant: 'destructive',
         title: info.title,
         description: info.message,
-      });
+
     } finally {
       setLoading(false);
     }
@@ -268,7 +256,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         variant: 'destructive',
         title: 'Missing Information',
         description: 'Please provide both source path and output name.',
-      });
+
       return;
     }
     setLoading(true);
@@ -281,12 +269,12 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           quantization_format: quantizationFormat,
           allow_requantize: allowRequantize
         })
-      });
+
       onJobCreated?.((response as any).job_id);
       toast({
         title: 'Quantization Started',
         description: 'Model quantization job has been queued. Check the job center for progress.',
-      });
+
       // Reset form
       setQuantizationSource('');
       setQuantizationOutput('');
@@ -298,7 +286,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         variant: 'destructive',
         title: info.title,
         description: info.message,
-      });
+
     } finally {
       setLoading(false);
     }
@@ -309,7 +297,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         variant: 'destructive',
         title: 'Missing Information',
         description: 'Please provide base model, LoRA adapter path, and output path.',
-      });
+
       return;
     }
     setLoading(true);
@@ -322,12 +310,12 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           output_path: loraOutputPath,
           alpha: loraAlpha
         })
-      });
+
       onJobCreated?.((response as any).job_id);
       toast({
         title: 'LoRA Merge Started',
         description: 'LoRA merge job has been queued. Check the job center for progress.',
-      });
+
       // Reset form
       setLoraBaseModel('');
       setLoraAdapterPath('');
@@ -339,7 +327,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         variant: 'destructive',
         title: info.title,
         description: info.message,
-      });
+
     } finally {
       setLoading(false);
     }
@@ -355,7 +343,6 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
       <div>
         <h2 className="text-2xl font-bold">Model Management</h2>
         <p className="text-muted-foreground">
-          Upload, convert, quantize, and customize your models
         </p>
       </div>
       {/* Tab Navigation */}
@@ -363,34 +350,30 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         <button
           variant={activeTab === 'upload' ? 'default' : 'ghost'}
           size="sm"
-          onClick={() = aria-label="Button"> setActiveTab('upload')}
+          onClick={() => setActiveTab('upload')}
         >
-          <Upload className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-          Upload
+          <Upload className="h-4 w-4 mr-2 " />
         </Button>
         <button
           variant={activeTab === 'convert' ? 'default' : 'ghost'}
           size="sm"
-          onClick={() = aria-label="Button"> setActiveTab('convert')}
+          onClick={() => setActiveTab('convert')}
         >
-          <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-          Convert
+          <Settings className="h-4 w-4 mr-2 " />
         </Button>
         <button
           variant={activeTab === 'quantize' ? 'default' : 'ghost'}
           size="sm"
-          onClick={() = aria-label="Button"> setActiveTab('quantize')}
+          onClick={() => setActiveTab('quantize')}
         >
-          <Zap className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-          Quantize
+          <Zap className="h-4 w-4 mr-2 " />
         </Button>
         <button
           variant={activeTab === 'lora' ? 'default' : 'ghost'}
           size="sm"
-          onClick={() = aria-label="Button"> setActiveTab('lora')}
+          onClick={() => setActiveTab('lora')}
         >
-          <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-          LoRA Merge
+          <Plus className="h-4 w-4 mr-2 " />
         </Button>
       </div>
       {/* Upload Tab */}
@@ -399,7 +382,6 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           <CardHeader>
             <CardTitle>Upload Model Files</CardTitle>
             <CardDescription>
-              Upload GGUF, SafeTensors, PyTorch, or archive files to your local model collection
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -414,17 +396,15 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
-              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
               <h3 className="text-lg font-semibold mb-2">Drop model files here</h3>
               <p className="text-muted-foreground mb-4">
-                Or click to browse for files
               </p>
-              <button
+              <Button
                 variant="outline"
-                onClick={() = aria-label="Button"> fileInputRef.current?.click()}
+                onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Browse Files
+                <Upload className="h-4 w-4 mr-2 " />
               </Button>
               <input
                 ref={fileInputRef}
@@ -457,7 +437,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                   {uploadFiles.map((file, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded sm:p-4 md:p-6">
                       <div className="flex items-center gap-3">
-                        <FileText className="h-4 w-4 sm:w-auto md:w-full" />
+                        <FileText className="h-4 w-4 " />
                         <div>
                           <div className="font-medium">{file.name}</div>
                           <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
@@ -465,12 +445,12 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                           </div>
                         </div>
                       </div>
-                      <button
+                      <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() = aria-label="Button"> removeFile(index)}
+                        onClick={() => removeFile(index)}
                       >
-                        <X className="h-4 w-4 sm:w-auto md:w-full" />
+                        <X className="h-4 w-4 " />
                       </Button>
                     </div>
                   ))}
@@ -485,7 +465,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                   id="upload-name"
                   placeholder="Custom model name"
                   value={uploadName}
-                  onChange={(e) = aria-label="Input"> setUploadName(e.target.value)}
+                  onChange={(e) => setUploadName(e.target.value)}
                 />
               </div>
               <div>
@@ -494,7 +474,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                   id="upload-description"
                   placeholder="Model description"
                   value={uploadDescription}
-                  onChange={(e) = aria-label="Input"> setUploadDescription(e.target.value)}
+                  onChange={(e) => setUploadDescription(e.target.value)}
                 />
               </div>
             </div>
@@ -505,13 +485,13 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 {uploadTags.map(tag => (
                   <Badge key={tag} variant="secondary" className="flex items-center gap-1">
                     {tag}
-                    <button
+                    <Button
                       variant="ghost"
                       size="sm"
-                      className="h-4 w-4 p-0 sm:w-auto md:w-full"
-                      onClick={() = aria-label="Button"> removeTag(tag)}
+                      className="h-4 w-4 p-0 "
+                      onClick={() => removeTag(tag)}
                     >
-                      <X className="h-3 w-3 sm:w-auto md:w-full" />
+                      <X className="h-3 w-3 " />
                     </Button>
                   </Badge>
                 ))}
@@ -520,11 +500,11 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 <input
                   placeholder="Add tag"
                   value={newTag}
-                  onChange={(e) = aria-label="Input"> setNewTag(e.target.value)}
+                  onChange={(e) => setNewTag(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addTag()}
                 />
-                <button variant="outline" onClick={addTag} aria-label="Button">
-                  <Plus className="h-4 w-4 sm:w-auto md:w-full" />
+                <Button variant="outline" onClick={addTag} >
+                  <Plus className="h-4 w-4 " />
                 </Button>
               </div>
             </div>
@@ -536,12 +516,12 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
              aria-label="Button">
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                   Uploading...
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                  <Upload className="h-4 w-4 mr-2 " />
                   Upload {uploadFiles.length} File{uploadFiles.length !== 1 ? 's' : ''}
                 </>
               )}
@@ -556,9 +536,9 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium">{job.filename}</span>
                         <div className="flex items-center gap-2">
-                          {job.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />}
-                          {job.status === 'error' && <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />}
-                          {job.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />}
+                          {job.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-green-600 " />}
+                          {job.status === 'error' && <AlertCircle className="h-4 w-4 text-red-600 " />}
+                          {job.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin " />}
                         </div>
                       </div>
                       {job.status === 'uploading' && (
@@ -566,7 +546,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                       )}
                       {job.error && (
                         <Alert variant="destructive">
-                          <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                          <AlertCircle className="h-4 w-4 " />
                           <AlertDescription>{job.error}</AlertDescription>
                         </Alert>
                       )}
@@ -594,7 +574,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 id="conversion-source"
                 placeholder="/path/to/huggingface/model"
                 value={conversionSource}
-                onChange={(e) = aria-label="Input"> setConversionSource(e.target.value)}
+                onChange={(e) => setConversionSource(e.target.value)}
               />
             </div>
             <div>
@@ -603,7 +583,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 id="conversion-output"
                 placeholder="model-name.gguf"
                 value={conversionOutput}
-                onChange={(e) = aria-label="Input"> setConversionOutput(e.target.value)}
+                onChange={(e) => setConversionOutput(e.target.value)}
               />
             </div>
             <div>
@@ -629,7 +609,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 type="checkbox"
                 id="vocab-only"
                 checked={vocabOnly}
-                onChange={(e) = aria-label="Input"> setVocabOnly(e.target.checked)}
+                onChange={(e) => setVocabOnly(e.target.checked)}
               />
               <Label htmlFor="vocab-only">Vocabulary only (faster, for testing)</Label>
             </div>
@@ -640,13 +620,12 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
              aria-label="Button">
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                   Starting Conversion...
                 </>
               ) : (
                 <>
-                  <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Convert to GGUF
+                  <Settings className="h-4 w-4 mr-2 " />
                 </>
               )}
             </Button>
@@ -659,7 +638,6 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           <CardHeader>
             <CardTitle>Quantize Model</CardTitle>
             <CardDescription>
-              Reduce model size by quantizing to lower precision formats
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -669,7 +647,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 id="quantization-source"
                 placeholder="/path/to/model.gguf"
                 value={quantizationSource}
-                onChange={(e) = aria-label="Input"> setQuantizationSource(e.target.value)}
+                onChange={(e) => setQuantizationSource(e.target.value)}
               />
             </div>
             <div>
@@ -678,7 +656,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 id="quantization-output"
                 placeholder="model-q4_k_m.gguf"
                 value={quantizationOutput}
-                onChange={(e) = aria-label="Input"> setQuantizationOutput(e.target.value)}
+                onChange={(e) => setQuantizationOutput(e.target.value)}
               />
             </div>
             <div>
@@ -704,7 +682,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 type="checkbox"
                 id="allow-requantize"
                 checked={allowRequantize}
-                onChange={(e) = aria-label="Input"> setAllowRequantize(e.target.checked)}
+                onChange={(e) => setAllowRequantize(e.target.checked)}
               />
               <Label htmlFor="allow-requantize">Allow requantizing already quantized models</Label>
             </div>
@@ -715,13 +693,12 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
              aria-label="Button">
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                   Starting Quantization...
                 </>
               ) : (
                 <>
-                  <Zap className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Quantize Model
+                  <Zap className="h-4 w-4 mr-2 " />
                 </>
               )}
             </Button>
@@ -734,7 +711,6 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           <CardHeader>
             <CardTitle>Merge LoRA Adapter</CardTitle>
             <CardDescription>
-              Merge a LoRA adapter with a base model for customized behavior
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -744,7 +720,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 id="lora-base-model"
                 placeholder="/path/to/base-model.gguf"
                 value={loraBaseModel}
-                onChange={(e) = aria-label="Input"> setLoraBaseModel(e.target.value)}
+                onChange={(e) => setLoraBaseModel(e.target.value)}
               />
             </div>
             <div>
@@ -753,7 +729,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 id="lora-adapter-path"
                 placeholder="/path/to/lora-adapter"
                 value={loraAdapterPath}
-                onChange={(e) = aria-label="Input"> setLoraAdapterPath(e.target.value)}
+                onChange={(e) => setLoraAdapterPath(e.target.value)}
               />
             </div>
             <div>
@@ -762,7 +738,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 id="lora-output-path"
                 placeholder="/path/to/merged-model.gguf"
                 value={loraOutputPath}
-                onChange={(e) = aria-label="Input"> setLoraOutputPath(e.target.value)}
+                onChange={(e) => setLoraOutputPath(e.target.value)}
               />
             </div>
             <div>
@@ -774,7 +750,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 min="0"
                 max="10"
                 value={loraAlpha}
-                onChange={(e) = aria-label="Input"> setLoraAlpha(parseFloat(e.target.value) || 1.0)}
+                onChange={(e) => setLoraAlpha(parseFloat(e.target.value) || 1.0)}
               />
               <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                 Higher values increase LoRA influence (default: 1.0)
@@ -787,13 +763,12 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
              aria-label="Button">
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                   Starting LoRA Merge...
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Merge LoRA Adapter
+                  <Plus className="h-4 w-4 mr-2 " />
                 </>
               )}
             </Button>

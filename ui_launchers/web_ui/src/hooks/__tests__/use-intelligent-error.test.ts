@@ -37,11 +37,9 @@ describe('useIntelligentError', () => {
     vi.useFakeTimers();
     (getApiClient as any).mockReturnValue(mockApiClient);
     mockApiClient.post.mockResolvedValue({ data: mockAnalysisResponse });
-  });
 
   afterEach(() => {
     vi.useRealTimers();
-  });
 
   describe('Basic Functionality', () => {
     it('should initialize with default state', () => {
@@ -51,7 +49,6 @@ describe('useIntelligentError', () => {
       expect(result.current.isAnalyzing).toBe(false);
       expect(result.current.analysisError).toBeNull();
       expect(result.current.retryCount).toBe(0);
-    });
 
     it('should analyze error and update state', async () => {
       const { result } = renderHook(() => useIntelligentError());
@@ -59,14 +56,12 @@ describe('useIntelligentError', () => {
       await act(async () => {
         await result.current.analyzeError('Test error message');
         vi.runAllTimers(); // Run debounce timer
-      });
 
       await waitFor(() => {
         expect(result.current.analysis).toEqual(mockAnalysisResponse);
         expect(result.current.isAnalyzing).toBe(false);
         expect(result.current.analysisError).toBeNull();
-      });
-    });
+
 
     it('should handle Error objects', async () => {
       const { result } = renderHook(() => useIntelligentError());
@@ -75,7 +70,6 @@ describe('useIntelligentError', () => {
       await act(async () => {
         await result.current.analyzeError(testError);
         vi.runAllTimers();
-      });
 
       await waitFor(() => {
         expect(mockApiClient.post).toHaveBeenCalledWith(
@@ -86,9 +80,8 @@ describe('useIntelligentError', () => {
           }),
           expect.any(Object)
         );
-      });
-    });
-  });
+
+
 
   describe('Debouncing', () => {
     it('should debounce multiple rapid calls', async () => {
@@ -99,7 +92,6 @@ describe('useIntelligentError', () => {
         result.current.analyzeError('Error 2');
         result.current.analyzeError('Error 3');
         vi.runAllTimers();
-      });
 
       // Should only make one API call for the last error
       expect(mockApiClient.post).toHaveBeenCalledTimes(1);
@@ -110,7 +102,6 @@ describe('useIntelligentError', () => {
         }),
         expect.any(Object)
       );
-    });
 
     it('should respect custom debounce time', async () => {
       const { result } = renderHook(() => useIntelligentError({ debounceMs: 1000 }));
@@ -118,24 +109,21 @@ describe('useIntelligentError', () => {
       await act(async () => {
         result.current.analyzeError('Test error');
         vi.advanceTimersByTime(500); // Not enough time
-      });
 
       expect(mockApiClient.post).not.toHaveBeenCalled();
 
       await act(async () => {
         vi.advanceTimersByTime(500); // Complete the debounce
-      });
 
       expect(mockApiClient.post).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('Loading States', () => {
     it('should set isAnalyzing during API call', async () => {
       let resolvePromise: (value: any) => void;
       const pendingPromise = new Promise(resolve => {
         resolvePromise = resolve;
-      });
+
       mockApiClient.post.mockReturnValue(pendingPromise);
 
       const { result } = renderHook(() => useIntelligentError());
@@ -143,19 +131,16 @@ describe('useIntelligentError', () => {
       await act(async () => {
         result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       expect(result.current.isAnalyzing).toBe(true);
 
       await act(async () => {
         resolvePromise!({ data: mockAnalysisResponse });
-      });
 
       await waitFor(() => {
         expect(result.current.isAnalyzing).toBe(false);
-      });
-    });
-  });
+
+
 
   describe('Error Handling', () => {
     it('should handle API errors gracefully', async () => {
@@ -168,13 +153,11 @@ describe('useIntelligentError', () => {
       await act(async () => {
         await result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       await waitFor(() => {
         expect(result.current.analysisError).toBe('API failed');
         expect(onAnalysisError).toHaveBeenCalledWith(apiError);
-      });
-    });
+
 
     it('should create fallback analysis after max retries', async () => {
       mockApiClient.post.mockRejectedValue(new Error('API failed'));
@@ -185,16 +168,13 @@ describe('useIntelligentError', () => {
       await act(async () => {
         result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       // Retry twice
       await act(async () => {
         await result.current.retryAnalysis();
-      });
 
       await act(async () => {
         await result.current.retryAnalysis();
-      });
 
       await waitFor(() => {
         expect(result.current.analysis).toEqual(
@@ -204,9 +184,8 @@ describe('useIntelligentError', () => {
             contact_admin: true,
           })
         );
-      });
-    });
-  });
+
+
 
   describe('Retry Logic', () => {
     it('should increment retry count on retry', async () => {
@@ -216,15 +195,12 @@ describe('useIntelligentError', () => {
       await act(async () => {
         await result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       // Retry
       await act(async () => {
         await result.current.retryAnalysis();
-      });
 
       expect(result.current.retryCount).toBe(1);
-    });
 
     it('should not retry beyond max retries', async () => {
       const { result } = renderHook(() => useIntelligentError({ maxRetries: 1 }));
@@ -233,22 +209,18 @@ describe('useIntelligentError', () => {
       await act(async () => {
         await result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       // First retry
       await act(async () => {
         await result.current.retryAnalysis();
-      });
 
       expect(result.current.retryCount).toBe(1);
 
       // Second retry should not work
       await act(async () => {
         await result.current.retryAnalysis();
-      });
 
       expect(result.current.retryCount).toBe(1);
-    });
 
     it('should reset retry count on successful analysis', async () => {
       const { result } = renderHook(() => useIntelligentError());
@@ -257,12 +229,10 @@ describe('useIntelligentError', () => {
       await act(async () => {
         await result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       // Retry
       await act(async () => {
         await result.current.retryAnalysis();
-      });
 
       expect(result.current.retryCount).toBe(1);
 
@@ -270,13 +240,11 @@ describe('useIntelligentError', () => {
       await act(async () => {
         await result.current.analyzeError('New error');
         vi.runAllTimers();
-      });
 
       await waitFor(() => {
         expect(result.current.retryCount).toBe(0);
-      });
-    });
-  });
+
+
 
   describe('Cleanup', () => {
     it('should clear analysis state', async () => {
@@ -286,28 +254,24 @@ describe('useIntelligentError', () => {
       await act(async () => {
         await result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       await waitFor(() => {
         expect(result.current.analysis).not.toBeNull();
-      });
 
       // Clear state
       act(() => {
         result.current.clearAnalysis();
-      });
 
       expect(result.current.analysis).toBeNull();
       expect(result.current.analysisError).toBeNull();
       expect(result.current.isAnalyzing).toBe(false);
       expect(result.current.retryCount).toBe(0);
-    });
 
     it('should cancel pending requests on unmount', async () => {
       let resolvePromise: (value: any) => void;
       const pendingPromise = new Promise(resolve => {
         resolvePromise = resolve;
-      });
+
       mockApiClient.post.mockReturnValue(pendingPromise);
 
       const { result, unmount } = renderHook(() => useIntelligentError());
@@ -315,7 +279,6 @@ describe('useIntelligentError', () => {
       await act(async () => {
         result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       expect(result.current.isAnalyzing).toBe(true);
 
@@ -325,12 +288,10 @@ describe('useIntelligentError', () => {
       // Resolving the promise should not update state
       await act(async () => {
         resolvePromise!({ data: mockAnalysisResponse });
-      });
 
       // State should remain in loading state since component unmounted
       expect(result.current.isAnalyzing).toBe(true);
-    });
-  });
+
 
   describe('Callbacks', () => {
     it('should call onAnalysisComplete callback', async () => {
@@ -340,12 +301,10 @@ describe('useIntelligentError', () => {
       await act(async () => {
         await result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       await waitFor(() => {
         expect(onAnalysisComplete).toHaveBeenCalledWith(mockAnalysisResponse);
-      });
-    });
+
 
     it('should call onAnalysisError callback', async () => {
       const apiError = new Error('API failed');
@@ -357,13 +316,11 @@ describe('useIntelligentError', () => {
       await act(async () => {
         await result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       await waitFor(() => {
         expect(onAnalysisError).toHaveBeenCalledWith(apiError);
-      });
-    });
-  });
+
+
 
   describe('Configuration Options', () => {
     it('should respect autoAnalyze option', async () => {
@@ -372,11 +329,9 @@ describe('useIntelligentError', () => {
       await act(async () => {
         result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       // Should not make API call when autoAnalyze is false
       expect(mockApiClient.post).not.toHaveBeenCalled();
-    });
 
     it('should pass useAiAnalysis option to API', async () => {
       const { result } = renderHook(() => useIntelligentError({ useAiAnalysis: false }));
@@ -384,7 +339,6 @@ describe('useIntelligentError', () => {
       await act(async () => {
         await result.current.analyzeError('Test error');
         vi.runAllTimers();
-      });
 
       expect(mockApiClient.post).toHaveBeenCalledWith(
         '/api/error-response/analyze',
@@ -393,9 +347,8 @@ describe('useIntelligentError', () => {
         }),
         expect.any(Object)
       );
-    });
-  });
-});
+
+
 
 describe('useIntelligentErrorBoundary', () => {
   const mockApiClient = {
@@ -407,11 +360,9 @@ describe('useIntelligentErrorBoundary', () => {
     vi.useFakeTimers();
     (getApiClient as any).mockReturnValue(mockApiClient);
     mockApiClient.post.mockResolvedValue({ data: {} });
-  });
 
   afterEach(() => {
     vi.useRealTimers();
-  });
 
   it('should handle error boundary errors with component context', async () => {
     const { result } = renderHook(() => useIntelligentErrorBoundary());
@@ -424,7 +375,6 @@ describe('useIntelligentErrorBoundary', () => {
     await act(async () => {
       result.current.handleError(testError, errorInfo);
       vi.runAllTimers();
-    });
 
     expect(mockApiClient.post).toHaveBeenCalledWith(
       '/api/error-response/analyze',
@@ -438,8 +388,7 @@ describe('useIntelligentErrorBoundary', () => {
       }),
       expect.any(Object)
     );
-  });
-});
+
 
 describe('useIntelligentApiError', () => {
   const mockApiClient = {
@@ -451,11 +400,9 @@ describe('useIntelligentApiError', () => {
     vi.useFakeTimers();
     (getApiClient as any).mockReturnValue(mockApiClient);
     mockApiClient.post.mockResolvedValue({ data: {} });
-  });
 
   afterEach(() => {
     vi.useRealTimers();
-  });
 
   it('should handle API errors with request context', async () => {
     const { result } = renderHook(() => useIntelligentApiError());
@@ -479,7 +426,6 @@ describe('useIntelligentApiError', () => {
     await act(async () => {
       result.current.handleApiError(apiError, requestContext);
       vi.runAllTimers();
-    });
 
     expect(mockApiClient.post).toHaveBeenCalledWith(
       '/api/error-response/analyze',
@@ -499,5 +445,4 @@ describe('useIntelligentApiError', () => {
       }),
       expect.any(Object)
     );
-  });
-});
+

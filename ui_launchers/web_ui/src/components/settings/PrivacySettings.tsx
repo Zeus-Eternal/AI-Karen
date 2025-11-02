@@ -1,6 +1,7 @@
 
 "use client";
 
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -20,7 +21,7 @@ export default function PrivacySettings() {
     toast({
       title: `${featureName} (Planned Feature)`,
       description: `This functionality requires backend implementation and is not yet active.`,
-    });
+
   };
 
   return (
@@ -34,7 +35,7 @@ export default function PrivacySettings() {
       <CardContent className="space-y-6">
         
         <Alert variant="default" className="bg-background border-border">
-            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+            <AlertCircle className="h-4 w-4 " />
             <AlertTitle className="font-semibold text-sm md:text-base lg:text-lg">Local Browser Storage</AlertTitle>
             <AlertDescription className="text-xs text-muted-foreground space-y-1 sm:text-sm md:text-base">
                 <p>Karen AI stores your settings and some personalization data directly in your browser's local storage. This ensures your preferences are remembered across sessions on this specific browser. This data includes:</p>
@@ -74,7 +75,7 @@ export default function PrivacySettings() {
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-foreground md:text-base lg:text-lg">Server-Side Data (Conceptual)</h3>
            <Alert variant="default" className="bg-muted/30">
-            <Info className="h-4 w-4 !text-accent-foreground sm:w-auto md:w-full" />
+            <Info className="h-4 w-4 !text-accent-foreground " />
             <AlertTitle className="font-semibold text-accent-foreground text-sm md:text-base lg:text-lg">Information: Server Data</AlertTitle>
             <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
               This application primarily uses data stored locally in your browser for settings and personalization. Any persistent storage of user accounts or extensive conversation histories on a server would be governed by the application's backend and its own privacy policy. Currently, there are no specific user settings here for managing server-side data retention, as the focus is on local storage and in-session memory.
@@ -89,9 +90,9 @@ export default function PrivacySettings() {
           <p className="text-xs text-muted-foreground mb-2 sm:text-sm md:text-base">
             If this application supported server-side user accounts with persistent data storage, a mechanism to request the deletion of that account and associated data would be provided here.
           </p>
-          <button 
+          <Button 
             variant="outline" 
-            onClick={() = aria-label="Button"> handlePlaceholderClick("Full Data Deletion Request")}
+            onClick={() => handlePlaceholderClick("Full Data Deletion Request")}
             className="w-full sm:w-auto"
             disabled
           >

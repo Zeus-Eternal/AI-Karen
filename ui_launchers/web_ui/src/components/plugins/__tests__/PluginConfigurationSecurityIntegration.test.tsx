@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PluginConfigurationSecurityIntegration } from '../PluginConfigurationSecurityIntegration';
@@ -15,8 +16,8 @@ import { PluginInfo, PluginConfigField } from '@/types/plugins';
 vi.mock('../DynamicPluginConfigForm', () => ({
   DynamicPluginConfigForm: ({ onSave, onValidate }: any) => (
     <div data-testid="dynamic-config-form">
-      <button onClick={() = aria-label="Button"> onSave({ testConfig: 'value' })}>Save Config</button>
-      <button onClick={() = aria-label="Button"> onValidate({ testConfig: 'value' })}>Validate Config</button>
+      <button onClick={() => onSave({ testConfig: 'value' })}>Save Config</button>
+      <button onClick={() => onValidate({ testConfig: 'value' })}>Validate Config</button>
     </div>
   ),
 }));
@@ -24,9 +25,9 @@ vi.mock('../DynamicPluginConfigForm', () => ({
 vi.mock('../PluginSecurityManager', () => ({
   PluginSecurityManager: ({ onUpdateSecurity, onGrantPermission, onRevokePermission }: any) => (
     <div data-testid="security-manager">
-      <button onClick={() = aria-label="Button"> onUpdateSecurity({ sandboxed: true })}>Update Security</button>
-      <button onClick={() = aria-label="Button"> onGrantPermission('test-permission')}>Grant Permission</button>
-      <button onClick={() = aria-label="Button"> onRevokePermission('test-permission')}>Revoke Permission</button>
+      <button onClick={() => onUpdateSecurity({ sandboxed: true })}>Update Security</button>
+      <button onClick={() => onGrantPermission('test-permission')}>Grant Permission</button>
+      <button onClick={() => onRevokePermission('test-permission')}>Revoke Permission</button>
     </div>
   ),
 }));
@@ -34,8 +35,8 @@ vi.mock('../PluginSecurityManager', () => ({
 vi.mock('../PluginAuditLogger', () => ({
   PluginAuditLogger: ({ onExportAuditLog, onGenerateReport }: any) => (
     <div data-testid="audit-logger">
-      <button onClick={() = aria-label="Button"> onExportAuditLog('csv')}>Export Audit</button>
-      <button onClick={() = aria-label="Button"> onGenerateReport('security')}>Generate Report</button>
+      <button onClick={() => onExportAuditLog('csv')}>Export Audit</button>
+      <button onClick={() => onGenerateReport('security')}>Generate Report</button>
     </div>
   ),
 }));
@@ -43,7 +44,7 @@ vi.mock('../PluginAuditLogger', () => ({
 vi.mock('../EnhancedPluginMarketplace', () => ({
   EnhancedPluginMarketplace: ({ onClose, onInstall }: any) => (
     <div data-testid="marketplace">
-      <button onClick={() = aria-label="Button"> onInstall({ id: 'test-plugin' })}>Install Plugin</button>
+      <button onClick={() => onInstall({ id: 'test-plugin' })}>Install Plugin</button>
       <button onClick={onClose} aria-label="Button">Close Marketplace</button>
     </div>
   ),
@@ -165,7 +166,6 @@ const createMockPlugin = (overrides: Partial<PluginInfo> = {}): PluginInfo => ({
     conflicts: [],
   },
   ...overrides,
-});
 
 const mockProps = {
   plugin: createMockPlugin(),
@@ -183,7 +183,6 @@ const mockProps = {
 describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Plugin Isolation Tests', () => {
     it('should enforce sandboxed execution for sandboxed plugins', () => {
@@ -192,13 +191,11 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
           ...createMockPlugin().manifest,
           sandboxed: true,
         },
-      });
 
       render(<PluginConfigurationSecurityIntegration {...mockProps} plugin={sandboxedPlugin} />);
       
       // Should display sandboxed badge
       expect(screen.getByText('Sandboxed')).toBeInTheDocument();
-    });
 
     it('should show security warnings for non-sandboxed plugins', () => {
       const nonSandboxedPlugin = createMockPlugin({
@@ -211,14 +208,12 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
             allowSystemCalls: true,
           },
         },
-      });
 
       render(<PluginConfigurationSecurityIntegration {...mockProps} plugin={nonSandboxedPlugin} />);
       
       // Should show high security risk
       expect(screen.getByText('Critical')).toBeInTheDocument();
       expect(screen.getByText('High security risk')).toBeInTheDocument();
-    });
 
     it('should calculate security risk level correctly', () => {
       const highRiskPlugin = createMockPlugin({
@@ -249,13 +244,11 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
             },
           ],
         },
-      });
 
       render(<PluginConfigurationSecurityIntegration {...mockProps} plugin={highRiskPlugin} />);
       
       // Should show critical risk level
       expect(screen.getByText('Critical')).toBeInTheDocument();
-    });
 
     it('should show low risk for properly sandboxed plugins', () => {
       const lowRiskPlugin = createMockPlugin({
@@ -278,15 +271,13 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
             },
           ],
         },
-      });
 
       render(<PluginConfigurationSecurityIntegration {...mockProps} plugin={lowRiskPlugin} />);
       
       // Should show low risk level
       expect(screen.getByText('Low')).toBeInTheDocument();
       expect(screen.getByText('Minimal security risk')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Permission Enforcement Tests', () => {
     it('should handle permission granting securely', async () => {
@@ -299,10 +290,8 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       await waitFor(() => {
         const grantButton = screen.getByText('Grant Permission');
         fireEvent.click(grantButton);
-      });
-      
+
       expect(mockProps.onGrantPermission).toHaveBeenCalledWith('test-permission');
-    });
 
     it('should handle permission revocation securely', async () => {
       render(<PluginConfigurationSecurityIntegration {...mockProps} />);
@@ -314,10 +303,8 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       await waitFor(() => {
         const revokeButton = screen.getByText('Revoke Permission');
         fireEvent.click(revokeButton);
-      });
-      
+
       expect(mockProps.onRevokePermission).toHaveBeenCalledWith('test-permission');
-    });
 
     it('should prevent unauthorized permission changes in read-only mode', () => {
       render(<PluginConfigurationSecurityIntegration {...mockProps} readOnly />);
@@ -328,7 +315,6 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       
       // Component should pass readOnly prop to security manager
       expect(screen.getByTestId('security-manager')).toBeInTheDocument();
-    });
 
     it('should validate required permissions are not revoked', () => {
       const pluginWithRequiredPermissions = createMockPlugin({
@@ -345,14 +331,12 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
             },
           ],
         },
-      });
 
       render(<PluginConfigurationSecurityIntegration {...mockProps} plugin={pluginWithRequiredPermissions} />);
       
       // Should show that plugin has required permissions
       expect(screen.getByText('1 permissions')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Configuration Security Tests', () => {
     it('should validate sensitive configuration fields', async () => {
@@ -362,11 +346,9 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       await waitFor(() => {
         const validateButton = screen.getByText('Validate Config');
         fireEvent.click(validateButton);
-      });
-      
+
       // Validation should be called
       expect(screen.getByTestId('dynamic-config-form')).toBeInTheDocument();
-    });
 
     it('should handle secure configuration saving', async () => {
       render(<PluginConfigurationSecurityIntegration {...mockProps} />);
@@ -376,8 +358,7 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       
       await waitFor(() => {
         expect(mockProps.onSaveConfiguration).toHaveBeenCalledWith({ testConfig: 'value' });
-      });
-    });
+
 
     it('should show unsaved changes warning', async () => {
       render(<PluginConfigurationSecurityIntegration {...mockProps} />);
@@ -389,8 +370,7 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       // Should not show warning initially since save was called
       await waitFor(() => {
         expect(mockProps.onSaveConfiguration).toHaveBeenCalled();
-      });
-    });
+
 
     it('should prevent dangerous configuration in production', () => {
       const dangerousPlugin = createMockPlugin({
@@ -398,14 +378,12 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
           apiKey: 'test-key',
           enableDangerousFeature: true, // This should trigger warnings
         },
-      });
 
       render(<PluginConfigurationSecurityIntegration {...mockProps} plugin={dangerousPlugin} />);
       
       // Should show plugin information
       expect(screen.getByText('Security Test Plugin')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Audit and Compliance Tests', () => {
     it('should provide audit log export functionality', async () => {
@@ -418,10 +396,8 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       await waitFor(() => {
         const exportButton = screen.getByText('Export Audit');
         fireEvent.click(exportButton);
-      });
-      
+
       expect(mockProps.onExportAuditLog).toHaveBeenCalledWith('csv');
-    });
 
     it('should generate security compliance reports', async () => {
       render(<PluginConfigurationSecurityIntegration {...mockProps} />);
@@ -433,10 +409,8 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       await waitFor(() => {
         const reportButton = screen.getByText('Generate Report');
         fireEvent.click(reportButton);
-      });
-      
+
       expect(mockProps.onGenerateReport).toHaveBeenCalledWith('security');
-    });
 
     it('should track all security-related actions', () => {
       render(<PluginConfigurationSecurityIntegration {...mockProps} />);
@@ -447,8 +421,7 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       
       // Audit logger should be rendered
       expect(screen.getByTestId('audit-logger')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Marketplace Security Tests', () => {
     it('should validate plugins before installation from marketplace', async () => {
@@ -461,10 +434,8 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       await waitFor(() => {
         const installButton = screen.getByText('Install Plugin');
         fireEvent.click(installButton);
-      });
-      
+
       expect(mockProps.onInstallFromMarketplace).toHaveBeenCalledWith({ id: 'test-plugin' });
-    });
 
     it('should handle secure plugin purchases', async () => {
       render(<PluginConfigurationSecurityIntegration {...mockProps} />);
@@ -476,8 +447,7 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       // Marketplace should be rendered in dialog
       await waitFor(() => {
         expect(screen.getByTestId('marketplace')).toBeInTheDocument();
-      });
-    });
+
 
     it('should close marketplace securely', async () => {
       render(<PluginConfigurationSecurityIntegration {...mockProps} />);
@@ -489,14 +459,12 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       await waitFor(() => {
         const closeButton = screen.getByText('Close Marketplace');
         fireEvent.click(closeButton);
-      });
-      
+
       // Marketplace dialog should close
       await waitFor(() => {
         expect(screen.queryByTestId('marketplace')).not.toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Error Handling and Security', () => {
     it('should display plugin errors securely', () => {
@@ -507,14 +475,12 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
           timestamp: new Date(),
           stack: 'Error stack trace...',
         },
-      });
 
       render(<PluginConfigurationSecurityIntegration {...mockProps} plugin={errorPlugin} />);
       
       // Should show error alert
       expect(screen.getByText(/Plugin error:/)).toBeInTheDocument();
       expect(screen.getByText(/security violation/)).toBeInTheDocument();
-    });
 
     it('should handle security policy update failures gracefully', async () => {
       const failingProps = {
@@ -531,11 +497,9 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       await waitFor(() => {
         const updateButton = screen.getByText('Update Security');
         fireEvent.click(updateButton);
-      });
-      
+
       // Should attempt to update security
       expect(failingProps.onUpdateSecurity).toHaveBeenCalled();
-    });
 
     it('should validate plugin manifest security settings', () => {
       const invalidPlugin = createMockPlugin({
@@ -548,14 +512,12 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
             trustedDomains: [], // Empty trusted domains with network access
           },
         },
-      });
 
       render(<PluginConfigurationSecurityIntegration {...mockProps} plugin={invalidPlugin} />);
       
       // Should show high security risk
       expect(screen.getByText('High')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Integration Security Tests', () => {
     it('should maintain security context across tab switches', async () => {
@@ -573,7 +535,6 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       
       // All components should maintain security context
       expect(screen.getByTestId('audit-logger')).toBeInTheDocument();
-    });
 
     it('should prevent unauthorized access to sensitive operations', () => {
       render(<PluginConfigurationSecurityIntegration {...mockProps} readOnly />);
@@ -582,7 +543,6 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
       // This is tested by ensuring readOnly prop is passed to child components
       expect(screen.getByTestId('dynamic-config-form')).toBeInTheDocument();
       expect(screen.getByTestId('security-manager')).toBeInTheDocument();
-    });
 
     it('should handle concurrent security operations safely', async () => {
       render(<PluginConfigurationSecurityIntegration {...mockProps} />);
@@ -598,11 +558,9 @@ describe('PluginConfigurationSecurityIntegration - Security Tests', () => {
         // Click both buttons rapidly
         fireEvent.click(grantButton);
         fireEvent.click(revokeButton);
-      });
-      
+
       // Both operations should be handled
       expect(mockProps.onGrantPermission).toHaveBeenCalled();
       expect(mockProps.onRevokePermission).toHaveBeenCalled();
-    });
-  });
-});
+
+

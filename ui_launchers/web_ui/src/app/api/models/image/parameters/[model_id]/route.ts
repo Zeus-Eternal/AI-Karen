@@ -140,7 +140,7 @@ export async function GET(
           'X-Model-Provider': targetModel.provider,
           'X-Model-Type': targetModel.type || 'unknown'
         }
-      });
+
     } catch (parameterError) {
       return NextResponse.json(
         {
@@ -328,7 +328,7 @@ function buildImageModelPresets(model: any): Array<{ name: string; description: 
         width: 1024,
         height: 1024
       }
-    });
+
   }
   return presets;
 }

@@ -1,3 +1,5 @@
+
+"use client";
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
@@ -8,70 +10,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
 import { Alert, AlertDescription } from '@/components/ui/alert';
-'use client';
+
+import { } from '@/components/ui/select';
 
 
+import { } from '@/components/ui/table';
 
 
+import { } from 'recharts';
 
 
-
-
-
-
-
-
-
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-
-
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  Area,
-  AreaChart
-} from 'recharts';
-
-
-  Skull, 
-  TrendingUp, 
-  TrendingDown,
-  Users, 
-  Clock, 
-  AlertTriangle,
-  Activity,
-  Shield,
-  Target,
-  Eye,
-  FileText,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 interface EvilModeAnalyticsProps {
   className?: string;
@@ -125,12 +75,10 @@ export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['evil-mode', 'analytics', dateRange],
     queryFn: () => getEvilModeStats(dateRange),
-  });
 
   const { data: sessions } = useQuery({
     queryKey: ['evil-mode', 'sessions', dateRange],
     queryFn: () => getEvilModeSessions(dateRange),
-  });
 
   return (
     <PermissionGate permission="security:admin">
@@ -138,16 +86,15 @@ export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold flex items-center space-x-2">
-              <Skull className="h-6 w-6 text-red-600 sm:w-auto md:w-full" />
+              <Skull className="h-6 w-6 text-red-600 " />
               <span>Evil Mode Analytics</span>
             </h2>
             <p className="text-muted-foreground">
-              Monitor and analyze Evil Mode usage patterns and security impact
             </p>
           </div>
           <div className="flex items-center space-x-2">
             <select value={timeframe} onValueChange={(value: '7d' | '30d' | '90d') = aria-label="Select option"> setTimeframe(value)}>
-              <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+              <selectTrigger className="w-40 " aria-label="Select option">
                 <selectValue />
               </SelectTrigger>
               <selectContent aria-label="Select option">
@@ -161,7 +108,7 @@ export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary "></div>
           </div>
         ) : (
           <Tabs defaultValue="overview" className="space-y-4">
@@ -254,11 +201,11 @@ function OverviewDashboard({ stats }: OverviewDashboardProps) {
               <div className="text-2xl font-bold">{metric.value}</div>
               <div className="flex items-center text-xs text-muted-foreground sm:text-sm md:text-base">
                 {metric.trendUp ? (
-                  <TrendingUp className="h-3 w-3 mr-1 text-green-500 sm:w-auto md:w-full" />
+                  <TrendingUp className="h-3 w-3 mr-1 text-green-500 " />
                 ) : (
-                  <TrendingDown className="h-3 w-3 mr-1 text-red-500 sm:w-auto md:w-full" />
+                  <TrendingDown className="h-3 w-3 mr-1 text-red-500 " />
                 )}
-                {metric.trend} from last period
+import {                 {metric.trend} from last period
               </div>
             </CardContent>
           </Card>
@@ -292,7 +239,7 @@ function OverviewDashboard({ stats }: OverviewDashboardProps) {
               {stats.topUsers.slice(0, 5).map((user, index) => (
                 <div key={user.userId} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-xs sm:w-auto md:w-full">
+                    <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-xs ">
                       {index + 1}
                     </div>
                     <span className="font-medium">{user.username}</span>
@@ -309,7 +256,7 @@ function OverviewDashboard({ stats }: OverviewDashboardProps) {
       </div>
 
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+        <AlertTriangle className="h-4 w-4 " />
         <AlertDescription>
           Evil Mode usage is continuously monitored for security and compliance. 
           All activities are subject to audit and review.
@@ -537,7 +484,6 @@ function ActionAnalysis({ stats, sessions }: ActionAnalysisProps) {
         <CardHeader>
           <CardTitle>High-Risk Actions</CardTitle>
           <CardDescription>
-            Actions with critical or high impact that require special attention
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -558,9 +504,9 @@ function ActionAnalysis({ stats, sessions }: ActionAnalysisProps) {
                     'bg-orange-100 dark:bg-orange-900/30'
                   }`}>
                     {action.reversible ? (
-                      <CheckCircle className="h-3 w-3 text-green-600 sm:w-auto md:w-full" />
+                      <CheckCircle className="h-3 w-3 text-green-600 " />
                     ) : (
-                      <XCircle className="h-3 w-3 text-red-600 sm:w-auto md:w-full" />
+                      <XCircle className="h-3 w-3 text-red-600 " />
                     )}
                   </div>
                   <div>
@@ -576,7 +522,6 @@ function ActionAnalysis({ stats, sessions }: ActionAnalysisProps) {
                   </Badge>
                   {!action.reversible && (
                     <Badge variant="outline" className="text-red-600">
-                      Irreversible
                     </Badge>
                   )}
                 </div>
@@ -609,7 +554,6 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
         <CardHeader>
           <CardTitle>Compliance Score</CardTitle>
           <CardDescription>
-            Overall compliance with Evil Mode security policies
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -643,28 +587,28 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
                 <span>Justification Provided</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.justificationProvided}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-4 w-4 text-green-500 " />
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span>Additional Auth Used</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.additionalAuthUsed}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-4 w-4 text-green-500 " />
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span>Timeout Compliance</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.timeoutCompliance}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-4 w-4 text-green-500 " />
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span>Audit Trail Complete</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.auditTrailComplete}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
+                  <CheckCircle className="h-4 w-4 text-green-500 " />
                 </div>
               </div>
             </div>
@@ -678,19 +622,19 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
           <CardContent>
             <div className="space-y-3">
               <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                <AlertTriangle className="h-4 w-4 " />
                 <AlertDescription>
                   2 sessions without proper justification
                 </AlertDescription>
               </Alert>
               <Alert>
-                <Eye className="h-4 w-4 sm:w-auto md:w-full" />
+                <Eye className="h-4 w-4 " />
                 <AlertDescription>
                   1 session exceeded time limit
                 </AlertDescription>
               </Alert>
               <Alert>
-                <FileText className="h-4 w-4 sm:w-auto md:w-full" />
+                <FileText className="h-4 w-4 " />
                 <AlertDescription>
                   3 actions missing audit details
                 </AlertDescription>
@@ -728,7 +672,6 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
               {riskLevel} Risk
             </Badge>
             <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
-              Based on recent Evil Mode activity patterns
             </div>
           </div>
         </CardContent>
@@ -787,19 +730,17 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
         <CardContent>
           <div className="space-y-3">
             <Alert>
-              <Shield className="h-4 w-4 sm:w-auto md:w-full" />
+              <Shield className="h-4 w-4 " />
               <AlertDescription>
-                Implement additional approval workflow for critical actions
               </AlertDescription>
             </Alert>
             <Alert>
-              <Clock className="h-4 w-4 sm:w-auto md:w-full" />
+              <Clock className="h-4 w-4 " />
               <AlertDescription>
-                Reduce maximum session duration to 30 minutes
               </AlertDescription>
             </Alert>
             <Alert>
-              <Eye className="h-4 w-4 sm:w-auto md:w-full" />
+              <Eye className="h-4 w-4 " />
               <AlertDescription>
                 Enable real-time monitoring alerts for high-risk actions
               </AlertDescription>

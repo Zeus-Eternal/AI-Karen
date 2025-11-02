@@ -57,7 +57,7 @@ export class HotReloadAuthManager {
       sessionId: this.sessionId,
       hasPreservedState: !!this.preservedState,
       devFeaturesEnabled,
-    });
+
   }
 
   /**
@@ -92,12 +92,11 @@ export class HotReloadAuthManager {
           type: 'webpack',
           timestamp: Date.now(),
           source: 'webpack-hmr',
-        });
-      });
+
 
       (window as any).module.hot.dispose(() => {
         this.preserveAuthState();
-      });
+
     }
 
     // Vite Hot Module Replacement
@@ -107,12 +106,11 @@ export class HotReloadAuthManager {
           type: 'vite',
           timestamp: Date.now(),
           source: 'vite-hmr',
-        });
-      });
+
 
       window.addEventListener('vite:afterUpdate', () => {
         this.restoreStateIfNeeded();
-      });
+
     }
 
     // Generic beforeunload for any hot reload scenario
@@ -120,12 +118,10 @@ export class HotReloadAuthManager {
       if (this.isHotReloadScenario()) {
         this.preserveAuthState();
       }
-    });
 
     // Page load restoration
     window.addEventListener('load', () => {
       this.restoreStateIfNeeded();
-    });
 
     // Manual hot reload detection via URL parameters
     if (window.location.search.includes('hot_reload=true')) {
@@ -133,7 +129,7 @@ export class HotReloadAuthManager {
         type: 'manual',
         timestamp: Date.now(),
         source: 'url-parameter',
-      });
+
     }
 
     logger.debug('Hot reload detection configured');
@@ -185,7 +181,6 @@ export class HotReloadAuthManager {
       } catch (error) {
         logger.warn('Hot reload listener error:', error);
       }
-    });
 
     // Set flag to restore state after reload
     try {
@@ -224,7 +219,6 @@ export class HotReloadAuthManager {
         tokenCount: Object.keys(authState.tokens).length,
         currentUser: authState.currentUser,
         sessionId: authState.sessionId,
-      });
 
     } catch (error) {
       logger.error('Failed to preserve auth state for hot reload:', error);
@@ -351,7 +345,7 @@ export class HotReloadAuthManager {
         logger.debug('Session ID mismatch, not restoring state', {
           preserved: state.sessionId,
           current: this.sessionId,
-        });
+
         return;
       }
 
@@ -365,7 +359,6 @@ export class HotReloadAuthManager {
         tokenCount: Object.keys(state.tokens).length,
         currentUser: state.currentUser,
         stateAge: stateAge,
-      });
 
       // Clean up
       this.cleanupHotReloadState();
@@ -410,7 +403,6 @@ export class HotReloadAuthManager {
 
       logger.debug('Tokens restored successfully', {
         restoredCount: Object.keys(tokens).length,
-      });
 
     } catch (error) {
       logger.error('Failed to restore tokens:', error);

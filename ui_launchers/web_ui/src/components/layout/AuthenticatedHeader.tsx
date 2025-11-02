@@ -1,39 +1,17 @@
+
+"use client";
 import React, { useState } from 'react';
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile } from '@/components/auth/UserProfile';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
 import { User, LogOut, Settings } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-'use client';
 
+import { } from '@/components/ui/dropdown-menu';
 
-
-
-
-
-
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from '@/components/ui/dialog';
-
-
-
-
+import { } from '@/components/ui/dialog';
 export const AuthenticatedHeader: React.FC = () => {
   const { user, logout } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
@@ -69,15 +47,15 @@ export const AuthenticatedHeader: React.FC = () => {
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button variant="ghost" className="relative h-10 w-10 rounded-full sm:w-auto md:w-full" aria-label="Button">
-              <Avatar className="h-10 w-10 sm:w-auto md:w-full">
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full " >
+              <Avatar className="h-10 w-10 ">
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56 sm:w-auto md:w-full" align="end" forceMount>
+          <DropdownMenuContent className="w-56 " align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none md:text-base lg:text-lg">{user?.email ?? user?.userId ?? ''}</p>
@@ -90,12 +68,12 @@ export const AuthenticatedHeader: React.FC = () => {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setShowProfile(true)}>
-              <User className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
+              <User className="mr-2 h-4 w-4 " />
               <span>Profile & Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-              <LogOut className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
+              <LogOut className="mr-2 h-4 w-4 " />
               <span>Sign out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -104,7 +82,7 @@ export const AuthenticatedHeader: React.FC = () => {
 
       {/* Profile Dialog */}
       <Dialog open={showProfile} onOpenChange={setShowProfile}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:w-auto md:w-full">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto ">
           <DialogHeader>
             <DialogTitle>User Profile</DialogTitle>
           </DialogHeader>

@@ -250,8 +250,7 @@ export const KeyboardUtils = {
     const manager = new KeyboardNavigationManager(container, {
       enableTabTrapping: true,
       enableArrowKeys: false
-    });
-    
+
     return () => manager.destroy();
   },
 
@@ -263,7 +262,6 @@ export const KeyboardUtils = {
     // Set initial tabindex values
     items.forEach((item, index) => {
       item.setAttribute('tabindex', index === 0 ? '0' : '-1');
-    });
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!container.contains(event.target as Node)) return;

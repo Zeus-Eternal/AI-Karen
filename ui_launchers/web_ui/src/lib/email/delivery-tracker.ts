@@ -4,13 +4,7 @@
  * Tracks email delivery status, handles webhooks from email providers,
  * and provides delivery analytics and reporting.
  */
-import { 
-  EmailDeliveryStatus, 
-  EmailMessage, 
-  EmailWebhook,
-  EmailStatistics,
-  EmailServiceConfig 
-} from './types';
+import {  EmailDeliveryStatus, EmailMessage, EmailWebhook, EmailStatistics, EmailServiceConfig } from './types';
 /**
  * Delivery Status Manager
  */

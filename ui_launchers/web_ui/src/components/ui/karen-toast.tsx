@@ -1,12 +1,11 @@
 "use client"
 
-import * as React from "react"
-import * as ToastPrimitives from "@radix-ui/react-toast"
-import { cva, type VariantProps } from "class-variance-authority"
-import { X, ChevronDown, ChevronUp } from "lucide-react"
-import { cn } from "@/lib/utils"
-import type { KarenAlert, AlertAction } from "@/types/karen-alerts"
-
+import * as React from "react";
+import * as ToastPrimitives from "@radix-ui/react-toast";
+import { cva, type VariantProps } from "class-variance-authority";
+import { X, ChevronDown, ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { KarenAlert, AlertAction } from "@/types/karen-alerts";
 /**
  * Enhanced toast variants for Karen's personality-driven alerts with comprehensive styling
  */
@@ -34,7 +33,6 @@ const karenToastVariants = cva(
  * Enhanced progress indicator for timed alerts with smooth animations
  */
 const KarenToastProgress = React.forwardRef<
-  HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
     duration?: number;
     variant?: VariantProps<typeof karenToastVariants>["variant"];
@@ -50,7 +48,7 @@ const KarenToastProgress = React.forwardRef<
       setProgress((prev) => {
         const newProgress = prev - (100 / (duration / 100));
         return newProgress <= 0 ? 0 : newProgress;
-      });
+
     }, 100);
 
     return () => clearInterval(interval);
@@ -98,7 +96,7 @@ const KarenToastProgress = React.forwardRef<
       />
     </div>
   );
-});
+
 KarenToastProgress.displayName = "KarenToastProgress";
 
 /**
@@ -149,16 +147,16 @@ const KarenToast = React.forwardRef<
             {alert?.expandableContent && (
               <div className="mt-2">
                 <button
-                  onClick={() = aria-label="Button"> setIsExpanded(!isExpanded)}
+                  onClick={() => setIsExpanded(!isExpanded)}
                   className="flex items-center space-x-1 text-xs font-medium opacity-75 hover:opacity-100 transition-opacity sm:text-sm md:text-base"
                   aria-expanded={isExpanded}
                   aria-controls="expandable-content"
                 >
                   <span>{isExpanded ? "Show less" : "Show more"}</span>
                   {isExpanded ? (
-                    <ChevronUp className="h-3 w-3 sm:w-auto md:w-full" />
+                    <ChevronUp className="h-3 w-3 " />
                   ) : (
-                    <ChevronDown className="h-3 w-3 sm:w-auto md:w-full" />
+                    <ChevronDown className="h-3 w-3 " />
                   )}
                 </button>
                 
@@ -181,7 +179,7 @@ const KarenToast = React.forwardRef<
             {alert.actions.map((action, index) => (
               <button
                 key={index}
-                onClick={() = aria-label="Button"> {
+                onClick={() => {
                   action.action();
                   onActionClick?.(action);
                 }}
@@ -211,7 +209,7 @@ const KarenToast = React.forwardRef<
       <KarenToastClose />
     </ToastPrimitives.Root>
   );
-});
+
 KarenToast.displayName = "KarenToast";
 
 /**
@@ -245,7 +243,7 @@ const KarenToastAction = React.forwardRef<
       {...props}
     />
   );
-});
+
 KarenToastAction.displayName = "KarenToastAction";
 
 /**
@@ -264,7 +262,7 @@ const KarenToastClose = React.forwardRef<
     toast-close=""
     {...props}
   >
-    <X className="h-4 w-4 sm:w-auto md:w-full" />
+    <X className="h-4 w-4 " />
     <span className="sr-only">Close</span>
   </ToastPrimitives.Close>
 ));
@@ -339,7 +337,7 @@ const KarenToastViewport = React.forwardRef<
       {...props}
     />
   );
-});
+
 KarenToastViewport.displayName = "KarenToastViewport";
 
 // Re-export the provider from the original toast
@@ -351,13 +349,5 @@ type KarenToastActionElement = React.ReactElement<typeof KarenToastAction>;
 export {
   type KarenToastProps,
   type KarenToastActionElement,
-  KarenToastProvider,
-  KarenToastViewport,
-  KarenToast,
-  KarenToastTitle,
-  KarenToastDescription,
-  KarenToastClose,
-  KarenToastAction,
-  KarenToastProgress,
   karenToastVariants,
 };

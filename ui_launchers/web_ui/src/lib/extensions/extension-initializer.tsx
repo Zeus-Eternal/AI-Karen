@@ -4,8 +4,9 @@
  * Ensures the extension integration service is properly initialized
  */
 
-'use client';
+"use client";
 
+import React from 'react';
 import { useEffect, useState } from 'react';
 import { extensionIntegration } from './extension-integration';
 import { safeLog, safeError } from '../safe-console';

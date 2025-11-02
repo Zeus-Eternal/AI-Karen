@@ -87,8 +87,7 @@ describe('Memory AG-UI Components', () => {
           }
         ]
       })
-    });
-  });
+
 
   describe('MemoryInterface', () => {
     it('renders memory interface with all view modes', async () => {
@@ -107,7 +106,6 @@ describe('Memory AG-UI Components', () => {
       expect(screen.getByText('Analytics')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Search memories...')).toBeInTheDocument();
       expect(screen.getByText('New Memory')).toBeInTheDocument();
-    });
 
     it('switches between view modes correctly', async () => {
       render(
@@ -125,14 +123,12 @@ describe('Memory AG-UI Components', () => {
       fireEvent.click(screen.getByText('Network View'));
       await waitFor(() => {
         expect(screen.queryByTestId('ag-grid')).not.toBeInTheDocument();
-      });
 
       // Switch to analytics view
       fireEvent.click(screen.getByText('Analytics'));
       await waitFor(() => {
         expect(screen.getByText('Loading analytics...')).toBeInTheDocument();
-      });
-    });
+
 
     it('handles search functionality', async () => {
       render(
@@ -167,9 +163,8 @@ describe('Memory AG-UI Components', () => {
             filters: {},
             limit: 50
           })
-        });
-      });
-    });
+
+
 
     it('opens memory editor when creating new memory', async () => {
       render(
@@ -186,9 +181,8 @@ describe('Memory AG-UI Components', () => {
       // Should open memory editor
       await waitFor(() => {
         expect(screen.getByText('Create New Memory')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('MemoryGrid', () => {
     it('renders memory grid with data', async () => {
@@ -203,12 +197,10 @@ describe('Memory AG-UI Components', () => {
       // Wait for data to load
       await waitFor(() => {
         expect(screen.getByTestId('ag-grid')).toBeInTheDocument();
-      });
 
       // Check if memory data is displayed
       expect(screen.getByText('Python is a programming language')).toBeInTheDocument();
       expect(screen.getByText('I prefer Python over JavaScript')).toBeInTheDocument();
-    });
 
     it('handles row selection', async () => {
       const onMemorySelect = vi.fn();
@@ -225,7 +217,6 @@ describe('Memory AG-UI Components', () => {
       // Wait for data to load
       await waitFor(() => {
         expect(screen.getByTestId('ag-grid')).toBeInTheDocument();
-      });
 
       // Click on a row
       const firstRow = screen.getByText('Python is a programming language');
@@ -239,7 +230,6 @@ describe('Memory AG-UI Components', () => {
           type: 'fact'
         })
       );
-    });
 
     it('displays error state when fetch fails', async () => {
       (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
@@ -256,9 +246,8 @@ describe('Memory AG-UI Components', () => {
       await waitFor(() => {
         expect(screen.getByText('Error Loading Memory Data')).toBeInTheDocument();
         expect(screen.getByText('Network error')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('MemoryEditor', () => {
     const sampleMemory = {
@@ -292,7 +281,6 @@ describe('Memory AG-UI Components', () => {
       expect(screen.getByText('Edit Memory')).toBeInTheDocument();
       expect(screen.getByTestId('copilot-textarea')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Python is a programming language')).toBeInTheDocument();
-    });
 
     it('does not render when closed', () => {
       const onSave = vi.fn();
@@ -310,7 +298,6 @@ describe('Memory AG-UI Components', () => {
       );
 
       expect(screen.queryByText('Edit Memory')).not.toBeInTheDocument();
-    });
 
     it('handles form submission', async () => {
       const onSave = vi.fn().mockResolvedValue(undefined);
@@ -319,7 +306,6 @@ describe('Memory AG-UI Components', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         json: async () => ({ success: true })
-      });
 
       render(
         <MemoryEditor
@@ -346,8 +332,7 @@ describe('Memory AG-UI Components', () => {
             content: 'Updated memory content'
           })
         );
-      });
-    });
+
 
     it('generates AI suggestions', async () => {
       const onSave = vi.fn();
@@ -365,7 +350,6 @@ describe('Memory AG-UI Components', () => {
             }
           ]
         })
-      });
 
       render(
         <MemoryEditor
@@ -385,9 +369,8 @@ describe('Memory AG-UI Components', () => {
       await waitFor(() => {
         expect(screen.getByText('Consider adding version information')).toBeInTheDocument();
         expect(screen.getByText('More specific details would be helpful')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('MemoryNetworkVisualization', () => {
     beforeEach(() => {
@@ -424,8 +407,7 @@ describe('Memory AG-UI Components', () => {
             }
           ]
         })
-      });
-    });
+
 
     it('renders network visualization', async () => {
       render(
@@ -440,12 +422,10 @@ describe('Memory AG-UI Components', () => {
       // Wait for data to load
       await waitFor(() => {
         expect(screen.getByText('Nodes: 2 | Edges: 1')).toBeInTheDocument();
-      });
 
       // Check for canvas element
       const canvas = screen.getByRole('img', { hidden: true }) || document.querySelector('canvas');
       expect(canvas).toBeTruthy();
-    });
 
     it('handles cluster filtering', async () => {
       render(
@@ -460,7 +440,6 @@ describe('Memory AG-UI Components', () => {
       // Wait for data to load
       await waitFor(() => {
         expect(screen.getByText('Filter by Cluster:')).toBeInTheDocument();
-      });
 
       // Find and use the cluster filter
       const clusterSelect = screen.getByDisplayValue('All Clusters');
@@ -468,7 +447,6 @@ describe('Memory AG-UI Components', () => {
 
       // Should still show the same data since both nodes are technical
       expect(screen.getByText('Nodes: 2 | Edges: 1')).toBeInTheDocument();
-    });
 
     it('displays error state when network data fails to load', async () => {
       (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
@@ -486,9 +464,8 @@ describe('Memory AG-UI Components', () => {
       await waitFor(() => {
         expect(screen.getByText('Error Loading Network Data')).toBeInTheDocument();
         expect(screen.getByText('Network error')).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Integration Tests', () => {
     it('integrates memory grid with editor', async () => {
@@ -503,7 +480,6 @@ describe('Memory AG-UI Components', () => {
       // Wait for grid to load
       await waitFor(() => {
         expect(screen.getByTestId('ag-grid')).toBeInTheDocument();
-      });
 
       // Double-click on a memory row to edit
       const memoryRow = screen.getByText('Python is a programming language');
@@ -512,8 +488,7 @@ describe('Memory AG-UI Components', () => {
       // Should open editor
       await waitFor(() => {
         expect(screen.getByText('Edit Memory')).toBeInTheDocument();
-      });
-    });
+
 
     it('handles memory search and filtering', async () => {
       (global.fetch as any)
@@ -534,7 +509,6 @@ describe('Memory AG-UI Components', () => {
               }
             ]
           })
-        });
 
       render(
         <MemoryInterface
@@ -561,9 +535,8 @@ describe('Memory AG-UI Components', () => {
             filters: {},
             limit: 50
           })
-        });
-      });
-    });
+
+
 
     it('handles analytics view with charts', async () => {
       (global.fetch as any)
@@ -590,7 +563,6 @@ describe('Memory AG-UI Components', () => {
               isolated_memories: 20
             }
           })
-        });
 
       render(
         <MemoryInterface
@@ -607,10 +579,8 @@ describe('Memory AG-UI Components', () => {
       await waitFor(() => {
         expect(screen.getByText('100')).toBeInTheDocument(); // Total memories
         expect(screen.getByText('80')).toBeInTheDocument(); // Connected memories
-      });
 
       // Should show charts
       expect(screen.getAllByTestId('ag-chart')).toHaveLength(3);
-    });
-  });
-});
+
+

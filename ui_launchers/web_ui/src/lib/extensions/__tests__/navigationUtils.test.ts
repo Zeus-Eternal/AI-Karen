@@ -3,12 +3,7 @@
  */
 
 import { vi } from 'vitest';
-import {
-    createBreadcrumbItem,
-    navigationActions,
-    navigationHelpers,
-    navigationValidation
-} from '../navigationUtils';
+import { createBreadcrumbItem, navigationActions, navigationHelpers, navigationValidation } from '../navigationUtils';
 import type { NavigationState, ExtensionAction } from '../../../extensions/types';
 
 describe('navigationUtils', () => {
@@ -22,15 +17,13 @@ describe('navigationUtils', () => {
                 category: undefined,
                 id: undefined,
                 icon: undefined,
-            });
-        });
+
 
         it('should create a breadcrumb item with options', () => {
             const item = createBreadcrumbItem('submenu', 'LLM Providers', {
                 category: 'Plugins',
                 id: 'llm',
                 icon: 'brain',
-            });
 
             expect(item).toEqual({
                 level: 'submenu',
@@ -38,9 +31,8 @@ describe('navigationUtils', () => {
                 category: 'Plugins',
                 id: 'llm',
                 icon: 'brain',
-            });
-        });
-    });
+
+
 
     describe('navigationActions', () => {
         describe('switchCategory', () => {
@@ -50,9 +42,8 @@ describe('navigationUtils', () => {
                 expect(action).toEqual({
                     type: 'SET_CATEGORY',
                     category: 'Extensions',
-                });
-            });
-        });
+
+
 
         describe('navigateToPluginProvider', () => {
             it('should create navigation actions for plugin provider', () => {
@@ -65,7 +56,7 @@ describe('navigationUtils', () => {
                         currentLevel: 'submenu',
                         selectedPluginProvider: 'llm',
                     },
-                });
+
                 expect(actions[1]).toEqual({
                     type: 'PUSH_BREADCRUMB',
                     item: {
@@ -75,9 +66,8 @@ describe('navigationUtils', () => {
                         id: 'llm',
                         icon: 'brain',
                     },
-                });
-            });
-        });
+
+
 
         describe('navigateToExtensionSubmenu', () => {
             it('should create navigation actions for extension submenu', () => {
@@ -90,7 +80,7 @@ describe('navigationUtils', () => {
                         currentLevel: 'submenu',
                         selectedExtensionSubmenu: 'agents',
                     },
-                });
+
                 expect(actions[1]).toEqual({
                     type: 'PUSH_BREADCRUMB',
                     item: {
@@ -100,9 +90,8 @@ describe('navigationUtils', () => {
                         id: 'agents',
                         icon: 'bot',
                     },
-                });
-            });
-        });
+
+
 
         describe('goBack', () => {
             it('should create GO_BACK action', () => {
@@ -110,9 +99,8 @@ describe('navigationUtils', () => {
 
                 expect(action).toEqual({
                     type: 'GO_BACK',
-                });
-            });
-        });
+
+
 
         describe('resetToCategory', () => {
             it('should create RESET_BREADCRUMBS action', () => {
@@ -120,10 +108,9 @@ describe('navigationUtils', () => {
 
                 expect(action).toEqual({
                     type: 'RESET_BREADCRUMBS',
-                });
-            });
-        });
-    });
+
+
+
 
     describe('navigationHelpers', () => {
         const mockNavigationState: NavigationState = {
@@ -141,19 +128,16 @@ describe('navigationUtils', () => {
         describe('canGoBack', () => {
             it('should return true when navigation can go back', () => {
                 expect(navigationHelpers.canGoBack(mockNavigationState)).toBe(true);
-            });
 
             it('should return false when navigation cannot go back', () => {
                 const state = { ...mockNavigationState, canGoBack: false, breadcrumb: [] };
                 expect(navigationHelpers.canGoBack(state)).toBe(false);
-            });
-        });
+
 
         describe('getCurrentPath', () => {
             it('should return current path for plugins', () => {
                 const path = navigationHelpers.getCurrentPath(mockNavigationState);
                 expect(path).toBe('Plugins > llm > openai');
-            });
 
             it('should return current path for extensions', () => {
                 const extensionState: NavigationState = {
@@ -167,35 +151,29 @@ describe('navigationUtils', () => {
 
                 const path = navigationHelpers.getCurrentPath(extensionState);
                 expect(path).toBe('Extensions > agents > automation');
-            });
-        });
+
 
         describe('getBreadcrumbTrail', () => {
             it('should return breadcrumb names as array', () => {
                 const trail = navigationHelpers.getBreadcrumbTrail(mockNavigationState);
                 expect(trail).toEqual(['LLM Providers', 'OpenAI']);
-            });
-        });
+
 
         describe('isAtLevel', () => {
             it('should return true when at specified level', () => {
                 expect(navigationHelpers.isAtLevel(mockNavigationState, 'items')).toBe(true);
-            });
 
             it('should return false when not at specified level', () => {
                 expect(navigationHelpers.isAtLevel(mockNavigationState, 'settings')).toBe(false);
-            });
-        });
+
 
         describe('isInCategory', () => {
             it('should return true when in specified category', () => {
                 expect(navigationHelpers.isInCategory(mockNavigationState, 'Plugins')).toBe(true);
-            });
 
             it('should return false when not in specified category', () => {
                 expect(navigationHelpers.isInCategory(mockNavigationState, 'Extensions')).toBe(false);
-            });
-        });
+
 
         describe('getNavigationContext', () => {
             it('should return complete navigation context', () => {
@@ -207,10 +185,9 @@ describe('navigationUtils', () => {
                     path: 'Plugins > llm > openai',
                     breadcrumbs: mockNavigationState.breadcrumb,
                     canGoBack: true,
-                });
-            });
-        });
-    });
+
+
+
 
     describe('navigationValidation', () => {
         describe('validateNavigationState', () => {
@@ -228,7 +205,6 @@ describe('navigationUtils', () => {
                 };
 
                 expect(navigationValidation.validateNavigationState(validState)).toBe(true);
-            });
 
             it('should detect breadcrumb length mismatch', () => {
                 const invalidState: NavigationState = {
@@ -256,7 +232,6 @@ describe('navigationUtils', () => {
                 );
 
                 consoleSpy.mockRestore();
-            });
 
             it('should detect category-selection mismatch', () => {
                 const invalidState: NavigationState = {
@@ -280,7 +255,6 @@ describe('navigationUtils', () => {
                 );
 
                 consoleSpy.mockRestore();
-            });
-        });
-    });
-});
+
+
+

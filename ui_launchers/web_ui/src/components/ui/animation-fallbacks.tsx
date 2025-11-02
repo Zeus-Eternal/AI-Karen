@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { ReactNode, CSSProperties } from 'react';
 import { useProgressiveEnhancement } from '@/utils/progressive-enhancement';

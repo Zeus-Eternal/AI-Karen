@@ -16,14 +16,12 @@ const mockPerformance = {
 
 Object.defineProperty(global, 'performance', {
   value: mockPerformance
-});
 
 describe('PerformanceTracker', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     performanceTracker.clearHistory();
     mockPerformance.now.mockImplementation(() => Date.now());
-  });
 
   describe('startOperation and endOperation', () => {
     it('should track operation timing', () => {
@@ -45,13 +43,11 @@ describe('PerformanceTracker', () => {
         endTime,
         duration: 500,
         responseTime: 500
-      });
-    });
+
 
     it('should return null for non-existent operation', () => {
       const metrics = performanceTracker.endOperation('non-existent');
       expect(metrics).toBeNull();
-    });
 
     it('should handle metadata', () => {
       const operationId = 'test-operation';
@@ -61,16 +57,14 @@ describe('PerformanceTracker', () => {
       const metrics = performanceTracker.endOperation(operationId);
       
       expect(metrics).toBeDefined();
-    });
-  });
+
 
   describe('trackOperation', () => {
     it('should track async operation', async () => {
       const operation = jest.fn(async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         return 'result';
-      });
-      
+
       mockPerformance.now
         .mockReturnValueOnce(1000)
         .mockReturnValueOnce(1100);
@@ -83,20 +77,17 @@ describe('PerformanceTracker', () => {
       expect(result).toBe('result');
       expect(metrics.duration).toBe(100);
       expect(operation).toHaveBeenCalled();
-    });
 
     it('should handle operation errors', async () => {
       const operation = jest.fn(async () => {
         throw new Error('Test error');
-      });
-      
+
       await expect(
         performanceTracker.trackOperation('error-test', operation)
       ).rejects.toThrow('Test error');
       
       expect(operation).toHaveBeenCalled();
-    });
-  });
+
 
   describe('trackSyncOperation', () => {
     it('should track synchronous operation', () => {
@@ -114,20 +105,17 @@ describe('PerformanceTracker', () => {
       expect(result).toBe('sync-result');
       expect(metrics.duration).toBe(50);
       expect(operation).toHaveBeenCalled();
-    });
 
     it('should handle sync operation errors', () => {
       const operation = jest.fn(() => {
         throw new Error('Sync error');
-      });
-      
+
       expect(() =>
         performanceTracker.trackSyncOperation('sync-error-test', operation)
       ).toThrow('Sync error');
       
       expect(operation).toHaveBeenCalled();
-    });
-  });
+
 
   describe('getPerformanceStats', () => {
     it('should calculate performance statistics', async () => {
@@ -146,8 +134,7 @@ describe('PerformanceTracker', () => {
         const time = callIndex % 2 === 0 ? 1000 : 1000 + duration;
         callIndex++;
         return time;
-      });
-      
+
       for (const op of operations) {
         await performanceTracker.trackOperation('test-op', op);
       }
@@ -158,7 +145,6 @@ describe('PerformanceTracker', () => {
       expect(stats.averageTime).toBe(200);
       expect(stats.minTime).toBe(100);
       expect(stats.maxTime).toBe(300);
-    });
 
     it('should return zero stats for no operations', () => {
       const stats = performanceTracker.getPerformanceStats();
@@ -170,9 +156,8 @@ describe('PerformanceTracker', () => {
         maxTime: 0,
         p95Time: 0,
         p99Time: 0
-      });
-    });
-  });
+
+
 
   describe('getMemoryUsage', () => {
     it('should return memory usage when available', () => {
@@ -182,8 +167,7 @@ describe('PerformanceTracker', () => {
         usedJSHeapSize: 1000000,
         totalJSHeapSize: 2000000,
         jsHeapSizeLimit: 4000000
-      });
-    });
+
 
     it('should return empty object when memory API not available', () => {
       const originalPerformance = global.performance;
@@ -195,8 +179,7 @@ describe('PerformanceTracker', () => {
       
       // Restore
       (global as any).performance = originalPerformance;
-    });
-  });
+
 
   describe('trackNetworkRequest', () => {
     it('should track network request performance', () => {
@@ -215,7 +198,6 @@ describe('PerformanceTracker', () => {
       expect(metrics.metadata?.statusCode).toBe(200);
       expect(metrics.metadata?.url).toBe(url);
       expect(metrics.metadata?.method).toBe(method);
-    });
 
     it('should track network request errors', () => {
       const url = 'https://api.example.com/test';
@@ -226,8 +208,7 @@ describe('PerformanceTracker', () => {
       const metrics = tracker.end(undefined, error);
       
       expect(metrics.metadata?.error).toBe('Network error');
-    });
-  });
+
 
   describe('getRecentMetrics', () => {
     it('should return recent metrics with limit', async () => {
@@ -239,8 +220,7 @@ describe('PerformanceTracker', () => {
       const recent = performanceTracker.getRecentMetrics(5);
       
       expect(recent).toHaveLength(5);
-    });
-  });
+
 
   describe('clearHistory', () => {
     it('should clear performance history', async () => {
@@ -253,6 +233,5 @@ describe('PerformanceTracker', () => {
       
       stats = performanceTracker.getPerformanceStats();
       expect(stats.count).toBe(0);
-    });
-  });
-});
+
+

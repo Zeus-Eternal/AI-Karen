@@ -4,6 +4,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
@@ -51,7 +52,7 @@ vi.mock('@/components/ui/form-field', () => ({
         id={name}
         name={name}
         value={value}
-        onChange={(e) = aria-label="Input"> onValueChange(e.target.value)}
+        onChange={(e) => onValueChange(e.target.value)}
         {...props}
       />
     </div>
@@ -81,7 +82,6 @@ const TestApp = () => (
 describe('Authentication Flow E2E Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Complete Login Flow', () => {
     it('should complete full login flow from unauthenticated to authenticated', async () => {
@@ -118,7 +118,6 @@ describe('Authentication Flow E2E Tests', () => {
       // Wait for initial auth check and login form to appear
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      });
 
       // Verify protected content is not shown
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
@@ -135,7 +134,6 @@ describe('Authentication Flow E2E Tests', () => {
       // Wait for login to complete and protected content to appear
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       // Verify login form is no longer shown
       expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
@@ -144,8 +142,7 @@ describe('Authentication Flow E2E Tests', () => {
       expect(mockAuthService.login).toHaveBeenCalledWith({
         email: 'test@example.com',
         password: 'password123',
-      });
-    });
+
 
     it('should handle login failure and allow retry', async () => {
       const user = userEvent.setup();
@@ -163,14 +160,12 @@ describe('Authentication Flow E2E Tests', () => {
           tenant_id: 'test-tenant',
           two_factor_enabled: false,
           preferences: {},
-        });
 
       render(<TestApp />);
 
       // Wait for login form to appear
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      });
 
       // First login attempt (will fail)
       const emailInput = screen.getByLabelText(/email/i);
@@ -184,7 +179,6 @@ describe('Authentication Flow E2E Tests', () => {
       // Wait for error message
       await waitFor(() => {
         expect(screen.getByText(/invalid credentials/i)).toBeInTheDocument();
-      });
 
       // Verify still on login form
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
@@ -199,11 +193,9 @@ describe('Authentication Flow E2E Tests', () => {
       // Wait for successful login and protected content
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       // Verify login form is no longer shown
       expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
-    });
 
     it('should handle 2FA flow end-to-end', async () => {
       const user = userEvent.setup();
@@ -221,14 +213,12 @@ describe('Authentication Flow E2E Tests', () => {
           tenant_id: 'test-tenant',
           two_factor_enabled: true,
           preferences: {},
-        });
 
       render(<TestApp />);
 
       // Wait for login form to appear
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      });
 
       // Initial login attempt
       const emailInput = screen.getByLabelText(/email/i);
@@ -242,7 +232,6 @@ describe('Authentication Flow E2E Tests', () => {
       // Wait for 2FA field to appear
       await waitFor(() => {
         expect(screen.getByLabelText(/two-factor/i)).toBeInTheDocument();
-      });
 
       // Verify still on login form but with 2FA field
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
@@ -258,7 +247,6 @@ describe('Authentication Flow E2E Tests', () => {
       // Wait for successful login and protected content
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       // Verify login form is no longer shown
       expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
@@ -268,9 +256,8 @@ describe('Authentication Flow E2E Tests', () => {
         email: 'test@example.com',
         password: 'password123',
         totp_code: '123456',
-      });
-    });
-  });
+
+
 
   describe('Authentication State Persistence', () => {
     it('should show protected content immediately if user is already authenticated', async () => {
@@ -305,12 +292,10 @@ describe('Authentication Flow E2E Tests', () => {
       // Wait for protected content to appear
       await waitFor(() => {
         expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-      });
 
       // Verify login form never appeared
       expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('should handle network errors gracefully', async () => {
@@ -327,7 +312,6 @@ describe('Authentication Flow E2E Tests', () => {
       // Wait for login form to appear
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      });
 
       // Attempt login
       const emailInput = screen.getByLabelText(/email/i);
@@ -341,12 +325,10 @@ describe('Authentication Flow E2E Tests', () => {
       // Wait for error message
       await waitFor(() => {
         expect(screen.getByText(/network error/i)).toBeInTheDocument();
-      });
 
       // Verify still on login form
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
 
     it('should handle authentication service unavailable', async () => {
       // Mock service unavailable
@@ -357,9 +339,7 @@ describe('Authentication Flow E2E Tests', () => {
       // Should fall back to login form
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      });
 
       expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    });
-  });
-});
+
+

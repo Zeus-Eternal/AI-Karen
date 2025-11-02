@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         success: true, 
         message: `Quality gate ${gateId} overridden` 
-      });
+
     }
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   } catch (error) {

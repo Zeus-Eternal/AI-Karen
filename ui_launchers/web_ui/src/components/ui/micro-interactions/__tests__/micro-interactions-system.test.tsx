@@ -34,32 +34,27 @@ vi.mock('framer-motion', () => ({
 Object.defineProperty(navigator, 'vibrate', {
   value: vi.fn(),
   writable: true,
-});
 
 describe('Micro-Interactions System', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('InteractiveButton', () => {
     it('should render with default interactive states', () => {
       render(
         <InteractiveButton data-testid="interactive-btn">
-          Click me
         </InteractiveButton>
       );
 
       const button = screen.getByTestId('interactive-btn');
       expect(button).toBeInTheDocument();
       expect(button).toHaveTextContent('Click me');
-    });
 
     it('should handle hover interactions', async () => {
       const user = userEvent.setup();
       
       render(
         <InteractiveButton data-testid="hover-btn">
-          Hover me
         </InteractiveButton>
       );
 
@@ -70,7 +65,6 @@ describe('Micro-Interactions System', () => {
       
       await user.unhover(button);
       // Should return to normal state
-    });
 
     it('should handle click interactions with haptic feedback', async () => {
       const onClick = vi.fn();
@@ -79,7 +73,6 @@ describe('Micro-Interactions System', () => {
       render(
         <MicroInteractionProvider hapticEnabled={true}>
           <InteractiveButton onClick={onClick} data-testid="click-btn">
-            Click me
           </InteractiveButton>
         </MicroInteractionProvider>
       );
@@ -90,19 +83,16 @@ describe('Micro-Interactions System', () => {
       
       expect(onClick).toHaveBeenCalledTimes(1);
       expect(navigator.vibrate).toHaveBeenCalledWith(50);
-    });
 
     it('should show loading state correctly', () => {
       render(
         <InteractiveButton loading data-testid="loading-btn">
-          Submit
         </InteractiveButton>
       );
 
       const button = screen.getByTestId('loading-btn');
       expect(button).toBeDisabled();
       expect(button).toHaveAttribute('aria-busy', 'true');
-    });
 
     it('should support different variants', () => {
       const variants = ['default', 'primary', 'secondary', 'destructive'] as const;
@@ -117,8 +107,7 @@ describe('Micro-Interactions System', () => {
         const button = screen.getByTestId(`${variant}-btn`);
         expect(button).toHaveClass(`btn-${variant}`);
         unmount();
-      });
-    });
+
 
     it('should handle keyboard interactions', async () => {
       const onClick = vi.fn();
@@ -126,7 +115,6 @@ describe('Micro-Interactions System', () => {
       
       render(
         <InteractiveButton onClick={onClick} data-testid="keyboard-btn">
-          Keyboard
         </InteractiveButton>
       );
 
@@ -138,8 +126,7 @@ describe('Micro-Interactions System', () => {
       
       await user.keyboard(' ');
       expect(onClick).toHaveBeenCalledTimes(2);
-    });
-  });
+
 
   describe('InteractiveInput', () => {
     it('should render with focus animations', () => {
@@ -153,7 +140,6 @@ describe('Micro-Interactions System', () => {
       const input = screen.getByTestId('interactive-input');
       expect(input).toBeInTheDocument();
       expect(input).toHaveAttribute('placeholder', 'Enter text');
-    });
 
     it('should handle focus and blur events', async () => {
       const onFocus = vi.fn();
@@ -175,7 +161,6 @@ describe('Micro-Interactions System', () => {
       
       await user.tab();
       expect(onBlur).toHaveBeenCalledTimes(1);
-    });
 
     it('should show validation states', () => {
       render(
@@ -188,7 +173,6 @@ describe('Micro-Interactions System', () => {
       const input = screen.getByTestId('error-input');
       expect(input).toHaveClass('border-red-500');
       expect(input).toHaveAttribute('aria-invalid', 'true');
-    });
 
     it('should support different sizes', () => {
       const sizes = ['sm', 'md', 'lg'] as const;
@@ -201,9 +185,8 @@ describe('Micro-Interactions System', () => {
         const input = screen.getByTestId(`${size}-input`);
         expect(input).toHaveClass(`input-${size}`);
         unmount();
-      });
-    });
-  });
+
+
 
   describe('InteractiveCard', () => {
     it('should render with hover effects', () => {
@@ -216,7 +199,6 @@ describe('Micro-Interactions System', () => {
       const card = screen.getByTestId('interactive-card');
       expect(card).toBeInTheDocument();
       expect(card).toHaveClass('hover:shadow-lg');
-    });
 
     it('should handle click interactions when clickable', async () => {
       const onClick = vi.fn();
@@ -233,7 +215,6 @@ describe('Micro-Interactions System', () => {
       
       await user.click(card);
       expect(onClick).toHaveBeenCalledTimes(1);
-    });
 
     it('should support keyboard navigation when clickable', async () => {
       const onClick = vi.fn();
@@ -250,8 +231,7 @@ describe('Micro-Interactions System', () => {
       
       await user.keyboard('{Enter}');
       expect(onClick).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('LoadingSpinner', () => {
     it('should render with default animation', () => {
@@ -260,7 +240,6 @@ describe('Micro-Interactions System', () => {
       const spinner = screen.getByTestId('spinner');
       expect(spinner).toBeInTheDocument();
       expect(spinner).toHaveClass('animate-spin');
-    });
 
     it('should support different sizes', () => {
       const sizes = ['sm', 'md', 'lg'] as const;
@@ -273,8 +252,7 @@ describe('Micro-Interactions System', () => {
         const spinner = screen.getByTestId(`${size}-spinner`);
         expect(spinner).toHaveClass(`spinner-${size}`);
         unmount();
-      });
-    });
+
 
     it('should have proper accessibility attributes', () => {
       render(
@@ -287,8 +265,7 @@ describe('Micro-Interactions System', () => {
       const spinner = screen.getByTestId('accessible-spinner');
       expect(spinner).toHaveAttribute('role', 'status');
       expect(spinner).toHaveAttribute('aria-label', 'Loading content');
-    });
-  });
+
 
   describe('ProgressAnimation', () => {
     it('should render with progress value', () => {
@@ -304,7 +281,6 @@ describe('Micro-Interactions System', () => {
       expect(progress).toBeInTheDocument();
       expect(progress).toHaveAttribute('aria-valuenow', '50');
       expect(progress).toHaveAttribute('aria-valuemax', '100');
-    });
 
     it('should animate progress changes', async () => {
       const { rerender } = render(
@@ -328,8 +304,7 @@ describe('Micro-Interactions System', () => {
 
       await waitFor(() => {
         expect(progress).toHaveAttribute('aria-valuenow', '75');
-      });
-    });
+
 
     it('should support indeterminate state', () => {
       render(
@@ -341,15 +316,13 @@ describe('Micro-Interactions System', () => {
 
       const progress = screen.getByTestId('indeterminate-progress');
       expect(progress).toHaveClass('animate-pulse');
-    });
-  });
+
 
   describe('MicroInteractionProvider', () => {
     it('should provide haptic feedback context', () => {
       const TestComponent = () => {
         return (
           <InteractiveButton data-testid="context-btn">
-            Test
           </InteractiveButton>
         );
       };
@@ -362,7 +335,6 @@ describe('Micro-Interactions System', () => {
 
       const button = screen.getByTestId('context-btn');
       expect(button).toBeInTheDocument();
-    });
 
     it('should respect reduced motion preferences', () => {
       // Mock matchMedia for reduced motion
@@ -378,20 +350,17 @@ describe('Micro-Interactions System', () => {
           removeEventListener: vi.fn(),
           dispatchEvent: vi.fn(),
         })),
-      });
 
       render(
         <MicroInteractionProvider>
           <InteractiveButton data-testid="reduced-motion-btn">
-            Test
           </InteractiveButton>
         </MicroInteractionProvider>
       );
 
       const button = screen.getByTestId('reduced-motion-btn');
       expect(button).toHaveClass('motion-reduce:transform-none');
-    });
-  });
+
 
   describe('Performance Considerations', () => {
     it('should not cause memory leaks with animations', () => {
@@ -405,7 +374,6 @@ describe('Micro-Interactions System', () => {
 
       // Should unmount without errors
       expect(() => unmount()).not.toThrow();
-    });
 
     it('should handle rapid interactions gracefully', async () => {
       const onClick = vi.fn();
@@ -413,7 +381,6 @@ describe('Micro-Interactions System', () => {
       
       render(
         <InteractiveButton onClick={onClick} data-testid="rapid-click">
-          Rapid Click
         </InteractiveButton>
       );
 
@@ -425,14 +392,12 @@ describe('Micro-Interactions System', () => {
       }
 
       expect(onClick).toHaveBeenCalledTimes(10);
-    });
 
     it('should optimize animations for 60fps', () => {
       // This would typically involve performance monitoring
       // For now, we'll check that animations use transform/opacity
       render(
         <InteractiveButton data-testid="optimized-btn">
-          Optimized
         </InteractiveButton>
       );
 
@@ -441,8 +406,7 @@ describe('Micro-Interactions System', () => {
       
       // Should use transform for animations (GPU accelerated)
       expect(computedStyle.transform).toBeDefined();
-    });
-  });
+
 
   describe('Accessibility', () => {
     it('should maintain focus visibility', async () => {
@@ -450,7 +414,6 @@ describe('Micro-Interactions System', () => {
       
       render(
         <InteractiveButton data-testid="focus-visible">
-          Focus Test
         </InteractiveButton>
       );
 
@@ -459,19 +422,16 @@ describe('Micro-Interactions System', () => {
       await user.tab();
       expect(button).toHaveFocus();
       expect(button).toHaveClass('focus-visible:ring-2');
-    });
 
     it('should provide proper ARIA attributes for loading states', () => {
       render(
         <InteractiveButton loading data-testid="loading-aria">
-          Loading Button
         </InteractiveButton>
       );
 
       const button = screen.getByTestId('loading-aria');
       expect(button).toHaveAttribute('aria-busy', 'true');
       expect(button).toHaveAttribute('aria-disabled', 'true');
-    });
 
     it('should support screen reader announcements', () => {
       render(
@@ -486,6 +446,5 @@ describe('Micro-Interactions System', () => {
 
       const progress = screen.getByTestId('sr-progress');
       expect(progress).toHaveAttribute('aria-label', 'Upload progress: 50%');
-    });
-  });
-});
+
+

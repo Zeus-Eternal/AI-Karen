@@ -1,6 +1,6 @@
-import React, {
-import {
-import { Button } from '@/components/ui/button';
+
+"use client";
+import React, { import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,39 +10,24 @@ import { Loader2, RefreshCw, RotateCcw, Save, ShieldCheck } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
-'use client';
-
 
   useCallback,
   useEffect,
   useMemo,
   useState,
-} from 'react';
+import { } from 'react';
 
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { } from '@/components/ui/card';
 
 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { } from '@/components/ui/select';
 
 
 
 
 
 
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
+import { } from '@/components/ui/alert';
 
 
 
@@ -286,7 +271,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
 
       logger.info('Loaded system model configuration', {
         modelCount: normalizedModels.length,
-      });
+
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logger.error(
@@ -313,7 +298,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
       if (provider) {
         providers.add(provider);
       }
-    });
 
     models.forEach((model) => {
       const compatibility = model.runtime_compatibility ?? [];
@@ -321,8 +305,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         if (provider) {
           providers.add(provider);
         }
-      });
-    });
+
 
     return Array.from(providers).sort();
   }, [models, workingConfig?.allowedProviders]);
@@ -354,7 +337,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           ...previous,
           [key]: value,
         };
-      });
+
     },
     [],
   );
@@ -395,7 +378,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           ...previous,
           allowedProviders: Array.from(current).sort(),
         };
-      });
+
     },
     [],
   );
@@ -432,7 +415,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
 
       const updated = normalizeConfig({ ...workingConfig, ...response });
       setConfig(updated);
@@ -443,7 +425,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         title: 'Configuration updated',
         description:
           'System model routing preferences were saved successfully.',
-      });
 
       logger.info('System configuration saved successfully');
     } catch (err) {
@@ -471,7 +452,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
   if (loading && !workingConfig) {
     return (
       <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 p-8 text-center sm:p-4 md:p-6">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground sm:w-auto md:w-full" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground " />
         <div className="space-y-1">
           <p className="text-sm font-medium text-foreground md:text-base lg:text-lg">
             Loading system configuration…
@@ -489,7 +470,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-foreground">
-            System Model Configuration
           </h3>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             Configure Kari’s default reasoning models, fallbacks, and routing
@@ -497,21 +477,21 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
+          <Button
             variant="ghost"
             size="sm"
             onClick={handleRefresh}
             disabled={loading || saving}
-           aria-label="Button">
-            <RefreshCw className="mr-2 h-4 w-4 sm:w-auto md:w-full" /> Refresh
+           >
+            <RefreshCw className="mr-2 h-4 w-4 " /> Refresh
           </Button>
-          <button
+          <Button
             variant="outline"
             size="sm"
             onClick={handleReset}
             disabled={!hasChanges || saving}
-           aria-label="Button">
-            <RotateCcw className="mr-2 h-4 w-4 sm:w-auto md:w-full" /> Reset
+           >
+            <RotateCcw className="mr-2 h-4 w-4 " /> Reset
           </Button>
           <button
             size="sm"
@@ -519,11 +499,10 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
             disabled={!hasChanges || saving}
            aria-label="Button">
             {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin sm:w-auto md:w-full" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin " />
             ) : (
-              <Save className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
+              <Save className="mr-2 h-4 w-4 " />
             )}
-            Save changes
           </Button>
         </div>
       </div>
@@ -539,7 +518,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         <CardHeader>
           <CardTitle>Routing preferences</CardTitle>
           <CardDescription>
-            Define the production defaults Kari uses when selecting reasoning
             and fallback models.
           </CardDescription>
         </CardHeader>
@@ -563,7 +541,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                Used for new conversations and automation flows unless a
                 persona overrides the selection.
               </p>
             </div>
@@ -586,7 +563,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                Automatically engaged when the default model is unavailable or
                 unhealthy.
               </p>
             </div>
@@ -600,7 +576,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                 <div>
                   <p className="font-medium">Intelligent routing</p>
                   <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                    Allow Kari to automatically pick the optimal model based on
                     live telemetry.
                   </p>
                 </div>
@@ -630,7 +605,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                 <div>
                   <p className="font-medium">Response caching</p>
                   <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                    Cache deterministic completions to accelerate repeat
                     answers.
                   </p>
                 </div>
@@ -653,7 +627,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                   value={workingConfig?.maxConcurrentModels ?? 1}
                   onChange={handleNumberChange('maxConcurrentModels')} />
                 <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  Maximum number of models Kari may load in parallel for
                   multi-intent orchestration.
                 </p>
               </div>
@@ -667,7 +640,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                   value={workingConfig?.modelSelectionTimeout ?? 60000}
                   onChange={handleNumberChange('modelSelectionTimeout')} />
                 <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  Abort model selection after this duration and rely on the
                   fallback chain.
                 </p>
               </div>
@@ -681,7 +653,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                   value={workingConfig?.cacheExpirationTime ?? 300000}
                   onChange={handleNumberChange('cacheExpirationTime')} />
                 <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  Controls how long cached completions remain valid before a
                   fresh inference is required.
                 </p>
               </div>
@@ -693,7 +664,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           <div className="space-y-3">
             <p className="font-medium">Allowed providers</p>
             <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-              Constrain Kari to trusted providers that comply with your
               security and residency policies.
             </p>
             <div className="flex flex-wrap gap-2">
@@ -702,12 +672,12 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                   provider,
                 );
                 return (
-                  <button
+                  <Button
                     key={provider}
                     type="button"
                     variant={isEnabled ? 'secondary' : 'outline'}
                     size="sm"
-                    onClick={() = aria-label="Button"> toggleProvider(provider)}
+                    onClick={() => toggleProvider(provider)}
                   >
                     {provider}
                   </Button>
@@ -728,7 +698,6 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           <div>
             <CardTitle>Active model insight</CardTitle>
             <CardDescription>
-              Review health, capabilities, and runtime configuration for the
               selected system model.
             </CardDescription>
           </div>
@@ -825,7 +794,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
               {selectedModel.configuration && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-emerald-500 sm:w-auto md:w-full" />
+                    <ShieldCheck className="h-4 w-4 text-emerald-500 " />
                     <p className="font-medium">Runtime configuration</p>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
@@ -851,11 +820,9 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           ) : (
             <div className="rounded-lg border border-dashed p-6 text-center sm:p-4 md:p-6">
               <p className="font-medium text-foreground">
-                Select a system model to inspect its configuration and health
                 signals.
               </p>
               <p className="mt-2 text-sm text-muted-foreground md:text-base lg:text-lg">
-                Kari surfaces telemetry from the orchestration backend so you
                 can validate capacity before promoting updates to production.
               </p>
             </div>

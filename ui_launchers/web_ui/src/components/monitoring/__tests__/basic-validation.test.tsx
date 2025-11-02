@@ -3,6 +3,7 @@
  */
 
 
+import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ConnectionStatusIndicator } from '../ConnectionStatusIndicator';
@@ -34,11 +35,9 @@ describe('Monitoring Components Basic Validation', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2024-01-01T12:05:00Z'));
-  });
 
   afterEach(() => {
     vi.useRealTimers();
-  });
 
   describe('ConnectionStatusIndicator', () => {
     it('should render without crashing', () => {
@@ -50,7 +49,6 @@ describe('Monitoring Components Basic Validation', () => {
       );
 
       expect(screen.getByText('Backend API')).toBeInTheDocument();
-    });
 
     it('should display status information', () => {
       render(
@@ -63,7 +61,6 @@ describe('Monitoring Components Basic Validation', () => {
       expect(screen.getByText('Backend API')).toBeInTheDocument();
       expect(screen.getByText('Healthy')).toBeInTheDocument();
       expect(screen.getByText('500ms')).toBeInTheDocument();
-    });
 
     it('should format response times correctly', () => {
       const fastStatus = { ...mockHealthyStatus, responseTime: 250 };
@@ -85,7 +82,6 @@ describe('Monitoring Components Basic Validation', () => {
       );
 
       expect(screen.getByText('2.50s')).toBeInTheDocument();
-    });
 
     it('should show details when requested', () => {
       render(
@@ -98,7 +94,6 @@ describe('Monitoring Components Basic Validation', () => {
 
       expect(screen.getByText('Success Rate:')).toBeInTheDocument();
       expect(screen.getByText('Endpoint:')).toBeInTheDocument();
-    });
 
     it('should hide details when not requested', () => {
       render(
@@ -111,7 +106,6 @@ describe('Monitoring Components Basic Validation', () => {
 
       expect(screen.queryByText('Success Rate:')).not.toBeInTheDocument();
       expect(screen.queryByText('Endpoint:')).not.toBeInTheDocument();
-    });
 
     it('should calculate success rate correctly', () => {
       render(
@@ -123,7 +117,6 @@ describe('Monitoring Components Basic Validation', () => {
       );
 
       expect(screen.getByText('98.0%')).toBeInTheDocument();
-    });
 
     it('should handle different status types', () => {
       const degradedStatus = { ...mockHealthyStatus, status: 'degraded' as const };
@@ -145,7 +138,6 @@ describe('Monitoring Components Basic Validation', () => {
       );
 
       expect(screen.getByText('Failed')).toBeInTheDocument();
-    });
 
     it('should apply custom className', () => {
       const { container } = render(
@@ -157,8 +149,7 @@ describe('Monitoring Components Basic Validation', () => {
       );
 
       expect(container.firstChild).toHaveClass('custom-class');
-    });
-  });
+
 
   describe('Types Validation', () => {
     it('should have correct ConnectionStatus interface', () => {
@@ -175,6 +166,5 @@ describe('Monitoring Components Basic Validation', () => {
       expect(status.isConnected).toBe(true);
       expect(status.status).toBe('healthy');
       expect(typeof status.responseTime).toBe('number');
-    });
-  });
-});
+
+

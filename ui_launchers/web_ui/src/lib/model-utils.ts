@@ -169,7 +169,7 @@ export function sortModelsByRelevance(models: Model[]): Model[] {
     
     // Then by size (smaller first for better performance)
     return (a.size || 0) - (b.size || 0);
-  });
+
 }
 
 /**
@@ -303,7 +303,6 @@ export function getRecommendedModels(models: Model[], useCase: 'chat' | 'code' |
       default:
         return true;
     }
-  });
-  
+
   return sortModelsByRelevance(filtered);
 }

@@ -7,7 +7,7 @@
  * Requirements: 7.2, 7.4, 7.5, 7.7
  */
 
-'use client';
+"use client";
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRole } from '@/hooks/useRole';
@@ -47,7 +47,6 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
     canRetry 
   } = useAdminErrorHandler({
     context: { operation: 'admin_dashboard' }
-  });
 
   // State management
   const [currentView, setCurrentView] = useState<DashboardView>('overview');
@@ -56,7 +55,6 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
     userStats: null,
     activitySummary: null,
     loading: true
-  });
 
   // Keyboard navigation setup
   useKeyboardNavigation(dashboardRef, {
@@ -70,7 +68,6 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
         setSelectedUsers([]);
       }
     }
-  });
 
   // Access control
   if (!hasRole('admin')) {
@@ -114,7 +111,7 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
         userStats: result.userStats,
         activitySummary: result.activitySummary,
         loading: false
-      });
+
       announce('Dashboard data loaded successfully');
     } else {
       setDashboardData(prev => ({ ...prev, loading: false }));
@@ -172,7 +169,7 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() = aria-label="Button"> handleViewChange(tab.id as DashboardView)}
+            onClick={() => handleViewChange(tab.id as DashboardView)}
             className={`py-2 px-1 border-b-2 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-t ${
               currentView === tab.id
                 ? 'border-blue-500 text-blue-600'
@@ -190,7 +187,7 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
         
         {selectedUsers.length > 0 && (
           <button
-            onClick={() = aria-label="Button"> handleViewChange('bulk-operations')}
+            onClick={() => handleViewChange('bulk-operations')}
             className={`py-2 px-1 border-b-2 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-t ${
               currentView === 'bulk-operations'
                 ? 'border-blue-500 text-blue-600'
@@ -262,7 +259,6 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
         <section aria-labelledby="activity-heading">
           <div className="bg-white p-6 rounded-lg shadow sm:p-4 md:p-6">
             <h2 id="activity-heading" className="text-lg font-medium text-gray-900 mb-4">
-              Weekly Activity Summary
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -301,7 +297,6 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
       <section aria-labelledby="quick-actions-heading">
         <div className="bg-white p-6 rounded-lg shadow sm:p-4 md:p-6">
           <h2 id="quick-actions-heading" className="text-lg font-medium text-gray-900 mb-4">
-            Quick Actions
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
@@ -406,11 +401,11 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
   if (dashboardData.loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen" role="status" aria-live="polite">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4 sm:w-auto md:w-full"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4 "></div>
         <p className="text-gray-600 mb-4">Loading dashboard...</p>
         <SimpleProgressBar 
           progress={isRetrying ? 75 : 50} 
-          className="w-64 sm:w-auto md:w-full" 
+          className="w-64 " 
           label="Loading progress"
         />
       </div>
@@ -451,7 +446,6 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
           href="#top"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-md z-50"
         >
-          Skip to top
         </a>
       </div>
     </div>

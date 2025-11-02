@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -27,7 +28,6 @@ const mockFileReader = {
 Object.defineProperty(window, 'FileReader', {
   writable: true,
   value: vi.fn(() => mockFileReader),
-});
 
 // Mock plugin data
 const mockPlugin: PluginMarketplaceEntry = {
@@ -149,11 +149,9 @@ describe('PluginInstallationWizard', () => {
   beforeEach(() => {
     vi.mocked(usePluginStore).mockReturnValue(mockUsePluginStore as any);
     mockUsePluginStore.installPlugin.mockResolvedValue('install-123');
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('Source Selection Step', () => {
     it('renders source selection options', () => {
@@ -169,7 +167,6 @@ describe('PluginInstallationWizard', () => {
       expect(screen.getByLabelText('Upload Plugin File')).toBeInTheDocument();
       expect(screen.getByLabelText('Download from URL')).toBeInTheDocument();
       expect(screen.getByLabelText('Git Repository')).toBeInTheDocument();
-    });
 
     it('shows file input when file source is selected', async () => {
       const user = userEvent.setup();
@@ -182,7 +179,6 @@ describe('PluginInstallationWizard', () => {
 
       await user.click(screen.getByLabelText('Upload Plugin File'));
       expect(screen.getByLabelText('Plugin File')).toBeInTheDocument();
-    });
 
     it('shows URL input when URL source is selected', async () => {
       const user = userEvent.setup();
@@ -195,7 +191,6 @@ describe('PluginInstallationWizard', () => {
 
       await user.click(screen.getByLabelText('Download from URL'));
       expect(screen.getByLabelText('Plugin URL')).toBeInTheDocument();
-    });
 
     it('shows git inputs when git source is selected', async () => {
       const user = userEvent.setup();
@@ -209,7 +204,6 @@ describe('PluginInstallationWizard', () => {
       await user.click(screen.getByLabelText('Git Repository'));
       expect(screen.getByLabelText('Git Repository')).toBeInTheDocument();
       expect(screen.getByLabelText('Branch')).toBeInTheDocument();
-    });
 
     it('enables next button when valid source is selected', async () => {
       const user = userEvent.setup();
@@ -225,8 +219,7 @@ describe('PluginInstallationWizard', () => {
 
       await user.click(screen.getByLabelText('Plugin Marketplace'));
       expect(nextButton).toBeEnabled();
-    });
-  });
+
 
   describe('Plugin Selection Step', () => {
     it('shows plugin selection when marketplace is chosen', async () => {
@@ -242,7 +235,6 @@ describe('PluginInstallationWizard', () => {
       await user.click(screen.getByRole('button', { name: /next/i }));
 
       expect(screen.getByText('Select Plugin')).toBeInTheDocument();
-    });
 
     it('allows plugin selection from marketplace', async () => {
       const user = userEvent.setup();
@@ -262,8 +254,7 @@ describe('PluginInstallationWizard', () => {
 
       await user.click(slackPlugin.closest('div')!);
       expect(screen.getByRole('button', { name: /next/i })).toBeEnabled();
-    });
-  });
+
 
   describe('Validation Step', () => {
     it('shows validation progress', async () => {
@@ -278,7 +269,6 @@ describe('PluginInstallationWizard', () => {
       expect(screen.getByText('Validating Plugin')).toBeInTheDocument();
       expect(screen.getByText('Plugin manifest is valid')).toBeInTheDocument();
       expect(screen.getByText('Compatible with current system version')).toBeInTheDocument();
-    });
 
     it('displays plugin information during validation', async () => {
       render(
@@ -291,13 +281,11 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Plugin Information')).toBeInTheDocument();
-      });
 
       expect(screen.getByText('Test Plugin')).toBeInTheDocument();
       expect(screen.getByText('1.0.0')).toBeInTheDocument();
       expect(screen.getByText('Test Author')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Dependencies Step', () => {
     it('shows dependency resolution progress', async () => {
@@ -311,12 +299,10 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Resolve Dependencies')).toBeInTheDocument();
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Test Dependency')).toBeInTheDocument();
-      });
-    });
+
 
     it('displays dependency status correctly', async () => {
       render(
@@ -329,12 +315,10 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Test Dependency')).toBeInTheDocument();
-      });
 
       // Should show "Will Install" for uninstalled dependencies
       expect(screen.getByText('Will Install')).toBeInTheDocument();
-    });
-  });
+
 
   describe('Permissions Step', () => {
     it('displays plugin permissions', async () => {
@@ -348,13 +332,11 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Configure Permissions')).toBeInTheDocument();
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Test Permission')).toBeInTheDocument();
         expect(screen.getByText('Optional Permission')).toBeInTheDocument();
-      });
-    });
+
 
     it('automatically grants required permissions', async () => {
       render(
@@ -367,12 +349,10 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Test Permission')).toBeInTheDocument();
-      });
 
       const requiredPermission = screen.getByLabelText('Test Permission');
       expect(requiredPermission).toBeChecked();
       expect(requiredPermission).toBeDisabled();
-    });
 
     it('allows toggling optional permissions', async () => {
       const user = userEvent.setup();
@@ -386,7 +366,6 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Optional Permission')).toBeInTheDocument();
-      });
 
       const optionalPermission = screen.getByLabelText('Optional Permission');
       expect(optionalPermission).not.toBeChecked();
@@ -394,7 +373,6 @@ describe('PluginInstallationWizard', () => {
 
       await user.click(optionalPermission);
       expect(optionalPermission).toBeChecked();
-    });
 
     it('shows permission details dialog', async () => {
       const user = userEvent.setup();
@@ -408,7 +386,6 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Test Permission')).toBeInTheDocument();
-      });
 
       // Click the info button for the first permission
       const infoButtons = screen.getAllByRole('button');
@@ -420,8 +397,7 @@ describe('PluginInstallationWizard', () => {
         await user.click(infoButton);
         expect(screen.getByText('Permission Details')).toBeInTheDocument();
       }
-    });
-  });
+
 
   describe('Configuration Step', () => {
     it('displays configuration form', async () => {
@@ -436,22 +412,18 @@ describe('PluginInstallationWizard', () => {
       // Navigate to configuration step
       await waitFor(() => {
         expect(screen.getByText('Configure Permissions')).toBeInTheDocument();
-      });
 
       await waitFor(() => {
         const nextButton = screen.getByRole('button', { name: /next/i });
         fireEvent.click(nextButton);
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
-      });
 
       expect(screen.getByLabelText('API Key *')).toBeInTheDocument();
       expect(screen.getByLabelText('Timeout')).toBeInTheDocument();
       expect(screen.getByLabelText('Enabled')).toBeInTheDocument();
       expect(screen.getByLabelText('Mode')).toBeInTheDocument();
-    });
 
     it('handles different field types correctly', async () => {
       const user = userEvent.setup();
@@ -466,16 +438,13 @@ describe('PluginInstallationWizard', () => {
       // Navigate to configuration step
       await waitFor(() => {
         expect(screen.getByText('Configure Permissions')).toBeInTheDocument();
-      });
 
       await waitFor(() => {
         const nextButton = screen.getByRole('button', { name: /next/i });
         fireEvent.click(nextButton);
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
-      });
 
       // Test password field
       const apiKeyField = screen.getByLabelText('API Key *');
@@ -491,7 +460,6 @@ describe('PluginInstallationWizard', () => {
 
       // Test select field
       expect(screen.getByText('Select an option')).toBeInTheDocument();
-    });
 
     it('validates required fields', async () => {
       const user = userEvent.setup();
@@ -506,16 +474,13 @@ describe('PluginInstallationWizard', () => {
       // Navigate to configuration step
       await waitFor(() => {
         expect(screen.getByText('Configure Permissions')).toBeInTheDocument();
-      });
 
       await waitFor(() => {
         const nextButton = screen.getByRole('button', { name: /next/i });
         fireEvent.click(nextButton);
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
-      });
 
       // Next button should be disabled without required fields
       const nextButton = screen.getByRole('button', { name: /next/i });
@@ -526,8 +491,7 @@ describe('PluginInstallationWizard', () => {
       await user.type(apiKeyField, 'test-api-key');
 
       expect(nextButton).toBeEnabled();
-    });
-  });
+
 
   describe('Review Step', () => {
     it('displays installation summary', async () => {
@@ -543,17 +507,14 @@ describe('PluginInstallationWizard', () => {
       // Navigate through all steps to review
       await waitFor(() => {
         expect(screen.getByText('Configure Permissions')).toBeInTheDocument();
-      });
 
       // Go to configuration
       await waitFor(() => {
         const nextButton = screen.getByRole('button', { name: /next/i });
         fireEvent.click(nextButton);
-      });
 
       await waitFor(() => {
         expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
-      });
 
       // Fill required configuration
       const apiKeyField = screen.getByLabelText('API Key *');
@@ -565,13 +526,11 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Review Installation')).toBeInTheDocument();
-      });
 
       expect(screen.getByText('Plugin Information')).toBeInTheDocument();
       expect(screen.getByText('Dependencies')).toBeInTheDocument();
       expect(screen.getByText('Granted Permissions')).toBeInTheDocument();
       expect(screen.getByText('Configuration')).toBeInTheDocument();
-    });
 
     it('shows install button on review step', async () => {
       const user = userEvent.setup();
@@ -586,7 +545,6 @@ describe('PluginInstallationWizard', () => {
       // Navigate to review step (simplified for test)
       await waitFor(() => {
         expect(screen.getByText('Configure Permissions')).toBeInTheDocument();
-      });
 
       // Skip to review by mocking the state
       const nextButton = screen.getByRole('button', { name: /next/i });
@@ -594,7 +552,6 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
-      });
 
       const apiKeyField = screen.getByLabelText('API Key *');
       await user.type(apiKeyField, 'test-api-key');
@@ -603,9 +560,8 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /install plugin/i })).toBeInTheDocument();
-      });
-    });
-  });
+
+
 
   describe('Installation Step', () => {
     it('shows installation progress', async () => {
@@ -621,14 +577,12 @@ describe('PluginInstallationWizard', () => {
       // Navigate to review and install
       await waitFor(() => {
         expect(screen.getByText('Configure Permissions')).toBeInTheDocument();
-      });
 
       const nextButton = screen.getByRole('button', { name: /next/i });
       fireEvent.click(nextButton);
 
       await waitFor(() => {
         expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
-      });
 
       const apiKeyField = screen.getByLabelText('API Key *');
       await user.type(apiKeyField, 'test-api-key');
@@ -637,17 +591,14 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /install plugin/i })).toBeInTheDocument();
-      });
 
       await user.click(screen.getByRole('button', { name: /install plugin/i }));
 
       await waitFor(() => {
         expect(screen.getByText('Installing Plugin')).toBeInTheDocument();
-      });
 
       expect(screen.getByText('Progress')).toBeInTheDocument();
       expect(screen.getByRole('progressbar')).toBeInTheDocument();
-    });
 
     it('calls installPlugin with correct parameters', async () => {
       const user = userEvent.setup();
@@ -662,14 +613,12 @@ describe('PluginInstallationWizard', () => {
       // Navigate to install
       await waitFor(() => {
         expect(screen.getByText('Configure Permissions')).toBeInTheDocument();
-      });
 
       const nextButton = screen.getByRole('button', { name: /next/i });
       fireEvent.click(nextButton);
 
       await waitFor(() => {
         expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
-      });
 
       const apiKeyField = screen.getByLabelText('API Key *');
       await user.type(apiKeyField, 'test-api-key');
@@ -678,7 +627,6 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /install plugin/i })).toBeInTheDocument();
-      });
 
       await user.click(screen.getByRole('button', { name: /install plugin/i }));
 
@@ -690,10 +638,9 @@ describe('PluginInstallationWizard', () => {
           config: { apiKey: 'test-api-key' },
           permissions: ['test-permission'],
           autoStart: true,
-        });
-      });
-    });
-  });
+
+
+
 
   describe('Complete Step', () => {
     it('shows completion message', async () => {
@@ -709,14 +656,12 @@ describe('PluginInstallationWizard', () => {
       // Navigate through installation
       await waitFor(() => {
         expect(screen.getByText('Configure Permissions')).toBeInTheDocument();
-      });
 
       const nextButton = screen.getByRole('button', { name: /next/i });
       fireEvent.click(nextButton);
 
       await waitFor(() => {
         expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
-      });
 
       const apiKeyField = screen.getByLabelText('API Key *');
       await user.type(apiKeyField, 'test-api-key');
@@ -725,7 +670,6 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /install plugin/i })).toBeInTheDocument();
-      });
 
       await user.click(screen.getByRole('button', { name: /install plugin/i }));
 
@@ -736,7 +680,6 @@ describe('PluginInstallationWizard', () => {
 
       expect(screen.getByText('Test Plugin is now installed!')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /view plugin/i })).toBeInTheDocument();
-    });
 
     it('calls onComplete when view plugin is clicked', async () => {
       const user = userEvent.setup();
@@ -745,7 +688,6 @@ describe('PluginInstallationWizard', () => {
       mockUsePluginStore.installPlugin.mockImplementation(async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         return 'install-123';
-      });
 
       render(
         <PluginInstallationWizard
@@ -765,7 +707,6 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
-      });
 
       const apiKeyField = screen.getByLabelText('API Key *');
       await user.type(apiKeyField, 'test-api-key');
@@ -774,7 +715,6 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /install plugin/i })).toBeInTheDocument();
-      });
 
       fireEvent.click(screen.getByRole('button', { name: /install plugin/i }));
 
@@ -784,8 +724,7 @@ describe('PluginInstallationWizard', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /view plugin/i }));
       expect(mockOnComplete).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Navigation', () => {
     it('allows going back to previous steps', async () => {
@@ -806,7 +745,6 @@ describe('PluginInstallationWizard', () => {
       // Go back
       await user.click(screen.getAllByRole('button', { name: /back/i })[1]);
       expect(screen.getByText('Choose Installation Source')).toBeInTheDocument();
-    });
 
     it('calls onClose when back to plugins is clicked', async () => {
       const user = userEvent.setup();
@@ -819,8 +757,7 @@ describe('PluginInstallationWizard', () => {
 
       await user.click(screen.getByRole('button', { name: /back to plugins/i }));
       expect(mockOnClose).toHaveBeenCalled();
-    });
-  });
+
 
   describe('Error Handling', () => {
     it('handles installation errors gracefully', async () => {
@@ -845,7 +782,6 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Plugin Configuration')).toBeInTheDocument();
-      });
 
       const apiKeyField = screen.getByLabelText('API Key *');
       await user.type(apiKeyField, 'test-api-key');
@@ -854,15 +790,13 @@ describe('PluginInstallationWizard', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /install plugin/i })).toBeInTheDocument();
-      });
 
       fireEvent.click(screen.getByRole('button', { name: /install plugin/i }));
 
       await waitFor(() => {
         expect(screen.getByText('Installation failed')).toBeInTheDocument();
       }, { timeout: 5000 });
-    });
-  });
+
 
   describe('Preselected Plugin', () => {
     it('starts at validation step when plugin is preselected', () => {
@@ -875,7 +809,6 @@ describe('PluginInstallationWizard', () => {
       );
 
       expect(screen.getByText('Validating Plugin')).toBeInTheDocument();
-    });
 
     it('disables back button on validation step with preselected plugin', () => {
       render(
@@ -891,6 +824,5 @@ describe('PluginInstallationWizard', () => {
         button.textContent?.includes('Back') && !button.textContent?.includes('Plugins')
       );
       expect(navigationBackButton).toBeDisabled();
-    });
-  });
-});
+
+

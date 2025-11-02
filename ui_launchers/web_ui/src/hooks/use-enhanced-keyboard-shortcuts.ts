@@ -4,11 +4,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { 
-  useKeyboardShortcuts, 
-  type KeyboardShortcutConfig,
-  type KeyboardShortcutHandler 
-} from './use-keyboard-shortcuts';
+import {  useKeyboardShortcuts, type KeyboardShortcutConfig, type KeyboardShortcutHandler } from './use-keyboard-shortcuts';
 
 export interface EnhancedKeyboardShortcutConfig extends KeyboardShortcutConfig {
   /** Whether this shortcut should be announced to screen readers */
@@ -109,14 +105,14 @@ export const useModalKeyboardShortcuts = (
       announce: true,
       announcementText: 'Action confirmed',
       priority: 90,
-    });
+
   }
 
   useEnhancedKeyboardShortcuts(shortcuts, {
     context: 'modal',
     enabled: isOpen,
     announce: announce || (() => {}),
-  });
+
 };
 
 /**
@@ -139,7 +135,7 @@ export const useFormKeyboardShortcuts = (
       category: 'Form',
       announce: true,
       announcementText: 'Form submitted',
-    });
+
   }
 
   if (onReset) {
@@ -152,7 +148,7 @@ export const useFormKeyboardShortcuts = (
       category: 'Form',
       announce: true,
       announcementText: 'Form reset',
-    });
+
   }
 
   if (onCancel) {
@@ -163,14 +159,14 @@ export const useFormKeyboardShortcuts = (
       category: 'Form',
       announce: true,
       announcementText: 'Form cancelled',
-    });
+
   }
 
   useEnhancedKeyboardShortcuts(shortcuts, {
     context: 'form',
     enabled: true,
     announce: announce || (() => {}),
-  });
+
 };
 
 /**
@@ -194,7 +190,7 @@ export const useTableKeyboardShortcuts = (
       category: 'Table',
       announce: true,
       announcementText: 'All items selected',
-    });
+
   }
 
   if (onClearSelection) {
@@ -205,7 +201,7 @@ export const useTableKeyboardShortcuts = (
       category: 'Table',
       announce: true,
       announcementText: 'Selection cleared',
-    });
+
   }
 
   if (onDelete) {
@@ -216,7 +212,7 @@ export const useTableKeyboardShortcuts = (
       category: 'Table',
       announce: true,
       announcementText: 'Items deleted',
-    });
+
   }
 
   if (onEdit) {
@@ -227,14 +223,14 @@ export const useTableKeyboardShortcuts = (
       category: 'Table',
       announce: true,
       announcementText: 'Edit mode activated',
-    });
+
   }
 
   useEnhancedKeyboardShortcuts(shortcuts, {
     context: 'table',
     enabled: true,
     announce: announce || (() => {}),
-  });
+
 };
 
 /**
@@ -258,7 +254,6 @@ export const useSearchKeyboardShortcuts = (
       category: 'Search',
       announce: true,
       announcementText: 'Search focused',
-    });
 
     shortcuts.push({
       key: '/',
@@ -267,7 +262,7 @@ export const useSearchKeyboardShortcuts = (
       category: 'Search',
       announce: true,
       announcementText: 'Search focused',
-    });
+
   }
 
   if (onClear) {
@@ -278,7 +273,7 @@ export const useSearchKeyboardShortcuts = (
       category: 'Search',
       announce: true,
       announcementText: 'Search cleared',
-    });
+
   }
 
   if (onNext) {
@@ -290,7 +285,6 @@ export const useSearchKeyboardShortcuts = (
       category: 'Search',
       announce: true,
       announcementText: 'Next search result',
-    });
 
     shortcuts.push({
       key: 'F3',
@@ -299,7 +293,7 @@ export const useSearchKeyboardShortcuts = (
       category: 'Search',
       announce: true,
       announcementText: 'Next search result',
-    });
+
   }
 
   if (onPrevious) {
@@ -312,7 +306,6 @@ export const useSearchKeyboardShortcuts = (
       category: 'Search',
       announce: true,
       announcementText: 'Previous search result',
-    });
 
     shortcuts.push({
       key: 'F3',
@@ -322,14 +315,14 @@ export const useSearchKeyboardShortcuts = (
       category: 'Search',
       announce: true,
       announcementText: 'Previous search result',
-    });
+
   }
 
   useEnhancedKeyboardShortcuts(shortcuts, {
     context: 'search',
     enabled: true,
     announce: announce || (() => {}),
-  });
+
 };
 
 /**
@@ -369,7 +362,6 @@ export const useKeyboardShortcutHelp = () => {
     context: 'global',
     enabled: true,
     announce: () => {},
-  });
 
   return {
     isHelpVisible,

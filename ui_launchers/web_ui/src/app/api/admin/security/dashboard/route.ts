@@ -310,7 +310,7 @@ async function getRecentSecurityActivities(adminUtils: any, todayStart: Date) {
         action,
         start_date: todayStart,
         limit: 5
-      });
+
       activities.push(...logs.data.map((log: any) => ({
         timestamp: log.timestamp,
         action: log.action,

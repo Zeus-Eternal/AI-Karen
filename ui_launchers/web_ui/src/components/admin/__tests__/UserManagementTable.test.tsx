@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { jest } from '@jest/globals';
 import { UserManagementTable } from '../UserManagementTable';
@@ -33,7 +34,7 @@ jest.mock('../UserSearchFilters', () => ({
       <input
         data-testid="search-input"
         value={filters.search || ''}
-        onChange={(e) = aria-label="Input"> onFiltersChange({ ...filters, search: e.target.value })}
+        onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
       />
       <button onClick={onRefresh} aria-label="Button">Refresh</button>
     </div>
@@ -98,7 +99,6 @@ describe('UserManagementTable', () => {
         role: 'admin'
       } as any,
       loading: false
-    });
 
     // Mock successful API response
     mockFetch.mockResolvedValue({
@@ -118,7 +118,6 @@ describe('UserManagementTable', () => {
         }
       })
     } as any);
-  });
 
   it('renders user management table', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -128,8 +127,7 @@ describe('UserManagementTable', () => {
       expect(screen.getByText('admin@test.com')).toBeInTheDocument();
       expect(screen.getByText('User One')).toBeInTheDocument();
       expect(screen.getByText('Admin User')).toBeInTheDocument();
-    });
-  });
+
 
   it('displays user roles with proper styling', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -137,8 +135,7 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       expect(screen.getByText('user')).toBeInTheDocument();
       expect(screen.getByText('admin')).toBeInTheDocument();
-    });
-  });
+
 
   it('displays user status correctly', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -149,8 +146,7 @@ describe('UserManagementTable', () => {
       
       const verifiedStatuses = screen.getAllByText('Verified');
       expect(verifiedStatuses).toHaveLength(2);
-    });
-  });
+
 
   it('handles user selection', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -158,10 +154,8 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       const checkboxes = screen.getAllByRole('checkbox');
       fireEvent.click(checkboxes[1]); // First user checkbox (index 0 is select all)
-    });
-    
+
     expect(mockProps.onSelectionChange).toHaveBeenCalledWith(['user1']);
-  });
 
   it('handles select all functionality', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -169,10 +163,8 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       const selectAllCheckbox = screen.getAllByRole('checkbox')[0];
       fireEvent.click(selectAllCheckbox);
-    });
-    
+
     expect(mockProps.onSelectionChange).toHaveBeenCalledWith(['user1', 'user2']);
-  });
 
   it('handles sorting by columns', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -180,12 +172,10 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       const emailHeader = screen.getByText('Email');
       fireEvent.click(emailHeader);
-    });
-    
+
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('sort_by=email&sort_order=asc')
     );
-  });
 
   it('handles pagination', async () => {
     // Mock response with multiple pages
@@ -212,7 +202,6 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       expect(screen.getByText('Next')).toBeInTheDocument();
       expect(screen.getByText('Showing 1 to 2 of 50 results')).toBeInTheDocument();
-    });
 
     // Click next page
     fireEvent.click(screen.getByText('Next'));
@@ -220,7 +209,6 @@ describe('UserManagementTable', () => {
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('page=2')
     );
-  });
 
   it('handles filtering', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -228,12 +216,10 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       const searchInput = screen.getByTestId('search-input');
       fireEvent.change(searchInput, { target: { value: 'admin' } });
-    });
-    
+
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('search=admin')
     );
-  });
 
   it('opens edit modal when edit button is clicked', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -241,11 +227,9 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       const editButtons = screen.getAllByText('Edit');
       fireEvent.click(editButtons[0]);
-    });
-    
+
     expect(screen.getByTestId('user-edit-modal')).toBeInTheDocument();
     expect(screen.getByText('Editing: user1@test.com')).toBeInTheDocument();
-  });
 
   it('handles user status toggle', async () => {
     mockFetch
@@ -266,8 +250,7 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       const deactivateButtons = screen.getAllByText('Deactivate');
       fireEvent.click(deactivateButtons[0]);
-    });
-    
+
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/admin/users/user1',
       expect.objectContaining({
@@ -275,7 +258,6 @@ describe('UserManagementTable', () => {
         body: JSON.stringify({ is_active: false })
       })
     );
-  });
 
   it('shows permission-based edit buttons', async () => {
     // Mock as regular admin (can only edit users)
@@ -284,7 +266,6 @@ describe('UserManagementTable', () => {
       hasPermission: jest.fn(() => true),
       user: { user_id: 'admin1', email: 'admin@test.com', role: 'admin' } as any,
       loading: false
-    });
 
     render(<UserManagementTable {...mockProps} />);
     
@@ -292,8 +273,7 @@ describe('UserManagementTable', () => {
       const editButtons = screen.getAllByText('Edit');
       // Should only show edit button for regular user, not admin user
       expect(editButtons).toHaveLength(1);
-    });
-  });
+
 
   it('handles API errors gracefully', async () => {
     mockFetch.mockResolvedValue({
@@ -309,14 +289,12 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       expect(screen.getByText('Failed to load users')).toBeInTheDocument();
       expect(screen.getByText('Try again')).toBeInTheDocument();
-    });
-  });
+
 
   it('shows loading state initially', () => {
     render(<UserManagementTable {...mockProps} />);
     
     expect(screen.getByRole('status')).toBeInTheDocument(); // Loading spinner
-  });
 
   it('shows empty state when no users found', async () => {
     mockFetch.mockResolvedValue({
@@ -334,8 +312,7 @@ describe('UserManagementTable', () => {
     
     await waitFor(() => {
       expect(screen.getByText('No users found matching your criteria.')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles user edit modal close', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -343,15 +320,13 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       const editButtons = screen.getAllByText('Edit');
       fireEvent.click(editButtons[0]);
-    });
-    
+
     expect(screen.getByTestId('user-edit-modal')).toBeInTheDocument();
     
     // Close modal
     fireEvent.click(screen.getByText('Close'));
     
     expect(screen.queryByTestId('user-edit-modal')).not.toBeInTheDocument();
-  });
 
   it('refreshes data after user update', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -359,14 +334,12 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       const editButtons = screen.getAllByText('Edit');
       fireEvent.click(editButtons[0]);
-    });
-    
+
     // Update user
     fireEvent.click(screen.getByText('Update'));
     
     expect(mockProps.onUserUpdated).toHaveBeenCalled();
     expect(mockFetch).toHaveBeenCalledTimes(2); // Initial load + refresh
-  });
 
   it('formats dates correctly', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -375,8 +348,7 @@ describe('UserManagementTable', () => {
       // Check that dates are formatted (exact format may vary by locale)
       expect(screen.getByText(/1\/1\/2024/)).toBeInTheDocument();
       expect(screen.getByText(/1\/15\/2024/)).toBeInTheDocument();
-    });
-  });
+
 
   it('handles page size changes', async () => {
     render(<UserManagementTable {...mockProps} />);
@@ -384,10 +356,8 @@ describe('UserManagementTable', () => {
     await waitFor(() => {
       const pageSizeSelect = screen.getByDisplayValue('20 per page');
       fireEvent.change(pageSizeSelect, { target: { value: '50' } });
-    });
-    
+
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('limit=50')
     );
-  });
-});
+

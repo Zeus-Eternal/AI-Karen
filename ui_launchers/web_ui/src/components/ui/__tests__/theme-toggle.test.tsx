@@ -51,21 +51,18 @@ describe('ThemeToggle', () => {
       setDensity: mockSetDensity,
       resolvedTheme: 'light',
       isSystemTheme: true,
-    });
-  });
+
 
   it('should render theme toggle button', () => {
     render(<ThemeToggle />);
     
     expect(screen.getByTestId('dropdown-trigger')).toBeInTheDocument();
     expect(screen.getByRole('button')).toBeInTheDocument();
-  });
 
   it('should show monitor icon for system theme', () => {
     render(<ThemeToggle />);
     
     expect(screen.getByTestId('monitor-icon')).toBeInTheDocument();
-  });
 
   it('should show sun icon for light theme', () => {
     (useTheme as jest.Mock).mockReturnValue({
@@ -75,12 +72,10 @@ describe('ThemeToggle', () => {
       setDensity: mockSetDensity,
       resolvedTheme: 'light',
       isSystemTheme: false,
-    });
 
     render(<ThemeToggle />);
     
     expect(screen.getByTestId('sun-icon')).toBeInTheDocument();
-  });
 
   it('should show moon icon for dark theme', () => {
     (useTheme as jest.Mock).mockReturnValue({
@@ -90,19 +85,16 @@ describe('ThemeToggle', () => {
       setDensity: mockSetDensity,
       resolvedTheme: 'dark',
       isSystemTheme: false,
-    });
 
     render(<ThemeToggle />);
     
     expect(screen.getByTestId('moon-icon')).toBeInTheDocument();
-  });
 
   it('should have proper aria-label', () => {
     render(<ThemeToggle />);
     
     const button = screen.getByRole('button');
     expect(button).toHaveAttribute('aria-label', 'Current theme: System (light)');
-  });
 
   it('should render dropdown menu content', () => {
     render(<ThemeToggle />);
@@ -110,7 +102,6 @@ describe('ThemeToggle', () => {
     expect(screen.getByTestId('dropdown-content')).toBeInTheDocument();
     expect(screen.getByTestId('dropdown-content')).toHaveAttribute('data-align', 'end');
     expect(screen.getByTestId('dropdown-content')).toHaveClass('w-48');
-  });
 
   it('should render appearance label with palette icon', () => {
     render(<ThemeToggle />);
@@ -118,7 +109,6 @@ describe('ThemeToggle', () => {
     expect(screen.getByTestId('dropdown-label')).toBeInTheDocument();
     expect(screen.getByTestId('palette-icon')).toBeInTheDocument();
     expect(screen.getByText('Appearance')).toBeInTheDocument();
-  });
 
   it('should render all theme options', () => {
     render(<ThemeToggle />);
@@ -126,7 +116,6 @@ describe('ThemeToggle', () => {
     expect(screen.getByText('Light')).toBeInTheDocument();
     expect(screen.getByText('Dark')).toBeInTheDocument();
     expect(screen.getByText('System')).toBeInTheDocument();
-  });
 
   it('should render all density options', () => {
     render(<ThemeToggle />);
@@ -134,7 +123,6 @@ describe('ThemeToggle', () => {
     expect(screen.getByText('Compact')).toBeInTheDocument();
     expect(screen.getByText('Comfortable')).toBeInTheDocument();
     expect(screen.getByText('Spacious')).toBeInTheDocument();
-  });
 
   it('should highlight current theme option', () => {
     render(<ThemeToggle />);
@@ -144,7 +132,6 @@ describe('ThemeToggle', () => {
     
     const lightItem = screen.getByText('Light').closest('[data-testid="dropdown-item"]');
     expect(lightItem).not.toHaveClass('bg-[var(--color-primary-100)] text-[var(--color-primary-900)]');
-  });
 
   it('should highlight current density option', () => {
     render(<ThemeToggle />);
@@ -154,7 +141,6 @@ describe('ThemeToggle', () => {
     
     const compactItem = screen.getByText('Compact').closest('[data-testid="dropdown-item"]');
     expect(compactItem).not.toHaveClass('bg-[var(--color-primary-100)] text-[var(--color-primary-900)]');
-  });
 
   it('should show checkmarks for current selections', () => {
     render(<ThemeToggle />);
@@ -166,7 +152,6 @@ describe('ThemeToggle', () => {
     // Comfortable density should have checkmark
     const comfortableItem = screen.getByText('Comfortable').closest('[data-testid="dropdown-item"]');
     expect(comfortableItem).toHaveTextContent('✓');
-  });
 
   it('should call setTheme when theme option is clicked', async () => {
     render(<ThemeToggle />);
@@ -176,8 +161,7 @@ describe('ThemeToggle', () => {
     
     await waitFor(() => {
       expect(mockSetTheme).toHaveBeenCalledWith('light');
-    });
-  });
+
 
   it('should call setDensity when density option is clicked', async () => {
     render(<ThemeToggle />);
@@ -187,21 +171,18 @@ describe('ThemeToggle', () => {
     
     await waitFor(() => {
       expect(mockSetDensity).toHaveBeenCalledWith('compact');
-    });
-  });
+
 
   it('should render separators', () => {
     render(<ThemeToggle />);
     
     const separators = screen.getAllByTestId('dropdown-separator');
     expect(separators).toHaveLength(2); // One after theme options, one before density options
-  });
 
   it('should render density label', () => {
     render(<ThemeToggle />);
     
     expect(screen.getByText('Density')).toBeInTheDocument();
-  });
 
   it('should render density icons', () => {
     render(<ThemeToggle />);
@@ -210,7 +191,6 @@ describe('ThemeToggle', () => {
     expect(screen.getByText('◾')).toBeInTheDocument(); // Compact
     expect(screen.getByText('◼')).toBeInTheDocument(); // Comfortable
     expect(screen.getByText('⬛')).toBeInTheDocument(); // Spacious
-  });
 
   it('should update aria-label based on theme state', () => {
     (useTheme as jest.Mock).mockReturnValue({
@@ -220,13 +200,11 @@ describe('ThemeToggle', () => {
       setDensity: mockSetDensity,
       resolvedTheme: 'dark',
       isSystemTheme: false,
-    });
 
     render(<ThemeToggle />);
     
     const button = screen.getByRole('button');
     expect(button).toHaveAttribute('aria-label', 'Current theme: Dark');
-  });
 
   it('should handle system theme with dark preference', () => {
     (useTheme as jest.Mock).mockReturnValue({
@@ -236,11 +214,9 @@ describe('ThemeToggle', () => {
       setDensity: mockSetDensity,
       resolvedTheme: 'dark',
       isSystemTheme: true,
-    });
 
     render(<ThemeToggle />);
     
     const button = screen.getByRole('button');
     expect(button).toHaveAttribute('aria-label', 'Current theme: System (dark)');
-  });
-});
+

@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         statistics: stats,
         items: items,
       }
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to get email queue information' },
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: `${retriedCount} failed items marked for retry`,
         retried_count: retriedCount,
-      });
+
     } else if (action === 'clear_queue') {
       // Clear entire queue (admin only)
       if (authResult.user?.role !== 'super_admin') {
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: `Email queue cleared (${queueSize} items removed)`,
         cleared_count: queueSize,
-      });
+
     } else {
       return NextResponse.json(
         { error: 'Invalid action. Supported actions: retry_failed, clear_queue' },

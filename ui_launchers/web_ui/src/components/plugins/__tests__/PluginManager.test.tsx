@@ -6,6 +6,7 @@
  */
 
 
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { PluginManager } from '../PluginManager';
@@ -67,7 +68,7 @@ vi.mock('@/components/ui/skeleton', () => ({
 
 vi.mock('@/components/ui/select', () => ({
   Select: ({ children, value, onValueChange }: any) => (
-    <select value={value} onChange={(e) = aria-label="Select option"> onValueChange(e.target.value)}>
+    <select value={value} onChange={(e) => onValueChange(e.target.value)}>
       {children}
     </select>
   ),
@@ -287,8 +288,7 @@ describe('PluginManager', () => {
         return mockStoreState;
       }
       return mockStoreState;
-    });
-  });
+
 
   it('renders plugin manager with header and controls', () => {
     render(<PluginManager />);
@@ -298,7 +298,6 @@ describe('PluginManager', () => {
     expect(screen.getByText('Refresh')).toBeInTheDocument();
     expect(screen.getByText('Browse Marketplace')).toBeInTheDocument();
     expect(screen.getByText('Install Plugin')).toBeInTheDocument();
-  });
 
   it('displays plugin cards with correct information', () => {
     render(<PluginManager />);
@@ -307,14 +306,12 @@ describe('PluginManager', () => {
     expect(screen.getByText('Gmail Integration')).toBeInTheDocument();
     expect(screen.getByText('Provides current weather information')).toBeInTheDocument();
     expect(screen.getByText('Gmail integration for AI chat')).toBeInTheDocument();
-  });
 
   it('shows plugin status badges correctly', () => {
     render(<PluginManager />);
     
     const statusBadges = screen.getAllByText(/Active|Error/);
     expect(statusBadges).toHaveLength(2);
-  });
 
   it('displays plugin metrics', () => {
     render(<PluginManager />);
@@ -322,7 +319,6 @@ describe('PluginManager', () => {
     expect(screen.getByText('1,247')).toBeInTheDocument(); // Weather plugin executions
     expect(screen.getByText('250ms')).toBeInTheDocument(); // Weather plugin avg time
     expect(screen.getByText('45')).toBeInTheDocument(); // Gmail plugin executions
-  });
 
   it('handles search input changes', () => {
     render(<PluginManager />);
@@ -331,7 +327,6 @@ describe('PluginManager', () => {
     fireEvent.change(searchInput, { target: { value: 'weather' } });
     
     expect(mockStoreState.setSearchQuery).toHaveBeenCalledWith('weather');
-  });
 
   it('handles filter changes', () => {
     render(<PluginManager />);
@@ -340,7 +335,6 @@ describe('PluginManager', () => {
     fireEvent.change(statusSelect, { target: { value: 'active' } });
     
     expect(mockStoreState.setFilters).toHaveBeenCalledWith({ status: ['active'] });
-  });
 
   it('handles sorting changes', () => {
     render(<PluginManager />);
@@ -349,7 +343,6 @@ describe('PluginManager', () => {
     fireEvent.change(sortSelect, { target: { value: 'status-asc' } });
     
     expect(mockStoreState.setSorting).toHaveBeenCalledWith('status', 'asc');
-  });
 
   it('handles view toggle between list and grid', () => {
     render(<PluginManager />);
@@ -358,7 +351,6 @@ describe('PluginManager', () => {
     fireEvent.click(gridButton);
     
     expect(mockStoreState.setView).toHaveBeenCalledWith('grid');
-  });
 
   it('handles refresh button click', () => {
     render(<PluginManager />);
@@ -368,7 +360,6 @@ describe('PluginManager', () => {
     
     expect(mockStoreState.clearErrors).toHaveBeenCalled();
     expect(mockStoreState.loadPlugins).toHaveBeenCalled();
-  });
 
   it('handles install plugin button click', () => {
     render(<PluginManager />);
@@ -377,7 +368,6 @@ describe('PluginManager', () => {
     fireEvent.click(installButton);
     
     expect(mockStoreState.setShowInstallationWizard).toHaveBeenCalledWith(true);
-  });
 
   it('handles browse marketplace button click', () => {
     render(<PluginManager />);
@@ -386,7 +376,6 @@ describe('PluginManager', () => {
     fireEvent.click(marketplaceButton);
     
     expect(mockStoreState.setShowMarketplace).toHaveBeenCalledWith(true);
-  });
 
   it('shows loading skeleton when loading', () => {
     (usePluginStore as any).mockImplementation((selector?: any) => {
@@ -400,12 +389,10 @@ describe('PluginManager', () => {
         return null;
       }
       return { ...mockStoreState, plugins: [] };
-    });
 
     render(<PluginManager />);
     
     expect(screen.getAllByTestId('skeleton')).toHaveLength(18); // 6 cards × 3 skeletons each
-  });
 
   it('shows error message when there is an error', () => {
     (usePluginStore as any).mockImplementation((selector?: any) => {
@@ -419,12 +406,10 @@ describe('PluginManager', () => {
         return false;
       }
       return { ...mockStoreState, plugins: [] };
-    });
 
     render(<PluginManager />);
     
     expect(screen.getByText('Failed to load plugins')).toBeInTheDocument();
-  });
 
   it('shows empty state when no plugins are installed', () => {
     (usePluginStore as any).mockImplementation((selector?: any) => {
@@ -438,13 +423,11 @@ describe('PluginManager', () => {
         return null;
       }
       return { ...mockStoreState, plugins: [] };
-    });
 
     render(<PluginManager />);
     
     expect(screen.getByText('No plugins installed')).toBeInTheDocument();
     expect(screen.getByText('Get started by installing your first plugin')).toBeInTheDocument();
-  });
 
   it('shows installation wizard when showInstallationWizard is true', () => {
     (usePluginStore as any).mockImplementation((selector?: any) => {
@@ -452,13 +435,11 @@ describe('PluginManager', () => {
         return selector({ ...mockStoreState, showInstallationWizard: true });
       }
       return { ...mockStoreState, showInstallationWizard: true };
-    });
 
     render(<PluginManager />);
     
     expect(screen.getByTestId('plugin-installation-wizard')).toBeInTheDocument();
     expect(screen.getByText('Installation Wizard')).toBeInTheDocument();
-  });
 
   it('shows marketplace when showMarketplace is true', () => {
     (usePluginStore as any).mockImplementation((selector?: any) => {
@@ -466,13 +447,11 @@ describe('PluginManager', () => {
         return selector({ ...mockStoreState, showMarketplace: true });
       }
       return { ...mockStoreState, showMarketplace: true };
-    });
 
     render(<PluginManager />);
     
     expect(screen.getByTestId('plugin-marketplace')).toBeInTheDocument();
     expect(screen.getByText('Plugin Marketplace')).toBeInTheDocument();
-  });
 
   it('shows plugin detail view when a plugin is selected', () => {
     (usePluginStore as any).mockImplementation((selector?: any) => {
@@ -480,29 +459,24 @@ describe('PluginManager', () => {
         return selector({ ...mockStoreState, selectedPlugin: mockPlugins[0] });
       }
       return { ...mockStoreState, selectedPlugin: mockPlugins[0] };
-    });
 
     render(<PluginManager />);
     
     expect(screen.getByTestId('plugin-detail-view')).toBeInTheDocument();
     expect(screen.getByText('Weather Service Details')).toBeInTheDocument();
-  });
 
   it('calls loadPlugins on component mount', () => {
     render(<PluginManager />);
     
     expect(mockStoreState.loadPlugins).toHaveBeenCalled();
-  });
 
   it('displays health issues for plugins with warnings', () => {
     render(<PluginManager />);
     
     expect(screen.getByText('Authentication token expired')).toBeInTheDocument();
-  });
 
   it('displays last error information', () => {
     render(<PluginManager />);
     
     expect(screen.getByText('Authentication failed: Token expired')).toBeInTheDocument();
-  });
-});
+

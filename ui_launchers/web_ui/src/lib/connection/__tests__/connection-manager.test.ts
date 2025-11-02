@@ -6,14 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
-import {
-  ConnectionManager,
-  getConnectionManager,
-  initializeConnectionManager,
-  CircuitBreakerState,
-  ErrorCategory,
-  ConnectionError,
-} from '../connection-manager';
+import { ConnectionManager, getConnectionManager, initializeConnectionManager, CircuitBreakerState, ErrorCategory, ConnectionError } from '../connection-manager';
 
 // Mock the environment config manager
 vi.mock('../../config', () => ({
@@ -45,11 +38,9 @@ describe('ConnectionManager', () => {
   beforeEach(() => {
     connectionManager = new ConnectionManager(true); // Enable test mode
     mockFetch.mockClear();
-  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
 
   describe('Basic Request Functionality', () => {
     it('should make successful HTTP request', async () => {
@@ -68,7 +59,6 @@ describe('ConnectionManager', () => {
       expect(result.status).toBe(200);
       expect(result.retryCount).toBe(0);
       expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
 
     it('should handle text responses', async () => {
       const mockResponse = {
@@ -84,7 +74,6 @@ describe('ConnectionManager', () => {
 
       expect(result.data).toBe('Hello World');
       expect(mockResponse.text).toHaveBeenCalled();
-    });
 
     it('should include custom headers', async () => {
       const mockResponse = {
@@ -112,8 +101,7 @@ describe('ConnectionManager', () => {
           }),
         })
       );
-    });
-  });
+
 
   describe('Error Handling and Categorization', () => {
     it('should categorize network errors correctly', async () => {
@@ -127,7 +115,6 @@ describe('ConnectionManager', () => {
         expect(connectionError.category).toBe(ErrorCategory.NETWORK_ERROR);
         expect(connectionError.retryable).toBe(true);
       }
-    });
 
     it('should categorize timeout errors correctly', async () => {
       const abortError = new Error('The operation was aborted');
@@ -142,7 +129,6 @@ describe('ConnectionManager', () => {
         expect(connectionError.category).toBe(ErrorCategory.TIMEOUT_ERROR);
         expect(connectionError.retryable).toBe(true);
       }
-    });
 
     it('should categorize HTTP errors correctly', async () => {
       const mockResponse = {
@@ -162,7 +148,6 @@ describe('ConnectionManager', () => {
         expect(connectionError.statusCode).toBe(500);
         expect(connectionError.retryable).toBe(true); // 5xx errors are retryable
       }
-    });
 
     it('should not retry 4xx client errors', async () => {
       const mockResponse = {
@@ -181,7 +166,6 @@ describe('ConnectionManager', () => {
         expect(connectionError.retryable).toBe(false); // 4xx errors are not retryable
         expect(mockFetch).toHaveBeenCalledTimes(1); // No retries
       }
-    });
 
     it('should retry specific 4xx errors (408, 429)', async () => {
       const mockResponse = {
@@ -200,8 +184,7 @@ describe('ConnectionManager', () => {
         expect(connectionError.retryable).toBe(true); // 429 is retryable
         expect(mockFetch).toHaveBeenCalledTimes(3); // Initial + 2 retries
       }
-    });
-  });
+
 
   describe('Retry Logic', () => {
     it('should retry on retryable errors', async () => {
@@ -214,7 +197,6 @@ describe('ConnectionManager', () => {
           statusText: 'OK',
           headers: new Headers({ 'content-type': 'application/json' }),
           json: vi.fn().mockResolvedValue({ success: true }),
-        });
 
       const result = await connectionManager.makeRequest(
         'http://localhost:8000/test',
@@ -225,7 +207,6 @@ describe('ConnectionManager', () => {
       expect(result.data).toEqual({ success: true });
       expect(result.retryCount).toBe(2); // Failed twice, succeeded on third attempt
       expect(mockFetch).toHaveBeenCalledTimes(3);
-    });
 
     it('should not retry on non-retryable errors', async () => {
       const mockResponse = {
@@ -246,7 +227,6 @@ describe('ConnectionManager', () => {
       } catch (error) {
         expect(mockFetch).toHaveBeenCalledTimes(1); // No retries for 400 error
       }
-    });
 
     it('should respect maximum retry attempts', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
@@ -261,7 +241,6 @@ describe('ConnectionManager', () => {
       } catch (error) {
         expect(mockFetch).toHaveBeenCalledTimes(3); // Initial + 2 retries
       }
-    });
 
     it('should calculate exponential backoff delay', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
@@ -277,8 +256,7 @@ describe('ConnectionManager', () => {
         // Expected to fail after all retries
         expect(mockFetch).toHaveBeenCalledTimes(4); // Initial + 3 retries
       }
-    });
-  });
+
 
   describe('Circuit Breaker Pattern', () => {
     it('should open circuit breaker after consecutive failures', async () => {
@@ -301,7 +279,6 @@ describe('ConnectionManager', () => {
       expect(status.circuitBreakerState).toBe(CircuitBreakerState.OPEN);
       expect(status.isHealthy).toBe(false);
       expect(status.consecutiveFailures).toBe(5);
-    });
 
     it('should fail fast when circuit breaker is open', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
@@ -332,7 +309,6 @@ describe('ConnectionManager', () => {
         const duration = Date.now() - startTime;
         expect(duration).toBeLessThan(100);
       }
-    });
 
     it('should reset circuit breaker on successful request', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
@@ -363,7 +339,6 @@ describe('ConnectionManager', () => {
         statusText: 'OK',
         headers: new Headers({ 'content-type': 'application/json' }),
         json: vi.fn().mockResolvedValue({ success: true }),
-      });
 
       await connectionManager.makeRequest('http://localhost:8000/test');
 
@@ -371,7 +346,6 @@ describe('ConnectionManager', () => {
       expect(status.circuitBreakerState).toBe(CircuitBreakerState.CLOSED);
       expect(status.isHealthy).toBe(true);
       expect(status.consecutiveFailures).toBe(0);
-    });
 
     it('should allow circuit breaker to be disabled', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
@@ -392,8 +366,7 @@ describe('ConnectionManager', () => {
       // Circuit breaker should still be closed since it was disabled
       const status = connectionManager.getConnectionStatus();
       expect(status.circuitBreakerState).toBe(CircuitBreakerState.CLOSED);
-    });
-  });
+
 
   describe('Health Check', () => {
     it('should perform successful health check', async () => {
@@ -404,7 +377,6 @@ describe('ConnectionManager', () => {
         headers: new Headers({ 'content-type': 'application/json' }),
         json: vi.fn().mockResolvedValue({ status: 'healthy' }),
         text: vi.fn().mockResolvedValue('{"status":"healthy"}'),
-      });
 
       const isHealthy = await connectionManager.healthCheck();
 
@@ -413,7 +385,6 @@ describe('ConnectionManager', () => {
         'http://localhost:8000/health',
         expect.objectContaining({ method: 'GET' })
       );
-    });
 
     it('should handle failed health check', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
@@ -421,7 +392,6 @@ describe('ConnectionManager', () => {
       const isHealthy = await connectionManager.healthCheck();
 
       expect(isHealthy).toBe(false);
-    });
 
     it('should use health check timeout', async () => {
       mockFetch.mockResolvedValue({
@@ -431,7 +401,6 @@ describe('ConnectionManager', () => {
         headers: new Headers({ 'content-type': 'application/json' }),
         json: vi.fn().mockResolvedValue({}),
         text: vi.fn().mockResolvedValue('{}'),
-      });
 
       const isHealthy = await connectionManager.healthCheck();
 
@@ -441,8 +410,7 @@ describe('ConnectionManager', () => {
         'http://localhost:8000/health',
         expect.objectContaining({ method: 'GET' })
       );
-    });
-  });
+
 
   describe('Connection Status and Metrics', () => {
     it('should track request statistics', async () => {
@@ -464,7 +432,6 @@ describe('ConnectionManager', () => {
       expect(status.successfulRequests).toBe(2);
       expect(status.failedRequests).toBe(0);
       expect(status.lastSuccessfulRequest).toBeInstanceOf(Date);
-    });
 
     it('should track failure statistics', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
@@ -481,7 +448,6 @@ describe('ConnectionManager', () => {
       expect(status.failedRequests).toBe(1);
       expect(status.consecutiveFailures).toBe(1);
       expect(status.lastFailedRequest).toBeInstanceOf(Date);
-    });
 
     it('should calculate average response time', async () => {
       const mockResponse = {
@@ -501,7 +467,6 @@ describe('ConnectionManager', () => {
 
       const status = connectionManager.getConnectionStatus();
       expect(status.averageResponseTime).toBeGreaterThan(0);
-    });
 
     it('should reset statistics', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
@@ -521,15 +486,13 @@ describe('ConnectionManager', () => {
       expect(status.consecutiveFailures).toBe(0);
       expect(status.circuitBreakerState).toBe(CircuitBreakerState.CLOSED);
       expect(status.isHealthy).toBe(true);
-    });
-  });
+
 
   describe('Singleton Pattern', () => {
     it('should return same instance from getConnectionManager', () => {
       const manager1 = getConnectionManager();
       const manager2 = getConnectionManager();
       expect(manager1).toBe(manager2);
-    });
 
     it('should create new instance with initializeConnectionManager', () => {
       const manager1 = getConnectionManager();
@@ -539,8 +502,7 @@ describe('ConnectionManager', () => {
       // Subsequent calls to getConnectionManager should return the new instance
       const manager3 = getConnectionManager();
       expect(manager2).toBe(manager3);
-    });
-  });
+
 
   describe('Request Options and Configuration', () => {
     it('should use custom timeout', async () => {
@@ -563,7 +525,6 @@ describe('ConnectionManager', () => {
       // Verify request was successful
       expect(result.status).toBe(200);
       expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
 
     it('should merge request options correctly', async () => {
       const mockResponse = {
@@ -600,6 +561,5 @@ describe('ConnectionManager', () => {
           }),
         })
       );
-    });
-  });
-});
+
+

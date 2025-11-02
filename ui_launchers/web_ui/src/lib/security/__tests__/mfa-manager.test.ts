@@ -48,7 +48,6 @@ describe('MfaManager', () => {
   beforeEach(() => {
     mfaManager = new MfaManager();
     jest.clearAllMocks();
-  });
 
   describe('MFA Setup', () => {
     it('should generate MFA setup data', async () => {
@@ -68,8 +67,7 @@ describe('MfaManager', () => {
         name: 'AI Karen Admin (test@example.com)',
         issuer: 'AI Karen',
         length: 32
-      });
-    });
+
 
     it('should enable MFA after successful verification', async () => {
       mockSpeakeasy.totp.verify.mockReturnValue(true);
@@ -85,14 +83,13 @@ describe('MfaManager', () => {
       expect(mockAdminUtils.updateUser).toHaveBeenCalledWith('user-123', {
         two_factor_enabled: true,
         two_factor_secret: 'JBSWY3DPEHPK3PXP'
-      });
+
       expect(mockAdminUtils.createAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'mfa.enabled',
           user_id: 'user-123'
         })
       );
-    });
 
     it('should not enable MFA with invalid verification code', async () => {
       mockSpeakeasy.totp.verify.mockReturnValue(false);
@@ -106,7 +103,6 @@ describe('MfaManager', () => {
 
       expect(success).toBe(false);
       expect(mockAdminUtils.updateUser).not.toHaveBeenCalled();
-    });
 
     it('should disable MFA', async () => {
       await mfaManager.disableMfa('user-123', 'admin-456');
@@ -114,15 +110,14 @@ describe('MfaManager', () => {
       expect(mockAdminUtils.updateUser).toHaveBeenCalledWith('user-123', {
         two_factor_enabled: false,
         two_factor_secret: undefined
-      });
+
       expect(mockAdminUtils.createAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'mfa.disabled',
           user_id: 'admin-456'
         })
       );
-    });
-  });
+
 
   describe('MFA Verification', () => {
     const mfaEnabledUser: User = {
@@ -150,7 +145,6 @@ describe('MfaManager', () => {
           })
         })
       );
-    });
 
     it('should verify valid backup code', async () => {
       mockAdminUtils.getUserById.mockResolvedValue(mfaEnabledUser);
@@ -170,7 +164,6 @@ describe('MfaManager', () => {
           })
         })
       );
-    });
 
     it('should reject invalid codes', async () => {
       mockAdminUtils.getUserById.mockResolvedValue(mfaEnabledUser);
@@ -184,7 +177,6 @@ describe('MfaManager', () => {
           action: 'mfa.verification_failed'
         })
       );
-    });
 
     it('should handle user without MFA enabled', async () => {
       mockAdminUtils.getUserById.mockResolvedValue(mockUser);
@@ -192,8 +184,7 @@ describe('MfaManager', () => {
       const result = await mfaManager.verifyMfaCode('user-123', '123456');
 
       expect(result.valid).toBe(false);
-    });
-  });
+
 
   describe('MFA Status', () => {
     it('should get MFA status for user without MFA', async () => {
@@ -206,7 +197,6 @@ describe('MfaManager', () => {
       expect(status.required).toBe(false);
       expect(status.setupComplete).toBe(false);
       expect(status.backupCodesRemaining).toBe(0);
-    });
 
     it('should get MFA status for user with MFA enabled', async () => {
       const mfaUser = {
@@ -224,8 +214,7 @@ describe('MfaManager', () => {
       expect(status.required).toBe(true);
       expect(status.setupComplete).toBe(true);
       expect(status.backupCodesRemaining).toBe(2);
-    });
-  });
+
 
   describe('MFA Requirements', () => {
     it('should require MFA for super admin', async () => {
@@ -235,7 +224,6 @@ describe('MfaManager', () => {
       const required = await mfaManager.isMfaRequired(superAdmin);
 
       expect(required).toBe(true);
-    });
 
     it('should require MFA for admin when configured', async () => {
       mockAdminUtils.getSystemConfig.mockResolvedValue({ value: true });
@@ -243,7 +231,6 @@ describe('MfaManager', () => {
       const required = await mfaManager.isMfaRequired(mockUser);
 
       expect(required).toBe(true);
-    });
 
     it('should not require MFA for regular user', async () => {
       const regularUser = { ...mockUser, role: 'user' as const };
@@ -251,7 +238,6 @@ describe('MfaManager', () => {
       const required = await mfaManager.isMfaRequired(regularUser);
 
       expect(required).toBe(false);
-    });
 
     it('should enforce MFA requirement during login', async () => {
       const adminWithoutMfa = { ...mockUser, two_factor_enabled: false };
@@ -262,7 +248,6 @@ describe('MfaManager', () => {
       expect(enforcement.canProceed).toBe(false);
       expect(enforcement.requiresSetup).toBe(true);
       expect(enforcement.message).toContain('Multi-factor authentication is required');
-    });
 
     it('should allow login when MFA is properly set up', async () => {
       const adminWithMfa = { ...mockUser, two_factor_enabled: true };
@@ -272,8 +257,7 @@ describe('MfaManager', () => {
 
       expect(enforcement.canProceed).toBe(true);
       expect(enforcement.requiresSetup).toBe(false);
-    });
-  });
+
 
   describe('Backup Codes', () => {
     it('should regenerate backup codes', async () => {
@@ -287,7 +271,6 @@ describe('MfaManager', () => {
           user_id: 'admin-456'
         })
       );
-    });
 
     it('should consume backup codes when used', async () => {
       const userWithBackupCodes = {
@@ -309,9 +292,8 @@ describe('MfaManager', () => {
       // Verify the code was removed from preferences
       expect(mockAdminUtils.updateUser).toHaveBeenCalledWith('user-123', {
         preferences: { mfa_backup_codes: ['CODE2', 'CODE3'] }
-      });
-    });
-  });
+
+
 
   describe('Error Handling', () => {
     it('should handle database errors gracefully', async () => {
@@ -320,7 +302,6 @@ describe('MfaManager', () => {
       const result = await mfaManager.verifyMfaCode('user-123', '123456');
 
       expect(result.valid).toBe(false);
-    });
 
     it('should handle missing user', async () => {
       mockAdminUtils.getUserById.mockResolvedValue(null);
@@ -330,6 +311,5 @@ describe('MfaManager', () => {
       expect(status.enabled).toBe(false);
       expect(status.required).toBe(false);
       expect(status.setupComplete).toBe(false);
-    });
-  });
-});
+
+

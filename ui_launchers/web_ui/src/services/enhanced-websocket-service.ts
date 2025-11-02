@@ -121,13 +121,13 @@ export class EnhancedWebSocketService {
         if (this.connectionState === 'disconnected' || this.connectionState === 'suspended') {
           this.connect();
         }
-      });
+
       window.addEventListener('offline', () => {
         const { setOnline, setConnectionQuality } = useAppStore.getState();
         setOnline(false);
         setConnectionQuality('offline');
         this.setConnectionState('suspended');
-      });
+
       // Listen for visibility changes to manage connection
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
@@ -138,11 +138,11 @@ export class EnhancedWebSocketService {
           // Optionally suspend connection when tab is hidden to save resources
           // this.setConnectionState('suspended');
         }
-      });
+
       // Listen for page unload to clean up
       window.addEventListener('beforeunload', () => {
         this.disconnect();
-      });
+
     }
   }
   // Setup message queue processor
@@ -202,14 +202,14 @@ export class EnhancedWebSocketService {
               token: this.getAuthToken(),
               userId: user.id,
               timestamp: new Date().toISOString(),
-            });
+
           }
           // Send connection info
           this.send('connection.info', {
             userAgent: navigator.userAgent,
             timestamp: new Date().toISOString(),
             reconnectCount: this.connectionMetrics.reconnectCount,
-          });
+
           resolve();
         };
         this.ws.onmessage = (event) => {
@@ -248,7 +248,7 @@ export class EnhancedWebSocketService {
         this.connectionMetrics.errorCount++;
         reject(error);
       }
-    });
+
   }
   // Disconnect from WebSocket
   public disconnect(): void {
@@ -464,7 +464,7 @@ export class EnhancedWebSocketService {
           type: message.data.type || 'info',
           title: message.data.title,
           message: message.data.message,
-        });
+
         break;
       case 'system.health':
         invalidateQueries.system();
@@ -474,7 +474,7 @@ export class EnhancedWebSocketService {
           type: 'warning',
           title: 'System Alert',
           message: message.data.message,
-        });
+
         invalidateQueries.system();
         break;
       case 'chat.message':
@@ -491,7 +491,7 @@ export class EnhancedWebSocketService {
           type: 'error',
           title: 'Plugin Error',
           message: message.data.message,
-        });
+
         invalidateQueries.plugins();
         break;
       case 'provider.status':
@@ -541,7 +541,7 @@ export class EnhancedWebSocketService {
       console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
       this.connect().catch(() => {
         // Reconnection failed, will be handled by onclose
-      });
+
     }, delay);
   }
   // Start heartbeat

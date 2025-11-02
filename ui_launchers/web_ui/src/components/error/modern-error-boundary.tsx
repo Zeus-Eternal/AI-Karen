@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import React, { Component, ReactNode, ErrorInfo } from 'react';
 import { AlertTriangle, RefreshCw, Home, Bug, ExternalLink, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,8 +30,6 @@ interface ModernErrorBoundaryState {
   retryProgress: number;
 }
 export class ModernErrorBoundary extends Component<
-  ModernErrorBoundaryProps,
-  ModernErrorBoundaryState
 > {
   private retryTimeoutId: NodeJS.Timeout | null = null;
   private progressIntervalId: NodeJS.Timeout | null = null;
@@ -108,7 +107,7 @@ export class ModernErrorBoundary extends Component<
             section: this.props.section,
             retry_count: this.state.retryCount,
           },
-        });
+
       }
     } catch (reportingError) {
     }
@@ -122,7 +121,7 @@ export class ModernErrorBoundary extends Component<
       this.setState(prevState => {
         const newProgress = Math.min(prevState.retryProgress + progressStep, 100);
         return { retryProgress: newProgress };
-      });
+
     }, 100);
     this.retryTimeoutId = setTimeout(() => {
       this.handleRetry();
@@ -204,8 +203,8 @@ Please describe what you were doing when this error occurred:
         <Card className="w-full max-w-lg border-destructive/50">
           <CardHeader>
             <div className="flex items-center space-x-3">
-              <AlertTriangle className="h-6 w-6 text-destructive flex-shrink-0 sm:w-auto md:w-full" />
-              <div className="min-w-0 flex-1 sm:w-auto md:w-full">
+              <AlertTriangle className="h-6 w-6 text-destructive flex-shrink-0 " />
+              <div className="min-w-0 flex-1 ">
                 <CardTitle className="text-lg">{sectionName} Error</CardTitle>
                 <CardDescription className="flex items-center space-x-2 mt-1">
                   <span>Something went wrong in this section</span>
@@ -221,7 +220,7 @@ Please describe what you were doing when this error occurred:
           <CardContent className="space-y-4">
             {/* Error Summary */}
             <Alert>
-              <Bug className="h-4 w-4 sm:w-auto md:w-full" />
+              <Bug className="h-4 w-4 " />
               <AlertTitle>Error Details</AlertTitle>
               <AlertDescription className="mt-2">
                 <p className="font-medium text-sm md:text-base lg:text-lg">{error?.message || 'Unknown error occurred'}</p>
@@ -236,7 +235,7 @@ Please describe what you were doing when this error occurred:
             {isRetrying && (
               <div className="space-y-2">
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg">
-                  <Clock className="h-4 w-4 sm:w-auto md:w-full" />
+                  <Clock className="h-4 w-4 " />
                   <span>Retrying automatically...</span>
                 </div>
                 <Progress value={retryProgress} className="h-2" />
@@ -250,49 +249,45 @@ Please describe what you were doing when this error occurred:
                   size="sm"
                   className="flex items-center gap-2"
                  aria-label="Button">
-                  <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
-                  Try Again
+                  <RefreshCw className="h-4 w-4 " />
                 </Button>
               )}
-              <button 
+              <Button 
                 variant="outline" 
                 size="sm"
                 onClick={this.handleReload} 
                 className="flex items-center gap-2"
-               aria-label="Button">
-                <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
-                Reload
+               >
+                <RefreshCw className="h-4 w-4 " />
               </Button>
               {section !== 'global' && (
-                <button 
+                <Button 
                   variant="outline" 
                   size="sm"
                   onClick={this.handleGoHome} 
                   className="flex items-center gap-2"
-                 aria-label="Button">
-                  <Home className="h-4 w-4 sm:w-auto md:w-full" />
-                  Home
+                 >
+                  <Home className="h-4 w-4 " />
                 </Button>
               )}
-              <button 
+              <Button 
                 variant="outline" 
                 size="sm"
                 onClick={this.handleReportBug} 
                 className="flex items-center gap-2"
-               aria-label="Button">
-                <ExternalLink className="h-4 w-4 sm:w-auto md:w-full" />
-                Report
+               >
+                <ExternalLink className="h-4 w-4 " />
               </Button>
             </div>
             {/* Technical Details Toggle */}
             {(showTechnicalDetails || process.env.NODE_ENV === 'development') && (
               <div className="pt-2">
-                <button
+                <Button
                   variant="ghost"
                   size="sm"
                   onClick={this.toggleDetails}
                   className="text-muted-foreground h-8"
-                 aria-label="Button">
+                 >
                   {showDetails ? 'Hide' : 'Show'} Technical Details
                 </Button>
               </div>

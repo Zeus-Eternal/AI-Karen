@@ -72,8 +72,7 @@ export function useOptimisticUpdates<T = any>() {
           const newState = { ...prev };
           delete newState[key];
           return newState;
-        });
-        
+
         if (showLoading) {
           setLoading(key, false);
         }
@@ -112,8 +111,7 @@ export function useOptimisticUpdates<T = any>() {
           const newState = { ...prev };
           delete newState[key];
           return newState;
-        });
-        
+
         if (showLoading) {
           setLoading(key, false);
         }
@@ -142,7 +140,7 @@ export function useOptimisticUpdates<T = any>() {
       const newState = { ...prev };
       delete newState[key];
       return newState;
-    });
+
   }, []);
   
   return {
@@ -181,7 +179,7 @@ export function useOptimisticForm<TData = any, TResult = any>() {
         options?.onSuccess?.(result);
       },
       ...options,
-    });
+
   }, [performOptimisticUpdate]);
   
   const resetForm = useCallback(() => {
@@ -225,7 +223,7 @@ export function useOptimisticList<TItem = any>(initialItems: TItem[] = []) {
         setOptimisticItems(prev => prev.filter(i => i !== item));
       },
       ...options,
-    });
+
   }, [performOptimisticUpdate]);
   
   const removeItem = useCallback(async (
@@ -248,7 +246,7 @@ export function useOptimisticList<TItem = any>(initialItems: TItem[] = []) {
         // Item already removed optimistically
       },
       ...options,
-    });
+
   }, [performOptimisticUpdate]);
   
   const updateItem = useCallback(async (
@@ -272,7 +270,7 @@ export function useOptimisticList<TItem = any>(initialItems: TItem[] = []) {
         setItems(prev => prev.map(i => i === newItem ? result : i));
       },
       ...options,
-    });
+
   }, [performOptimisticUpdate]);
   
   const allItems = [...items, ...optimisticItems];

@@ -5,21 +5,7 @@
  * Based on requirements: 1.1, 1.2, 1.3
  */
 
-import {
-  generateColorProperties,
-  generateSpacingProperties,
-  generateTypographyProperties,
-  generateShadowProperties,
-  generateRadiusProperties,
-  generateAnimationProperties,
-  generateComponentProperties,
-  generateAllCSSProperties,
-  propertiesToCSS,
-  generateCSSTokens,
-  generateDarkThemeProperties,
-  generateDarkThemeCSS,
-  generateCompleteCSS,
-} from '../css-tokens';
+import { generateColorProperties, generateSpacingProperties, generateTypographyProperties, generateShadowProperties, generateRadiusProperties, generateAnimationProperties, generateComponentProperties, generateAllCSSProperties, propertiesToCSS, generateCSSTokens, generateDarkThemeProperties, generateDarkThemeCSS, generateCompleteCSS } from '../css-tokens';
 
 describe('CSS Tokens Generation', () => {
   describe('Color Properties', () => {
@@ -31,7 +17,6 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--color-primary-950');
       
       expect(properties['--color-primary-500']).toBe('#a855f7');
-    });
 
     it('should generate secondary color properties', () => {
       const properties = generateColorProperties();
@@ -39,7 +24,6 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--color-secondary-50');
       expect(properties).toHaveProperty('--color-secondary-500');
       expect(properties).toHaveProperty('--color-secondary-950');
-    });
 
     it('should generate neutral color properties', () => {
       const properties = generateColorProperties();
@@ -47,7 +31,6 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--color-neutral-50');
       expect(properties).toHaveProperty('--color-neutral-500');
       expect(properties).toHaveProperty('--color-neutral-950');
-    });
 
     it('should generate semantic color properties', () => {
       const properties = generateColorProperties();
@@ -56,8 +39,7 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--color-warning-500');
       expect(properties).toHaveProperty('--color-error-500');
       expect(properties).toHaveProperty('--color-info-500');
-    });
-  });
+
 
   describe('Spacing Properties', () => {
     it('should generate spacing properties', () => {
@@ -68,7 +50,6 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--space-xl');
       
       expect(properties['--space-md']).toBe('1rem');
-    });
 
     it('should generate all spacing sizes', () => {
       const properties = generateSpacingProperties();
@@ -76,9 +57,8 @@ describe('CSS Tokens Generation', () => {
       
       expectedSizes.forEach(size => {
         expect(properties).toHaveProperty(`--space-${size}`);
-      });
-    });
-  });
+
+
 
   describe('Typography Properties', () => {
     it('should generate font size properties', () => {
@@ -89,7 +69,6 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--text-xl');
       
       expect(properties['--text-base']).toBe('clamp(1rem, 0.9rem + 0.4vw, 1.125rem)');
-    });
 
     it('should generate font weight properties', () => {
       const properties = generateTypographyProperties();
@@ -99,7 +78,6 @@ describe('CSS Tokens Generation', () => {
       
       expect(properties['--font-weight-normal']).toBe('400');
       expect(properties['--font-weight-bold']).toBe('700');
-    });
 
     it('should generate line height properties', () => {
       const properties = generateTypographyProperties();
@@ -108,7 +86,6 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--line-height-tight');
       
       expect(properties['--line-height-normal']).toBe('1.5');
-    });
 
     it('should generate letter spacing properties', () => {
       const properties = generateTypographyProperties();
@@ -117,8 +94,7 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--letter-spacing-tight');
       
       expect(properties['--letter-spacing-normal']).toBe('0em');
-    });
-  });
+
 
   describe('Shadow Properties', () => {
     it('should generate shadow properties', () => {
@@ -129,7 +105,6 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--shadow-md');
       
       expect(properties['--shadow-xs']).toBe('0 1px 2px 0 rgb(0 0 0 / 0.05)');
-    });
 
     it('should generate all shadow sizes', () => {
       const properties = generateShadowProperties();
@@ -137,9 +112,8 @@ describe('CSS Tokens Generation', () => {
       
       expectedSizes.forEach(size => {
         expect(properties).toHaveProperty(`--shadow-${size}`);
-      });
-    });
-  });
+
+
 
   describe('Radius Properties', () => {
     it('should generate radius properties', () => {
@@ -150,8 +124,7 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--radius-md');
       
       expect(properties['--radius-md']).toBe('0.375rem');
-    });
-  });
+
 
   describe('Animation Properties', () => {
     it('should generate duration properties', () => {
@@ -161,7 +134,6 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--duration-normal');
       
       expect(properties['--duration-fast']).toBe('150ms');
-    });
 
     it('should generate easing properties', () => {
       const properties = generateAnimationProperties();
@@ -170,8 +142,7 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--ease-in-out');
       
       expect(properties['--ease-in-out']).toBe('cubic-bezier(0.4, 0, 0.2, 1)');
-    });
-  });
+
 
   describe('Component Properties', () => {
     it('should generate button component properties', () => {
@@ -180,14 +151,12 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--component-button-default-background');
       expect(properties).toHaveProperty('--component-button-secondary-background');
       expect(properties).toHaveProperty('--component-button-destructive-background');
-    });
 
     it('should generate badge component properties', () => {
       const properties = generateComponentProperties();
       
       expect(properties).toHaveProperty('--component-badge-default-background');
       expect(properties).toHaveProperty('--component-badge-secondary-background');
-    });
 
     it('should generate card component properties', () => {
       const properties = generateComponentProperties();
@@ -195,15 +164,13 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--component-card-background');
       expect(properties).toHaveProperty('--component-card-foreground');
       expect(properties).toHaveProperty('--component-card-border');
-    });
 
     it('should convert camelCase to kebab-case', () => {
       const properties = generateComponentProperties();
       
       expect(properties).toHaveProperty('--component-card-muted-foreground');
       expect(properties).toHaveProperty('--component-card-border-radius');
-    });
-  });
+
 
   describe('All Properties Generation', () => {
     it('should generate all CSS properties', () => {
@@ -217,7 +184,6 @@ describe('CSS Tokens Generation', () => {
       expect(properties).toHaveProperty('--radius-md');
       expect(properties).toHaveProperty('--duration-fast');
       expect(properties).toHaveProperty('--component-button-default-background');
-    });
 
     it('should not have duplicate properties', () => {
       const properties = generateAllCSSProperties();
@@ -225,8 +191,7 @@ describe('CSS Tokens Generation', () => {
       const uniqueKeys = [...new Set(keys)];
       
       expect(keys.length).toBe(uniqueKeys.length);
-    });
-  });
+
 
   describe('CSS String Generation', () => {
     it('should convert properties to CSS string', () => {
@@ -239,7 +204,6 @@ describe('CSS Tokens Generation', () => {
       
       expect(css).toContain('--color-primary: #a855f7;');
       expect(css).toContain('--space-md: 1rem;');
-    });
 
     it('should generate complete CSS tokens', () => {
       const css = generateCSSTokens();
@@ -248,8 +212,7 @@ describe('CSS Tokens Generation', () => {
       expect(css).toContain('--color-primary-500');
       expect(css).toContain('--space-md');
       expect(css).toMatch(/\}$/);
-    });
-  });
+
 
   describe('Dark Theme Properties', () => {
     it('should generate dark theme color overrides', () => {
@@ -261,7 +224,6 @@ describe('CSS Tokens Generation', () => {
       // Dark theme should invert neutral colors
       expect(properties['--color-neutral-50']).toBe('#0a0a0a');
       expect(properties['--color-neutral-950']).toBe('#fafafa');
-    });
 
     it('should generate enhanced shadows for dark theme', () => {
       const properties = generateDarkThemeProperties();
@@ -271,14 +233,12 @@ describe('CSS Tokens Generation', () => {
       
       // Dark theme shadows should be more prominent
       expect(properties['--shadow-xs']).toContain('0.4');
-    });
 
     it('should generate component overrides for dark theme', () => {
       const properties = generateDarkThemeProperties();
       
       expect(properties).toHaveProperty('--component-button-default-background');
       expect(properties).toHaveProperty('--component-card-background');
-    });
 
     it('should generate dark theme CSS', () => {
       const css = generateDarkThemeCSS();
@@ -286,8 +246,7 @@ describe('CSS Tokens Generation', () => {
       expect(css).toMatch(/^\.dark \{/);
       expect(css).toContain('--color-neutral-50: #0a0a0a;');
       expect(css).toMatch(/\}$/);
-    });
-  });
+
 
   describe('Complete CSS Generation', () => {
     it('should generate complete CSS with light and dark themes', () => {
@@ -297,7 +256,6 @@ describe('CSS Tokens Generation', () => {
       expect(css).toContain('.dark {');
       expect(css).toContain('--color-primary-500');
       expect(css).toContain('--color-neutral-50: #0a0a0a;');
-    });
 
     it('should have proper CSS structure', () => {
       const css = generateCompleteCSS();
@@ -309,6 +267,5 @@ describe('CSS Tokens Generation', () => {
       expect(rootIndex).toBeGreaterThan(-1);
       expect(darkIndex).toBeGreaterThan(-1);
       expect(darkIndex).toBeGreaterThan(rootIndex);
-    });
-  });
-});
+
+

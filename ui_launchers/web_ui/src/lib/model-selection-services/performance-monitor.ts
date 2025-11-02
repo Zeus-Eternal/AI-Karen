@@ -4,14 +4,7 @@
 
 import type { Model } from "../model-utils";
 import { BaseModelService } from "./base-service";
-import {
-  ModelPerformanceData,
-  PerformanceHistory,
-  PerformanceHistoryEntry,
-  PerformanceHistorySummary,
-  ModelPerformanceComparison,
-  PerformanceMetrics,
-} from "./types";
+import { ModelPerformanceData, PerformanceHistory, PerformanceHistoryEntry, PerformanceHistorySummary, ModelPerformanceComparison, PerformanceMetrics } from "./types";
 
 export class PerformanceMonitor extends BaseModelService {
   private performanceData: Map<string, ModelPerformanceData> = new Map();
@@ -89,7 +82,7 @@ export class PerformanceMonitor extends BaseModelService {
         gpu_percent: data.gpu_utilization_percent,
         memory_percent: this.calculateMemoryPercent(data.memory_usage_mb ?? 0),
       },
-    });
+
   }
 
   /**
@@ -178,7 +171,6 @@ export class PerformanceMonitor extends BaseModelService {
           models.length
         ),
       };
-    });
 
     return {
       models: rankedModels,
@@ -225,7 +217,6 @@ export class PerformanceMonitor extends BaseModelService {
       } else {
         performanceTiers.slow++;
       }
-    });
 
     // Calculate estimated capacity
     const textModels = allModels.filter(
@@ -293,7 +284,6 @@ export class PerformanceMonitor extends BaseModelService {
       if (perfData.performance_score < minPerformanceScore) return false;
 
       return true;
-    });
 
     // Sort based on criteria
     return modelsWithPerformance.sort((a, b) => {
@@ -314,7 +304,7 @@ export class PerformanceMonitor extends BaseModelService {
 
       // Default to overall performance score
       return bPerfData.performance_score - aPerfData.performance_score;
-    });
+
   }
 
   /**

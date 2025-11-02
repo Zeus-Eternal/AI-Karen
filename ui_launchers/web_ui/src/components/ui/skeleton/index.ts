@@ -1,14 +1,8 @@
-export { Skeleton } from './skeleton';
-export { SkeletonText } from './skeleton-text';
-export { SkeletonCard } from './skeleton-card';
-export { SkeletonAvatar } from './skeleton-avatar';
-export { SkeletonButton } from './skeleton-button';
-export { SkeletonTable } from './skeleton-table';
+import { export { Skeleton } from './skeleton';
+import { export { SkeletonText } from './skeleton-text';
+import { export { SkeletonCard } from './skeleton-card';
+import { export { SkeletonAvatar } from './skeleton-avatar';
+import { export { SkeletonButton } from './skeleton-button';
+import { export { SkeletonTable } from './skeleton-table';
 export type { 
-  SkeletonProps,
-  SkeletonTextProps,
-  SkeletonCardProps,
-  SkeletonAvatarProps,
-  SkeletonButtonProps,
-  SkeletonTableProps
-} from './types';
+import { } from './types';

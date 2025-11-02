@@ -80,7 +80,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({
       message: 'Security settings updated successfully',
       changesCount: changes.length
-    });
+
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to update security settings' },
@@ -174,7 +174,7 @@ function getSettingsChanges(oldSettings: any, newSettings: any): Array<{setting:
             setting: currentPath,
             oldValue: old[key],
             newValue: updated[key]
-          });
+
         }
       }
     }

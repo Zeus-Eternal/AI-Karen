@@ -56,6 +56,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
     confirm_password: '',
     email_verified: false
   });
+
   // Redirect if setup is already completed
   useEffect(() => {
     if (!setupLoading && (!isFirstRun || setupCompleted)) {
@@ -145,6 +146,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
         email: formData.email,
         password: formData.password
       });
+
       // Redirect to admin dashboard
       router.replace('/admin');
     } catch (error) {
@@ -198,7 +200,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
           </div>
           <div className="space-y-2">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-              AI Karen Setup
             </h1>
             <p className="text-lg text-muted-foreground">
               Let's get your AI assistant ready for action
@@ -247,30 +248,33 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
             {renderCurrentStep()}
             {/* Navigation Buttons */}
             <div className="flex justify-between pt-4">
-              <button
+              <Button
                 variant="outline"
                 onClick={handlePrevious}
                 disabled={currentStep === 0 || isLoading}
                 className="flex items-center space-x-2"
-               aria-label="Button">
+                aria-label="Button"
+              >
                 <ArrowLeft className="h-4 w-4 sm:w-auto md:w-full" />
                 <span>Previous</span>
               </Button>
               {currentStep < SETUP_STEPS.length - 1 ? (
-                <button
+                <Button
                   onClick={handleNext}
                   disabled={isLoading}
                   className="flex items-center space-x-2"
-                 aria-label="Button">
+                  aria-label="Button"
+                >
                   <span>Next</span>
                   <ArrowRight className="h-4 w-4 sm:w-auto md:w-full" />
                 </Button>
               ) : (
-                <button
+                <Button
                   onClick={handleSetupComplete}
                   disabled={isLoading}
                   className="flex items-center space-x-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                 aria-label="Button">
+                  aria-label="Button"
+                >
                   <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
                   <span>Complete Setup</span>
                 </Button>

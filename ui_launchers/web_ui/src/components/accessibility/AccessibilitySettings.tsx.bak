@@ -1,0 +1,290 @@
+"use client";
+
+import React from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Label } from '../ui/label';
+import { Switch } from '../ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Slider } from '../ui/slider';
+import { Button } from '../ui/button';
+import { useAccessibilityEnhancements } from './AccessibilityProvider';
+import { useAccessibility } from '../../providers/accessibility-provider';
+import { cn } from '../../lib/utils';
+
+interface AccessibilitySettingsProps {
+  className?: string;
+}
+
+export function AccessibilitySettings({ className }: AccessibilitySettingsProps) {
+  const {
+    highContrastMode,
+    toggleHighContrast,
+    keyboardNavigationEnabled,
+    setKeyboardNavigationEnabled,
+    textScale,
+    setTextScale,
+    colorBlindnessFilter,
+    setColorBlindnessFilter,
+    announceMessage,
+  } = useAccessibilityEnhancements();
+
+  const { settings, updateSetting, resetSettings } = useAccessibility();
+
+  const handleFontSizeChange = (size: 'small' | 'medium' | 'large' | 'extra-large') => {
+    updateSetting('fontSize', size);
+    announceMessage(`Font size changed to ${size}`);
+  };
+
+  const handleLineHeightChange = (height: 'normal' | 'relaxed' | 'loose') => {
+    updateSetting('lineHeight', height);
+    announceMessage(`Line height changed to ${height}`);
+  };
+
+  const handleTextScaleChange = (value: number[]) => {
+    const scale = value[0];
+    setTextScale(scale);
+    announceMessage(`Text scale changed to ${Math.round(scale * 100)}%`);
+  };
+
+  const handleResetSettings = () => {
+    resetSettings();
+    setTextScale(1);
+    setKeyboardNavigationEnabled(true);
+    announceMessage('Accessibility settings reset to defaults');
+  };
+
+  return (
+    <div className={cn('space-y-6', className)}>
+      {/* Visual Accessibility */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Visual Accessibility</CardTitle>
+          <CardDescription>
+            Adjust visual settings to improve readability and contrast
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* High Contrast Mode */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="high-contrast">High Contrast Mode</Label>
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                Increase contrast for better visibility
+              </p>
+            </div>
+            <Switch
+              id="high-contrast"
+              checked={highContrastMode}
+              onCheckedChange={toggleHighContrast}
+              aria-describedby="high-contrast-description"
+            />
+          </div>
+
+          {/* Font Size */}
+          <div className="space-y-2">
+            <Label htmlFor="font-size">Font Size</Label>
+            <select
+              value={settings.fontSize}
+              onValueChange={handleFontSizeChange}
+             aria-label="Select option">
+              <selectTrigger id="font-size" aria-label="Select option">
+                <selectValue />
+              </SelectTrigger>
+              <selectContent aria-label="Select option">
+                <selectItem value="small" aria-label="Select option">Small</SelectItem>
+                <selectItem value="medium" aria-label="Select option">Medium</SelectItem>
+                <selectItem value="large" aria-label="Select option">Large</SelectItem>
+                <selectItem value="extra-large" aria-label="Select option">Extra Large</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Line Height */}
+          <div className="space-y-2">
+            <Label htmlFor="line-height">Line Height</Label>
+            <select
+              value={settings.lineHeight}
+              onValueChange={handleLineHeightChange}
+             aria-label="Select option">
+              <selectTrigger id="line-height" aria-label="Select option">
+                <selectValue />
+              </SelectTrigger>
+              <selectContent aria-label="Select option">
+                <selectItem value="normal" aria-label="Select option">Normal</SelectItem>
+                <selectItem value="relaxed" aria-label="Select option">Relaxed</SelectItem>
+                <selectItem value="loose" aria-label="Select option">Loose</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Text Scale */}
+          <div className="space-y-2">
+            <Label htmlFor="text-scale">
+              Text Scale: {Math.round(textScale * 100)}%
+            </Label>
+            <Slider
+              id="text-scale"
+              min={0.8}
+              max={2}
+              step={0.1}
+              value={[textScale]}
+              onValueChange={handleTextScaleChange}
+              className="w-full"
+              aria-describedby="text-scale-description"
+            />
+            <p id="text-scale-description" className="text-sm text-muted-foreground md:text-base lg:text-lg">
+              Adjust the overall text size scaling
+            </p>
+          </div>
+
+          {/* Color Blindness Support */}
+          <div className="space-y-2">
+            <Label htmlFor="color-blindness">Color Blindness Support</Label>
+            <select
+              value={colorBlindnessFilter}
+              onValueChange={setColorBlindnessFilter}
+             aria-label="Select option">
+              <selectTrigger id="color-blindness" aria-label="Select option">
+                <selectValue />
+              </SelectTrigger>
+              <selectContent aria-label="Select option">
+                <selectItem value="none" aria-label="Select option">None</SelectItem>
+                <selectItem value="protanopia" aria-label="Select option">Protanopia (Red-blind)</SelectItem>
+                <selectItem value="deuteranopia" aria-label="Select option">Deuteranopia (Green-blind)</SelectItem>
+                <selectItem value="tritanopia" aria-label="Select option">Tritanopia (Blue-blind)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Motion and Animation */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Motion and Animation</CardTitle>
+          <CardDescription>
+            Control animations and motion effects
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="reduced-motion">Reduce Motion</Label>
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                Minimize animations and transitions
+              </p>
+            </div>
+            <Switch
+              id="reduced-motion"
+              checked={settings.reducedMotion}
+              onCheckedChange={(checked) => updateSetting('reducedMotion', checked)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Interaction Accessibility */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Interaction</CardTitle>
+          <CardDescription>
+            Configure interaction and navigation preferences
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Keyboard Navigation */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="keyboard-nav">Enhanced Keyboard Navigation</Label>
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                Enable advanced keyboard navigation features
+              </p>
+            </div>
+            <Switch
+              id="keyboard-nav"
+              checked={keyboardNavigationEnabled}
+              onCheckedChange={setKeyboardNavigationEnabled}
+            />
+          </div>
+
+          {/* Focus Visible */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="focus-visible">Focus Indicators</Label>
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                Show focus indicators for keyboard navigation
+              </p>
+            </div>
+            <Switch
+              id="focus-visible"
+              checked={settings.focusVisible}
+              onCheckedChange={(checked) => updateSetting('focusVisible', checked)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Screen Reader */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Screen Reader</CardTitle>
+          <CardDescription>
+            Configure screen reader and assistive technology support
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Announcements */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="announcements">Live Announcements</Label>
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                Enable automatic announcements for screen readers
+              </p>
+            </div>
+            <Switch
+              id="announcements"
+              checked={settings.announcements}
+              onCheckedChange={(checked) => updateSetting('announcements', checked)}
+            />
+          </div>
+
+          {/* Verbose Descriptions */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="verbose-descriptions">Verbose Descriptions</Label>
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                Provide detailed descriptions for complex elements
+              </p>
+            </div>
+            <Switch
+              id="verbose-descriptions"
+              checked={settings.verboseDescriptions}
+              onCheckedChange={(checked) => updateSetting('verboseDescriptions', checked)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reset Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Reset Settings</CardTitle>
+          <CardDescription>
+            Reset all accessibility settings to their default values
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <button
+            variant="outline"
+            onClick={handleResetSettings}
+            className="w-full"
+           aria-label="Button">
+            Reset to Defaults
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default AccessibilitySettings;

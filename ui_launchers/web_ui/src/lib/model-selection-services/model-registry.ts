@@ -1,5 +1,4 @@
 import { BaseModelService } from "./base-service";
-import {
 import type { Model } from "../model-utils";
 /**
  * Model Registry Service
@@ -10,15 +9,10 @@ import type { Model } from "../model-utils";
 
 
 
-  ModelCategories,
-  ModelLookupOptions,
-  DirectoryWatchOptions,
-} from "./types";
+import { } from "./types";
 
 
-  ModelRegistryError,
-  ErrorUtils,
-} from "./errors/model-selection-errors";
+import { } from "./errors/model-selection-errors";
 
 // Define ModelRegistry interface locally to avoid conflicts
 export interface ModelRegistryData {
@@ -323,7 +317,6 @@ export class ModelRegistryService
         if (!categories.byCapability[capability])
           categories.byCapability[capability] = [];
         categories.byCapability[capability].push(model);
-      });
 
       // Categorize by status
       const status = model.status || "unknown";
@@ -335,7 +328,6 @@ export class ModelRegistryService
       if (!categories.byHealth[healthStatus])
         categories.byHealth[healthStatus] = [];
       categories.byHealth[healthStatus].push(model);
-    });
 
     return categories;
   }
@@ -367,7 +359,7 @@ export class ModelRegistryService
         default:
           return 0;
       }
-    });
+
   }
 
   /**

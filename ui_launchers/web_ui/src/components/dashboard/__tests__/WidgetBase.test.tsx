@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { WidgetBase } from '../WidgetBase';
@@ -59,7 +60,6 @@ describe('WidgetBase', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders widget with title and content', () => {
     render(
@@ -76,7 +76,6 @@ describe('WidgetBase', () => {
 
     expect(screen.getByText('Test Widget')).toBeInTheDocument();
     expect(screen.getByText('Widget Content')).toBeInTheDocument();
-  });
 
   it('displays loading state', () => {
     render(
@@ -94,7 +93,6 @@ describe('WidgetBase', () => {
     expect(screen.queryByText('Widget Content')).not.toBeInTheDocument();
     // Loading spinner should be present (we can't easily test for the icon, but we can test the structure)
     expect(screen.getByText('Test Widget')).toBeInTheDocument();
-  });
 
   it('displays error state with retry button', () => {
     const errorMessage = 'Failed to load data';
@@ -115,7 +113,6 @@ describe('WidgetBase', () => {
     expect(screen.getByText(errorMessage)).toBeInTheDocument();
     expect(screen.getByText('Retry')).toBeInTheDocument();
     expect(screen.queryByText('Widget Content')).not.toBeInTheDocument();
-  });
 
   it('calls onRefresh when refresh button is clicked', async () => {
     mockOnRefresh.mockResolvedValue(undefined);
@@ -143,9 +140,8 @@ describe('WidgetBase', () => {
       fireEvent.click(refreshButton);
       await waitFor(() => {
         expect(mockOnRefresh).toHaveBeenCalledTimes(1);
-      });
+
     }
-  });
 
   it('calls onRemove when remove button is clicked and confirmed', () => {
     // Mock window.confirm to return true
@@ -173,7 +169,6 @@ describe('WidgetBase', () => {
 
     // Restore original confirm
     window.confirm = originalConfirm;
-  });
 
   it('does not call onRemove when remove is cancelled', () => {
     // Mock window.confirm to return false
@@ -201,7 +196,6 @@ describe('WidgetBase', () => {
 
     // Restore original confirm
     window.confirm = originalConfirm;
-  });
 
   it('applies correct size classes', () => {
     const { rerender } = render(
@@ -227,7 +221,6 @@ describe('WidgetBase', () => {
 
     widget = screen.getByText('Test Widget').closest('[data-widget-id]');
     expect(widget).toHaveClass('col-span-2', 'row-span-2');
-  });
 
   it('shows last updated time when data is available', () => {
     render(
@@ -242,13 +235,12 @@ describe('WidgetBase', () => {
     // Check if the last updated time is displayed
     const lastUpdatedTime = new Date(mockData.lastUpdated).toLocaleTimeString();
     expect(screen.getByText(lastUpdatedTime)).toBeInTheDocument();
-  });
 
   it('handles refresh with loading state', async () => {
     let resolveRefresh: () => void;
     const refreshPromise = new Promise<void>((resolve) => {
       resolveRefresh = resolve;
-    });
+
     mockOnRefresh.mockReturnValue(refreshPromise);
 
     render(
@@ -274,7 +266,6 @@ describe('WidgetBase', () => {
       // Should show loading state
       await waitFor(() => {
         expect(mockOnRefresh).toHaveBeenCalledTimes(1);
-      });
 
       // Resolve the refresh
       resolveRefresh!();
@@ -282,9 +273,8 @@ describe('WidgetBase', () => {
       await waitFor(() => {
         // Should return to normal state
         expect(screen.getByText('Widget Content')).toBeInTheDocument();
-      });
+
     }
-  });
 
   it('applies editing styles when isEditing is true', () => {
     render(
@@ -302,5 +292,4 @@ describe('WidgetBase', () => {
       'ring-2',
       'ring-[var(--component-button-default-ring)]'
     );
-  });
-});
+

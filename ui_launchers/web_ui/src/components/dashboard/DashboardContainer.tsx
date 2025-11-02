@@ -1,63 +1,34 @@
+
+"use client";
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
-import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { 
 import { cn } from '@/lib/utils';
-import type { 
-import { WidgetBase } from './WidgetBase';
+import type {  import { WidgetBase } from './WidgetBase';
 import { DraggableWidget } from './DraggableWidget';
 import { TimeRangeSelector } from './TimeRangeSelector';
 import { DashboardFilters } from './DashboardFilters';
 import { DashboardTemplateSelector } from './DashboardTemplateSelector';
 import { DashboardExportImport } from './DashboardExportImport';
 import { useAppStore, selectUser } from '@/store/app-store';
-'use client';
 
-
-
-  DndContext,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-  PointerSensor,
   useSensor,
   useSensors,
   closestCenter,
-} from '@dnd-kit/core';
+import { } from '@dnd-kit/core';
 
-  SortableContext,
   rectSortingStrategy,
-} from '@dnd-kit/sortable';
+import { } from '@dnd-kit/sortable';
 
 
 
-  Plus, 
-  Settings, 
-  LayoutGrid,
-  Edit3,
-  Save,
-  X,
-  Filter,
-  Clock,
-  FileText as Template,
-  Share2
-} from 'lucide-react';
+import { } from 'lucide-react';
 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { } from '@/components/ui/dropdown-menu';
 
 
-  DashboardContainerProps, 
-  WidgetConfig, 
-  DragItem,
-  WidgetData 
-} from '@/types/dashboard';
+import { } from '@/types/dashboard';
 
 
 
@@ -65,7 +36,7 @@ import { useAppStore, selectUser } from '@/store/app-store';
   getAvailableWidgetTypes, 
   getWidgetInfo,
   createWidgetConfig 
-} from './WidgetRegistry';
+import { } from './WidgetRegistry';
 
 
 
@@ -77,7 +48,7 @@ import { useAppStore, selectUser } from '@/store/app-store';
   selectGlobalTimeRange,
   selectGlobalFilters,
   selectIsEditing
-} from '@/store/dashboard-store';
+import { } from '@/store/dashboard-store';
 
 
 export const DashboardContainer: React.FC<DashboardContainerProps> = ({
@@ -159,7 +130,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             ...config,
             widgets: newWidgets,
             updatedAt: new Date()
-          });
+
         }
       }
     }
@@ -175,7 +146,6 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         w: 1,
         h: 1
       }
-    });
 
     // Use store action if available, otherwise fallback to prop
     if (config.id) {
@@ -185,7 +155,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         ...config,
         widgets: [...config.widgets, { ...newWidgetConfig, id: `widget-${Date.now()}` }],
         updatedAt: new Date()
-      });
+
     }
   }, [config, onConfigChange, addWidget]);
 
@@ -198,7 +168,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         ...config,
         widgets: config.widgets.filter(widget => widget.id !== widgetId),
         updatedAt: new Date()
-      });
+
     }
   }, [config, onConfigChange, removeWidget]);
 
@@ -213,7 +183,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
           widget.id === widgetId ? newConfig : widget
         ),
         updatedAt: new Date()
-      });
+
     }
   }, [config, onConfigChange, updateWidget]);
 
@@ -280,15 +250,14 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
       // Clear existing filters and add new ones
       config.filters.forEach(filter => {
         removeDashboardFilter(config.id, filter.id);
-      });
-      
+
       filters.forEach(filter => {
         if (filter.id) {
           updateDashboardFilter(config.id, filter.id, filter);
         } else {
           addDashboardFilter(config.id, filter);
         }
-      });
+
     } else {
       onConfigChange({ ...config, filters });
     }
@@ -380,12 +349,11 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             {isEditing && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button variant="outline" size="sm" aria-label="Button">
-                    <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    Add Widget
+                  <Button variant="outline" size="sm" >
+                    <Plus className="h-4 w-4 mr-2 " />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 sm:w-auto md:w-full">
+                <DropdownMenuContent align="end" className="w-48 ">
                   {getAvailableWidgetTypes().map(type => {
                     const info = getWidgetInfo(type);
                     return (
@@ -409,26 +377,22 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             {/* Layout Options */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button variant="outline" size="sm" aria-label="Button">
-                  <LayoutGrid className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Layout
+                <Button variant="outline" size="sm" >
+                  <LayoutGrid className="h-4 w-4 mr-2 " />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={() => handleLayoutChange('grid')}
                 >
-                  Grid Layout
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleLayoutChange('masonry')}
                 >
-                  Masonry Layout
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleLayoutChange('flex')}
                 >
-                  Flex Layout
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -441,13 +405,11 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
              aria-label="Button">
               {isEditing ? (
                 <>
-                  <Save className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Save
+                  <Save className="h-4 w-4 mr-2 " />
                 </>
               ) : (
                 <>
-                  <Edit3 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Edit
+                  <Edit3 className="h-4 w-4 mr-2 " />
                 </>
               )}
             </Button>
@@ -456,10 +418,9 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             <button
               variant={showFilters ? "default" : "outline"}
               size="sm"
-              onClick={() = aria-label="Button"> setShowFilters(!showFilters)}
+              onClick={() => setShowFilters(!showFilters)}
             >
-              <Filter className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Filters
+              <Filter className="h-4 w-4 mr-2 " />
             </Button>
           </div>
         </div>
@@ -486,14 +447,12 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
       {config.widgets.length === 0 ? (
         <Card className="p-8 text-center sm:p-4 md:p-6">
           <div className="text-muted-foreground">
-            <LayoutGrid className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+            <LayoutGrid className="h-12 w-12 mx-auto mb-4 opacity-50 " />
             <h3 className="text-lg font-medium mb-2">No widgets added</h3>
             <p className="text-sm mb-4 md:text-base lg:text-lg">
-              Add widgets to start building your dashboard
             </p>
-            <button onClick={toggleEditMode} variant="outline" aria-label="Button">
-              <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Add Your First Widget
+            <Button onClick={toggleEditMode} variant="outline" >
+              <Plus className="h-4 w-4 mr-2 " />
             </Button>
           </div>
         </Card>

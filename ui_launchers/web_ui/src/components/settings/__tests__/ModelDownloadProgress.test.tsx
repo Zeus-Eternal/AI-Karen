@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
@@ -34,7 +35,6 @@ describe('ModelDownloadProgress', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-  });
 
   it('renders downloading task correctly', () => {
     render(
@@ -51,7 +51,6 @@ describe('ModelDownloadProgress', () => {
     expect(screen.getByText('Downloading')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
-  });
 
   it('renders compact view correctly', () => {
     render(
@@ -64,7 +63,6 @@ describe('ModelDownloadProgress', () => {
 
     expect(screen.getByText('Test Model')).toBeInTheDocument();
     expect(screen.getByText('45%')).toBeInTheDocument();
-  });
 
   it('renders error state correctly', () => {
     const errorTask: DownloadTask = {
@@ -84,7 +82,6 @@ describe('ModelDownloadProgress', () => {
     expect(screen.getByText('Error')).toBeInTheDocument();
     expect(screen.getByText('Network connection failed')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
-  });
 
   it('renders completed state correctly', () => {
     const completedTask: DownloadTask = {
@@ -103,7 +100,6 @@ describe('ModelDownloadProgress', () => {
     expect(screen.getByText('Completed')).toBeInTheDocument();
     expect(screen.getByText('Download completed successfully')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument();
-  });
 
   it('calls onCancel when cancel button is clicked', async () => {
     render(
@@ -118,8 +114,7 @@ describe('ModelDownloadProgress', () => {
 
     await waitFor(() => {
       expect(mockOnCancel).toHaveBeenCalledWith('test-task-1');
-    });
-  });
+
 
   it('calls onPause when pause button is clicked', async () => {
     render(
@@ -135,8 +130,7 @@ describe('ModelDownloadProgress', () => {
 
     await waitFor(() => {
       expect(mockOnPause).toHaveBeenCalledWith('test-task-1');
-    });
-  });
+
 
   it('formats bytes correctly', () => {
     render(
@@ -147,7 +141,6 @@ describe('ModelDownloadProgress', () => {
     );
 
     expect(screen.getByText(/429.15 MB \/ 953.67 MB/)).toBeInTheDocument();
-  });
 
   it('formats speed correctly', () => {
     render(
@@ -158,7 +151,6 @@ describe('ModelDownloadProgress', () => {
     );
 
     expect(screen.getByText(/4.77 MB\/s/)).toBeInTheDocument();
-  });
 
   it('formats time correctly', () => {
     render(
@@ -169,5 +161,4 @@ describe('ModelDownloadProgress', () => {
     );
 
     expect(screen.getByText(/2m/)).toBeInTheDocument();
-  });
-});
+

@@ -17,13 +17,12 @@ export async function GET(request: NextRequest) {
         directory,
         message: `Directory ${directory} not found`,
         scan_time: new Date().toISOString()
-      });
+
     }
     // Read directory contents
     const entries = await fs.readdir(fullPath, { withFileTypes: true });
     // Filter for directories (transformers models are typically in directories)
     const modelDirs = entries.filter(entry => entry.isDirectory());
-    });
     // Process each model directory
     const models = [];
     for (const dir of modelDirs) {
@@ -42,7 +41,7 @@ export async function GET(request: NextRequest) {
           modified: dirStats.mtime.toISOString(),
           config,
           tokenizer_config: tokenizerConfig
-        });
+
       } catch (dirError) {
       }
     }

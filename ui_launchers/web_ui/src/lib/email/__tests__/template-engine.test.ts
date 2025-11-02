@@ -19,7 +19,6 @@ describe('TemplateEngine', () => {
 
       const result = TemplateEngine.render(template, variables);
       expect(result).toBe('Hello John Doe, welcome to AI Karen!');
-    });
 
     it('should handle conditional blocks', () => {
       const template = 'Hello {{name}}{{#if urgent}}, this is urgent!{{/if}}';
@@ -36,7 +35,6 @@ describe('TemplateEngine', () => {
 
       expect(TemplateEngine.render(template, withCondition)).toBe('Hello John, this is urgent!');
       expect(TemplateEngine.render(template, withoutCondition)).toBe('Hello John');
-    });
 
     it('should clean up unused template syntax', () => {
       const template = 'Hello {{name}}, {{unknown_variable}}';
@@ -46,7 +44,6 @@ describe('TemplateEngine', () => {
 
       const result = TemplateEngine.render(template, variables);
       expect(result).toBe('Hello John, ');
-    });
 
     it('should handle missing variables gracefully', () => {
       const template = 'Hello {{name}}, your role is {{role}}';
@@ -56,8 +53,7 @@ describe('TemplateEngine', () => {
 
       const result = TemplateEngine.render(template, variables);
       expect(result).toBe('Hello John, your role is ');
-    });
-  });
+
 
   describe('extractVariables', () => {
     it('should extract simple variables', () => {
@@ -65,22 +61,19 @@ describe('TemplateEngine', () => {
       const variables = TemplateEngine.extractVariables(template);
       
       expect(variables).toEqual(['name', 'system']);
-    });
 
     it('should extract variables from conditional blocks', () => {
       const template = 'Hello {{name}}{{#if urgent}}, urgent message{{/if}}';
       const variables = TemplateEngine.extractVariables(template);
       
       expect(variables).toEqual(['name', 'urgent']);
-    });
 
     it('should handle duplicate variables', () => {
       const template = 'Hello {{name}}, {{name}} is your name';
       const variables = TemplateEngine.extractVariables(template);
       
       expect(variables).toEqual(['name']);
-    });
-  });
+
 
   describe('validateTemplate', () => {
     let mockTemplate: EmailTemplate;
@@ -99,7 +92,6 @@ describe('TemplateEngine', () => {
         updated_at: new Date(),
         created_by: 'test-user',
       };
-    });
 
     it('should validate a correct template', () => {
       const validation = TemplateEngine.validateTemplate(mockTemplate);
@@ -108,7 +100,6 @@ describe('TemplateEngine', () => {
       expect(validation.errors).toHaveLength(0);
       expect(validation.missing_variables).toHaveLength(0);
       expect(validation.unused_variables).toHaveLength(0);
-    });
 
     it('should detect missing variable declarations', () => {
       mockTemplate.html_content = '<p>Hello {{name}}, your email is {{email}}!</p>';
@@ -117,7 +108,6 @@ describe('TemplateEngine', () => {
       
       expect(validation.is_valid).toBe(false);
       expect(validation.missing_variables).toContain('email');
-    });
 
     it('should detect unused variable declarations', () => {
       mockTemplate.variables = ['name', 'system', 'unused_var'];
@@ -127,7 +117,6 @@ describe('TemplateEngine', () => {
       expect(validation.is_valid).toBe(true);
       expect(validation.unused_variables).toContain('unused_var');
       expect(validation.warnings.length).toBeGreaterThan(0);
-    });
 
     it('should validate with provided variables', () => {
       const variables: EmailTemplateVariables = {
@@ -138,7 +127,6 @@ describe('TemplateEngine', () => {
       const validation = TemplateEngine.validateTemplate(mockTemplate, variables);
       
       expect(validation.is_valid).toBe(true);
-    });
 
     it('should detect empty subject', () => {
       mockTemplate.subject = '';
@@ -147,9 +135,8 @@ describe('TemplateEngine', () => {
       
       expect(validation.is_valid).toBe(false);
       expect(validation.errors).toContain('Subject is required');
-    });
-  });
-});
+
+
 
 describe('EmailTemplateManager', () => {
   describe('createDefaultTemplates', () => {
@@ -162,7 +149,6 @@ describe('EmailTemplateManager', () => {
         'user_welcome',
         'security_alert'
       ]);
-    });
 
     it('should set correct metadata for default templates', async () => {
       const templates = await EmailTemplateManager.createDefaultTemplates('test-user');
@@ -173,9 +159,8 @@ describe('EmailTemplateManager', () => {
         expect(template.created_by).toBe('test-user');
         expect(template.created_at).toBeInstanceOf(Date);
         expect(template.updated_at).toBeInstanceOf(Date);
-      });
-    });
-  });
+
+
 
   describe('createTemplate', () => {
     it('should create a new template with correct properties', () => {
@@ -199,8 +184,7 @@ describe('EmailTemplateManager', () => {
       expect(template.is_active).toBe(true);
       expect(template.created_by).toBe('test-user');
       expect(template.id).toMatch(/^template_/);
-    });
-  });
+
 
   describe('updateTemplate', () => {
     let existingTemplate: EmailTemplate;
@@ -219,7 +203,6 @@ describe('EmailTemplateManager', () => {
         updated_at: new Date('2023-01-01'),
         created_by: 'original-user',
       };
-    });
 
     it('should update specified fields only', () => {
       const updateRequest = {
@@ -234,7 +217,6 @@ describe('EmailTemplateManager', () => {
       expect(updatedTemplate.html_content).toBe(existingTemplate.html_content);
       expect(updatedTemplate.text_content).toBe(existingTemplate.text_content);
       expect(updatedTemplate.updated_at).not.toEqual(existingTemplate.updated_at);
-    });
 
     it('should preserve original fields when not updated', () => {
       const updateRequest = {
@@ -246,8 +228,7 @@ describe('EmailTemplateManager', () => {
       expect(updatedTemplate.id).toBe(existingTemplate.id);
       expect(updatedTemplate.created_at).toEqual(existingTemplate.created_at);
       expect(updatedTemplate.created_by).toBe(existingTemplate.created_by);
-    });
-  });
+
 
   describe('generatePreview', () => {
     let mockTemplate: EmailTemplate;
@@ -266,7 +247,6 @@ describe('EmailTemplateManager', () => {
         updated_at: new Date(),
         created_by: 'test-user',
       };
-    });
 
     it('should generate preview with sample variables', () => {
       const preview = EmailTemplateManager.generatePreview(mockTemplate);
@@ -276,7 +256,6 @@ describe('EmailTemplateManager', () => {
       expect(preview.html).toContain('AI Karen Admin System');
       expect(preview.text).toContain('John Doe');
       expect(preview.text).toContain('AI Karen Admin System');
-    });
 
     it('should generate preview with custom variables', () => {
       const customVariables: EmailTemplateVariables = {
@@ -289,28 +268,24 @@ describe('EmailTemplateManager', () => {
       expect(preview.subject).toBe('Hello Jane Smith');
       expect(preview.html).toBe('<p>Hello Jane Smith, welcome to Custom System!</p>');
       expect(preview.text).toBe('Hello Jane Smith, welcome to Custom System!');
-    });
-  });
+
 
   describe('getTemplateByType', () => {
     let mockTemplates: EmailTemplate[];
 
     beforeEach(async () => {
       mockTemplates = await EmailTemplateManager.createDefaultTemplates('test-user');
-    });
 
     it('should find template by type', () => {
       const template = EmailTemplateManager.getTemplateByType(mockTemplates, 'admin_invitation');
       
       expect(template).toBeDefined();
       expect(template?.template_type).toBe('admin_invitation');
-    });
 
     it('should return undefined for non-existent type', () => {
       const template = EmailTemplateManager.getTemplateByType(mockTemplates, 'non_existent' as any);
       
       expect(template).toBeUndefined();
-    });
 
     it('should only return active templates', () => {
       // Mark a template as inactive
@@ -319,8 +294,7 @@ describe('EmailTemplateManager', () => {
       const template = EmailTemplateManager.getTemplateByType(mockTemplates, mockTemplates[0].template_type);
       
       expect(template).toBeUndefined();
-    });
-  });
+
 
   describe('cloneTemplate', () => {
     let originalTemplate: EmailTemplate;
@@ -339,7 +313,6 @@ describe('EmailTemplateManager', () => {
         updated_at: new Date('2023-01-01'),
         created_by: 'original-user',
       };
-    });
 
     it('should create a clone with new ID and metadata', () => {
       const clonedTemplate = EmailTemplateManager.cloneTemplate(
@@ -353,7 +326,6 @@ describe('EmailTemplateManager', () => {
       expect(clonedTemplate.created_by).toBe('clone-user');
       expect(clonedTemplate.created_at).not.toEqual(originalTemplate.created_at);
       expect(clonedTemplate.updated_at).not.toEqual(originalTemplate.updated_at);
-    });
 
     it('should preserve template content and configuration', () => {
       const clonedTemplate = EmailTemplateManager.cloneTemplate(
@@ -368,6 +340,5 @@ describe('EmailTemplateManager', () => {
       expect(clonedTemplate.template_type).toBe(originalTemplate.template_type);
       expect(clonedTemplate.variables).toEqual(originalTemplate.variables);
       expect(clonedTemplate.is_active).toBe(originalTemplate.is_active);
-    });
-  });
-});
+
+

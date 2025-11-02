@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
           job.status = 'failed';
           batchJobs.set(batchId, job);
         }
-      });
+
       const response: BatchImageGenerationResponse = {
         success: true,
         batch_id: batchId,
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
           'X-Estimated-Time': estimatedTime.toString(),
           'Location': `/api/generate/image/batch/${batchId}`
         }
-      });
+
     } catch (batchError) {
       return NextResponse.json(
         {
@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         recent_batches: recentBatches,
         active_batches: recentBatches.filter(b => b.status === 'processing' || b.status === 'queued').length
-      });
+
     }
     // Return specific batch status
     const batchJob = batchJobs.get(batchId);
@@ -235,7 +235,7 @@ async function processBatchAsync(batchId: string, callbackUrl?: string): Promise
           seed: (request.seed || Math.floor(Math.random() * 2147483647)) + i,
           width: request.width || 512,
           height: request.height || 512
-        });
+
       }
       const generationTime = Date.now() - startTime;
       results.push({
@@ -255,13 +255,13 @@ async function processBatchAsync(batchId: string, callbackUrl?: string): Promise
           },
           generation_time: generationTime
         }
-      });
+
     } catch (error) {
       results.push({
         request_id: request.id,
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      });
+
     }
     // Update batch job with current results
     batchJob.results = results;
@@ -274,7 +274,7 @@ async function processBatchAsync(batchId: string, callbackUrl?: string): Promise
   console.log('🎨 Batch processing completed:', batchId, {
     totalRequests: batchJob.requests.length,
     successfulResults: results.filter(r => r.success).length
-  });
+
   // Send callback if provided
   if (callbackUrl) {
     try {
@@ -286,7 +286,7 @@ async function processBatchAsync(batchId: string, callbackUrl?: string): Promise
           status: 'completed',
           results
         })
-      });
+
     } catch (callbackError) {
     }
   }

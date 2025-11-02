@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -8,27 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from '@/components/ui/switch';
-import {
-  CheckCircle2,
-  AlertCircle,
-  RefreshCw,
-  Key,
-  ExternalLink,
-  Info,
-  Loader2,
-  Zap,
-  Shield,
-  Eye,
-  Database,
-  Cloud,
-  HardDrive,
-  Globe,
-  Lock,
-  ChevronDown,
-  ChevronUp,
-  Activity,
-  Settings
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { openaiPing } from '@/lib/providers-api';
 import { handleApiError } from '@/lib/error-handler';
@@ -60,7 +43,7 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
         title: info.title,
         description: info.message,
         variant: "destructive",
-      });
+
     } finally {
       setLoading(false);
     }
@@ -77,23 +60,22 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <Label className="text-xs text-muted-foreground flex items-center gap-2 sm:text-sm md:text-base">
-          <Database className="h-3 w-3 sm:w-auto md:w-full" />
-          Model Recommendations
+          <Database className="h-3 w-3 " />
         </Label>
-        <button
+        <Button
           variant="ghost"
           size="sm"
-          onClick={() = aria-label="Button"> setExpanded(!expanded)}
+          onClick={() => setExpanded(!expanded)}
           className="h-6 px-2 text-xs sm:text-sm md:text-base"
         >
-          {expanded ? <ChevronUp className="h-3 w-3 sm:w-auto md:w-full" /> : <ChevronDown className="h-3 w-3 sm:w-auto md:w-full" />}
+          {expanded ? <ChevronUp className="h-3 w-3 " /> : <ChevronDown className="h-3 w-3 " />}
         </Button>
       </div>
       {expanded && (
         <div className="space-y-2 p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground md:text-base lg:text-lg">
-              <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+              <Loader2 className="h-4 w-4 animate-spin " />
               Loading recommendations...
             </div>
           ) : recommendations ? (
@@ -156,36 +138,34 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
               {/* Quick Actions */}
               {recommendations.validation && recommendations.validation.suggested_downloads && (
                 <div className="flex gap-2 pt-2">
-                  <button
+                  <Button
                     variant="outline"
                     size="sm"
-                    onClick={() = aria-label="Button"> {
+                    onClick={() => {
                       // Navigate to Model Library with provider filter
                       toast({
                         title: "Opening Model Library",
                         description: `Showing models compatible with ${provider.name}`,
-                      });
+
                     }}
                     className="text-xs h-7 sm:text-sm md:text-base"
                   >
-                    <Database className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                    Browse Models
+                    <Database className="h-3 w-3 mr-1 " />
                   </Button>
-                  <button
+                  <Button
                     variant="outline"
                     size="sm"
                     onClick={fetchRecommendations}
                     className="text-xs h-7 sm:text-sm md:text-base"
-                   aria-label="Button">
-                    <RefreshCw className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                    Refresh
+                   >
+                    <RefreshCw className="h-3 w-3 mr-1 " />
                   </Button>
                 </div>
               )}
               {/* Error State */}
               {recommendations.error && (
                 <Alert>
-                  <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                  <AlertCircle className="h-4 w-4 " />
                   <AlertDescription className="text-xs sm:text-sm md:text-base">
                     {recommendations.error}
                   </AlertDescription>
@@ -194,7 +174,6 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
             </div>
           ) : (
             <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              Click to load model recommendations
             </div>
           )}
         </div>
@@ -296,7 +275,7 @@ export default function ProviderManagement({
       const updated = { ...prev };
       delete updated[providerName];
       return updated;
-    });
+
     // Clear existing timeout
     const existingTimeout = validationTimeouts.get(providerName);
     if (existingTimeout) {
@@ -319,7 +298,7 @@ export default function ProviderManagement({
           provider: providerName,
           api_key: apiKey
         })
-      });
+
       setKeyValidationResults(prev => ({ ...prev, [providerName]: response }));
       if (response.valid) {
         // Update provider health status
@@ -342,7 +321,7 @@ export default function ProviderManagement({
         toast({
           title: "API Key Valid",
           description: `${providerName} API key validated successfully. ${response.models_discovered || 0} models discovered.`,
-        });
+
       } else {
         // Update provider health status
         const previousStatus = providers.find(p => p.name === providerName)?.health_status;
@@ -389,7 +368,7 @@ export default function ProviderManagement({
       // Save to localStorage
       localStorage.setItem(LOCAL_STORAGE_KEYS.expandedProviders, JSON.stringify(Array.from(newSet)));
       return newSet;
-    });
+
   };
   const runHealthCheck = async () => {
     try {
@@ -412,7 +391,7 @@ export default function ProviderManagement({
           };
         }
         return provider;
-      });
+
       setProviders(updatedProviders);
       // Update provider stats
       if (providerStats) {
@@ -420,19 +399,19 @@ export default function ProviderManagement({
           ...providerStats,
           healthy_providers: healthyCount,
           last_sync: Date.now()
-        });
+
       }
       toast({
         title: "Health Check Complete",
         description: `${healthyCount}/${providers.length} providers are healthy.`,
-      });
+
     } catch (error) {
       const info = (error as any)?.errorInfo || handleApiError(error as any, 'runHealthCheck');
       toast({
         title: info.title || "Health Check Failed",
         description: info.message || "Could not check provider health status.",
         variant: "destructive",
-      });
+
     } finally {
       setHealthChecking(false);
     }
@@ -451,13 +430,13 @@ export default function ProviderManagement({
       toast({
         title: "Models Discovered",
         description: `Found ${models.length} models for ${providerName}.`,
-      });
+
     } catch (error) {
       toast({
         title: "Discovery Failed",
         description: `Could not discover models for ${providerName}.`,
         variant: "destructive",
-      });
+
     }
   };
   const testProvider = async (providerName: string) => {
@@ -494,7 +473,7 @@ export default function ProviderManagement({
           title: isHealthy ? "Provider Healthy" : "Provider Issues",
           description: res.message || `${providerName} health check completed.`,
           variant: isHealthy ? "default" : "destructive",
-        });
+
       }
     } catch (error) {
     }
@@ -503,7 +482,7 @@ export default function ProviderManagement({
     try {
       const res = await backend.makeRequestPublic<any>(`/api/providers/${providerName}/${enable ? 'enable' : 'disable'}`, {
         method: 'POST'
-      });
+
       if (res?.success) {
         // Update local state; on disable, mark as unknown & disabled in message
         const updatedProviders = providers.map(p => p.name === providerName ? {
@@ -515,14 +494,14 @@ export default function ProviderManagement({
         toast({
           title: enable ? "Provider Enabled" : "Provider Disabled",
           description: `${providerName} has been ${enable ? 'enabled' : 'disabled'}.`,
-        });
+
       }
     } catch (error) {
       toast({
         title: "Operation Failed",
         description: `Could not ${enable ? 'enable' : 'disable'} ${providerName}.`,
         variant: "destructive",
-      });
+
     }
   };
   // Convert LLMProvider to ProviderStatus for the new components
@@ -549,27 +528,27 @@ export default function ProviderManagement({
     api_key_valid: provider.health_status === 'healthy',
     dependencies: {},
     configuration_issues: provider.error_message ? [provider.error_message] : []
-  });
+
   const getHealthIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600 " />;
       case 'unhealthy':
-        return <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-4 w-4 text-red-600 " />;
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-400 sm:w-auto md:w-full" />;
+        return <AlertCircle className="h-4 w-4 text-gray-400 " />;
     }
   };
   const getProviderTypeIcon = (type: string) => {
     switch (type) {
       case 'local':
-        return <HardDrive className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />;
+        return <HardDrive className="h-4 w-4 text-blue-600 " />;
       case 'remote':
-        return <Cloud className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+        return <Cloud className="h-4 w-4 text-green-600 " />;
       case 'hybrid':
-        return <Globe className="h-4 w-4 text-purple-600 sm:w-auto md:w-full" />;
+        return <Globe className="h-4 w-4 text-purple-600 " />;
       default:
-        return <Database className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
+        return <Database className="h-4 w-4 text-gray-600 " />;
     }
   };
   return (
@@ -580,20 +559,17 @@ export default function ProviderManagement({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Cloud className="h-5 w-5 sm:w-auto md:w-full" />
-                Provider Management
+                <Cloud className="h-5 w-5 " />
               </CardTitle>
               <CardDescription>
-                Configure and manage LLM providers, API keys, and health monitoring
               </CardDescription>
             </div>
             <button onClick={runHealthCheck} disabled={healthChecking} aria-label="Button">
               {healthChecking ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin " />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                <RefreshCw className="h-4 w-4 mr-2 " />
               )}
-              Health Check
             </Button>
           </div>
         </CardHeader>
@@ -649,22 +625,22 @@ export default function ProviderManagement({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
                     variant="outline"
                     size="sm"
-                    onClick={() = aria-label="Button"> checkProviderHealth(provider.name)}
+                    onClick={() => checkProviderHealth(provider.name)}
                   >
-                    <Activity className="h-4 w-4 sm:w-auto md:w-full" />
+                    <Activity className="h-4 w-4 " />
                   </Button>
-                  <button
+                  <Button
                     variant="outline"
                     size="sm"
-                    onClick={() = aria-label="Button"> toggleProviderExpansion(provider.name)}
+                    onClick={() => toggleProviderExpansion(provider.name)}
                   >
                     {expandedProviders.has(provider.name) ? (
-                      <ChevronUp className="h-4 w-4 sm:w-auto md:w-full" />
+                      <ChevronUp className="h-4 w-4 " />
                     ) : (
-                      <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
+                      <ChevronDown className="h-4 w-4 " />
                     )}
                   </Button>
                 </div>
@@ -677,8 +653,7 @@ export default function ProviderManagement({
                   {provider.requires_api_key && (
                     <div className="space-y-2">
                       <Label htmlFor={`api-key-${provider.name}`} className="flex items-center gap-2">
-                        <Key className="h-4 w-4 sm:w-auto md:w-full" />
-                        API Key
+                        <Key className="h-4 w-4 " />
                       </Label>
                       <div className="flex gap-2">
                         <input
@@ -686,17 +661,17 @@ export default function ProviderManagement({
                           type="password"
                           placeholder="Enter API key..."
                           value={providerApiKeys[provider.name] || ''}
-                          onChange={(e) = aria-label="Input"> handleApiKeyChange(provider.name, e.target.value)}
+                          onChange={(e) => handleApiKeyChange(provider.name, e.target.value)}
                         />
                         {validatingKeys[provider.name] && (
-                          <button variant="outline" size="sm" disabled aria-label="Button">
-                            <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                          <Button variant="outline" size="sm" disabled >
+                            <Loader2 className="h-4 w-4 animate-spin " />
                           </Button>
                         )}
                       </div>
                       {keyValidationResults[provider.name] && (
                         <Alert variant={keyValidationResults[provider.name].valid ? "default" : "destructive"}>
-                          <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                          <AlertCircle className="h-4 w-4 " />
                           <AlertDescription>
                             {keyValidationResults[provider.name].message}
                           </AlertDescription>
@@ -733,7 +708,7 @@ export default function ProviderManagement({
                   {/* Error Message */}
                   {provider.error_message && (
                     <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                      <AlertCircle className="h-4 w-4 " />
                       <AlertDescription>{provider.error_message}</AlertDescription>
                     </Alert>
                   )}
@@ -749,46 +724,44 @@ export default function ProviderManagement({
                   />
                   {/* Actions */}
                   <div className="flex flex-wrap gap-2">
-                    <button
+                    <Button
                       variant="outline"
                       size="sm"
-                      onClick={() = aria-label="Button"> discoverProviderModels(provider.name, true)}
+                      onClick={() => discoverProviderModels(provider.name, true)}
                     >
-                      <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Discover Models
+                      <RefreshCw className="h-4 w-4 mr-2 " />
                     </Button>
-                    <button
+                    <Button
                       variant="outline"
                       size="sm"
-                      onClick={() = aria-label="Button"> setShowTesting(showTesting === provider.name ? null : provider.name)}
+                      onClick={() => setShowTesting(showTesting === provider.name ? null : provider.name)}
                     >
-                      <Activity className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                      <Activity className="h-4 w-4 mr-2 " />
                       {showTesting === provider.name ? 'Hide Testing' : 'Test Provider'}
                     </Button>
-                    <button
+                    <Button
                       variant="outline"
                       size="sm"
-                      onClick={() = aria-label="Button"> setShowConfigGuide(showConfigGuide === provider.name ? null : provider.name)}
+                      onClick={() => setShowConfigGuide(showConfigGuide === provider.name ? null : provider.name)}
                     >
-                      <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                      <Settings className="h-4 w-4 mr-2 " />
                       {showConfigGuide === provider.name ? 'Hide Guide' : 'Setup Guide'}
                     </Button>
-                    <button
+                    <Button
                       variant="outline"
                       size="sm"
-                      onClick={() = aria-label="Button"> setShowDiagnostics(showDiagnostics === provider.name ? null : provider.name)}
+                      onClick={() => setShowDiagnostics(showDiagnostics === provider.name ? null : provider.name)}
                     >
-                      <Eye className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                      <Eye className="h-4 w-4 mr-2 " />
                       {showDiagnostics === provider.name ? 'Hide Diagnostics' : 'Diagnostics'}
                     </Button>
                     {provider.documentation_url && (
-                      <button
+                      <Button
                         variant="outline"
                         size="sm"
-                        onClick={() = aria-label="Button"> window.open(provider.documentation_url, '_blank')}
+                        onClick={() => window.open(provider.documentation_url, '_blank')}
                       >
-                        <ExternalLink className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                        Documentation
+                        <ExternalLink className="h-4 w-4 mr-2 " />
                       </Button>
                     )}
                   </div>
@@ -863,7 +836,7 @@ export default function ProviderManagement({
       </div>
       {/* Information */}
       <Alert>
-        <Info className="h-4 w-4 sm:w-auto md:w-full" />
+        <Info className="h-4 w-4 " />
         <AlertTitle>Provider Management</AlertTitle>
         <AlertDescription className="text-sm space-y-2 md:text-base lg:text-lg">
           <p>• Configure API keys for remote providers to enable model access</p>

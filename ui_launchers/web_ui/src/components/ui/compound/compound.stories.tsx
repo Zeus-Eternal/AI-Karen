@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Card } from './card';
 import { Modal } from './modal';
@@ -25,7 +26,7 @@ type Story = StoryObj<typeof meta>;
  */
 export const Cards: Story = {
   render: () => (
-    <div className="p-8 space-y-8 max-w-4xl sm:w-auto md:w-full">
+    <div className="p-8 space-y-8 max-w-4xl ">
       <h1 className="text-3xl font-bold mb-8">Card Components</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Basic Card */}
@@ -97,7 +98,6 @@ export const Cards: Story = {
           <Card.Footer>
             <Card.Actions justify="end">
               <button className="px-4 py-2 bg-blue-500 text-white rounded" aria-label="Button">
-                Learn More
               </button>
             </Card.Actions>
           </Card.Footer>
@@ -129,7 +129,6 @@ export const Cards: Story = {
           <Card.Footer>
             <Card.Actions>
               <button className="w-full px-4 py-2 bg-green-500 text-white rounded" aria-label="Button">
-                Get Started
               </button>
             </Card.Actions>
           </Card.Footer>
@@ -165,22 +164,19 @@ export const Modals: Story = {
         <h1 className="text-3xl font-bold mb-8">Modal Components</h1>
         <div className="flex gap-4">
           <button 
-            onClick={() = aria-label="Button"> setBasicOpen(true)}
+            onClick={() => setBasicOpen(true)}
             className="px-4 py-2 bg-blue-500 text-white rounded"
           >
-            Basic Modal
           </button>
           <button 
-            onClick={() = aria-label="Button"> setConfirmOpen(true)}
+            onClick={() => setConfirmOpen(true)}
             className="px-4 py-2 bg-red-500 text-white rounded"
           >
-            Confirmation Modal
           </button>
           <button 
-            onClick={() = aria-label="Button"> setFormOpen(true)}
+            onClick={() => setFormOpen(true)}
             className="px-4 py-2 bg-green-500 text-white rounded"
           >
-            Form Modal
           </button>
         </div>
         {/* Basic Modal */}
@@ -200,10 +196,9 @@ export const Modals: Story = {
             </Modal.Body>
             <Modal.Actions>
               <button 
-                onClick={() = aria-label="Button"> setBasicOpen(false)}
+                onClick={() => setBasicOpen(false)}
                 className="px-4 py-2 bg-gray-200 rounded"
               >
-                Close
               </button>
             </Modal.Actions>
           </Modal.Content>
@@ -224,16 +219,14 @@ export const Modals: Story = {
             </Modal.Body>
             <Modal.Actions>
               <button 
-                onClick={() = aria-label="Button"> setConfirmOpen(false)}
+                onClick={() => setConfirmOpen(false)}
                 className="px-4 py-2 bg-gray-200 rounded"
               >
-                Cancel
               </button>
               <button 
-                onClick={() = aria-label="Button"> setConfirmOpen(false)}
+                onClick={() => setConfirmOpen(false)}
                 className="px-4 py-2 bg-red-500 text-white rounded"
               >
-                Confirm
               </button>
             </Modal.Actions>
           </Modal.Content>
@@ -276,16 +269,14 @@ export const Modals: Story = {
             </Modal.Body>
             <Modal.Actions>
               <button 
-                onClick={() = aria-label="Button"> setFormOpen(false)}
+                onClick={() => setFormOpen(false)}
                 className="px-4 py-2 bg-gray-200 rounded"
               >
-                Cancel
               </button>
               <button 
-                onClick={() = aria-label="Button"> setFormOpen(false)}
+                onClick={() => setFormOpen(false)}
                 className="px-4 py-2 bg-blue-500 text-white rounded"
               >
-                Send Message
               </button>
             </Modal.Actions>
           </Modal.Content>
@@ -299,7 +290,7 @@ export const Modals: Story = {
  */
 export const Forms: Story = {
   render: () => (
-    <div className="p-8 space-y-8 max-w-2xl sm:w-auto md:w-full">
+    <div className="p-8 space-y-8 max-w-2xl ">
       <h1 className="text-3xl font-bold mb-8">Form Components</h1>
       {/* Basic Form */}
       <Card.Root>
@@ -338,7 +329,6 @@ export const Forms: Story = {
             </div>
             <div className="flex justify-end">
               <button className="px-6 py-2 bg-blue-500 text-white rounded" aria-label="Button">
-                Submit
               </button>
             </div>
           </div>
@@ -386,7 +376,6 @@ export const Forms: Story = {
             </div>
             <div className="flex justify-end space-x-2">
               <button className="px-6 py-2 bg-gray-200 rounded" aria-label="Button">
-                Cancel
               </button>
               <button className="px-6 py-2 bg-blue-500 text-white rounded" aria-label="Button">
                 Validate & Submit
@@ -467,7 +456,6 @@ export const Forms: Story = {
                       id="notifications"
                       type="checkbox" 
                       className="mr-2" />
-                    Send me email notifications
                   </label>
                 </div>
                 <div>
@@ -476,17 +464,14 @@ export const Forms: Story = {
                       id="newsletter"
                       type="checkbox" 
                       className="mr-2" />
-                    Subscribe to newsletter
                   </label>
                 </div>
               </div>
             </div>
             <div className="flex justify-end space-x-2">
               <button className="px-6 py-2 bg-gray-200 rounded" aria-label="Button">
-                Save Draft
               </button>
               <button className="px-6 py-2 bg-blue-500 text-white rounded" aria-label="Button">
-                Submit Form
               </button>
             </div>
           </div>
@@ -500,11 +485,10 @@ export const Forms: Story = {
  */
 export const Overview: Story = {
   render: () => (
-    <div className="p-8 space-y-12 max-w-6xl sm:w-auto md:w-full">
+    <div className="p-8 space-y-12 max-w-6xl ">
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-4">Compound Components</h1>
-        <p className="text-lg text-gray-600 max-w-3xl mx-auto sm:w-auto md:w-full">
-          Modern compound components that provide flexible, composable APIs while maintaining 
+        <p className="text-lg text-gray-600 max-w-3xl mx-auto ">
           consistent styling and behavior patterns.
         </p>
       </div>
@@ -528,7 +512,6 @@ export const Overview: Story = {
             <Card.Footer>
               <Card.Actions>
                 <button className="px-3 py-1 bg-blue-500 text-white text-sm rounded md:text-base lg:text-lg" aria-label="Button">
-                  Action
                 </button>
               </Card.Actions>
             </Card.Footer>
@@ -551,7 +534,6 @@ export const Overview: Story = {
                 </div>
                 <div className="flex justify-end">
                   <button className="px-3 py-1 bg-green-500 text-white text-sm rounded md:text-base lg:text-lg" aria-label="Button">
-                    Submit
                   </button>
                 </div>
               </div>
@@ -567,7 +549,6 @@ export const Overview: Story = {
                 Modals provide overlay dialogs with flexible content areas.
               </p>
               <button className="px-3 py-1 bg-purple-500 text-white text-sm rounded md:text-base lg:text-lg" aria-label="Button">
-                Open Modal
               </button>
             </Card.Content>
           </Card.Root>
@@ -578,25 +559,23 @@ export const Overview: Story = {
         <h2 className="text-2xl font-bold mb-6 text-center">Component Benefits</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="text-center">
-            <div className="w-12 h-12 bg-blue-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
+            <div className="w-12 h-12 bg-blue-500 rounded-full mx-auto mb-3 flex items-center justify-center ">
               <span className="text-white font-bold">🧩</span>
             </div>
             <h4 className="font-semibold mb-2">Composable</h4>
             <p className="text-sm text-gray-600 md:text-base lg:text-lg">
-              Mix and match component parts as needed
             </p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 bg-green-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
+            <div className="w-12 h-12 bg-green-500 rounded-full mx-auto mb-3 flex items-center justify-center ">
               <span className="text-white font-bold">🎨</span>
             </div>
             <h4 className="font-semibold mb-2">Consistent</h4>
             <p className="text-sm text-gray-600 md:text-base lg:text-lg">
-              Unified styling and behavior patterns
             </p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 bg-purple-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
+            <div className="w-12 h-12 bg-purple-500 rounded-full mx-auto mb-3 flex items-center justify-center ">
               <span className="text-white font-bold">⚡</span>
             </div>
             <h4 className="font-semibold mb-2">Accessible</h4>
@@ -605,12 +584,11 @@ export const Overview: Story = {
             </p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 bg-orange-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
+            <div className="w-12 h-12 bg-orange-500 rounded-full mx-auto mb-3 flex items-center justify-center ">
               <span className="text-white font-bold">🔧</span>
             </div>
             <h4 className="font-semibold mb-2">TypeScript</h4>
             <p className="text-sm text-gray-600 md:text-base lg:text-lg">
-              Full TypeScript support with proper types
             </p>
           </div>
         </div>

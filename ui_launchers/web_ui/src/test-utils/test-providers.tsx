@@ -125,7 +125,7 @@ export const createMockAuthContext = (
     }
     // Legacy support: check roles array
     return user.roles.includes(role);
-  });
+
   const hasPermission = vi.fn((permission: string): boolean => {
     if (!user) return false;
     // Check permissions array if available
@@ -135,24 +135,24 @@ export const createMockAuthContext = (
     // Default permissions based on role (matches actual implementation)
     const rolePermissions = getRolePermissions(user.role || (user.roles[0] as 'super_admin' | 'admin' | 'user'));
     return rolePermissions.includes(permission);
-  });
+
   const isAdmin = vi.fn((): boolean => {
     return hasRole('admin') || hasRole('super_admin');
-  });
+
   const isSuperAdmin = vi.fn((): boolean => {
     return hasRole('super_admin');
-  });
+
   const login = vi.fn(async (credentials: LoginCredentials): Promise<void> => {
     // Mock successful login behavior
     return Promise.resolve();
-  });
+
   const logout = vi.fn((): void => {
     // Mock logout behavior - in real implementation this redirects
     return;
-  });
+
   const checkAuth = vi.fn(async (): Promise<boolean> => {
     return Promise.resolve(isAuthenticated);
-  });
+
   const baseContext: AuthContextType = {
     user,
     isAuthenticated,
@@ -292,7 +292,7 @@ export const renderWithProviders = (
           {wrappedChildren}
         </WrapperComponent>
       );
-    });
+
     return <>{wrappedChildren}</>;
   };
   return render(ui, { wrapper: Wrapper, ...renderOptions });
@@ -453,7 +453,7 @@ export const createAuthErrorContext = (errorMessage: string = 'Authentication fa
   return createMockAuthContext(null, false, {
     login: vi.fn().mockRejectedValue(new Error(errorMessage)),
     checkAuth: vi.fn().mockRejectedValue(new Error(errorMessage))
-  });
+
 };
 /**
  * Create mock auth context with loading state scenario
@@ -461,32 +461,32 @@ export const createAuthErrorContext = (errorMessage: string = 'Authentication fa
 export const createLoadingAuthContext = (): AuthContextType => {
   return createMockAuthContext(null, false, {
     checkAuth: vi.fn().mockImplementation(() => new Promise(() => {})) // Never resolves
-  });
+
 };
 // Convenience functions for common test scenarios
 export const renderWithSuperAdmin = (ui: React.ReactElement, options: Omit<CustomRenderOptions, 'user' | 'isAuthenticated'> = {}) => {
   return renderWithProviders(ui, {
     ...options,
     testScenario: 'super_admin'
-  });
+
 };
 export const renderWithAdmin = (ui: React.ReactElement, options: Omit<CustomRenderOptions, 'user' | 'isAuthenticated'> = {}) => {
   return renderWithProviders(ui, {
     ...options,
     testScenario: 'admin'
-  });
+
 };
 export const renderWithUser = (ui: React.ReactElement, options: Omit<CustomRenderOptions, 'user' | 'isAuthenticated'> = {}) => {
   return renderWithProviders(ui, {
     ...options,
     testScenario: 'user'
-  });
+
 };
 export const renderWithUnauthenticated = (ui: React.ReactElement, options: Omit<CustomRenderOptions, 'user' | 'isAuthenticated'> = {}) => {
   return renderWithProviders(ui, {
     ...options,
     testScenario: 'unauthenticated'
-  });
+
 };
 /**
  * Render component with custom auth context
@@ -499,7 +499,7 @@ export const renderWithCustomAuth = (
   return renderWithProviders(ui, {
     ...options,
     authValue: authContext
-  });
+
 };
 /**
  * Render component with authentication error scenario
@@ -512,7 +512,7 @@ export const renderWithAuthError = (
   return renderWithProviders(ui, {
     ...options,
     authValue: createAuthErrorContext(errorMessage)
-  });
+
 };
 // Mock session functions for testing
 export const mockSessionFunctions = (user?: User | null, isAuthenticated: boolean = false) => {
@@ -616,7 +616,7 @@ export const renderWithAuthScenario = (
   return renderWithProviders(ui, {
     ...options,
     authValue: authContext
-  });
+
 };
 /**
  * Batch test runner for multiple auth scenarios
@@ -628,7 +628,7 @@ export const runAuthScenarioTests = (
   scenarios.forEach(scenarioName => {
     const authContext = createAuthContextFromScenario(scenarioName);
     testFn(scenarioName, authContext);
-  });
+
 };
 // Permission testing utilities
 export const createPermissionTestMatrix = (permissions: string[]) => {
@@ -657,7 +657,7 @@ export const testPermissionMatrix = (
       expected,
       passed: hasPermission === expected
     };
-  });
+
 };
 // Enhanced mock creation with better type safety
 export const createTestAuthContext = (overrides: Partial<AuthContextType> = {}): AuthContextType => {
@@ -699,7 +699,7 @@ export const createTestSuperAdmin = (overrides: Partial<User> = {}): User => {
       'admin_delete'
     ],
     ...overrides
-  });
+
 };
 export const createTestAdmin = (overrides: Partial<User> = {}): User => {
   return createTestUser({
@@ -714,7 +714,7 @@ export const createTestAdmin = (overrides: Partial<User> = {}): User => {
       'user_delete'
     ],
     ...overrides
-  });
+
 };
 // Validation utilities for testing
 export const validateAuthContext = (context: AuthContextType): boolean => {
@@ -761,7 +761,7 @@ export const createSimpleMockAuth = (user: User | null = null, isAuthenticated: 
   hasPermission: vi.fn(() => false),
   isAdmin: vi.fn(() => false),
   isSuperAdmin: vi.fn(() => false),
-});
+
 export const createSimpleMockRole = (role: 'super_admin' | 'admin' | 'user' | null = null) => ({
   role,
   hasRole: vi.fn(() => false),
@@ -773,7 +773,7 @@ export const createSimpleMockRole = (role: 'super_admin' | 'admin' | 'user' | nu
   canManageAdmins: false,
   canManageSystem: false,
   canViewAuditLogs: false,
-});
+
 // Mock UI components that might not be available in test environment
 export const mockUIComponents = () => {
   // Note: vi.mock calls should be done in individual test files, not in utilities

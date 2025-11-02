@@ -1,8 +1,7 @@
 "use client"
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
-
+import * as React from "react";
+import { cn } from "@/lib/utils";
 // Base types for compound components
 interface BaseCardProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -130,18 +129,7 @@ const Card = {
 }
 
 export {
-  Card,
-  CardRoot,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-  CardActions,
 }
 
 export type {
-  CardRootProps,
-  CardActionsProps,
-  BaseCardProps,
 }

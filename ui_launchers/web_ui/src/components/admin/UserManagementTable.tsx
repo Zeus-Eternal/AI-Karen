@@ -6,18 +6,13 @@
  * 
  * Requirements: 4.1, 4.2, 4.4, 4.5, 4.6, 7.3, 7.4
  */
-'use client';
+"use client";
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRole } from '@/hooks/useRole';
 import { UserEditModal } from './UserEditModal';
 import { UserSearchFilters } from './UserSearchFilters';
-import type { 
-  User, 
-  UserListFilter, 
-  PaginationParams, 
-  PaginatedResponse,
-  AdminApiResponse 
-} from '@/types/admin';
+import type {  User, UserListFilter, PaginationParams, PaginatedResponse, AdminApiResponse } from '@/types/admin';
 interface UserManagementTableProps {
   selectedUsers: string[];
   onSelectionChange: (userIds: string[]) => void;
@@ -58,7 +53,7 @@ export function UserManagementTable({
     limit: 20,
     sort_by: 'created_at',
     sort_order: 'desc'
-  });
+
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   // Load users with current filters and pagination
@@ -81,7 +76,7 @@ export function UserManagementTable({
             params.append(key, value.toString());
           }
         }
-      });
+
       const response = await fetch(`/api/admin/users?${params.toString()}`);
       if (!response.ok) {
         throw new Error(`Failed to load users: ${response.statusText}`);
@@ -149,7 +144,7 @@ export function UserManagementTable({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !user.is_active })
-      });
+
       if (!response.ok) {
         throw new Error('Failed to update user status');
       }
@@ -204,7 +199,7 @@ export function UserManagementTable({
           >
             {column.sortable ? (
               <button
-                onClick={() = aria-label="Button"> handleSort(column.key as keyof User)}
+                onClick={() => handleSort(column.key as keyof User)}
                 className="flex items-center space-x-1 hover:text-gray-700"
               >
                 <span>{column.label}</span>
@@ -228,7 +223,7 @@ export function UserManagementTable({
         <input
           type="checkbox"
           checked={selectedUsers.includes(user.user_id)}
-          onChange={(e) = aria-label="Input"> handleSelectUser(user.user_id, e.target.checked)}
+          onChange={(e) => handleSelectUser(user.user_id, e.target.checked)}
           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
       </td>
@@ -264,13 +259,12 @@ export function UserManagementTable({
           {canEditUser(user) && (
             <>
               <button
-                onClick={() = aria-label="Button"> handleEditUser(user)}
+                onClick={() => handleEditUser(user)}
                 className="text-blue-600 hover:text-blue-900"
               >
-                Edit
               </button>
               <button
-                onClick={() = aria-label="Button"> handleToggleUserStatus(user)}
+                onClick={() => handleToggleUserStatus(user)}
                 className={user.is_active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
               >
                 {user.is_active ? 'Deactivate' : 'Activate'}
@@ -285,18 +279,16 @@ export function UserManagementTable({
     <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
       <div className="flex-1 flex justify-between sm:hidden">
         <button
-          onClick={() = aria-label="Button"> handlePageChange(pagination.page - 1)}
+          onClick={() => handlePageChange(pagination.page - 1)}
           disabled={pagination.page <= 1}
           className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
         >
-          Previous
         </button>
         <button
-          onClick={() = aria-label="Button"> handlePageChange(pagination.page + 1)}
+          onClick={() => handlePageChange(pagination.page + 1)}
           disabled={pagination.page >= totalPages}
           className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
         >
-          Next
         </button>
       </div>
       <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
@@ -308,7 +300,7 @@ export function UserManagementTable({
           </p>
           <select
             value={pagination.limit}
-            onChange={(e) = aria-label="Select option"> handleLimitChange(parseInt(e.target.value))}
+            onChange={(e) => handleLimitChange(parseInt(e.target.value))}
             className="border border-gray-300 rounded-md text-sm md:text-base lg:text-lg"
           >
             <option value={10}>10 per page</option>
@@ -320,11 +312,10 @@ export function UserManagementTable({
         <div>
           <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
             <button
-              onClick={() = aria-label="Button"> handlePageChange(pagination.page - 1)}
+              onClick={() => handlePageChange(pagination.page - 1)}
               disabled={pagination.page <= 1}
               className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
             >
-              Previous
             </button>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
               const pageNum = i + Math.max(1, pagination.page - 2);
@@ -332,7 +323,7 @@ export function UserManagementTable({
               return (
                 <button
                   key={pageNum}
-                  onClick={() = aria-label="Button"> handlePageChange(pageNum)}
+                  onClick={() => handlePageChange(pageNum)}
                   className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                     pageNum === pagination.page
                       ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
@@ -344,11 +335,10 @@ export function UserManagementTable({
               );
             })}
             <button
-              onClick={() = aria-label="Button"> handlePageChange(pagination.page + 1)}
+              onClick={() => handlePageChange(pagination.page + 1)}
               disabled={pagination.page >= totalPages}
               className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
             >
-              Next
             </button>
           </nav>
         </div>
@@ -358,7 +348,7 @@ export function UserManagementTable({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 sm:w-auto md:w-full"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 "></div>
       </div>
     );
   }
@@ -378,7 +368,6 @@ export function UserManagementTable({
             onClick={loadUsers}
             className="mt-2 text-sm text-red-600 hover:text-red-800 underline md:text-base lg:text-lg"
            aria-label="Button">
-            Try again
           </button>
         </div>
       )}

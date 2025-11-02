@@ -1,6 +1,7 @@
+
+"use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
-import { 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,34 +14,14 @@ import FileUploadDropzone from './FileUploadDropzone';
 import FileMetadataGrid, { FileMetadata } from './FileMetadataGrid';
 import MultimediaPreview from './MultimediaPreview';
 import FilePermissionManager, { FilePermission } from './FilePermissionManager';
-'use client';
 
-
-  Files, 
-  Upload, 
-  Grid, 
-  List, 
-  Eye, 
-  Settings, 
-  Filter,
-  Search,
-  RefreshCw,
-  Download,
-  Trash2,
-  Share2,
-  MoreHorizontal
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 
 
 
 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
+import { } from '@/components/ui/dropdown-menu';
 
 
 
@@ -96,7 +77,7 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
     processingFiles: 0,
     failedFiles: 0,
     typeDistribution: {}
-  });
+
   // Mock data for permissions (in real app, this would come from API)
   const [availableUsers] = useState([
     { id: 'user1', name: 'John Doe', email: 'john@example.com', roles: ['user'] },
@@ -140,20 +121,20 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
           processingFiles: data.files?.filter((f: FileMetadata) => f.processing_status === 'processing').length || 0,
           failedFiles: data.files?.filter((f: FileMetadata) => f.processing_status === 'failed').length || 0,
           typeDistribution: data.statistics?.type_distribution || {}
-        });
+
       } else {
         toast({
           title: "Error",
           description: "Failed to load files",
           variant: "destructive"
-        });
+
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to load files",
         variant: "destructive"
-      });
+
     } finally {
       setLoading(false);
     }
@@ -202,7 +183,7 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
         const response = await fetch('/api/files/enhanced/upload', {
           method: 'POST',
           body: formData
-        });
+
         clearInterval(progressInterval);
         if (response.ok) {
           const result = await response.json();
@@ -229,7 +210,7 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
           toast({
             title: "Success",
             description: `File "${item.file.name}" uploaded successfully`
-          });
+
         } else {
           throw new Error('Upload failed');
         }
@@ -243,7 +224,7 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
           title: "Error",
           description: `Failed to upload "${item.file.name}"`,
           variant: "destructive"
-        });
+
       }
     }
   };
@@ -277,14 +258,14 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
         title: "Error",
         description: "Failed to download file",
         variant: "destructive"
-      });
+
     }
   };
   const handleFileDelete = async (fileId: string) => {
     try {
       const response = await fetch(`/api/files/${fileId}`, {
         method: 'DELETE'
-      });
+
       if (response.ok) {
         setFiles(prev => prev.filter(f => f.file_id !== fileId));
         if (selectedFile?.file_id === fileId) {
@@ -293,14 +274,14 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
         toast({
           title: "Success",
           description: "File deleted successfully"
-        });
+
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to delete file",
         variant: "destructive"
-      });
+
     }
   };
   const handleBulkAction = async (action: string) => {
@@ -325,7 +306,7 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
         title: "Error",
         description: `Failed to ${action} selected files`,
         variant: "destructive"
-      });
+
     }
   };
   const handlePermissionUpdate = (fileId: string, permissions: FilePermission[]) => {
@@ -343,42 +324,37 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Files className="h-5 w-5 sm:w-auto md:w-full" />
-                File Management
+                <Files className="h-5 w-5 " />
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
-                Upload, manage, and organize your files with advanced multimedia processing
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={loadFiles}
                 disabled={loading}
-               aria-label="Button">
+               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
-                Refresh
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button variant="outline" size="sm" aria-label="Button">
-                    <MoreHorizontal className="h-4 w-4 sm:w-auto md:w-full" />
+                  <Button variant="outline" size="sm" >
+                    <MoreHorizontal className="h-4 w-4 " />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}>
-                    {viewMode === 'grid' ? <List className="mr-2 h-4 w-4 sm:w-auto md:w-full" /> : <Grid className="mr-2 h-4 w-4 sm:w-auto md:w-full" />}
+                    {viewMode === 'grid' ? <List className="mr-2 h-4 w-4 " /> : <Grid className="mr-2 h-4 w-4 " />}
                     {viewMode === 'grid' ? 'List View' : 'Grid View'}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => handleBulkAction('download')} disabled={selectedFiles.length === 0}>
-                    <Download className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                    Download Selected
+                    <Download className="mr-2 h-4 w-4 " />
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleBulkAction('delete')} disabled={selectedFiles.length === 0}>
-                    <Trash2 className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-                    Delete Selected
+                    <Trash2 className="mr-2 h-4 w-4 " />
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -391,7 +367,7 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Files className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Files className="h-4 w-4 text-muted-foreground " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Total Files</p>
                 <p className="text-2xl font-bold">{fileStats.totalFiles}</p>
@@ -402,7 +378,7 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Upload className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <Upload className="h-4 w-4 text-muted-foreground " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Total Size</p>
                 <p className="text-2xl font-bold">{fileStats.totalSize}</p>
@@ -413,7 +389,7 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Settings className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />
+              <Settings className="h-4 w-4 text-blue-600 " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Processing</p>
                 <p className="text-2xl font-bold text-blue-600">{fileStats.processingFiles}</p>
@@ -424,7 +400,7 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
         <Card>
           <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Trash2 className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
+              <Trash2 className="h-4 w-4 text-red-600 " />
               <div>
                 <p className="text-sm font-medium md:text-base lg:text-lg">Failed</p>
                 <p className="text-2xl font-bold text-red-600">{fileStats.failedFiles}</p>
@@ -468,18 +444,17 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground " />
                 <input
                   placeholder="Search files by name, type, or tags..."
                   value={searchQuery}
-                  onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
                 />
               </div>
             </div>
-            <button variant="outline" size="sm" aria-label="Button">
-              <Filter className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
-              Filters
+            <Button variant="outline" size="sm" >
+              <Filter className="mr-2 h-4 w-4 " />
             </Button>
           </div>
         </CardContent>
@@ -525,9 +500,8 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
             ) : (
               <Card>
                 <CardContent className="p-8 text-center sm:p-4 md:p-6">
-                  <Eye className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Eye className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                   <p className="text-muted-foreground">
-                    Select a file to preview its content
                   </p>
                 </CardContent>
               </Card>
@@ -549,9 +523,8 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
             ) : (
               <Card>
                 <CardContent className="p-8 text-center sm:p-4 md:p-6">
-                  <Share2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <Share2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground " />
                   <p className="text-muted-foreground">
-                    Select a file to manage its permissions
                   </p>
                 </CardContent>
               </Card>

@@ -1,4 +1,6 @@
 "use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,35 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import {
-  Database,
-  Download,
-  RefreshCw,
-  HardDrive,
-  Cloud,
-  Globe,
-  Settings,
-  Info,
-  Loader2,
-  CheckCircle2,
-  ExternalLink,
-  Activity,
-  Upload,
-  Cpu,
-  Monitor,
-  AlertTriangle,
-  XCircle,
-  Brain,
-  Zap,
-  Target,
-  Filter,
-  Search,
-  Star,
-  TrendingUp,
-  Pause,
-  Play,
-  X
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 interface TrainableModel {
   id: string;
@@ -110,7 +85,7 @@ export default function EnhancedModelBrowser() {
     supports_lora: false,
     supports_full_training: false,
     training_frameworks: []
-  });
+
   const { toast } = useToast();
   const backend = getKarenBackend();
   useEffect(() => {
@@ -127,14 +102,14 @@ export default function EnhancedModelBrowser() {
           filters: filters,
           limit: 50
         })
-      });
+
       setModels((response as TrainableModel[]) || []);
     } catch (error) {
       toast({
         variant: 'destructive',
         title: "Search Failed",
         description: "Could not search for trainable models.",
-      });
+
       setModels([]);
     } finally {
       setLoading(false);
@@ -168,7 +143,7 @@ export default function EnhancedModelBrowser() {
         variant: 'destructive',
         title: "Compatibility Check Failed",
         description: "Could not check model compatibility.",
-      });
+
     } finally {
       setLoading(false);
     }
@@ -184,11 +159,11 @@ export default function EnhancedModelBrowser() {
             auto_optimize: true
           }
         })
-      });
+
       toast({
         title: "Enhanced Download Started",
         description: `Started enhanced download for ${model.name} with training setup`,
-      });
+
       // Refresh download jobs
       setTimeout(() => {
         loadDownloadJobs();
@@ -198,18 +173,18 @@ export default function EnhancedModelBrowser() {
         variant: 'destructive',
         title: "Download Failed",
         description: "Could not start enhanced download.",
-      });
+
     }
   };
   const controlDownload = async (jobId: string, action: 'pause' | 'resume' | 'cancel') => {
     try {
       await backend.makeRequestPublic(`/api/models/huggingface/downloads/${jobId}/${action}`, {
         method: 'POST'
-      });
+
       toast({
         title: `Download ${action}d`,
         description: `Successfully ${action}d the download.`,
-      });
+
       // Refresh download jobs
       loadDownloadJobs();
     } catch (error) {
@@ -217,7 +192,7 @@ export default function EnhancedModelBrowser() {
         variant: 'destructive',
         title: `${action} Failed`,
         description: `Could not ${action} the download.`,
-      });
+
     }
   };
   const formatFileSize = (bytes?: number) => {
@@ -246,7 +221,7 @@ export default function EnhancedModelBrowser() {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">
-              <Brain className="h-5 w-5 text-purple-600 sm:w-auto md:w-full" />
+              <Brain className="h-5 w-5 text-purple-600 " />
               <div>
                 <h4 className="font-semibold text-lg">{model.name}</h4>
                 <div className="flex items-center gap-2 mt-1">
@@ -296,20 +271,18 @@ export default function EnhancedModelBrowser() {
             <div className="flex flex-wrap gap-2 mb-3">
               {model.supports_fine_tuning && (
                 <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-                  <Target className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
+                  <Target className="h-3 w-3 mr-1 " />
                   Fine-tuning
                 </Badge>
               )}
               {model.supports_lora && (
                 <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-                  <Zap className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                  LoRA
+                  <Zap className="h-3 w-3 mr-1 " />
                 </Badge>
               )}
               {model.supports_full_training && (
                 <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-                  <Brain className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
-                  Full Training
+                  <Brain className="h-3 w-3 mr-1 " />
                 </Badge>
               )}
             </div>
@@ -318,34 +291,31 @@ export default function EnhancedModelBrowser() {
             <div className="space-y-2">
               <button
                 size="sm"
-                onClick={() = aria-label="Button"> startEnhancedDownload(model)}
+                onClick={() => startEnhancedDownload(model)}
                 className="w-full"
               >
-                <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Enhanced Download
+                <Download className="h-4 w-4 mr-2 " />
               </Button>
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> {
+                onClick={() => {
                   setSelectedModel(model);
                   checkCompatibility(model.id);
                   setActiveTab('compatibility');
                 }}
                 className="w-full"
               >
-                <Activity className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Check Compatibility
+                <Activity className="h-4 w-4 mr-2 " />
               </Button>
               {model.huggingface_id && (
-                <button variant="outline" size="sm" asChild className="w-full" aria-label="Button">
+                <Button variant="outline" size="sm" asChild className="w-full" >
                   <a 
                     href={`https://huggingface.co/${model.huggingface_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <ExternalLink className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                    View on HF
+                    <ExternalLink className="h-4 w-4 mr-2 " />
                   </a>
                 </Button>
               )}
@@ -361,7 +331,7 @@ export default function EnhancedModelBrowser() {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">
-              <Download className="h-5 w-5 text-blue-600 sm:w-auto md:w-full" />
+              <Download className="h-5 w-5 text-blue-600 " />
               <div>
                 <h4 className="font-semibold text-lg">{job.model_id}</h4>
                 <div className="flex items-center gap-2 mt-1">
@@ -374,7 +344,6 @@ export default function EnhancedModelBrowser() {
                   </Badge>
                   {job.conversion_needed && (
                     <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-                      Conversion Required
                     </Badge>
                   )}
                 </div>
@@ -413,7 +382,7 @@ export default function EnhancedModelBrowser() {
             )}
             {job.error && (
               <Alert className="mt-3">
-                <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                <AlertTriangle className="h-4 w-4 " />
                 <AlertDescription className="text-sm md:text-base lg:text-lg">
                   {job.error}
                 </AlertDescription>
@@ -423,32 +392,29 @@ export default function EnhancedModelBrowser() {
           <div className="ml-6 space-y-2">
             {job.status === 'downloading' && (
               <>
-                <button
+                <Button
                   variant="outline"
                   size="sm"
-                  onClick={() = aria-label="Button"> controlDownload(job.id, 'pause')}
+                  onClick={() => controlDownload(job.id, 'pause')}
                 >
-                  <Pause className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Pause
+                  <Pause className="h-4 w-4 mr-2 " />
                 </Button>
-                <button
+                <Button
                   variant="outline"
                   size="sm"
-                  onClick={() = aria-label="Button"> controlDownload(job.id, 'cancel')}
+                  onClick={() => controlDownload(job.id, 'cancel')}
                 >
-                  <X className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                  Cancel
+                  <X className="h-4 w-4 mr-2 " />
                 </Button>
               </>
             )}
             {job.status === 'paused' && (
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> controlDownload(job.id, 'resume')}
+                onClick={() => controlDownload(job.id, 'resume')}
               >
-                <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                Resume
+                <Play className="h-4 w-4 mr-2 " />
               </Button>
             )}
           </div>
@@ -463,23 +429,20 @@ export default function EnhancedModelBrowser() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5 sm:w-auto md:w-full" />
-                Enhanced Model Discovery
+                <Brain className="h-5 w-5 " />
               </CardTitle>
               <CardDescription>
-                Discover, analyze, and download trainable models with advanced compatibility detection
               </CardDescription>
             </div>
-            <button
+            <Button
               variant="outline"
               size="sm"
-              onClick={() = aria-label="Button"> {
+              onClick={() => {
                 loadCategories();
                 loadDownloadJobs();
               }}
             >
-              <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-              Refresh
+              <RefreshCw className="h-4 w-4 mr-2 " />
             </Button>
           </div>
         </CardHeader>
@@ -487,20 +450,17 @@ export default function EnhancedModelBrowser() {
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="browse" className="flex items-center gap-2">
-                <Search className="h-4 w-4 sm:w-auto md:w-full" />
-                Browse Models
+                <Search className="h-4 w-4 " />
               </TabsTrigger>
               <TabsTrigger value="categories" className="flex items-center gap-2">
-                <Filter className="h-4 w-4 sm:w-auto md:w-full" />
-                Categories
+                <Filter className="h-4 w-4 " />
               </TabsTrigger>
               <TabsTrigger value="downloads" className="flex items-center gap-2">
-                <Download className="h-4 w-4 sm:w-auto md:w-full" />
+                <Download className="h-4 w-4 " />
                 Downloads ({downloadJobs.length})
               </TabsTrigger>
               <TabsTrigger value="compatibility" className="flex items-center gap-2">
-                <Activity className="h-4 w-4 sm:w-auto md:w-full" />
-                Compatibility
+                <Activity className="h-4 w-4 " />
               </TabsTrigger>
             </TabsList>
             <TabsContent value="browse" className="space-y-6">
@@ -509,16 +469,15 @@ export default function EnhancedModelBrowser() {
                   <input
                     placeholder="Search trainable models..."
                     value={searchQuery}
-                    onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="flex-1"
                   />
                   <button onClick={searchTrainableModels} disabled={loading} aria-label="Button">
                     {loading ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin " />
                     ) : (
-                      <Search className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+                      <Search className="h-4 w-4 mr-2 " />
                     )}
-                    Search
                   </Button>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -574,20 +533,19 @@ export default function EnhancedModelBrowser() {
               <div className="space-y-4">
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary " />
                   </div>
                 ) : models.length > 0 ? (
                   models.map(renderTrainableModelCard)
                 ) : (
                   <div className="text-center py-12">
-                    <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4 sm:w-auto md:w-full" />
+                    <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4 " />
                     <h3 className="text-lg font-medium mb-2">No Trainable Models Found</h3>
                     <p className="text-muted-foreground mb-4">
                       Try adjusting your search query or filters.
                     </p>
-                    <button onClick={() = aria-label="Button"> setSearchQuery("")}>
-                      <Search className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
-                      Browse All Models
+                    <button onClick={() => setSearchQuery("")}>
+                      <Search className="h-4 w-4 mr-2 " />
                     </Button>
                   </div>
                 )}
@@ -619,17 +577,16 @@ export default function EnhancedModelBrowser() {
                             ))}
                           </div>
                         )}
-                        <button
+                        <Button
                           variant="outline"
                           size="sm"
                           className="w-full"
-                          onClick={() = aria-label="Button"> {
+                          onClick={() => {
                             // Set category-specific search
                             setActiveTab('browse');
                             // This would set category-specific filters
                           }}
                         >
-                          Browse Category
                         </Button>
                       </div>
                     </CardContent>
@@ -643,7 +600,7 @@ export default function EnhancedModelBrowser() {
                   downloadJobs.map(renderDownloadJobCard)
                 ) : (
                   <div className="text-center py-12">
-                    <Download className="h-12 w-12 mx-auto text-muted-foreground mb-4 sm:w-auto md:w-full" />
+                    <Download className="h-12 w-12 mx-auto text-muted-foreground mb-4 " />
                     <h3 className="text-lg font-medium mb-2">No Download Jobs</h3>
                     <p className="text-muted-foreground">
                       Start downloading models to see progress here.
@@ -658,7 +615,7 @@ export default function EnhancedModelBrowser() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Activity className="h-5 w-5 sm:w-auto md:w-full" />
+                        <Activity className="h-5 w-5 " />
                         Compatibility Report: {selectedModel.name}
                       </CardTitle>
                     </CardHeader>
@@ -677,9 +634,9 @@ export default function EnhancedModelBrowser() {
                           <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Status</span>
                           <div className="flex items-center gap-2 mt-1">
                             {compatibilityReport.is_compatible ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />
+                              <CheckCircle2 className="h-5 w-5 text-green-600 " />
                             ) : (
-                              <XCircle className="h-5 w-5 text-red-600 sm:w-auto md:w-full" />
+                              <XCircle className="h-5 w-5 text-red-600 " />
                             )}
                             <span className={compatibilityReport.is_compatible ? 'text-green-600' : 'text-red-600'}>
                               {compatibilityReport.is_compatible ? 'Compatible' : 'Not Compatible'}
@@ -699,7 +656,7 @@ export default function EnhancedModelBrowser() {
                       </div>
                       {compatibilityReport.warnings.length > 0 && (
                         <Alert>
-                          <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
+                          <AlertTriangle className="h-4 w-4 " />
                           <AlertTitle>Warnings</AlertTitle>
                           <AlertDescription>
                             <ul className="list-disc list-inside space-y-1">
@@ -712,7 +669,7 @@ export default function EnhancedModelBrowser() {
                       )}
                       {compatibilityReport.recommendations.length > 0 && (
                         <Alert>
-                          <Info className="h-4 w-4 sm:w-auto md:w-full" />
+                          <Info className="h-4 w-4 " />
                           <AlertTitle>Recommendations</AlertTitle>
                           <AlertDescription>
                             <ul className="list-disc list-inside space-y-1">
@@ -728,7 +685,7 @@ export default function EnhancedModelBrowser() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4 sm:w-auto md:w-full" />
+                  <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4 " />
                   <h3 className="text-lg font-medium mb-2">No Compatibility Report</h3>
                   <p className="text-muted-foreground">
                     Select a model from the browse tab to check its training compatibility.
@@ -740,7 +697,7 @@ export default function EnhancedModelBrowser() {
         </CardContent>
       </Card>
       <Alert>
-        <Info className="h-4 w-4 sm:w-auto md:w-full" />
+        <Info className="h-4 w-4 " />
         <AlertTitle>Enhanced Model Discovery</AlertTitle>
         <AlertDescription>
           • Browse trainable models with advanced filtering capabilities<br/>

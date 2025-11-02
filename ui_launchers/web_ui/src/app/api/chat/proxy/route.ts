@@ -40,14 +40,14 @@ function buildNextResponse(origin: Response) {
   const nextResponse = new NextResponse(origin.body, {
     status: origin.status,
     statusText: origin.statusText,
-  });
+
   origin.headers.forEach((value, key) => {
     // Skip transfer-encoding/content-length to allow streaming adjustments
     if (['transfer-encoding', 'content-length'].includes(key.toLowerCase())) {
       return;
     }
     nextResponse.headers.set(key, value);
-  });
+
   const getAll = (origin.headers as any).getAll?.bind(origin.headers);
   const setCookieHeaders: string[] = getAll ? getAll('set-cookie') ?? [] : [];
   if (setCookieHeaders.length === 0) {
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
           // @ts-ignore Node/undici hints
           keepalive: true,
           cache: 'no-store',
-        });
+
         if (timeout) clearTimeout(timeout);
         lastError = null;
         break;

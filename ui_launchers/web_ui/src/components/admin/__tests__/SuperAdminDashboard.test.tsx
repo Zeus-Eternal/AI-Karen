@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SuperAdminDashboard from '../SuperAdminDashboard';
@@ -148,7 +149,6 @@ const setupSuperAdminMocks = () => {
     hasPermission: vi.fn(() => true),
     isAdmin: vi.fn(() => true),
     isSuperAdmin: vi.fn(() => true),
-  });
 
   mockUseRole.mockReturnValue({
     role: 'super_admin',
@@ -161,7 +161,7 @@ const setupSuperAdminMocks = () => {
     canManageAdmins: true,
     canManageSystem: true,
     canViewAuditLogs: true,
-  });
+
 };
 
 // Helper function to setup regular user mocks
@@ -176,7 +176,6 @@ const setupRegularUserMocks = () => {
     hasPermission: vi.fn(() => false),
     isAdmin: vi.fn(() => false),
     isSuperAdmin: vi.fn(() => false),
-  });
 
   mockUseRole.mockReturnValue({
     role: 'user',
@@ -189,7 +188,7 @@ const setupRegularUserMocks = () => {
     canManageAdmins: false,
     canManageSystem: false,
     canViewAuditLogs: false,
-  });
+
 };
 
 describe('SuperAdminDashboard', () => {
@@ -207,7 +206,6 @@ describe('SuperAdminDashboard', () => {
         systemHealth: 'healthy'
       })
     );
-  });
 
   it('renders access denied for non-super admin users', () => {
     setupRegularUserMocks();
@@ -215,7 +213,6 @@ describe('SuperAdminDashboard', () => {
 
     expect(screen.getByText('Access Denied')).toBeInTheDocument();
     expect(screen.getByText("You don't have permission to access the super admin dashboard.")).toBeInTheDocument();
-  });
 
   it('renders dashboard for super admin users', async () => {
     setupSuperAdminMocks();
@@ -224,7 +221,6 @@ describe('SuperAdminDashboard', () => {
     expect(screen.getByText('Super Admin Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Manage administrators, system configuration, and security settings')).toBeInTheDocument();
     expect(screen.getByText('Welcome, superadmin@example.com')).toBeInTheDocument();
-  });
 
   it('loads and displays dashboard statistics', async () => {
     setupSuperAdminMocks();
@@ -235,10 +231,8 @@ describe('SuperAdminDashboard', () => {
       expect(screen.getByText('5')).toBeInTheDocument(); // Total Admins
       expect(screen.getByText('45')).toBeInTheDocument(); // Active Users
       expect(screen.getByText('2')).toBeInTheDocument(); // Security Alerts
-    });
 
     expect(global.fetch).toHaveBeenCalledWith('/api/admin/dashboard/stats');
-  });
 
   it('displays correct system health badge', async () => {
     setupSuperAdminMocks();
@@ -246,8 +240,7 @@ describe('SuperAdminDashboard', () => {
 
     await waitFor(() => {
       expect(screen.getByText('System healthy')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles tab navigation correctly', async () => {
     setupSuperAdminMocks();
@@ -260,26 +253,22 @@ describe('SuperAdminDashboard', () => {
     fireEvent.click(screen.getByText('Admin Management'));
     await waitFor(() => {
       expect(screen.getByTestId('admin-management-interface')).toBeInTheDocument();
-    });
 
     // Click on System Config tab
     fireEvent.click(screen.getByText('System Config'));
     await waitFor(() => {
       expect(screen.getByTestId('system-configuration-panel')).toBeInTheDocument();
-    });
 
     // Click on Security tab
     fireEvent.click(screen.getByText('Security'));
     await waitFor(() => {
       expect(screen.getByTestId('security-settings-panel')).toBeInTheDocument();
-    });
 
     // Click on Audit Logs tab
     fireEvent.click(screen.getByText('Audit Logs'));
     await waitFor(() => {
       expect(screen.getByTestId('audit-log-viewer')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles quick action buttons correctly', async () => {
     setupSuperAdminMocks();
@@ -289,7 +278,6 @@ describe('SuperAdminDashboard', () => {
     fireEvent.click(screen.getByText('Create New Administrator'));
     await waitFor(() => {
       expect(screen.getByTestId('admin-management-interface')).toBeInTheDocument();
-    });
 
     // Go back to overview
     fireEvent.click(screen.getByText('Overview'));
@@ -298,8 +286,7 @@ describe('SuperAdminDashboard', () => {
     fireEvent.click(screen.getByText('Update System Configuration'));
     await waitFor(() => {
       expect(screen.getByTestId('system-configuration-panel')).toBeInTheDocument();
-    });
-  });
+
 
   it('handles API errors gracefully', async () => {
     setupSuperAdminMocks();
@@ -313,14 +300,12 @@ describe('SuperAdminDashboard', () => {
 
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith('Failed to load dashboard stats:', expect.any(Error));
-    });
 
     // Should still render the dashboard with default stats
     expect(screen.getByText('Super Admin Dashboard')).toBeInTheDocument();
     expect(screen.getAllByText('0')).toHaveLength(4); // Default stats for all metrics
 
     consoleSpy.mockRestore();
-  });
 
   it('displays correct system status indicators', async () => {
     setupSuperAdminMocks();
@@ -331,8 +316,7 @@ describe('SuperAdminDashboard', () => {
       expect(screen.getByText('Active')).toBeInTheDocument(); // Authentication status
       expect(screen.getByText('Recording')).toBeInTheDocument(); // Audit logging status
       expect(screen.getByText('Normal')).toBeInTheDocument(); // Security monitoring status
-    });
-  });
+
 
   it('shows security alerts in system status when present', async () => {
     setupSuperAdminMocks();
@@ -353,6 +337,5 @@ describe('SuperAdminDashboard', () => {
     await waitFor(() => {
       expect(screen.getByText('5 Alerts')).toBeInTheDocument();
       expect(screen.getByText('System warning')).toBeInTheDocument();
-    });
-  });
-});
+
+

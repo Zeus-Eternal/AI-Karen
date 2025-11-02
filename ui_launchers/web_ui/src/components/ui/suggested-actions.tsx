@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Suggested Actions Component
@@ -17,18 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { 
-  CheckSquare, 
-  Pin, 
-  Download, 
-  Search, 
-  MessageSquare, 
-  ExternalLink,
-  Loader2,
-  Sparkles,
-  ChevronRight,
-  X
-} from 'lucide-react';
+
+import { } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActionRegistry } from '@/hooks/use-action-registry';
 import type { SuggestedAction, ActionResult } from '@/services/actionMapper';
@@ -84,7 +74,6 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
         onActionComplete(action, result);
       }
     }
-  });
 
   const [executingActions, setExecutingActions] = useState<Set<string>>(new Set());
   const [completedActions, setCompletedActions] = useState<Set<string>>(new Set());
@@ -110,7 +99,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
             const newSet = new Set(prev);
             newSet.delete(actionKey);
             return newSet;
-          });
+
         }, 3000);
       }
     } finally {
@@ -118,7 +107,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
         const newSet = new Set(prev);
         newSet.delete(actionKey);
         return newSet;
-      });
+
     }
   };
 
@@ -145,7 +134,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
         )}
       >
         <button
-          onClick={() = aria-label="Button"> handleActionClick(action, index)}
+          onClick={() => handleActionClick(action, index)}
           disabled={isExecuting || isCompleted}
           variant="outline"
           size={isCompact ? "sm" : "md"}
@@ -215,17 +204,17 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
         <CardContent className="p-3 sm:p-4 md:p-6">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />
+              <Sparkles className="h-4 w-4 text-blue-500 " />
               <span className="text-sm font-medium md:text-base lg:text-lg">Suggested Actions</span>
             </div>
             {onDismiss && (
-              <button
+              <Button
                 variant="ghost"
                 size="sm"
                 onClick={onDismiss}
-                className="h-6 w-6 p-0 sm:w-auto md:w-full"
-               aria-label="Button">
-                <X className="h-3 w-3 sm:w-auto md:w-full" />
+                className="h-6 w-6 p-0 "
+               >
+                <X className="h-3 w-3 " />
               </Button>
             )}
           </div>
@@ -258,9 +247,8 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
         <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />
+              <Sparkles className="h-5 w-5 text-blue-500 " />
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                Suggested Actions
               </h3>
               <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                 {displayActions.length}
@@ -268,13 +256,13 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
             </div>
             
             {onDismiss && (
-              <button
+              <Button
                 variant="ghost"
                 size="sm"
                 onClick={onDismiss}
-                className="h-8 w-8 p-0 sm:w-auto md:w-full"
-               aria-label="Button">
-                <X className="h-4 w-4 sm:w-auto md:w-full" />
+                className="h-8 w-8 p-0 "
+               >
+                <X className="h-4 w-4 " />
               </Button>
             )}
           </div>
@@ -308,9 +296,9 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                         isCompleted ? 'bg-green-500' : actionColors[action.type as keyof typeof actionColors] || 'bg-gray-500'
                       )}>
                         {isCompleted ? (
-                          <CheckSquare className="h-4 w-4 sm:w-auto md:w-full" />
+                          <CheckSquare className="h-4 w-4 " />
                         ) : (
-                          <IconComponent className="h-4 w-4 sm:w-auto md:w-full" />
+                          <IconComponent className="h-4 w-4 " />
                         )}
                       </div>
                       
@@ -322,7 +310,6 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                           
                           {action.priority === 'high' && (
                             <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
-                              High Priority
                             </Badge>
                           )}
                           
@@ -345,7 +332,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                     </div>
 
                     <button
-                      onClick={() = aria-label="Button"> handleActionClick(action, index)}
+                      onClick={() => handleActionClick(action, index)}
                       disabled={isExecuting || isCompleted}
                       size="sm"
                       variant={isCompleted ? "outline" : "default"}
@@ -355,13 +342,12 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                       )}
                     >
                       {isExecuting ? (
-                        <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+                        <Loader2 className="h-4 w-4 animate-spin " />
                       ) : isCompleted ? (
                         'Done'
                       ) : (
                         <>
-                          Execute
-                          <ChevronRight className="h-4 w-4 ml-1 sm:w-auto md:w-full" />
+                          <ChevronRight className="h-4 w-4 ml-1 " />
                         </>
                       )}
                     </Button>

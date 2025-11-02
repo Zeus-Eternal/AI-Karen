@@ -6,55 +6,35 @@
  */
 // Feature flags - Types
 export type {
-  FeatureFlag,
-  ExtensionFeatureFlags
-} from './feature-flags';
+import { } from './feature-flags';
 // Feature flags - Values
 export {
-  FeatureFlagManager,
   featureFlagManager,
   useFeatureFlag,
   withFeatureFlag
-} from './feature-flags';
+import { } from './feature-flags';
 // Fallback UI components - Types
 export type {
-  FallbackUIProps,
-  ServiceUnavailableProps,
-  ExtensionUnavailableProps
-} from './fallback-ui';
+import { } from './fallback-ui';
 // Fallback UI components - Values
 export {
-  ServiceUnavailable,
-  ExtensionUnavailable,
-  LoadingWithFallback,
-  DegradedModeBanner,
-  ProgressiveEnhancement
-} from './fallback-ui';
+import { } from './fallback-ui';
 // Cache management - Types
 export type {
-  CacheEntry,
-  CacheOptions
-} from './cache-manager';
+import { } from './cache-manager';
 // Cache management - Values
 export {
-  CacheManager,
-  ExtensionDataCache,
   extensionCache,
   generalCache,
-  CacheAwareDataFetcher
-} from './cache-manager';
+import { } from './cache-manager';
 // Progressive enhancement - Types
 export type {
-  ProgressiveFeatureProps,
-  EnhancedComponentProps
-} from './progressive-enhancement';
+import { } from './progressive-enhancement';
 // Progressive enhancement - Values
 export {
   withProgressiveEnhancement,
-  ProgressiveFeature,
   useProgressiveData,
-  ProgressiveDataDisplay
-} from './progressive-enhancement';
+import { } from './progressive-enhancement';
 // Integration with existing systems
 import { featureFlagManager } from './feature-flags';
 import { extensionCache } from './cache-manager';
@@ -80,7 +60,7 @@ export function initializeGracefulDegradation() {
         featureFlagManager.handleServiceError('extension-api', error);
       }
     }
-  });
+
   // Clean up expired cache entries periodically
   setInterval(() => {
     const removedCount = extensionCache.cleanup();
@@ -122,7 +102,7 @@ export function enableDevelopmentMode() {
   // Enable all features in development
   featureFlagManager.getAllFlags().forEach(flag => {
     featureFlagManager.setFlag(flag.name, true);
-  });
+
 }
 /**
  * Simulate service failures for testing

@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,10 +20,8 @@ const mockHasRole = jest.fn();
 beforeEach(() => {
   (useAuth as jest.Mock).mockReturnValue({
     hasRole: mockHasRole,
-  });
-  
+
   jest.clearAllMocks();
-});
 
 describe('AdminBreadcrumbs', () => {
   it('does not render for non-admin users', () => {
@@ -31,7 +30,6 @@ describe('AdminBreadcrumbs', () => {
 
     const { container } = render(<AdminBreadcrumbs />);
     expect(container.firstChild).toBeNull();
-  });
 
   it('renders breadcrumbs for admin users', () => {
     (usePathname as jest.Mock).mockReturnValue('/admin/super-admin/system');
@@ -42,7 +40,6 @@ describe('AdminBreadcrumbs', () => {
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Super Admin Dashboard')).toBeInTheDocument();
     expect(screen.getByText('System Configuration')).toBeInTheDocument();
-  });
 
   it('makes intermediate breadcrumbs clickable', () => {
     (usePathname as jest.Mock).mockReturnValue('/admin/super-admin/system');
@@ -57,7 +54,6 @@ describe('AdminBreadcrumbs', () => {
     expect(homeLink).toHaveAttribute('href', '/');
     expect(superAdminLink).toHaveAttribute('href', '/admin/super-admin');
     expect(systemConfigSpan).not.toHaveAttribute('href'); // Last item should not be a link
-  });
 
   it('shows chevron separators between items', () => {
     (usePathname as jest.Mock).mockReturnValue('/admin/super-admin');
@@ -72,7 +68,6 @@ describe('AdminBreadcrumbs', () => {
     
     // At least one separator should be present
     expect(chevrons.length).toBeGreaterThan(0);
-  });
 
   it('handles custom breadcrumb items', () => {
     mockHasRole.mockImplementation((role: string) => role === 'admin');
@@ -86,7 +81,6 @@ describe('AdminBreadcrumbs', () => {
 
     expect(screen.getByText('Custom Home')).toBeInTheDocument();
     expect(screen.getByText('Custom Page')).toBeInTheDocument();
-  });
 
   it('handles unmapped routes gracefully', () => {
     (usePathname as jest.Mock).mockReturnValue('/admin/unknown-route');
@@ -96,7 +90,6 @@ describe('AdminBreadcrumbs', () => {
 
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Unknown Route')).toBeInTheDocument();
-  });
 
   it('does not render for single-level paths', () => {
     (usePathname as jest.Mock).mockReturnValue('/');
@@ -104,7 +97,6 @@ describe('AdminBreadcrumbs', () => {
 
     const { container } = render(<AdminBreadcrumbs />);
     expect(container.firstChild).toBeNull();
-  });
 
   it('sets aria-current for active breadcrumb', () => {
     (usePathname as jest.Mock).mockReturnValue('/admin/super-admin');
@@ -114,7 +106,6 @@ describe('AdminBreadcrumbs', () => {
 
     const activeItem = screen.getByText('Super Admin Dashboard').closest('span');
     expect(activeItem).toHaveAttribute('aria-current', 'page');
-  });
 
   it('includes proper ARIA labels for accessibility', () => {
     (usePathname as jest.Mock).mockReturnValue('/admin/super-admin');
@@ -124,5 +115,4 @@ describe('AdminBreadcrumbs', () => {
 
     const nav = screen.getByRole('navigation');
     expect(nav).toHaveAttribute('aria-label', 'Breadcrumb');
-  });
-});
+

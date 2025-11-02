@@ -29,7 +29,6 @@ const mockFetch = vi.fn();
 describe('KarenBackendService', () => {
   beforeEach(() => {
     mockFetch.mockReset();
-  });
 
   it('retrieves plugin list from cache after first fetch', async () => {
     const service = new KarenBackendService();
@@ -47,6 +46,4 @@ describe('KarenBackendService', () => {
     const second = await service.getAvailablePlugins();
     expect(second.length).toBe(1);
     expect(mockFetch).toHaveBeenCalledTimes(1);
-  });
-});
 

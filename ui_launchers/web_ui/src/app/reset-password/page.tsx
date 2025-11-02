@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,7 +51,6 @@ function ResetPasswordForm() {
           </div>
           <div className="space-y-2">
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-              Reset Password
             </CardTitle>
             <CardDescription className="text-base text-muted-foreground">
               {token ? 'Enter your new password' : 'Enter your email to receive reset instructions'}
@@ -179,7 +179,6 @@ function ResetPasswordForm() {
                   href="/login" 
                   className="text-primary hover:text-primary/80 font-medium transition-colors duration-200 hover:underline"
                 >
-                  Back to Sign In
                 </a>
               </p>
               <p className="text-sm text-muted-foreground">
@@ -188,14 +187,12 @@ function ResetPasswordForm() {
                   href="/signup" 
                   className="text-primary hover:text-primary/80 font-medium transition-colors duration-200 hover:underline"
                 >
-                  Create Account
                 </a>
               </p>
             </div>
             
             <div className="text-center">
               <p className="text-xs text-muted-foreground/70">
-                Secure password reset with email verification
               </p>
             </div>
           </div>

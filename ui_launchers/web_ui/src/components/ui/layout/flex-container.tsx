@@ -177,8 +177,7 @@ function processResponsiveValue<T>(
           result[`--flex-${breakpoint}`] = processedValue;
         }
       }
-    });
-    
+
     return result;
   }
   
@@ -217,7 +216,7 @@ function generateFlexStyles(props: FlexStyleProps): React.CSSProperties {
     } else {
       Object.entries(gapValue).forEach(([key, value]) => {
         (styles as any)[key] = value;
-      });
+
     }
   }
   
@@ -313,7 +312,7 @@ function getResponsiveClasses(props: FlexResponsiveProps): string {
           classes.push(`${breakpoint}:${directionClass}`);
         }
       }
-    });
+
   }
   
   // Handle responsive align
@@ -333,7 +332,7 @@ function getResponsiveClasses(props: FlexResponsiveProps): string {
           classes.push(`${breakpoint}:${alignClass}`);
         }
       }
-    });
+
   }
   
   // Handle responsive justify
@@ -354,7 +353,7 @@ function getResponsiveClasses(props: FlexResponsiveProps): string {
           classes.push(`${breakpoint}:${justifyClass}`);
         }
       }
-    });
+
   }
   
   // Handle responsive wrap
@@ -364,7 +363,7 @@ function getResponsiveClasses(props: FlexResponsiveProps): string {
         const wrapClass = value === true ? 'flex-wrap' : value === 'reverse' ? 'flex-wrap-reverse' : 'flex-nowrap';
         classes.push(`${breakpoint}:${wrapClass}`);
       }
-    });
+
   }
   
   return classes.join(' ');
@@ -424,8 +423,7 @@ export const FlexContainer = React.forwardRef<HTMLDivElement, FlexContainerProps
       maxWidth,
       containerQueries,
       containerName,
-    });
-    
+
     // Get responsive classes
     const responsiveClasses = responsive ? getResponsiveClasses({
       direction,

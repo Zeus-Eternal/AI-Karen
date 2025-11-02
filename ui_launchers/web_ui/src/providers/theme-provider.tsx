@@ -1,13 +1,6 @@
-'use client';
+"use client";
 
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useUIStore, selectThemeState } from '../store';
 import { generateCompleteCSS } from '../design-tokens/css-tokens';
 
@@ -171,7 +164,7 @@ export function ThemeProvider({
       if (disableTransitionOnChange) {
         requestAnimationFrame(() => {
           root.classList.remove('disable-transitions');
-        });
+
       }
     };
 

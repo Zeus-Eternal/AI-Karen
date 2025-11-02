@@ -1,5 +1,6 @@
+
+"use client";
 import React, { useState, useEffect } from 'react';
-import { 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
 import { PluginMarketplaceEntry } from '@/types/plugins';
 /**
  * Plugin Marketplace Component
@@ -17,68 +17,23 @@ import { PluginMarketplaceEntry } from '@/types/plugins';
  * Based on requirements: 5.3, 5.5, 9.1, 9.2, 9.4
  */
 
-"use client";
 
-
-
-  Search, 
-  Filter, 
-  Star, 
-  Download, 
-  Eye, 
-  Heart, 
-  Share, 
-  ArrowLeft,
-  CheckCircle, 
-  Shield, 
-  Globe, 
-  Users, 
-  Calendar, 
-  Tag,
-  TrendingUp,
-  Award,
-  Package,
-  ExternalLink,
-  Info,
-  AlertTriangle,
-  RefreshCw,
-  Grid,
-  List,
-  SortAsc,
-  SortDesc,
-} from 'lucide-react';
+import { } from 'lucide-react';
 
 
 
 
 
 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
+import { } from '@/components/ui/select';
 
 
 
 
 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { } from '@/components/ui/tooltip';
 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-
-
-
+import { } from '@/components/ui/dialog';
 interface PluginMarketplaceProps {
   onClose: () => void;
   onInstall: (plugin: PluginMarketplaceEntry) => void;
@@ -343,7 +298,6 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
       } else {
         return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
       }
-    });
 
     return filtered;
   }, [plugins, searchQuery, selectedCategory, sortBy, sortOrder, showOnlyFree, showOnlyVerified]);
@@ -390,7 +344,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
-                      <CheckCircle className="w-4 h-4 text-blue-600 sm:w-auto md:w-full" />
+                      <CheckCircle className="w-4 h-4 text-blue-600 " />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Verified plugin</p>
@@ -400,8 +354,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
               )}
               {plugin.featured && (
                 <Badge variant="default" className="text-xs sm:text-sm md:text-base">
-                  <Award className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
-                  Featured
+                  <Award className="w-3 h-3 mr-1 " />
                 </Badge>
               )}
             </div>
@@ -439,26 +392,25 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
           </div>
           
           <div className="flex items-center gap-1">
-            <button
+            <Button
               variant="ghost"
               size="sm"
-              onClick={(e) = aria-label="Button"> {
+              onClick={(e) = > {
                 e.stopPropagation();
                 setSelectedPlugin(plugin);
               }}
             >
-              <Eye className="w-3 h-3 sm:w-auto md:w-full" />
+              <Eye className="w-3 h-3 " />
             </Button>
-            <button
+            <Button
               variant="default"
               size="sm"
-              onClick={(e) = aria-label="Button"> {
+              onClick={(e) = > {
                 e.stopPropagation();
                 handleInstall(plugin);
               }}
             >
-              <Download className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
-              Install
+              <Download className="w-3 h-3 mr-1 " />
             </Button>
           </div>
         </div>
@@ -484,8 +436,8 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
       <CardContent className="p-4 sm:p-4 md:p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
-            <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center sm:w-auto md:w-full">
-              <Package className="w-6 h-6 text-muted-foreground sm:w-auto md:w-full" />
+            <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center ">
+              <Package className="w-6 h-6 text-muted-foreground " />
             </div>
             
             <div className="flex-1">
@@ -495,7 +447,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                   v{plugin.version}
                 </Badge>
                 {plugin.verified && (
-                  <CheckCircle className="w-4 h-4 text-blue-600 sm:w-auto md:w-full" />
+                  <CheckCircle className="w-4 h-4 text-blue-600 " />
                 )}
                 {plugin.featured && (
                   <Badge variant="default" className="text-xs sm:text-sm md:text-base">Featured</Badge>
@@ -524,20 +476,19 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                plugin.pricing.type === 'freemium' ? 'Freemium' : 
                `$${plugin.pricing.price}`}
             </Badge>
-            <button
+            <Button
               variant="ghost"
               size="sm"
-              onClick={() = aria-label="Button"> setSelectedPlugin(plugin)}
+              onClick={() => setSelectedPlugin(plugin)}
             >
-              <Eye className="w-4 h-4 sm:w-auto md:w-full" />
+              <Eye className="w-4 h-4 " />
             </Button>
-            <button
+            <Button
               variant="default"
               size="sm"
-              onClick={() = aria-label="Button"> handleInstall(plugin)}
+              onClick={() => handleInstall(plugin)}
             >
-              <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-              Install
+              <Download className="w-4 h-4 mr-2 " />
             </Button>
           </div>
         </div>
@@ -549,9 +500,8 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <button variant="ghost" size="sm" onClick={onClose} aria-label="Button">
-          <ArrowLeft className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-          Back to Plugins
+        <Button variant="ghost" size="sm" onClick={onClose} >
+          <ArrowLeft className="w-4 h-4 mr-2 " />
         </Button>
         <div>
           <h1 className="text-2xl font-bold">Plugin Marketplace</h1>
@@ -565,11 +515,11 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex-1 max-w-md">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground " />
                 <input
                   placeholder="Search plugins..."
                   value={searchQuery}
-                  onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -577,7 +527,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
             
             <div className="flex items-center gap-2">
               <select value={selectedCategory} onValueChange={setSelectedCategory} aria-label="Select option">
-                <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+                <selectTrigger className="w-32 " aria-label="Select option">
                   <selectValue />
                 </SelectTrigger>
                 <selectContent aria-label="Select option">
@@ -590,7 +540,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
               </Select>
               
               <select value={sortBy} onValueChange={(value: any) = aria-label="Select option"> setSortBy(value)}>
-                <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+                <selectTrigger className="w-32 " aria-label="Select option">
                   <selectValue />
                 </SelectTrigger>
                 <selectContent aria-label="Select option">
@@ -601,12 +551,12 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                 </SelectContent>
               </Select>
               
-              <button
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() = aria-label="Button"> setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               >
-                {sortOrder === 'asc' ? <SortAsc className="w-4 h-4 sm:w-auto md:w-full" /> : <SortDesc className="w-4 h-4 sm:w-auto md:w-full" />}
+                {sortOrder === 'asc' ? <SortAsc className="w-4 h-4 " /> : <SortDesc className="w-4 h-4 " />}
               </Button>
               
               <Separator orientation="vertical" className="h-6" />
@@ -615,22 +565,22 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                 <button
                   variant={viewMode === 'grid' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() = aria-label="Button"> setViewMode('grid')}
+                  onClick={() => setViewMode('grid')}
                   className="rounded-r-none"
                 >
-                  <Grid className="w-4 h-4 sm:w-auto md:w-full" />
+                  <Grid className="w-4 h-4 " />
                 </Button>
                 <button
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() = aria-label="Button"> setViewMode('list')}
+                  onClick={() => setViewMode('list')}
                   className="rounded-l-none"
                 >
-                  <List className="w-4 h-4 sm:w-auto md:w-full" />
+                  <List className="w-4 h-4 " />
                 </Button>
               </div>
               
-              <button variant="outline" size="sm" onClick={handleRefresh} disabled={loading} aria-label="Button">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading} >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </Button>
             </div>
@@ -649,10 +599,9 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
         {filteredPlugins.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <Package className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+              <Package className="w-12 h-12 mx-auto mb-4 opacity-50 " />
               <h3 className="text-lg font-medium mb-2">No plugins found</h3>
               <p className="text-muted-foreground">
-                Try adjusting your search or filters
               </p>
             </CardContent>
           </Card>
@@ -671,24 +620,23 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
 
       {/* Plugin Detail Dialog */}
       <Dialog open={!!selectedPlugin} onOpenChange={() => setSelectedPlugin(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto sm:w-auto md:w-full">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto ">
           {selectedPlugin && (
             <>
               <DialogHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center sm:w-auto md:w-full">
-                    <Package className="w-6 h-6 text-muted-foreground sm:w-auto md:w-full" />
+                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center ">
+                    <Package className="w-6 h-6 text-muted-foreground " />
                   </div>
                   <div>
                     <DialogTitle className="flex items-center gap-2">
                       {selectedPlugin.name}
                       {selectedPlugin.verified && (
-                        <CheckCircle className="w-5 h-5 text-blue-600 sm:w-auto md:w-full" />
+                        <CheckCircle className="w-5 h-5 text-blue-600 " />
                       )}
                       {selectedPlugin.featured && (
                         <Badge variant="default" className="text-xs sm:text-sm md:text-base">
-                          <Award className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
-                          Featured
+                          <Award className="w-3 h-3 mr-1 " />
                         </Badge>
                       )}
                     </DialogTitle>
@@ -763,27 +711,23 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
 
                 <div className="flex items-center justify-between pt-4 border-t">
                   <div className="flex items-center gap-2">
-                    <button variant="outline" size="sm" aria-label="Button">
-                      <Heart className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                      Favorite
+                    <Button variant="outline" size="sm" >
+                      <Heart className="w-4 h-4 mr-2 " />
                     </Button>
-                    <button variant="outline" size="sm" aria-label="Button">
-                      <Share className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                      Share
+                    <Button variant="outline" size="sm" >
+                      <Share className="w-4 h-4 mr-2 " />
                     </Button>
                     {selectedPlugin.manifest.homepage && (
-                      <button variant="outline" size="sm" asChild aria-label="Button">
+                      <Button variant="outline" size="sm" asChild >
                         <a href={selectedPlugin.manifest.homepage} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                          Website
+                          <ExternalLink className="w-4 h-4 mr-2 " />
                         </a>
                       </Button>
                     )}
                   </div>
                   
-                  <button onClick={() = aria-label="Button"> handleInstall(selectedPlugin)}>
-                    <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
-                    Install Plugin
+                  <button onClick={() => handleInstall(selectedPlugin)}>
+                    <Download className="w-4 h-4 mr-2 " />
                   </Button>
                 </div>
               </div>

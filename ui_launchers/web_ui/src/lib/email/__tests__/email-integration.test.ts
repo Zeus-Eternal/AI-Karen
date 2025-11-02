@@ -61,11 +61,9 @@ describe('EmailIntegration', () => {
   beforeEach(() => {
     emailIntegration = EmailIntegration.getInstance();
     vi.clearAllMocks();
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('singleton pattern', () => {
     it('should return same instance', () => {
@@ -73,8 +71,7 @@ describe('EmailIntegration', () => {
       const instance2 = EmailIntegration.getInstance();
       
       expect(instance1).toBe(instance2);
-    });
-  });
+
 
   describe('initialize', () => {
     it('should initialize email service', async () => {
@@ -82,8 +79,7 @@ describe('EmailIntegration', () => {
       
       const { emailService } = await import('../email-service');
       expect(emailService.initialize).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('sendAdminInvitation', () => {
     it('should send admin invitation email', async () => {
@@ -106,8 +102,7 @@ describe('EmailIntegration', () => {
         'https://example.com/invite/123',
         expect.any(Date)
       );
-    });
-  });
+
 
   describe('sendUserWelcome', () => {
     it('should send user welcome email', async () => {
@@ -130,8 +125,7 @@ describe('EmailIntegration', () => {
         'Admin User',
         'https://example.com/setup/123'
       );
-    });
-  });
+
 
   describe('sendSecurityAlert', () => {
     it('should send security alert email', async () => {
@@ -154,7 +148,6 @@ describe('EmailIntegration', () => {
         '192.168.1.100',
         'Change your password'
       );
-    });
 
     it('should send security alert without action required', async () => {
       const result = await emailIntegration.sendSecurityAlert(
@@ -174,8 +167,7 @@ describe('EmailIntegration', () => {
         '192.168.1.100',
         undefined
       );
-    });
-  });
+
 
   describe('getServiceHealth', () => {
     it('should return email service health', async () => {
@@ -189,12 +181,10 @@ describe('EmailIntegration', () => {
         queue_size: 0,
         processing_rate: 0,
         failure_rate: 0,
-      });
 
       const { emailService } = await import('../email-service');
       expect(emailService.testConnection).toHaveBeenCalledTimes(1);
-    });
-  });
+
 
   describe('getQueueStats', () => {
     it('should return queue statistics', async () => {
@@ -205,9 +195,8 @@ describe('EmailIntegration', () => {
         byPriority: { high: 2, normal: 2, low: 1 },
         byStatus: { queued: 3, sending: 1, sent: 1 },
         rateLimitRemaining: 55,
-      });
-    });
-  });
+
+
 
   describe('getDeliveryStats', () => {
     it('should return delivery statistics', async () => {
@@ -224,7 +213,6 @@ describe('EmailIntegration', () => {
         click_rate: 12,
         by_template: [],
         by_day: [],
-      });
 
       const { deliveryStatusManager } = await import('../delivery-tracker');
       expect(deliveryStatusManager.getDeliveryStatistics).toHaveBeenCalledWith(
@@ -232,7 +220,6 @@ describe('EmailIntegration', () => {
         undefined,
         undefined
       );
-    });
 
     it('should return delivery statistics with filters', async () => {
       const startDate = new Date('2023-01-01');
@@ -247,9 +234,8 @@ describe('EmailIntegration', () => {
         endDate,
         templateId
       );
-    });
-  });
-});
+
+
 
 describe('Email Integration Workflow', () => {
   let emailIntegration: EmailIntegration;
@@ -257,11 +243,9 @@ describe('Email Integration Workflow', () => {
   beforeEach(async () => {
     emailIntegration = EmailIntegration.getInstance();
     await emailIntegration.initialize();
-  });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
 
   describe('admin invitation workflow', () => {
     it('should complete full admin invitation workflow', async () => {
@@ -287,8 +271,7 @@ describe('Email Integration Workflow', () => {
       // 4. Check delivery stats
       const deliveryStats = await emailIntegration.getDeliveryStats();
       expect(deliveryStats.total_sent).toBeGreaterThan(0);
-    });
-  });
+
 
   describe('user welcome workflow', () => {
     it('should complete full user welcome workflow', async () => {
@@ -310,8 +293,7 @@ describe('Email Integration Workflow', () => {
       // 3. Check delivery tracking
       const deliveryStats = await emailIntegration.getDeliveryStats();
       expect(deliveryStats).toBeDefined();
-    });
-  });
+
 
   describe('security alert workflow', () => {
     it('should complete full security alert workflow', async () => {
@@ -333,8 +315,7 @@ describe('Email Integration Workflow', () => {
       // 3. Check service health for urgent processing
       const health = await emailIntegration.getServiceHealth();
       expect(health.is_connected).toBe(true);
-    });
-  });
+
 
   describe('bulk operations workflow', () => {
     it('should handle multiple email types in sequence', async () => {
@@ -365,7 +346,6 @@ describe('Email Integration Workflow', () => {
       // All should succeed
       results.forEach(result => {
         expect(result.success).toBe(true);
-      });
 
       // Check final stats
       const queueStats = await emailIntegration.getQueueStats();
@@ -375,8 +355,7 @@ describe('Email Integration Workflow', () => {
       expect(queueStats).toBeDefined();
       expect(deliveryStats).toBeDefined();
       expect(health.is_connected).toBe(true);
-    });
-  });
+
 
   describe('error handling workflow', () => {
     it('should handle service failures gracefully', async () => {
@@ -385,7 +364,6 @@ describe('Email Integration Workflow', () => {
       vi.mocked(emailService.sendAdminInvitation).mockResolvedValueOnce({
         success: false,
         error: 'Service temporarily unavailable',
-      });
 
       const result = await emailIntegration.sendAdminInvitation(
         'admin@example.com',
@@ -401,6 +379,5 @@ describe('Email Integration Workflow', () => {
       // Service health should still be checkable
       const health = await emailIntegration.getServiceHealth();
       expect(health).toBeDefined();
-    });
-  });
-});
+
+

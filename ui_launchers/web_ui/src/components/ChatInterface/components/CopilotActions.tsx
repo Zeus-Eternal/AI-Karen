@@ -1,38 +1,11 @@
+"use client";
+
 import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Brain, Code, Bug, RefreshCw, FileText, Lightbulb, Zap, Search, TestTube, Shield, Cpu, GitBranch, MessageSquare, Sparkles, ChevronDown } from "lucide-react";
 import type { CopilotAction, ChatContext } from "../types";
-"use client";
-
-
-
-
-
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-
-  Brain,
-  Code,
-  Bug,
-  RefreshCw,
-  FileText,
-  Lightbulb,
-  Zap,
-  Search,
-  TestTube,
-  Shield,
-  Cpu,
-  GitBranch,
-  MessageSquare,
-  Sparkles,
-  ChevronDown,
-} from "lucide-react";
 
 
 interface CopilotActionsProps {
@@ -45,20 +18,6 @@ interface CopilotActionsProps {
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Brain,
-  Code,
-  Bug,
-  RefreshCw,
-  FileText,
-  Lightbulb,
-  Zap,
-  Search,
-  TestTube,
-  Shield,
-  Cpu,
-  GitBranch,
-  MessageSquare,
-  Sparkles,
 };
 
 const defaultActions: CopilotAction[] = [
@@ -197,7 +156,7 @@ const CopilotActions: React.FC<CopilotActionsProps> = ({
     return (
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4 sm:w-auto md:w-full" />
+          <Icon className="h-4 w-4 " />
           <span>{action.title}</span>
         </div>
         {showShortcuts && action.shortcut && (
@@ -212,21 +171,18 @@ const CopilotActions: React.FC<CopilotActionsProps> = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
+        <Button
           type="button"
           variant="outline"
           size="sm"
           disabled={disabled}
-          className={`flex items-center gap-2 ${className}`}
-         aria-label="Button">
-          <Sparkles className="h-4 w-4 sm:w-auto md:w-full" />
-          Copilot Actions
-          <ChevronDown className="h-3 w-3 sm:w-auto md:w-full" />
+          className={`flex items-center gap-2 ${className}`}>
+          <Sparkles className="h-4 w-4" />
+          <ChevronDown className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64 sm:w-auto md:w-full">
+      <DropdownMenuContent className="w-64 ">
         <DropdownMenuLabel className="text-xs text-muted-foreground sm:text-sm md:text-base">
-          Powered by CopilotKit
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {Object.entries(groupedActions).map(([category, categoryActions], index) => (

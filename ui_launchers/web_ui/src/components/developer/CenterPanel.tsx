@@ -1,37 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  GitBranch, 
-  FileText, 
-  Play, 
-  Pause, 
-  CheckCircle2, 
-  AlertTriangle,
-  Settings,
-  Eye,
-  Download,
-  Upload,
-  RefreshCw
-} from "lucide-react";
+
+import { } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
-import PlanVisualization, { 
-  ExecutionPlan, 
-  PlanStep, 
-  RiskLevel, 
-  StepStatus, 
-  ApprovalStatus 
-} from "./PlanVisualization";
-import DiffViewer, { 
-  FileDiff, 
-  ChangeType, 
-  DiffMode 
-} from "./DiffViewer";
+import PlanVisualization, {  ExecutionPlan, PlanStep, RiskLevel, StepStatus, ApprovalStatus } from "./PlanVisualization";
+import DiffViewer, {  FileDiff, ChangeType, DiffMode } from "./DiffViewer";
 
 export interface CenterPanelProps {
   currentPlan?: ExecutionPlan;
@@ -104,13 +83,13 @@ export default function CenterPanel({
       toast({
         title: "Refreshed",
         description: "Plan and diff data has been refreshed",
-      });
+
     } catch (error) {
       toast({
         title: "Refresh Failed",
         description: `Failed to refresh data: ${error}`,
         variant: "destructive",
-      });
+
     } finally {
       setIsRefreshing(false);
     }
@@ -124,13 +103,13 @@ export default function CenterPanel({
       toast({
         title: "Plan Executed",
         description: "Execution plan completed successfully",
-      });
+
     } catch (error) {
       toast({
         title: "Execution Failed",
         description: `Plan execution failed: ${error}`,
         variant: "destructive",
-      });
+
     }
   };
 
@@ -157,16 +136,15 @@ export default function CenterPanel({
       <Card className="h-full flex items-center justify-center">
         <CardContent className="text-center">
           <div className="flex items-center justify-center mb-4">
-            <GitBranch className="h-8 w-8 text-muted-foreground mr-2 sm:w-auto md:w-full" />
-            <FileText className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
+            <GitBranch className="h-8 w-8 text-muted-foreground mr-2 " />
+            <FileText className="h-8 w-8 text-muted-foreground " />
           </div>
           <h3 className="text-lg font-semibold mb-2">No Active Operations</h3>
           <p className="text-muted-foreground mb-4">
             Start a copilot operation to see execution plans and file changes here.
           </p>
-          <button onClick={handleRefresh} disabled={isRefreshing} variant="outline" aria-label="Button">
+          <Button onClick={handleRefresh} disabled={isRefreshing} variant="outline" >
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-            Refresh
           </Button>
         </CardContent>
       </Card>
@@ -178,7 +156,7 @@ export default function CenterPanel({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <GitBranch className="h-5 w-5 sm:w-auto md:w-full" />
+            <GitBranch className="h-5 w-5 " />
             Plan & Changes
           </CardTitle>
           
@@ -198,12 +176,12 @@ export default function CenterPanel({
               </Badge>
             )}
             
-            <button 
+            <Button 
               onClick={handleRefresh} 
               disabled={isRefreshing}
               size="sm" 
               variant="outline"
-             aria-label="Button">
+             >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
             </Button>
           </div>
@@ -218,8 +196,7 @@ export default function CenterPanel({
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700"
                aria-label="Button">
-                <Play className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                Execute Plan
+                <Play className="h-4 w-4 mr-1 " />
               </Button>
             )}
             
@@ -230,17 +207,15 @@ export default function CenterPanel({
                   size="sm"
                   className="bg-green-600 hover:bg-green-700"
                  aria-label="Button">
-                  <CheckCircle2 className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                  Approve
+                  <CheckCircle2 className="h-4 w-4 mr-1 " />
                 </Button>
                 
                 <button 
-                  onClick={() = aria-label="Button"> onPlanReject?.("Needs revision")}
+                  onClick={() => onPlanReject?.("Needs revision")}
                   size="sm"
                   variant="outline"
                 >
-                  <AlertTriangle className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
-                  Request Changes
+                  <AlertTriangle className="h-4 w-4 mr-1 " />
                 </Button>
               </>
             )}
@@ -251,7 +226,7 @@ export default function CenterPanel({
                 size="sm"
                 className="bg-green-600 hover:bg-green-700"
                aria-label="Button">
-                <CheckCircle2 className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
+                <CheckCircle2 className="h-4 w-4 mr-1 " />
                 Apply Selected ({selectedFiles})
               </Button>
             )}
@@ -263,8 +238,7 @@ export default function CenterPanel({
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "plan" | "diffs")} className="h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-2 mx-4 mb-2">
             <TabsTrigger value="plan" className="flex items-center gap-2">
-              <GitBranch className="h-4 w-4 sm:w-auto md:w-full" />
-              Execution Plan
+              <GitBranch className="h-4 w-4 " />
               {planSteps > 0 && (
                 <Badge variant="secondary" className="ml-1 text-xs sm:text-sm md:text-base">
                   {pendingSteps}/{planSteps}
@@ -273,8 +247,7 @@ export default function CenterPanel({
             </TabsTrigger>
             
             <TabsTrigger value="diffs" className="flex items-center gap-2">
-              <FileText className="h-4 w-4 sm:w-auto md:w-full" />
-              File Changes
+              <FileText className="h-4 w-4 " />
               {fileChanges > 0 && (
                 <Badge variant="secondary" className="ml-1 text-xs sm:text-sm md:text-base">
                   {selectedFiles}/{fileChanges}

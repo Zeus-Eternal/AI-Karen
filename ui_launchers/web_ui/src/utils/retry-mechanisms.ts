@@ -99,7 +99,6 @@ class RetryMechanismService {
       lastError: null,
       nextRetryIn: 0,
       totalAttempts: 0,
-    });
 
     try {
       return await this.executeWithRetry(operation, finalConfig, id);
@@ -249,7 +248,7 @@ class RetryMechanismService {
         failures: 0,
         lastFailureTime: 0,
         nextAttemptTime: 0,
-      });
+
     }
     return this.circuitBreakers.get(operationId)!;
   }
@@ -269,7 +268,7 @@ class RetryMechanismService {
       failures: 0,
       lastFailureTime: 0,
       nextAttemptTime: 0,
-    });
+
   }
 
   // Specialized retry methods
@@ -365,7 +364,6 @@ export function useRetry<T>(
     isRetrying: false,
     attempt: 0,
     canRetry: true,
-  });
 
   const operationId = React.useRef<string>();
 
@@ -426,8 +424,7 @@ export function useRetry<T>(
       isRetrying: false,
       attempt: 0,
       canRetry: true,
-    });
-    
+
     if (operationId.current) {
       retryMechanism.resetCircuitBreaker(operationId.current);
     }

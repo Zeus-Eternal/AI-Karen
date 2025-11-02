@@ -9,14 +9,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import {
-  ResponsiveContainer,
-  PageContainer,
-  SectionContainer,
-  CardContainer,
-  SidebarContainer,
-  ContentContainer,
-} from '../responsive-container';
+
+import { } from '../responsive-container';
 
 describe('ResponsiveContainer', () => {
   it('renders with default props', () => {
@@ -31,8 +25,7 @@ describe('ResponsiveContainer', () => {
     expect(container).toHaveClass('w-full');
     expect(container).toHaveClass('max-w-full');
     expect(container.children).toHaveLength(1);
-  });
-  
+
   it('applies size configuration correctly', () => {
     render(
       <ResponsiveContainer size="lg" data-testid="responsive-container">
@@ -42,8 +35,7 @@ describe('ResponsiveContainer', () => {
     
     const container = screen.getByTestId('responsive-container');
     expect(container).toHaveClass('max-w-lg');
-  });
-  
+
   it('applies center configuration', () => {
     render(
       <ResponsiveContainer center={true} data-testid="responsive-container">
@@ -53,8 +45,7 @@ describe('ResponsiveContainer', () => {
     
     const container = screen.getByTestId('responsive-container');
     expect(container).toHaveClass('mx-auto');
-  });
-  
+
   it('applies fluid configuration', () => {
     render(
       <ResponsiveContainer fluid={true} data-testid="responsive-container">
@@ -64,8 +55,7 @@ describe('ResponsiveContainer', () => {
     
     const container = screen.getByTestId('responsive-container');
     expect(container).toHaveClass('max-w-none');
-  });
-  
+
   it('applies padding configuration', () => {
     render(
       <ResponsiveContainer padding="2rem" data-testid="responsive-container">
@@ -75,8 +65,7 @@ describe('ResponsiveContainer', () => {
     
     const container = screen.getByTestId('responsive-container');
     expect(container.style.padding).toBe('2rem');
-  });
-  
+
   it('applies margin configuration', () => {
     render(
       <ResponsiveContainer margin="1rem" data-testid="responsive-container">
@@ -86,8 +75,7 @@ describe('ResponsiveContainer', () => {
     
     const container = screen.getByTestId('responsive-container');
     expect(container.style.margin).toBe('1rem');
-  });
-  
+
   it('applies container queries configuration', () => {
     render(
       <ResponsiveContainer 
@@ -103,8 +91,7 @@ describe('ResponsiveContainer', () => {
     expect(container).toHaveClass('container-responsive');
     expect(container.style.containerType).toBe('inline-size');
     expect(container.style.containerName).toBe('test-container');
-  });
-  
+
   it('applies dimensions', () => {
     render(
       <ResponsiveContainer 
@@ -119,8 +106,7 @@ describe('ResponsiveContainer', () => {
     const container = screen.getByTestId('responsive-container');
     expect(container.style.minHeight).toBe('200px');
     expect(container.style.maxHeight).toBe('800px');
-  });
-  
+
   it('applies visual properties', () => {
     render(
       <ResponsiveContainer 
@@ -137,8 +123,7 @@ describe('ResponsiveContainer', () => {
     expect(container.style.backgroundColor).toBe('blue');
     expect(container.style.borderRadius).toBe('8px');
     expect(container.style.boxShadow).toBe('0 2px 4px rgba(0,0,0,0.1)');
-  });
-  
+
   it('applies responsive configuration', () => {
     render(
       <ResponsiveContainer responsive={true} data-testid="responsive-container">
@@ -148,8 +133,7 @@ describe('ResponsiveContainer', () => {
     
     const container = screen.getByTestId('responsive-container');
     expect(container).toHaveClass('responsive-container');
-  });
-  
+
   it('applies custom breakpoints', () => {
     const customBreakpoints = {
       sm: '500px',
@@ -170,8 +154,7 @@ describe('ResponsiveContainer', () => {
     expect(container.style.getPropertyValue('--breakpoint-sm')).toBe('500px');
     expect(container.style.getPropertyValue('--breakpoint-md')).toBe('900px');
     expect(container.style.getPropertyValue('--breakpoint-lg')).toBe('1200px');
-  });
-  
+
   it('forwards ref correctly', () => {
     const ref = React.createRef<HTMLDivElement>();
     render(
@@ -181,8 +164,7 @@ describe('ResponsiveContainer', () => {
     );
     
     expect(ref.current).toBeInstanceOf(HTMLDivElement);
-  });
-  
+
   it('applies custom className and styles', () => {
     render(
       <ResponsiveContainer 
@@ -198,8 +180,7 @@ describe('ResponsiveContainer', () => {
     expect(container).toHaveClass('custom-class');
     expect(container).toHaveClass('w-full'); // Should still have base class
     expect(container.style.backgroundColor).toBe('red');
-  });
-});
+
 
 describe('PageContainer', () => {
   it('renders with page container configuration', () => {
@@ -212,8 +193,7 @@ describe('PageContainer', () => {
     const container = screen.getByTestId('page-container');
     expect(container).toHaveClass('mx-auto');
     expect(container).toHaveClass('responsive-container');
-  });
-});
+
 
 describe('SectionContainer', () => {
   it('renders with section container configuration', () => {
@@ -226,8 +206,7 @@ describe('SectionContainer', () => {
     const container = screen.getByTestId('section-container');
     expect(container).toHaveClass('mx-auto');
     expect(container).toHaveClass('responsive-container');
-  });
-});
+
 
 describe('CardContainer', () => {
   it('renders with card container configuration', () => {
@@ -244,8 +223,7 @@ describe('CardContainer', () => {
     expect(container.style.boxShadow).toBe('var(--shadow-md)');
     expect(container.style.padding).toBe('var(--space-lg)');
     expect(container.style.backgroundColor).toBe('var(--color-neutral-50)');
-  });
-});
+
 
 describe('SidebarContainer', () => {
   it('renders with sidebar container configuration', () => {
@@ -258,8 +236,7 @@ describe('SidebarContainer', () => {
     const container = screen.getByTestId('sidebar-container');
     expect(container).toHaveClass('responsive-container');
     expect(container.style.minHeight).toBe('100vh');
-  });
-});
+
 
 describe('ContentContainer', () => {
   it('renders with content container configuration', () => {
@@ -272,5 +249,4 @@ describe('ContentContainer', () => {
     const container = screen.getByTestId('content-container');
     expect(container).toHaveClass('mx-auto');
     expect(container).toHaveClass('responsive-container');
-  });
-});
+

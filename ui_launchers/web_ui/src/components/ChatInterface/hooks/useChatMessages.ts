@@ -10,6 +10,28 @@ import { safeError, safeWarn, safeInfo, safeDebug } from "@/lib/safe-console";
 import { generateUUID } from "@/lib/uuid";
 import { ChatMessage, ChatSettings, CopilotArtifact } from "../types";
 
+interface BackendChatRuntimeRequest {
+  message: string;
+  conversation_id?: string;
+  stream: boolean;
+  context: Record<string, any>;
+  tools?: string[];
+  memory_context?: string;
+  user_preferences: {
+    model: string;
+    temperature: number;
+    max_tokens: number;
+    enable_suggestions: boolean;
+    preferred_llm_provider?: string;
+    preferred_model?: string;
+  };
+  platform: string;
+  model: string;
+  provider?: string;
+  temperature: number;
+  max_tokens: number;
+}
+
 export const useChatMessages = (
   messages: ChatMessage[],
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
@@ -84,7 +106,9 @@ export const useChatMessages = (
           "chat_message_sent",
           {
             messageId: userMessage.id,
-            content: sanitizedContent.substring(0, 100) + (sanitizedContent.length > 100 ? "..." : ""),
+            content:
+              sanitizedContent.substring(0, 100) +
+              (sanitizedContent.length > 100 ? "..." : ""),
             type,
             language: options.language,
             userId: user?.user_id,
@@ -116,17 +140,29 @@ export const useChatMessages = (
 
         const baseUrl = configManager.getBackendUrl();
         const trimmedBaseUrl = baseUrl.replace(/\/+$/, "");
-        const joinBackendPath = (path: string) => (trimmedBaseUrl ? `${trimmedBaseUrl}${path}` : path);
+        const joinBackendPath = (path: string) =>
+          trimmedBaseUrl ? `${trimmedBaseUrl}${path}` : path;
 
         const streamingEnabled = !!settings.enableStreaming;
-        const chatRuntimePath = streamingEnabled ? "/api/chat/runtime/stream" : "/api/chat/runtime";
-        const fallbackPath = useCopilotKit ? "/copilot/assist" : "/api/ai/conversation-processing";
+        const chatRuntimePath = streamingEnabled
+          ? "/api/chat/runtime/stream"
+          : "/api/chat/runtime";
+        const fallbackPath = useCopilotKit
+          ? "/copilot/assist"
+          : "/api/ai/conversation-processing";
 
-        const useProxy = (process.env.NEXT_PUBLIC_USE_PROXY ?? "true").toLowerCase() !== "false";
-        const proxyUrlFor = (path: string) => `/api/chat/proxy?path=${encodeURIComponent(path)}`;
+        const useProxy =
+          (process.env.NEXT_PUBLIC_USE_PROXY ?? "true").toLowerCase() !==
+          "false";
+        const proxyUrlFor = (path: string) =>
+          `/api/chat/proxy?path=${encodeURIComponent(path)}`;
 
-        const chatRuntimeUrl = useProxy ? proxyUrlFor(chatRuntimePath) : joinBackendPath(chatRuntimePath);
-        const fallbackUrl = useProxy ? proxyUrlFor(fallbackPath) : joinBackendPath(fallbackPath);
+        const chatRuntimeUrl = useProxy
+          ? proxyUrlFor(chatRuntimePath)
+          : joinBackendPath(chatRuntimePath);
+        const fallbackUrl = useProxy
+          ? proxyUrlFor(fallbackPath)
+          : joinBackendPath(fallbackPath);
         let activeEndpoint = chatRuntimeUrl;
 
         try {
@@ -139,14 +175,22 @@ export const useChatMessages = (
           let selectedModelOnly: string | undefined;
           if (settings.model.includes(":")) {
             const [prov, ...rest] = settings.model.split(":");
-            selectedProvider = prov === 'local' ? 'llamacpp' : (prov === 'llama-cpp' ? 'llamacpp' : prov);
+            selectedProvider =
+              prov === "local"
+                ? "llamacpp"
+                : prov === "llama-cpp"
+                ? "llamacpp"
+                : prov;
             selectedModelOnly = rest.join(":");
           }
 
           const originalContext = options.context;
-          const { tools: contextTools, ...contextWithoutTools } = originalContext || {};
+          const { tools: contextTools, ...contextWithoutTools } =
+            originalContext || {};
           const normalizedTools = Array.isArray(contextTools)
-            ? contextTools.filter((tool): tool is string => typeof tool === 'string')
+            ? contextTools.filter(
+                (tool): tool is string => typeof tool === "string"
+              )
             : undefined;
 
           const llmPreferences = {
@@ -247,7 +291,8 @@ export const useChatMessages = (
                   conversation_id: conversationId,
                   user_id: user?.user_id,
                   platform: "web",
-                  enable_analysis: options.enableAnalysis || enableCodeAssistance,
+                  enable_analysis:
+                    options.enableAnalysis || enableCodeAssistance,
                   ...originalContext,
                 },
                 session_id: sessionId,
@@ -277,6 +322,7 @@ export const useChatMessages = (
             fallback: fallbackUrl,
             streaming: streamingEnabled,
           });
+
           safeDebug("🔍 useChatMessages: Primary payload preview", {
             model: chatRuntimePayload.model,
             provider: chatRuntimePayload.provider,
@@ -293,7 +339,8 @@ export const useChatMessages = (
             });
 
           let response: Response;
-          let responseOrigin: "chat-runtime" | "copilot" | "ai-orchestrator" = "chat-runtime";
+          let responseOrigin: "chat-runtime" | "copilot" | "ai-orchestrator" =
+            "chat-runtime";
 
           try {
             response = await executeRequest(chatRuntimeUrl, chatRuntimePayload);
@@ -311,13 +358,16 @@ export const useChatMessages = (
             }
             responseOrigin = "chat-runtime";
           } catch (primaryError) {
-            safeWarn("🔍 useChatMessages: Chat runtime request failed, attempting fallback", {
-              endpoint: chatRuntimeUrl,
-              error:
-                primaryError instanceof Error
-                  ? primaryError.message
-                  : String(primaryError),
-            });
+            safeWarn(
+              "🔍 useChatMessages: Chat runtime request failed, attempting fallback",
+              {
+                endpoint: chatRuntimeUrl,
+                error:
+                  primaryError instanceof Error
+                    ? primaryError.message
+                    : String(primaryError),
+              }
+            );
 
             activeEndpoint = fallbackUrl;
             try {
@@ -334,6 +384,7 @@ export const useChatMessages = (
                 endpoint: fallbackUrl,
                 body: fallbackBody,
               });
+
               throw new Error(
                 `HTTP ${response.status}: ${response.statusText}${
                   fallbackBody ? ` - ${fallbackBody}` : ""
@@ -350,7 +401,10 @@ export const useChatMessages = (
             statusText: response.statusText,
             url: response.url || activeEndpoint,
             ok: response.ok,
-            headers: Object.fromEntries(response.headers.entries()),
+            headers: Array.from(response.headers.entries()).reduce(
+              (acc, [key, value]) => ({ ...acc, [key]: value }),
+              {}
+            ),
             contentType: response.headers.get("content-type"),
             timestamp: new Date().toISOString(),
             origin: responseOrigin,
@@ -410,36 +464,51 @@ export const useChatMessages = (
                   if (
                     jsonType !== "token" &&
                     jsonType !== "delta" &&
-                    (
-                      json.event === "meta" ||
+                    (json.event === "meta" ||
                       jsonType === "meta" ||
                       json.kind === "metadata" ||
                       json.metadata ||
                       json.meta ||
                       json.data ||
                       json.usage ||
-                      json.model
-                    )
+                      json.model)
                   ) {
                     const usage = json.usage || json.token_usage || {};
-                    const baseMeta = json.metadata || json.meta || json.data || {};
+                    const baseMeta =
+                      json.metadata || json.meta || json.data || {};
                     const metaUpdate: any = { ...(baseMeta as any) };
                     // If KIRE metadata present under 'kire' or 'kire_metadata', keep it nested
-                    if ((json as any).kire_metadata && !metaUpdate.kire) metaUpdate.kire = (json as any).kire_metadata;
-                    if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
-                    if (typeof json.confidence === "number") metaUpdate.confidence = json.confidence;
-                    if (usage.total_tokens || (usage.prompt_tokens && usage.completion_tokens)) {
-                      metaUpdate.tokens = usage.total_tokens || (usage.prompt_tokens + usage.completion_tokens);
+                    if ((json as any).kire_metadata && !metaUpdate.kire)
+                      metaUpdate.kire = (json as any).kire_metadata;
+                    if (json.model && !metaUpdate.model)
+                      metaUpdate.model = json.model;
+                    if (typeof json.confidence === "number")
+                      metaUpdate.confidence = json.confidence;
+                    if (
+                      usage.total_tokens ||
+                      (usage.prompt_tokens && usage.completion_tokens)
+                    ) {
+                      metaUpdate.tokens =
+                        usage.total_tokens ||
+                        usage.prompt_tokens + usage.completion_tokens;
                     }
-                    if (typeof metaUpdate.total_tokens === "number" && metaUpdate.tokens === undefined) {
+                    if (
+                      typeof metaUpdate.total_tokens === "number" &&
+                      metaUpdate.tokens === undefined
+                    ) {
                       metaUpdate.tokens = metaUpdate.total_tokens;
                     }
-                    if (typeof (metaUpdate as any).totalTokens === "number" && metaUpdate.tokens === undefined) {
+                    if (
+                      typeof (metaUpdate as any).totalTokens === "number" &&
+                      metaUpdate.tokens === undefined
+                    ) {
                       metaUpdate.tokens = (metaUpdate as any).totalTokens;
                     }
                     if (json.cost !== undefined) metaUpdate.cost = json.cost;
-                    if (metaUpdate.origin === undefined) metaUpdate.origin = responseOrigin;
-                    if (metaUpdate.endpoint === undefined) metaUpdate.endpoint = activeEndpoint;
+                    if (metaUpdate.origin === undefined)
+                      metaUpdate.origin = responseOrigin;
+                    if (metaUpdate.endpoint === undefined)
+                      metaUpdate.endpoint = activeEndpoint;
                     metadata = { ...metadata, ...metaUpdate };
                   }
 
@@ -453,20 +522,18 @@ export const useChatMessages = (
                     (jsonType === "token" && json.data)
                   ) {
                     const tokenData =
-                      (jsonType === "token" && typeof json.data === "object")
-                        ? (
-                            typeof json.data.token === "string"
-                              ? json.data.token
-                              : typeof json.data.delta === "string"
-                                ? json.data.delta
-                                : typeof json.data.content === "string"
-                                  ? json.data.content
-                                  : typeof json.data.text === "string"
-                                    ? json.data.text
-                                    : typeof json.data.answer === "string"
-                                      ? json.data.answer
-                                      : ""
-                          )
+                      jsonType === "token" && typeof json.data === "object"
+                        ? typeof json.data.token === "string"
+                          ? json.data.token
+                          : typeof json.data.delta === "string"
+                          ? json.data.delta
+                          : typeof json.data.content === "string"
+                          ? json.data.content
+                          : typeof json.data.text === "string"
+                          ? json.data.text
+                          : typeof json.data.answer === "string"
+                          ? json.data.answer
+                          : ""
                         : "";
 
                     const newContent =
@@ -489,7 +556,11 @@ export const useChatMessages = (
                     }
                   }
 
-                  if (json.done === true || json.event === "done" || json.type === "complete") {
+                  if (
+                    json.done === true ||
+                    json.event === "done" ||
+                    json.type === "complete"
+                  ) {
                     streamDone = true;
                   }
                 } catch (e) {
@@ -508,7 +579,9 @@ export const useChatMessages = (
             // Flush any remaining buffered data after stream ends
             const tail = (buffer || "").trim();
             if (tail && tail !== "data: [DONE]") {
-              let data = tail.startsWith("data:") ? tail.replace(/^data:\s*/, "") : tail;
+              let data = tail.startsWith("data:")
+                ? tail.replace(/^data:\s*/, "")
+                : tail;
               try {
                 const json = JSON.parse(data);
                 const jsonTypeTail = (json as any)?.type;
@@ -520,20 +593,18 @@ export const useChatMessages = (
                   (jsonTypeTail === "token" && json.data)
                 ) {
                   const tokenDataTail =
-                    (jsonTypeTail === "token" && typeof json.data === "object")
-                      ? (
-                          typeof json.data.token === "string"
-                            ? json.data.token
-                            : typeof json.data.delta === "string"
-                              ? json.data.delta
-                              : typeof json.data.content === "string"
-                                ? json.data.content
-                                : typeof json.data.text === "string"
-                                  ? json.data.text
-                                  : typeof json.data.answer === "string"
-                                    ? json.data.answer
-                                    : ""
-                        )
+                    jsonTypeTail === "token" && typeof json.data === "object"
+                      ? typeof json.data.token === "string"
+                        ? json.data.token
+                        : typeof json.data.delta === "string"
+                        ? json.data.delta
+                        : typeof json.data.content === "string"
+                        ? json.data.content
+                        : typeof json.data.text === "string"
+                        ? json.data.text
+                        : typeof json.data.answer === "string"
+                        ? json.data.answer
+                        : ""
                       : "";
 
                   const newContent =
@@ -546,38 +617,62 @@ export const useChatMessages = (
                   if (newContent) {
                     fullText += newContent;
                     setMessages((prev) =>
-                      prev.map((m) => (m.id === assistantId ? { ...m, content: fullText } : m))
+                      prev.map((m) =>
+                        m.id === assistantId ? { ...m, content: fullText } : m
+                      )
                     );
                   }
                 }
                 if (
                   jsonTypeTail !== "token" &&
                   jsonTypeTail !== "delta" &&
-                  (json.metadata || json.meta || json.data || json.usage || json.model)
+                  (json.metadata ||
+                    json.meta ||
+                    json.data ||
+                    json.usage ||
+                    json.model)
                 ) {
                   const usage = json.usage || json.token_usage || {};
-                  const baseMeta = json.metadata || json.meta || json.data || {};
+                  const baseMeta =
+                    json.metadata || json.meta || json.data || {};
                   const metaUpdate: any = { ...(baseMeta as any) };
-                  if ((json as any).kire_metadata && !metaUpdate.kire) metaUpdate.kire = (json as any).kire_metadata;
-                  if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
-                  if (usage.total_tokens || (usage.prompt_tokens && usage.completion_tokens)) {
-                    metaUpdate.tokens = usage.total_tokens || (usage.prompt_tokens + usage.completion_tokens);
+                  if ((json as any).kire_metadata && !metaUpdate.kire)
+                    metaUpdate.kire = (json as any).kire_metadata;
+                  if (json.model && !metaUpdate.model)
+                    metaUpdate.model = json.model;
+                  if (
+                    usage.total_tokens ||
+                    (usage.prompt_tokens && usage.completion_tokens)
+                  ) {
+                    metaUpdate.tokens =
+                      usage.total_tokens ||
+                      usage.prompt_tokens + usage.completion_tokens;
                   }
-                  if (typeof metaUpdate.total_tokens === "number" && metaUpdate.tokens === undefined) {
+                  if (
+                    typeof metaUpdate.total_tokens === "number" &&
+                    metaUpdate.tokens === undefined
+                  ) {
                     metaUpdate.tokens = metaUpdate.total_tokens;
                   }
-                  if (typeof (metaUpdate as any).totalTokens === "number" && metaUpdate.tokens === undefined) {
+                  if (
+                    typeof (metaUpdate as any).totalTokens === "number" &&
+                    metaUpdate.tokens === undefined
+                  ) {
                     metaUpdate.tokens = (metaUpdate as any).totalTokens;
                   }
                   if (json.cost !== undefined) metaUpdate.cost = json.cost;
-                  if (metaUpdate.origin === undefined) metaUpdate.origin = responseOrigin;
-                  if (metaUpdate.endpoint === undefined) metaUpdate.endpoint = activeEndpoint;
+                  if (metaUpdate.origin === undefined)
+                    metaUpdate.origin = responseOrigin;
+                  if (metaUpdate.endpoint === undefined)
+                    metaUpdate.endpoint = activeEndpoint;
                   metadata = { ...metadata, ...metaUpdate };
                 }
               } catch {
                 fullText += data;
                 setMessages((prev) =>
-                  prev.map((m) => (m.id === assistantId ? { ...m, content: fullText } : m))
+                  prev.map((m) =>
+                    m.id === assistantId ? { ...m, content: fullText } : m
+                  )
                 );
               }
             }
@@ -597,7 +692,9 @@ export const useChatMessages = (
               metadata = {
                 ...(result.metadata || result.meta || {}),
                 ...(result.kire_metadata ? { kire: result.kire_metadata } : {}),
-                model: result.model || (result.metadata?.model ?? result.meta?.model),
+                model:
+                  result.model ||
+                  (result.metadata?.model ?? result.meta?.model),
                 tokens:
                   usage.total_tokens ||
                   (usage.prompt_tokens && usage.completion_tokens
@@ -607,7 +704,7 @@ export const useChatMessages = (
                 confidence:
                   typeof result.confidence === "number"
                     ? result.confidence
-                    : (result.metadata?.confidence ?? result.meta?.confidence),
+                    : result.metadata?.confidence ?? result.meta?.confidence,
               } as any;
             } else {
               fullText = await response.text();
@@ -688,12 +785,15 @@ export const useChatMessages = (
             onMessageReceived(finalMessage);
           }
 
-          safeInfo("🔍 useChatMessages: Message successfully processed and stored:", {
-            messageId: assistantId,
-            totalMessages: messages.length + 1,
-            success: true,
-            timestamp: new Date().toISOString(),
-          });
+          safeInfo(
+            "🔍 useChatMessages: Message successfully processed and stored:",
+            {
+              messageId: assistantId,
+              totalMessages: messages.length + 1,
+              success: true,
+              timestamp: new Date().toISOString(),
+            }
+          );
 
           // Generate artifacts for certain message types
           if (
@@ -702,7 +802,10 @@ export const useChatMessages = (
             finalMessage.content.includes("```")
           ) {
             // TODO: Implement artifact generation
-            safeDebug('🔍 useChatMessages: Should generate artifacts for message:', finalMessage.id);
+            safeDebug(
+              "🔍 useChatMessages: Should generate artifacts for message:",
+              finalMessage.id
+            );
           }
         } catch (error) {
           if ((error as any)?.name === "AbortError") {
@@ -712,8 +815,8 @@ export const useChatMessages = (
 
           // Prevent console error interceptor issues by using structured logging
           const errorDetails = {
-            name: (error as any)?.name || 'UnknownError',
-            message: (error as any)?.message || 'Unknown error occurred',
+            name: (error as any)?.name || "UnknownError",
+            message: (error as any)?.message || "Unknown error occurred",
             stack: (error as any)?.stack,
             cause: (error as any)?.cause,
             timestamp: new Date().toISOString(),
@@ -725,11 +828,11 @@ export const useChatMessages = (
               primaryEndpoint: chatRuntimeUrl,
               fallbackEndpoint: fallbackUrl,
               messageType: type,
-            }
+            },
           };
 
           // Use safe console to avoid interceptor issues
-          safeError('Chat error occurred', errorDetails, {
+          safeError("Chat error occurred", errorDetails, {
             skipInProduction: false,
             useStructuredLogging: true,
           });
@@ -753,7 +856,9 @@ export const useChatMessages = (
               .then((response) => {
                 safeInfo("Backend health check:", response.status);
                 if (response.ok) {
-                  safeInfo("Backend is accessible, but chat endpoint may have issues");
+                  safeInfo(
+                    "Backend is accessible, but chat endpoint may have issues"
+                  );
                 }
               })
               .catch((healthError) => {
@@ -788,22 +893,27 @@ export const useChatMessages = (
         }
       } catch (outerError) {
         // Catch any unhandled errors in the sendMessage function
-        safeError('Critical error in sendMessage', {
-          error: outerError,
-          message: (outerError as any)?.message,
-          stack: (outerError as any)?.stack,
-          timestamp: new Date().toISOString(),
-        }, {
-          skipInProduction: false,
-          useStructuredLogging: true,
-        });
-        
+        safeError(
+          "Critical error in sendMessage",
+          {
+            error: outerError,
+            message: (outerError as any)?.message,
+            stack: (outerError as any)?.stack,
+            timestamp: new Date().toISOString(),
+          },
+          {
+            skipInProduction: false,
+            useStructuredLogging: true,
+          }
+        );
+
         setIsTyping(false);
-        
+
         toast({
           variant: "destructive",
           title: "Critical Error",
-          description: "An unexpected error occurred. Please refresh the page and try again.",
+          description:
+            "An unexpected error occurred. Please refresh the page and try again.",
         });
       }
     },
@@ -879,7 +989,8 @@ export const useChatMessages = (
 
         case "regenerate":
           if (message.role === "assistant") {
-            const userMessage = messages[messages.findIndex((m) => m.id === messageId) - 1];
+            const userMessage =
+              messages[messages.findIndex((m) => m.id === messageId) - 1];
             if (userMessage) {
               sendMessage(userMessage.content, userMessage.type);
             }
@@ -901,16 +1012,22 @@ export const useChatMessages = (
   }, [setMessages]);
 
   // Add message directly
-  const addMessage = useCallback((message: ChatMessage) => {
-    setMessages(prev => [...prev, message]);
-  }, [setMessages]);
+  const addMessage = useCallback(
+    (message: ChatMessage) => {
+      setMessages((prev) => [...prev, message]);
+    },
+    [setMessages]
+  );
 
   // Update message
-  const updateMessage = useCallback((messageId: string, updates: Partial<ChatMessage>) => {
-    setMessages(prev => prev.map(msg =>
-      msg.id === messageId ? { ...msg, ...updates } : msg
-    ));
-  }, [setMessages]);
+  const updateMessage = useCallback(
+    (messageId: string, updates: Partial<ChatMessage>) => {
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? { ...msg, ...updates } : msg))
+      );
+    },
+    [setMessages]
+  );
 
   return {
     messages,

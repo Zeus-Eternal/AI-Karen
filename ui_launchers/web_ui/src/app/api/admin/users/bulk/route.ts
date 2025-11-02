@@ -207,7 +207,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       details: auditDetails,
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
-    });
+
     const response: AdminApiResponse<typeof result> = {
       success: true,
       data: result,
@@ -228,4 +228,3 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});
