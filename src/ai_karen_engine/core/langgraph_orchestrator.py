@@ -575,7 +575,54 @@ class LangGraphOrchestrator:
             state["errors"].append(f"Intent detection error: {str(e)}")
 
         return state
-    
+
+    def _compose_execution_plan(
+        self,
+        intent: str,
+        analysis: Optional[Dict[str, Any]],
+        tool_calls: List[Dict[str, Any]],
+        safety_status: str,
+    ) -> Dict[str, Any]:
+        """Create a structured execution plan used by the planner and dry-run analysis."""
+
+        analysis = analysis or {}
+        execution_plan: Dict[str, Any] = {
+            "intent": intent,
+            "steps": [],
+            "tools_required": [call["tool"] for call in tool_calls],
+            "estimated_time_seconds": 2,
+            "complexity": "low",
+            "metadata": {
+                "confidence": analysis.get("confidence", 0.0),
+                "requires_clarification": analysis.get("requires_clarification", False),
+                "safety_status": safety_status,
+            },
+        }
+
+        if intent in {"code_generation", "email_compose"}:
+            execution_plan["steps"] = [
+                "understand_requirements",
+                "draft_solution",
+                "review_and_refine",
+            ]
+            execution_plan["complexity"] = "medium"
+            execution_plan["estimated_time_seconds"] = 6
+        elif intent in {"weather_query", "time_query", "information_retrieval", "book_query"}:
+            execution_plan["steps"] = [
+                "gather_context",
+                "invoke_tools" if tool_calls else "search_internal_memory",
+                "synthesize_answer",
+            ]
+            execution_plan["complexity"] = "low"
+            execution_plan["estimated_time_seconds"] = 4
+        else:
+            execution_plan["steps"] = ["analyze_prompt", "compose_response"]
+
+        if safety_status == "review_required":
+            execution_plan["requires_human_review"] = True
+
+        return execution_plan
+
     async def _planner(self, state: OrchestrationState) -> OrchestrationState:
         """Execution planning based on intent"""
         logger.info("Planning processing")
@@ -586,41 +633,12 @@ class LangGraphOrchestrator:
             tool_calls = state.get("tool_calls") or []
             safety_status = state.get("safety_status", "safe")
 
-            execution_plan: Dict[str, Any] = {
-                "intent": intent,
-                "steps": [],
-                "tools_required": [call["tool"] for call in tool_calls],
-                "estimated_time_seconds": 2,
-                "complexity": "low",
-                "metadata": {
-                    "confidence": state.get("intent_confidence", 0.0),
-                    "requires_clarification": analysis.get("requires_clarification", False),
-                    "safety_status": safety_status,
-                },
-            }
-
-            if intent in {"code_generation", "email_compose"}:
-                execution_plan["steps"] = [
-                    "understand_requirements",
-                    "draft_solution",
-                    "review_and_refine",
-                ]
-                execution_plan["complexity"] = "medium"
-                execution_plan["estimated_time_seconds"] = 6
-            elif intent in {"weather_query", "time_query", "information_retrieval", "book_query"}:
-                execution_plan["steps"] = [
-                    "gather_context",
-                    "invoke_tools" if tool_calls else "search_internal_memory",
-                    "synthesize_answer",
-                ]
-                execution_plan["complexity"] = "low"
-                execution_plan["estimated_time_seconds"] = 4
-            else:
-                execution_plan["steps"] = ["analyze_prompt", "compose_response"]
-
-            if safety_status == "review_required":
-                execution_plan["requires_human_review"] = True
-
+            execution_plan = self._compose_execution_plan(
+                intent,
+                analysis,
+                tool_calls,
+                safety_status,
+            )
             state["execution_plan"] = execution_plan
 
         except Exception as e:
@@ -943,10 +961,187 @@ class LangGraphOrchestrator:
         """Check the current approval status"""
         approval_status = state.get("approval_status", "pending")
         return approval_status
-    
-    async def process(self, 
-                     messages: List[BaseMessage], 
-                     user_id: str, 
+
+    async def run_dry_run_analysis(
+        self,
+        *,
+        message: str,
+        session_id: Optional[str] = None,
+        user: Optional[Dict[str, Any]] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Simulate orchestration without side effects for diagnostics."""
+
+        user = user or {}
+        context = context or {}
+
+        session_identifier = session_id or context.get("session_id") or f"dryrun-{uuid.uuid4()}"
+        user_id = user.get("id") or user.get("user_id") or "anonymous"
+        tenant_id = (
+            user.get("tenant_id")
+            or user.get("organization_id")
+            or context.get("tenant_id")
+            or "default"
+        )
+
+        conversation_history = context.get("conversation_history")
+        if not isinstance(conversation_history, list):
+            conversation_history = []
+
+        sanitized_history: List[Dict[str, Any]] = []
+        for entry in conversation_history:
+            if isinstance(entry, dict) and "content" in entry:
+                sanitized_history.append(entry)
+
+        user_settings = context.get("user_settings")
+        if not isinstance(user_settings, dict):
+            user_settings = {}
+
+        memories = context.get("memories")
+        if not isinstance(memories, list):
+            memories = None
+
+        context_manager = await self._ensure_context_manager()
+        built_context = await context_manager.build_context(
+            user_id=user_id,
+            session_id=session_identifier,
+            prompt=message,
+            conversation_history=sanitized_history,
+            user_settings=user_settings,
+            memories=memories,
+        )
+
+        intent_analysis = await self._decision_engine.analyze_intent(message, built_context)
+
+        suggested_tools = intent_analysis.get("suggested_tools", []) or []
+        entities = intent_analysis.get("entities", []) or []
+        tool_calls: List[Dict[str, Any]] = []
+
+        for tool_name in suggested_tools:
+            parameters: Dict[str, Any] = {}
+            for entity in entities:
+                entity_type = (entity.get("type") or "").lower()
+                value = entity.get("value")
+                if not value:
+                    continue
+                if entity_type == "location":
+                    parameters.setdefault("location", value)
+                elif entity_type == "book":
+                    parameters.setdefault("book_title", value)
+                elif entity_type == "time":
+                    parameters.setdefault("time_reference", value)
+
+            tool_calls.append({"tool": tool_name, "parameters": parameters})
+
+        safety_service = self._ensure_safety_service()
+        safety_result: SafetyResult = await safety_service.filter_safety(message)
+        if not safety_result.is_safe and safety_result.flagged_categories:
+            safety_status = "review_required"
+        elif safety_result.is_safe:
+            safety_status = "safe"
+        else:
+            safety_status = "unsafe"
+
+        execution_plan = self._compose_execution_plan(
+            intent_analysis.get("primary_intent", "conversation"),
+            intent_analysis,
+            tool_calls,
+            safety_status,
+        )
+
+        provider_preferences = {}
+        for candidate in (
+            context.get("llm_preferences"),
+            context.get("user_preferences"),
+            user.get("llm_preferences"),
+            user_settings.get("llm_preferences") if isinstance(user_settings, dict) else None,
+        ):
+            if isinstance(candidate, dict):
+                provider_preferences.update(candidate)
+
+        llm_request = ChatRequest(
+            message=message,
+            context={
+                "conversation": sanitized_history,
+                "plan": execution_plan,
+                "safety": {
+                    "status": safety_status,
+                    "score": safety_result.safety_score,
+                    "flags": safety_result.flagged_categories,
+                },
+                "tenant_id": tenant_id,
+            },
+            tools=[call["tool"] for call in tool_calls] or None,
+            memory_context=built_context.get("context_summary") if isinstance(built_context, dict) else None,
+            user_preferences=provider_preferences or None,
+            preferred_model=provider_preferences.get("chat") if isinstance(provider_preferences, dict) else None,
+            conversation_id=session_identifier,
+            stream=False,
+        )
+
+        provider_selection = await self._llm_router.select_provider(
+            llm_request,
+            user_preferences=provider_preferences,
+        )
+
+        if provider_selection:
+            predicted_provider, predicted_model = provider_selection
+            routing_reason = f"Selected via {self._llm_router.routing_policy.value} policy"
+            routing_confidence = 0.9
+        else:
+            predicted_provider, predicted_model = "fallback", "kari-fallback-v1"
+            routing_reason = "Router returned no healthy provider; using fallback"
+            routing_confidence = 0.2
+
+        approval_required = bool(
+            execution_plan.get("requires_human_review")
+            or not safety_result.is_safe
+            or execution_plan.get("complexity") == "high"
+        )
+
+        memories_considered = 0
+        if isinstance(built_context, dict):
+            memories_data = built_context.get("memories")
+            if isinstance(memories_data, list):
+                memories_considered = len(memories_data)
+
+        analysis_timestamp = datetime.now(timezone.utc).isoformat()
+
+        return {
+            "session_id": session_identifier,
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+            "message": message,
+            "predicted_intent": intent_analysis.get("primary_intent", "conversation"),
+            "intent_confidence": intent_analysis.get("confidence", 0.0),
+            "routing_reason": routing_reason,
+            "routing_confidence": routing_confidence,
+            "predicted_provider": predicted_provider,
+            "predicted_model": predicted_model,
+            "estimated_processing_time": execution_plan.get("estimated_time_seconds", 0.0),
+            "required_tools": [call["tool"] for call in tool_calls],
+            "tool_parameters": tool_calls,
+            "execution_plan": execution_plan,
+            "safety_assessment": {
+                "status": safety_status,
+                "score": safety_result.safety_score,
+                "flagged_categories": safety_result.flagged_categories,
+                "used_fallback": safety_result.used_fallback,
+            },
+            "approval_required": approval_required,
+            "context_summary": (
+                built_context.get("context_summary")
+                if isinstance(built_context, dict)
+                else None
+            ),
+            "memories_considered": memories_considered,
+            "timestamp": analysis_timestamp,
+            "user_preferences": provider_preferences,
+        }
+
+    async def process(self,
+                     messages: List[BaseMessage],
+                     user_id: str,
                      session_id: str = None,
                      config: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -1189,6 +1384,23 @@ class LangGraphOrchestrator:
         ordered = sorted(samples)
         index = max(0, min(len(ordered) - 1, int(round(percentile * (len(ordered) - 1)))))
         return ordered[index]
+
+    async def shutdown(self) -> None:
+        """Gracefully release orchestrator resources."""
+
+        logger.info("Shutting down LangGraph orchestrator")
+
+        try:
+            await self._llm_router.shutdown()
+        except Exception as exc:  # pragma: no cover - defensive cleanup
+            logger.warning("LLM router shutdown encountered an error: %s", exc)
+
+        if self._context_manager:
+            self._context_manager.clear_context_cache()
+
+        async with self._stats_lock:
+            self._active_sessions.clear()
+            self._latency_samples.clear()
 
 
 # Factory function for easy instantiation

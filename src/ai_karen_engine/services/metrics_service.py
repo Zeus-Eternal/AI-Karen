@@ -168,9 +168,8 @@ class MetricsService:
         self.fallback_collector = FallbackMetricsCollector()
         self.slo_monitor = None  # Will be set by SLO monitor integration
 
-        if PROMETHEUS_AVAILABLE:
-            self._init_prometheus_metrics()
-        else:
+        self._init_prometheus_metrics()
+        if not PROMETHEUS_AVAILABLE:
             logger.info("Using fallback metrics collector")
 
     def _init_prometheus_metrics(self):
@@ -286,6 +285,43 @@ class MetricsService:
             "turn_error_rate",
             "Error rate of turns",
             ["endpoint", "error_type", "time_window"],
+            registry=self.registry,
+        )
+
+        # Orchestration runtime metrics
+        self.orchestration_active_sessions = Gauge(
+            "kari_orchestrator_active_sessions",
+            "Number of active LangGraph sessions",
+            registry=self.registry,
+        )
+        self.orchestration_total_processed = Gauge(
+            "kari_orchestrator_total_processed",
+            "Total LangGraph sessions processed",
+            registry=self.registry,
+        )
+        self.orchestration_failed_sessions = Gauge(
+            "kari_orchestrator_failed_sessions",
+            "Number of LangGraph sessions ending with failure",
+            registry=self.registry,
+        )
+        self.orchestration_average_latency = Gauge(
+            "kari_orchestrator_average_latency_seconds",
+            "Average LangGraph session latency (seconds)",
+            registry=self.registry,
+        )
+        self.orchestration_p95_latency = Gauge(
+            "kari_orchestrator_p95_latency_seconds",
+            "95th percentile LangGraph session latency (seconds)",
+            registry=self.registry,
+        )
+        self.orchestration_uptime = Gauge(
+            "kari_orchestrator_uptime_seconds",
+            "LangGraph orchestrator uptime in seconds",
+            registry=self.registry,
+        )
+        self.orchestration_last_error = Gauge(
+            "kari_orchestrator_last_error",
+            "Flag indicating whether the orchestrator reported an error",
             registry=self.registry,
         )
 
@@ -679,6 +715,43 @@ class MetricsService:
                 lines.append(f"{name} {value}")
 
             return "\n".join(lines)
+
+    def record_orchestrator_snapshot(self, snapshot: Dict[str, Any]) -> None:
+        """Record LangGraph orchestrator runtime statistics."""
+
+        active_sessions = float(snapshot.get("active_sessions", 0))
+        total_processed = float(snapshot.get("total_processed", 0))
+        failed_sessions = float(snapshot.get("failed_sessions", 0))
+        uptime = float(snapshot.get("uptime", 0.0))
+        average_latency = float(snapshot.get("average_latency", 0.0))
+        p95_latency = float(snapshot.get("p95_latency", 0.0))
+        has_error = 1.0 if snapshot.get("last_error") else 0.0
+
+        self.orchestration_active_sessions.set(active_sessions)
+        self.orchestration_total_processed.set(total_processed)
+        self.orchestration_failed_sessions.set(failed_sessions)
+        self.orchestration_average_latency.set(average_latency)
+        self.orchestration_p95_latency.set(p95_latency)
+        self.orchestration_uptime.set(uptime)
+        self.orchestration_last_error.set(has_error)
+
+        self.fallback_collector.set_gauge(
+            "orchestrator_active_sessions", active_sessions
+        )
+        self.fallback_collector.set_gauge(
+            "orchestrator_total_processed", total_processed
+        )
+        self.fallback_collector.set_gauge(
+            "orchestrator_failed_sessions", failed_sessions
+        )
+        self.fallback_collector.set_gauge(
+            "orchestrator_average_latency", average_latency
+        )
+        self.fallback_collector.set_gauge(
+            "orchestrator_p95_latency", p95_latency
+        )
+        self.fallback_collector.set_gauge("orchestrator_uptime", uptime)
+        self.fallback_collector.set_gauge("orchestrator_last_error", has_error)
 
     def get_content_type(self) -> str:
         """Get content type for metrics export"""
