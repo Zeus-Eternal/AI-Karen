@@ -122,42 +122,87 @@ class TestProviderRegistryService:
     
     def test_get_available_providers(self):
         """Test getting available providers with filtering"""
-        
+
         # Register providers with different capabilities
         self.service.register_provider(
             name="text_provider",
             provider_class=MockProvider,
             requires_api_key=False
         )
-        
+
         self.service.register_provider(
             name="embedding_provider",
             provider_class=MockProviderWithEmbeddings,
             requires_api_key=False
         )
-        
+
         # Get all available providers
         all_providers = self.service.get_available_providers()
         assert "text_provider" in all_providers
         assert "embedding_provider" in all_providers
-        
+
         # Get providers with text generation capability
         text_providers = self.service.get_available_providers(
             capability=ProviderCapability.TEXT_GENERATION
         )
         assert "text_provider" in text_providers
         assert "embedding_provider" in text_providers
-        
+
         # Get providers with embeddings capability
         embedding_providers = self.service.get_available_providers(
             capability=ProviderCapability.EMBEDDINGS
         )
         assert "text_provider" not in embedding_providers
         assert "embedding_provider" in embedding_providers
-    
+
+    def test_get_registered_models_for_available_provider(self):
+        """Registered models should be returned for available providers."""
+
+        self.service.register_provider(
+            name="catalog_provider",
+            provider_class=MockProvider,
+            requires_api_key=False,
+            models=[
+                ModelInfo(name="alpha"),
+                ModelInfo(name="beta"),
+            ],
+            default_model="gamma",
+        )
+
+        models = self.service.get_registered_models("catalog_provider")
+
+        assert models == ["alpha", "beta", "gamma"]
+        assert self.service.is_model_available("catalog_provider", "beta")
+        assert not self.service.is_model_available("catalog_provider", "delta")
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_get_registered_models_respects_provider_availability(self):
+        """Models should be hidden when provider is unavailable unless requested."""
+
+        self.service.register_provider(
+            name="openai",
+            provider_class=MockProvider,
+            requires_api_key=True,
+            models=[ModelInfo(name="restricted")],
+        )
+
+        assert self.service.get_registered_models("openai") == []
+        assert not self.service.is_model_available("openai", "restricted")
+
+        models = self.service.get_registered_models(
+            "openai",
+            healthy_only=False,
+        )
+        assert models == ["restricted"]
+        assert self.service.is_model_available(
+            "openai",
+            "restricted",
+            healthy_only=False,
+        )
+
     def test_provider_selection_with_preferred(self):
         """Test provider selection with preferred provider"""
-        
+
         # Register multiple providers
         self.service.register_provider(
             name="provider1",
