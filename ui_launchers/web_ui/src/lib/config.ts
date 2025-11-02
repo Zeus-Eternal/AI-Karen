@@ -35,6 +35,7 @@ export interface WebUIConfig {
   enableExperimentalFeatures: boolean;
   enableVoice: boolean;
   enableExtensions: boolean;
+  enableDeveloperTools: boolean;
   // Health checks
   healthCheckInterval: number;
   healthCheckTimeout: number;
@@ -163,6 +164,7 @@ export function getWebUIConfig(): WebUIConfig {
     ['localhost', 'container', 'external'] as const,
     'localhost'
   );
+  const defaultEnableDeveloperTools = environment !== 'production';
   // When using Next.js API routes (empty backendUrl), no fallbacks are needed
   const explicitFallbacks = parseArrayEnv(process.env.KAREN_FALLBACK_BACKEND_URLS, []);
   const fallbackBackendUrls = backendUrl === '' ? [] : (
@@ -207,6 +209,10 @@ export function getWebUIConfig(): WebUIConfig {
     enableExperimentalFeatures: parseBooleanEnv(process.env.KAREN_ENABLE_EXPERIMENTAL_FEATURES, false),
     enableVoice: parseBooleanEnv(process.env.KAREN_ENABLE_VOICE, false),
     enableExtensions: parseBooleanEnv(process.env.KAREN_ENABLE_EXTENSIONS, false),
+    enableDeveloperTools: parseBooleanEnv(
+      process.env.KAREN_ENABLE_DEVELOPER_TOOLS,
+      defaultEnableDeveloperTools
+    ),
     // Health checks
     healthCheckInterval: parseNumberEnv(process.env.KAREN_HEALTH_CHECK_INTERVAL, 60000), // Increased to 60 seconds to avoid rate limiting
     healthCheckTimeout: parseNumberEnv(process.env.KAREN_HEALTH_CHECK_TIMEOUT, 5000),
@@ -281,6 +287,9 @@ export function validateConfig(config: WebUIConfig): { isValid: boolean; warning
     if (config.healthCheckRetries > 10) {
       warnings.push(`Health check retries is very high (${config.healthCheckRetries}), this may cause delays`);
     }
+  }
+  if (config.environment === 'production' && config.enableDeveloperTools) {
+    warnings.push('Developer tools are enabled in production; disable them for hardened deployments.');
   }
   // Validate CORS origins
   for (const origin of config.corsOrigins) {
