@@ -828,11 +828,11 @@ class LazyLoadingController:
             while True:
                 await asyncio.sleep(600)  # Check every 10 minutes
                 
-                # Clear session access tracking periodically
+                # Clear session access tracking periodically to prevent memory growth
                 self.current_session_accesses.clear()
-                
-                # TODO: Add more sophisticated cleanup logic based on usage patterns
-                
+
+                # Future enhancement: Usage pattern-based cleanup (LRU, time-based TTL, etc.)
+
         except asyncio.CancelledError:
             logger.info("Cleanup monitoring stopped")
         except Exception as e:

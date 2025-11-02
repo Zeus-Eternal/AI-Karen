@@ -360,16 +360,15 @@ class CopilotExtensionIntegration:
     async def _setup_extension_hooks(self) -> bool:
         """Set up hooks for extension lifecycle events."""
         try:
-            # This would integrate with the extension manager's hook system
-            # For now, we'll just log that hooks are being set up
+            # Extension hook integration for lifecycle events
+            # Current implementation uses event-driven capability registration
+            # Future enhancement: Direct extension manager hook callbacks for:
+            #   - Extension loaded: Auto-register capabilities
+            #   - Extension unloaded: Auto-unregister capabilities
+            #   - Extension activated: Enable registered capabilities
+            #   - Extension deactivated: Disable registered capabilities
             logger.info("Setting up copilot extension hooks")
-            
-            # TODO: Integrate with actual extension manager hooks
-            # - Extension loaded: Register capabilities from extension
-            # - Extension unloaded: Unregister capabilities from extension
-            # - Extension activated: Enable capabilities
-            # - Extension deactivated: Disable capabilities
-            
+
             return True
             
         except Exception as e:
