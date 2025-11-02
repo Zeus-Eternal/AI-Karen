@@ -5,9 +5,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-import { } from "lucide-react";
+import { webUIConfig } from "@/lib/config";
 import { cn } from "@/lib/utils";
+import {
+  Activity,
+  Brain,
+  Code,
+  MessageSquare,
+  Monitor,
+  Terminal,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 
 interface DeveloperNavProps {
   className?: string;
@@ -15,8 +24,18 @@ interface DeveloperNavProps {
 
 export default function DeveloperNav({ className }: DeveloperNavProps) {
   const pathname = usePathname();
-  
-  const navItems = [
+
+  if (!webUIConfig.enableDeveloperTools) {
+    return null;
+  }
+
+  const navItems: Array<{
+    href: string;
+    label: string;
+    icon: LucideIcon;
+    description: string;
+    badge: string | null;
+  }> = [
     {
       href: "/developer",
       label: "Dev Studio",
@@ -61,6 +80,19 @@ export default function DeveloperNav({ className }: DeveloperNavProps) {
     },
   ];
 
+  const getBadgeVariant = (badge: string | null) => {
+    switch (badge) {
+      case "AI":
+        return "default" as const;
+      case "Live":
+        return "destructive" as const;
+      case "Beta":
+        return "secondary" as const;
+      default:
+        return "outline" as const;
+    }
+  };
+
   return (
     <nav className={cn("space-y-2", className)}>
       <div className="px-3 py-2">
@@ -73,25 +105,24 @@ export default function DeveloperNav({ className }: DeveloperNavProps) {
             const Icon = item.icon;
             
             return (
-              <Link key={item.href} href={item.href}>
-                <button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start h-auto p-3",
-                    isActive && "bg-secondary"
-                  )}
-                 aria-label="Button">
+              <Button
+                key={item.href}
+                asChild
+                variant={isActive ? "secondary" : "ghost"}
+                className={cn(
+                  "w-full justify-start h-auto p-3",
+                  isActive && "bg-secondary"
+                )}
+              >
+                <Link href={item.href} aria-label={item.label}>
                   <div className="flex items-center gap-3 w-full">
                     <Icon className="h-4 w-4 flex-shrink-0 " />
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{item.label}</span>
                         {item.badge && (
-                          <Badge 
-                            variant={item.badge === "AI" ? "default" : 
-                                   item.badge === "Live" ? "destructive" :
-                                   item.badge === "Beta" ? "secondary" :
-                                   "outline"}
+                          <Badge
+                            variant={getBadgeVariant(item.badge)}
                             className="text-xs sm:text-sm md:text-base"
                           >
                             {item.badge}
@@ -103,8 +134,8 @@ export default function DeveloperNav({ className }: DeveloperNavProps) {
                       </p>
                     </div>
                   </div>
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             );
           })}
         </div>
