@@ -5,8 +5,8 @@ Extension registry for tracking installed extensions.
 from __future__ import annotations
 
 import logging
-import time
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
 from ai_karen_engine.extensions.models import ExtensionManifest, ExtensionRecord, ExtensionStatus
 
@@ -19,10 +19,21 @@ class ExtensionRegistry:
     including their manifests, status, and runtime information.
     """
     
-    def __init__(self):
-        """Initialize the extension registry."""
+    def __init__(
+        self,
+        plugin_registry: Optional[Any] = None,
+        service_registry: Optional[Any] = None,
+    ):
+        """Initialize the extension registry.
+
+        Args:
+            plugin_registry: Optional pre-configured plugin registry instance.
+            service_registry: Optional pre-configured service registry instance.
+        """
         self.extensions: Dict[str, ExtensionRecord] = {}
         self.logger = logging.getLogger("extension.registry")
+        self._plugin_registry = plugin_registry
+        self._service_registry = service_registry
     
     def register_extension(
         self, 
@@ -48,7 +59,7 @@ class ExtensionRegistry:
             instance=instance,
             status=ExtensionStatus.LOADING,
             directory=Path(directory),
-            loaded_at=time.time()
+            loaded_at=datetime.now(timezone.utc),
         )
         
         self.extensions[manifest.name] = record
@@ -189,28 +200,204 @@ class ExtensionRegistry:
         Returns:
             Dictionary mapping dependency names to availability status
         """
-        dependency_status = {}
-        
+        dependency_status: Dict[str, bool] = {}
+
         # Check extension dependencies
         for dep in manifest.dependencies.extensions:
-            # Parse version requirement if present (e.g., "extension@^1.0.0")
-            if "@" in dep:
-                dep_name = dep.split("@", 1)[0]
-            else:
-                dep_name = dep
-            
-            # Check if dependency is available
+            dep_name, version_spec = self._parse_dependency_spec(dep)
             dep_extension = self.get_extension(dep_name)
-            if dep_extension and dep_extension.status == ExtensionStatus.ACTIVE:
-                # TODO: Add version compatibility checking
-                dependency_status[dep] = True
-            else:
-                dependency_status[dep] = False
-        
-        # TODO: Check plugin dependencies
-        # TODO: Check system service dependencies
-        
+            is_available = False
+
+            if dep_extension and dep_extension.status in {
+                ExtensionStatus.ACTIVE,
+                ExtensionStatus.LOADING,
+            }:
+                if version_spec:
+                    is_available = self._is_version_compatible(
+                        dep_extension.manifest.version,
+                        version_spec,
+                    )
+                else:
+                    is_available = True
+
+            dependency_status[f"extension:{dep}"] = is_available
+
+        # Check plugin dependencies
+        plugin_registry = self._get_plugin_registry()
+        if manifest.dependencies.plugins:
+            for dep in manifest.dependencies.plugins:
+                dep_name, version_spec = self._parse_dependency_spec(dep)
+                is_available = False
+
+                if plugin_registry is not None:
+                    plugin_meta = getattr(plugin_registry, "get_plugin", lambda *_: None)(
+                        dep_name
+                    )
+
+                    if plugin_meta is not None:
+                        plugin_status = getattr(plugin_meta, "status", None)
+                        try:
+                            from ai_karen_engine.services.plugin_registry import PluginStatus
+
+                            allowed_statuses = {
+                                PluginStatus.ACTIVE,
+                                PluginStatus.LOADED,
+                                PluginStatus.REGISTERED,
+                                PluginStatus.VALIDATED,
+                            }
+                            status_allows_use = plugin_status in allowed_statuses
+                        except ImportError:  # pragma: no cover - defensive fallback
+                            status_allows_use = str(plugin_status).lower() not in {
+                                "error",
+                                "disabled",
+                            }
+
+                        if status_allows_use:
+                            plugin_version = getattr(
+                                plugin_meta.manifest,
+                                "version",
+                                None,
+                            )
+                            if version_spec and plugin_version:
+                                is_available = self._is_version_compatible(
+                                    plugin_version,
+                                    version_spec,
+                                )
+                            else:
+                                is_available = True
+
+                dependency_status[f"plugin:{dep}"] = is_available
+
+        # Check system service dependencies
+        service_registry = self._get_service_registry()
+        if manifest.dependencies.system_services:
+            for service_name in manifest.dependencies.system_services:
+                is_available = False
+
+                if service_registry is not None:
+                    service_info = getattr(
+                        service_registry,
+                        "get_service_info",
+                        lambda *_: None,
+                    )(service_name)
+
+                    if service_info is not None:
+                        service_status = getattr(service_info, "status", None)
+                        try:
+                            from ai_karen_engine.core.service_registry import ServiceStatus
+
+                            is_available = service_status in {
+                                ServiceStatus.READY,
+                                ServiceStatus.DEGRADED,
+                            }
+                        except ImportError:  # pragma: no cover - defensive fallback
+                            is_available = str(service_status).lower() in {
+                                "ready",
+                                "degraded",
+                            }
+
+                dependency_status[f"service:{service_name}"] = is_available
+
         return dependency_status
+
+    def _parse_dependency_spec(self, dependency: str) -> Tuple[str, Optional[str]]:
+        """Split a dependency specification into name and version component."""
+        if "@" in dependency:
+            dep_name, version_spec = dependency.split("@", 1)
+            return dep_name.strip(), version_spec.strip() or None
+        return dependency.strip(), None
+
+    def _is_version_compatible(self, available_version: str, required_spec: str) -> bool:
+        """Evaluate whether an available version satisfies a version constraint."""
+        required_spec = required_spec.strip()
+        if not required_spec:
+            return True
+
+        caret_prefix = required_spec.startswith("^")
+        tilde_prefix = required_spec.startswith("~")
+
+        if caret_prefix or tilde_prefix:
+            version_text = required_spec[1:]
+            return self._compare_caret_tilde_versions(
+                available_version,
+                version_text,
+                caret_prefix,
+            )
+
+        try:  # Prefer packaging when available for rich spec support
+            from packaging.specifiers import SpecifierSet
+            from packaging.version import InvalidVersion, Version
+
+            try:
+                spec_set = SpecifierSet(required_spec)
+            except Exception:  # pragma: no cover - invalid spec fallback
+                return available_version == required_spec
+
+            try:
+                return Version(available_version) in spec_set
+            except InvalidVersion:
+                return False
+        except ImportError:  # pragma: no cover - packaging not installed
+            return available_version == required_spec
+
+    def _compare_caret_tilde_versions(
+        self,
+        available_version: str,
+        required_version: str,
+        is_caret: bool,
+    ) -> bool:
+        """Fallback comparison for caret/tilde semantic requirements."""
+        def _parse(version: str) -> List[int]:
+            parts = [int(part) for part in version.split(".") if part.isdigit()]
+            while len(parts) < 3:
+                parts.append(0)
+            return parts[:3]
+
+        try:
+            available_parts = _parse(available_version)
+            required_parts = _parse(required_version)
+        except ValueError:
+            return False
+
+        if is_caret:
+            return (
+                available_parts[0] == required_parts[0]
+                and available_parts >= required_parts
+            )
+
+        return (
+            available_parts[0] == required_parts[0]
+            and available_parts[1] == required_parts[1]
+            and available_parts[2] >= required_parts[2]
+        )
+
+    def _get_plugin_registry(self) -> Optional[Any]:
+        """Resolve the plugin registry instance if available."""
+        if self._plugin_registry is not None:
+            return self._plugin_registry
+
+        try:
+            from ai_karen_engine.services.plugin_registry import get_plugin_registry
+
+            self._plugin_registry = get_plugin_registry()
+        except Exception:  # pragma: no cover - plugin system optional
+            self._plugin_registry = None
+
+        return self._plugin_registry
+
+    def _get_service_registry(self) -> Optional[Any]:
+        """Resolve the service registry instance if available."""
+        if self._service_registry is not None:
+            return self._service_registry
+
+        try:
+            from ai_karen_engine.core.service_registry import get_service_registry
+
+            self._service_registry = get_service_registry()
+        except Exception:  # pragma: no cover - service registry optional
+            self._service_registry = None
+
+        return self._service_registry
     
     def to_dict(self) -> Dict[str, Any]:
         """

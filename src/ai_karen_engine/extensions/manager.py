@@ -582,7 +582,10 @@ class ExtensionManager(HookMixin):
         Convert kebab/underscore to PascalCase + 'Extension' suffix.
         """
         words = extension_name.replace("-", "_").split("_")
-        return "".join(word.capitalize() for word in words) + "Extension"
+        base_name = "".join(word.capitalize() for word in words)
+        if base_name.lower().endswith("extension"):
+            return base_name
+        return base_name + "Extension"
 
     # -------------------------
     # Registry getters
@@ -1328,7 +1331,10 @@ class ExtensionManager(HookMixin):
         """
         # Direct lookup (back-compat)
         direct_path = self.extension_root / name
-        if direct_path.exists() and (direct_path / "extension.json").exists():
+        if direct_path.exists():
+            if (direct_path / "extension.json").exists():
+                return direct_path
+            # Directory exists but manifest missing; surface path for clearer error handling
             return direct_path
 
         # Search categorized layout
@@ -1338,7 +1344,9 @@ class ExtensionManager(HookMixin):
                     continue
 
                 candidate = category_dir / name
-                if candidate.exists() and (candidate / "extension.json").exists():
+                if candidate.exists():
+                    if (candidate / "extension.json").exists():
+                        return candidate
                     return candidate
 
                 # Fuzzy: scan children with mismatched dir names
