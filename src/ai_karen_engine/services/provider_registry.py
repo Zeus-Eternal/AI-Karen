@@ -287,25 +287,97 @@ class ProviderRegistryService:
             return status
     
     def get_available_providers(
-        self, 
+        self,
         capability: Optional[ProviderCapability] = None,
         category: Optional[str] = None
     ) -> List[str]:
         """Get list of available providers with optional filtering"""
-        
+
         available_providers = []
-        
+
         for provider_name in self.base_registry.list_providers(category=category):
             status = self.get_provider_status(provider_name)
-            
+
             if status and status.is_available:
                 # Check capability requirement
                 if capability and capability not in status.capabilities:
                     continue
-                
+
                 available_providers.append(provider_name)
-        
+
         return available_providers
+
+    def get_registered_models(
+        self,
+        provider_name: str,
+        *,
+        healthy_only: bool = True,
+    ) -> List[str]:
+        """Return the models registered for a provider.
+
+        Args:
+            provider_name: Provider whose models should be listed.
+            healthy_only: When True (default), only return models for providers
+                that are currently marked as available.
+
+        Returns:
+            A list of model names in registration order without duplicates.
+        """
+
+        provider_info = self.base_registry.get_provider_info(provider_name)
+        if not provider_info:
+            return []
+
+        if healthy_only:
+            status = self.get_provider_status(provider_name)
+            if not status or not status.is_available:
+                return []
+
+        seen: Set[str] = set()
+        model_names: List[str] = []
+
+        for model in provider_info.models:
+            name = (model.name or "").strip()
+            if not name:
+                continue
+
+            key = name.lower()
+            if key in seen:
+                continue
+
+            seen.add(key)
+            model_names.append(name)
+
+        default_model = (provider_info.default_model or "").strip()
+        if default_model:
+            key = default_model.lower()
+            if key not in seen:
+                model_names.append(default_model)
+
+        return model_names
+
+    def is_model_available(
+        self,
+        provider_name: str,
+        model_name: str,
+        *,
+        healthy_only: bool = True,
+    ) -> bool:
+        """Check whether a model is registered (and optionally available)."""
+
+        if not model_name or not model_name.strip():
+            return False
+
+        registered_models = self.get_registered_models(
+            provider_name,
+            healthy_only=healthy_only,
+        )
+
+        if not registered_models:
+            return False
+
+        target = model_name.strip().lower()
+        return any(model.lower() == target for model in registered_models)
     
     def select_provider_with_fallback(
         self,

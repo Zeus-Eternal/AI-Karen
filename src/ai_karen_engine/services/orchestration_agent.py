@@ -360,12 +360,29 @@ class OrchestrationAgent:
         if model and validated.get("provider"):
             # Basic model validation - could be enhanced with registry lookup
             if self.preference_validation["validate_model_exists"]:
-                # For now, accept any non-empty model name
-                # TODO: Enhance with actual model availability checking
-                validated["model"] = model
+                provider_name = validated["provider"]
+                is_available = self.provider_registry.is_model_available(
+                    provider_name,
+                    model,
+                    healthy_only=self.preference_validation.get(
+                        "validate_provider_exists",
+                        True,
+                    ),
+                )
+
+                if is_available:
+                    validated["model"] = model
+                else:
+                    logger.warning(
+                        "User preferred model '%s' not available for provider '%s'",
+                        model,
+                        provider_name,
+                    )
+                    if not self.preference_validation["fallback_on_invalid"]:
+                        validated["model"] = model
             else:
                 validated["model"] = model
-        
+
         logger.debug(f"Validated user preferences: {validated}")
         return validated
 
