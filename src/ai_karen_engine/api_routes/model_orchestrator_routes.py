@@ -18,6 +18,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from threading import Lock
 from typing import Any, Dict, List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, Request
@@ -118,6 +119,8 @@ def get_orchestrator_service() -> ModelOrchestratorService:
 
 # Job tracking for long-running operations
 _active_jobs: Dict[str, Dict[str, Any]] = {}
+_websocket_gateway_instance: Optional["WebSocketGateway"] = None
+_websocket_gateway_lock = Lock()
 
 # Request/Response Models
 
@@ -634,54 +637,133 @@ async def _handle_model_download(job_id: str, request: ModelDownloadRequest, use
 async def _emit_job_update(job_id: str, job: Dict[str, Any]):
     """Emit job update via WebSocket for real-time UI updates."""
     try:
-        # Import WebSocket gateway
+        # Import WebSocket gateway lazily to avoid circular imports
         from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
-        
-        # Get the global WebSocket gateway instance
-        # In a real implementation, this would be injected or retrieved from a service registry
+
         websocket_gateway = _get_websocket_gateway()
-        
-        if websocket_gateway:
-            # Create model operation event message
-            message_data = {
-                "type": "model_operation_update",
-                "event": "job_update",
-                "data": {
-                    "job_id": job_id,
-                    "status": job["status"],
-                    "progress": job["progress"],
-                    "message": job["message"],
-                    "error": job.get("error"),
-                    "result": job.get("result"),
-                    "updated_at": job["updated_at"].isoformat() if isinstance(job["updated_at"], datetime) else job["updated_at"]
-                },
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
-            
-            # Broadcast to all connected users (in a real implementation, this would be more targeted)
-            # For now, we'll use the event bus to publish the event
-            from ai_karen_engine.event_bus import get_event_bus
-            event_bus = get_event_bus()
-            
-            event_bus.publish(
-                capsule="model_orchestrator",
-                event_type="job_update",
-                payload=message_data["data"],
-                roles=["user", "admin"]
+
+        if websocket_gateway and not isinstance(websocket_gateway, WebSocketGateway):
+            logger.warning(
+                "Resolved WebSocket gateway has unexpected type: %s",
+                type(websocket_gateway),
             )
-            
-            logger.info(f"Emitted job update for {job_id}: {job['status']} - {job['message']}")
+            websocket_gateway = None
+
+        message_data = {
+            "type": "model_operation_update",
+            "event": "job_update",
+            "data": {
+                "job_id": job_id,
+                "status": job["status"],
+                "progress": job["progress"],
+                "message": job["message"],
+                "error": job.get("error"),
+                "result": job.get("result"),
+                "updated_at": job["updated_at"].isoformat() if isinstance(job["updated_at"], datetime) else job["updated_at"],
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        delivered = 0
+
+        if websocket_gateway:
+            delivered = await _broadcast_job_update_via_gateway(
+                websocket_gateway,
+                message_data,
+            )
         else:
-            logger.warning("WebSocket gateway not available for job updates")
-        
+            logger.warning(
+                "WebSocket gateway not available for job updates; relying on event bus only"
+            )
+
+        # Publish to the event bus for subscribers and offline processing
+        from ai_karen_engine.event_bus import get_event_bus
+
+        event_bus = get_event_bus()
+        event_bus.publish(
+            capsule="model_orchestrator",
+            event_type="job_update",
+            payload=message_data["data"],
+            roles=["user", "admin"],
+        )
+
+        logger.info(
+            "Emitted job update for %s: %s - %s (delivered to %s clients)",
+            job_id,
+            job["status"],
+            job["message"],
+            delivered,
+        )
+
     except Exception as e:
         logger.error(f"Failed to emit job update for {job_id}: {e}")
 
 def _get_websocket_gateway():
-    """Get the WebSocket gateway instance. Placeholder for proper dependency injection."""
-    # In a real implementation, this would be properly injected or retrieved from a service registry
-    # For now, return None and rely on event bus
-    return None
+    """Resolve the shared WebSocket gateway instance for broadcasting job updates."""
+
+    global _websocket_gateway_instance
+
+    if _websocket_gateway_instance is not None:
+        return _websocket_gateway_instance
+
+    with _websocket_gateway_lock:
+        if _websocket_gateway_instance is not None:
+            return _websocket_gateway_instance
+
+        try:
+            from ai_karen_engine.api_routes.websocket_routes import (
+                get_websocket_gateway as resolve_websocket_gateway,
+            )
+
+            _websocket_gateway_instance = resolve_websocket_gateway()
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            logger.warning("Unable to resolve WebSocket gateway: %s", exc)
+            _websocket_gateway_instance = None
+
+    return _websocket_gateway_instance
+
+
+async def _broadcast_job_update_via_gateway(
+    gateway: "WebSocketGateway", message: Dict[str, Any]
+) -> int:
+    """Broadcast a job update message to authenticated WebSocket clients."""
+
+    if not gateway.active_connections:
+        return 0
+
+    payload = json.dumps(message)
+    send_tasks = []
+
+    for connection in gateway.active_connections.values():
+        websocket = connection.get("websocket")
+        if websocket is None:
+            continue
+
+        if not connection.get("authenticated", False):
+            continue
+
+        send_tasks.append(_send_text_safe(websocket, payload))
+
+    if not send_tasks:
+        return 0
+
+    results = await asyncio.gather(*send_tasks, return_exceptions=True)
+    failures = sum(1 for result in results if isinstance(result, Exception))
+
+    if failures:
+        logger.debug("Failed to deliver %s job updates via WebSocket", failures)
+
+    return len(results) - failures
+
+
+async def _send_text_safe(websocket, payload: str) -> None:
+    """Send a JSON payload to a WebSocket connection with error isolation."""
+
+    try:
+        await websocket.send_text(payload)
+    except Exception as exc:  # pragma: no cover - network failures
+        logger.debug("Error sending job update via WebSocket: %s", exc)
+        raise
 
 # Security Validation Endpoints
 
