@@ -16,8 +16,8 @@ describe("Card Compound Component", () => {
         </Card.Content>
         <Card.Footer>
           <Card.Actions>
-            <button>Action 1</button>
-            <button>Action 2</button>
+            <button aria-label="Button">Action 1</button>
+            <button aria-label="Button">Action 2</button>
           </Card.Actions>
         </Card.Footer>
       </Card.Root>
@@ -84,7 +84,7 @@ describe("Card Compound Component", () => {
     render(
       <Card.Root>
         <Card.Actions justify="center" data-testid="centered-actions">
-          <button>Centered Action</button>
+          <button aria-label="Button">Centered Action</button>
         </Card.Actions>
       </Card.Root>
     )

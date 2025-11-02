@@ -100,7 +100,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950 p-4 sm:p-4 md:p-6">
       {/* Theme Toggle */}
       <div className="absolute top-4 right-4">
         <ThemeToggle />
@@ -110,8 +110,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
         <CardHeader className="text-center space-y-6">
           <div className="flex justify-center">
             <div className="relative">
-              <Brain className="h-16 w-16 text-primary drop-shadow-lg" />
-              <div className="absolute inset-0 h-16 w-16 bg-primary/20 rounded-full blur-xl animate-pulse" />
+              <Brain className="h-16 w-16 text-primary drop-shadow-lg sm:w-auto md:w-full" />
+              <div className="absolute inset-0 h-16 w-16 bg-primary/20 rounded-full blur-xl animate-pulse sm:w-auto md:w-full" />
             </div>
           </div>
           <div className="space-y-2">
@@ -128,7 +128,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
             {/* Email Field */}
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input
+              <input
                 id="email"
                 type="email"
                 placeholder="Enter your email"
@@ -136,14 +136,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                 onChange={handleInputChange('email')}
                 disabled={isLoading}
                 required
-                autoComplete="email"
-              />
+                autoComplete="email" />
             </div>
 
             {/* Password Field */}
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <input
                 id="password"
                 type="password"
                 placeholder="Enter your password"
@@ -151,15 +150,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                 onChange={handleInputChange('password')}
                 disabled={isLoading}
                 required
-                autoComplete="current-password"
-              />
+                autoComplete="current-password" />
             </div>
 
             {/* 2FA Field (conditional) */}
             {showTwoFactor && (
               <div className="space-y-2">
                 <Label htmlFor="totp_code">Two-Factor Authentication Code</Label>
-                <Input
+                <input
                   id="totp_code"
                   type="text"
                   placeholder="Enter 6-digit code"
@@ -169,9 +167,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                   required
                   maxLength={6}
                   pattern="[0-9]{6}"
-                  autoComplete="one-time-code"
-                />
-                <p className="text-sm text-muted-foreground">
+                  autoComplete="one-time-code" />
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Enter the 6-digit code from your authenticator app
                 </p>
               </div>
@@ -185,15 +182,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
             )}
 
             {/* Submit Button */}
-            <Button
+            <button
               type="submit"
               disabled={isLoading}
               className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg hover:shadow-xl transition-all duration-200"
               data-testid="submit-button"
-            >
+             aria-label="Submit form">
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin sm:w-auto md:w-full" />
                   Signing in...
                 </>
               ) : (
@@ -208,13 +205,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-muted" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
+              <div className="relative flex justify-center text-xs uppercase sm:text-sm md:text-base">
                 <span className="bg-card px-2 text-muted-foreground">Need help?</span>
               </div>
             </div>
             
             <div className="text-center space-y-3">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Don't have an account?{' '}
                 <a 
                   href="/signup" 
@@ -223,7 +220,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                   Create Account
                 </a>
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Forgot your password?{' '}
                 <a 
                   href="/reset-password" 
@@ -235,7 +232,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
             </div>
             
             <div className="text-center">
-              <p className="text-xs text-muted-foreground/70">
+              <p className="text-xs text-muted-foreground/70 sm:text-sm md:text-base">
                 Secure authentication with real-time validation
               </p>
             </div>

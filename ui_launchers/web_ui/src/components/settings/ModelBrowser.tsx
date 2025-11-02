@@ -59,13 +59,13 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2 items-center">
-          <Input
+          <input
             placeholder="Direct download URL (.gguf, etc.)"
             value={downloadUrl}
-            onChange={(e) => setDownloadUrl(e.target.value)}
+            onChange={(e) = aria-label="Input"> setDownloadUrl(e.target.value)}
           />
-          <Button
-            onClick={async () => {
+          <button
+            onClick={async () = aria-label="Button"> {
               if (!downloadUrl.trim()) return;
               try {
                 const res = await backend.makeRequestPublic<any>(`/api/models/local/download`, {
@@ -86,35 +86,35 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
         </div>
         {Object.keys(jobs).length > 0 && (
           <div className="space-y-2">
-            <div className="text-sm font-medium">Active Downloads</div>
+            <div className="text-sm font-medium md:text-base lg:text-lg">Active Downloads</div>
             <ul className="space-y-2">
               {Object.values(jobs).map((job) => (
-                <li key={job.job_id} className="flex items-center justify-between gap-2 border rounded p-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-muted-foreground break-all">{job.path}</div>
+                <li key={job.job_id} className="flex items-center justify-between gap-2 border rounded p-2 sm:p-4 md:p-6">
+                  <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                    <div className="text-xs text-muted-foreground break-all sm:text-sm md:text-base">{job.path}</div>
                     <div className="h-2 bg-muted rounded mt-1 overflow-hidden">
                       <div className="h-full bg-primary" style={{ width: `${Math.round((job.progress || 0) * 100)}%` }} />
                     </div>
-                    <div className="text-xs mt-1">{job.status} • {Math.round((job.progress || 0) * 100)}%</div>
-                    {job.error && <div className="text-xs text-red-600">{job.error}</div>}
+                    <div className="text-xs mt-1 sm:text-sm md:text-base">{job.status} • {Math.round((job.progress || 0) * 100)}%</div>
+                    {job.error && <div className="text-xs text-red-600 sm:text-sm md:text-base">{job.error}</div>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {job.status === 'running' && (
-                      <Button variant="outline" size="sm" onClick={async () => {
+                      <button variant="outline" size="sm" onClick={async () = aria-label="Button"> {
                         try { await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/pause`, { method: 'POST' }); }
                         catch {}
                         setJobs(prev => ({ ...prev, [job.job_id]: { ...prev[job.job_id], status: 'paused' } }));
                       }}>Pause</Button>
                     )}
                     {job.status === 'paused' && (
-                      <Button variant="outline" size="sm" onClick={async () => {
+                      <button variant="outline" size="sm" onClick={async () = aria-label="Button"> {
                         try { await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/resume`, { method: 'POST' }); }
                         catch {}
                         setJobs(prev => ({ ...prev, [job.job_id]: { ...prev[job.job_id], status: 'running' } }));
                       }}>Resume</Button>
                     )}
                     {job.status !== 'completed' && job.status !== 'cancelled' && (
-                      <Button variant="destructive" size="sm" onClick={async () => {
+                      <button variant="destructive" size="sm" onClick={async () = aria-label="Button"> {
                         try { await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/cancel`, { method: 'POST' }); }
                         catch {}
                         setJobs(prev => ({ ...prev, [job.job_id]: { ...prev[job.job_id], status: 'cancelled' } }));
@@ -126,26 +126,26 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
             </ul>
           </div>
         )}
-        <Input
+        <input
           placeholder="Filter by name or provider"
           value={filter}
-          onChange={e => setFilter(e.target.value)}
+          onChange={e = aria-label="Input"> setFilter(e.target.value)}
         />
         {filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No models found.</p>
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">No models found.</p>
         ) : (
-          <ul className="text-sm space-y-1">
+          <ul className="text-sm space-y-1 md:text-base lg:text-lg">
             {filtered.map(model => (
               <li key={model.id} className="flex items-center justify-between gap-2">
                 <div className="flex flex-col">
                   <span>{model.name}</span>
-                  <span className="text-muted-foreground text-xs">{model.provider}{model.format ? ` • ${model.format}` : ''}</span>
+                  <span className="text-muted-foreground text-xs sm:text-sm md:text-base">{model.provider}{model.format ? ` • ${model.format}` : ''}</span>
                 </div>
                 {model.provider === 'local' && model.local_path && (
-                  <Button
+                  <button
                     variant="outline"
                     size="sm"
-                    onClick={async () => {
+                    onClick={async () = aria-label="Button"> {
                       if (!model.local_path) return;
                       try {
                         await backend.makeRequestPublic(`/api/models/local?path=${encodeURIComponent(model.local_path)}`, { method: 'DELETE' });

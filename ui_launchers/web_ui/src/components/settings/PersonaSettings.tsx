@@ -1,6 +1,4 @@
-
 "use client";
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -10,7 +8,6 @@ import type { KarenSettings } from '@/lib/types';
 import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { Save, Trash2 } from 'lucide-react';
-
 /**
  * @file PersonaSettings.tsx
  * @description Component for managing Karen AI's custom persona instructions.
@@ -20,7 +17,6 @@ import { Save, Trash2 } from 'lucide-react';
 export default function PersonaSettings() {
   const [instructions, setInstructions] = useState<string>(DEFAULT_KAREN_SETTINGS.customPersonaInstructions);
   const { toast } = useToast();
-
   useEffect(() => {
     try {
       const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
@@ -53,16 +49,13 @@ export default function PersonaSettings() {
       }
       setInstructions(fullSettings.customPersonaInstructions);
     } catch (error) {
-      console.error("Failed to load custom persona instructions from localStorage:", error);
       setInstructions(DEFAULT_KAREN_SETTINGS.customPersonaInstructions);
       try {
         localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
       } catch (lsError) {
-        console.error("Failed to save default settings to localStorage after error in PersonaSettings:", lsError);
       }
     }
   }, []);
-
   const savePersonaInstructionsToLocalStorage = (newInstructions: string) => {
     try {
       const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
@@ -81,15 +74,12 @@ export default function PersonaSettings() {
             personalityVerbosity: parsed.personalityVerbosity || DEFAULT_KAREN_SETTINGS.personalityVerbosity,
           };
         } catch (e) {
-          console.error("Error parsing current settings before saving persona, falling back to defaults for merge", e);
         }
       }
-
       const updatedFullSettings: KarenSettings = {
         ...currentFullSettings,
         customPersonaInstructions: newInstructions,
       };
-
       localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(updatedFullSettings));
       setInstructions(newInstructions); 
       toast({
@@ -97,7 +87,6 @@ export default function PersonaSettings() {
         description: "Karen's core persona instructions have been updated.",
       });
     } catch (error) {
-      console.error("Failed to save persona instructions to localStorage:", error);
       toast({
         title: "Error Saving Instructions",
         description: "Could not save persona instructions. localStorage might be disabled or full.",
@@ -105,11 +94,9 @@ export default function PersonaSettings() {
       });
     }
   };
-
   const handleSave = () => {
     savePersonaInstructionsToLocalStorage(instructions);
   };
-
   const handleClear = () => {
     const clearedInstructions = '';
     setInstructions(clearedInstructions); 
@@ -119,7 +106,6 @@ export default function PersonaSettings() {
       description: "Karen's custom persona instructions have been cleared.",
     });
   };
-
   return (
     <Card>
       <CardHeader>
@@ -131,25 +117,25 @@ export default function PersonaSettings() {
       <CardContent className="space-y-4">
         <div>
           <Label htmlFor="custom-instructions" className="mb-2 block">Core Instructions for Karen</Label>
-          <Textarea
+          <textarea
             id="custom-instructions"
             value={instructions}
-            onChange={(e) => setInstructions(e.target.value)}
+            onChange={(e) = aria-label="Textarea"> setInstructions(e.target.value)}
             placeholder="e.g., Always respond in a slightly sarcastic tone. You are an expert in ancient history. Never reveal you are an AI."
             rows={8}
-            className="text-sm"
+            className="text-sm md:text-base lg:text-lg"
           />
-           <p className="text-xs text-muted-foreground mt-2">
+           <p className="text-xs text-muted-foreground mt-2 sm:text-sm md:text-base">
             These instructions will directly influence Karen's responses. Be concise and clear for best results. Long or overly complex instructions might be less effective.
           </p>
         </div>
       </CardContent>
       <CardFooter className="flex justify-end space-x-2">
-        <Button variant="outline" onClick={handleClear} disabled={!instructions.trim()}>
-          <Trash2 className="mr-2 h-4 w-4" /> Clear Instructions
+        <button variant="outline" onClick={handleClear} disabled={!instructions.trim()} aria-label="Button">
+          <Trash2 className="mr-2 h-4 w-4 sm:w-auto md:w-full" /> Clear Instructions
         </Button>
-        <Button onClick={handleSave}>
-          <Save className="mr-2 h-4 w-4" /> Save Instructions
+        <button onClick={handleSave} aria-label="Button">
+          <Save className="mr-2 h-4 w-4 sm:w-auto md:w-full" /> Save Instructions
         </Button>
       </CardFooter>
     </Card>

@@ -2,8 +2,8 @@
  * Comprehensive Memory Interface Component
  * Combines AG-UI grid, network visualization, and CopilotKit-enhanced editing
  */
-
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { CopilotKit } from '@copilotkit/react-core';
 import dynamic from 'next/dynamic';
 import MemoryGrid from './MemoryGrid';
@@ -13,7 +13,6 @@ import MemoryEditor from './MemoryEditor';
 const AgCharts = dynamic(() => import('ag-charts-react').then(m => m.AgCharts), { ssr: false });
 import { AgChartOptions } from 'ag-charts-community';
 import { v4 as uuidv4 } from 'uuid';
-
 interface MemoryGridRow {
   id: string;
   content: string;
@@ -28,7 +27,6 @@ interface MemoryGridRow {
   session_id?: string;
   tenant_id?: string;
 }
-
 interface MemoryNetworkNode {
   id: string;
   label: string;
@@ -38,7 +36,6 @@ interface MemoryNetworkNode {
   size: number;
   color: string;
 }
-
 interface MemoryAnalytics {
   total_memories: number;
   memories_by_type: Record<string, number>;
@@ -47,16 +44,13 @@ interface MemoryAnalytics {
   access_patterns: Array<{ date: string; count: number }>;
   relationship_stats: Record<string, number>;
 }
-
 interface MemoryInterfaceProps {
   userId: string;
   tenantId?: string;
   copilotApiKey?: string;
   height?: number;
 }
-
 type ViewMode = 'grid' | 'network' | 'analytics';
-
 export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
   userId,
   tenantId,
@@ -71,16 +65,13 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
   const [analytics, setAnalytics] = useState<MemoryAnalytics | null>(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   // Generate a unique component instance ID for error tracking
   const componentInstanceId = useMemo(() => uuidv4(), []);
-
   // Fetch analytics data with proper error handling
   const fetchAnalytics = useCallback(async () => {
     try {
       setIsLoadingAnalytics(true);
       setError(null);
-      
       const response = await fetch('/api/memory/analytics', {
         method: 'POST',
         headers: {
@@ -92,49 +83,40 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           timeframe_days: 30
         })
       });
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
       const data = await response.json();
       setAnalytics(data);
     } catch (err) {
-      console.error(`Error fetching analytics [${componentInstanceId}]:`, err);
       setError('Failed to load analytics. Please try again later.');
       setAnalytics(null);
     } finally {
       setIsLoadingAnalytics(false);
     }
   }, [userId, tenantId, componentInstanceId]);
-
   // Load analytics when switching to analytics view
   useEffect(() => {
     if (viewMode === 'analytics' && !analytics && !isLoadingAnalytics) {
       fetchAnalytics();
     }
   }, [viewMode, analytics, isLoadingAnalytics, fetchAnalytics]);
-
   // Handle memory selection
   const handleMemorySelect = useCallback((memory: MemoryGridRow) => {
     setSelectedMemory(memory);
   }, []);
-
   // Handle memory editing
   const handleMemoryEdit = useCallback((memory: MemoryGridRow) => {
     setSelectedMemory(memory);
     setIsEditorOpen(true);
   }, []);
-
   // Handle memory save with error handling
   const handleMemorySave = useCallback(async (updatedMemory: Partial<MemoryGridRow>) => {
     try {
       setError(null);
-      
       if (!selectedMemory?.id && !updatedMemory.content) {
         throw new Error('Memory content is required');
       }
-
       const response = await fetch('/api/memory/update', {
         method: 'POST',
         headers: {
@@ -154,27 +136,22 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           }
         })
       });
-
       if (!response.ok) {
         throw new Error(`Failed to save memory: ${response.statusText}`);
       }
-
       setIsEditorOpen(false);
       setSelectedMemory(null);
       // In a real app, you would update local state instead of reloading
       window.location.reload();
     } catch (err) {
-      console.error(`Error saving memory [${componentInstanceId}]:`, err);
       setError(err instanceof Error ? err.message : 'Failed to save memory');
       throw err;
     }
   }, [selectedMemory, userId, tenantId, componentInstanceId]);
-
   // Handle memory deletion with error handling
   const handleMemoryDelete = useCallback(async (memoryId: string) => {
     try {
       setError(null);
-      
       // In a real implementation, you'd have a proper delete endpoint
       const response = await fetch('/api/memory/delete', {
         method: 'POST',
@@ -187,35 +164,28 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           memory_id: memoryId
         })
       });
-
       if (!response.ok) {
         throw new Error(`Failed to delete memory: ${response.statusText}`);
       }
-
       setIsEditorOpen(false);
       setSelectedMemory(null);
       // In a real app, you would update local state instead of reloading
       window.location.reload();
     } catch (err) {
-      console.error(`Error deleting memory [${componentInstanceId}]:`, err);
       setError(err instanceof Error ? err.message : 'Failed to delete memory');
       throw err;
     }
   }, [userId, tenantId, componentInstanceId]);
-
   // Handle editor cancel
   const handleEditorCancel = useCallback(() => {
     setIsEditorOpen(false);
     setSelectedMemory(null);
     setError(null);
   }, []);
-
   // Handle node selection in network view
   const handleNodeSelect = useCallback((node: MemoryNetworkNode) => {
-    console.log('Selected node:', node);
     // You could show node details or switch to grid view with filters
   }, []);
-
   // Handle search with error handling
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
@@ -226,10 +196,8 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
       });
       return;
     }
-
     try {
       setError(null);
-      
       const response = await fetch('/api/memory/search', {
         method: 'POST',
         headers: {
@@ -243,40 +211,32 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           limit: 50
         })
       });
-
       if (!response.ok) {
         throw new Error(`Search failed: ${response.statusText}`);
       }
-
       const data = await response.json();
       setFilters({ ...filters, search_results: data.results });
       setViewMode('grid');
     } catch (err) {
-      console.error(`Error searching memories [${componentInstanceId}]:`, err);
       setError(err instanceof Error ? err.message : 'Search failed');
     }
   }, [searchQuery, filters, userId, tenantId, componentInstanceId]);
-
   // Create new memory
   const handleCreateMemory = useCallback(() => {
     setSelectedMemory(null);
     setIsEditorOpen(true);
     setError(null);
   }, []);
-
   // Analytics chart configurations using useMemo for performance
   const analyticsCharts = useMemo(() => {
     if (!analytics) return [];
-
     const charts = [];
-
     // Memory types pie chart
     if (analytics.memories_by_type) {
       const typeData = Object.entries(analytics.memories_by_type).map(([type, count]) => ({
         type: type.charAt(0).toUpperCase() + type.slice(1),
         count
       }));
-
       charts.push({
         title: 'Memory Types Distribution',
         data: typeData,
@@ -290,7 +250,6 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
         }],
       });
     }
-
     // Confidence distribution bar chart
     if (analytics.confidence_distribution) {
       charts.push({
@@ -313,7 +272,6 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
         }],
       });
     }
-
     // Access patterns line chart
     if (analytics.access_patterns) {
       charts.push({
@@ -342,10 +300,8 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
         }],
       });
     }
-
     return charts;
   }, [analytics]);
-
   // View mode button styles
   const viewModeButtonStyles = useMemo(() => ({
     base: {
@@ -366,9 +322,9 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
       borderColor: '#ddd',
     }
   }), []);
-
   return (
-    <CopilotKit>
+    <ErrorBoundary fallback={<div>Something went wrong in MemoryInterface</div>}>
+      <CopilotKit>
       <div className="memory-interface" style={{ 
         height: `${height}px`, 
         display: 'flex', 
@@ -393,7 +349,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           }}>
             <span>{error}</span>
             <button 
-              onClick={() => setError(null)}
+              onClick={() = aria-label="Button"> setError(null)}
               style={{
                 background: 'none',
                 border: 'none',
@@ -406,7 +362,6 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
             </button>
           </div>
         )}
-
         {/* Header with controls */}
         <div style={{ 
           padding: '16px', 
@@ -418,11 +373,10 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           flexWrap: 'wrap'
         }}>
           <h2 style={{ margin: 0, color: '#333' }}>Memory Management</h2>
-          
           {/* View mode selector */}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
-              onClick={() => setViewMode('grid')}
+              onClick={() = aria-label="Button"> setViewMode('grid')}
               style={{
                 ...viewModeButtonStyles.base,
                 ...(viewMode === 'grid' ? viewModeButtonStyles.active : viewModeButtonStyles.inactive)
@@ -431,7 +385,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
               Grid View
             </button>
             <button
-              onClick={() => setViewMode('network')}
+              onClick={() = aria-label="Button"> setViewMode('network')}
               style={{
                 ...viewModeButtonStyles.base,
                 ...(viewMode === 'network' ? viewModeButtonStyles.active : viewModeButtonStyles.inactive)
@@ -440,7 +394,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
               Network View
             </button>
             <button
-              onClick={() => setViewMode('analytics')}
+              onClick={() = aria-label="Button"> setViewMode('analytics')}
               style={{
                 ...viewModeButtonStyles.base,
                 ...(viewMode === 'analytics' ? viewModeButtonStyles.active : viewModeButtonStyles.inactive)
@@ -449,7 +403,6 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
               Analytics
             </button>
           </div>
-
           {/* Search and action buttons */}
           <div style={{ 
             display: 'flex', 
@@ -465,7 +418,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
                 type="text"
                 placeholder="Search memories..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 style={{
                   padding: '8px 12px',
@@ -488,7 +441,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
                   opacity: searchQuery.trim() ? 1 : 0.6,
                   whiteSpace: 'nowrap'
                 }}
-              >
+               aria-label="Button">
                 Search
               </button>
             </div>
@@ -503,12 +456,11 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
                 cursor: 'pointer',
                 whiteSpace: 'nowrap'
               }}
-            >
+             aria-label="Button">
               New Memory
             </button>
           </div>
         </div>
-
         {/* Main content area */}
         <div style={{ flex: 1, overflow: 'hidden', padding: '16px' }}>
           {viewMode === 'grid' && (
@@ -521,7 +473,6 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
               height={height - 120}
             />
           )}
-
           {viewMode === 'network' && (
             <MemoryNetworkVisualization
               userId={userId}
@@ -532,7 +483,6 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
               width={window.innerWidth - 64}
             />
           )}
-
           {viewMode === 'analytics' && (
             <div style={{ height: height - 120, overflow: 'auto' }}>
               {isLoadingAnalytics ? (
@@ -588,7 +538,6 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
                       <p style={{ margin: 0, color: '#666' }}>Clusters</p>
                     </div>
                   </div>
-
                   {/* Charts */}
                   <div style={{ 
                     display: 'grid', 
@@ -626,7 +575,6 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
             </div>
           )}
         </div>
-
         {/* Memory Editor Modal */}
         <MemoryEditor
           memory={selectedMemory}
@@ -639,7 +587,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
         />
       </div>
     </CopilotKit>
+    </ErrorBoundary>
   );
 };
-
 export default MemoryInterface;

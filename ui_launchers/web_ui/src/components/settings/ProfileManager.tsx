@@ -51,23 +51,38 @@ export default function ProfileManager({
     setCreating(false);
   };
 
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Handle escape key
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+
   return (
-    <Card>
+    <ErrorBoundary fallback={<div>Something went wrong in ProfileManager</div>}>
+      <Card>
       <CardHeader>
         <CardTitle>Profiles</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {safeProfiles.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No profiles defined.</p>
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">No profiles defined.</p>
         ) : (
           <ul className="space-y-2">
             {safeProfiles.map(p => (
               <li key={p.id} className="flex items-center justify-between">
                 <span>{p.name}</span>
                 {activeProfile?.id === p.id ? (
-                  <span className="text-sm text-muted-foreground">Active</span>
+                  <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Active</span>
                 ) : (
-                  <Button size="sm" variant="secondary" onClick={() => setActiveProfile(p)}>
+                  <button size="sm" variant="secondary" onClick={() = aria-label="Button"> setActiveProfile(p)}>
                     Activate
                   </Button>
                 )}
@@ -75,10 +90,11 @@ export default function ProfileManager({
             ))}
           </ul>
         )}
-        <Button size="sm" onClick={handleCreate} disabled={creating}>
+        <button size="sm" onClick={handleCreate} disabled={creating} aria-label="Button">
           Add Profile
         </Button>
       </CardContent>
     </Card>
+    </ErrorBoundary>
   );
 }

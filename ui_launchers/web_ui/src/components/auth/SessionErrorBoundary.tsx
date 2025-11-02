@@ -6,24 +6,19 @@
  * 
  * Requirements: 5.2, 5.3, 5.5
  */
-
 'use client';
-
 import React, { Component, ReactNode } from 'react';
 import { AlertCircle, RefreshCw, LogIn } from 'lucide-react';
 import { clearSession } from '@/lib/auth/session';
-
 interface SessionErrorBoundaryProps {
   children: ReactNode;
   fallback?: (error: Error, retry: () => void) => ReactNode;
   onAuthError?: (error: Error) => void;
 }
-
 interface SessionErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
 }
-
 export class SessionErrorBoundary extends Component<
   SessionErrorBoundaryProps,
   SessionErrorBoundaryState
@@ -35,17 +30,13 @@ export class SessionErrorBoundary extends Component<
       error: null,
     };
   }
-
   static getDerivedStateFromError(error: Error): Partial<SessionErrorBoundaryState> {
     return {
       hasError: true,
       error,
     };
   }
-
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('SessionErrorBoundary caught an error:', error, errorInfo);
-    
     // Check if this is an authentication-related error
     if (this.isAuthenticationError(error)) {
       this.props.onAuthError?.(error);
@@ -56,7 +47,6 @@ export class SessionErrorBoundary extends Component<
       }
     }
   }
-
   private isAuthenticationError(error: Error): boolean {
     const message = error.message.toLowerCase();
     return (
@@ -67,14 +57,12 @@ export class SessionErrorBoundary extends Component<
       message.includes('session')
     );
   }
-
   private handleRetry = () => {
     this.setState({
       hasError: false,
       error: null,
     });
   };
-
   private handleLogin = () => {
     if (typeof window !== 'undefined') {
       // Store current path for redirect after login
@@ -82,24 +70,20 @@ export class SessionErrorBoundary extends Component<
       window.location.href = '/login';
     }
   };
-
   render() {
     if (!this.state.hasError) {
       return this.props.children;
     }
-
     // Use custom fallback if provided
     if (this.props.fallback) {
       return this.props.fallback(this.state.error!, this.handleRetry);
     }
-
     // Show simple error with login option for auth errors
     const isAuthError = this.isAuthenticationError(this.state.error!);
-
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-6 max-w-md mx-auto p-6">
-          <AlertCircle className="h-16 w-16 mx-auto text-red-500" />
+        <div className="text-center space-y-6 max-w-md mx-auto p-6 sm:p-4 md:p-6">
+          <AlertCircle className="h-16 w-16 mx-auto text-red-500 sm:w-auto md:w-full" />
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">
               {isAuthError ? 'Authentication Error' : 'Something went wrong'}
@@ -111,10 +95,10 @@ export class SessionErrorBoundary extends Component<
               }
             </p>
             <details className="text-left">
-              <summary className="text-sm text-muted-foreground cursor-pointer hover:text-foreground">
+              <summary className="text-sm text-muted-foreground cursor-pointer hover:text-foreground md:text-base lg:text-lg">
                 Technical details
               </summary>
-              <pre className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded overflow-auto">
+              <pre className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded overflow-auto sm:text-sm md:text-base">
                 {this.state.error!.message}
               </pre>
             </details>
@@ -124,16 +108,16 @@ export class SessionErrorBoundary extends Component<
               <button
                 onClick={this.handleLogin}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-              >
-                <LogIn className="h-4 w-4" />
+               aria-label="Button">
+                <LogIn className="h-4 w-4 sm:w-auto md:w-full" />
                 Go to Login
               </button>
             ) : (
               <button
                 onClick={this.handleRetry}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-              >
-                <RefreshCw className="h-4 w-4" />
+               aria-label="Button">
+                <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
                 Try Again
               </button>
             )}
@@ -143,7 +127,6 @@ export class SessionErrorBoundary extends Component<
     );
   }
 }
-
 /**
  * Higher-order component to wrap components with session error boundary
  */

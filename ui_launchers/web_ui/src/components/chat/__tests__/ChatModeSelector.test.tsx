@@ -2,7 +2,7 @@
  * ChatModeSelector Component Tests
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ChatModeSelector, { ChatMode, ChatContext } from '../ChatModeSelector';
@@ -61,7 +61,7 @@ vi.mock('@/components/ui/card', () => ({
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled, variant, ...props }: any) => (
-    <button onClick={onClick} disabled={disabled} data-variant={variant} {...props}>
+    <button onClick={onClick} disabled={disabled} data-variant={variant} {...props} aria-label="Button">
       {children}
     </button>
   )
@@ -76,7 +76,7 @@ vi.mock('@/components/ui/badge', () => ({
 vi.mock('@/components/ui/select', () => ({
   Select: ({ children, value, onValueChange }: any) => (
     <div data-testid="select" data-value={value}>
-      <button onClick={() => onValueChange?.('test-value')}>
+      <button onClick={() = aria-label="Button"> onValueChange?.('test-value')}>
         {children}
       </button>
     </div>

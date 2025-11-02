@@ -106,7 +106,7 @@ describe('LazyComponent', () => {
     const CustomErrorFallback = ({ error, retry }: { error: Error; retry: () => void }) => (
       <div data-testid="custom-error">
         Custom Error: {error.message}
-        <button onClick={retry}>Custom Retry</button>
+        <button onClick={retry} aria-label="Button">Custom Retry</button>
       </div>
     );
 

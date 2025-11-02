@@ -83,14 +83,14 @@ export const TouchableMessageBubble: React.FC<TouchableMessageBubbleProps> = ({
         <div className="absolute inset-0 flex items-center justify-between pointer-events-none z-10">
           {swipeOffset > 20 && (
             <div className="flex items-center space-x-2 ml-4 text-blue-500">
-              <Copy className="h-5 w-5" />
-              <span className="text-sm font-medium">Copy</span>
+              <Copy className="h-5 w-5 sm:w-auto md:w-full" />
+              <span className="text-sm font-medium md:text-base lg:text-lg">Copy</span>
             </div>
           )}
           {swipeOffset < -20 && (
             <div className="flex items-center space-x-2 mr-4 text-green-500 ml-auto">
-              <span className="text-sm font-medium">Reply</span>
-              <Reply className="h-5 w-5" />
+              <span className="text-sm font-medium md:text-base lg:text-lg">Reply</span>
+              <Reply className="h-5 w-5 sm:w-auto md:w-full" />
             </div>
           )}
         </div>
@@ -105,23 +105,23 @@ export const TouchableMessageBubble: React.FC<TouchableMessageBubbleProps> = ({
           <div className={`absolute top-2 ${isUser ? 'left-2' : 'right-2'} flex items-center space-x-1 z-20`}>
             {message.role === 'assistant' && (
               <>
-                <Button
+                <button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 bg-background/80 backdrop-blur-sm shadow-sm"
-                  onClick={() => onRate?.(message.id, 'up')}
+                  className="h-8 w-8 p-0 bg-background/80 backdrop-blur-sm shadow-sm sm:w-auto md:w-full"
+                  onClick={() = aria-label="Button"> onRate?.(message.id, 'up')}
                   aria-label="Rate message positively"
                 >
-                  <ThumbsUp className="h-3 w-3" />
+                  <ThumbsUp className="h-3 w-3 sm:w-auto md:w-full" />
                 </Button>
-                <Button
+                <button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 bg-background/80 backdrop-blur-sm shadow-sm"
-                  onClick={() => onRate?.(message.id, 'down')}
+                  className="h-8 w-8 p-0 bg-background/80 backdrop-blur-sm shadow-sm sm:w-auto md:w-full"
+                  onClick={() = aria-label="Button"> onRate?.(message.id, 'down')}
                   aria-label="Rate message negatively"
                 >
-                  <ThumbsDown className="h-3 w-3" />
+                  <ThumbsDown className="h-3 w-3 sm:w-auto md:w-full" />
                 </Button>
               </>
             )}
@@ -131,20 +131,20 @@ export const TouchableMessageBubble: React.FC<TouchableMessageBubbleProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 bg-background/80 backdrop-blur-sm shadow-sm"
+                  className="h-8 w-8 p-0 bg-background/80 backdrop-blur-sm shadow-sm sm:w-auto md:w-full"
                   aria-label="More actions"
                 >
-                  <MoreHorizontal className="h-3 w-3" />
+                  <MoreHorizontal className="h-3 w-3 sm:w-auto md:w-full" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align={isUser ? 'start' : 'end'}>
                 <DropdownMenuItem onClick={() => onCopy?.(message.content)}>
-                  <Copy className="h-4 w-4 mr-2" />
+                  <Copy className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Copy
                 </DropdownMenuItem>
                 {message.role === 'assistant' && (
                   <DropdownMenuItem onClick={() => onReply?.(message.id)}>
-                    <Reply className="h-4 w-4 mr-2" />
+                    <Reply className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                     Reply
                   </DropdownMenuItem>
                 )}

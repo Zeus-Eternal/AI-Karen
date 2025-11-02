@@ -1,11 +1,20 @@
-'use client';
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { SourceAttribution as SourceAttributionType } from '@/types/enhanced-chat';
+'use client';
+
+
+
+
+
+
+
   ExternalLink,
   Database,
   Globe,
@@ -18,22 +27,22 @@ import {
   Filter,
   Search
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import {
+
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import {
+
+
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { SourceAttribution as SourceAttributionType } from '@/types/enhanced-chat';
+
 
 interface SourceAttributionProps {
   sources: SourceAttributionType[];
@@ -164,22 +173,22 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
             <TooltipProvider key={source.id}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
+                  <button
                     variant="outline"
                     size="sm"
-                    className="h-auto p-2"
-                    onClick={() => handleSourceClick(source)}
+                    className="h-auto p-2 sm:p-4 md:p-6"
+                    onClick={() = aria-label="Button"> handleSourceClick(source)}
                   >
-                    <Icon className="h-3 w-3 mr-1" />
-                    <span className="text-xs">{index + 1}</span>
+                    <Icon className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
+                    <span className="text-xs sm:text-sm md:text-base">{index + 1}</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
                   <div className="space-y-1">
                     <p className="font-medium">{source.title}</p>
-                    <p className="text-xs">Type: {source.type}</p>
-                    <p className="text-xs">Reliability: {Math.round(source.reliability * 100)}%</p>
-                    <p className="text-xs">Relevance: {Math.round(source.relevance * 100)}%</p>
+                    <p className="text-xs sm:text-sm md:text-base">Type: {source.type}</p>
+                    <p className="text-xs sm:text-sm md:text-base">Reliability: {Math.round(source.reliability * 100)}%</p>
+                    <p className="text-xs sm:text-sm md:text-base">Relevance: {Math.round(source.relevance * 100)}%</p>
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -187,7 +196,7 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
           );
         })}
         {sources.length > 3 && (
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
             +{sources.length - 3} more
           </Badge>
         )}
@@ -200,12 +209,12 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
+            <Database className="h-5 w-5 sm:w-auto md:w-full" />
             Source Attribution ({sources.length})
           </CardTitle>
           
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
               Avg Reliability: {Math.round(sources.reduce((acc, s) => acc + s.reliability, 0) / sources.length * 100)}%
             </Badge>
           </div>
@@ -215,39 +224,39 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
         {showFilters && (
           <div className="space-y-3 mt-4">
             <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <input
                 placeholder="Search sources..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
                 className="pl-8 h-9"
               />
             </div>
             
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Filter className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
               
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-32 h-8 text-xs">
-                  <SelectValue />
+              <select value={typeFilter} onValueChange={setTypeFilter} aria-label="Select option">
+                <selectTrigger className="w-32 h-8 text-xs sm:w-auto md:w-full" aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="memory">Memory</SelectItem>
-                  <SelectItem value="knowledge_base">Knowledge Base</SelectItem>
-                  <SelectItem value="web">Web</SelectItem>
-                  <SelectItem value="document">Document</SelectItem>
-                  <SelectItem value="conversation">Conversation</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="all" aria-label="Select option">All Types</SelectItem>
+                  <selectItem value="memory" aria-label="Select option">Memory</SelectItem>
+                  <selectItem value="knowledge_base" aria-label="Select option">Knowledge Base</SelectItem>
+                  <selectItem value="web" aria-label="Select option">Web</SelectItem>
+                  <selectItem value="document" aria-label="Select option">Document</SelectItem>
+                  <selectItem value="conversation" aria-label="Select option">Conversation</SelectItem>
                 </SelectContent>
               </Select>
               
-              <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
-                <SelectTrigger className="w-32 h-8 text-xs">
-                  <SelectValue />
+              <select value={sortBy} onValueChange={(value) = aria-label="Select option"> setSortBy(value as any)}>
+                <selectTrigger className="w-32 h-8 text-xs sm:w-auto md:w-full" aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="relevance">Relevance</SelectItem>
-                  <SelectItem value="reliability">Reliability</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="relevance" aria-label="Select option">Relevance</SelectItem>
+                  <selectItem value="reliability" aria-label="Select option">Reliability</SelectItem>
                   <SelectItem value="title">Title</SelectItem>
                 </SelectContent>
               </Select>
@@ -256,13 +265,13 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 p-0">
+      <CardContent className="flex-1 p-0 sm:p-4 md:p-6">
         <ScrollArea className="h-full px-4">
           <div className="space-y-3 pb-4">
             {filteredAndSortedSources.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">
+                <Database className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                <p className="text-sm md:text-base lg:text-lg">
                   {searchQuery || typeFilter !== 'all' 
                     ? 'No sources match your filters' 
                     : 'No sources available'}
@@ -276,48 +285,48 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
                 
                 return (
                   <Card key={source.id} className="hover:shadow-sm transition-shadow">
-                    <CardContent className="p-4">
+                    <CardContent className="p-4 sm:p-4 md:p-6">
                       <div className="flex items-start gap-3">
                         {/* Source Icon */}
                         <div className="flex-shrink-0 mt-1">
-                          <Icon className="h-5 w-5 text-muted-foreground" />
+                          <Icon className="h-5 w-5 text-muted-foreground sm:w-auto md:w-full" />
                         </div>
 
                         {/* Source Content */}
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 sm:w-auto md:w-full">
                           <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-sm font-medium truncate">
+                            <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                              <h3 className="text-sm font-medium truncate md:text-base lg:text-lg">
                                 {source.title}
                               </h3>
                               <div className="flex items-center gap-2 mt-1">
                                 <Badge className={`text-xs ${typeColor}`}>
                                   {source.type.replace('_', ' ')}
                                 </Badge>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                                   Source #{index + 1}
                                 </span>
                               </div>
                             </div>
                             
                             <div className="flex items-center gap-1 ml-2">
-                              <Button
+                              <button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => copySourceInfo(source)}
-                                className="h-6 w-6 p-0"
+                                onClick={() = aria-label="Button"> copySourceInfo(source)}
+                                className="h-6 w-6 p-0 sm:w-auto md:w-full"
                               >
-                                <Copy className="h-3 w-3" />
+                                <Copy className="h-3 w-3 sm:w-auto md:w-full" />
                               </Button>
                               
                               {source.url && (
-                                <Button
+                                <button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleSourceClick(source)}
-                                  className="h-6 w-6 p-0"
+                                  onClick={() = aria-label="Button"> handleSourceClick(source)}
+                                  className="h-6 w-6 p-0 sm:w-auto md:w-full"
                                 >
-                                  <ExternalLink className="h-3 w-3" />
+                                  <ExternalLink className="h-3 w-3 sm:w-auto md:w-full" />
                                 </Button>
                               )}
                             </div>
@@ -325,22 +334,22 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
 
                           {/* Source Snippet */}
                           {source.snippet && (
-                            <p className="text-sm text-muted-foreground italic mb-3 line-clamp-2">
+                            <p className="text-sm text-muted-foreground italic mb-3 line-clamp-2 md:text-base lg:text-lg">
                               "{source.snippet}"
                             </p>
                           )}
 
                           {/* Source Metrics */}
-                          <div className="flex items-center gap-4 text-xs">
+                          <div className="flex items-center gap-4 text-xs sm:text-sm md:text-base">
                             <div className="flex items-center gap-1">
-                              <Star className="h-3 w-3" />
+                              <Star className="h-3 w-3 sm:w-auto md:w-full" />
                               <span className={`font-medium ${reliabilityColor}`}>
                                 {Math.round(source.reliability * 100)}% reliable
                               </span>
                             </div>
                             
                             <div className="flex items-center gap-1">
-                              <Eye className="h-3 w-3" />
+                              <Eye className="h-3 w-3 sm:w-auto md:w-full" />
                               <span className="font-medium">
                                 {Math.round(source.relevance * 100)}% relevant
                               </span>
@@ -350,13 +359,13 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
                           {/* Source URL */}
                           {source.url && (
                             <div className="mt-2">
-                              <Button
+                              <button
                                 variant="ghost"
                                 size="sm"
-                                className="h-auto p-0 text-xs text-primary hover:underline"
-                                onClick={() => handleSourceClick(source)}
+                                className="h-auto p-0 text-xs text-primary hover:underline sm:text-sm md:text-base"
+                                onClick={() = aria-label="Button"> handleSourceClick(source)}
                               >
-                                <ExternalLink className="h-3 w-3 mr-1" />
+                                <ExternalLink className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                                 View Source
                               </Button>
                             </div>

@@ -1,47 +1,57 @@
 """
-Plugin Router - symlink to unified plugins router.
-Provides backward compatibility for ai_karen_engine.plugins.router imports.
+Compatibility layer for plugin router imports.
+Re-exports from the consolidated plugin system.
 """
 
-import sys
-from pathlib import Path
-
-# Add the root plugins directory to the path
-plugins_root = Path(__file__).parent.parent.parent.parent / "plugins"
-if str(plugins_root) not in sys.path:
-    sys.path.insert(0, str(plugins_root))
-
-# Import and re-export the PluginRouter from unified system
 try:
-    from router import PluginRouter as UnifiedPluginRouter
+    from src.extensions.plugins.core.router import (
+        PluginRouter,
+        get_plugin_router,
+        AccessDenied,
+        PluginRecord,
+        PLUGIN_IMPORT_ERRORS
+    )
     
-    # Alias for backward compatibility
-    PluginRouter = UnifiedPluginRouter
+    __all__ = [
+        "PluginRouter",
+        "get_plugin_router", 
+        "AccessDenied",
+        "PluginRecord",
+        "PLUGIN_IMPORT_ERRORS"
+    ]
     
-    __all__ = ["PluginRouter"]
-    
-except ImportError:
-    # Fallback stub if unified system not available
+except ImportError as e:
     import logging
     logger = logging.getLogger(__name__)
-    logger.warning("Unified plugin router not found, using fallback stub")
+    logger.warning(f"Failed to import plugin router from consolidated system: {e}")
     
+    # Provide minimal stubs
     class PluginRouter:
-        """Fallback PluginRouter stub for compatibility"""
-        
         def __init__(self):
-            self.routes = {}
-            
-        def register_plugin(self, plugin_name: str, plugin_instance):
-            """Register a plugin"""
-            self.routes[plugin_name] = plugin_instance
-            
-        def get_plugin(self, plugin_name: str):
-            """Get a registered plugin"""
-            return self.routes.get(plugin_name)
-            
-        def list_plugins(self):
-            """List all registered plugins"""
-            return list(self.routes.keys())
+            pass
     
-    __all__ = ["PluginRouter"]
+    class AccessDenied(Exception):
+        pass
+    
+    class PluginRecord:
+        def __init__(self):
+            pass
+    
+    class _DummyMetric:
+        def labels(self, **kw): 
+            return self
+        def inc(self, n: int = 1): 
+            pass
+    
+    PLUGIN_IMPORT_ERRORS = _DummyMetric()
+    
+    def get_plugin_router():
+        return PluginRouter()
+    
+    __all__ = [
+        "PluginRouter",
+        "get_plugin_router", 
+        "AccessDenied",
+        "PluginRecord",
+        "PLUGIN_IMPORT_ERRORS"
+    ]

@@ -4,12 +4,10 @@
  * API endpoints for monitoring and managing the email queue including
  * statistics, queue items, and retry operations.
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { emailQueueManager } from '@/lib/email/email-queue';
 import { auditLogger } from '@/lib/audit/audit-logger';
-
 /**
  * GET /api/admin/email/queue
  * Get email queue statistics and items
@@ -20,21 +18,17 @@ export async function GET(request: NextRequest) {
     if (!authResult.success) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-
     const { searchParams } = new URL(request.url);
     const includeItems = searchParams.get('include_items') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50');
-
     // Get queue statistics
     const stats = emailQueueManager.getQueueStats();
-
     // Get queue items if requested
     let items = null;
     if (includeItems) {
       const allItems = emailQueueManager.getQueueItems();
       items = allItems.slice(0, limit);
     }
-
     // Log audit event
     await auditLogger.log(
       authResult.user?.user_id || 'unknown',
@@ -49,7 +43,6 @@ export async function GET(request: NextRequest) {
         request: request
       }
     );
-
     return NextResponse.json({
       success: true,
       data: {
@@ -57,16 +50,13 @@ export async function GET(request: NextRequest) {
         items: items,
       }
     });
-
   } catch (error) {
-    console.error('Error getting email queue information:', error);
     return NextResponse.json(
       { error: 'Failed to get email queue information' },
       { status: 500 }
     );
   }
 }
-
 /**
  * POST /api/admin/email/queue/retry
  * Retry failed email queue items
@@ -77,14 +67,11 @@ export async function POST(request: NextRequest) {
     if (!authResult.success) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-
     const body = await request.json();
     const action = body.action;
-
     if (action === 'retry_failed') {
       // Retry all failed items
       const retriedCount = emailQueueManager.retryFailedItems();
-
       // Log audit event
       await auditLogger.log(
       authResult.user?.user_id || 'unknown',
@@ -96,13 +83,11 @@ export async function POST(request: NextRequest) {
         request: request
       }
     );
-
       return NextResponse.json({
         success: true,
         message: `${retriedCount} failed items marked for retry`,
         retried_count: retriedCount,
       });
-
     } else if (action === 'clear_queue') {
       // Clear entire queue (admin only)
       if (authResult.user?.role !== 'super_admin') {
@@ -111,10 +96,8 @@ export async function POST(request: NextRequest) {
           { status: 403 }
         );
       }
-
       const queueSize = emailQueueManager.getQueueStats().total;
       emailQueueManager.clearQueue();
-
       // Log audit event
       await auditLogger.log(
       authResult.user?.user_id || 'unknown',
@@ -126,22 +109,18 @@ export async function POST(request: NextRequest) {
         request: request
       }
     );
-
       return NextResponse.json({
         success: true,
         message: `Email queue cleared (${queueSize} items removed)`,
         cleared_count: queueSize,
       });
-
     } else {
       return NextResponse.json(
         { error: 'Invalid action. Supported actions: retry_failed, clear_queue' },
         { status: 400 }
       );
     }
-
   } catch (error) {
-    console.error('Error managing email queue:', error);
     return NextResponse.json(
       { error: 'Failed to manage email queue' },
       { status: 500 }

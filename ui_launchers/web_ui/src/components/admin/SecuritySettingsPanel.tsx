@@ -1,12 +1,10 @@
 'use client';
-
 /**
  * Security Settings Panel Component
  * 
  * This component provides advanced security settings management including
  * MFA requirements, session timeouts, IP restrictions, and security monitoring.
  */
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,7 +29,6 @@ import {
   Download,
   Ban
 } from 'lucide-react';
-
 interface SecuritySettings {
   mfaEnforcement: {
     requireForAdmins: boolean;
@@ -61,7 +58,6 @@ interface SecuritySettings {
     logRetentionDays: number;
   };
 }
-
 interface SecurityAlert {
   id: string;
   type: 'failed_login' | 'suspicious_activity' | 'admin_action' | 'ip_blocked';
@@ -72,7 +68,6 @@ interface SecurityAlert {
   userId?: string;
   resolved: boolean;
 }
-
 interface BlockedIP {
   id: string;
   ipAddress: string;
@@ -81,7 +76,6 @@ interface BlockedIP {
   expiresAt?: Date;
   failedAttempts: number;
 }
-
 const defaultSettings: SecuritySettings = {
   mfaEnforcement: {
     requireForAdmins: true,
@@ -111,7 +105,6 @@ const defaultSettings: SecuritySettings = {
     logRetentionDays: 90
   }
 };
-
 export default function SecuritySettingsPanel() {
   const [settings, setSettings] = useState<SecuritySettings>(defaultSettings);
   const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
@@ -121,14 +114,12 @@ export default function SecuritySettingsPanel() {
   const [hasChanges, setHasChanges] = useState(false);
   const [showResolvedAlerts, setShowResolvedAlerts] = useState(false);
   const { toast } = useToast();
-
   // Load security settings and data
   useEffect(() => {
     loadSecuritySettings();
     loadSecurityAlerts();
     loadBlockedIPs();
   }, []);
-
   const loadSecuritySettings = async () => {
     setLoading(true);
     try {
@@ -147,7 +138,6 @@ export default function SecuritySettingsPanel() {
       setLoading(false);
     }
   };
-
   const loadSecurityAlerts = async () => {
     try {
       const response = await fetch('/api/admin/security/alerts');
@@ -156,10 +146,8 @@ export default function SecuritySettingsPanel() {
         setAlerts(data);
       }
     } catch (error) {
-      console.error('Failed to load security alerts:', error);
     }
   };
-
   const loadBlockedIPs = async () => {
     try {
       const response = await fetch('/api/admin/security/blocked-ips');
@@ -168,27 +156,22 @@ export default function SecuritySettingsPanel() {
         setBlockedIPs(data);
       }
     } catch (error) {
-      console.error('Failed to load blocked IPs:', error);
     }
   };
-
   const handleSettingsChange = (path: string, value: any) => {
     setSettings(prev => {
       const keys = path.split('.');
       const updated = { ...prev };
       let current: any = updated;
-      
       for (let i = 0; i < keys.length - 1; i++) {
         current[keys[i]] = { ...current[keys[i]] };
         current = current[keys[i]];
       }
-      
       current[keys[keys.length - 1]] = value;
       return updated;
     });
     setHasChanges(true);
   };
-
   const handleSaveSettings = async () => {
     setSaving(true);
     try {
@@ -199,7 +182,6 @@ export default function SecuritySettingsPanel() {
         },
         body: JSON.stringify(settings)
       });
-
       if (response.ok) {
         toast({
           title: 'Success',
@@ -220,13 +202,11 @@ export default function SecuritySettingsPanel() {
       setSaving(false);
     }
   };
-
   const handleResolveAlert = async (alertId: string) => {
     try {
       const response = await fetch(`/api/admin/security/alerts/${alertId}/resolve`, {
         method: 'POST'
       });
-
       if (response.ok) {
         setAlerts(prev => prev.map(alert => 
           alert.id === alertId ? { ...alert, resolved: true } : alert
@@ -244,13 +224,11 @@ export default function SecuritySettingsPanel() {
       });
     }
   };
-
   const handleUnblockIP = async (ipId: string) => {
     try {
       const response = await fetch(`/api/admin/security/blocked-ips/${ipId}`, {
         method: 'DELETE'
       });
-
       if (response.ok) {
         setBlockedIPs(prev => prev.filter(ip => ip.id !== ipId));
         toast({
@@ -266,7 +244,6 @@ export default function SecuritySettingsPanel() {
       });
     }
   };
-
   const handleExportSecurityReport = async () => {
     try {
       const response = await fetch('/api/admin/security/report');
@@ -289,7 +266,6 @@ export default function SecuritySettingsPanel() {
       });
     }
   };
-
   const getSeverityBadgeVariant = (severity: string) => {
     switch (severity) {
       case 'low': return 'secondary';
@@ -299,58 +275,53 @@ export default function SecuritySettingsPanel() {
       default: return 'secondary';
     }
   };
-
   const filteredAlerts = showResolvedAlerts ? alerts : alerts.filter(alert => !alert.resolved);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
         <span className="ml-2">Loading security settings...</span>
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* Header Actions */}
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">Security Settings</h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             Configure advanced security policies and monitoring
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportSecurityReport}>
-            <Download className="mr-2 h-4 w-4" />
+          <button variant="outline" onClick={handleExportSecurityReport} aria-label="Button">
+            <Download className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
             Export Report
           </Button>
-          <Button
+          <button
             onClick={handleSaveSettings}
             disabled={!hasChanges || saving}
-          >
-            <Shield className="mr-2 h-4 w-4" />
+           aria-label="Button">
+            <Shield className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
             {saving ? 'Saving...' : 'Save Settings'}
           </Button>
         </div>
       </div>
-
       {hasChanges && (
-        <div className="flex items-center gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          <span className="text-sm text-yellow-800">
+        <div className="flex items-center gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg sm:p-4 md:p-6">
+          <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
+          <span className="text-sm text-yellow-800 md:text-base lg:text-lg">
             You have unsaved security settings changes.
           </span>
         </div>
       )}
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* MFA Enforcement */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" />
+              <ShieldCheck className="h-5 w-5 sm:w-auto md:w-full" />
               Multi-Factor Authentication
             </CardTitle>
             <CardDescription>
@@ -366,7 +337,6 @@ export default function SecuritySettingsPanel() {
                 onCheckedChange={(checked) => handleSettingsChange('mfaEnforcement.requireForAdmins', checked)}
               />
             </div>
-
             <div className="flex items-center justify-between">
               <Label htmlFor="mfaUsers">Require MFA for Users</Label>
               <Switch
@@ -375,29 +345,27 @@ export default function SecuritySettingsPanel() {
                 onCheckedChange={(checked) => handleSettingsChange('mfaEnforcement.requireForUsers', checked)}
               />
             </div>
-
             <div>
               <Label htmlFor="gracePeriod">Grace Period (Days)</Label>
-              <Input
+              <input
                 id="gracePeriod"
                 type="number"
                 min="0"
                 max="30"
                 value={settings.mfaEnforcement.gracePeriodDays}
-                onChange={(e) => handleSettingsChange('mfaEnforcement.gracePeriodDays', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleSettingsChange('mfaEnforcement.gracePeriodDays', parseInt(e.target.value))}
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                 Days users have to set up MFA after requirement is enabled
               </p>
             </div>
           </CardContent>
         </Card>
-
         {/* Session Security */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+              <Clock className="h-5 w-5 sm:w-auto md:w-full" />
               Session Security
             </CardTitle>
             <CardDescription>
@@ -407,40 +375,37 @@ export default function SecuritySettingsPanel() {
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="adminTimeout">Admin Session Timeout (Minutes)</Label>
-              <Input
+              <input
                 id="adminTimeout"
                 type="number"
                 min="5"
                 max="480"
                 value={settings.sessionSecurity.adminTimeoutMinutes}
-                onChange={(e) => handleSettingsChange('sessionSecurity.adminTimeoutMinutes', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleSettingsChange('sessionSecurity.adminTimeoutMinutes', parseInt(e.target.value))}
               />
             </div>
-
             <div>
               <Label htmlFor="userTimeout">User Session Timeout (Minutes)</Label>
-              <Input
+              <input
                 id="userTimeout"
                 type="number"
                 min="5"
                 max="1440"
                 value={settings.sessionSecurity.userTimeoutMinutes}
-                onChange={(e) => handleSettingsChange('sessionSecurity.userTimeoutMinutes', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleSettingsChange('sessionSecurity.userTimeoutMinutes', parseInt(e.target.value))}
               />
             </div>
-
             <div>
               <Label htmlFor="maxSessions">Max Concurrent Sessions</Label>
-              <Input
+              <input
                 id="maxSessions"
                 type="number"
                 min="1"
                 max="10"
                 value={settings.sessionSecurity.maxConcurrentSessions}
-                onChange={(e) => handleSettingsChange('sessionSecurity.maxConcurrentSessions', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleSettingsChange('sessionSecurity.maxConcurrentSessions', parseInt(e.target.value))}
               />
             </div>
-
             <div className="flex items-center justify-between">
               <Label htmlFor="forceLogout">Force Logout on Suspicious Activity</Label>
               <Switch
@@ -451,12 +416,11 @@ export default function SecuritySettingsPanel() {
             </div>
           </CardContent>
         </Card>
-
         {/* IP Restrictions */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5" />
+              <Globe className="h-5 w-5 sm:w-auto md:w-full" />
               IP Restrictions
             </CardTitle>
             <CardDescription>
@@ -472,7 +436,6 @@ export default function SecuritySettingsPanel() {
                 onCheckedChange={(checked) => handleSettingsChange('ipRestrictions.enabled', checked)}
               />
             </div>
-
             <div className="flex items-center justify-between">
               <Label htmlFor="blockSuspicious">Block Suspicious IPs</Label>
               <Switch
@@ -481,40 +444,37 @@ export default function SecuritySettingsPanel() {
                 onCheckedChange={(checked) => handleSettingsChange('ipRestrictions.blockSuspiciousIPs', checked)}
               />
             </div>
-
             <div>
               <Label htmlFor="maxFailedAttempts">Max Failed Attempts</Label>
-              <Input
+              <input
                 id="maxFailedAttempts"
                 type="number"
                 min="3"
                 max="20"
                 value={settings.ipRestrictions.maxFailedAttempts}
-                onChange={(e) => handleSettingsChange('ipRestrictions.maxFailedAttempts', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleSettingsChange('ipRestrictions.maxFailedAttempts', parseInt(e.target.value))}
               />
             </div>
-
             <div>
               <Label htmlFor="allowedRanges">Allowed IP Ranges</Label>
-              <Textarea
+              <textarea
                 id="allowedRanges"
                 placeholder="192.168.1.0/24&#10;10.0.0.0/8"
                 value={settings.ipRestrictions.allowedRanges.join('\n')}
-                onChange={(e) => handleSettingsChange('ipRestrictions.allowedRanges', e.target.value.split('\n').filter(Boolean))}
+                onChange={(e) = aria-label="Textarea"> handleSettingsChange('ipRestrictions.allowedRanges', e.target.value.split('\n').filter(Boolean))}
                 rows={3}
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                 One IP range per line. Leave empty to allow all IPs.
               </p>
             </div>
           </CardContent>
         </Card>
-
         {/* Security Monitoring */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5" />
+              <ShieldAlert className="h-5 w-5 sm:w-auto md:w-full" />
               Security Monitoring
             </CardTitle>
             <CardDescription>
@@ -530,78 +490,74 @@ export default function SecuritySettingsPanel() {
                 onCheckedChange={(checked) => handleSettingsChange('monitoring.enableSecurityAlerts', checked)}
               />
             </div>
-
             <div>
               <Label htmlFor="failedLoginThreshold">Failed Login Alert Threshold</Label>
-              <Input
+              <input
                 id="failedLoginThreshold"
                 type="number"
                 min="5"
                 max="100"
                 value={settings.monitoring.alertThresholds.failedLogins}
-                onChange={(e) => handleSettingsChange('monitoring.alertThresholds.failedLogins', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleSettingsChange('monitoring.alertThresholds.failedLogins', parseInt(e.target.value))}
               />
             </div>
-
             <div>
               <Label htmlFor="suspiciousActivityThreshold">Suspicious Activity Threshold</Label>
-              <Input
+              <input
                 id="suspiciousActivityThreshold"
                 type="number"
                 min="3"
                 max="50"
                 value={settings.monitoring.alertThresholds.suspiciousActivity}
-                onChange={(e) => handleSettingsChange('monitoring.alertThresholds.suspiciousActivity', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleSettingsChange('monitoring.alertThresholds.suspiciousActivity', parseInt(e.target.value))}
               />
             </div>
-
             <div>
               <Label htmlFor="logRetention">Log Retention (Days)</Label>
-              <Input
+              <input
                 id="logRetention"
                 type="number"
                 min="30"
                 max="365"
                 value={settings.monitoring.logRetentionDays}
-                onChange={(e) => handleSettingsChange('monitoring.logRetentionDays', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleSettingsChange('monitoring.logRetentionDays', parseInt(e.target.value))}
               />
             </div>
           </CardContent>
         </Card>
       </div>
-
       {/* Security Alerts */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
+              <AlertTriangle className="h-5 w-5 sm:w-auto md:w-full" />
               Security Alerts
             </div>
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowResolvedAlerts(!showResolvedAlerts)}
+                onClick={() = aria-label="Button"> setShowResolvedAlerts(!showResolvedAlerts)}
               >
                 {showResolvedAlerts ? (
                   <>
-                    <EyeOff className="mr-1 h-3 w-3" />
+                    <EyeOff className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                     Hide Resolved
                   </>
                 ) : (
                   <>
-                    <Eye className="mr-1 h-3 w-3" />
+                    <Eye className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                     Show Resolved
                   </>
                 )}
               </Button>
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={loadSecurityAlerts}
-              >
-                <RefreshCw className="mr-1 h-3 w-3" />
+               aria-label="Button">
+                <RefreshCw className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                 Refresh
               </Button>
             </div>
@@ -641,18 +597,18 @@ export default function SecuritySettingsPanel() {
                       {alert.type.replace('_', ' ')}
                     </TableCell>
                     <TableCell>{alert.message}</TableCell>
-                    <TableCell className="text-sm text-gray-500">
+                    <TableCell className="text-sm text-gray-500 md:text-base lg:text-lg">
                       {new Date(alert.timestamp).toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-500">
+                    <TableCell className="text-sm text-gray-500 md:text-base lg:text-lg">
                       {alert.ipAddress || '-'}
                     </TableCell>
                     <TableCell className="text-right">
                       {!alert.resolved && (
-                        <Button
+                        <button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleResolveAlert(alert.id)}
+                          onClick={() = aria-label="Button"> handleResolveAlert(alert.id)}
                         >
                           Resolve
                         </Button>
@@ -665,12 +621,11 @@ export default function SecuritySettingsPanel() {
           </Table>
         </CardContent>
       </Card>
-
       {/* Blocked IPs */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Ban className="h-5 w-5" />
+            <Ban className="h-5 w-5 sm:w-auto md:w-full" />
             Blocked IP Addresses
           </CardTitle>
           <CardDescription>
@@ -702,19 +657,19 @@ export default function SecuritySettingsPanel() {
                     <TableCell className="font-mono">{ip.ipAddress}</TableCell>
                     <TableCell>{ip.reason}</TableCell>
                     <TableCell>{ip.failedAttempts}</TableCell>
-                    <TableCell className="text-sm text-gray-500">
+                    <TableCell className="text-sm text-gray-500 md:text-base lg:text-lg">
                       {new Date(ip.blockedAt).toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-500">
+                    <TableCell className="text-sm text-gray-500 md:text-base lg:text-lg">
                       {ip.expiresAt ? new Date(ip.expiresAt).toLocaleString() : 'Permanent'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
+                      <button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleUnblockIP(ip.id)}
+                        onClick={() = aria-label="Button"> handleUnblockIP(ip.id)}
                       >
-                        <Trash2 className="mr-1 h-3 w-3" />
+                        <Trash2 className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                         Unblock
                       </Button>
                     </TableCell>

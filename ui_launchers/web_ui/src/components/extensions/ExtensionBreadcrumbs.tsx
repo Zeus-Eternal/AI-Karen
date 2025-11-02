@@ -24,12 +24,12 @@ export default function ExtensionBreadcrumbs() {
   };
 
   return (
-    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+    <div className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg">
       {breadcrumbs.map((crumb, idx) => (
         <React.Fragment key={crumb.id}>
           <button
             className="hover:underline"
-            onClick={() => handleClick(idx)}
+            onClick={() = aria-label="Button"> handleClick(idx)}
             type="button"
           >
             {crumb.name}

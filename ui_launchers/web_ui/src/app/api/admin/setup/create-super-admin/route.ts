@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import { validateSuperAdminCreation, hashPassword } from '@/lib/auth/setup-validation';
 import type { CreateSuperAdminRequest, AdminApiResponse, User } from '@/types/admin';
-
 /**
  * Create the initial super admin account during first-run setup
  * POST /api/admin/setup/create-super-admin
@@ -10,7 +9,6 @@ import type { CreateSuperAdminRequest, AdminApiResponse, User } from '@/types/ad
 export async function POST(request: NextRequest) {
   try {
     const body: CreateSuperAdminRequest = await request.json();
-    
     // Validate the request data
     const validationResult = await validateSuperAdminCreation(body);
     if (!validationResult.isValid) {
@@ -23,9 +21,7 @@ export async function POST(request: NextRequest) {
         }
       }, { status: 400 });
     }
-
     const adminUtils = getAdminDatabaseUtils();
-    
     // Double-check that no super admin exists (security measure)
     const existingSuperAdmins = await adminUtils.getUsersByRole('super_admin');
     if (existingSuperAdmins.length > 0) {
@@ -38,7 +34,6 @@ export async function POST(request: NextRequest) {
         }
       }, { status: 409 });
     }
-
     // Check if email is already in use
     const existingUser = await adminUtils.getUsersWithRoleFilter({ search: body.email });
     if (existingUser.data.length > 0) {
@@ -51,10 +46,8 @@ export async function POST(request: NextRequest) {
         }
       }, { status: 409 });
     }
-
     // Hash the password
     const passwordHash = await hashPassword(body.password);
-
     // Create the super admin user
     const userId = await adminUtils.createUserWithRole({
       email: body.email,
@@ -64,16 +57,13 @@ export async function POST(request: NextRequest) {
       tenant_id: 'default',
       created_by: 'system' // Special marker for system-created user
     });
-
     // Update the role to super_admin (this bypasses normal role change restrictions)
     await adminUtils.updateUserRole(userId, 'super_admin', 'system');
-
     // Get the created user for response
     const createdUser = await adminUtils.getUserWithRole(userId);
     if (!createdUser) {
       throw new Error('Failed to retrieve created super admin user');
     }
-
     // Create audit log for super admin creation
     await adminUtils.createAuditLog({
       user_id: userId,
@@ -88,15 +78,12 @@ export async function POST(request: NextRequest) {
       ip_address: getClientIP(request),
       user_agent: request.headers.get('user-agent') || undefined
     });
-
     // Send email verification (if email service is configured)
     try {
       await sendSuperAdminVerificationEmail(body.email, body.full_name, userId);
     } catch (emailError) {
-      console.warn('Failed to send verification email:', emailError);
       // Don't fail the entire operation if email fails
     }
-
     // Remove sensitive information from response
     const responseUser: Partial<User> = {
       user_id: createdUser.user_id,
@@ -107,7 +94,6 @@ export async function POST(request: NextRequest) {
       is_active: createdUser.is_active,
       created_at: createdUser.created_at
     };
-
     const response: AdminApiResponse<{ user: Partial<User>; setup_completed: boolean }> = {
       success: true,
       data: {
@@ -123,7 +109,6 @@ export async function POST(request: NextRequest) {
         ]
       }
     };
-
     return NextResponse.json(response, {
       status: 201,
       headers: {
@@ -132,10 +117,7 @@ export async function POST(request: NextRequest) {
         'Expires': '0'
       }
     });
-
   } catch (error) {
-    console.error('Super admin creation error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {
@@ -146,7 +128,6 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
-
 /**
  * Extract client IP address from request
  */
@@ -154,14 +135,11 @@ function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
   const realIP = request.headers.get('x-real-ip');
   const remoteAddr = request.headers.get('remote-addr');
-  
   if (forwarded) {
     return forwarded.split(',')[0].trim();
   }
-  
   return realIP || remoteAddr || 'unknown';
 }
-
 /**
  * Send email verification to newly created super admin
  */
@@ -173,7 +151,6 @@ async function sendSuperAdminVerificationEmail(
   // Generate verification token
   const verificationToken = generateEmailVerificationToken(email, userId);
   const verificationLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
-  
   // Email template for super admin verification
   const emailTemplate = {
     id: 'super_admin_verification',
@@ -213,29 +190,21 @@ async function sendSuperAdminVerificationEmail(
     `,
     text_content: `
 Super Admin Account Created
-
 Hello {{full_name}},
-
 Your Super Administrator account has been successfully created for {{system_name}}.
-
 Account Details:
 - Email: {{email}}
 - Role: Super Administrator  
 - Created: {{created_date}}
-
 To complete your account setup and verify your email address, please visit:
 {{verification_link}}
-
 Important: This verification link will expire in 24 hours for security reasons.
-
 Once verified, you can:
 - Access the Super Admin dashboard
 - Manage other administrators
 - Configure system settings
 - View audit logs and security reports
-
 If you did not create this account, please ignore this email.
-
 This is an automated message from {{system_name}}. Please do not reply to this email.
     `,
     variables: ['full_name', 'system_name', 'email', 'created_date', 'verification_link'],
@@ -245,7 +214,6 @@ This is an automated message from {{system_name}}. Please do not reply to this e
     created_at: new Date(),
     updated_at: new Date()
   };
-
   // Template variables
   const variables = {
     full_name: fullName,
@@ -254,23 +222,19 @@ This is an automated message from {{system_name}}. Please do not reply to this e
     created_date: new Date().toLocaleDateString(),
     verification_link: verificationLink
   };
-
   // Try to send email using the email service
   try {
     const { EmailService } = await import('@/lib/email/email-service');
     const emailService = new EmailService();
     await emailService.initialize();
-    
     await emailService.sendTemplateEmail(email, emailTemplate, variables, {
       priority: 'high'
     });
   } catch (error) {
     // If email service fails, log the verification link for manual verification
-    console.log('Email service unavailable. Verification link for manual setup:', verificationLink);
     throw error;
   }
 }
-
 /**
  * Generate email verification token for super admin
  */
@@ -279,7 +243,6 @@ function generateEmailVerificationToken(email: string, userId: string): string {
   const randomBytes = Array.from(crypto.getRandomValues(new Uint8Array(16)))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
-  
   // Create token with email and user ID for verification
   const payload = btoa(JSON.stringify({
     email,
@@ -288,6 +251,5 @@ function generateEmailVerificationToken(email: string, userId: string): string {
     timestamp,
     expires: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
   }));
-  
   return `${payload}.${randomBytes}`;
 }

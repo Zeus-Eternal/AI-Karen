@@ -1,7 +1,19 @@
-"use client";
-
 import React, { useState, useEffect, useCallback } from "react";
 import { 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+"use client";
+
+
+
   Play, 
   Pause, 
   Square, 
@@ -25,23 +37,23 @@ import {
   Trash2,
   Plus
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { 
+
+
+
+
+
+
+
+
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+
+
+
 
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type StepStatus = "pending" | "running" | "completed" | "failed" | "skipped";
@@ -130,11 +142,11 @@ export default function PlanVisualization({
 
   const getStatusIcon = (status: StepStatus) => {
     switch (status) {
-      case "pending": return <Clock className="h-4 w-4 text-gray-500" />;
-      case "running": return <Play className="h-4 w-4 text-blue-500 animate-pulse" />;
-      case "completed": return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "failed": return <XCircle className="h-4 w-4 text-red-500" />;
-      case "skipped": return <ArrowRight className="h-4 w-4 text-gray-400" />;
+      case "pending": return <Clock className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
+      case "running": return <Play className="h-4 w-4 text-blue-500 animate-pulse sm:w-auto md:w-full" />;
+      case "completed": return <CheckCircle2 className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
+      case "failed": return <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
+      case "skipped": return <ArrowRight className="h-4 w-4 text-gray-400 sm:w-auto md:w-full" />;
     }
   };
 
@@ -254,7 +266,7 @@ export default function PlanVisualization({
     return (
       <Card className="h-full flex items-center justify-center">
         <CardContent className="text-center">
-          <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
           <h3 className="text-lg font-semibold mb-2">No Plan Selected</h3>
           <p className="text-muted-foreground">
             Select or create an execution plan to visualize steps and manage execution.
@@ -270,10 +282,10 @@ export default function PlanVisualization({
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
-              <GitBranch className="h-5 w-5" />
+              <GitBranch className="h-5 w-5 sm:w-auto md:w-full" />
               {plan.title}
             </CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
               {plan.description}
             </p>
           </div>
@@ -282,13 +294,13 @@ export default function PlanVisualization({
               {plan.status}
             </Badge>
             {!readonly && (
-              <Select value={executionMode} onValueChange={(value: "manual" | "auto") => setExecutionMode(value)}>
-                <SelectTrigger className="w-24">
-                  <SelectValue />
+              <select value={executionMode} onValueChange={(value: "manual" | "auto") = aria-label="Select option"> setExecutionMode(value)}>
+                <selectTrigger className="w-24 sm:w-auto md:w-full" aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual">Manual</SelectItem>
-                  <SelectItem value="auto">Auto</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="manual" aria-label="Select option">Manual</SelectItem>
+                  <selectItem value="auto" aria-label="Select option">Auto</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -297,7 +309,7 @@ export default function PlanVisualization({
 
         {/* Progress Overview */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
             <span>Progress: {getCompletedSteps()}/{getTotalSteps()} steps</span>
             <span>{formatDuration(plan.totalEstimatedDuration)} estimated</span>
           </div>
@@ -309,16 +321,16 @@ export default function PlanVisualization({
           <div className="flex items-center gap-2">
             {plan.status === "review" && (
               <>
-                <Button onClick={handlePlanApprove} size="sm" className="bg-green-600 hover:bg-green-700">
-                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                <button onClick={handlePlanApprove} size="sm" className="bg-green-600 hover:bg-green-700" aria-label="Button">
+                  <CheckCircle2 className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                   Approve
                 </Button>
-                <Button 
-                  onClick={() => setRejectionReason("Please provide feedback")} 
+                <button 
+                  onClick={() = aria-label="Button"> setRejectionReason("Please provide feedback")} 
                   variant="outline" 
                   size="sm"
                 >
-                  <XCircle className="h-4 w-4 mr-1" />
+                  <XCircle className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                   Reject
                 </Button>
               </>
@@ -326,31 +338,31 @@ export default function PlanVisualization({
             
             {plan.status === "approved" && (
               <>
-                <Button 
+                <button 
                   onClick={handleExecuteAll} 
                   disabled={isExecuting}
                   size="sm"
                   className="bg-blue-600 hover:bg-blue-700"
-                >
+                 aria-label="Button">
                   {isExecuting ? (
-                    <Pause className="h-4 w-4 mr-1" />
+                    <Pause className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                   ) : (
-                    <Play className="h-4 w-4 mr-1" />
+                    <Play className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                   )}
                   {isExecuting ? "Executing..." : "Execute All"}
                 </Button>
                 
                 {isExecuting && (
-                  <Button onClick={onPauseExecution} variant="outline" size="sm">
-                    <Square className="h-4 w-4 mr-1" />
+                  <button onClick={onPauseExecution} variant="outline" size="sm" aria-label="Button">
+                    <Square className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                     Pause
                   </Button>
                 )}
               </>
             )}
             
-            <Button onClick={() => onStepAdd?.()} variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-1" />
+            <button onClick={() = aria-label="Button"> onStepAdd?.()} variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
               Add Step
             </Button>
           </div>
@@ -359,17 +371,17 @@ export default function PlanVisualization({
         {/* Rejection Reason Input */}
         {rejectionReason && (
           <div className="space-y-2">
-            <Textarea
+            <textarea
               placeholder="Provide feedback for rejection..."
               value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
+              onChange={(e) = aria-label="Textarea"> setRejectionReason(e.target.value)}
               className="min-h-[60px]"
             />
             <div className="flex gap-2">
-              <Button onClick={handlePlanReject} size="sm" variant="destructive">
+              <button onClick={handlePlanReject} size="sm" variant="destructive" aria-label="Button">
                 Submit Rejection
               </Button>
-              <Button onClick={() => setRejectionReason("")} size="sm" variant="outline">
+              <button onClick={() = aria-label="Button"> setRejectionReason("")} size="sm" variant="outline">
                 Cancel
               </Button>
             </div>
@@ -377,7 +389,7 @@ export default function PlanVisualization({
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-hidden p-0">
+      <CardContent className="flex-1 overflow-hidden p-0 sm:p-4 md:p-6">
         <ScrollArea className="h-full px-4">
           <div className="space-y-3 pb-4">
             {plan.steps.map((step, index) => {
@@ -390,25 +402,25 @@ export default function PlanVisualization({
                   key={step.id} 
                   className={`transition-all ${isSelected ? "ring-2 ring-blue-500" : ""}`}
                 >
-                  <CardContent className="p-3">
+                  <CardContent className="p-3 sm:p-4 md:p-6">
                     {/* Step Header */}
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <Button
+                        <button
                           variant="ghost"
                           size="sm"
-                          onClick={() => toggleStepExpansion(step.id)}
-                          className="p-1 h-6 w-6"
+                          onClick={() = aria-label="Button"> toggleStepExpansion(step.id)}
+                          className="p-1 h-6 w-6 sm:w-auto md:w-full"
                         >
                           {isExpanded ? (
-                            <ChevronDown className="h-4 w-4" />
+                            <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
                           ) : (
-                            <ChevronRight className="h-4 w-4" />
+                            <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />
                           )}
                         </Button>
                         
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-muted-foreground">
+                          <span className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
                             {index + 1}.
                           </span>
                           {getStatusIcon(step.status)}
@@ -416,8 +428,8 @@ export default function PlanVisualization({
                       </div>
                       
                       <div className="flex-1">
-                        <h4 className="font-medium text-sm">{step.title}</h4>
-                        <p className="text-xs text-muted-foreground">{step.description}</p>
+                        <h4 className="font-medium text-sm md:text-base lg:text-lg">{step.title}</h4>
+                        <p className="text-xs text-muted-foreground sm:text-sm md:text-base">{step.description}</p>
                       </div>
                       
                       <div className="flex items-center gap-2">
@@ -428,51 +440,51 @@ export default function PlanVisualization({
                           {step.riskLevel}
                         </Badge>
                         
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                           {formatDuration(step.estimatedDuration)}
                         </span>
                         
                         {!readonly && (
                           <div className="flex gap-1">
                             {canExecute && (
-                              <Button
-                                onClick={() => handleStepExecute(step.id)}
+                              <button
+                                onClick={() = aria-label="Button"> handleStepExecute(step.id)}
                                 disabled={isExecuting}
                                 size="sm"
                                 variant="outline"
                                 className="h-6 px-2"
                               >
-                                <Play className="h-3 w-3" />
+                                <Play className="h-3 w-3 sm:w-auto md:w-full" />
                               </Button>
                             )}
                             
                             {step.status === "pending" && (
-                              <Button
-                                onClick={() => onStepSkip?.(step.id)}
+                              <button
+                                onClick={() = aria-label="Button"> onStepSkip?.(step.id)}
                                 size="sm"
                                 variant="outline"
                                 className="h-6 px-2"
                               >
-                                <ArrowRight className="h-3 w-3" />
+                                <ArrowRight className="h-3 w-3 sm:w-auto md:w-full" />
                               </Button>
                             )}
                             
-                            <Button
-                              onClick={() => setEditingStep(step.id)}
+                            <button
+                              onClick={() = aria-label="Button"> setEditingStep(step.id)}
                               size="sm"
                               variant="ghost"
                               className="h-6 px-2"
                             >
-                              <Edit3 className="h-3 w-3" />
+                              <Edit3 className="h-3 w-3 sm:w-auto md:w-full" />
                             </Button>
                             
-                            <Button
-                              onClick={() => onStepDelete?.(step.id)}
+                            <button
+                              onClick={() = aria-label="Button"> onStepDelete?.(step.id)}
                               size="sm"
                               variant="ghost"
                               className="h-6 px-2 text-red-500 hover:text-red-700"
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-3 w-3 sm:w-auto md:w-full" />
                             </Button>
                           </div>
                         )}
@@ -482,13 +494,13 @@ export default function PlanVisualization({
                     {/* Expanded Step Details */}
                     {isExpanded && (
                       <div className="mt-3 space-y-3 border-t pt-3">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                           <div>
                             <span className="font-medium">Affected Files:</span>
                             <div className="mt-1 space-y-1">
                               {step.affectedFiles.map((file, idx) => (
-                                <div key={idx} className="flex items-center gap-1 text-xs">
-                                  <FileText className="h-3 w-3" />
+                                <div key={idx} className="flex items-center gap-1 text-xs sm:text-sm md:text-base">
+                                  <FileText className="h-3 w-3 sm:w-auto md:w-full" />
                                   <span className="font-mono">{file}</span>
                                 </div>
                               ))}
@@ -501,8 +513,8 @@ export default function PlanVisualization({
                               {step.dependencies.map((depId, idx) => {
                                 const depStep = plan.steps.find(s => s.id === depId);
                                 return (
-                                  <div key={idx} className="flex items-center gap-1 text-xs">
-                                    <ArrowRight className="h-3 w-3" />
+                                  <div key={idx} className="flex items-center gap-1 text-xs sm:text-sm md:text-base">
+                                    <ArrowRight className="h-3 w-3 sm:w-auto md:w-full" />
                                     <span>{depStep?.title || depId}</span>
                                   </div>
                                 );
@@ -513,8 +525,8 @@ export default function PlanVisualization({
 
                         {step.commands && step.commands.length > 0 && (
                           <div>
-                            <span className="font-medium text-sm">Commands:</span>
-                            <div className="mt-1 bg-gray-50 rounded p-2 font-mono text-xs">
+                            <span className="font-medium text-sm md:text-base lg:text-lg">Commands:</span>
+                            <div className="mt-1 bg-gray-50 rounded p-2 font-mono text-xs sm:text-sm md:text-base">
                               {step.commands.map((cmd, idx) => (
                                 <div key={idx}>{cmd}</div>
                               ))}
@@ -524,8 +536,8 @@ export default function PlanVisualization({
 
                         {step.rollbackCommands && step.rollbackCommands.length > 0 && (
                           <div>
-                            <span className="font-medium text-sm">Rollback Commands:</span>
-                            <div className="mt-1 bg-red-50 rounded p-2 font-mono text-xs">
+                            <span className="font-medium text-sm md:text-base lg:text-lg">Rollback Commands:</span>
+                            <div className="mt-1 bg-red-50 rounded p-2 font-mono text-xs sm:text-sm md:text-base">
                               {step.rollbackCommands.map((cmd, idx) => (
                                 <div key={idx}>{cmd}</div>
                               ))}

@@ -35,7 +35,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 
   if (model && webUIConfig.showModelBadge) {
     items.push(
-      <Badge key="model" variant="secondary" className="text-xs">
+      <Badge key="model" variant="secondary" className="text-xs sm:text-sm md:text-base">
         Model: {model}
       </Badge>,
     );
@@ -43,7 +43,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 
   if (typeof latencyMs === 'number' && webUIConfig.showLatencyBadge) {
     items.push(
-      <Badge key="latency" variant="secondary" className="text-xs">
+      <Badge key="latency" variant="secondary" className="text-xs sm:text-sm md:text-base">
         Latency: {latencyMs}ms
       </Badge>,
     );
@@ -51,7 +51,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 
   if (typeof tokens === 'number' && tokens > 0) {
     items.push(
-      <Badge key="tokens" variant="secondary" className="text-xs">
+      <Badge key="tokens" variant="secondary" className="text-xs sm:text-sm md:text-base">
         Tokens: {tokens}
       </Badge>,
     );
@@ -59,7 +59,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 
   if (typeof cost === 'number') {
     items.push(
-      <Badge key="cost" variant="secondary" className="text-xs">
+      <Badge key="cost" variant="secondary" className="text-xs sm:text-sm md:text-base">
         Cost: ${'{'}cost.toFixed ? cost.toFixed(6) : cost{'}'}
       </Badge>,
     );
@@ -67,7 +67,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 
   if (typeof confidence === 'number' && webUIConfig.showConfidenceBadge) {
     items.push(
-      <Badge key="confidence" variant="secondary" className="text-xs">
+      <Badge key="confidence" variant="secondary" className="text-xs sm:text-sm md:text-base">
         Confidence: {confidence}
       </Badge>,
     );
@@ -75,7 +75,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 
   if (typeof annotations === 'number') {
     items.push(
-      <Badge key="annotations" variant="secondary" className="text-xs">
+      <Badge key="annotations" variant="secondary" className="text-xs sm:text-sm md:text-base">
         Annotations: {annotations}
       </Badge>,
     );
@@ -83,7 +83,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 
   if (persona) {
     items.push(
-      <Badge key="persona" variant="outline" className="text-xs">
+      <Badge key="persona" variant="outline" className="text-xs sm:text-sm md:text-base">
         Persona: {persona}
       </Badge>,
     );
@@ -91,7 +91,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 
   if (mood) {
     items.push(
-      <Badge key="mood" variant="outline" className="text-xs">
+      <Badge key="mood" variant="outline" className="text-xs sm:text-sm md:text-base">
         Mood: {mood}
       </Badge>,
     );
@@ -99,7 +99,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 
   if (intent) {
     items.push(
-      <Badge key="intent" variant="outline" className="text-xs">
+      <Badge key="intent" variant="outline" className="text-xs sm:text-sm md:text-base">
         Intent: {intent}
       </Badge>,
     );
@@ -107,7 +107,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 
   if (reasoning) {
     items.push(
-      <Badge key="reasoning" variant="outline" className="text-xs" title={reasoning}>
+      <Badge key="reasoning" variant="outline" className="text-xs sm:text-sm md:text-base" title={reasoning}>
         Reasoning: {reasoning.length > 30 ? reasoning.substring(0, 30) + '...' : reasoning}
       </Badge>,
     );
@@ -115,7 +115,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 
   if (sources && sources.length > 0) {
     items.push(
-      <Badge key="sources" variant="outline" className="text-xs">
+      <Badge key="sources" variant="outline" className="text-xs sm:text-sm md:text-base">
         Sources: {sources.length}
       </Badge>,
     );

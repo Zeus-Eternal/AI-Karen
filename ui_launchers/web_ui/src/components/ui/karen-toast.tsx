@@ -134,13 +134,13 @@ const KarenToast = React.forwardRef<
           {/* Content */}
           <div className="flex-1 space-y-1">
             {/* Title */}
-            <ToastPrimitives.Title className="text-sm font-semibold leading-tight">
+            <ToastPrimitives.Title className="text-sm font-semibold leading-tight md:text-base lg:text-lg">
               {alert?.title || props.children}
             </ToastPrimitives.Title>
             
             {/* Message */}
             {alert?.message && (
-              <ToastPrimitives.Description className="text-sm opacity-90 leading-relaxed">
+              <ToastPrimitives.Description className="text-sm opacity-90 leading-relaxed md:text-base lg:text-lg">
                 {alert.message}
               </ToastPrimitives.Description>
             )}
@@ -149,23 +149,23 @@ const KarenToast = React.forwardRef<
             {alert?.expandableContent && (
               <div className="mt-2">
                 <button
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="flex items-center space-x-1 text-xs font-medium opacity-75 hover:opacity-100 transition-opacity"
+                  onClick={() = aria-label="Button"> setIsExpanded(!isExpanded)}
+                  className="flex items-center space-x-1 text-xs font-medium opacity-75 hover:opacity-100 transition-opacity sm:text-sm md:text-base"
                   aria-expanded={isExpanded}
                   aria-controls="expandable-content"
                 >
                   <span>{isExpanded ? "Show less" : "Show more"}</span>
                   {isExpanded ? (
-                    <ChevronUp className="h-3 w-3" />
+                    <ChevronUp className="h-3 w-3 sm:w-auto md:w-full" />
                   ) : (
-                    <ChevronDown className="h-3 w-3" />
+                    <ChevronDown className="h-3 w-3 sm:w-auto md:w-full" />
                   )}
                 </button>
                 
                 {isExpanded && (
                   <div
                     id="expandable-content"
-                    className="mt-2 p-2 rounded bg-black/5 dark:bg-white/5 text-xs"
+                    className="mt-2 p-2 rounded bg-black/5 dark:bg-white/5 text-xs sm:text-sm md:text-base"
                   >
                     {alert.expandableContent}
                   </div>
@@ -181,7 +181,7 @@ const KarenToast = React.forwardRef<
             {alert.actions.map((action, index) => (
               <button
                 key={index}
-                onClick={() => {
+                onClick={() = aria-label="Button"> {
                   action.action();
                   onActionClick?.(action);
                 }}
@@ -264,7 +264,7 @@ const KarenToastClose = React.forwardRef<
     toast-close=""
     {...props}
   >
-    <X className="h-4 w-4" />
+    <X className="h-4 w-4 sm:w-auto md:w-full" />
     <span className="sr-only">Close</span>
   </ToastPrimitives.Close>
 ));

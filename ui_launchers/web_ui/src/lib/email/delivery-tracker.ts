@@ -4,7 +4,6 @@
  * Tracks email delivery status, handles webhooks from email providers,
  * and provides delivery analytics and reporting.
  */
-
 import { 
   EmailDeliveryStatus, 
   EmailMessage, 
@@ -12,46 +11,37 @@ import {
   EmailStatistics,
   EmailServiceConfig 
 } from './types';
-
 /**
  * Delivery Status Manager
  */
 export class DeliveryStatusManager {
   private deliveryStatuses: Map<string, EmailDeliveryStatus[]> = new Map();
   private webhookHandlers: Map<string, (webhook: EmailWebhook) => Promise<void>> = new Map();
-  
   /**
    * Record delivery status
    */
   async recordDeliveryStatus(status: EmailDeliveryStatus): Promise<void> {
     const messageId = status.message_id;
-    
     if (!this.deliveryStatuses.has(messageId)) {
       this.deliveryStatuses.set(messageId, []);
     }
-    
     const statuses = this.deliveryStatuses.get(messageId)!;
     statuses.push(status);
-    
     // Keep only the latest 10 statuses per message
     if (statuses.length > 10) {
       statuses.splice(0, statuses.length - 10);
     }
-    
     // In a real implementation, this would save to database
     await this.saveDeliveryStatus(status);
-    
     // Trigger any registered handlers
     await this.notifyStatusChange(status);
   }
-  
   /**
    * Get delivery status for message
    */
   getDeliveryStatus(messageId: string): EmailDeliveryStatus[] {
     return this.deliveryStatuses.get(messageId) || [];
   }
-  
   /**
    * Get latest delivery status for message
    */
@@ -59,7 +49,6 @@ export class DeliveryStatusManager {
     const statuses = this.getDeliveryStatus(messageId);
     return statuses.length > 0 ? statuses[statuses.length - 1] : null;
   }
-  
   /**
    * Process webhook from email provider
    */
@@ -69,36 +58,28 @@ export class DeliveryStatusManager {
       if (!this.validateWebhook(webhook)) {
         throw new Error('Invalid webhook data');
       }
-      
       // Convert webhook to delivery status
       const deliveryStatus = this.webhookToDeliveryStatus(webhook);
-      
       // Record delivery status
       await this.recordDeliveryStatus(deliveryStatus);
-      
       // Mark webhook as processed
       webhook.processed = true;
       webhook.processed_at = new Date();
-      
       // Call provider-specific handler
       const handler = this.webhookHandlers.get(webhook.provider);
       if (handler) {
         await handler(webhook);
       }
-      
     } catch (error) {
-      console.error('Error processing webhook:', error);
       throw error;
     }
   }
-  
   /**
    * Register webhook handler for provider
    */
   registerWebhookHandler(provider: string, handler: (webhook: EmailWebhook) => Promise<void>): void {
     this.webhookHandlers.set(provider, handler);
   }
-  
   /**
    * Validate webhook data
    */
@@ -112,13 +93,11 @@ export class DeliveryStatusManager {
       webhook.data
     );
   }
-  
   /**
    * Convert webhook to delivery status
    */
   private webhookToDeliveryStatus(webhook: EmailWebhook): EmailDeliveryStatus {
     let status: EmailDeliveryStatus['status'] = 'sent';
-    
     // Map provider-specific events to standard statuses
     switch (webhook.event_type.toLowerCase()) {
       case 'delivered':
@@ -149,7 +128,6 @@ export class DeliveryStatusManager {
       default:
         status = 'sent';
     }
-    
     return {
       message_id: webhook.message_id,
       status,
@@ -162,28 +140,19 @@ export class DeliveryStatusManager {
       webhook_data: webhook.data,
     };
   }
-  
   /**
    * Save delivery status to database
    */
   private async saveDeliveryStatus(status: EmailDeliveryStatus): Promise<void> {
     // In a real implementation, this would save to database
-    console.log('Saving delivery status:', {
-      messageId: status.message_id,
-      status: status.status,
-      timestamp: status.timestamp,
-    });
   }
-  
   /**
    * Notify status change handlers
    */
   private async notifyStatusChange(status: EmailDeliveryStatus): Promise<void> {
     // In a real implementation, this could trigger notifications
     // or update message status in the database
-    console.log('Status change notification:', status);
   }
-  
   /**
    * Get delivery statistics
    */
@@ -272,7 +241,6 @@ export class DeliveryStatusManager {
       ],
     };
   }
-  
   /**
    * Get failed deliveries for retry
    */
@@ -286,30 +254,24 @@ export class DeliveryStatusManager {
     // In a real implementation, this would query the database
     return [];
   }
-  
   /**
    * Mark message for retry
    */
   async markForRetry(messageId: string): Promise<void> {
     // In a real implementation, this would update the message status
     // and add it back to the queue
-    console.log(`Marking message ${messageId} for retry`);
   }
-  
   /**
    * Clean up old delivery statuses
    */
   async cleanupOldStatuses(olderThanDays: number = 30): Promise<number> {
     const cutoffDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
     let cleanedCount = 0;
-    
     // Clean up in-memory statuses
     for (const [messageId, statuses] of this.deliveryStatuses.entries()) {
       const filteredStatuses = statuses.filter(status => status.timestamp > cutoffDate);
-      
       if (filteredStatuses.length !== statuses.length) {
         cleanedCount += statuses.length - filteredStatuses.length;
-        
         if (filteredStatuses.length === 0) {
           this.deliveryStatuses.delete(messageId);
         } else {
@@ -317,13 +279,10 @@ export class DeliveryStatusManager {
         }
       }
     }
-    
     // In a real implementation, this would also clean up database records
-    
     return cleanedCount;
   }
 }
-
 /**
  * Webhook Handler for different email providers
  */
@@ -331,7 +290,6 @@ export class WebhookHandler {
   constructor(private deliveryManager: DeliveryStatusManager) {
     this.registerProviderHandlers();
   }
-  
   /**
    * Register provider-specific webhook handlers
    */
@@ -341,39 +299,30 @@ export class WebhookHandler {
     this.deliveryManager.registerWebhookHandler('mailgun', this.handleMailgunWebhook.bind(this));
     this.deliveryManager.registerWebhookHandler('postmark', this.handlePostmarkWebhook.bind(this));
   }
-  
   /**
    * Handle SendGrid webhook
    */
   private async handleSendGridWebhook(webhook: EmailWebhook): Promise<void> {
     // SendGrid-specific processing
-    console.log('Processing SendGrid webhook:', webhook.event_type);
   }
-  
   /**
    * Handle Amazon SES webhook
    */
   private async handleSESWebhook(webhook: EmailWebhook): Promise<void> {
     // SES-specific processing
-    console.log('Processing SES webhook:', webhook.event_type);
   }
-  
   /**
    * Handle Mailgun webhook
    */
   private async handleMailgunWebhook(webhook: EmailWebhook): Promise<void> {
     // Mailgun-specific processing
-    console.log('Processing Mailgun webhook:', webhook.event_type);
   }
-  
   /**
    * Handle Postmark webhook
    */
   private async handlePostmarkWebhook(webhook: EmailWebhook): Promise<void> {
     // Postmark-specific processing
-    console.log('Processing Postmark webhook:', webhook.event_type);
   }
-  
   /**
    * Process incoming webhook request
    */
@@ -387,7 +336,6 @@ export class WebhookHandler {
     if (!this.validateWebhookSignature(provider, data, headers)) {
       throw new Error('Invalid webhook signature');
     }
-    
     // Create webhook object
     const webhook: EmailWebhook = {
       id: `webhook_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -400,11 +348,9 @@ export class WebhookHandler {
       processed: false,
       created_at: new Date(),
     };
-    
     // Process webhook
     await this.deliveryManager.processWebhook(webhook);
   }
-  
   /**
    * Validate webhook signature
    */
@@ -417,7 +363,6 @@ export class WebhookHandler {
     // using the provider's specific method
     return true;
   }
-  
   /**
    * Extract message ID from webhook data
    */
@@ -435,7 +380,6 @@ export class WebhookHandler {
         return data.message_id || '';
     }
   }
-  
   /**
    * Extract email address from webhook data
    */
@@ -454,26 +398,22 @@ export class WebhookHandler {
     }
   }
 }
-
 /**
  * Retry Manager for failed deliveries
  */
 export class RetryManager {
   constructor(private deliveryManager: DeliveryStatusManager) {}
-  
   /**
    * Process retry queue
    */
   async processRetryQueue(): Promise<void> {
     const failedDeliveries = await this.deliveryManager.getFailedDeliveries(50);
-    
     for (const delivery of failedDeliveries) {
       if (this.shouldRetry(delivery)) {
         await this.deliveryManager.markForRetry(delivery.messageId);
       }
     }
   }
-  
   /**
    * Determine if message should be retried
    */
@@ -488,21 +428,17 @@ export class RetryManager {
     if (delivery.retryCount >= 3) {
       return false;
     }
-    
     // Don't retry permanent failures
     const permanentFailures = ['bounced', 'complained', 'invalid_email'];
     if (permanentFailures.some(failure => delivery.failureReason.includes(failure))) {
       return false;
     }
-    
     // Don't retry if failed too recently
     const hoursSinceFailure = (Date.now() - delivery.failedAt.getTime()) / (1000 * 60 * 60);
     const minHoursBeforeRetry = Math.pow(2, delivery.retryCount); // Exponential backoff
-    
     return hoursSinceFailure >= minHoursBeforeRetry;
   }
 }
-
 // Singleton instances
 export const deliveryStatusManager = new DeliveryStatusManager();
 export const webhookHandler = new WebhookHandler(deliveryStatusManager);

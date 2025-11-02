@@ -1,6 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { getTelemetryService } from '@/lib/telemetry';
-
 interface Props {
   children: ReactNode;
   onStreamingError?: (error: Error, errorInfo: ErrorInfo) => void;
@@ -13,7 +12,6 @@ interface Props {
   enableRecovery?: boolean;
   className?: string;
 }
-
 interface State {
   hasError: boolean;
   error: Error | null;
@@ -24,16 +22,13 @@ interface State {
   isRetrying: boolean;
   streamAborted: boolean;
 }
-
 export class StreamingErrorBoundary extends Component<Props, State> {
   private telemetryService = getTelemetryService();
   private maxRetries: number;
   private retryTimeout: NodeJS.Timeout | null = null;
-
   constructor(props: Props) {
     super(props);
     this.maxRetries = props.maxRetries ?? 3;
-    
     this.state = {
       hasError: false,
       error: null,
@@ -45,7 +40,6 @@ export class StreamingErrorBoundary extends Component<Props, State> {
       streamAborted: false,
     };
   }
-
   static getDerivedStateFromError(error: Error): Partial<State> {
     return {
       hasError: true,
@@ -53,18 +47,14 @@ export class StreamingErrorBoundary extends Component<Props, State> {
       errorId: `stream_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     };
   }
-
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const { correlationId, streamId, onStreamingError, preservePartialContent } = this.props;
     const { errorId } = this.state;
-
     // Store error info
     this.setState({ errorInfo });
-
     // Determine error type and severity
     const errorType = this.categorizeStreamingError(error);
     const isRecoverable = this.isRecoverableError(error);
-
     // Track streaming-specific error with comprehensive context
     this.telemetryService.track('error.streaming.boundary_caught', {
       error: {
@@ -89,18 +79,15 @@ export class StreamingErrorBoundary extends Component<Props, State> {
         streamingSupported: this.checkStreamingSupport(),
       }
     }, correlationId);
-
     // Update retry capability based on error type
     this.setState({ 
       canRetry: isRecoverable && this.state.retryCount < this.maxRetries 
     });
-
     // Call custom streaming error handler
     if (onStreamingError) {
       try {
         onStreamingError(error, errorInfo);
       } catch (handlerError) {
-        console.error('Error in streaming error handler:', handlerError);
         this.telemetryService.track('error.streaming.handler_failed', {
           originalError: error.message,
           handlerError: handlerError instanceof Error ? handlerError.message : 'Unknown',
@@ -108,15 +95,11 @@ export class StreamingErrorBoundary extends Component<Props, State> {
         });
       }
     }
-
-    console.error('StreamingErrorBoundary caught an error:', error, errorInfo);
   }
-
   componentWillUnmount() {
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
     }
-    
     this.telemetryService.track('error.streaming.boundary_unmounted', {
       hadError: this.state.hasError,
       retryCount: this.state.retryCount,
@@ -124,33 +107,26 @@ export class StreamingErrorBoundary extends Component<Props, State> {
       errorId: this.state.errorId,
     });
   }
-
   private categorizeStreamingError(error: Error): string {
     const message = error.message.toLowerCase();
     const name = error.name.toLowerCase();
-
     if (name.includes('network') || message.includes('network')) return 'network';
     if (name.includes('abort') || message.includes('abort')) return 'aborted';
     if (name.includes('timeout') || message.includes('timeout')) return 'timeout';
     if (name.includes('parse') || message.includes('parse')) return 'parsing';
     if (name.includes('stream') || message.includes('stream')) return 'streaming';
     if (name.includes('fetch') || message.includes('fetch')) return 'fetch';
-    
     return 'unknown';
   }
-
   private isRecoverableError(error: Error): boolean {
     const errorType = this.categorizeStreamingError(error);
     const recoverableTypes = ['network', 'timeout', 'fetch', 'streaming'];
-    
     // Don't retry if explicitly aborted
     if (errorType === 'aborted' || this.state.streamAborted) {
       return false;
     }
-    
     return recoverableTypes.includes(errorType);
   }
-
   private getConnectionType(): string {
     if (typeof navigator !== 'undefined' && 'connection' in navigator) {
       const connection = (navigator as any).connection;
@@ -158,23 +134,18 @@ export class StreamingErrorBoundary extends Component<Props, State> {
     }
     return 'unknown';
   }
-
   private checkStreamingSupport(): boolean {
     return typeof ReadableStream !== 'undefined' && 
            typeof fetch !== 'undefined' &&
            'body' in Response.prototype;
   }
-
   handleRetry = () => {
     const { onRetry, correlationId, streamId, enableRecovery = true } = this.props;
     const { errorId, retryCount } = this.state;
-
     if (!enableRecovery || retryCount >= this.maxRetries || this.state.streamAborted) {
       return;
     }
-
     this.setState({ isRetrying: true });
-
     this.telemetryService.track('error.streaming.retry_attempted', {
       errorId,
       correlationId,
@@ -182,17 +153,14 @@ export class StreamingErrorBoundary extends Component<Props, State> {
       retryCount: retryCount + 1,
       maxRetries: this.maxRetries,
     }, correlationId);
-
     // Exponential backoff with jitter
     const baseDelay = Math.pow(2, retryCount) * 1000;
     const jitter = Math.random() * 500;
     const delay = baseDelay + jitter;
-
     this.retryTimeout = setTimeout(() => {
       if (onRetry) {
         onRetry();
       }
-
       // Reset error state
       this.setState({
         hasError: false,
@@ -205,44 +173,36 @@ export class StreamingErrorBoundary extends Component<Props, State> {
       });
     }, delay);
   };
-
   handleAbort = () => {
     const { onAbort, correlationId, streamId } = this.props;
     const { errorId } = this.state;
-
     this.telemetryService.track('error.streaming.aborted', {
       errorId,
       correlationId,
       streamId,
       retryCount: this.state.retryCount,
     }, correlationId);
-
     this.setState({ 
       canRetry: false, 
       streamAborted: true,
       isRetrying: false 
     });
-
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
       this.retryTimeout = null;
     }
-
     if (onAbort) {
       onAbort();
     }
   };
-
   handleContinue = () => {
     const { correlationId, streamId } = this.props;
     const { errorId } = this.state;
-
     this.telemetryService.track('error.streaming.continued_with_partial', {
       errorId,
       correlationId,
       streamId,
     }, correlationId);
-
     // Clear error state but keep partial content
     this.setState({
       hasError: false,
@@ -252,7 +212,6 @@ export class StreamingErrorBoundary extends Component<Props, State> {
       canRetry: false,
     });
   };
-
   render() {
     if (this.state.hasError) {
       return (
@@ -273,11 +232,9 @@ export class StreamingErrorBoundary extends Component<Props, State> {
         />
       );
     }
-
     return this.props.children;
   }
 }
-
 interface StreamingErrorFallbackProps {
   error: Error | null;
   errorInfo: ErrorInfo | null;
@@ -293,7 +250,6 @@ interface StreamingErrorFallbackProps {
   onContinue: () => void;
   className?: string;
 }
-
 const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
   error,
   errorInfo,
@@ -316,7 +272,6 @@ const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
     if (error?.message.toLowerCase().includes('abort')) return 'Stream was interrupted';
     return 'Streaming error occurred';
   };
-
   const getErrorIcon = () => {
     if (streamAborted) {
       return (
@@ -325,7 +280,6 @@ const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
         </svg>
       );
     }
-    
     return (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -334,7 +288,6 @@ const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
       </svg>
     );
   };
-
   return (
     <div 
       className={`inline-flex items-center gap-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md text-yellow-800 dark:text-yellow-200 text-sm ${className}`}
@@ -344,28 +297,26 @@ const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
       <div className="flex-shrink-0 text-yellow-600 dark:text-yellow-400">
         {getErrorIcon()}
       </div>
-      
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 sm:w-auto md:w-full">
         <span className="font-medium">{getErrorMessage()}</span>
         {preservePartialContent && !streamAborted && (
-          <span className="ml-1 text-xs opacity-75">
+          <span className="ml-1 text-xs opacity-75 sm:text-sm md:text-base">
             (partial content preserved)
           </span>
         )}
       </div>
-
       <div className="flex items-center gap-1 ml-2">
         {canRetry && !streamAborted && (
           <button
             onClick={onRetry}
             disabled={isRetrying}
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed sm:text-sm md:text-base"
             type="button"
             title={`Retry streaming (${retryCount}/${maxRetries})`}
           >
             {isRetrying ? (
               <>
-                <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin w-3 h-3 sm:w-auto md:w-full" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -383,11 +334,10 @@ const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
             )}
           </button>
         )}
-        
         {preservePartialContent && !streamAborted && (
           <button
             onClick={onContinue}
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 rounded transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 rounded transition-colors sm:text-sm md:text-base"
             type="button"
             title="Continue with partial content"
           >
@@ -397,11 +347,10 @@ const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
             Continue
           </button>
         )}
-        
         {!streamAborted && (
           <button
             onClick={onAbort}
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 rounded transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 rounded transition-colors sm:text-sm md:text-base"
             type="button"
             title="Stop streaming"
           >
@@ -412,14 +361,12 @@ const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
           </button>
         )}
       </div>
-
       {process.env.NODE_ENV === 'development' && errorId && (
-        <div className="text-xs opacity-50 font-mono ml-2">
+        <div className="text-xs opacity-50 font-mono ml-2 sm:text-sm md:text-base">
           {errorId.split('_').pop()}
         </div>
       )}
     </div>
   );
 };
-
 export default StreamingErrorBoundary;

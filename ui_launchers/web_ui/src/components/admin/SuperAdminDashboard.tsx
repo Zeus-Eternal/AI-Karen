@@ -1,13 +1,12 @@
 'use client';
-
 /**
  * Super Admin Dashboard Component
  * 
  * This component provides the main interface for super admin users,
  * including navigation and layout for all administrative functions.
  */
-
 import React, { useState } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { useRole } from '@/hooks/useRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +28,6 @@ import {
   Activity,
   Database
 } from 'lucide-react';
-
 interface DashboardStats {
   totalUsers: number;
   totalAdmins: number;
@@ -37,7 +35,6 @@ interface DashboardStats {
   securityAlerts: number;
   systemHealth: 'healthy' | 'warning' | 'critical';
 }
-
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
   const { hasRole } = useRole();
@@ -49,7 +46,6 @@ export default function SuperAdminDashboard() {
     securityAlerts: 0,
     systemHealth: 'healthy'
   });
-
   // Load dashboard stats
   React.useEffect(() => {
     const loadStats = async () => {
@@ -60,15 +56,13 @@ export default function SuperAdminDashboard() {
           setStats(data);
         }
       } catch (error) {
-        console.error('Failed to load dashboard stats:', error);
       }
     };
-
     loadStats();
   }, []);
-
   if (!hasRole('super_admin')) {
     return (
+    <ErrorBoundary fallback={<div>Something went wrong in SuperAdminDashboard</div>}>
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-md">
           <CardHeader>
@@ -81,7 +75,6 @@ export default function SuperAdminDashboard() {
       </div>
     );
   }
-
   const getHealthBadgeVariant = (health: string) => {
     switch (health) {
       case 'healthy': return 'default';
@@ -90,7 +83,6 @@ export default function SuperAdminDashboard() {
       default: return 'default';
     }
   };
-
   return (
     <LayoutContainer size="full" className="py-6">
       <LayoutHeader
@@ -101,93 +93,87 @@ export default function SuperAdminDashboard() {
             <Badge variant={getHealthBadgeVariant(stats.systemHealth)}>
               System {stats.systemHealth}
             </Badge>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
               Welcome, {user?.email}
             </span>
           </div>
         }
       />
-
       <LayoutSection className="mt-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
+              <Activity className="h-4 w-4 sm:w-auto md:w-full" />
               Overview
             </TabsTrigger>
             <TabsTrigger value="admins" className="flex items-center gap-2">
-              <UserCheck className="h-4 w-4" />
+              <UserCheck className="h-4 w-4 sm:w-auto md:w-full" />
               Admin Management
             </TabsTrigger>
             <TabsTrigger value="system" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4 sm:w-auto md:w-full" />
               System Config
             </TabsTrigger>
             <TabsTrigger value="security" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
+              <Shield className="h-4 w-4 sm:w-auto md:w-full" />
               Security
             </TabsTrigger>
             <TabsTrigger value="audit" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
+              <FileText className="h-4 w-4 sm:w-auto md:w-full" />
               Audit Logs
             </TabsTrigger>
           </TabsList>
-
           <TabsContent value="overview" className="mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Total Users</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stats.totalUsers}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     Registered users in the system
                   </p>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Administrators</CardTitle>
-                  <UserCheck className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Administrators</CardTitle>
+                  <UserCheck className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stats.totalAdmins}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     Active admin accounts
                   </p>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Sessions</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Active Sessions</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stats.activeUsers}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     Currently logged in users
                   </p>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Security Alerts</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Security Alerts</CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-red-600">{stats.securityAlerts}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     Requires attention
                   </p>
                 </CardContent>
               </Card>
             </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -197,41 +183,40 @@ export default function SuperAdminDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button 
+                  <button 
                     variant="outline" 
                     className="w-full justify-start"
-                    onClick={() => setActiveTab('admins')}
+                    onClick={() = aria-label="Button"> setActiveTab('admins')}
                   >
-                    <UserCheck className="mr-2 h-4 w-4" />
+                    <UserCheck className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                     Create New Administrator
                   </Button>
-                  <Button 
+                  <button 
                     variant="outline" 
                     className="w-full justify-start"
-                    onClick={() => setActiveTab('system')}
+                    onClick={() = aria-label="Button"> setActiveTab('system')}
                   >
-                    <Settings className="mr-2 h-4 w-4" />
+                    <Settings className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                     Update System Configuration
                   </Button>
-                  <Button 
+                  <button 
                     variant="outline" 
                     className="w-full justify-start"
-                    onClick={() => setActiveTab('security')}
+                    onClick={() = aria-label="Button"> setActiveTab('security')}
                   >
-                    <Shield className="mr-2 h-4 w-4" />
+                    <Shield className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                     Review Security Settings
                   </Button>
-                  <Button 
+                  <button 
                     variant="outline" 
                     className="w-full justify-start"
-                    onClick={() => setActiveTab('audit')}
+                    onClick={() = aria-label="Button"> setActiveTab('audit')}
                   >
-                    <FileText className="mr-2 h-4 w-4" />
+                    <FileText className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                     View Recent Activity
                   </Button>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardHeader>
                   <CardTitle>System Status</CardTitle>
@@ -241,30 +226,30 @@ export default function SuperAdminDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Database</span>
+                    <span className="text-sm font-medium md:text-base lg:text-lg">Database</span>
                     <Badge variant="default">
-                      <Database className="mr-1 h-3 w-3" />
+                      <Database className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                       Connected
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Authentication</span>
+                    <span className="text-sm font-medium md:text-base lg:text-lg">Authentication</span>
                     <Badge variant="default">
-                      <Shield className="mr-1 h-3 w-3" />
+                      <Shield className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                       Active
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Audit Logging</span>
+                    <span className="text-sm font-medium md:text-base lg:text-lg">Audit Logging</span>
                     <Badge variant="default">
-                      <FileText className="mr-1 h-3 w-3" />
+                      <FileText className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                       Recording
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Security Monitoring</span>
+                    <span className="text-sm font-medium md:text-base lg:text-lg">Security Monitoring</span>
                     <Badge variant={stats.securityAlerts > 0 ? "destructive" : "default"}>
-                      <AlertTriangle className="mr-1 h-3 w-3" />
+                      <AlertTriangle className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                       {stats.securityAlerts > 0 ? `${stats.securityAlerts} Alerts` : 'Normal'}
                     </Badge>
                   </div>
@@ -272,19 +257,15 @@ export default function SuperAdminDashboard() {
               </Card>
             </div>
           </TabsContent>
-
           <TabsContent value="admins" className="mt-6">
             <AdminManagementInterface />
           </TabsContent>
-
           <TabsContent value="system" className="mt-6">
             <SystemConfigurationPanel />
           </TabsContent>
-
           <TabsContent value="security" className="mt-6">
             <SecuritySettingsPanel />
           </TabsContent>
-
           <TabsContent value="audit" className="mt-6">
             <AuditLogViewer 
               showExportButton={true}
@@ -295,5 +276,6 @@ export default function SuperAdminDashboard() {
         </Tabs>
       </LayoutSection>
     </LayoutContainer>
+    </ErrorBoundary>
   );
 }

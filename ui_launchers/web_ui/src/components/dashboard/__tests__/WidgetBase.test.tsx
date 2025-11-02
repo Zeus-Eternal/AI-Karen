@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { WidgetBase } from '../WidgetBase';
@@ -18,7 +18,7 @@ vi.mock('@/components/ui/button', () => ({
       disabled={disabled} 
       className={className} 
       {...props}
-    >
+     aria-label="Button">
       {children}
     </button>
   )

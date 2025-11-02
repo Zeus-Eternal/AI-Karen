@@ -1,19 +1,22 @@
+import {
+import { getExtensionAuthManager } from '../extension-auth-manager';
+import { vi } from 'vitest';
 /**
  * Tests for Extension Authentication Error Recovery Manager
  */
 
-import {
+
   ExtensionAuthRecoveryManager,
   extensionAuthRecoveryManager,
   type RecoveryAttemptResult
 } from '../extension-auth-recovery';
-import {
+
   ExtensionAuthErrorFactory,
   ExtensionAuthRecoveryStrategy
 } from '../extension-auth-errors';
-import { getExtensionAuthManager } from '../extension-auth-manager';
 
-import { vi } from 'vitest';
+
+
 
 // Mock the extension auth manager
 vi.mock('../extension-auth-manager');

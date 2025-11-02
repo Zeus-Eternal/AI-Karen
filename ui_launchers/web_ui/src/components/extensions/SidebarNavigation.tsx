@@ -24,7 +24,7 @@ export default function SidebarNavigation() {
       <div className="space-y-4">
         {pluginCategories.map((cat) => (
           <div key={cat.name} className="space-y-1">
-            <p className="text-xs font-semibold text-muted-foreground uppercase">
+            <p className="text-xs font-semibold text-muted-foreground uppercase sm:text-sm md:text-base">
               {cat.name}
             </p>
             <ul className="pl-2 space-y-1">
@@ -32,8 +32,8 @@ export default function SidebarNavigation() {
                 <li key={p.name}>
                   <button
                     type="button"
-                    className="text-sm hover:underline"
-                    onClick={() =>
+                    className="text-sm hover:underline md:text-base lg:text-lg"
+                    onClick={() = aria-label="Button">
                       navigationActions
                         .navigateToPluginProvider(cat.name.toLowerCase(), p.name)
                         .forEach((action) => dispatch(action))
@@ -56,8 +56,8 @@ export default function SidebarNavigation() {
         <li key={ext.name}>
           <button
             type="button"
-            className="text-sm hover:underline"
-            onClick={() =>
+            className="text-sm hover:underline md:text-base lg:text-lg"
+            onClick={() = aria-label="Button">
               dispatch({
                 type: "PUSH_BREADCRUMB",
                 item: { level: "items", id: ext.name, name: ext.name },

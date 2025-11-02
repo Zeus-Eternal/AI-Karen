@@ -69,15 +69,15 @@ export function ProgressIndicator({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'running':
-        return <Loader2 className="h-5 w-5 animate-spin text-blue-600" />;
+        return <Loader2 className="h-5 w-5 animate-spin text-blue-600 sm:w-auto md:w-full" />;
       case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
+        return <CheckCircle className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />;
       case 'failed':
-        return <XCircle className="h-5 w-5 text-red-600" />;
+        return <XCircle className="h-5 w-5 text-red-600 sm:w-auto md:w-full" />;
       case 'cancelled':
-        return <AlertCircle className="h-5 w-5 text-yellow-600" />;
+        return <AlertCircle className="h-5 w-5 text-yellow-600 sm:w-auto md:w-full" />;
       default:
-        return <div className="h-5 w-5 rounded-full bg-gray-300" />;
+        return <div className="h-5 w-5 rounded-full bg-gray-300 sm:w-auto md:w-full" />;
     }
   };
 
@@ -106,14 +106,14 @@ export function ProgressIndicator({
   return (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-lg ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 sm:p-4 md:p-6">
         <div className="flex items-center space-x-3">
           {getStatusIcon(progress.status)}
           <div>
             <h3 className="text-lg font-medium text-gray-900">
               {progress.operation}
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 md:text-base lg:text-lg">
               {progress.processedItems} of {progress.totalItems} items processed
             </p>
           </div>
@@ -123,7 +123,7 @@ export function ProgressIndicator({
           {progress.canCancel && progress.status === 'running' && onCancel && (
             <button
               onClick={onCancel}
-              className="px-3 py-1 text-sm font-medium text-red-600 border border-red-300 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              className="px-3 py-1 text-sm font-medium text-red-600 border border-red-300 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 md:text-base lg:text-lg"
               aria-label="Cancel operation"
             >
               Cancel
@@ -136,19 +136,19 @@ export function ProgressIndicator({
               className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
               aria-label="Close progress indicator"
             >
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5 sm:w-auto md:w-full" />
             </button>
           )}
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="p-4">
+      <div className="p-4 sm:p-4 md:p-6">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">
+          <span className="text-sm font-medium text-gray-700 md:text-base lg:text-lg">
             Progress
           </span>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-600 md:text-base lg:text-lg">
             {overallProgress}%
           </span>
         </div>
@@ -179,25 +179,25 @@ export function ProgressIndicator({
             <div className="text-2xl font-bold text-green-600">
               {progress.successfulItems}
             </div>
-            <div className="text-xs text-gray-600">Successful</div>
+            <div className="text-xs text-gray-600 sm:text-sm md:text-base">Successful</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-red-600">
               {progress.failedItems}
             </div>
-            <div className="text-xs text-gray-600">Failed</div>
+            <div className="text-xs text-gray-600 sm:text-sm md:text-base">Failed</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-gray-600">
               {progress.totalItems - progress.processedItems}
             </div>
-            <div className="text-xs text-gray-600">Remaining</div>
+            <div className="text-xs text-gray-600 sm:text-sm md:text-base">Remaining</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-blue-600">
               {formatDuration(duration)}
             </div>
-            <div className="text-xs text-gray-600">Duration</div>
+            <div className="text-xs text-gray-600 sm:text-sm md:text-base">Duration</div>
           </div>
         </div>
       </div>
@@ -205,32 +205,32 @@ export function ProgressIndicator({
       {/* Detailed Steps */}
       {showDetails && progress.steps.length > 0 && (
         <div className="border-t border-gray-200">
-          <div className="p-4">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">
+          <div className="p-4 sm:p-4 md:p-6">
+            <h4 className="text-sm font-medium text-gray-900 mb-3 md:text-base lg:text-lg">
               Operation Steps
             </h4>
             <div className="space-y-2">
               {progress.steps.map((step) => (
                 <div key={step.id} className="flex items-center space-x-3">
                   {getStatusIcon(step.status)}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 sm:w-auto md:w-full">
                     <div className="flex items-center justify-between">
                       <span className={`text-sm font-medium ${getStatusColor(step.status)}`}>
                         {step.label}
                       </span>
                       {step.progress !== undefined && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 sm:text-sm md:text-base">
                           {step.progress}%
                         </span>
                       )}
                     </div>
                     {step.details && (
-                      <p className="text-xs text-gray-600 mt-1">
+                      <p className="text-xs text-gray-600 mt-1 sm:text-sm md:text-base">
                         {step.details}
                       </p>
                     )}
                     {step.error && (
-                      <p className="text-xs text-red-600 mt-1">
+                      <p className="text-xs text-red-600 mt-1 sm:text-sm md:text-base">
                         {step.error}
                       </p>
                     )}
@@ -245,12 +245,12 @@ export function ProgressIndicator({
       {/* Error Details */}
       {progress.errors.length > 0 && (
         <div className="border-t border-gray-200">
-          <div className="p-4">
+          <div className="p-4 sm:p-4 md:p-6">
             <button
-              onClick={() => setShowErrorDetails(!showErrorDetails)}
+              onClick={() = aria-label="Button"> setShowErrorDetails(!showErrorDetails)}
               className="flex items-center justify-between w-full text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
             >
-              <h4 className="text-sm font-medium text-red-600">
+              <h4 className="text-sm font-medium text-red-600 md:text-base lg:text-lg">
                 Errors ({progress.errors.length})
               </h4>
               <span className="text-red-600">
@@ -261,15 +261,15 @@ export function ProgressIndicator({
             {showErrorDetails && (
               <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
                 {progress.errors.map((error, index) => (
-                  <div key={index} className="bg-red-50 border border-red-200 rounded-md p-3">
-                    <div className="text-sm font-medium text-red-800">
+                  <div key={index} className="bg-red-50 border border-red-200 rounded-md p-3 sm:p-4 md:p-6">
+                    <div className="text-sm font-medium text-red-800 md:text-base lg:text-lg">
                       Item: {error.itemId}
                     </div>
-                    <div className="text-sm text-red-700 mt-1">
+                    <div className="text-sm text-red-700 mt-1 md:text-base lg:text-lg">
                       {error.error}
                     </div>
                     {error.details && (
-                      <div className="text-xs text-red-600 mt-1">
+                      <div className="text-xs text-red-600 mt-1 sm:text-sm md:text-base">
                         {error.details}
                       </div>
                     )}
@@ -283,14 +283,14 @@ export function ProgressIndicator({
 
       {/* Status Message */}
       {isCompleted && (
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-gray-200 p-4 sm:p-4 md:p-6">
           <div className={`text-sm font-medium ${getStatusColor(progress.status)}`}>
             {progress.status === 'completed' && 'Operation completed successfully'}
             {progress.status === 'failed' && 'Operation failed'}
             {progress.status === 'cancelled' && 'Operation was cancelled'}
           </div>
           {progress.status === 'completed' && progress.failedItems > 0 && (
-            <div className="text-sm text-yellow-600 mt-1">
+            <div className="text-sm text-yellow-600 mt-1 md:text-base lg:text-lg">
               {progress.failedItems} item{progress.failedItems === 1 ? '' : 's'} failed to process
             </div>
           )}
@@ -335,12 +335,12 @@ export function SimpleProgressBar({
       {(label || showPercentage) && (
         <div className="flex items-center justify-between mb-2">
           {label && (
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-gray-700 md:text-base lg:text-lg">
               {label}
             </span>
           )}
           {showPercentage && (
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-600 md:text-base lg:text-lg">
               {Math.round(progress)}%
             </span>
           )}

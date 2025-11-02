@@ -157,14 +157,14 @@ export default function CenterPanel({
       <Card className="h-full flex items-center justify-center">
         <CardContent className="text-center">
           <div className="flex items-center justify-center mb-4">
-            <GitBranch className="h-8 w-8 text-muted-foreground mr-2" />
-            <FileText className="h-8 w-8 text-muted-foreground" />
+            <GitBranch className="h-8 w-8 text-muted-foreground mr-2 sm:w-auto md:w-full" />
+            <FileText className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
           </div>
           <h3 className="text-lg font-semibold mb-2">No Active Operations</h3>
           <p className="text-muted-foreground mb-4">
             Start a copilot operation to see execution plans and file changes here.
           </p>
-          <Button onClick={handleRefresh} disabled={isRefreshing} variant="outline">
+          <button onClick={handleRefresh} disabled={isRefreshing} variant="outline" aria-label="Button">
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
@@ -178,7 +178,7 @@ export default function CenterPanel({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <GitBranch className="h-5 w-5" />
+            <GitBranch className="h-5 w-5 sm:w-auto md:w-full" />
             Plan & Changes
           </CardTitle>
           
@@ -198,12 +198,12 @@ export default function CenterPanel({
               </Badge>
             )}
             
-            <Button 
+            <button 
               onClick={handleRefresh} 
               disabled={isRefreshing}
               size="sm" 
               variant="outline"
-            >
+             aria-label="Button">
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
             </Button>
           </div>
@@ -213,45 +213,45 @@ export default function CenterPanel({
         {!readonly && (
           <div className="flex items-center gap-2">
             {currentPlan?.status === "approved" && (
-              <Button 
+              <button 
                 onClick={handleExecuteAll}
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Play className="h-4 w-4 mr-1" />
+               aria-label="Button">
+                <Play className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                 Execute Plan
               </Button>
             )}
             
             {currentPlan?.status === "review" && (
               <>
-                <Button 
+                <button 
                   onClick={onPlanApprove}
                   size="sm"
                   className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                 aria-label="Button">
+                  <CheckCircle2 className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                   Approve
                 </Button>
                 
-                <Button 
-                  onClick={() => onPlanReject?.("Needs revision")}
+                <button 
+                  onClick={() = aria-label="Button"> onPlanReject?.("Needs revision")}
                   size="sm"
                   variant="outline"
                 >
-                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  <AlertTriangle className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                   Request Changes
                 </Button>
               </>
             )}
             
             {selectedFiles > 0 && (
-              <Button 
+              <button 
                 onClick={onApplySelected}
                 size="sm"
                 className="bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-1" />
+               aria-label="Button">
+                <CheckCircle2 className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                 Apply Selected ({selectedFiles})
               </Button>
             )}
@@ -259,24 +259,24 @@ export default function CenterPanel({
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-hidden p-0">
+      <CardContent className="flex-1 overflow-hidden p-0 sm:p-4 md:p-6">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "plan" | "diffs")} className="h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-2 mx-4 mb-2">
             <TabsTrigger value="plan" className="flex items-center gap-2">
-              <GitBranch className="h-4 w-4" />
+              <GitBranch className="h-4 w-4 sm:w-auto md:w-full" />
               Execution Plan
               {planSteps > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">
+                <Badge variant="secondary" className="ml-1 text-xs sm:text-sm md:text-base">
                   {pendingSteps}/{planSteps}
                 </Badge>
               )}
             </TabsTrigger>
             
             <TabsTrigger value="diffs" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
+              <FileText className="h-4 w-4 sm:w-auto md:w-full" />
               File Changes
               {fileChanges > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">
+                <Badge variant="secondary" className="ml-1 text-xs sm:text-sm md:text-base">
                   {selectedFiles}/{fileChanges}
                 </Badge>
               )}

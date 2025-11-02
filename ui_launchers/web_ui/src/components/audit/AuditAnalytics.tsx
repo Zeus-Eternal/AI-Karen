@@ -1,26 +1,38 @@
-'use client';
-
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { UserBehaviorPattern, AuditEventType, AuditSeverity } from '@/types/audit';
 import { auditLogger } from '@/services/audit-logger';
 import { PermissionGate } from '@/components/rbac';
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+'use client';
+
+
+
+
+
+
+
+
+
+
+
+
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
-import { 
+
+
   BarChart,
   Bar,
   XAxis,
@@ -37,7 +49,7 @@ import {
   AreaChart
 } from 'recharts';
 
-import { 
+
   TrendingUp, 
   TrendingDown,
   Users, 
@@ -91,13 +103,13 @@ export function AuditAnalytics({ className }: AuditAnalyticsProps) {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <Select value={timeframe} onValueChange={(value: '7d' | '30d' | '90d') => setTimeframe(value)}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
+            <select value={timeframe} onValueChange={(value: '7d' | '30d' | '90d') = aria-label="Select option"> setTimeframe(value)}>
+              <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+                <selectValue />
               </SelectTrigger>
-              <SelectContent>
+              <selectContent aria-label="Select option">
                 {Object.entries(timeframeOptions).map(([key, { label }]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                  <selectItem key={key} value={key} aria-label="Select option">{label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -192,16 +204,16 @@ function OverviewDashboard({ statistics }: OverviewDashboardProps) {
         {metrics.map((metric) => (
           <Card key={metric.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-              <metric.icon className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium md:text-base lg:text-lg">{metric.title}</CardTitle>
+              <metric.icon className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metric.value}</div>
-              <div className="flex items-center text-xs text-muted-foreground">
+              <div className="flex items-center text-xs text-muted-foreground sm:text-sm md:text-base">
                 {metric.trendUp ? (
-                  <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+                  <TrendingUp className="h-3 w-3 mr-1 text-green-500 sm:w-auto md:w-full" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 mr-1 text-red-500" />
+                  <TrendingDown className="h-3 w-3 mr-1 text-red-500 sm:w-auto md:w-full" />
                 )}
                 {metric.trend} from last period
               </div>
@@ -242,7 +254,7 @@ function OverviewDashboard({ statistics }: OverviewDashboardProps) {
               {statistics.topUsers.slice(0, 5).map((user: any, index: number) => (
                 <div key={user.userId} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs sm:w-auto md:w-full">
                       {index + 1}
                     </div>
                     <span className="font-medium">{user.username}</span>
@@ -373,13 +385,13 @@ function UserBehaviorAnalysis({
           <CardTitle>Select User for Analysis</CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={selectedUser} onValueChange={onUserSelect}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a user to analyze" />
+          <select value={selectedUser} onValueChange={onUserSelect} aria-label="Select option">
+            <selectTrigger aria-label="Select option">
+              <selectValue placeholder="Select a user to analyze" />
             </SelectTrigger>
-            <SelectContent>
+            <selectContent aria-label="Select option">
               {statistics.topUsers.map((user: any) => (
-                <SelectItem key={user.userId} value={user.userId}>
+                <selectItem key={user.userId} value={user.userId} aria-label="Select option">
                   {user.username} ({user.eventCount} events)
                 </SelectItem>
               ))}
@@ -393,29 +405,29 @@ function UserBehaviorAnalysis({
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Login Frequency</CardTitle>
+                <CardTitle className="text-sm md:text-base lg:text-lg">Login Frequency</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{userBehavior.loginFrequency}</div>
-                <p className="text-xs text-muted-foreground">logins per day</p>
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">logins per day</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Avg Session Duration</CardTitle>
+                <CardTitle className="text-sm md:text-base lg:text-lg">Avg Session Duration</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {Math.round(userBehavior.averageSessionDuration / 60)}m
                 </div>
-                <p className="text-xs text-muted-foreground">minutes</p>
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">minutes</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Risk Score</CardTitle>
+                <CardTitle className="text-sm md:text-base lg:text-lg">Risk Score</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{userBehavior.riskScore}/10</div>
@@ -441,7 +453,7 @@ function UserBehaviorAnalysis({
                 <div className="space-y-3">
                   {userBehavior.featuresUsed.slice(0, 5).map((feature) => (
                     <div key={feature.feature} className="flex items-center justify-between">
-                      <span className="text-sm">{feature.feature}</span>
+                      <span className="text-sm md:text-base lg:text-lg">{feature.feature}</span>
                       <Badge variant="outline">{feature.usageCount} uses</Badge>
                     </div>
                   ))}
@@ -458,12 +470,12 @@ function UserBehaviorAnalysis({
                   {userBehavior.riskFactors.map((factor, index) => (
                     <div key={index} className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{factor.factor}</span>
+                        <span className="text-sm font-medium md:text-base lg:text-lg">{factor.factor}</span>
                         <Badge variant={factor.score >= 7 ? 'destructive' : 'default'}>
                           {factor.score}/10
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground">{factor.description}</p>
+                      <p className="text-xs text-muted-foreground sm:text-sm md:text-base">{factor.description}</p>
                     </div>
                   ))}
                 </div>
@@ -480,13 +492,13 @@ function UserBehaviorAnalysis({
                 <div className="space-y-3">
                   {userBehavior.anomalies.map((anomaly, index) => (
                     <Alert key={index} variant={anomaly.severity === 'high' ? 'destructive' : 'default'}>
-                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
                       <AlertDescription>
                         <div className="flex items-center justify-between">
                           <div>
                             <strong>{anomaly.type}</strong>
-                            <p className="text-sm">{anomaly.description}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm md:text-base lg:text-lg">{anomaly.description}</p>
+                            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                               Detected: {format(new Date(anomaly.detectedAt), 'PPp')}
                             </p>
                           </div>
@@ -570,13 +582,13 @@ function SecurityTrends({ statistics }: { statistics: any }) {
           <CardContent>
             <div className="space-y-3">
               <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
+                <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
                 <AlertDescription>
                   Multiple failed login attempts detected for user admin
                 </AlertDescription>
               </Alert>
               <Alert>
-                <Shield className="h-4 w-4" />
+                <Shield className="h-4 w-4 sm:w-auto md:w-full" />
                 <AlertDescription>
                   Unusual access pattern detected for sensitive data
                 </AlertDescription>
@@ -612,7 +624,7 @@ function AnomalyDetection() {
               </div>
               <div className="flex items-center justify-between">
                 <span>Last Scan</span>
-                <span className="text-sm text-muted-foreground">2 minutes ago</span>
+                <span className="text-sm text-muted-foreground md:text-base lg:text-lg">2 minutes ago</span>
               </div>
             </div>
             <div className="space-y-2">
@@ -640,12 +652,12 @@ function AnomalyDetection() {
         <CardContent>
           <div className="space-y-4">
             <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>
                 <div className="flex items-center justify-between">
                   <div>
                     <strong>Unusual Login Pattern</strong>
-                    <p className="text-sm">User logging in from multiple locations simultaneously</p>
+                    <p className="text-sm md:text-base lg:text-lg">User logging in from multiple locations simultaneously</p>
                   </div>
                   <Badge variant="destructive">High</Badge>
                 </div>
@@ -653,12 +665,12 @@ function AnomalyDetection() {
             </Alert>
 
             <Alert>
-              <Eye className="h-4 w-4" />
+              <Eye className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>
                 <div className="flex items-center justify-between">
                   <div>
                     <strong>Elevated Data Access</strong>
-                    <p className="text-sm">User accessing 300% more data than usual</p>
+                    <p className="text-sm md:text-base lg:text-lg">User accessing 300% more data than usual</p>
                   </div>
                   <Badge variant="default">Medium</Badge>
                 </div>
@@ -666,12 +678,12 @@ function AnomalyDetection() {
             </Alert>
 
             <Alert>
-              <Clock className="h-4 w-4" />
+              <Clock className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>
                 <div className="flex items-center justify-between">
                   <div>
                     <strong>Off-Hours Activity</strong>
-                    <p className="text-sm">System activity detected outside normal business hours</p>
+                    <p className="text-sm md:text-base lg:text-lg">System activity detected outside normal business hours</p>
                   </div>
                   <Badge variant="secondary">Low</Badge>
                 </div>

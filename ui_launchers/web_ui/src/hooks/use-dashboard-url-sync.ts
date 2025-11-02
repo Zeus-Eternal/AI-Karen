@@ -4,12 +4,10 @@
  * Synchronizes dashboard state with URL parameters for bookmarking and sharing.
  * Implements requirement: 3.3 - URL state synchronization
  */
-
 import { useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDashboardStore, type TimeRange } from '@/store/dashboard-store';
 import type { DashboardFilter } from '@/types/dashboard';
-
 interface DashboardUrlState {
   dashboardId?: string;
   timeRange?: {
@@ -21,12 +19,10 @@ interface DashboardUrlState {
   layout?: 'grid' | 'masonry' | 'flex';
   editing?: boolean;
 }
-
 export const useDashboardUrlSync = () => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
   const {
     activeDashboardId,
     setActiveDashboard,
@@ -42,24 +38,19 @@ export const useDashboardUrlSync = () => {
     dashboards,
     updateDashboard
   } = useDashboardStore();
-
   // Parse URL parameters into dashboard state
   const parseUrlState = useCallback((): DashboardUrlState => {
     const params = new URLSearchParams(searchParams.toString());
-    
     const state: DashboardUrlState = {};
-    
     // Dashboard ID
     const dashboardId = params.get('dashboard');
     if (dashboardId) {
       state.dashboardId = dashboardId;
     }
-    
     // Time range
     const timeStart = params.get('timeStart');
     const timeEnd = params.get('timeEnd');
     const timePreset = params.get('timePreset');
-    
     if (timeStart && timeEnd) {
       state.timeRange = {
         start: timeStart,
@@ -67,7 +58,6 @@ export const useDashboardUrlSync = () => {
         preset: timePreset || undefined
       };
     }
-    
     // Filters
     const filtersParam = params.get('filters');
     if (filtersParam) {
@@ -75,29 +65,23 @@ export const useDashboardUrlSync = () => {
         JSON.parse(decodeURIComponent(filtersParam));
         state.filters = filtersParam;
       } catch (error) {
-        console.warn('Invalid filters in URL:', error);
       }
     }
-    
     // Layout
     const layout = params.get('layout');
     if (layout && ['grid', 'masonry', 'flex'].includes(layout)) {
       state.layout = layout as 'grid' | 'masonry' | 'flex';
     }
-    
     // Editing mode
     const editing = params.get('editing');
     if (editing === 'true') {
       state.editing = true;
     }
-    
     return state;
   }, [searchParams]);
-
   // Update URL with current dashboard state
   const updateUrl = useCallback((updates: Partial<DashboardUrlState>) => {
     const params = new URLSearchParams(searchParams.toString());
-    
     // Update dashboard ID
     if (updates.dashboardId !== undefined) {
       if (updates.dashboardId) {
@@ -106,7 +90,6 @@ export const useDashboardUrlSync = () => {
         params.delete('dashboard');
       }
     }
-    
     // Update time range
     if (updates.timeRange !== undefined) {
       if (updates.timeRange) {
@@ -123,7 +106,6 @@ export const useDashboardUrlSync = () => {
         params.delete('timePreset');
       }
     }
-    
     // Update filters
     if (updates.filters !== undefined) {
       if (updates.filters) {
@@ -132,7 +114,6 @@ export const useDashboardUrlSync = () => {
         params.delete('filters');
       }
     }
-    
     // Update layout
     if (updates.layout !== undefined) {
       if (updates.layout) {
@@ -141,7 +122,6 @@ export const useDashboardUrlSync = () => {
         params.delete('layout');
       }
     }
-    
     // Update editing mode
     if (updates.editing !== undefined) {
       if (updates.editing) {
@@ -150,22 +130,18 @@ export const useDashboardUrlSync = () => {
         params.delete('editing');
       }
     }
-    
     const newUrl = `${pathname}?${params.toString()}`;
     router.replace(newUrl, { scroll: false });
   }, [router, pathname, searchParams]);
-
   // Sync URL state to store on mount and URL changes
   useEffect(() => {
     const urlState = parseUrlState();
-    
     // Set active dashboard
     if (urlState.dashboardId && urlState.dashboardId !== activeDashboardId) {
       if (dashboards[urlState.dashboardId]) {
         setActiveDashboard(urlState.dashboardId);
       }
     }
-    
     // Set time range
     if (urlState.timeRange) {
       const timeRange: TimeRange = {
@@ -173,7 +149,6 @@ export const useDashboardUrlSync = () => {
         end: new Date(urlState.timeRange.end),
         preset: urlState.timeRange.preset as any
       };
-      
       // Only update if different
       if (
         timeRange.start.getTime() !== globalTimeRange.start.getTime() ||
@@ -183,16 +158,13 @@ export const useDashboardUrlSync = () => {
         setGlobalTimeRange(timeRange);
       }
     }
-    
     // Set filters
     if (urlState.filters) {
       try {
         const filters: DashboardFilter[] = JSON.parse(decodeURIComponent(urlState.filters));
-        
         // Compare with current filters
         const currentFiltersJson = JSON.stringify(globalFilters);
         const urlFiltersJson = JSON.stringify(filters);
-        
         if (currentFiltersJson !== urlFiltersJson) {
           clearGlobalFilters();
           filters.forEach(filter => {
@@ -200,10 +172,8 @@ export const useDashboardUrlSync = () => {
           });
         }
       } catch (error) {
-        console.warn('Failed to parse filters from URL:', error);
       }
     }
-    
     // Set layout
     if (urlState.layout && activeDashboardId) {
       const currentDashboard = dashboards[activeDashboardId];
@@ -211,7 +181,6 @@ export const useDashboardUrlSync = () => {
         updateDashboard(activeDashboardId, { layout: urlState.layout });
       }
     }
-    
     // Set editing mode
     if (urlState.editing !== undefined && urlState.editing !== isEditing) {
       setEditing(urlState.editing);
@@ -230,24 +199,20 @@ export const useDashboardUrlSync = () => {
     isEditing,
     setEditing
   ]);
-
   // Sync store state to URL
   useEffect(() => {
     const urlState = parseUrlState();
     const updates: Partial<DashboardUrlState> = {};
-    
     // Check dashboard ID
     if (activeDashboardId !== urlState.dashboardId) {
       updates.dashboardId = activeDashboardId || undefined;
     }
-    
     // Check time range
     const currentTimeRange = {
       start: globalTimeRange.start.toISOString(),
       end: globalTimeRange.end.toISOString(),
       preset: globalTimeRange.preset
     };
-    
     if (
       !urlState.timeRange ||
       urlState.timeRange.start !== currentTimeRange.start ||
@@ -256,13 +221,11 @@ export const useDashboardUrlSync = () => {
     ) {
       updates.timeRange = currentTimeRange;
     }
-    
     // Check filters
     const currentFiltersJson = encodeURIComponent(JSON.stringify(globalFilters));
     if (urlState.filters !== currentFiltersJson) {
       updates.filters = globalFilters.length > 0 ? currentFiltersJson : undefined;
     }
-    
     // Check layout
     if (activeDashboardId) {
       const currentDashboard = dashboards[activeDashboardId];
@@ -270,12 +233,10 @@ export const useDashboardUrlSync = () => {
         updates.layout = currentDashboard.layout;
       }
     }
-    
     // Check editing mode
     if (isEditing !== urlState.editing) {
       updates.editing = isEditing || undefined;
     }
-    
     // Update URL if there are changes
     if (Object.keys(updates).length > 0) {
       updateUrl(updates);
@@ -289,12 +250,10 @@ export const useDashboardUrlSync = () => {
     parseUrlState,
     updateUrl
   ]);
-
   // Utility functions for manual URL updates
   const setDashboardInUrl = useCallback((dashboardId: string | null) => {
     updateUrl({ dashboardId: dashboardId || undefined });
   }, [updateUrl]);
-
   const setTimeRangeInUrl = useCallback((timeRange: TimeRange) => {
     updateUrl({
       timeRange: {
@@ -304,29 +263,23 @@ export const useDashboardUrlSync = () => {
       }
     });
   }, [updateUrl]);
-
   const setFiltersInUrl = useCallback((filters: DashboardFilter[]) => {
     updateUrl({
       filters: filters.length > 0 ? encodeURIComponent(JSON.stringify(filters)) : undefined
     });
   }, [updateUrl]);
-
   const setLayoutInUrl = useCallback((layout: 'grid' | 'masonry' | 'flex') => {
     updateUrl({ layout });
   }, [updateUrl]);
-
   const setEditingInUrl = useCallback((editing: boolean) => {
     updateUrl({ editing: editing || undefined });
   }, [updateUrl]);
-
   const clearUrlState = useCallback(() => {
     router.replace(pathname, { scroll: false });
   }, [router, pathname]);
-
   return {
     // Current URL state
     urlState: parseUrlState(),
-    
     // Manual URL update functions
     setDashboardInUrl,
     setTimeRangeInUrl,
@@ -334,12 +287,10 @@ export const useDashboardUrlSync = () => {
     setLayoutInUrl,
     setEditingInUrl,
     clearUrlState,
-    
     // Utility to generate shareable URL
     generateShareableUrl: useCallback(() => {
       return `${window.location.origin}${pathname}?${searchParams.toString()}`;
     }, [pathname, searchParams])
   };
 };
-
 export default useDashboardUrlSync;

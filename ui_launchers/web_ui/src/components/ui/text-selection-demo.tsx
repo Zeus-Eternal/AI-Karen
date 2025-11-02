@@ -3,15 +3,12 @@
  * 
  * Demonstrates and tests text selection functionality across different UI elements.
  */
-
 import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTextSelection } from '@/hooks/useTextSelection';
 import { Copy, MousePointer, Trash2 } from 'lucide-react';
-
 export function TextSelectionDemo() {
   const contentRef = useRef<HTMLDivElement>(null);
-  
   const {
     selectionState,
     copySelection,
@@ -22,37 +19,31 @@ export function TextSelectionDemo() {
     selectedText,
   } = useTextSelection({
     onTextSelected: (text) => {
-      console.log('Text selected:', text);
     },
     onTextCopied: (text) => {
-      console.log('Text copied:', text);
     },
   });
-
   const handleSelectAll = () => {
     if (contentRef.current) {
       selectAllInElement(contentRef.current);
     }
   };
-
   const handleCopyCustomText = () => {
     copyToClipboard('This is custom text copied programmatically!');
   };
-
   return (
-    <div className="modern-card max-w-2xl mx-auto">
+    <div className="modern-card max-w-2xl mx-auto sm:w-auto md:w-full">
       <div className="modern-card-header">
         <h2 className="text-2xl font-semibold">Text Selection Demo</h2>
-        <p className="text-sm text-muted-foreground mt-2">
+        <p className="text-sm text-muted-foreground mt-2 md:text-base lg:text-lg">
           Test text selection, copying, and highlighting functionality.
         </p>
       </div>
-      
       <div className="modern-card-content space-y-6">
         {/* Selection Status */}
-        <div className="p-4 bg-muted/50 rounded-lg">
+        <div className="p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
           <h3 className="font-medium mb-2">Selection Status</h3>
-          <div className="space-y-2 text-sm">
+          <div className="space-y-2 text-sm md:text-base lg:text-lg">
             <div>
               <strong>Has Selection:</strong> {hasSelection ? 'Yes' : 'No'}
             </div>
@@ -67,54 +58,49 @@ export function TextSelectionDemo() {
             </div>
           </div>
         </div>
-
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2">
-          <Button
+          <button
             onClick={copySelection}
             disabled={!hasSelection}
             variant="outline"
             size="sm"
             className="text-selectable"
-          >
-            <Copy className="h-4 w-4 mr-2" />
+           aria-label="Button">
+            <Copy className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Copy Selection
           </Button>
-          
-          <Button
+          <button
             onClick={handleSelectAll}
             variant="outline"
             size="sm"
             className="text-selectable"
-          >
-            <MousePointer className="h-4 w-4 mr-2" />
+           aria-label="Button">
+            <MousePointer className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Select All Content
           </Button>
-          
-          <Button
+          <button
             onClick={clearSelection}
             disabled={!hasSelection}
             variant="outline"
             size="sm"
             className="text-selectable"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
+           aria-label="Button">
+            <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Clear Selection
           </Button>
-          
-          <Button
+          <button
             onClick={handleCopyCustomText}
             variant="outline"
             size="sm"
             className="text-selectable"
-          >
+           aria-label="Button">
             Copy Custom Text
           </Button>
         </div>
-
         {/* Test Content */}
         <div ref={contentRef} className="space-y-4">
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border rounded-lg sm:p-4 md:p-6">
             <h3 className="font-semibold mb-2">Regular Text Content</h3>
             <p className="text-selectable">
               This is regular paragraph text that should be fully selectable. 
@@ -122,21 +108,17 @@ export function TextSelectionDemo() {
               The text selection should work smoothly across word boundaries and line breaks.
             </p>
           </div>
-
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border rounded-lg sm:p-4 md:p-6">
             <h3 className="font-semibold mb-2">Code Block</h3>
-            <pre className="bg-muted p-3 rounded text-sm overflow-x-auto copyable">
+            <pre className="bg-muted p-3 rounded text-sm overflow-x-auto copyable md:text-base lg:text-lg">
 {`function greetUser(name) {
-  console.log(\`Hello, \${name}!\`);
   return \`Welcome to the application, \${name}\`;
 }
-
 const user = "Karen AI User";
 greetUser(user);`}
             </pre>
           </div>
-
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border rounded-lg sm:p-4 md:p-6">
             <h3 className="font-semibold mb-2">Mixed Content</h3>
             <div className="space-y-2">
               <p className="text-selectable">
@@ -151,28 +133,26 @@ greetUser(user);`}
               </ul>
             </div>
           </div>
-
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border rounded-lg sm:p-4 md:p-6">
             <h3 className="font-semibold mb-2">Interactive Elements</h3>
             <div className="space-y-2">
-              <Button variant="outline" className="text-selectable">
+              <button variant="outline" className="text-selectable" aria-label="Button">
                 This button text is selectable
               </Button>
               <div className="flex gap-2">
-                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm text-selectable">
+                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm text-selectable md:text-base lg:text-lg">
                   Tag 1
                 </span>
-                <span className="px-3 py-1 bg-secondary/10 text-secondary rounded-full text-sm text-selectable">
+                <span className="px-3 py-1 bg-secondary/10 text-secondary rounded-full text-sm text-selectable md:text-base lg:text-lg">
                   Tag 2
                 </span>
               </div>
             </div>
           </div>
-
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border rounded-lg sm:p-4 md:p-6">
             <h3 className="font-semibold mb-2">Long Text for Scrolling</h3>
             <p className="text-selectable leading-relaxed">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod 
+               dolor sit amet, consectetur adipiscing elit. Sed do eiusmod 
               tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
               quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
               Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
@@ -186,11 +166,10 @@ greetUser(user);`}
             </p>
           </div>
         </div>
-
         {/* Instructions */}
-        <div className="p-4 bg-info/10 border border-info/20 rounded-lg">
+        <div className="p-4 bg-info/10 border border-info/20 rounded-lg sm:p-4 md:p-6">
           <h3 className="font-semibold text-info-700 mb-2">How to Test</h3>
-          <ul className="text-sm text-info-600 space-y-1 list-disc list-inside">
+          <ul className="text-sm text-info-600 space-y-1 list-disc list-inside md:text-base lg:text-lg">
             <li>Try selecting text in any of the content areas above</li>
             <li>Use Ctrl+C (or Cmd+C on Mac) to copy selected text</li>
             <li>Right-click on selected text to see the context menu</li>
@@ -203,5 +182,4 @@ greetUser(user);`}
     </div>
   );
 }
-
 export default TextSelectionDemo;

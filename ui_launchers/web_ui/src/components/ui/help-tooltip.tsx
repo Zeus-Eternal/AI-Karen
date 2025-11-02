@@ -1,14 +1,21 @@
-"use client";
-
 import { useState } from 'react';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
+import { Badge } from '@/components/ui/badge';
+import { HelpCircle, ExternalLink } from 'lucide-react';
+import { getHelpContent, type HelpContent } from '@/lib/help-content';
+"use client";
+
+
+
+
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
+
   Dialog,
   DialogContent,
   DialogDescription,
@@ -16,9 +23,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { HelpCircle, ExternalLink } from 'lucide-react';
-import { getHelpContent, type HelpContent } from '@/lib/help-content';
+
+
+
 
 interface HelpTooltipProps {
   helpKey: string;
@@ -51,8 +58,22 @@ export function HelpTooltip({
   const TriggerComponent = () => {
     switch (variant) {
       case 'text':
+
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Handle escape key
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
         return (
-          <Button variant="link" size="sm" className={`p-0 h-auto text-xs text-muted-foreground ${className}`}>
+          <button variant="link" size="sm" className={`p-0 h-auto text-xs text-muted-foreground ${className}`} aria-label="Button">
             <HelpCircle className={`${iconSize} mr-1`} />
             Help
           </Button>
@@ -65,11 +86,11 @@ export function HelpTooltip({
         );
       default:
         return (
-          <Button 
+          <button 
             variant="ghost" 
             size="sm" 
             className={`p-1 h-auto w-auto text-muted-foreground hover:text-foreground ${className}`}
-          >
+           aria-label="Button">
             <HelpCircle className={iconSize} />
           </Button>
         );
@@ -86,10 +107,10 @@ export function HelpTooltip({
                 <TriggerComponent />
               </div>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl sm:w-auto md:w-full">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <HelpCircle className="h-5 w-5 text-primary" />
+                  <HelpCircle className="h-5 w-5 text-primary sm:w-auto md:w-full" />
                   {helpContent.title}
                 </DialogTitle>
                 <DialogDescription>
@@ -101,7 +122,7 @@ export function HelpTooltip({
                 {helpContent.details && (
                   <div>
                     <h4 className="font-medium mb-2">Details</h4>
-                    <div className="text-sm text-muted-foreground whitespace-pre-line">
+                    <div className="text-sm text-muted-foreground whitespace-pre-line md:text-base lg:text-lg">
                       {helpContent.details}
                     </div>
                   </div>
@@ -113,7 +134,7 @@ export function HelpTooltip({
                     <div className="flex flex-wrap gap-2">
                       {helpContent.links.map((link, index) => (
                         <Badge key={index} variant="outline" className="gap-1">
-                          <ExternalLink className="h-3 w-3" />
+                          <ExternalLink className="h-3 w-3 sm:w-auto md:w-full" />
                           <a 
                             href={link.url} 
                             target="_blank" 
@@ -132,8 +153,8 @@ export function HelpTooltip({
           </Dialog>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
-          <p className="text-sm">{helpContent.description}</p>
-          <p className="text-xs text-muted-foreground mt-1">Click for more details</p>
+          <p className="text-sm md:text-base lg:text-lg">{helpContent.description}</p>
+          <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">Click for more details</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -190,15 +211,15 @@ export function QuickHelp({
   return (
     <div className={`border rounded-lg p-3 ${className}`}>
       <div className="flex items-center justify-between">
-        <h4 className="font-medium text-sm flex items-center gap-2">
-          <HelpCircle className="h-4 w-4 text-primary" />
+        <h4 className="font-medium text-sm flex items-center gap-2 md:text-base lg:text-lg">
+          <HelpCircle className="h-4 w-4 text-primary sm:w-auto md:w-full" />
           {title}
         </h4>
-        <Button
+        <button
           variant="ghost"
           size="sm"
-          onClick={() => setExpanded(!expanded)}
-          className="text-xs"
+          onClick={() = aria-label="Button"> setExpanded(!expanded)}
+          className="text-xs sm:text-sm md:text-base"
         >
           {expanded ? 'Hide' : 'Show'} Help
         </Button>
@@ -211,7 +232,7 @@ export function QuickHelp({
             if (!content) return null;
             
             return (
-              <div key={helpKey} className="flex items-start gap-2 text-sm">
+              <div key={helpKey} className="flex items-start gap-2 text-sm md:text-base lg:text-lg">
                 <HelpTooltip helpKey={helpKey} category={category} variant="inline" size="sm" />
                 <div>
                   <span className="font-medium">{content.title}:</span>

@@ -1,6 +1,6 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,6 @@ import {
   Shield,
   Target
 } from 'lucide-react';
-
 interface QualityMetrics {
   testCoverage: {
     unit: number;
@@ -65,7 +64,6 @@ interface QualityMetrics {
     complexity: number;
   };
 }
-
 interface QualityTrend {
   date: string;
   coverage: number;
@@ -74,7 +72,6 @@ interface QualityTrend {
   accessibility: number;
   security: number;
 }
-
 interface QualityGate {
   id: string;
   name: string;
@@ -83,47 +80,38 @@ interface QualityGate {
   actual: number;
   description: string;
 }
-
 export function QualityAssuranceDashboard() {
   const [metrics, setMetrics] = useState<QualityMetrics | null>(null);
   const [trends, setTrends] = useState<QualityTrend[]>([]);
   const [qualityGates, setQualityGates] = useState<QualityGate[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
   useEffect(() => {
     loadQualityMetrics();
     const interval = setInterval(loadQualityMetrics, 300000); // Update every 5 minutes
     return () => clearInterval(interval);
   }, []);
-
   const loadQualityMetrics = async () => {
     try {
       setLoading(true);
-      
       // Load current metrics
       const metricsResponse = await fetch('/api/qa/metrics');
       const metricsData = await metricsResponse.json();
       setMetrics(metricsData);
-      
       // Load trends
       const trendsResponse = await fetch('/api/qa/trends');
       const trendsData = await trendsResponse.json();
       setTrends(trendsData);
-      
       // Load quality gates
       const gatesResponse = await fetch('/api/qa/quality-gates');
       const gatesData = await gatesResponse.json();
       setQualityGates(gatesData);
-      
       setLastUpdated(new Date());
     } catch (error) {
-      console.error('Failed to load quality metrics:', error);
     } finally {
       setLoading(false);
     }
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'passed': return 'text-green-600';
@@ -132,25 +120,22 @@ export function QualityAssuranceDashboard() {
       default: return 'text-gray-600';
     }
   };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'passed': return <CheckCircle className="h-4 w-4" />;
-      case 'failed': return <XCircle className="h-4 w-4" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4" />;
+      case 'passed': return <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'failed': return <XCircle className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'warning': return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
       default: return null;
     }
   };
-
   const getTrendIcon = (current: number, previous: number) => {
     if (current > previous) {
-      return <TrendingUp className="h-4 w-4 text-green-600" />;
+      return <TrendingUp className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
     } else if (current < previous) {
-      return <TrendingDown className="h-4 w-4 text-red-600" />;
+      return <TrendingDown className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
     }
     return null;
   };
-
   const exportReport = async () => {
     try {
       const response = await fetch('/api/qa/export-report', {
@@ -158,7 +143,6 @@ export function QualityAssuranceDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ format: 'pdf', includeCharts: true })
       });
-      
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -171,19 +155,17 @@ export function QualityAssuranceDashboard() {
         document.body.removeChild(a);
       }
     } catch (error) {
-      console.error('Failed to export report:', error);
     }
   };
-
   if (loading || !metrics) {
     return (
+    <ErrorBoundary fallback={<div>Something went wrong in QualityAssuranceDashboard</div>}>
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 animate-spin" />
+        <RefreshCw className="h-8 w-8 animate-spin sm:w-auto md:w-full" />
         <span className="ml-2">Loading quality metrics...</span>
       </div>
     );
   }
-
   const overallQualityScore = Math.round(
     (metrics.testCoverage.overall + 
      (metrics.testResults.passed / metrics.testResults.total * 100) +
@@ -191,7 +173,6 @@ export function QualityAssuranceDashboard() {
      metrics.security.score +
      metrics.codeQuality.maintainabilityIndex) / 5
   );
-
   return (
     <div className="space-y-6" data-testid="qa-dashboard">
       {/* Header */}
@@ -203,22 +184,21 @@ export function QualityAssuranceDashboard() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" onClick={loadQualityMetrics} disabled={loading}>
+          <button variant="outline" onClick={loadQualityMetrics} disabled={loading} aria-label="Button">
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button variant="outline" onClick={exportReport}>
-            <Download className="h-4 w-4 mr-2" />
+          <button variant="outline" onClick={exportReport} aria-label="Button">
+            <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Export Report
           </Button>
         </div>
       </div>
-
       {/* Overall Quality Score */}
       <Card data-testid="overall-quality-score">
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Target className="h-5 w-5 mr-2" />
+            <Target className="h-5 w-5 mr-2 sm:w-auto md:w-full" />
             Overall Quality Score
           </CardTitle>
           <CardDescription>
@@ -238,13 +218,12 @@ export function QualityAssuranceDashboard() {
             </Badge>
           </div>
           {lastUpdated && (
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm text-muted-foreground mt-2 md:text-base lg:text-lg">
               Last updated: {lastUpdated.toLocaleString()}
             </p>
           )}
         </CardContent>
       </Card>
-
       {/* Quality Gates */}
       <Card data-testid="quality-gates">
         <CardHeader>
@@ -258,7 +237,7 @@ export function QualityAssuranceDashboard() {
             {qualityGates.map((gate) => (
               <div
                 key={gate.id}
-                className="flex items-center justify-between p-3 border rounded-lg"
+                className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6"
                 data-testid={`quality-gate-${gate.id}`}
               >
                 <div className="flex items-center space-x-2">
@@ -267,7 +246,7 @@ export function QualityAssuranceDashboard() {
                   </span>
                   <div>
                     <p className="font-medium">{gate.name}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                       {gate.actual}% (min: {gate.threshold}%)
                     </p>
                   </div>
@@ -280,7 +259,6 @@ export function QualityAssuranceDashboard() {
           </div>
         </CardContent>
       </Card>
-
       {/* Detailed Metrics Tabs */}
       <Tabs defaultValue="testing" className="space-y-4">
         <TabsList className="grid w-full grid-cols-5">
@@ -290,7 +268,6 @@ export function QualityAssuranceDashboard() {
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="code-quality">Code Quality</TabsTrigger>
         </TabsList>
-
         {/* Testing Tab */}
         <TabsContent value="testing" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -298,7 +275,7 @@ export function QualityAssuranceDashboard() {
             <Card data-testid="test-coverage-card">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Eye className="h-4 w-4 mr-2" />
+                  <Eye className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Test Coverage
                 </CardTitle>
               </CardHeader>
@@ -340,12 +317,11 @@ export function QualityAssuranceDashboard() {
                 </div>
               </CardContent>
             </Card>
-
             {/* Test Results */}
             <Card data-testid="test-results-card">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <CheckCircle className="h-4 w-4 mr-2" />
+                  <CheckCircle className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Test Results
                 </CardTitle>
               </CardHeader>
@@ -355,25 +331,25 @@ export function QualityAssuranceDashboard() {
                     <div className="text-2xl font-bold text-green-600">
                       {metrics.testResults.passed}
                     </div>
-                    <div className="text-sm text-muted-foreground">Passed</div>
+                    <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Passed</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-red-600">
                       {metrics.testResults.failed}
                     </div>
-                    <div className="text-sm text-muted-foreground">Failed</div>
+                    <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Failed</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-yellow-600">
                       {metrics.testResults.skipped}
                     </div>
-                    <div className="text-sm text-muted-foreground">Skipped</div>
+                    <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Skipped</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-orange-600">
                       {metrics.testResults.flaky}
                     </div>
-                    <div className="text-sm text-muted-foreground">Flaky</div>
+                    <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Flaky</div>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t">
@@ -392,59 +368,54 @@ export function QualityAssuranceDashboard() {
             </Card>
           </div>
         </TabsContent>
-
         {/* Performance Tab */}
         <TabsContent value="performance" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card data-testid="load-time-metric">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Load Time</CardTitle>
+                <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Load Time</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{metrics.performance.loadTime}ms</div>
-                <p className="text-xs text-muted-foreground">Average page load</p>
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Average page load</p>
               </CardContent>
             </Card>
-            
             <Card data-testid="interaction-time-metric">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Interaction Time</CardTitle>
+                <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Interaction Time</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{metrics.performance.interactionTime}ms</div>
-                <p className="text-xs text-muted-foreground">Average response time</p>
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Average response time</p>
               </CardContent>
             </Card>
-            
             <Card data-testid="memory-usage-metric">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Memory Usage</CardTitle>
+                <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Memory Usage</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{metrics.performance.memoryUsage}MB</div>
-                <p className="text-xs text-muted-foreground">Peak memory usage</p>
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Peak memory usage</p>
               </CardContent>
             </Card>
-            
             <Card data-testid="error-rate-metric">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
+                <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Error Rate</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{metrics.performance.errorRate}%</div>
-                <p className="text-xs text-muted-foreground">Request error rate</p>
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Request error rate</p>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
-
         {/* Accessibility Tab */}
         <TabsContent value="accessibility" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card data-testid="accessibility-score-card">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Shield className="h-4 w-4 mr-2" />
+                  <Shield className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Accessibility Score
                 </CardTitle>
               </CardHeader>
@@ -458,7 +429,6 @@ export function QualityAssuranceDashboard() {
                 </div>
               </CardContent>
             </Card>
-            
             <Card data-testid="accessibility-issues-card">
               <CardHeader>
                 <CardTitle>Accessibility Issues</CardTitle>
@@ -467,21 +437,21 @@ export function QualityAssuranceDashboard() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="flex items-center">
-                      <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                      <XCircle className="h-4 w-4 mr-2 text-red-600 sm:w-auto md:w-full" />
                       Violations
                     </span>
                     <Badge variant="destructive">{metrics.accessibility.violations}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="flex items-center">
-                      <AlertTriangle className="h-4 w-4 mr-2 text-yellow-600" />
+                      <AlertTriangle className="h-4 w-4 mr-2 text-yellow-600 sm:w-auto md:w-full" />
                       Warnings
                     </span>
                     <Badge variant="secondary">{metrics.accessibility.warnings}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="flex items-center">
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                      <CheckCircle className="h-4 w-4 mr-2 text-green-600 sm:w-auto md:w-full" />
                       Passes
                     </span>
                     <Badge variant="default">{metrics.accessibility.passes}</Badge>
@@ -491,14 +461,13 @@ export function QualityAssuranceDashboard() {
             </Card>
           </div>
         </TabsContent>
-
         {/* Security Tab */}
         <TabsContent value="security" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card data-testid="security-score-card">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Shield className="h-4 w-4 mr-2" />
+                  <Shield className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Security Score
                 </CardTitle>
               </CardHeader>
@@ -512,7 +481,6 @@ export function QualityAssuranceDashboard() {
                 </div>
               </CardContent>
             </Card>
-            
             <Card data-testid="vulnerabilities-card">
               <CardHeader>
                 <CardTitle>Vulnerabilities</CardTitle>
@@ -540,57 +508,52 @@ export function QualityAssuranceDashboard() {
             </Card>
           </div>
         </TabsContent>
-
         {/* Code Quality Tab */}
         <TabsContent value="code-quality" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card data-testid="maintainability-metric">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Maintainability</CardTitle>
+                <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Maintainability</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{metrics.codeQuality.maintainabilityIndex}%</div>
-                <p className="text-xs text-muted-foreground">Maintainability index</p>
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Maintainability index</p>
               </CardContent>
             </Card>
-            
             <Card data-testid="technical-debt-metric">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Technical Debt</CardTitle>
+                <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Technical Debt</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{metrics.codeQuality.technicalDebt}h</div>
-                <p className="text-xs text-muted-foreground">Estimated debt</p>
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Estimated debt</p>
               </CardContent>
             </Card>
-            
             <Card data-testid="duplicate-code-metric">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Duplicate Code</CardTitle>
+                <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Duplicate Code</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{metrics.codeQuality.duplicateCode}%</div>
-                <p className="text-xs text-muted-foreground">Code duplication</p>
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Code duplication</p>
               </CardContent>
             </Card>
-            
             <Card data-testid="complexity-metric">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Complexity</CardTitle>
+                <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Complexity</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{metrics.codeQuality.complexity}</div>
-                <p className="text-xs text-muted-foreground">Cyclomatic complexity</p>
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Cyclomatic complexity</p>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
       </Tabs>
-
       {/* Alerts */}
       {qualityGates.some(gate => gate.status === 'failed') && (
         <Alert variant="destructive" data-testid="quality-gate-failures">
-          <Bug className="h-4 w-4" />
+          <Bug className="h-4 w-4 sm:w-auto md:w-full" />
           <AlertTitle>Quality Gate Failures</AlertTitle>
           <AlertDescription>
             Some quality gates are failing. Review the issues above and address them before deployment.
@@ -598,5 +561,6 @@ export function QualityAssuranceDashboard() {
         </Alert>
       )}
     </div>
+    </ErrorBoundary>
   );
 }

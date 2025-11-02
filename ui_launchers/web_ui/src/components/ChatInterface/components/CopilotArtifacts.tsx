@@ -25,37 +25,37 @@ const CopilotArtifacts: React.FC<CopilotArtifactsProps> = ({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Wand2 className="h-4 w-4" /> Copilot Artifacts
+        <CardTitle className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
+          <Wand2 className="h-4 w-4 sm:w-auto md:w-full" /> Copilot Artifacts
           <Badge variant="secondary">{artifacts.length}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {artifacts.map((artifact) => (
-          <div key={artifact.id} className="space-y-2 rounded-md border p-3 bg-muted/40">
+          <div key={artifact.id} className="space-y-2 rounded-md border p-3 bg-muted/40 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-sm">{artifact.title}</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="font-medium text-sm md:text-base lg:text-lg">{artifact.title}</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   {artifact.type} • {artifact.language}
                 </div>
               </div>
-              <Badge variant="outline" className="text-xs capitalize">
+              <Badge variant="outline" className="text-xs capitalize sm:text-sm md:text-base">
                 {artifact.status}
               </Badge>
             </div>
-            <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+            <div className="text-sm text-muted-foreground whitespace-pre-wrap md:text-base lg:text-lg">
               {artifact.description}
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="default" onClick={() => onApprove(artifact.id)}>
-                <Check className="h-4 w-4 mr-1" /> Approve
+              <button size="sm" variant="default" onClick={() = aria-label="Button"> onApprove(artifact.id)}>
+                <Check className="h-4 w-4 mr-1 sm:w-auto md:w-full" /> Approve
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => onApply(artifact.id)}>
-                <Wand2 className="h-4 w-4 mr-1" /> Apply
+              <button size="sm" variant="secondary" onClick={() = aria-label="Button"> onApply(artifact.id)}>
+                <Wand2 className="h-4 w-4 mr-1 sm:w-auto md:w-full" /> Apply
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => onReject(artifact.id)}>
-                <X className="h-4 w-4 mr-1" /> Reject
+              <button size="sm" variant="ghost" onClick={() = aria-label="Button"> onReject(artifact.id)}>
+                <X className="h-4 w-4 mr-1 sm:w-auto md:w-full" /> Reject
               </Button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+
 import { useHaptic } from './use-haptic';
 import { HapticSettingsProps, HapticPattern } from './types';
 import { getHapticPatternInfo } from './haptic-utils';
@@ -36,7 +36,7 @@ export function HapticSettings({
           <span className="text-lg">📱</span>
           <div>
             <h3 className="font-medium">Haptic Feedback Not Supported</h3>
-            <p className="text-sm">Your device doesn't support haptic feedback.</p>
+            <p className="text-sm md:text-base lg:text-lg">Your device doesn't support haptic feedback.</p>
           </div>
         </div>
       </div>
@@ -46,12 +46,12 @@ export function HapticSettings({
   return (
     <div className={cn('space-y-6', className)}>
       {/* Main Toggle */}
-      <div className="flex items-center justify-between p-4 border rounded-lg">
+      <div className="flex items-center justify-between p-4 border rounded-lg sm:p-4 md:p-6">
         <div className="flex items-center space-x-3">
           <span className="text-2xl">📳</span>
           <div>
             <h3 className="font-medium">Haptic Feedback</h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
               Enable vibration feedback for interactions
             </p>
           </div>
@@ -62,7 +62,7 @@ export function HapticSettings({
             'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
             enabled ? 'bg-primary' : 'bg-muted'
           )}
-        >
+         aria-label="Button">
           <span
             className={cn(
               'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
@@ -82,14 +82,14 @@ export function HapticSettings({
               return (
                 <button
                   key={pattern}
-                  onClick={() => handleTestPattern(pattern)}
+                  onClick={() = aria-label="Button"> handleTestPattern(pattern)}
                   className={cn(
                     'p-3 text-left border rounded-lg hover:bg-muted/50 transition-colors',
                     'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
                   )}
                 >
-                  <div className="font-medium text-sm">{info.name}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
+                  <div className="font-medium text-sm md:text-base lg:text-lg">{info.name}</div>
+                  <div className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                     {info.description}
                   </div>
                   <div className="flex items-center mt-2">
@@ -99,7 +99,7 @@ export function HapticSettings({
                       info.intensity === 'medium' && 'bg-yellow-500',
                       info.intensity === 'high' && 'bg-red-500'
                     )} />
-                    <span className="text-xs text-muted-foreground capitalize">
+                    <span className="text-xs text-muted-foreground capitalize sm:text-sm md:text-base">
                       {info.intensity}
                     </span>
                   </div>
@@ -111,9 +111,9 @@ export function HapticSettings({
       )}
 
       {/* Information */}
-      <div className="p-4 bg-muted/30 rounded-lg">
+      <div className="p-4 bg-muted/30 rounded-lg sm:p-4 md:p-6">
         <h4 className="font-medium mb-2">About Haptic Feedback</h4>
-        <ul className="text-sm text-muted-foreground space-y-1">
+        <ul className="text-sm text-muted-foreground space-y-1 md:text-base lg:text-lg">
           <li>• Provides tactile feedback for better user experience</li>
           <li>• Works on mobile devices and some desktop browsers</li>
           <li>• Can be disabled in device settings or browser preferences</li>

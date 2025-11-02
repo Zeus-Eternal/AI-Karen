@@ -2,7 +2,7 @@
  * Tests for Screen Reader components
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import {
@@ -31,22 +31,22 @@ const TestAnnouncementComponent = () => {
 
   return (
     <div>
-      <button onClick={() => announce('Test message', 'polite')}>
+      <button onClick={() = aria-label="Button"> announce('Test message', 'polite')}>
         Announce
       </button>
-      <button onClick={() => announceNavigation('Home page')}>
+      <button onClick={() = aria-label="Button"> announceNavigation('Home page')}>
         Announce Navigation
       </button>
-      <button onClick={() => announceAction('Save')}>
+      <button onClick={() = aria-label="Button"> announceAction('Save')}>
         Announce Action
       </button>
-      <button onClick={() => announceError('Something went wrong')}>
+      <button onClick={() = aria-label="Button"> announceError('Something went wrong')}>
         Announce Error
       </button>
-      <button onClick={() => announceSuccess('Operation completed')}>
+      <button onClick={() = aria-label="Button"> announceSuccess('Operation completed')}>
         Announce Success
       </button>
-      <button onClick={() => announceLoading('Loading data')}>
+      <button onClick={() = aria-label="Button"> announceLoading('Loading data')}>
         Announce Loading
       </button>
     </div>
@@ -89,7 +89,7 @@ describe('VisuallyHidden', () => {
 describe('ScreenReaderAnnouncer', () => {
   it('should provide announce function to children', () => {
     const TestChild = ({ announce }: { announce: (message: string) => void }) => (
-      <button onClick={() => announce('Test announcement')}>
+      <button onClick={() = aria-label="Button"> announce('Test announcement')}>
         Announce
       </button>
     );

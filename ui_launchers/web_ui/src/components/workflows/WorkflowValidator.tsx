@@ -252,8 +252,8 @@ export function WorkflowValidationDisplay({
 }: WorkflowValidationDisplayProps) {
   if (validationResult.valid && validationResult.warnings.length === 0) {
     return (
-      <div className="text-green-600 text-sm flex items-center gap-2">
-        <div className="w-2 h-2 bg-green-500 rounded-full" />
+      <div className="text-green-600 text-sm flex items-center gap-2 md:text-base lg:text-lg">
+        <div className="w-2 h-2 bg-green-500 rounded-full sm:w-auto md:w-full" />
         Workflow validation passed
       </div>
     );
@@ -262,18 +262,18 @@ export function WorkflowValidationDisplay({
   return (
     <div className="space-y-2">
       {validationResult.errors.map(error => (
-        <div key={error.id} className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
-          <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0" />
+        <div key={error.id} className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded text-sm md:text-base lg:text-lg">
+          <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0 sm:w-auto md:w-full" />
           <div className="flex-1">
             <p className="text-red-800 font-medium">Error: {error.message}</p>
             {error.nodeId && (
-              <p className="text-red-600 text-xs mt-1">Node: {error.nodeId}</p>
+              <p className="text-red-600 text-xs mt-1 sm:text-sm md:text-base">Node: {error.nodeId}</p>
             )}
           </div>
           {onFixError && (
             <button
-              onClick={() => onFixError(error.id)}
-              className="text-red-600 hover:text-red-800 text-xs underline"
+              onClick={() = aria-label="Button"> onFixError(error.id)}
+              className="text-red-600 hover:text-red-800 text-xs underline sm:text-sm md:text-base"
             >
               Fix
             </button>
@@ -282,15 +282,15 @@ export function WorkflowValidationDisplay({
       ))}
 
       {validationResult.warnings.map(warning => (
-        <div key={warning.id} className="flex items-start gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
-          <div className="w-2 h-2 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0" />
+        <div key={warning.id} className="flex items-start gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm md:text-base lg:text-lg">
+          <div className="w-2 h-2 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0 sm:w-auto md:w-full" />
           <div className="flex-1">
             <p className="text-yellow-800 font-medium">Warning: {warning.message}</p>
             {warning.suggestion && (
-              <p className="text-yellow-700 text-xs mt-1">Suggestion: {warning.suggestion}</p>
+              <p className="text-yellow-700 text-xs mt-1 sm:text-sm md:text-base">Suggestion: {warning.suggestion}</p>
             )}
             {warning.nodeId && (
-              <p className="text-yellow-600 text-xs mt-1">Node: {warning.nodeId}</p>
+              <p className="text-yellow-600 text-xs mt-1 sm:text-sm md:text-base">Node: {warning.nodeId}</p>
             )}
           </div>
         </div>

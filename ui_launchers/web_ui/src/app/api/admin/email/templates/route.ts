@@ -4,7 +4,6 @@
  * API endpoints for managing email templates including CRUD operations,
  * validation, and preview generation.
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { 
@@ -16,7 +15,6 @@ import {
 import { PaginatedResponse } from '@/types/admin';
 import { EmailTemplateManager, TemplateEngine } from '@/lib/email/template-engine';
 import { auditLogger } from '@/lib/audit/audit-logger';
-
 /**
  * GET /api/admin/email/templates
  * List email templates with filtering and pagination
@@ -27,7 +25,6 @@ export async function GET(request: NextRequest) {
     if (!authResult.success) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -35,28 +32,22 @@ export async function GET(request: NextRequest) {
     const isActive = searchParams.get('is_active') === 'true' ? true : 
                     searchParams.get('is_active') === 'false' ? false : undefined;
     const search = searchParams.get('search') || undefined;
-
     const filter: EmailTemplateFilter = {
       template_type: templateType || undefined,
       is_active: isActive,
       search,
     };
-
     // In a real implementation, this would query the database
     // For now, return mock data
     const mockTemplates: EmailTemplate[] = await EmailTemplateManager.createDefaultTemplates(authResult.user?.user_id || 'unknown');
-    
     // Apply filters
     let filteredTemplates = mockTemplates;
-    
     if (filter.template_type) {
       filteredTemplates = filteredTemplates.filter(t => t.template_type === filter.template_type);
     }
-    
     if (filter.is_active !== undefined) {
       filteredTemplates = filteredTemplates.filter(t => t.is_active === filter.is_active);
     }
-    
     if (filter.search) {
       const searchLower = filter.search.toLowerCase();
       filteredTemplates = filteredTemplates.filter(t => 
@@ -64,12 +55,10 @@ export async function GET(request: NextRequest) {
         t.subject.toLowerCase().includes(searchLower)
       );
     }
-
     // Apply pagination
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
     const paginatedTemplates = filteredTemplates.slice(startIndex, endIndex);
-
     const response: PaginatedResponse<EmailTemplate> = {
       data: paginatedTemplates,
       pagination: {
@@ -81,7 +70,6 @@ export async function GET(request: NextRequest) {
         has_prev: page > 1,
       },
     };
-
     // Log audit event
     await auditLogger.log(
       authResult.user?.user_id || 'unknown',
@@ -96,18 +84,14 @@ export async function GET(request: NextRequest) {
         request: request
       }
     );
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('Error listing email templates:', error);
     return NextResponse.json(
       { error: 'Failed to list email templates' },
       { status: 500 }
     );
   }
 }
-
 /**
  * POST /api/admin/email/templates
  * Create new email template
@@ -118,9 +102,7 @@ export async function POST(request: NextRequest) {
     if (!authResult.success) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-
     const body: CreateEmailTemplateRequest = await request.json();
-
     // Validate request
     if (!body.name || !body.subject || !body.html_content || !body.template_type) {
       return NextResponse.json(
@@ -128,10 +110,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
     // Create template
     const template = EmailTemplateManager.createTemplate(body, authResult.user?.user_id || 'unknown');
-
     // Validate template
     const validation = TemplateEngine.validateTemplate(template);
     if (!validation.is_valid) {
@@ -146,9 +126,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
     // In a real implementation, save to database here
-
     // Log audit event
     await auditLogger.log(
       authResult.user?.user_id || 'unknown',
@@ -163,15 +141,12 @@ export async function POST(request: NextRequest) {
         request: request
       }
     );
-
     return NextResponse.json({ 
       success: true, 
       data: template,
       validation: validation.warnings.length > 0 ? { warnings: validation.warnings } : undefined
     }, { status: 201 });
-
   } catch (error) {
-    console.error('Error creating email template:', error);
     return NextResponse.json(
       { error: 'Failed to create email template' },
       { status: 500 }

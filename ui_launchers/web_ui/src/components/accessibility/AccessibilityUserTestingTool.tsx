@@ -450,16 +450,16 @@ export function AccessibilityUserTestingTool({
         <div className="flex gap-2">
           {isRecording && (
             <Badge variant="destructive" className="animate-pulse">
-              <div className="w-2 h-2 bg-red-500 rounded-full mr-2" />
+              <div className="w-2 h-2 bg-red-500 rounded-full mr-2 sm:w-auto md:w-full" />
               Recording
             </Badge>
           )}
-          <Button
-            onClick={() => setShowIssueForm(true)}
+          <button
+            onClick={() = aria-label="Button"> setShowIssueForm(true)}
             variant="outline"
             disabled={!isRecording}
           >
-            <AlertTriangle className="h-4 w-4 mr-2" />
+            <AlertTriangle className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Report Issue
           </Button>
         </div>
@@ -468,27 +468,27 @@ export function AccessibilityUserTestingTool({
       {/* Current Test Status */}
       {currentTest && currentScenario && (
         <Alert>
-          <Play className="h-4 w-4" />
+          <Play className="h-4 w-4 sm:w-auto md:w-full" />
           <AlertTitle>Test in Progress: {currentScenario.name}</AlertTitle>
           <AlertDescription>
             <div className="flex items-center gap-4 mt-2">
               <span>Time: {formatTime(currentTest.timeSpent)}</span>
               <span>Issues: {currentTest.issues.length}</span>
               <div className="flex gap-2 ml-auto">
-                <Button
+                <button
                   size="sm"
-                  onClick={() => completeTest(true, 'Test completed successfully')}
+                  onClick={() = aria-label="Button"> completeTest(true, 'Test completed successfully')}
                   variant="outline"
                 >
-                  <CheckCircle className="h-4 w-4 mr-1" />
+                  <CheckCircle className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                   Pass
                 </Button>
-                <Button
+                <button
                   size="sm"
-                  onClick={() => completeTest(false, 'Test failed or abandoned')}
+                  onClick={() = aria-label="Button"> completeTest(false, 'Test failed or abandoned')}
                   variant="outline"
                 >
-                  <XCircle className="h-4 w-4 mr-1" />
+                  <XCircle className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                   Fail
                 </Button>
               </div>
@@ -523,14 +523,14 @@ export function AccessibilityUserTestingTool({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground md:text-base lg:text-lg">
+                      <Clock className="h-4 w-4 sm:w-auto md:w-full" />
                       <span>~{scenario.estimatedTime} minutes</span>
                     </div>
                     
                     <div className="space-y-2">
-                      <h4 className="font-medium text-sm">Instructions:</h4>
-                      <ul className="text-xs space-y-1">
+                      <h4 className="font-medium text-sm md:text-base lg:text-lg">Instructions:</h4>
+                      <ul className="text-xs space-y-1 sm:text-sm md:text-base">
                         {scenario.instructions.slice(0, 3).map((instruction, index) => (
                           <li key={index} className="flex items-start gap-2">
                             <span className="text-muted-foreground">•</span>
@@ -545,12 +545,12 @@ export function AccessibilityUserTestingTool({
                       </ul>
                     </div>
 
-                    <Button
-                      onClick={() => startTest(scenario)}
+                    <button
+                      onClick={() = aria-label="Button"> startTest(scenario)}
                       disabled={isRecording}
                       className="w-full"
                     >
-                      <Play className="h-4 w-4 mr-2" />
+                      <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                       Start Test
                     </Button>
                   </div>
@@ -566,7 +566,7 @@ export function AccessibilityUserTestingTool({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Eye className="h-5 w-5" />
+                  <Eye className="h-5 w-5 sm:w-auto md:w-full" />
                   Visual Impairment
                 </CardTitle>
                 <CardDescription>
@@ -592,22 +592,22 @@ export function AccessibilityUserTestingTool({
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="visual-type">Impairment Type</Label>
-                      <Select
+                      <select
                         value={simulationSettings.visualImpairment.type}
-                        onValueChange={(value: any) =>
+                        onValueChange={(value: any) = aria-label="Select option">
                           setSimulationSettings(prev => ({
                             ...prev,
                             visualImpairment: { ...prev.visualImpairment, type: value }
                           }))
                         }
                       >
-                        <SelectTrigger>
-                          <SelectValue />
+                        <selectTrigger aria-label="Select option">
+                          <selectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low-vision">Low Vision</SelectItem>
-                          <SelectItem value="color-blind">Color Blindness</SelectItem>
-                          <SelectItem value="blind">Blindness</SelectItem>
+                        <selectContent aria-label="Select option">
+                          <selectItem value="low-vision" aria-label="Select option">Low Vision</SelectItem>
+                          <selectItem value="color-blind" aria-label="Select option">Color Blindness</SelectItem>
+                          <selectItem value="blind" aria-label="Select option">Blindness</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -622,7 +622,7 @@ export function AccessibilityUserTestingTool({
                         min="0"
                         max="100"
                         value={simulationSettings.visualImpairment.severity}
-                        onChange={(e) =>
+                        onChange={(e) = aria-label="Input">
                           setSimulationSettings(prev => ({
                             ...prev,
                             visualImpairment: { ...prev.visualImpairment, severity: parseInt(e.target.value) }
@@ -640,7 +640,7 @@ export function AccessibilityUserTestingTool({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MousePointer className="h-5 w-5" />
+                  <MousePointer className="h-5 w-5 sm:w-auto md:w-full" />
                   Motor Impairment
                 </CardTitle>
                 <CardDescription>
@@ -666,22 +666,22 @@ export function AccessibilityUserTestingTool({
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="motor-type">Impairment Type</Label>
-                      <Select
+                      <select
                         value={simulationSettings.motorImpairment.type}
-                        onValueChange={(value: any) =>
+                        onValueChange={(value: any) = aria-label="Select option">
                           setSimulationSettings(prev => ({
                             ...prev,
                             motorImpairment: { ...prev.motorImpairment, type: value }
                           }))
                         }
                       >
-                        <SelectTrigger>
-                          <SelectValue />
+                        <selectTrigger aria-label="Select option">
+                          <selectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="limited-mobility">Limited Mobility</SelectItem>
-                          <SelectItem value="tremor">Tremor</SelectItem>
-                          <SelectItem value="one-hand">One Hand Use</SelectItem>
+                        <selectContent aria-label="Select option">
+                          <selectItem value="limited-mobility" aria-label="Select option">Limited Mobility</SelectItem>
+                          <selectItem value="tremor" aria-label="Select option">Tremor</SelectItem>
+                          <selectItem value="one-hand" aria-label="Select option">One Hand Use</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -708,7 +708,7 @@ export function AccessibilityUserTestingTool({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Volume2 className="h-5 w-5" />
+                  <Volume2 className="h-5 w-5 sm:w-auto md:w-full" />
                   Screen Reader
                 </CardTitle>
                 <CardDescription>
@@ -734,23 +734,23 @@ export function AccessibilityUserTestingTool({
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="sr-type">Screen Reader Type</Label>
-                      <Select
+                      <select
                         value={simulationSettings.screenReader.type}
-                        onValueChange={(value: any) =>
+                        onValueChange={(value: any) = aria-label="Select option">
                           setSimulationSettings(prev => ({
                             ...prev,
                             screenReader: { ...prev.screenReader, type: value }
                           }))
                         }
                       >
-                        <SelectTrigger>
-                          <SelectValue />
+                        <selectTrigger aria-label="Select option">
+                          <selectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="nvda">NVDA</SelectItem>
-                          <SelectItem value="jaws">JAWS</SelectItem>
-                          <SelectItem value="voiceover">VoiceOver</SelectItem>
-                          <SelectItem value="talkback">TalkBack</SelectItem>
+                        <selectContent aria-label="Select option">
+                          <selectItem value="nvda" aria-label="Select option">NVDA</SelectItem>
+                          <selectItem value="jaws" aria-label="Select option">JAWS</SelectItem>
+                          <selectItem value="voiceover" aria-label="Select option">VoiceOver</SelectItem>
+                          <selectItem value="talkback" aria-label="Select option">TalkBack</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -765,7 +765,7 @@ export function AccessibilityUserTestingTool({
                         min="0"
                         max="100"
                         value={simulationSettings.screenReader.speechRate}
-                        onChange={(e) =>
+                        onChange={(e) = aria-label="Input">
                           setSimulationSettings(prev => ({
                             ...prev,
                             screenReader: { ...prev.screenReader, speechRate: parseInt(e.target.value) }
@@ -777,22 +777,22 @@ export function AccessibilityUserTestingTool({
 
                     <div>
                       <Label htmlFor="verbosity">Verbosity Level</Label>
-                      <Select
+                      <select
                         value={simulationSettings.screenReader.verbosity}
-                        onValueChange={(value: any) =>
+                        onValueChange={(value: any) = aria-label="Select option">
                           setSimulationSettings(prev => ({
                             ...prev,
                             screenReader: { ...prev.screenReader, verbosity: value }
                           }))
                         }
                       >
-                        <SelectTrigger>
-                          <SelectValue />
+                        <selectTrigger aria-label="Select option">
+                          <selectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
+                        <selectContent aria-label="Select option">
+                          <selectItem value="low" aria-label="Select option">Low</SelectItem>
+                          <selectItem value="medium" aria-label="Select option">Medium</SelectItem>
+                          <selectItem value="high" aria-label="Select option">High</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -805,7 +805,7 @@ export function AccessibilityUserTestingTool({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
+                  <User className="h-5 w-5 sm:w-auto md:w-full" />
                   Cognitive Impairment
                 </CardTitle>
                 <CardDescription>
@@ -831,22 +831,22 @@ export function AccessibilityUserTestingTool({
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="cognitive-type">Impairment Type</Label>
-                      <Select
+                      <select
                         value={simulationSettings.cognitiveImpairment.type}
-                        onValueChange={(value: any) =>
+                        onValueChange={(value: any) = aria-label="Select option">
                           setSimulationSettings(prev => ({
                             ...prev,
                             cognitiveImpairment: { ...prev.cognitiveImpairment, type: value }
                           }))
                         }
                       >
-                        <SelectTrigger>
-                          <SelectValue />
+                        <selectTrigger aria-label="Select option">
+                          <selectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="attention">Attention Deficit</SelectItem>
-                          <SelectItem value="memory">Memory Issues</SelectItem>
-                          <SelectItem value="processing">Processing Difficulties</SelectItem>
+                        <selectContent aria-label="Select option">
+                          <selectItem value="attention" aria-label="Select option">Attention Deficit</SelectItem>
+                          <selectItem value="memory" aria-label="Select option">Memory Issues</SelectItem>
+                          <selectItem value="processing" aria-label="Select option">Processing Difficulties</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -874,8 +874,8 @@ export function AccessibilityUserTestingTool({
         <TabsContent value="results" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Test Results</h3>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
+            <button variant="outline" size="sm" aria-label="Button">
+              <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Export Results
             </Button>
           </div>
@@ -884,9 +884,9 @@ export function AccessibilityUserTestingTool({
             <Card>
               <CardContent className="flex items-center justify-center h-32">
                 <div className="text-center text-muted-foreground">
-                  <Target className="h-12 w-12 mx-auto mb-2" />
+                  <Target className="h-12 w-12 mx-auto mb-2 sm:w-auto md:w-full" />
                   <p>No test results yet</p>
-                  <p className="text-sm">Complete some test scenarios to see results here</p>
+                  <p className="text-sm md:text-base lg:text-lg">Complete some test scenarios to see results here</p>
                 </div>
               </CardContent>
             </Card>
@@ -937,18 +937,18 @@ export function AccessibilityUserTestingTool({
 
                         {result.feedback && (
                           <div>
-                            <span className="text-muted-foreground text-sm">Feedback:</span>
-                            <p className="text-sm mt-1">{result.feedback}</p>
+                            <span className="text-muted-foreground text-sm md:text-base lg:text-lg">Feedback:</span>
+                            <p className="text-sm mt-1 md:text-base lg:text-lg">{result.feedback}</p>
                           </div>
                         )}
 
                         {result.issues.length > 0 && (
                           <div>
-                            <span className="text-muted-foreground text-sm">Issues:</span>
+                            <span className="text-muted-foreground text-sm md:text-base lg:text-lg">Issues:</span>
                             <div className="mt-2 space-y-2">
                               {result.issues.map((issue, issueIndex) => (
-                                <div key={issueIndex} className="flex items-start gap-2 text-sm">
-                                  <Badge variant={getSeverityColor(issue.severity)} className="text-xs">
+                                <div key={issueIndex} className="flex items-start gap-2 text-sm md:text-base lg:text-lg">
+                                  <Badge variant={getSeverityColor(issue.severity)} className="text-xs sm:text-sm md:text-base">
                                     {issue.severity}
                                   </Badge>
                                   <span>{issue.description}</span>
@@ -969,12 +969,12 @@ export function AccessibilityUserTestingTool({
         <TabsContent value="issues" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Reported Issues</h3>
-            <Button
-              onClick={() => setShowIssueForm(true)}
+            <button
+              onClick={() = aria-label="Button"> setShowIssueForm(true)}
               variant="outline"
               size="sm"
             >
-              <AlertTriangle className="h-4 w-4 mr-2" />
+              <AlertTriangle className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Report New Issue
             </Button>
           </div>
@@ -995,7 +995,7 @@ export function AccessibilityUserTestingTool({
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-2 text-sm md:text-base lg:text-lg">
                       {issue.reproduction && (
                         <div>
                           <span className="font-medium">Reproduction:</span>
@@ -1030,38 +1030,38 @@ export function AccessibilityUserTestingTool({
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="issue-severity">Severity</Label>
-                <Select
+                <select
                   value={newIssue.severity || 'medium'}
-                  onValueChange={(value: any) => setNewIssue(prev => ({ ...prev, severity: value }))}
+                  onValueChange={(value: any) = aria-label="Select option"> setNewIssue(prev => ({ ...prev, severity: value }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="low" aria-label="Select option">Low</SelectItem>
+                    <selectItem value="medium" aria-label="Select option">Medium</SelectItem>
+                    <selectItem value="high" aria-label="Select option">High</SelectItem>
+                    <selectItem value="critical" aria-label="Select option">Critical</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
                 <Label htmlFor="issue-category">Category</Label>
-                <Input
+                <input
                   id="issue-category"
                   value={newIssue.category || ''}
-                  onChange={(e) => setNewIssue(prev => ({ ...prev, category: e.target.value }))}
+                  onChange={(e) = aria-label="Input"> setNewIssue(prev => ({ ...prev, category: e.target.value }))}
                   placeholder="e.g., keyboard navigation, screen reader, visual"
                 />
               </div>
 
               <div>
                 <Label htmlFor="issue-description">Description</Label>
-                <Textarea
+                <textarea
                   id="issue-description"
                   value={newIssue.description || ''}
-                  onChange={(e) => setNewIssue(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) = aria-label="Textarea"> setNewIssue(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Describe the accessibility issue..."
                   rows={3}
                 />
@@ -1069,10 +1069,10 @@ export function AccessibilityUserTestingTool({
 
               <div>
                 <Label htmlFor="issue-reproduction">How to Reproduce</Label>
-                <Textarea
+                <textarea
                   id="issue-reproduction"
                   value={newIssue.reproduction || ''}
-                  onChange={(e) => setNewIssue(prev => ({ ...prev, reproduction: e.target.value }))}
+                  onChange={(e) = aria-label="Textarea"> setNewIssue(prev => ({ ...prev, reproduction: e.target.value }))}
                   placeholder="Steps to reproduce the issue..."
                   rows={2}
                 />
@@ -1080,25 +1080,25 @@ export function AccessibilityUserTestingTool({
 
               <div>
                 <Label htmlFor="issue-suggestion">Suggested Fix</Label>
-                <Textarea
+                <textarea
                   id="issue-suggestion"
                   value={newIssue.suggestion || ''}
-                  onChange={(e) => setNewIssue(prev => ({ ...prev, suggestion: e.target.value }))}
+                  onChange={(e) = aria-label="Textarea"> setNewIssue(prev => ({ ...prev, suggestion: e.target.value }))}
                   placeholder="How could this be fixed?"
                   rows={2}
                 />
               </div>
 
               <div className="flex gap-2 pt-4">
-                <Button
-                  onClick={() => reportIssue(newIssue)}
+                <button
+                  onClick={() = aria-label="Button"> reportIssue(newIssue)}
                   disabled={!newIssue.description}
                   className="flex-1"
                 >
                   Report Issue
                 </Button>
-                <Button
-                  onClick={() => {
+                <button
+                  onClick={() = aria-label="Button"> {
                     setShowIssueForm(false);
                     setNewIssue({});
                   }}

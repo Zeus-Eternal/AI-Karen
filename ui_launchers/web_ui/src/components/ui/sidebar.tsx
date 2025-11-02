@@ -205,7 +205,7 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <SheetHeader className="p-4 border-b shrink-0"> 
+            <SheetHeader className="p-4 border-b shrink-0 sm:p-4 md:p-6"> 
               <SheetTitle>Activity Hub</SheetTitle>
             </SheetHeader>
             <ScrollArea className="flex-1"> 
@@ -290,7 +290,7 @@ const SidebarTrigger = React.forwardRef<
     >
       {asChild ? children : (
         <>
-          <PanelLeft className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+          <PanelLeft className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors sm:w-auto md:w-full" />
           <span className="sr-only">Toggle Sidebar</span>
         </>
       )}
@@ -352,15 +352,14 @@ const SidebarInput = React.forwardRef<
   React.ComponentProps<typeof Input>
 >(({ className, ...props }, ref) => {
   return (
-    <Input
+    <input
       ref={ref}
       data-sidebar="input"
       className={cn(
         "h-8 w-full bg-background shadow-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
         className
       )}
-      {...props}
-    />
+      {...props} />
   )
 })
 SidebarInput.displayName = "SidebarInput"

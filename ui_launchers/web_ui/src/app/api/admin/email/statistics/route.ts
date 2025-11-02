@@ -4,12 +4,10 @@
  * API endpoint for retrieving email delivery statistics, analytics,
  * and performance metrics for admin monitoring.
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { deliveryStatusManager } from '@/lib/email/delivery-tracker';
 import { auditLogger } from '@/lib/audit/audit-logger';
-
 /**
  * GET /api/admin/email/statistics
  * Get email delivery statistics and analytics
@@ -20,12 +18,10 @@ export async function GET(request: NextRequest) {
     if (!authResult.success) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('start_date') ? new Date(searchParams.get('start_date')!) : undefined;
     const endDate = searchParams.get('end_date') ? new Date(searchParams.get('end_date')!) : undefined;
     const templateId = searchParams.get('template_id') || undefined;
-
     // Validate date range
     if (startDate && endDate && startDate > endDate) {
       return NextResponse.json(
@@ -33,14 +29,12 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-
     // Get delivery statistics
     const statistics = await deliveryStatusManager.getDeliveryStatistics(
       startDate,
       endDate,
       templateId
     );
-
     // Log audit event
     await auditLogger.log(
       authResult.user?.user_id || 'unknown',
@@ -57,7 +51,6 @@ export async function GET(request: NextRequest) {
         request: request
       }
     );
-
     return NextResponse.json({
       success: true,
       data: {
@@ -70,9 +63,7 @@ export async function GET(request: NextRequest) {
         generated_at: new Date().toISOString(),
       }
     });
-
   } catch (error) {
-    console.error('Error getting email statistics:', error);
     return NextResponse.json(
       { error: 'Failed to get email statistics' },
       { status: 500 }

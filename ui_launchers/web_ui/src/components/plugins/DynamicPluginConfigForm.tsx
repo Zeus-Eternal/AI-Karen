@@ -1,14 +1,30 @@
+import React, { useState, useEffect } from 'react';
+import { 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
+import {
+import { PluginInfo, PluginConfig, PluginConfigField } from '@/types/plugins';
 /**
  * Dynamic Plugin Configuration Form Component
  * 
  * Generates dynamic configuration forms based on plugin manifests with validation.
  * Based on requirements: 5.3, 5.5, 9.1, 9.2
  */
-
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { 
+
   Settings, 
   Save, 
   RotateCcw, 
@@ -50,52 +66,48 @@ import {
   Lock,
 } from 'lucide-react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { 
+
+
+
+
+
+
+
+
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Progress } from '@/components/ui/progress';
-import { 
+
+
+
+
+
+
+
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
+
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import {
+
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-
-import { PluginInfo, PluginConfig, PluginConfigField } from '@/types/plugins';
 
 interface ValidationError {
   field: string;
   message: string;
   severity: 'error' | 'warning' | 'info';
 }
-
 interface FieldGroup {
   id: string;
   name: string;
@@ -105,7 +117,6 @@ interface FieldGroup {
   collapsed?: boolean;
   required?: boolean;
 }
-
 interface DynamicPluginConfigFormProps {
   plugin: PluginInfo;
   initialConfig?: PluginConfig;
@@ -115,7 +126,6 @@ interface DynamicPluginConfigFormProps {
   readOnly?: boolean;
   showAdvanced?: boolean;
 }
-
 export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = ({
   plugin,
   initialConfig = {},
@@ -132,18 +142,14 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['general']));
   const [searchQuery, setSearchQuery] = useState('');
   const [isDirty, setIsDirty] = useState(false);
-
   // Group configuration fields by category or prefix
   const fieldGroups: FieldGroup[] = React.useMemo(() => {
     if (!plugin.manifest.configSchema) return [];
-    
     const groupMap = new Map<string, PluginConfigField[]>();
-    
     plugin.manifest.configSchema.forEach(field => {
       let groupId = 'general';
       let groupName = 'General Settings';
       let groupIcon = Settings;
-      
       // Determine group based on field key prefix or type
       if (field.key.startsWith('auth') || field.key.includes('token') || field.key.includes('key')) {
         groupId = 'authentication';
@@ -170,13 +176,11 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
         groupName = 'Security';
         groupIcon = Lock;
       }
-      
       if (!groupMap.has(groupId)) {
         groupMap.set(groupId, []);
       }
       groupMap.get(groupId)!.push(field);
     });
-    
     return Array.from(groupMap.entries()).map(([id, fields]) => {
       const icons = {
         general: Settings,
@@ -187,7 +191,6 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
         performance: Zap,
         security: Lock,
       };
-      
       const names = {
         general: 'General Settings',
         authentication: 'Authentication',
@@ -197,7 +200,6 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
         performance: 'Performance',
         security: 'Security',
       };
-      
       return {
         id,
         name: names[id as keyof typeof names] || id.charAt(0).toUpperCase() + id.slice(1),
@@ -208,11 +210,9 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
       };
     });
   }, [plugin.manifest.configSchema]);
-
   // Filter fields based on search query
   const filteredGroups = React.useMemo(() => {
     if (!searchQuery) return fieldGroups;
-    
     return fieldGroups.map(group => ({
       ...group,
       fields: group.fields.filter(field =>
@@ -222,7 +222,6 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
       ),
     })).filter(group => group.fields.length > 0);
   }, [fieldGroups, searchQuery]);
-
   // Validate a single field
   const validateField = (field: PluginConfigField, value: any): ValidationError | null => {
     if (field.required && (value === undefined || value === null || value === '')) {
@@ -232,10 +231,8 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
         severity: 'error',
       };
     }
-    
     if (field.validation) {
       const { min, max, pattern, custom } = field.validation;
-      
       if (field.type === 'number' && typeof value === 'number') {
         if (min !== undefined && value < min) {
           return {
@@ -252,7 +249,6 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
           };
         }
       }
-      
       if (field.type === 'string' && typeof value === 'string') {
         if (pattern && !new RegExp(pattern).test(value)) {
           return {
@@ -262,7 +258,6 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
           };
         }
       }
-      
       if (custom) {
         const customError = custom(value);
         if (customError) {
@@ -274,14 +269,11 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
         }
       }
     }
-    
     return null;
   };
-
   // Validate entire configuration
   const validateConfig = (): ValidationError[] => {
     const errors: ValidationError[] = [];
-    
     plugin.manifest.configSchema?.forEach(field => {
       const value = config[field.key];
       const error = validateField(field, value);
@@ -289,24 +281,19 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
         errors.push(error);
       }
     });
-    
     // Add custom validation if provided
     if (onValidate) {
       errors.push(...onValidate(config));
     }
-    
     return errors;
   };
-
   // Handle field value changes
   const handleFieldChange = (fieldKey: string, value: any) => {
     setConfig(prev => ({ ...prev, [fieldKey]: value }));
     setIsDirty(true);
-    
     // Clear validation error for this field
     setValidationErrors(prev => prev.filter(error => error.field !== fieldKey));
   };
-
   // Handle form submission
   const handleSave = async () => {
     const errors = validateConfig();
@@ -314,14 +301,12 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
       setValidationErrors(errors);
       return;
     }
-    
     setSaving(true);
     try {
       await onSave(config);
       setValidationErrors([]);
       setIsDirty(false);
     } catch (error) {
-      console.error('Failed to save configuration:', error);
       setValidationErrors([{
         field: '_global',
         message: 'Failed to save configuration. Please try again.',
@@ -331,24 +316,20 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
       setSaving(false);
     }
   };
-
   // Handle form reset
   const handleReset = () => {
     setConfig(initialConfig);
     setValidationErrors([]);
     setIsDirty(false);
   };
-
   // Handle preview
   const handlePreview = () => {
     onPreview?.(config);
   };
-
   // Toggle password visibility
   const togglePasswordVisibility = (fieldKey: string) => {
     setShowPasswords(prev => ({ ...prev, [fieldKey]: !prev[fieldKey] }));
   };
-
   // Toggle group expansion
   const toggleGroup = (groupId: string) => {
     setExpandedGroups(prev => {
@@ -361,7 +342,6 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
       return newSet;
     });
   };
-
   // Get field icon based on type
   const getFieldIcon = (field: PluginConfigField) => {
     const icons = {
@@ -375,7 +355,6 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
     };
     return icons[field.type] || Type;
   };
-
   // Render individual field
   const renderField = (field: PluginConfigField) => {
     const value = config[field.key] ?? field.default ?? '';
@@ -383,21 +362,19 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
     const isPassword = field.type === 'password';
     const showPassword = showPasswords[field.key];
     const FieldIcon = getFieldIcon(field);
-
     const fieldId = `field-${field.key}`;
-
     return (
       <div key={field.key} className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label htmlFor={fieldId} className="flex items-center gap-2 text-sm font-medium">
-            <FieldIcon className="w-4 h-4 text-muted-foreground" />
+          <Label htmlFor={fieldId} className="flex items-center gap-2 text-sm font-medium md:text-base lg:text-lg">
+            <FieldIcon className="w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
             {field.label}
             {field.required && <span className="text-destructive">*</span>}
             {field.description && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
-                    <Info className="w-3 h-3 text-muted-foreground" />
+                    <Info className="w-3 h-3 text-muted-foreground sm:w-auto md:w-full" />
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs">
                     <p>{field.description}</p>
@@ -406,44 +383,40 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
               </TooltipProvider>
             )}
           </Label>
-          
           {isPassword && (
-            <Button
+            <button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => togglePasswordVisibility(field.key)}
+              onClick={() = aria-label="Button"> togglePasswordVisibility(field.key)}
             >
-              {showPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+              {showPassword ? <EyeOff className="w-3 h-3 sm:w-auto md:w-full" /> : <Eye className="w-3 h-3 sm:w-auto md:w-full" />}
             </Button>
           )}
         </div>
-
         {field.type === 'string' && (
-          <Input
+          <input
             id={fieldId}
             type={isPassword && !showPassword ? 'password' : 'text'}
             value={value}
-            onChange={(e) => handleFieldChange(field.key, e.target.value)}
+            onChange={(e) = aria-label="Input"> handleFieldChange(field.key, e.target.value)}
             placeholder={field.default?.toString()}
             disabled={readOnly}
             className={error ? 'border-destructive' : ''}
           />
         )}
-
         {field.type === 'number' && (
-          <Input
+          <input
             id={fieldId}
             type="number"
             value={value}
-            onChange={(e) => handleFieldChange(field.key, Number(e.target.value))}
+            onChange={(e) = aria-label="Input"> handleFieldChange(field.key, Number(e.target.value))}
             min={field.validation?.min}
             max={field.validation?.max}
             disabled={readOnly}
             className={error ? 'border-destructive' : ''}
           />
         )}
-
         {field.type === 'boolean' && (
           <div className="flex items-center space-x-2">
             <Switch
@@ -452,31 +425,29 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
               onCheckedChange={(checked) => handleFieldChange(field.key, checked)}
               disabled={readOnly}
             />
-            <Label htmlFor={fieldId} className="text-sm text-muted-foreground">
+            <Label htmlFor={fieldId} className="text-sm text-muted-foreground md:text-base lg:text-lg">
               {value ? 'Enabled' : 'Disabled'}
             </Label>
           </div>
         )}
-
         {field.type === 'select' && field.options && (
-          <Select
+          <select
             value={value?.toString() || ''}
-            onValueChange={(newValue) => handleFieldChange(field.key, newValue)}
+            onValueChange={(newValue) = aria-label="Select option"> handleFieldChange(field.key, newValue)}
             disabled={readOnly}
           >
-            <SelectTrigger className={error ? 'border-destructive' : ''}>
-              <SelectValue placeholder="Select an option" />
+            <selectTrigger className={error ? 'border-destructive' : ''} aria-label="Select option">
+              <selectValue placeholder="Select an option" />
             </SelectTrigger>
-            <SelectContent>
+            <selectContent aria-label="Select option">
               {field.options.map((option) => (
-                <SelectItem key={option.value} value={option.value.toString()}>
+                <selectItem key={option.value} value={option.value.toString()} aria-label="Select option">
                   {option.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
-
         {field.type === 'multiselect' && field.options && (
           <div className="space-y-2 max-h-32 overflow-y-auto">
             {field.options.map((option) => (
@@ -494,20 +465,19 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
                   }}
                   disabled={readOnly}
                 />
-                <Label htmlFor={`${fieldId}-${option.value}`} className="text-sm">
+                <Label htmlFor={`${fieldId}-${option.value}`} className="text-sm md:text-base lg:text-lg">
                   {option.label}
                 </Label>
               </div>
             ))}
           </div>
         )}
-
         {field.type === 'json' && (
           <div className="space-y-2">
-            <Textarea
+            <textarea
               id={fieldId}
               value={typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
-              onChange={(e) => {
+              onChange={(e) = aria-label="Textarea"> {
                 try {
                   const parsed = JSON.parse(e.target.value);
                   handleFieldChange(field.key, parsed);
@@ -521,11 +491,11 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
               className={`font-mono text-sm ${error ? 'border-destructive' : ''}`}
             />
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
+                onClick={() = aria-label="Button"> {
                   try {
                     const formatted = JSON.stringify(JSON.parse(value), null, 2);
                     handleFieldChange(field.key, formatted);
@@ -535,40 +505,37 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
                 }}
                 disabled={readOnly}
               >
-                <Code className="w-3 h-3 mr-1" />
+                <Code className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                 Format
               </Button>
-              <Button
+              <button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
+                onClick={() = aria-label="Button"> {
                   navigator.clipboard.writeText(typeof value === 'string' ? value : JSON.stringify(value, null, 2));
                 }}
               >
-                <Copy className="w-3 h-3 mr-1" />
+                <Copy className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                 Copy
               </Button>
             </div>
           </div>
         )}
-
         {error && (
           <Alert variant={error.severity === 'error' ? 'destructive' : 'default'} className="py-2">
-            <AlertTriangle className="w-4 h-4" />
-            <AlertDescription className="text-sm">{error.message}</AlertDescription>
+            <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
+            <AlertDescription className="text-sm md:text-base lg:text-lg">{error.message}</AlertDescription>
           </Alert>
         )}
-
         {field.default !== undefined && !value && (
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
             Default: {typeof field.default === 'object' ? JSON.stringify(field.default) : field.default.toString()}
           </div>
         )}
       </div>
     );
   };
-
   // Render field group
   const renderGroup = (group: FieldGroup) => {
     const isExpanded = expandedGroups.has(group.id);
@@ -576,7 +543,6 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
     const groupErrors = validationErrors.filter(e => 
       group.fields.some(f => f.key === e.field)
     );
-
     return (
       <Card key={group.id}>
         <Collapsible open={isExpanded} onOpenChange={() => toggleGroup(group.id)}>
@@ -584,12 +550,12 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
             <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <GroupIcon className="w-5 h-5 text-muted-foreground" />
+                  <GroupIcon className="w-5 h-5 text-muted-foreground sm:w-auto md:w-full" />
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
                       {group.name}
                       {group.required && (
-                        <Badge variant="outline" className="text-xs">Required</Badge>
+                        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">Required</Badge>
                       )}
                     </CardTitle>
                     <CardDescription>{group.description}</CardDescription>
@@ -597,23 +563,22 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
                 </div>
                 <div className="flex items-center gap-2">
                   {groupErrors.length > 0 && (
-                    <Badge variant="destructive" className="text-xs">
+                    <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
                       {groupErrors.length} error{groupErrors.length !== 1 ? 's' : ''}
                     </Badge>
                   )}
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                     {group.fields.length} field{group.fields.length !== 1 ? 's' : ''}
                   </Badge>
                   {isExpanded ? (
-                    <Minus className="w-4 h-4" />
+                    <Minus className="w-4 h-4 sm:w-auto md:w-full" />
                   ) : (
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-4 h-4 sm:w-auto md:w-full" />
                   )}
                 </div>
               </div>
             </CardHeader>
           </CollapsibleTrigger>
-          
           <CollapsibleContent>
             <CardContent className="space-y-6">
               {group.fields.map(renderField)}
@@ -623,10 +588,8 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
       </Card>
     );
   };
-
   const errorCount = validationErrors.filter(e => e.severity === 'error').length;
   const warningCount = validationErrors.filter(e => e.severity === 'warning').length;
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -637,62 +600,56 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
             Configure settings for {plugin.name}
           </p>
         </div>
-        
         <div className="flex items-center gap-2">
           {searchQuery && (
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+              <input
                 placeholder="Search settings..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-64"
+                onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                className="pl-10 w-64 sm:w-auto md:w-full"
               />
             </div>
           )}
-          
           {onPreview && (
-            <Button variant="outline" size="sm" onClick={handlePreview}>
-              <Eye className="w-4 h-4 mr-2" />
+            <button variant="outline" size="sm" onClick={handlePreview} aria-label="Button">
+              <Eye className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
               Preview
             </Button>
           )}
         </div>
       </div>
-
       {/* Status Alerts */}
       {isDirty && (
         <Alert>
-          <Info className="w-4 h-4" />
+          <Info className="w-4 h-4 sm:w-auto md:w-full" />
           <AlertDescription>
             You have unsaved changes. Don't forget to save your configuration.
           </AlertDescription>
         </Alert>
       )}
-
       {errorCount > 0 && (
         <Alert variant="destructive">
-          <AlertTriangle className="w-4 h-4" />
+          <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
           <AlertDescription>
             Please fix {errorCount} error{errorCount !== 1 ? 's' : ''} before saving.
           </AlertDescription>
         </Alert>
       )}
-
       {warningCount > 0 && (
         <Alert>
-          <AlertTriangle className="w-4 h-4" />
+          <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
           <AlertDescription>
             {warningCount} warning{warningCount !== 1 ? 's' : ''} found in your configuration.
           </AlertDescription>
         </Alert>
       )}
-
       {/* Configuration Form */}
       {filteredGroups.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Settings className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <Settings className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
             <h3 className="text-lg font-medium mb-2">
               {searchQuery ? 'No matching settings' : 'No Configuration Available'}
             </h3>
@@ -709,26 +666,24 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
           {filteredGroups.map(renderGroup)}
         </div>
       )}
-
       {/* Action Buttons */}
       {!readOnly && filteredGroups.length > 0 && (
         <div className="flex items-center justify-between pt-6 border-t">
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleReset} disabled={!isDirty}>
-              <RotateCcw className="w-4 h-4 mr-2" />
+            <button variant="outline" onClick={handleReset} disabled={!isDirty} aria-label="Button">
+              <RotateCcw className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
               Reset
             </Button>
           </div>
-          
           <div className="flex items-center gap-2">
-            <Button
+            <button
               onClick={handleSave}
-              disabled={!isDirty || saving || errorCount > 0}
+              disabled={!isDirty || saving || errorCount  aria-label="Button"> 0}
             >
               {saving ? (
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin sm:w-auto md:w-full" />
               ) : (
-                <Save className="w-4 h-4 mr-2" />
+                <Save className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
               )}
               {saving ? 'Saving...' : 'Save Configuration'}
             </Button>

@@ -2,11 +2,9 @@
  * CopilotKit-enhanced Memory Editor Component
  * Provides AI-powered suggestions for memory editing and enhancement
  */
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { CopilotTextarea } from '@copilotkit/react-textarea';
 import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
-
 interface MemoryGridRow {
   id: string;
   content: string;
@@ -21,7 +19,6 @@ interface MemoryGridRow {
   session_id?: string;
   tenant_id?: string;
 }
-
 interface MemoryEditorProps {
   memory: MemoryGridRow | null;
   onSave: (updatedMemory: Partial<MemoryGridRow>) => Promise<void>;
@@ -31,14 +28,12 @@ interface MemoryEditorProps {
   userId: string;
   tenantId?: string;
 }
-
 interface AISuggestion {
   type: 'enhancement' | 'categorization' | 'relationship' | 'correction';
   content: string;
   confidence: number;
   reasoning: string;
 }
-
 export const MemoryEditor: React.FC<MemoryEditorProps> = ({
   memory,
   onSave,
@@ -56,7 +51,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   // Initialize form when memory changes
   useEffect(() => {
     if (memory) {
@@ -74,7 +68,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
       setError(null);
     }
   }, [memory]);
-
   // Make memory data readable by CopilotKit
   useCopilotReadable({
     description: "Current memory being edited",
@@ -86,7 +79,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
       relationships: memory.relationships
     } : null
   });
-
   // CopilotKit action for memory enhancement
   useCopilotAction({
     name: "enhanceMemory",
@@ -107,7 +99,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
       await generateAISuggestions(content, context);
     }
   });
-
   // CopilotKit action for memory categorization
   useCopilotAction({
     name: "categorizeMemory",
@@ -129,13 +120,11 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
       }
     }
   });
-
   // Generate AI suggestions for memory enhancement
   const generateAISuggestions = useCallback(async (content?: string, context?: string) => {
     try {
       setIsLoadingSuggestions(true);
       setError(null);
-
       const response = await fetch('/api/memory/ai-suggestions', {
         method: 'POST',
         headers: {
@@ -151,21 +140,17 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
           current_cluster: editedCluster
         })
       });
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
       const data = await response.json();
       setAiSuggestions(data.suggestions || []);
     } catch (err) {
-      console.error('Error generating AI suggestions:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate AI suggestions');
     } finally {
       setIsLoadingSuggestions(false);
     }
   }, [editedContent, memory?.id, userId, tenantId, editedType, editedCluster]);
-
   // Get category suggestions from AI
   const getCategorySuggestions = useCallback(async (content: string) => {
     try {
@@ -180,11 +165,9 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
           tenant_id: tenantId
         })
       });
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
       const data = await response.json();
       return {
         type: data.suggested_type,
@@ -192,11 +175,9 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
         confidence: data.confidence
       };
     } catch (err) {
-      console.error('Error getting category suggestions:', err);
       return {};
     }
   }, [userId, tenantId]);
-
   // Apply AI suggestion
   const applySuggestion = useCallback((suggestion: AISuggestion) => {
     switch (suggestion.type) {
@@ -223,13 +204,11 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
         break;
     }
   }, []);
-
   // Handle save
   const handleSave = useCallback(async () => {
     try {
       setIsSaving(true);
       setError(null);
-
       const updatedMemory: Partial<MemoryGridRow> = {
         content: editedContent,
         type: editedType,
@@ -237,32 +216,25 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
         semantic_cluster: editedCluster,
         last_accessed: new Date().toISOString()
       };
-
       await onSave(updatedMemory);
     } catch (err) {
-      console.error('Error saving memory:', err);
       setError(err instanceof Error ? err.message : 'Failed to save memory');
     } finally {
       setIsSaving(false);
     }
   }, [editedContent, editedType, editedConfidence, editedCluster, onSave]);
-
   // Handle delete
   const handleDelete = useCallback(async () => {
     if (!memory || !onDelete) return;
-
     if (window.confirm('Are you sure you want to delete this memory? This action cannot be undone.')) {
       try {
         await onDelete(memory.id);
       } catch (err) {
-        console.error('Error deleting memory:', err);
         setError(err instanceof Error ? err.message : 'Failed to delete memory');
       }
     }
   }, [memory, onDelete]);
-
   if (!isOpen) return null;
-
   return (
     <div className="memory-editor-overlay" style={{
       position: 'fixed',
@@ -285,7 +257,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
         maxHeight: '90%',
         overflow: 'auto',
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
-      }}>
+      }} role="dialog">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ margin: 0, color: '#333' }}>
             {memory ? 'Edit Memory' : 'Create New Memory'}
@@ -299,11 +271,10 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
               cursor: 'pointer',
               color: '#666'
             }}
-          >
+           aria-label="Button">
             ×
           </button>
         </div>
-
         {error && (
           <div style={{
             padding: '12px',
@@ -316,7 +287,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
             {error}
           </div>
         )}
-
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
           {/* Main editing area */}
           <div>
@@ -350,7 +320,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                 }}
               />
             </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
@@ -358,7 +327,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                 </label>
                 <select
                   value={editedType}
-                  onChange={(e) => setEditedType(e.target.value as 'fact' | 'preference' | 'context')}
+                  onChange={(e) = aria-label="Select option"> setEditedType(e.target.value as 'fact' | 'preference' | 'context')}
                   style={{
                     width: '100%',
                     padding: '8px',
@@ -371,7 +340,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                   <option value="context">Context</option>
                 </select>
               </div>
-
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
                   Confidence ({Math.round(editedConfidence * 100)}%)
@@ -382,18 +350,17 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                   max="1"
                   step="0.1"
                   value={editedConfidence}
-                  onChange={(e) => setEditedConfidence(parseFloat(e.target.value))}
+                  onChange={(e) = aria-label="Input"> setEditedConfidence(parseFloat(e.target.value))}
                   style={{ width: '100%' }}
                 />
               </div>
-
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
                   Cluster
                 </label>
                 <select
                   value={editedCluster}
-                  onChange={(e) => setEditedCluster(e.target.value)}
+                  onChange={(e) = aria-label="Select option"> setEditedCluster(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '8px',
@@ -408,10 +375,9 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                 </select>
               </div>
             </div>
-
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
               <button
-                onClick={() => generateAISuggestions()}
+                onClick={() = aria-label="Button"> generateAISuggestions()}
                 disabled={isLoadingSuggestions || !editedContent.trim()}
                 style={{
                   padding: '8px 16px',
@@ -425,9 +391,8 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
               >
                 {isLoadingSuggestions ? 'Generating...' : 'Get AI Suggestions'}
               </button>
-
               <button
-                onClick={() => getCategorySuggestions(editedContent)}
+                onClick={() = aria-label="Button"> getCategorySuggestions(editedContent)}
                 disabled={!editedContent.trim()}
                 style={{
                   padding: '8px 16px',
@@ -443,11 +408,9 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
               </button>
             </div>
           </div>
-
           {/* AI Suggestions panel */}
           <div>
             <h3 style={{ marginTop: 0, marginBottom: '16px' }}>AI Suggestions</h3>
-            
             {isLoadingSuggestions ? (
               <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
                 Generating AI suggestions...
@@ -486,17 +449,14 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                         {Math.round(suggestion.confidence * 100)}% confidence
                       </span>
                     </div>
-                    
                     <div style={{ fontSize: '14px', marginBottom: '8px' }}>
                       {suggestion.content}
                     </div>
-                    
                     <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
                       {suggestion.reasoning}
                     </div>
-                    
                     <button
-                      onClick={() => applySuggestion(suggestion)}
+                      onClick={() = aria-label="Button"> applySuggestion(suggestion)}
                       style={{
                         padding: '4px 8px',
                         backgroundColor: '#4CAF50',
@@ -519,7 +479,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
             )}
           </div>
         </div>
-
         {/* Action buttons */}
         <div style={{ 
           display: 'flex', 
@@ -541,12 +500,11 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                   borderRadius: '4px',
                   cursor: 'pointer'
                 }}
-              >
+               aria-label="Button">
                 Delete Memory
               </button>
             )}
           </div>
-          
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
               onClick={onCancel}
@@ -558,10 +516,9 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                 borderRadius: '4px',
                 cursor: 'pointer'
               }}
-            >
+             aria-label="Button">
               Cancel
             </button>
-            
             <button
               onClick={handleSave}
               disabled={isSaving || !editedContent.trim()}
@@ -574,7 +531,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                 cursor: isSaving || !editedContent.trim() ? 'not-allowed' : 'pointer',
                 opacity: isSaving || !editedContent.trim() ? 0.6 : 1
               }}
-            >
+             aria-label="Button">
               {isSaving ? 'Saving...' : 'Save Memory'}
             </button>
           </div>
@@ -583,5 +540,4 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
     </div>
   );
 };
-
 export default MemoryEditor;

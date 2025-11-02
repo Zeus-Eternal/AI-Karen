@@ -6,20 +6,17 @@
  * 
  * Requirements: 5.4, 5.5, 5.6
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { enhancedAuthMiddleware } from '@/lib/security/enhanced-auth-middleware';
 import { securityManager } from '@/lib/security/security-manager';
 import { ipSecurityManager } from '@/lib/security/ip-security-manager';
 import type { AdminApiResponse } from '@/types/admin';
-
 interface LoginRequest {
   email: string;
   password: string;
   totp_code?: string;
   remember_me?: boolean;
 }
-
 interface LoginResponse {
   user: {
     user_id: string;
@@ -33,12 +30,10 @@ interface LoginResponse {
   mfa_required: boolean;
   session_timeout: number;
 }
-
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json() as LoginRequest;
     const { email, password, totp_code, remember_me } = body;
-
     // Validate required fields
     if (!email || !password) {
       return NextResponse.json({
@@ -55,15 +50,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Extract client information
     const ipAddress = getClientIP(request);
     const userAgent = request.headers.get('user-agent') || undefined;
-
     // Check if IP is currently blocked
     const blockedIps = ipSecurityManager.getBlockedIps();
     const isBlocked = blockedIps.some(blocked => blocked.ip === ipAddress);
-    
     if (isBlocked) {
       const blockInfo = blockedIps.find(blocked => blocked.ip === ipAddress);
       return NextResponse.json({
@@ -79,7 +71,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
       } as AdminApiResponse<never>, { status: 429 });
     }
-
     // Attempt authentication with enhanced security
     const authResult = await enhancedAuthMiddleware.authenticateUser(
       email,
@@ -88,16 +79,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ipAddress,
       userAgent
     );
-
     // Handle authentication failure
     if (!authResult.success) {
       const statusCode = getStatusCodeForError(authResult.error?.code);
-      
       // Apply delay if specified
       if (authResult.delay && authResult.delay > 0) {
         await new Promise(resolve => setTimeout(resolve, (authResult.delay || 0) * 1000));
       }
-
       return NextResponse.json({
         success: false,
         error: authResult.error,
@@ -108,10 +96,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
       } as AdminApiResponse<never>, { status: statusCode });
     }
-
     // Successful authentication
     const { user, sessionToken } = authResult;
-    
     if (!user || !sessionToken) {
       return NextResponse.json({
         success: false,
@@ -121,11 +107,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
       } as AdminApiResponse<never>, { status: 500 });
     }
-
     // Get session timeout for user role
     const sessionTimeout = securityManager.getSessionTimeout(user.role);
     const expiresAt = new Date(Date.now() + sessionTimeout * 1000);
-
     // Prepare response data
     const responseData: LoginResponse = {
       user: {
@@ -140,7 +124,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       mfa_required: false,
       session_timeout: sessionTimeout
     };
-
     // Set secure session cookie
     const response = NextResponse.json({
       success: true,
@@ -152,7 +135,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         session_timeout: sessionTimeout
       }
     } as AdminApiResponse<LoginResponse>);
-
     // Set session cookie with security flags
     response.cookies.set('session_token', sessionToken, {
       httpOnly: true,
@@ -161,18 +143,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       maxAge: remember_me ? 30 * 24 * 60 * 60 : sessionTimeout, // 30 days if remember_me, otherwise session timeout
       path: '/'
     });
-
     // Set additional security headers
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('X-Frame-Options', 'DENY');
     response.headers.set('X-XSS-Protection', '1; mode=block');
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-
     return response;
-
   } catch (error) {
-    console.error('Enhanced login error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {
@@ -185,14 +162,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } as AdminApiResponse<never>, { status: 500 });
   }
 }
-
 /**
  * Enhanced logout endpoint
  */
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {
     const sessionToken = extractSessionToken(request);
-    
     if (!sessionToken) {
       return NextResponse.json({
         success: false,
@@ -202,15 +177,12 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Validate session to get user ID
     const authContext = await enhancedAuthMiddleware.validateSession(sessionToken);
-    
     if (authContext) {
       // Perform enhanced logout
       await enhancedAuthMiddleware.logout(sessionToken, authContext.user.user_id);
     }
-
     // Clear session cookie
     const response = NextResponse.json({
       success: true,
@@ -219,14 +191,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
         logout_time: new Date().toISOString()
       }
     } as AdminApiResponse<{ message: string; logout_time: string }>);
-
     response.cookies.delete('session_token');
-
     return response;
-
   } catch (error) {
-    console.error('Enhanced logout error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {
@@ -236,14 +203,12 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     } as AdminApiResponse<never>, { status: 500 });
   }
 }
-
 /**
  * Session validation endpoint
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const sessionToken = extractSessionToken(request);
-    
     if (!sessionToken) {
       return NextResponse.json({
         success: false,
@@ -253,10 +218,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         }
       } as AdminApiResponse<never>, { status: 401 });
     }
-
     const ipAddress = getClientIP(request);
     const authContext = await enhancedAuthMiddleware.validateSession(sessionToken, ipAddress);
-    
     if (!authContext) {
       return NextResponse.json({
         success: false,
@@ -266,7 +229,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         }
       } as AdminApiResponse<never>, { status: 401 });
     }
-
     return NextResponse.json({
       success: true,
       data: {
@@ -290,10 +252,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         }
       }
     } as AdminApiResponse<any>);
-
   } catch (error) {
-    console.error('Session validation error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {
@@ -303,7 +262,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     } as AdminApiResponse<never>, { status: 500 });
   }
 }
-
 /**
  * Extract client IP address from request
  */
@@ -311,14 +269,11 @@ function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
   const realIP = request.headers.get('x-real-ip');
   const remoteAddr = request.headers.get('remote-addr');
-  
   if (forwarded) {
     return forwarded.split(',')[0].trim();
   }
-  
   return realIP || remoteAddr || 'unknown';
 }
-
 /**
  * Extract session token from request
  */
@@ -328,7 +283,6 @@ function extractSessionToken(request: NextRequest): string | null {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
-
   // Try cookie
   const cookies = request.headers.get('cookie');
   if (cookies) {
@@ -337,10 +291,8 @@ function extractSessionToken(request: NextRequest): string | null {
       return sessionMatch[1];
     }
   }
-
   return null;
 }
-
 /**
  * Get appropriate HTTP status code for error type
  */
@@ -350,15 +302,12 @@ function getStatusCodeForError(errorCode?: string): number {
     case 'IP_ACCESS_DENIED':
     case 'SESSION_LIMIT_EXCEEDED':
       return 429; // Too Many Requests
-    
     case 'INVALID_CREDENTIALS':
     case 'INVALID_MFA_CODE':
       return 401; // Unauthorized
-    
     case 'MFA_SETUP_REQUIRED':
     case 'MFA_CODE_REQUIRED':
       return 403; // Forbidden (but with specific MFA requirement)
-    
     case 'AUTHENTICATION_ERROR':
     default:
       return 500; // Internal Server Error

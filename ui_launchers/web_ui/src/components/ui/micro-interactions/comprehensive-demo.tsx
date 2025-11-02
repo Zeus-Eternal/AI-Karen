@@ -49,7 +49,7 @@ export function ComprehensiveMicroInteractionDemo() {
               <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 Modern UI Micro-Interactions
               </h1>
-              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto sm:w-auto md:w-full">
                 A comprehensive collection of modern micro-interactions, animations, and feedback systems 
                 designed to enhance user experience with smooth, accessible, and delightful interactions.
               </p>
@@ -60,11 +60,11 @@ export function ComprehensiveMicroInteractionDemo() {
               <InteractiveCard 
                 interactive 
                 hoverEffect="lift"
-                className="p-6 text-center"
+                className="p-6 text-center sm:p-4 md:p-6"
               >
                 <div className="text-4xl mb-4">✨</div>
                 <h3 className="text-lg font-semibold mb-2">Micro-Interactions</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Smooth hover, focus, and tap animations for all interactive elements
                 </p>
               </InteractiveCard>
@@ -73,11 +73,11 @@ export function ComprehensiveMicroInteractionDemo() {
                 interactive 
                 hoverEffect="glow"
                 variant="elevated"
-                className="p-6 text-center"
+                className="p-6 text-center sm:p-4 md:p-6"
               >
                 <div className="text-4xl mb-4">💀</div>
                 <h3 className="text-lg font-semibold mb-2">Skeleton Loading</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Beautiful loading states with shimmer animations
                 </p>
               </InteractiveCard>
@@ -86,11 +86,11 @@ export function ComprehensiveMicroInteractionDemo() {
                 interactive 
                 hoverEffect="scale"
                 variant="outlined"
-                className="p-6 text-center"
+                className="p-6 text-center sm:p-4 md:p-6"
               >
                 <div className="text-4xl mb-4">🔄</div>
                 <h3 className="text-lg font-semibold mb-2">Page Transitions</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Smooth route-based transitions with multiple variants
                 </p>
               </InteractiveCard>
@@ -99,11 +99,11 @@ export function ComprehensiveMicroInteractionDemo() {
                 interactive 
                 hoverEffect="lift"
                 variant="glass"
-                className="p-6 text-center"
+                className="p-6 text-center sm:p-4 md:p-6"
               >
                 <div className="text-4xl mb-4">📳</div>
                 <h3 className="text-lg font-semibold mb-2">Haptic Feedback</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Tactile feedback for enhanced mobile experiences
                 </p>
               </InteractiveCard>
@@ -157,22 +157,22 @@ export function ComprehensiveMicroInteractionDemo() {
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-medium mb-4">Loading Animations</h3>
-                    <div className="flex items-center justify-around p-6 border rounded-lg">
+                    <div className="flex items-center justify-around p-6 border rounded-lg sm:p-4 md:p-6">
                       <div className="text-center">
                         <LoadingSpinner size="md" />
-                        <p className="text-xs mt-2">Default</p>
+                        <p className="text-xs mt-2 sm:text-sm md:text-base">Default</p>
                       </div>
                       <div className="text-center">
                         <LoadingSpinner variant="dots" size="md" />
-                        <p className="text-xs mt-2">Dots</p>
+                        <p className="text-xs mt-2 sm:text-sm md:text-base">Dots</p>
                       </div>
                       <div className="text-center">
                         <LoadingSpinner variant="pulse" size="md" />
-                        <p className="text-xs mt-2">Pulse</p>
+                        <p className="text-xs mt-2 sm:text-sm md:text-base">Pulse</p>
                       </div>
                       <div className="text-center">
                         <LoadingSpinner variant="bars" size="md" />
-                        <p className="text-xs mt-2">Bars</p>
+                        <p className="text-xs mt-2 sm:text-sm md:text-base">Bars</p>
                       </div>
                     </div>
                   </div>
@@ -218,7 +218,7 @@ export function ComprehensiveMicroInteractionDemo() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Accessibility First</h3>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
+                  <ul className="space-y-2 text-sm text-muted-foreground md:text-base lg:text-lg">
                     <li>✅ Respects prefers-reduced-motion</li>
                     <li>✅ Keyboard navigation support</li>
                     <li>✅ Screen reader friendly</li>
@@ -229,7 +229,7 @@ export function ComprehensiveMicroInteractionDemo() {
                 
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Performance Optimized</h3>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
+                  <ul className="space-y-2 text-sm text-muted-foreground md:text-base lg:text-lg">
                     <li>✅ Hardware accelerated animations</li>
                     <li>✅ 60fps smooth transitions</li>
                     <li>✅ Minimal layout shifts</li>
@@ -263,7 +263,7 @@ export function ComprehensiveMicroInteractionDemo() {
                         variant={activeSection === section.id ? 'default' : 'ghost'}
                         size="sm"
                         onClick={() => setActiveSection(section.id)}
-                        className="text-sm"
+                        className="text-sm md:text-base lg:text-lg"
                       >
                         <span className="mr-2">{section.icon}</span>
                         {section.title}

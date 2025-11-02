@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+
 import { useExtensionContext } from '../../../extensions/ExtensionContext';
 
 export interface ExtensionHeaderProps {
@@ -12,7 +12,7 @@ export default function ExtensionHeader({ title }: ExtensionHeaderProps) {
     state: { currentCategory },
   } = useExtensionContext();
   return (
-    <header className="p-2 border-b">
+    <header className="p-2 border-b sm:p-4 md:p-6">
       <h2 className="text-lg font-semibold tracking-tight">
         {title ?? currentCategory}
       </h2>

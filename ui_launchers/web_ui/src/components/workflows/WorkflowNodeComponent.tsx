@@ -89,45 +89,45 @@ export const WorkflowNodeComponent = memo<NodeProps<WorkflowNodeData>>(({ data, 
             top: `${((index + 1) / (data.inputs!.length + 1)) * 100}%`,
             background: input.required ? '#ef4444' : '#6b7280',
           }}
-          className="w-3 h-3"
+          className="w-3 h-3 sm:w-auto md:w-full"
         />
       ))}
 
-      <CardContent className="p-3">
+      <CardContent className="p-3 sm:p-4 md:p-6">
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0">
-            <IconComponent className="h-5 w-5" />
+            <IconComponent className="h-5 w-5 sm:w-auto md:w-full" />
           </div>
           
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 sm:w-auto md:w-full">
             <div className="flex items-center justify-between mb-1">
-              <h4 className="font-medium text-sm truncate">{data.label}</h4>
+              <h4 className="font-medium text-sm truncate md:text-base lg:text-lg">{data.label}</h4>
               {data.status && (
                 <Badge 
                   variant="secondary" 
                   className={`text-xs ${statusColors[data.status]}`}
                 >
-                  {data.status === 'running' && <div className="w-2 h-2 bg-current rounded-full animate-pulse mr-1" />}
-                  {data.status === 'completed' && <CheckCircle className="w-3 h-3 mr-1" />}
-                  {data.status === 'error' && <AlertCircle className="w-3 h-3 mr-1" />}
+                  {data.status === 'running' && <div className="w-2 h-2 bg-current rounded-full animate-pulse mr-1 sm:w-auto md:w-full" />}
+                  {data.status === 'completed' && <CheckCircle className="w-3 h-3 mr-1 sm:w-auto md:w-full" />}
+                  {data.status === 'error' && <AlertCircle className="w-3 h-3 mr-1 sm:w-auto md:w-full" />}
                   {data.status}
                 </Badge>
               )}
             </div>
             
             {data.description && (
-              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+              <p className="text-xs text-muted-foreground line-clamp-2 mb-2 sm:text-sm md:text-base">
                 {data.description}
               </p>
             )}
             
             {data.error && (
-              <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200 mb-2">
+              <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200 mb-2 sm:text-sm md:text-base">
                 {data.error}
               </div>
             )}
             
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
               <span>{data.nodeType}</span>
               {(data.inputs?.length || 0) > 0 && (
                 <span>{data.inputs?.length} input{data.inputs?.length !== 1 ? 's' : ''}</span>
@@ -148,7 +148,7 @@ export const WorkflowNodeComponent = memo<NodeProps<WorkflowNodeData>>(({ data, 
             top: `${((index + 1) / (data.outputs!.length + 1)) * 100}%`,
             background: '#6b7280',
           }}
-          className="w-3 h-3"
+          className="w-3 h-3 sm:w-auto md:w-full"
         />
       ))}
     </Card>

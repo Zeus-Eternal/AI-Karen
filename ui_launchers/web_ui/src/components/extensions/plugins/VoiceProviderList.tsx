@@ -33,13 +33,13 @@ export default function VoiceProviderList() {
       {providers.map((p) => (
         <Card key={p.id}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm flex items-center gap-1">
-              <Volume2 className="h-4 w-4" /> {p.name}
+            <CardTitle className="text-sm flex items-center gap-1 md:text-base lg:text-lg">
+              <Volume2 className="h-4 w-4 sm:w-auto md:w-full" /> {p.name}
             </CardTitle>
           </CardHeader>
           {p.previewText && (
             <CardContent>
-              <Button size="sm" variant="outline" onClick={() => p.previewText && handlePreview(p.previewText)}>
+              <button size="sm" variant="outline" onClick={() = aria-label="Button"> p.previewText && handlePreview(p.previewText)}>
                 Preview Voice
               </Button>
             </CardContent>

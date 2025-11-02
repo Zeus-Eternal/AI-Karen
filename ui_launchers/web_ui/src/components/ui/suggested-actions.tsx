@@ -144,8 +144,8 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
           isCompleted && 'opacity-75'
         )}
       >
-        <Button
-          onClick={() => handleActionClick(action, index)}
+        <button
+          onClick={() = aria-label="Button"> handleActionClick(action, index)}
           disabled={isExecuting || isCompleted}
           variant="outline"
           size={isCompact ? "sm" : "md"}
@@ -170,7 +170,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
             </span>
             
             {showConfidence && action.confidence && !isCompact && (
-              <Badge variant="secondary" className="text-xs ml-1">
+              <Badge variant="secondary" className="text-xs ml-1 sm:text-sm md:text-base">
                 {Math.round(action.confidence * 100)}%
               </Badge>
             )}
@@ -212,20 +212,20 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
   if (variant === 'compact') {
     return (
       <Card className={cn('border-dashed', className)}>
-        <CardContent className="p-3">
+        <CardContent className="p-3 sm:p-4 md:p-6">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-blue-500" />
-              <span className="text-sm font-medium">Suggested Actions</span>
+              <Sparkles className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />
+              <span className="text-sm font-medium md:text-base lg:text-lg">Suggested Actions</span>
             </div>
             {onDismiss && (
-              <Button
+              <button
                 variant="ghost"
                 size="sm"
                 onClick={onDismiss}
-                className="h-6 w-6 p-0"
-              >
-                <X className="h-3 w-3" />
+                className="h-6 w-6 p-0 sm:w-auto md:w-full"
+               aria-label="Button">
+                <X className="h-3 w-3 sm:w-auto md:w-full" />
               </Button>
             )}
           </div>
@@ -255,26 +255,26 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
       className={cn('space-y-3', className)}
     >
       <Card className="border-dashed border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
-        <CardContent className="p-4">
+        <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-blue-500" />
+              <Sparkles className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                 Suggested Actions
               </h3>
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                 {displayActions.length}
               </Badge>
             </div>
             
             {onDismiss && (
-              <Button
+              <button
                 variant="ghost"
                 size="sm"
                 onClick={onDismiss}
-                className="h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
+                className="h-8 w-8 p-0 sm:w-auto md:w-full"
+               aria-label="Button">
+                <X className="h-4 w-4 sm:w-auto md:w-full" />
               </Button>
             )}
           </div>
@@ -308,9 +308,9 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                         isCompleted ? 'bg-green-500' : actionColors[action.type as keyof typeof actionColors] || 'bg-gray-500'
                       )}>
                         {isCompleted ? (
-                          <CheckSquare className="h-4 w-4" />
+                          <CheckSquare className="h-4 w-4 sm:w-auto md:w-full" />
                         ) : (
-                          <IconComponent className="h-4 w-4" />
+                          <IconComponent className="h-4 w-4 sm:w-auto md:w-full" />
                         )}
                       </div>
                       
@@ -321,20 +321,20 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                           </span>
                           
                           {action.priority === 'high' && (
-                            <Badge variant="destructive" className="text-xs">
+                            <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
                               High Priority
                             </Badge>
                           )}
                           
                           {showConfidence && action.confidence && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                               {Math.round(action.confidence * 100)}% confidence
                             </Badge>
                           )}
                         </div>
                         
                         {action.params && Object.keys(action.params).length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 mt-1 sm:text-sm md:text-base">
                             {Object.entries(action.params)
                               .slice(0, 2)
                               .map(([key, value]) => `${key}: ${String(value).substring(0, 30)}`)
@@ -344,8 +344,8 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                       </div>
                     </div>
 
-                    <Button
-                      onClick={() => handleActionClick(action, index)}
+                    <button
+                      onClick={() = aria-label="Button"> handleActionClick(action, index)}
                       disabled={isExecuting || isCompleted}
                       size="sm"
                       variant={isCompleted ? "outline" : "default"}
@@ -355,13 +355,13 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                       )}
                     >
                       {isExecuting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
                       ) : isCompleted ? (
                         'Done'
                       ) : (
                         <>
                           Execute
-                          <ChevronRight className="h-4 w-4 ml-1" />
+                          <ChevronRight className="h-4 w-4 ml-1 sm:w-auto md:w-full" />
                         </>
                       )}
                     </Button>
@@ -373,7 +373,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
 
           {actions.length > maxActions && (
             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-500 text-center">
+              <p className="text-xs text-gray-500 text-center sm:text-sm md:text-base">
                 {actions.length - maxActions} more actions available
               </p>
             </div>

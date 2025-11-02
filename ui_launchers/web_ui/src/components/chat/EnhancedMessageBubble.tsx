@@ -91,8 +91,8 @@ const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = (props) => {
   return (
     <div className={`flex items-start gap-3 my-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
-        <Avatar className="h-10 w-10 self-start shrink-0 flex items-center justify-center bg-muted rounded-full">
-          <Bot className="h-5 w-5 text-primary" />
+        <Avatar className="h-10 w-10 self-start shrink-0 flex items-center justify-center bg-muted rounded-full sm:w-auto md:w-full">
+          <Bot className="h-5 w-5 text-primary sm:w-auto md:w-full" />
         </Avatar>
       )}
 
@@ -105,7 +105,7 @@ const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = (props) => {
 
           {/* Meta badges */}
           {meta && (
-            <div className="flex flex-wrap items-center gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm md:text-base">
               {typeof meta.confidence === 'number' && (
                 <Badge variant={isUser ? 'secondary' : 'outline'}>
                   Confidence: {Math.round(meta.confidence * 100)}%
@@ -142,10 +142,10 @@ const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = (props) => {
           {/* Sources list */}
           {meta?.sources && meta.sources.length > 0 && (
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-xs font-medium opacity-80">
-                <LinkIcon className="h-3.5 w-3.5" /> Sources
+              <div className="flex items-center gap-2 text-xs font-medium opacity-80 sm:text-sm md:text-base">
+                <LinkIcon className="h-3.5 w-3.5 sm:w-auto md:w-full" /> Sources
               </div>
-              <ul className="list-disc pl-5 text-xs opacity-90 space-y-0.5">
+              <ul className="list-disc pl-5 text-xs opacity-90 space-y-0.5 sm:text-sm md:text-base">
                 {meta.sources.map((src, i) => (
                   <li key={i} className="break-all">
                     {src}
@@ -158,10 +158,10 @@ const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = (props) => {
           {/* Reasoning block */}
           {meta?.reasoning && (
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-xs font-medium opacity-80">
-                <Info className="h-3.5 w-3.5" /> Reasoning
+              <div className="flex items-center gap-2 text-xs font-medium opacity-80 sm:text-sm md:text-base">
+                <Info className="h-3.5 w-3.5 sm:w-auto md:w-full" /> Reasoning
               </div>
-              <div className="text-xs whitespace-pre-wrap opacity-90">
+              <div className="text-xs whitespace-pre-wrap opacity-90 sm:text-sm md:text-base">
                 {meta.reasoning}
               </div>
             </div>
@@ -188,13 +188,13 @@ const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = (props) => {
           {(onCopy || onRegenerate) && (
             <div className="flex gap-2 justify-end pt-1">
               {onCopy && (
-                <Button size="sm" variant={isUser ? 'secondary' : 'outline'} onClick={handleCopy}>
-                  <Copy className="h-4 w-4 mr-2" /> Copy
+                <button size="sm" variant={isUser ? 'secondary' : 'outline'} onClick={handleCopy} aria-label="Button">
+                  <Copy className="h-4 w-4 mr-2 sm:w-auto md:w-full" /> Copy
                 </Button>
               )}
               {onRegenerate && (
-                <Button size="sm" variant={isUser ? 'secondary' : 'outline'} onClick={onRegenerate}>
-                  <RefreshCw className="h-4 w-4 mr-2" /> Regenerate
+                <button size="sm" variant={isUser ? 'secondary' : 'outline'} onClick={onRegenerate} aria-label="Button">
+                  <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" /> Regenerate
                 </Button>
               )}
             </div>
@@ -203,8 +203,8 @@ const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = (props) => {
       </Card>
 
       {isUser && (
-        <Avatar className="h-10 w-10 self-start shrink-0 flex items-center justify-center bg-muted rounded-full">
-          <User className="h-5 w-5 text-secondary" />
+        <Avatar className="h-10 w-10 self-start shrink-0 flex items-center justify-center bg-muted rounded-full sm:w-auto md:w-full">
+          <User className="h-5 w-5 text-secondary sm:w-auto md:w-full" />
         </Avatar>
       )}
     </div>

@@ -2,19 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { QualityMetricsCollector } from '@/lib/qa/quality-metrics-collector';
 import * as fs from 'fs';
 import * as path from 'path';
-
 const collector = new QualityMetricsCollector();
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { format = 'json', includeCharts = false } = body;
-    
     // Collect all quality data
     const metrics = await collector.collectAllMetrics();
     const qualityGates = await collector.generateQualityGates(metrics);
     const trends = await collector.generateTrends(30);
-    
     const reportData = {
       timestamp: new Date().toISOString(),
       metrics,
@@ -33,7 +29,6 @@ export async function POST(request: NextRequest) {
         criticalIssues: metrics.security.vulnerabilities.critical + metrics.accessibility.violations
       }
     };
-    
     if (format === 'json') {
       return NextResponse.json(reportData, {
         headers: {
@@ -41,11 +36,9 @@ export async function POST(request: NextRequest) {
         }
       });
     }
-    
     if (format === 'pdf') {
       // Generate PDF report
       const pdfContent = await generatePdfReport(reportData, includeCharts);
-      
       return new NextResponse(pdfContent as BodyInit, {
         headers: {
           'Content-Type': 'application/pdf',
@@ -53,10 +46,8 @@ export async function POST(request: NextRequest) {
         }
       });
     }
-    
     if (format === 'html') {
       const htmlContent = generateHtmlReport(reportData, includeCharts);
-      
       return new NextResponse(htmlContent, {
         headers: {
           'Content-Type': 'text/html',
@@ -64,77 +55,64 @@ export async function POST(request: NextRequest) {
         }
       });
     }
-    
     return NextResponse.json({ error: 'Unsupported format' }, { status: 400 });
   } catch (error) {
-    console.error('Failed to export quality report:', error);
     return NextResponse.json(
       { error: 'Failed to export quality report' },
       { status: 500 }
     );
   }
 }
-
 async function generatePdfReport(reportData: any, includeCharts: boolean): Promise<Buffer> {
   // This would typically use a library like puppeteer or jsPDF
   // For now, return a simple text-based PDF placeholder
   const textContent = `
 Quality Assurance Report
 Generated: ${new Date(reportData.timestamp).toLocaleString()}
-
 Overall Quality Score: ${reportData.summary.overallScore}%
 Quality Gates Passed: ${reportData.summary.passedGates}/${reportData.summary.totalGates}
 Critical Issues: ${reportData.summary.criticalIssues}
-
 Test Coverage:
 - Unit Tests: ${reportData.metrics.testCoverage.unit}%
 - Integration Tests: ${reportData.metrics.testCoverage.integration}%
 - E2E Tests: ${reportData.metrics.testCoverage.e2e}%
 - Visual Tests: ${reportData.metrics.testCoverage.visual}%
 - Overall: ${reportData.metrics.testCoverage.overall}%
-
 Test Results:
 - Total: ${reportData.metrics.testResults.total}
 - Passed: ${reportData.metrics.testResults.passed}
 - Failed: ${reportData.metrics.testResults.failed}
 - Skipped: ${reportData.metrics.testResults.skipped}
 - Flaky: ${reportData.metrics.testResults.flaky}
-
 Performance:
 - Load Time: ${reportData.metrics.performance.loadTime}ms
 - Interaction Time: ${reportData.metrics.performance.interactionTime}ms
 - Memory Usage: ${reportData.metrics.performance.memoryUsage}MB
 - Error Rate: ${reportData.metrics.performance.errorRate}%
-
 Accessibility:
 - Score: ${reportData.metrics.accessibility.score}%
 - Violations: ${reportData.metrics.accessibility.violations}
 - Warnings: ${reportData.metrics.accessibility.warnings}
 - Passes: ${reportData.metrics.accessibility.passes}
-
 Security:
 - Score: ${reportData.metrics.security.score}%
 - Critical Vulnerabilities: ${reportData.metrics.security.vulnerabilities.critical}
 - High Vulnerabilities: ${reportData.metrics.security.vulnerabilities.high}
 - Medium Vulnerabilities: ${reportData.metrics.security.vulnerabilities.medium}
 - Low Vulnerabilities: ${reportData.metrics.security.vulnerabilities.low}
-
 Code Quality:
 - Maintainability Index: ${reportData.metrics.codeQuality.maintainabilityIndex}%
 - Technical Debt: ${reportData.metrics.codeQuality.technicalDebt}h
 - Duplicate Code: ${reportData.metrics.codeQuality.duplicateCode}%
 - Complexity: ${reportData.metrics.codeQuality.complexity}
-
 Quality Gates:
 ${reportData.qualityGates.map((gate: any) => 
   `- ${gate.name}: ${gate.status.toUpperCase()} (${gate.actual}% vs ${gate.threshold}% threshold)`
 ).join('\n')}
   `;
-  
   // Convert text to PDF buffer (simplified)
   return Buffer.from(textContent, 'utf8');
 }
-
 function generateHtmlReport(reportData: any, includeCharts: boolean): string {
   return `
 <!DOCTYPE html>
@@ -251,7 +229,6 @@ function generateHtmlReport(reportData: any, includeCharts: boolean): string {
             <h1>Quality Assurance Report</h1>
             <p class="timestamp">Generated on ${new Date(reportData.timestamp).toLocaleString()}</p>
         </div>
-        
         <div class="summary">
             <div class="summary-card">
                 <div class="summary-number" style="color: #007bff;">${reportData.summary.overallScore}%</div>
@@ -270,7 +247,6 @@ function generateHtmlReport(reportData: any, includeCharts: boolean): string {
                 <div>Critical Issues</div>
             </div>
         </div>
-        
         <div class="metrics">
             <div class="metric-section">
                 <div class="metric-header">Test Coverage</div>
@@ -297,7 +273,6 @@ function generateHtmlReport(reportData: any, includeCharts: boolean): string {
                     </div>
                 </div>
             </div>
-            
             <div class="metric-section">
                 <div class="metric-header">Test Results</div>
                 <div class="metric-content">
@@ -323,7 +298,6 @@ function generateHtmlReport(reportData: any, includeCharts: boolean): string {
                     </div>
                 </div>
             </div>
-            
             <div class="metric-section">
                 <div class="metric-header">Performance</div>
                 <div class="metric-content">
@@ -345,7 +319,6 @@ function generateHtmlReport(reportData: any, includeCharts: boolean): string {
                     </div>
                 </div>
             </div>
-            
             <div class="metric-section">
                 <div class="metric-header">Accessibility</div>
                 <div class="metric-content">
@@ -367,7 +340,6 @@ function generateHtmlReport(reportData: any, includeCharts: boolean): string {
                     </div>
                 </div>
             </div>
-            
             <div class="metric-section">
                 <div class="metric-header">Security</div>
                 <div class="metric-content">
@@ -393,7 +365,6 @@ function generateHtmlReport(reportData: any, includeCharts: boolean): string {
                     </div>
                 </div>
             </div>
-            
             <div class="metric-section">
                 <div class="metric-header">Code Quality</div>
                 <div class="metric-content">
@@ -416,7 +387,6 @@ function generateHtmlReport(reportData: any, includeCharts: boolean): string {
                 </div>
             </div>
         </div>
-        
         <div class="quality-gates">
             <h2>Quality Gates</h2>
             ${reportData.qualityGates.map((gate: any) => `

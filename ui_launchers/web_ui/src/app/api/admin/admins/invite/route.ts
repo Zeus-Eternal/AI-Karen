@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { getAdminUtils } from '@/lib/database/admin-utils';
 import { getAuditLogger } from '@/lib/audit/audit-logger';
-
 /**
  * POST /api/admin/admins/invite
  * 
@@ -15,9 +14,7 @@ export async function POST(request: NextRequest) {
     if (authResult instanceof NextResponse) {
       return authResult;
     }
-
     const { user: currentUser } = authResult;
-    
     if (!currentUser) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -26,14 +23,12 @@ export async function POST(request: NextRequest) {
     }
     const body = await request.json();
     const { email, message } = body;
-
     if (!email) {
       return NextResponse.json(
         { error: 'Email is required' },
         { status: 400 }
       );
     }
-
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -42,10 +37,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
     const adminUtils = getAdminUtils();
     const auditLogger = getAuditLogger();
-
     // Check if user already exists
     const existingUser = await adminUtils.getUserByEmail(email);
     if (existingUser) {
@@ -54,12 +47,10 @@ export async function POST(request: NextRequest) {
         { status: 409 }
       );
     }
-
     // Generate invitation token
     const invitationToken = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiration
-
     // Store invitation
     const invitation = await adminUtils.createAdminInvitation({
       email,
@@ -68,15 +59,12 @@ export async function POST(request: NextRequest) {
       expiresAt,
       message: message || undefined
     });
-
     // Send invitation email
     try {
       await sendInvitationEmail(email, invitationToken, message, currentUser.email);
     } catch (emailError) {
-      console.error('Failed to send invitation email:', emailError);
       // Continue anyway - invitation is stored
     }
-
     // Log the action
     await auditLogger.log(
       currentUser.user_id,
@@ -94,20 +82,17 @@ export async function POST(request: NextRequest) {
                    'unknown'
       }
     );
-
     return NextResponse.json({
       message: 'Admin invitation sent successfully',
       invitationId: invitation.id
     });
   } catch (error) {
-    console.error('Admin invitation error:', error);
     return NextResponse.json(
       { error: 'Failed to send admin invitation' },
       { status: 500 }
     );
   }
 }
-
 /**
  * Send invitation email to the new admin
  */
@@ -119,14 +104,6 @@ async function sendInvitationEmail(
 ) {
   // This would integrate with your email service
   // For now, we'll just log the invitation details
-  console.log('Admin invitation email:', {
-    to: email,
-    token,
-    customMessage,
-    inviterEmail,
-    invitationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/admin/accept-invitation?token=${token}`
-  });
-
   // TODO: Implement actual email sending
   // Example with a hypothetical email service:
   /*

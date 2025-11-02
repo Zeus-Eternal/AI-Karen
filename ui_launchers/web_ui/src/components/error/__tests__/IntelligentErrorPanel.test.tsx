@@ -6,7 +6,7 @@
  * Requirements: 3.2, 3.3, 3.7, 4.4
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { IntelligentErrorPanel, IntelligentErrorPanelProps } from '../IntelligentErrorPanel';

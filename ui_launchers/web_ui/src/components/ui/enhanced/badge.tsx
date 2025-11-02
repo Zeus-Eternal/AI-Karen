@@ -200,14 +200,14 @@ export const EnhancedBadge = React.forwardRef<HTMLDivElement, EnhancedBadgeProps
               'transition-colors [transition-duration:var(--duration-fast)]',
               'p-0.5'
             )}
-            onClick={(e) => {
+            onClick={(e) = aria-label="Button"> {
               e.stopPropagation();
               onRemove?.();
             }}
             aria-label="Remove"
           >
             <svg
-              className="h-3 w-3"
+              className="h-3 w-3 sm:w-auto md:w-full"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

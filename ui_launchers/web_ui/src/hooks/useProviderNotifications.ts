@@ -1,9 +1,7 @@
 "use client";
-
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { getKarenBackend } from '@/lib/karen-backend';
-
 interface ProviderNotification {
   id: string;
   type: 'status_change' | 'fallback' | 'recovery' | 'system_health' | 'performance' | 'error' | 'maintenance';
@@ -22,7 +20,6 @@ interface ProviderNotification {
   }>;
   metadata?: Record<string, any>;
 }
-
 interface NotificationSettings {
   provider_status_changes: boolean;
   fallback_notifications: boolean;
@@ -32,20 +29,17 @@ interface NotificationSettings {
   error_notifications: boolean;
   maintenance_notifications: boolean;
 }
-
 interface UseProviderNotificationsOptions {
   realTimeUpdates?: boolean;
   autoToast?: boolean;
   maxNotifications?: number;
 }
-
 export function useProviderNotifications(options: UseProviderNotificationsOptions = {}) {
   const {
     realTimeUpdates = true,
     autoToast = true,
     maxNotifications = 50
   } = options;
-
   const [notifications, setNotifications] = useState<ProviderNotification[]>([]);
   const [settings, setSettings] = useState<NotificationSettings>({
     provider_status_changes: true,
@@ -58,46 +52,34 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
   });
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
-
   const { toast } = useToast();
   const backend = getKarenBackend();
-
   // Load initial notifications and settings
   useEffect(() => {
     loadNotifications();
     loadSettings();
   }, []);
-
   // Set up real-time updates
   useEffect(() => {
     if (!realTimeUpdates) return;
-
     let eventSource: EventSource | null = null;
     let pollInterval: NodeJS.Timeout | null = null;
-
     const setupRealTimeUpdates = async () => {
       try {
         // Try to establish SSE connection first
         eventSource = new EventSource('/api/providers/notifications/stream');
-        
         eventSource.onopen = () => {
           setConnected(true);
-          console.log('Provider notifications SSE connected');
         };
-
         eventSource.onmessage = (event) => {
           try {
             const notification: ProviderNotification = JSON.parse(event.data);
             addNotification(notification);
           } catch (error) {
-            console.error('Failed to parse notification:', error);
           }
         };
-
         eventSource.onerror = () => {
           setConnected(false);
-          console.warn('Provider notifications SSE error, falling back to polling');
-          
           // Fallback to polling
           if (!pollInterval) {
             pollInterval = setInterval(() => {
@@ -105,19 +87,14 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
             }, 30000); // Poll every 30 seconds
           }
         };
-
       } catch (error) {
-        console.warn('SSE not available, using polling for notifications');
-        
         // Fallback to polling
         pollInterval = setInterval(() => {
           loadNotifications();
         }, 30000);
       }
     };
-
     setupRealTimeUpdates();
-
     return () => {
       if (eventSource) {
         eventSource.close();
@@ -127,20 +104,17 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       }
     };
   }, [realTimeUpdates]);
-
   const loadNotifications = async () => {
     try {
       const response = await backend.makeRequestPublic<ProviderNotification[]>('/api/providers/notifications');
       setNotifications(response || []);
     } catch (error) {
-      console.error('Failed to load notifications:', error);
       // Use mock data for development
       setNotifications([]);
     } finally {
       setLoading(false);
     }
   };
-
   const loadSettings = async () => {
     try {
       // Try to load from backend first
@@ -150,9 +124,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         return;
       }
     } catch (error) {
-      console.warn('Failed to load notification settings from backend:', error);
     }
-
     // Fallback to localStorage
     try {
       const savedSettings = localStorage.getItem('provider_notification_settings');
@@ -160,10 +132,8 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         setSettings(JSON.parse(savedSettings));
       }
     } catch (error) {
-      console.error('Failed to load notification settings from localStorage:', error);
     }
   };
-
   const saveSettings = useCallback(async (newSettings: NotificationSettings) => {
     try {
       // Try to save to backend first
@@ -172,19 +142,14 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         body: JSON.stringify(newSettings)
       });
     } catch (error) {
-      console.warn('Failed to save notification settings to backend:', error);
     }
-
     // Always save to localStorage as backup
     try {
       localStorage.setItem('provider_notification_settings', JSON.stringify(newSettings));
     } catch (error) {
-      console.error('Failed to save notification settings to localStorage:', error);
     }
-
     setSettings(newSettings);
   }, [backend]);
-
   const addNotification = useCallback((notification: ProviderNotification) => {
     setNotifications(prev => {
       // Check if notification type is enabled
@@ -192,15 +157,12 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       if (settingKey in settings && !settings[settingKey]) {
         return prev; // Don't add if disabled
       }
-
       // Avoid duplicates
       if (prev.some(n => n.id === notification.id)) {
         return prev;
       }
-
       // Add notification and limit total count
       const updated = [notification, ...prev].slice(0, maxNotifications);
-
       // Show toast for high priority notifications
       if (autoToast && (notification.priority === 'high' || notification.priority === 'critical')) {
         toast({
@@ -209,48 +171,37 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
           variant: notification.priority === 'critical' ? 'destructive' : 'default',
         });
       }
-
       return updated;
     });
   }, [settings, maxNotifications, autoToast, toast]);
-
   const markAsRead = useCallback((notificationId: string) => {
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
-
     // Update backend
     backend.makeRequestPublic(`/api/providers/notifications/${notificationId}/read`, {
       method: 'POST'
     }).catch(error => {
-      console.warn('Failed to mark notification as read:', error);
     });
   }, [backend]);
-
   const dismissNotification = useCallback((notificationId: string) => {
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, dismissed: true } : n)
     );
-
     // Update backend
     backend.makeRequestPublic(`/api/providers/notifications/${notificationId}/dismiss`, {
       method: 'POST'
     }).catch(error => {
-      console.warn('Failed to dismiss notification:', error);
     });
   }, [backend]);
-
   const clearAllNotifications = useCallback(() => {
     setNotifications(prev => prev.map(n => ({ ...n, dismissed: true })));
-
     // Update backend
     backend.makeRequestPublic('/api/providers/notifications/clear-all', {
       method: 'POST'
     }).catch(error => {
-      console.warn('Failed to clear all notifications:', error);
     });
   }, [backend]);
-
   const createNotification = useCallback((
     type: ProviderNotification['type'],
     title: string,
@@ -268,20 +219,16 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       dismissed: false,
       ...options
     };
-
     addNotification(notification);
     return notification;
   }, [addNotification]);
-
   // Notification helpers for common scenarios
   const notifyProviderStatusChange = useCallback((provider: string, status: 'healthy' | 'unhealthy' | 'degraded', previousStatus?: string) => {
     const isRecovery = previousStatus === 'unhealthy' && status === 'healthy';
     const isDegradation = previousStatus === 'healthy' && (status === 'unhealthy' || status === 'degraded');
-
     let title: string;
     let message: string;
     let priority: ProviderNotification['priority'] = 'medium';
-
     if (isRecovery) {
       title = `${provider} Provider Recovered`;
       message = `${provider} provider has recovered and is now available for requests.`;
@@ -294,7 +241,6 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       title = `${provider} Status Changed`;
       message = `${provider} provider status changed to ${status}.`;
     }
-
     return createNotification(isRecovery ? 'recovery' : 'status_change', title, message, {
       provider,
       priority,
@@ -305,7 +251,6 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       ]
     });
   }, [createNotification]);
-
   const notifyFallback = useCallback((primaryProvider: string, fallbackProvider: string, reason?: string) => {
     return createNotification('fallback', 'Fallback Provider Active', 
       `Primary provider (${primaryProvider}) is unavailable. Requests are being routed to ${fallbackProvider}.${reason ? ` Reason: ${reason}` : ''}`, {
@@ -319,11 +264,9 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       metadata: { primary_provider: primaryProvider, fallback_provider: fallbackProvider, reason }
     });
   }, [createNotification]);
-
   const notifySystemHealth = useCallback((failedProviders: string[], healthyProviders: string[], degradedMode: boolean = false) => {
     const title = degradedMode ? 'System in Degraded Mode' : 'Multiple Providers Failing';
     const message = `System health alert: ${failedProviders.length} out of ${failedProviders.length + healthyProviders.length} providers are currently unavailable.${degradedMode ? ' System is running in degraded mode.' : ''}`;
-
     return createNotification('system_health', title, message, {
       priority: 'critical',
       actions: [
@@ -334,7 +277,6 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       metadata: { failed_providers: failedProviders, healthy_providers: healthyProviders, degraded_mode: degradedMode }
     });
   }, [createNotification]);
-
   const notifyError = useCallback((provider: string, error: string, errorType?: string) => {
     return createNotification('error', `${provider} Error`, error, {
       provider,
@@ -347,12 +289,10 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       metadata: { error_type: errorType }
     });
   }, [createNotification]);
-
   // Computed values
   const activeNotifications = notifications.filter(n => !n.dismissed);
   const unreadCount = activeNotifications.filter(n => !n.read).length;
   const criticalCount = activeNotifications.filter(n => n.priority === 'critical').length;
-
   return {
     // State
     notifications: activeNotifications,
@@ -361,7 +301,6 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     connected,
     unreadCount,
     criticalCount,
-
     // Actions
     markAsRead,
     dismissNotification,
@@ -369,16 +308,13 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     saveSettings,
     addNotification,
     createNotification,
-
     // Helpers
     notifyProviderStatusChange,
     notifyFallback,
     notifySystemHealth,
     notifyError,
-
     // Refresh
     refresh: loadNotifications
   };
 }
-
 export default useProviderNotifications;

@@ -42,20 +42,20 @@ export function ContextualHelp({
     <Card className={`border-blue-200 bg-blue-50/50 ${className}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium text-blue-900">
-            <HelpCircle className="h-4 w-4" />
+          <CardTitle className="flex items-center gap-2 text-sm font-medium text-blue-900 md:text-base lg:text-lg">
+            <HelpCircle className="h-4 w-4 sm:w-auto md:w-full" />
             Help: {section}
           </CardTitle>
-          <Button
+          <button
             variant="ghost"
             size="sm"
-            onClick={() => setExpanded(!expanded)}
+            onClick={() = aria-label="Button"> setExpanded(!expanded)}
             className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
           >
             {expanded ? (
-              <ChevronUp className="h-4 w-4" />
+              <ChevronUp className="h-4 w-4 sm:w-auto md:w-full" />
             ) : (
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
             )}
           </Button>
         </div>
@@ -69,16 +69,16 @@ export function ContextualHelp({
               if (!content) return null;
               
               return (
-                <div key={helpKey} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-blue-100">
+                <div key={helpKey} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-blue-100 sm:p-4 md:p-6">
                   <div className="flex-shrink-0 mt-0.5">
-                    <Lightbulb className="h-4 w-4 text-blue-600" />
+                    <Lightbulb className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 sm:w-auto md:w-full">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-sm text-blue-900">{content.title}</h4>
+                      <h4 className="font-medium text-sm text-blue-900 md:text-base lg:text-lg">{content.title}</h4>
                       <HelpTooltip helpKey={helpKey} category={category} variant="inline" size="sm" />
                     </div>
-                    <p className="text-sm text-blue-700">{content.description}</p>
+                    <p className="text-sm text-blue-700 md:text-base lg:text-lg">{content.description}</p>
                   </div>
                 </div>
               );
@@ -114,13 +114,13 @@ export function HelpCallout({
   const getIcon = () => {
     switch (type) {
       case 'tip':
-        return <Lightbulb className="h-4 w-4" />;
+        return <Lightbulb className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4" />;
+        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'success':
-        return <CheckCircle className="h-4 w-4" />;
+        return <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />;
       default:
-        return <BookOpen className="h-4 w-4" />;
+        return <BookOpen className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
 
@@ -157,7 +157,7 @@ export function HelpCallout({
               <HelpTooltip helpKey={helpKey} category={category} variant="inline" size="sm" />
             )}
           </div>
-          <AlertDescription className="text-sm opacity-90">
+          <AlertDescription className="text-sm opacity-90 md:text-base lg:text-lg">
             {children}
           </AlertDescription>
         </div>
@@ -189,7 +189,7 @@ export function QuickStartHelp({
     <Card className={`border-green-200 bg-green-50/50 ${className}`}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-green-900">
-          <CheckCircle className="h-5 w-5" />
+          <CheckCircle className="h-5 w-5 sm:w-auto md:w-full" />
           Quick Start Guide
         </CardTitle>
         <CardDescription className="text-green-700">
@@ -207,12 +207,12 @@ export function QuickStartHelp({
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-medium text-sm text-green-900">{step.title}</h4>
+                  <h4 className="font-medium text-sm text-green-900 md:text-base lg:text-lg">{step.title}</h4>
                   {step.helpKey && (
                     <HelpTooltip helpKey={step.helpKey} category={category} variant="inline" size="sm" />
                   )}
                 </div>
-                <p className="text-sm text-green-700">{step.description}</p>
+                <p className="text-sm text-green-700 md:text-base lg:text-lg">{step.description}</p>
               </div>
             </div>
           ))}

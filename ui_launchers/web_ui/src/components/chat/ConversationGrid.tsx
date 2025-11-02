@@ -41,7 +41,7 @@ const SentimentRenderer = (params: any) => {
                   sentiment === 'negative' ? 'destructive' : 'secondary';
   
   return (
-    <Badge variant={variant} className="text-xs">
+    <Badge variant={variant} className="text-xs sm:text-sm md:text-base">
       {sentiment}
     </Badge>
   );
@@ -52,12 +52,12 @@ const TagsRenderer = (params: any) => {
   return (
     <div className="flex flex-wrap gap-1">
       {tags.slice(0, 2).map((tag: string, index: number) => (
-        <Badge key={index} variant="outline" className="text-xs">
+        <Badge key={index} variant="outline" className="text-xs sm:text-sm md:text-base">
           {tag}
         </Badge>
       ))}
       {tags.length > 2 && (
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
           +{tags.length - 2}
         </Badge>
       )}
@@ -256,17 +256,17 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
             Conversations ({filteredConversations.length})
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Button
+            <button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={isLoading}
-            >
+             aria-label="Button">
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
+            <button variant="outline" size="sm" aria-label="Button">
+              <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Export
             </Button>
           </div>
@@ -274,16 +274,16 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
         
         <div className="flex items-center gap-2 mt-4">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <input
               placeholder="Search conversations..."
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) = aria-label="Input"> setSearchText(e.target.value)}
               className="pl-10"
             />
           </div>
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
+          <button variant="outline" size="sm" aria-label="Button">
+            <Filter className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Filters
           </Button>
         </div>
@@ -293,14 +293,14 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
             <Badge variant="secondary">
               {selectedRows.length} selected
             </Badge>
-            <Button variant="outline" size="sm">
+            <button variant="outline" size="sm" aria-label="Button">
               Bulk Actions
             </Button>
           </div>
         )}
       </CardHeader>
 
-      <CardContent className="p-0">
+      <CardContent className="p-0 sm:p-4 md:p-6">
         <div className="ag-theme-alpine h-[500px] w-full">
           <AgGridReact
             rowData={filteredConversations}

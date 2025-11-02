@@ -2,24 +2,20 @@
  * Error recovery strategies and fallback actions
  * Requirements: 1.3, 2.3, 3.3, 4.3
  */
-
 import { CategorizedError, ErrorCategory } from './error-categories';
 import { ErrorCategorizer } from './error-categorizer';
-
 export interface RecoveryAction {
   name: string;
   description: string;
   execute: () => Promise<boolean>;
   rollback?: () => Promise<void>;
 }
-
 export interface RecoveryStrategy {
   errorCategory: ErrorCategory;
   actions: RecoveryAction[];
   maxAttempts: number;
   cooldownPeriod: number; // milliseconds
 }
-
 export interface RecoveryResult {
   success: boolean;
   actionTaken: string;
@@ -27,20 +23,17 @@ export interface RecoveryResult {
   shouldRetry: boolean;
   nextRetryDelay?: number;
 }
-
 export class ErrorRecoveryManager {
   private static instance: ErrorRecoveryManager;
   private recoveryAttempts = new Map<string, number>();
   private lastRecoveryAttempt = new Map<string, number>();
   private categorizer = ErrorCategorizer.getInstance();
-
   static getInstance(): ErrorRecoveryManager {
     if (!ErrorRecoveryManager.instance) {
       ErrorRecoveryManager.instance = new ErrorRecoveryManager();
     }
     return ErrorRecoveryManager.instance;
   }
-
   /**
    * Attempt to recover from an error
    */
@@ -49,7 +42,6 @@ export class ErrorRecoveryManager {
     const attempts = this.recoveryAttempts.get(recoveryKey) || 0;
     const lastAttempt = this.lastRecoveryAttempt.get(recoveryKey) || 0;
     const now = Date.now();
-
     // Check cooldown period
     const strategy = this.getRecoveryStrategy(categorizedError.category);
     if (now - lastAttempt < strategy.cooldownPeriod) {
@@ -61,7 +53,6 @@ export class ErrorRecoveryManager {
         nextRetryDelay: strategy.cooldownPeriod - (now - lastAttempt)
       };
     }
-
     // Check max attempts
     if (attempts >= strategy.maxAttempts) {
       return {
@@ -71,11 +62,9 @@ export class ErrorRecoveryManager {
         shouldRetry: false
       };
     }
-
     // Update attempt tracking
     this.recoveryAttempts.set(recoveryKey, attempts + 1);
     this.lastRecoveryAttempt.set(recoveryKey, now);
-
     // Execute recovery actions
     for (const action of strategy.actions) {
       try {
@@ -84,7 +73,6 @@ export class ErrorRecoveryManager {
           // Reset attempt counter on successful recovery
           this.recoveryAttempts.delete(recoveryKey);
           this.lastRecoveryAttempt.delete(recoveryKey);
-          
           return {
             success: true,
             actionTaken: action.name,
@@ -94,11 +82,9 @@ export class ErrorRecoveryManager {
           };
         }
       } catch (error) {
-        console.warn(`Recovery action ${action.name} failed:`, error);
         // Continue to next action
       }
     }
-
     // All recovery actions failed
     const nextRetryDelay = this.categorizer.calculateRetryDelay(categorizedError, attempts);
     return {
@@ -109,7 +95,6 @@ export class ErrorRecoveryManager {
       nextRetryDelay
     };
   }
-
   /**
    * Get recovery strategy for error category
    */
@@ -155,7 +140,6 @@ export class ErrorRecoveryManager {
             }
           ]
         };
-
       case ErrorCategory.AUTHENTICATION:
         return {
           errorCategory: category,
@@ -178,7 +162,6 @@ export class ErrorRecoveryManager {
             }
           ]
         };
-
       case ErrorCategory.DATABASE:
         return {
           errorCategory: category,
@@ -201,7 +184,6 @@ export class ErrorRecoveryManager {
             }
           ]
         };
-
       case ErrorCategory.TIMEOUT:
         return {
           errorCategory: category,
@@ -224,7 +206,6 @@ export class ErrorRecoveryManager {
             }
           ]
         };
-
       default:
         return {
           errorCategory: category,
@@ -244,14 +225,12 @@ export class ErrorRecoveryManager {
         };
     }
   }
-
   /**
    * Generate recovery key for tracking attempts
    */
   private getRecoveryKey(error: CategorizedError): string {
     return `${error.category}_${error.code}`;
   }
-
   /**
    * Recovery action implementations
    */
@@ -259,23 +238,19 @@ export class ErrorRecoveryManager {
     try {
       // This would integrate with the environment config manager
       // to switch to a fallback backend URL
-      console.log('Switching to fallback backend...');
       return true;
     } catch {
       return false;
     }
   }
-
   private async clearConnectionCache(): Promise<boolean> {
     try {
       // Clear any cached connections or connection pools
-      console.log('Clearing connection cache...');
       return true;
     } catch {
       return false;
     }
   }
-
   private async refreshAuthSession(): Promise<boolean> {
     try {
       const response = await fetch('/api/auth/refresh', {
@@ -287,7 +262,6 @@ export class ErrorRecoveryManager {
       return false;
     }
   }
-
   private async clearAuthCache(): Promise<boolean> {
     try {
       // Clear authentication-related cache
@@ -298,7 +272,6 @@ export class ErrorRecoveryManager {
       return false;
     }
   }
-
   private async retryDatabaseConnection(): Promise<boolean> {
     try {
       const response = await fetch('/api/health/database', {
@@ -310,39 +283,32 @@ export class ErrorRecoveryManager {
       return false;
     }
   }
-
   private async enableDegradedMode(): Promise<boolean> {
     try {
       // Enable degraded mode - this would set a flag that other parts
       // of the application can check to provide limited functionality
-      console.log('Enabling degraded mode...');
       localStorage.setItem('degraded_mode', 'true');
       return true;
     } catch {
       return false;
     }
   }
-
   private async increaseTimeout(): Promise<boolean> {
     try {
       // This would integrate with the timeout manager to increase timeouts
-      console.log('Increasing timeout for next attempt...');
       return true;
     } catch {
       return false;
     }
   }
-
   private async splitRequest(): Promise<boolean> {
     try {
       // This would be implemented based on the specific request type
-      console.log('Attempting to split request...');
       return true;
     } catch {
       return false;
     }
   }
-
   /**
    * Reset recovery attempts for a specific error
    */
@@ -351,7 +317,6 @@ export class ErrorRecoveryManager {
     this.recoveryAttempts.delete(recoveryKey);
     this.lastRecoveryAttempt.delete(recoveryKey);
   }
-
   /**
    * Get current recovery attempt count
    */

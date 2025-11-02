@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
-
 const BACKEND_BASES = getBackendCandidates();
 const ANALYTICS_TIMEOUT_MS = Number(
   process.env.NEXT_PUBLIC_ANALYTICS_PROXY_TIMEOUT_MS ||
@@ -10,28 +8,23 @@ const ANALYTICS_TIMEOUT_MS = Number(
     process.env.KAREN_API_PROXY_TIMEOUT_MS ||
     15000
 );
-
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
     const cookieHeader = request.headers.get('cookie');
-
     const headers: Record<string, string> = {
       Accept: 'application/json',
       Connection: 'keep-alive',
     };
-
     if (authHeader) {
       headers.Authorization = authHeader;
     }
     if (cookieHeader) {
       headers.Cookie = cookieHeader;
     }
-
     const maxAttempts = 2;
     let response: Response | null = null;
     let lastErr: unknown = null;
-
     for (const base of BACKEND_BASES) {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         const url = withBackendPath('/api/analytics/usage', base);
@@ -66,12 +59,9 @@ export async function GET(request: NextRequest) {
         break;
       }
     }
-
     if (!response) {
-      console.error('Analytics usage proxy fatal error:', lastErr);
       return NextResponse.json({ error: 'Analytics request failed' }, { status: 502 });
     }
-
     const contentType = response.headers.get('content-type') ?? '';
     let data: any = {};
     if (contentType.includes('application/json')) {
@@ -90,14 +80,11 @@ export async function GET(request: NextRequest) {
         data = { message: data };
       }
     }
-
     if (!response.ok) {
       const payload = typeof data === 'string' ? { error: data } : data;
       return NextResponse.json(payload, { status: response.status });
     }
-
     const nextResponse = NextResponse.json(data);
-
     try {
       const setCookieHeaders: string[] = [];
       const headersAny = response.headers as any;
@@ -121,10 +108,8 @@ export async function GET(request: NextRequest) {
         nextResponse.headers.set('Set-Cookie', single);
       }
     }
-
     return nextResponse;
   } catch (error) {
-    console.error('Analytics usage proxy error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

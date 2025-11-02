@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { getAdminUtils } from '@/lib/database/admin-utils';
 import { getAuditLogger } from '@/lib/audit/audit-logger';
-
 /**
  * DELETE /api/admin/security/blocked-ips/[id]
  * 
@@ -18,9 +17,7 @@ export async function DELETE(
     if (authResult instanceof NextResponse) {
       return authResult;
     }
-
     const { user: currentUser } = authResult;
-
     if (!currentUser) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -28,17 +25,14 @@ export async function DELETE(
       );
     }
     const { id: blockedIpId } = await params;
-
     if (!blockedIpId) {
       return NextResponse.json(
         { error: 'Blocked IP ID is required' },
         { status: 400 }
       );
     }
-
     const adminUtils = getAdminUtils();
     const auditLogger = getAuditLogger();
-
     // Get the blocked IP first
     const blockedIP = await adminUtils.getBlockedIP(blockedIpId);
     if (!blockedIP) {
@@ -47,10 +41,8 @@ export async function DELETE(
         { status: 404 }
       );
     }
-
     // Unblock the IP
     await adminUtils.unblockIP(blockedIpId);
-
     // Log the action
     await auditLogger.log(
       currentUser.user_id,
@@ -69,12 +61,10 @@ export async function DELETE(
                    'unknown'
       }
     );
-
     return NextResponse.json({
       message: 'IP address unblocked successfully'
     });
   } catch (error) {
-    console.error('Unblock IP error:', error);
     return NextResponse.json(
       { error: 'Failed to unblock IP address' },
       { status: 500 }

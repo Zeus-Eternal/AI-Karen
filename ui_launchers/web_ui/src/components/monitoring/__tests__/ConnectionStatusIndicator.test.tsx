@@ -2,7 +2,7 @@
  * Tests for ConnectionStatusIndicator component
  */
 
-import React from 'react';
+
 import { render, screen } from '@testing-library/react';
 import { ConnectionStatusIndicator } from '../ConnectionStatusIndicator';
 import { ConnectionStatus } from '../types';

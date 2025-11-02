@@ -10,7 +10,6 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import MemoryNetworkGraph from '../MemoryNetworkGraph';
 import { getMemoryService } from '@/services/memoryService';
 import type { MemoryStats } from '@/services/memoryService';
-import type { MemoryNetworkNode } from '@/types/memory';
 
 // Mock D3
 const mockD3 = {
@@ -144,7 +143,7 @@ vi.mock('@/components/ui/button', () => ({
       onClick={onClick} 
       data-size={size}
       data-variant={variant}
-    >
+     aria-label="Button">
       {children}
     </button>
   )
@@ -176,8 +175,7 @@ vi.mock('@/components/ui/input', () => ({
       placeholder={placeholder}
       value={value}
       onChange={onChange}
-      className={className}
-    />
+      className={className} />
   )
 }));
 

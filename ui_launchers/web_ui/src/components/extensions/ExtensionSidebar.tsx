@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+
 import {
   Sidebar,
   SidebarProvider,
@@ -27,11 +27,11 @@ function SidebarInner() {
       <SidebarRail />
       <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20">
         <ExtensionHeader />
-      <SidebarContent className="p-2 space-y-2 overflow-auto">
+      <SidebarContent className="p-2 space-y-2 overflow-auto sm:p-4 md:p-6">
         <SidebarNavigation />
       </SidebarContent>
-      <SidebarFooter className="p-2 border-t">
-        <p className="text-xs text-muted-foreground text-center">
+      <SidebarFooter className="p-2 border-t sm:p-4 md:p-6">
+        <p className="text-xs text-muted-foreground text-center sm:text-sm md:text-base">
           Extension Manager
         </p>
       </SidebarFooter>

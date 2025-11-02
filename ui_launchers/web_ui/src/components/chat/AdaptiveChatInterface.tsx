@@ -4,8 +4,8 @@
  * Adapts the chat interface based on the selected model's capabilities.
  * Supports seamless switching between text and image generation modes.
  */
-
 import React, { useState, useEffect, useMemo } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,16 +16,13 @@ import { MessageSquare, Image, Zap, Settings, Send, Loader2, Sparkles } from 'lu
 import { useModelSelection } from '@/hooks/useModelSelection';
 import { Model } from '@/lib/model-utils';
 import { useToast } from '@/hooks/use-toast';
-
 interface AdaptiveChatInterfaceProps {
   selectedModel?: Model | null;
   onModelChange?: (model: Model | null) => void;
   onModeChange?: (mode: ChatMode) => void;
   className?: string;
 }
-
 export type ChatMode = 'text' | 'image' | 'multimodal';
-
 interface ChatMessage {
   id: string;
   type: 'user' | 'assistant';
@@ -36,14 +33,12 @@ interface ChatMessage {
   imageUrl?: string;
   metadata?: Record<string, any>;
 }
-
 interface GenerationParams {
   // Text generation params
   temperature?: number;
   topP?: number;
   topK?: number;
   maxTokens?: number;
-  
   // Image generation params
   width?: number;
   height?: number;
@@ -51,7 +46,6 @@ interface GenerationParams {
   guidanceScale?: number;
   seed?: number;
 }
-
 export default function AdaptiveChatInterface({
   selectedModel,
   onModelChange,
@@ -72,7 +66,6 @@ export default function AdaptiveChatInterface({
     steps: 20,
     guidanceScale: 7.5
   });
-
   const {
     models,
     selectedModel: hookSelectedModel,
@@ -93,16 +86,12 @@ export default function AdaptiveChatInterface({
       }
     }
   });
-
   // Use provided selectedModel or fall back to hook's selectedModel
   const currentModel = selectedModel || selectedModelInfo;
-
   // Determine available modes based on current model capabilities
   const availableModes = useMemo((): ChatMode[] => {
     if (!currentModel) return ['text'];
-    
     const modes: ChatMode[] = [];
-    
     // Check for text capabilities
     if (currentModel.type === 'text' || 
         currentModel.type === 'multimodal' ||
@@ -110,27 +99,22 @@ export default function AdaptiveChatInterface({
         currentModel.capabilities?.includes('chat')) {
       modes.push('text');
     }
-    
     // Check for image capabilities
     if (currentModel.type === 'image' || 
         currentModel.type === 'multimodal' ||
         currentModel.capabilities?.includes('image-generation')) {
       modes.push('image');
     }
-    
     // Add multimodal if model supports both
     if (modes.includes('text') && modes.includes('image')) {
       modes.push('multimodal');
     }
-    
     return modes.length > 0 ? modes : ['text'];
   }, [currentModel]);
-
   // Auto-adapt chat mode based on selected model
   useEffect(() => {
     if (currentModel && availableModes.length > 0) {
       let newMode: ChatMode = 'text';
-      
       // Prioritize based on model type
       if (currentModel.type === 'image' && availableModes.includes('image')) {
         newMode = 'image';
@@ -141,11 +125,9 @@ export default function AdaptiveChatInterface({
       } else {
         newMode = availableModes[0];
       }
-      
       if (newMode !== chatMode) {
         setChatMode(newMode);
         onModeChange?.(newMode);
-        
         toast({
           title: 'Chat Mode Adapted',
           description: `Switched to ${newMode} mode for ${currentModel.name}`,
@@ -153,53 +135,47 @@ export default function AdaptiveChatInterface({
       }
     }
   }, [currentModel, availableModes, chatMode, onModeChange, toast]);
-
   // Get mode-specific capabilities and indicators
   const getModeInfo = (mode: ChatMode) => {
     switch (mode) {
       case 'text':
         return {
-          icon: <MessageSquare className="w-4 h-4" />,
+          icon: <MessageSquare className="w-4 h-4 sm:w-auto md:w-full" />,
           label: 'Text Generation',
           description: 'Generate text responses and have conversations',
           color: 'bg-blue-100 text-blue-800'
         };
       case 'image':
         return {
-          icon: <Image className="w-4 h-4" />,
+          icon: <Image className="w-4 h-4 sm:w-auto md:w-full" />,
           label: 'Image Generation',
           description: 'Generate images from text descriptions',
           color: 'bg-purple-100 text-purple-800'
         };
       case 'multimodal':
         return {
-          icon: <Zap className="w-4 h-4" />,
+          icon: <Zap className="w-4 h-4 sm:w-auto md:w-full" />,
           label: 'Multi-modal',
           description: 'Generate both text and images',
           color: 'bg-orange-100 text-orange-800'
         };
     }
   };
-
   const handleModeChange = (newMode: ChatMode) => {
     if (availableModes.includes(newMode)) {
       setChatMode(newMode);
       onModeChange?.(newMode);
-      
       toast({
         title: 'Mode Changed',
         description: `Switched to ${newMode} mode`,
       });
     }
   };
-
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId);
   };
-
   const handleSendMessage = async () => {
     if (!inputValue.trim() || !currentModel || isGenerating) return;
-
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       type: 'user',
@@ -208,15 +184,12 @@ export default function AdaptiveChatInterface({
       timestamp: new Date(),
       modelUsed: currentModel.id
     };
-
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsGenerating(true);
-
     try {
       // Generate response based on current mode
       let response: string | { text?: string; imageUrl?: string } = '';
-      
       if (chatMode === 'text' || chatMode === 'multimodal') {
         // Text generation
         response = await generateTextResponse(userMessage.content, currentModel, generationParams);
@@ -224,7 +197,6 @@ export default function AdaptiveChatInterface({
         // Image generation
         response = await generateImageResponse(userMessage.content, currentModel, generationParams);
       }
-
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
@@ -235,11 +207,8 @@ export default function AdaptiveChatInterface({
         imageUrl: typeof response === 'object' ? response.imageUrl : undefined,
         metadata: { generationParams }
       };
-
       setMessages(prev => [...prev, assistantMessage]);
-
     } catch (error) {
-      console.error('Generation error:', error);
       toast({
         title: 'Generation Failed',
         description: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -249,46 +218,40 @@ export default function AdaptiveChatInterface({
       setIsGenerating(false);
     }
   };
-
   const generateTextResponse = async (prompt: string, model: Model, params: GenerationParams): Promise<string> => {
     // Mock text generation - in real implementation, this would call the backend API
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-    
     return `This is a mock response from ${model.name} for the prompt: "${prompt}". In a real implementation, this would generate actual text using the model with parameters: temperature=${params.temperature}, maxTokens=${params.maxTokens}.`;
   };
-
   const generateImageResponse = async (prompt: string, model: Model, params: GenerationParams): Promise<{ imageUrl: string; text: string }> => {
     // Mock image generation - in real implementation, this would call the backend API
     await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
-    
     return {
       imageUrl: `https://picsum.photos/${params.width}/${params.height}?random=${Date.now()}`,
       text: `Generated image for: "${prompt}" using ${model.name}`
     };
   };
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
-
   if (modelsLoading) {
     return (
+    <ErrorBoundary fallback={<div>Something went wrong in AdaptiveChatInterface</div>}>
       <Card className={className}>
-        <CardContent className="flex items-center justify-center p-6">
-          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+        <CardContent className="flex items-center justify-center p-6 sm:p-4 md:p-6">
+          <Loader2 className="h-6 w-6 animate-spin mr-2 sm:w-auto md:w-full" />
           <span>Loading models...</span>
         </CardContent>
       </Card>
     );
   }
-
   if (modelsError) {
     return (
       <Card className={className}>
-        <CardContent className="p-6">
+        <CardContent className="p-6 sm:p-4 md:p-6">
           <div className="text-center text-red-600">
             <p>Error loading models: {modelsError}</p>
           </div>
@@ -296,9 +259,7 @@ export default function AdaptiveChatInterface({
       </Card>
     );
   }
-
   const currentModeInfo = getModeInfo(chatMode);
-
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Header with Model and Mode Selection */}
@@ -307,14 +268,13 @@ export default function AdaptiveChatInterface({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5" />
+                <Sparkles className="w-5 h-5 sm:w-auto md:w-full" />
                 Adaptive Chat Interface
               </CardTitle>
               <CardDescription>
                 Chat interface that adapts to your selected model's capabilities
               </CardDescription>
             </div>
-            
             {/* Current Mode Indicator */}
             <Badge variant="outline" className={currentModeInfo.color}>
               <span className="flex items-center gap-1">
@@ -324,27 +284,26 @@ export default function AdaptiveChatInterface({
             </Badge>
           </div>
         </CardHeader>
-        
         <CardContent className="space-y-4">
           {/* Model Selection */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Selected Model</label>
-              <Select 
+              <label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">Selected Model</label>
+              <select 
                 value={currentModel?.id || ''} 
                 onValueChange={handleModelChange}
                 disabled={modelsLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a model" />
+               aria-label="Select option">
+                <selectTrigger aria-label="Select option">
+                  <selectValue placeholder="Select a model" />
                 </SelectTrigger>
-                <SelectContent>
+                <selectContent aria-label="Select option">
                   {models.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
+                    <selectItem key={model.id} value={model.id} aria-label="Select option">
                       <div className="flex items-center gap-2">
-                        {model.type === 'text' && <MessageSquare className="w-4 h-4" />}
-                        {model.type === 'image' && <Image className="w-4 h-4" />}
-                        {model.type === 'multimodal' && <Zap className="w-4 h-4" />}
+                        {model.type === 'text' && <MessageSquare className="w-4 h-4 sm:w-auto md:w-full" />}
+                        {model.type === 'image' && <Image className="w-4 h-4 sm:w-auto md:w-full" />}
+                        {model.type === 'multimodal' && <Zap className="w-4 h-4 sm:w-auto md:w-full" />}
                         <span>{model.name}</span>
                       </div>
                     </SelectItem>
@@ -352,19 +311,18 @@ export default function AdaptiveChatInterface({
                 </SelectContent>
               </Select>
             </div>
-
             {/* Mode Selection */}
             <div>
-              <label className="text-sm font-medium mb-2 block">Chat Mode</label>
-              <Select value={chatMode} onValueChange={handleModeChange}>
-                <SelectTrigger>
-                  <SelectValue />
+              <label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">Chat Mode</label>
+              <select value={chatMode} onValueChange={handleModeChange} aria-label="Select option">
+                <selectTrigger aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <selectContent aria-label="Select option">
                   {availableModes.map((mode) => {
                     const modeInfo = getModeInfo(mode);
                     return (
-                      <SelectItem key={mode} value={mode}>
+                      <selectItem key={mode} value={mode} aria-label="Select option">
                         <div className="flex items-center gap-2">
                           {modeInfo.icon}
                           <span>{modeInfo.label}</span>
@@ -376,18 +334,17 @@ export default function AdaptiveChatInterface({
               </Select>
             </div>
           </div>
-
           {/* Model Capabilities */}
           {currentModel && (
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-gray-600">Capabilities:</span>
+              <span className="text-sm text-gray-600 md:text-base lg:text-lg">Capabilities:</span>
               {currentModel.capabilities?.slice(0, 4).map((capability) => (
-                <Badge key={capability} variant="secondary" className="text-xs">
+                <Badge key={capability} variant="secondary" className="text-xs sm:text-sm md:text-base">
                   {capability}
                 </Badge>
               ))}
               {currentModel.capabilities && currentModel.capabilities.length > 4 && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                   +{currentModel.capabilities.length - 4} more
                 </Badge>
               )}
@@ -395,7 +352,6 @@ export default function AdaptiveChatInterface({
           )}
         </CardContent>
       </Card>
-
       {/* Chat Messages */}
       <Card>
         <CardHeader>
@@ -405,15 +361,14 @@ export default function AdaptiveChatInterface({
           </CardTitle>
           <CardDescription>{currentModeInfo.description}</CardDescription>
         </CardHeader>
-        
         <CardContent>
           {/* Messages Container */}
-          <div className="space-y-4 min-h-[300px] max-h-[500px] overflow-y-auto mb-4 p-4 border rounded-lg bg-gray-50">
+          <div className="space-y-4 min-h-[300px] max-h-[500px] overflow-y-auto mb-4 p-4 border rounded-lg bg-gray-50 sm:p-4 md:p-6">
             {messages.length === 0 ? (
               <div className="text-center text-gray-500 py-8">
                 <div className="mb-2">{currentModeInfo.icon}</div>
                 <p>Start a conversation in {currentModeInfo.label.toLowerCase()} mode</p>
-                <p className="text-sm mt-1">{currentModeInfo.description}</p>
+                <p className="text-sm mt-1 md:text-base lg:text-lg">{currentModeInfo.description}</p>
               </div>
             ) : (
               messages.map((message) => (
@@ -429,16 +384,14 @@ export default function AdaptiveChatInterface({
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs opacity-70">
+                      <span className="text-xs opacity-70 sm:text-sm md:text-base">
                         {message.type === 'user' ? 'You' : message.modelUsed}
                       </span>
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                         {message.mode}
                       </Badge>
                     </div>
-                    
-                    <p className="text-sm">{message.content}</p>
-                    
+                    <p className="text-sm md:text-base lg:text-lg">{message.content}</p>
                     {message.imageUrl && (
                       <div className="mt-2">
                         <img
@@ -448,21 +401,19 @@ export default function AdaptiveChatInterface({
                         />
                       </div>
                     )}
-                    
-                    <div className="text-xs opacity-50 mt-1">
+                    <div className="text-xs opacity-50 mt-1 sm:text-sm md:text-base">
                       {message.timestamp.toLocaleTimeString()}
                     </div>
                   </div>
                 </div>
               ))
             )}
-            
             {isGenerating && (
               <div className="flex justify-start">
-                <div className="bg-white border shadow-sm p-3 rounded-lg">
+                <div className="bg-white border shadow-sm p-3 rounded-lg sm:p-4 md:p-6">
                   <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin sm:w-auto md:w-full" />
+                    <span className="text-sm md:text-base lg:text-lg">
                       {chatMode === 'image' ? 'Generating image...' : 'Generating response...'}
                     </span>
                   </div>
@@ -470,13 +421,12 @@ export default function AdaptiveChatInterface({
               </div>
             )}
           </div>
-
           {/* Input Area */}
           <div className="space-y-3">
             <div className="flex gap-2">
-              <Textarea
+              <textarea
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={(e) = aria-label="Textarea"> setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={
                   chatMode === 'image' 
@@ -486,26 +436,26 @@ export default function AdaptiveChatInterface({
                 className="flex-1 min-h-[60px] resize-none"
                 disabled={isGenerating || !currentModel}
               />
-              <Button
+              <button
                 onClick={handleSendMessage}
                 disabled={!inputValue.trim() || isGenerating || !currentModel}
                 size="lg"
                 className="px-6"
-              >
+               aria-label="Button">
                 {isGenerating ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin sm:w-auto md:w-full" />
                 ) : (
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4 h-4 sm:w-auto md:w-full" />
                 )}
               </Button>
             </div>
-            
             {!currentModel && (
-              <p className="text-sm text-red-600">Please select a model to start chatting</p>
+              <p className="text-sm text-red-600 md:text-base lg:text-lg">Please select a model to start chatting</p>
             )}
           </div>
         </CardContent>
       </Card>
     </div>
+    </ErrorBoundary>
   );
 }

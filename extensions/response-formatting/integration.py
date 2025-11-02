@@ -6,6 +6,7 @@ theme system, and LLM orchestrator.
 """
 
 import logging
+import time
 from typing import Dict, Any, Optional, List
 import asyncio
 from dataclasses import asdict
@@ -18,6 +19,9 @@ from formatters.recipe_formatter import RecipeResponseFormatter
 from formatters.weather_formatter import WeatherResponseFormatter
 from formatters.news_formatter import NewsResponseFormatter
 from formatters.product_formatter import ProductResponseFormatter
+from formatters.travel_formatter import TravelResponseFormatter
+from formatters.code_formatter import CodeResponseFormatter
+from monitoring_integration import get_formatting_monitor, record_formatting_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +47,14 @@ class ResponseFormattingIntegration:
             'content_type_detections': {}
         }
         
+        # Initialize monitoring
+        self.monitor = get_formatting_monitor()
+        
         # Register built-in formatters
         self._register_builtin_formatters()
+        
+        # Update active formatters count
+        self.monitor.update_active_formatters_count(len(self.get_available_formatters()))
         
         logger.info("Response formatting integration initialized")
     
@@ -75,6 +85,16 @@ class ResponseFormattingIntegration:
             product_formatter = ProductResponseFormatter()
             self.registry.register_formatter(product_formatter)
             logger.info("Registered built-in product formatter")
+            
+            # Register travel formatter
+            travel_formatter = TravelResponseFormatter()
+            self.registry.register_formatter(travel_formatter)
+            logger.info("Registered built-in travel formatter")
+            
+            # Register code formatter
+            code_formatter = CodeResponseFormatter()
+            self.registry.register_formatter(code_formatter)
+            logger.info("Registered built-in code formatter")
         except Exception as e:
             logger.error(f"Failed to register built-in formatters: {e}")
     
@@ -100,6 +120,7 @@ class ResponseFormattingIntegration:
             FormattedResponse with formatted content and metadata
         """
         self._metrics['total_requests'] += 1
+        start_time = time.time()
         
         try:
             # Detect content type
@@ -139,6 +160,18 @@ class ResponseFormattingIntegration:
             
             self._metrics['successful_formats'] += 1
             
+            # Record successful formatting metrics
+            latency_ms = (time.time() - start_time) * 1000
+            record_formatting_metrics(
+                formatter_name=formatted_response.metadata.get('formatter', 'unknown'),
+                content_type=detection_result.content_type.value,
+                success=True,
+                latency_ms=latency_ms,
+                confidence_score=detection_result.confidence,
+                user_query=user_query,
+                response_content=response_content
+            )
+            
             logger.debug(
                 f"Successfully formatted response: type={detection_result.content_type.value}, "
                 f"confidence={detection_result.confidence:.2f}"
@@ -149,6 +182,19 @@ class ResponseFormattingIntegration:
         except Exception as e:
             self._metrics['failed_formats'] += 1
             logger.error(f"Response formatting failed: {e}")
+            
+            # Record failed formatting metrics
+            latency_ms = (time.time() - start_time) * 1000
+            record_formatting_metrics(
+                formatter_name='unknown',
+                content_type='unknown',
+                success=False,
+                latency_ms=latency_ms,
+                confidence_score=0.0,
+                user_query=user_query,
+                response_content=response_content,
+                error_message=str(e)
+            )
             
             # Return basic formatted response as fallback
             try:
@@ -171,10 +217,36 @@ class ResponseFormattingIntegration:
                 
                 self._metrics['fallback_uses'] += 1
                 
+                # Record fallback usage
+                fallback_latency_ms = (time.time() - start_time) * 1000
+                record_formatting_metrics(
+                    formatter_name='default',
+                    content_type='default',
+                    success=True,
+                    latency_ms=fallback_latency_ms,
+                    confidence_score=0.1,
+                    user_query=user_query,
+                    response_content=response_content
+                )
+                
                 return fallback_response
                 
             except Exception as fallback_error:
                 logger.error(f"Even fallback formatting failed: {fallback_error}")
+                
+                # Record complete failure
+                total_latency_ms = (time.time() - start_time) * 1000
+                record_formatting_metrics(
+                    formatter_name='fallback',
+                    content_type='unknown',
+                    success=False,
+                    latency_ms=total_latency_ms,
+                    confidence_score=0.0,
+                    user_query=user_query,
+                    response_content=response_content,
+                    error_message=str(fallback_error)
+                )
+                
                 raise
     
     def register_formatter(self, formatter: ResponseFormatter) -> None:
@@ -185,6 +257,8 @@ class ResponseFormattingIntegration:
             formatter: The formatter to register
         """
         self.registry.register_formatter(formatter)
+        # Update active formatters count
+        self.monitor.update_active_formatters_count(len(self.get_available_formatters()))
         logger.info(f"Registered formatter: {formatter.name}")
     
     def unregister_formatter(self, formatter_name: str) -> bool:
@@ -199,6 +273,8 @@ class ResponseFormattingIntegration:
         """
         result = self.registry.unregister_formatter(formatter_name)
         if result:
+            # Update active formatters count
+            self.monitor.update_active_formatters_count(len(self.get_available_formatters()))
             logger.info(f"Unregistered formatter: {formatter_name}")
         return result
     
@@ -262,11 +338,21 @@ class ResponseFormattingIntegration:
         Returns:
             Dictionary with integration metrics
         """
-        return {
+        base_metrics = {
             **self._metrics,
             'registry_stats': self.registry.get_registry_stats(),
             'detector_stats': self.content_detector.get_detection_stats()
         }
+        
+        # Add monitoring metrics
+        try:
+            monitoring_metrics = self.monitor.get_metrics_summary()
+            base_metrics['monitoring'] = monitoring_metrics
+        except Exception as e:
+            logger.warning(f"Failed to get monitoring metrics: {e}")
+            base_metrics['monitoring'] = {'error': str(e)}
+        
+        return base_metrics
     
     def reset_metrics(self) -> None:
         """Reset integration metrics."""

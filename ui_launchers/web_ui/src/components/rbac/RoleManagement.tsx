@@ -1,12 +1,9 @@
-'use client';
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Role, User, Permission, SYSTEM_ROLES } from '@/types/rbac';
 import { useRBAC } from '@/providers/rbac-provider';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { PermissionGate } from './PermissionGate';
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +13,26 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
+import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+'use client';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   Dialog, 
   DialogContent, 
   DialogDescription, 
@@ -24,17 +41,17 @@ import {
   DialogTitle,
   DialogTrigger 
 } from '@/components/ui/dialog';
-import { 
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
-import { 
+
+
+
   Users, 
   Shield, 
   Plus, 
@@ -67,8 +84,8 @@ export function RoleManagement({ className }: RoleManagementProps) {
               Manage user roles and permissions across the system
             </p>
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+          <button onClick={() = aria-label="Button"> setIsCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Create Role
           </Button>
         </div>
@@ -152,10 +169,10 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-2">
-        <Input
+        <input
           placeholder="Search roles..."
           value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
+          onChange={(e) = aria-label="Input"> onSearchChange(e.target.value)}
           className="max-w-sm"
         />
       </div>
@@ -170,26 +187,26 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
                   {role.metadata.isSystemRole && (
                     <Badge variant="secondary">System</Badge>
                   )}
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    onClick={(e) => {
+                    onClick={(e) = aria-label="Button"> {
                       e.stopPropagation();
                       onEditRole(role);
                     }}
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-4 w-4 sm:w-auto md:w-full" />
                   </Button>
                   {!role.metadata.isSystemRole && (
-                    <Button
+                    <button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => {
+                      onClick={(e) = aria-label="Button"> {
                         e.stopPropagation();
                         deleteRoleMutation.mutate(role.id);
                       }}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
                     </Button>
                   )}
                 </div>
@@ -198,18 +215,18 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Shield className="h-4 w-4 mr-2" />
+                <div className="flex items-center text-sm text-muted-foreground md:text-base lg:text-lg">
+                  <Shield className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   {role.permissions.length} permissions
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {role.permissions.slice(0, 3).map((permission) => (
-                    <Badge key={permission} variant="outline" className="text-xs">
+                    <Badge key={permission} variant="outline" className="text-xs sm:text-sm md:text-base">
                       {permission}
                     </Badge>
                   ))}
                   {role.permissions.length > 3 && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                       +{role.permissions.length - 3} more
                     </Badge>
                   )}
@@ -260,13 +277,13 @@ function UserRoleAssignments() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="user-select">Select User</Label>
-              <Select value={selectedUser} onValueChange={setSelectedUser}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a user" />
+              <select value={selectedUser} onValueChange={setSelectedUser} aria-label="Select option">
+                <selectTrigger aria-label="Select option">
+                  <selectValue placeholder="Choose a user" />
                 </SelectTrigger>
-                <SelectContent>
+                <selectContent aria-label="Select option">
                   {(Array.isArray(users) ? users : users?.data || []).map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
+                    <selectItem key={user.id} value={user.id} aria-label="Select option">
                       {user.username} ({user.email})
                     </SelectItem>
                   ))}
@@ -275,13 +292,13 @@ function UserRoleAssignments() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="role-select">Select Role</Label>
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a role" />
+              <select value={selectedRole} onValueChange={setSelectedRole} aria-label="Select option">
+                <selectTrigger aria-label="Select option">
+                  <selectValue placeholder="Choose a role" />
                 </SelectTrigger>
-                <SelectContent>
+                <selectContent aria-label="Select option">
                   {(Array.isArray(roles) ? roles : roles?.data || []).map((role) => (
-                    <SelectItem key={role.id} value={role.id}>
+                    <selectItem key={role.id} value={role.id} aria-label="Select option">
                       {role.name}
                     </SelectItem>
                   ))}
@@ -289,8 +306,8 @@ function UserRoleAssignments() {
               </Select>
             </div>
           </div>
-          <Button onClick={handleAssignRole} disabled={!selectedUser || !selectedRole}>
-            <UserPlus className="h-4 w-4 mr-2" />
+          <button onClick={handleAssignRole} disabled={!selectedUser || !selectedRole} aria-label="Button">
+            <UserPlus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Assign Role
           </Button>
         </CardContent>
@@ -326,11 +343,11 @@ function UserRoleTable({ users, roles }: UserRoleTableProps) {
   return (
     <div className="space-y-4">
       {users.map((user) => (
-        <div key={user.id} className="border rounded-lg p-4">
+        <div key={user.id} className="border rounded-lg p-4 sm:p-4 md:p-6">
           <div className="flex items-center justify-between mb-2">
             <div>
               <h4 className="font-medium">{user.username}</h4>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">{user.email}</p>
             </div>
             <Badge variant={user.metadata.isActive ? 'default' : 'secondary'}>
               {user.metadata.isActive ? 'Active' : 'Inactive'}
@@ -340,17 +357,17 @@ function UserRoleTable({ users, roles }: UserRoleTableProps) {
             {user.roles.map((roleId) => (
               <div key={roleId} className="flex items-center space-x-1">
                 <Badge variant="outline">{getRoleName(roleId)}</Badge>
-                <Button
+                <button
                   variant="ghost"
                   size="sm"
-                  onClick={() => removeRole(user.id, roleId)}
+                  onClick={() = aria-label="Button"> removeRole(user.id, roleId)}
                 >
-                  <XCircle className="h-3 w-3" />
+                  <XCircle className="h-3 w-3 sm:w-auto md:w-full" />
                 </Button>
               </div>
             ))}
             {user.roles.length === 0 && (
-              <span className="text-sm text-muted-foreground">No roles assigned</span>
+              <span className="text-sm text-muted-foreground md:text-base lg:text-lg">No roles assigned</span>
             )}
           </div>
         </div>
@@ -368,7 +385,7 @@ function RoleHierarchyView() {
   return (
     <div className="space-y-4">
       <Alert>
-        <AlertTriangle className="h-4 w-4" />
+        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertDescription>
           Role hierarchy allows roles to inherit permissions from parent roles. 
           Conflicts are resolved based on the configured resolution strategy.
@@ -383,7 +400,7 @@ function RoleHierarchyView() {
           <CardContent className="space-y-4">
             {item.parentRoles.length > 0 && (
               <div>
-                <Label className="text-sm font-medium">Inherits from:</Label>
+                <Label className="text-sm font-medium md:text-base lg:text-lg">Inherits from:</Label>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {item.parentRoles.map((parentRole: string) => (
                     <Badge key={parentRole} variant="secondary">
@@ -396,11 +413,11 @@ function RoleHierarchyView() {
 
             {item.conflicts.length > 0 && (
               <div>
-                <Label className="text-sm font-medium text-destructive">Conflicts:</Label>
+                <Label className="text-sm font-medium text-destructive md:text-base lg:text-lg">Conflicts:</Label>
                 <div className="space-y-2 mt-1">
                   {item.conflicts.map((conflict: any, index: number) => (
                     <Alert key={index} variant="destructive">
-                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
                       <AlertDescription>
                         Permission '{conflict.permission}' conflicts between roles: {conflict.conflictingRoles.join(', ')}
                         <br />
@@ -450,7 +467,7 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl sm:w-auto md:w-full">
         <DialogHeader>
           <DialogTitle>Create New Role</DialogTitle>
           <DialogDescription>
@@ -461,20 +478,20 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Role Name</Label>
-            <Input
+            <input
               id="name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) = aria-label="Input"> setFormData({ ...formData, name: e.target.value })}
               required
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea
+            <textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) = aria-label="Textarea"> setFormData({ ...formData, description: e.target.value })}
               required
             />
           </div>
@@ -487,10 +504,10 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
           />
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <button type="button" variant="outline" onClick={() = aria-label="Button"> onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createRoleMutation.isPending}>
+            <button type="submit" disabled={createRoleMutation.isPending} aria-label="Submit form">
               Create Role
             </Button>
           </DialogFooter>
@@ -545,7 +562,7 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl sm:w-auto md:w-full">
         <DialogHeader>
           <DialogTitle>Edit Role</DialogTitle>
           <DialogDescription>
@@ -556,10 +573,10 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Role Name</Label>
-            <Input
+            <input
               id="name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) = aria-label="Input"> setFormData({ ...formData, name: e.target.value })}
               required
               disabled={role?.metadata.isSystemRole}
             />
@@ -567,10 +584,10 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
 
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea
+            <textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) = aria-label="Textarea"> setFormData({ ...formData, description: e.target.value })}
               required
             />
           </div>
@@ -584,10 +601,10 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
           />
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <button type="button" variant="outline" onClick={() = aria-label="Button"> onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={updateRoleMutation.isPending}>
+            <button type="submit" disabled={updateRoleMutation.isPending} aria-label="Submit form">
               Update Role
             </Button>
           </DialogFooter>
@@ -644,7 +661,7 @@ function PermissionSelector({ selectedPermissions, onPermissionsChange, disabled
       <div className="grid gap-4">
         {Object.entries(permissionCategories).map(([category, permissions]) => (
           <div key={category} className="space-y-2">
-            <h4 className="font-medium text-sm">{category}</h4>
+            <h4 className="font-medium text-sm md:text-base lg:text-lg">{category}</h4>
             <div className="grid grid-cols-2 gap-2">
               {permissions.map((permission) => (
                 <div key={permission} className="flex items-center space-x-2">
@@ -654,7 +671,7 @@ function PermissionSelector({ selectedPermissions, onPermissionsChange, disabled
                     onCheckedChange={() => handlePermissionToggle(permission)}
                     disabled={disabled}
                   />
-                  <Label htmlFor={permission} className="text-sm">
+                  <Label htmlFor={permission} className="text-sm md:text-base lg:text-lg">
                     {permission.split(':')[1]}
                   </Label>
                 </div>

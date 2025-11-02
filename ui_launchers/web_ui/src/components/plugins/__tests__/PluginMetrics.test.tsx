@@ -5,11 +5,10 @@
  * Based on requirements: 5.4, 10.3
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-
 import { PluginMetrics } from '../PluginMetrics';
 import { PluginInfo } from '@/types/plugins';
 

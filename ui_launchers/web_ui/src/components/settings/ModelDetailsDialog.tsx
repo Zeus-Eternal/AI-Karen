@@ -1,20 +1,30 @@
-"use client";
-
 import { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
+import { useToast } from "@/hooks/use-toast";
+import { getKarenBackend } from '@/lib/karen-backend';
+import { HelpTooltip, HelpSection } from '@/components/ui/help-tooltip';
+"use client";
+
+
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+
+
+
+
+
+
   Info,
   HardDrive,
   Clock,
@@ -29,9 +39,8 @@ import {
   FileText,
   Activity
 } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
-import { getKarenBackend } from '@/lib/karen-backend';
-import { HelpTooltip, HelpSection } from '@/components/ui/help-tooltip';
+
+
 
 interface ModelInfo {
   id: string;
@@ -47,7 +56,6 @@ interface ModelInfo {
   lastUsed?: number;
   downloadDate?: number;
 }
-
 interface ModelMetadata {
   parameters: string;
   quantization: string;
@@ -56,7 +64,6 @@ interface ModelMetadata {
   license: string;
   tags: string[];
 }
-
 interface DiskUsageInfo {
   model_id: string;
   path: string;
@@ -74,7 +81,6 @@ interface DiskUsageInfo {
   size_difference_percent?: number;
   file_count?: number;
 }
-
 interface ValidationResult {
   valid: boolean;
   file_exists: boolean;
@@ -84,7 +90,6 @@ interface ValidationResult {
   last_modified: number;
   error?: string;
 }
-
 interface SecurityScanResult {
   model_id: string;
   scan_timestamp: number;
@@ -101,21 +106,18 @@ interface SecurityScanResult {
   errors: string[];
   overall_status: 'passed' | 'warning' | 'failed' | 'unknown';
 }
-
 interface StatusHistoryEvent {
   timestamp: number;
   status: string;
   event: string;
   details: Record<string, any>;
 }
-
 interface ModelDetailsDialogProps {
   model: ModelInfo | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAction: (modelId: string, action: 'delete' | 'validate' | 'refresh') => Promise<void>;
 }
-
 export default function ModelDetailsDialog({ 
   model, 
   open, 
@@ -130,32 +132,26 @@ export default function ModelDetailsDialog({
   const [validating, setValidating] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-
   const { toast } = useToast();
   const backend = getKarenBackend();
-
   useEffect(() => {
     if (open && model) {
       loadModelDetails();
     }
   }, [open, model]);
-
   const formatSize = (bytes: number): string => {
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     if (bytes === 0) return '0 B';
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
-
   const formatDate = (timestamp: number): string => {
     return new Date(timestamp * 1000).toLocaleString();
   };
-
   const formatRelativeTime = (timestamp: number): string => {
     const now = Date.now();
     const diff = now - (timestamp * 1000);
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
     if (days === 0) return 'Today';
     if (days === 1) return 'Yesterday';
     if (days < 7) return `${days} days ago`;
@@ -163,10 +159,8 @@ export default function ModelDetailsDialog({
     if (days < 365) return `${Math.floor(days / 30)} months ago`;
     return `${Math.floor(days / 365)} years ago`;
   };
-
   const loadModelDetails = async () => {
     if (!model) return;
-
     setLoading(true);
     try {
       // Load disk usage, validation, and status history in parallel
@@ -174,9 +168,7 @@ export default function ModelDetailsDialog({
         model.status === 'local' ? loadDiskUsage() : Promise.resolve(null),
         loadStatusHistory()
       ]);
-
     } catch (error) {
-      console.error('Failed to load model details:', error);
       toast({
         title: "Error Loading Details",
         description: "Could not load model details. Please try again.",
@@ -186,10 +178,8 @@ export default function ModelDetailsDialog({
       setLoading(false);
     }
   };
-
   const loadDiskUsage = async () => {
     if (!model) return;
-
     try {
       const response = await backend.makeRequestPublic<DiskUsageInfo>(
         `/api/models/${model.id}/disk-usage`
@@ -197,14 +187,11 @@ export default function ModelDetailsDialog({
       setDiskUsage(response);
       return response;
     } catch (error) {
-      console.error('Failed to load disk usage:', error);
       return null;
     }
   };
-
   const loadStatusHistory = async () => {
     if (!model) return;
-
     try {
       const response = await backend.makeRequestPublic<{history: StatusHistoryEvent[]}>(
         `/api/models/${model.id}/status-history`
@@ -212,23 +199,18 @@ export default function ModelDetailsDialog({
       setStatusHistory(response?.history || []);
       return response;
     } catch (error) {
-      console.error('Failed to load status history:', error);
       return null;
     }
   };
-
   const validateModel = async () => {
     if (!model) return;
-
     setValidating(true);
     try {
       const response = await backend.makeRequestPublic<{validation_result: ValidationResult}>(
         `/api/models/${model.id}/validate-before-use`,
         { method: 'POST' }
       );
-      
       setValidation(response?.validation_result || null);
-      
       if (response?.validation_result?.valid) {
         toast({
           title: "Validation Successful",
@@ -241,12 +223,9 @@ export default function ModelDetailsDialog({
           variant: "destructive",
         });
       }
-      
       // Refresh model details after validation
       await loadModelDetails();
-      
     } catch (error) {
-      console.error('Failed to validate model:', error);
       toast({
         title: "Validation Error",
         description: "Could not validate model. Please try again.",
@@ -256,19 +235,15 @@ export default function ModelDetailsDialog({
       setValidating(false);
     }
   };
-
   const performSecurityScan = async () => {
     if (!model) return;
-
     setScanning(true);
     try {
       const response = await backend.makeRequestPublic<{scan_result: SecurityScanResult}>(
         `/api/models/${model.id}/security-scan`,
         { method: 'POST' }
       );
-      
       setSecurityScan(response?.scan_result || null);
-      
       const scanResult = response?.scan_result;
       if (scanResult?.overall_status === 'passed') {
         toast({
@@ -288,12 +263,9 @@ export default function ModelDetailsDialog({
           variant: "destructive",
         });
       }
-      
       // Refresh model details after scan
       await loadModelDetails();
-      
     } catch (error) {
-      console.error('Failed to perform security scan:', error);
       toast({
         title: "Security Scan Error",
         description: "Could not perform security scan. Please try again.",
@@ -303,10 +275,8 @@ export default function ModelDetailsDialog({
       setScanning(false);
     }
   };
-
   const handleAction = async (action: 'delete' | 'validate' | 'refresh' | 'security-scan') => {
     if (!model) return;
-
     if (action === 'validate') {
       await validateModel();
     } else if (action === 'security-scan') {
@@ -322,22 +292,19 @@ export default function ModelDetailsDialog({
       onOpenChange(false);
     }
   };
-
   if (!model) return null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:w-auto md:w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Info className="h-5 w-5" />
+            <Info className="h-5 w-5 sm:w-auto md:w-full" />
             {model.name}
           </DialogTitle>
           <DialogDescription>
             Detailed information and management options for this model
           </DialogDescription>
         </DialogHeader>
-
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview" className="flex items-center gap-1">
@@ -358,7 +325,6 @@ export default function ModelDetailsDialog({
             </TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
           </TabsList>
-
           <TabsContent value="overview" className="space-y-4">
             <Card>
               <CardHeader>
@@ -367,11 +333,11 @@ export default function ModelDetailsDialog({
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <span className="text-sm text-muted-foreground">Provider:</span>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Provider:</span>
                     <Badge variant="outline" className="ml-2">{model.provider}</Badge>
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground">Status:</span>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Status:</span>
                     <Badge 
                       variant={model.status === 'local' ? 'default' : 'outline'} 
                       className="ml-2"
@@ -380,80 +346,75 @@ export default function ModelDetailsDialog({
                     </Badge>
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground">Parameters:</span>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Parameters:</span>
                     <span className="ml-2 font-medium">{model.metadata.parameters || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground">Context Length:</span>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Context Length:</span>
                     <span className="ml-2 font-medium">{model.metadata.contextLength?.toLocaleString() || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground">Quantization:</span>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Quantization:</span>
                     <span className="ml-2 font-medium">{model.metadata.quantization || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground">Memory Requirement:</span>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Memory Requirement:</span>
                     <span className="ml-2 font-medium">{model.metadata.memoryRequirement || 'N/A'}</span>
                   </div>
                 </div>
-
                 <div>
-                  <span className="text-sm text-muted-foreground">Description:</span>
-                  <p className="mt-1 text-sm">{model.description}</p>
+                  <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Description:</span>
+                  <p className="mt-1 text-sm md:text-base lg:text-lg">{model.description}</p>
                 </div>
-
                 <div>
-                  <span className="text-sm text-muted-foreground">License:</span>
+                  <span className="text-sm text-muted-foreground md:text-base lg:text-lg">License:</span>
                   <Badge variant="outline" className="ml-2">{model.metadata.license || 'N/A'}</Badge>
                 </div>
-
                 <div>
-                  <span className="text-sm text-muted-foreground">Capabilities:</span>
+                  <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Capabilities:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {model.capabilities?.length > 0 ? (
                       model.capabilities.map(capability => (
-                        <Badge key={capability} variant="secondary" className="text-xs">
+                        <Badge key={capability} variant="secondary" className="text-xs sm:text-sm md:text-base">
                           {capability}
                         </Badge>
                       ))
                     ) : (
-                      <span className="text-xs text-muted-foreground">No capabilities listed</span>
+                      <span className="text-xs text-muted-foreground sm:text-sm md:text-base">No capabilities listed</span>
                     )}
                   </div>
                 </div>
-
                 <div>
-                  <span className="text-sm text-muted-foreground">Tags:</span>
+                  <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Tags:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {model.metadata?.tags?.length > 0 ? (
                       model.metadata.tags.map(tag => (
-                        <Badge key={tag} variant="outline" className="text-xs">
+                        <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
                           {tag}
                         </Badge>
                       ))
                     ) : (
-                      <span className="text-xs text-muted-foreground">No tags available</span>
+                      <span className="text-xs text-muted-foreground sm:text-sm md:text-base">No tags available</span>
                     )}
                   </div>
                 </div>
-
                 {model.status === 'local' && (
                   <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                     {model.lastUsed && (
                       <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <Clock className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                         <div>
-                          <p className="text-sm text-muted-foreground">Last Used</p>
-                          <p className="text-sm font-medium">{formatRelativeTime(model.lastUsed)}</p>
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Last Used</p>
+                          <p className="text-sm font-medium md:text-base lg:text-lg">{formatRelativeTime(model.lastUsed)}</p>
                         </div>
                       </div>
                     )}
                     {model.downloadDate && (
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <Calendar className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                         <div>
-                          <p className="text-sm text-muted-foreground">Downloaded</p>
-                          <p className="text-sm font-medium">{formatDate(model.downloadDate)}</p>
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Downloaded</p>
+                          <p className="text-sm font-medium md:text-base lg:text-lg">{formatDate(model.downloadDate)}</p>
                         </div>
                       </div>
                     )}
@@ -462,57 +423,54 @@ export default function ModelDetailsDialog({
               </CardContent>
             </Card>
           </TabsContent>
-
           <TabsContent value="storage" className="space-y-4">
             {loading ? (
               <Card>
                 <CardContent className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <Loader2 className="h-6 w-6 animate-spin sm:w-auto md:w-full" />
                 </CardContent>
               </Card>
             ) : diskUsage ? (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <HardDrive className="h-5 w-5" />
+                    <HardDrive className="h-5 w-5 sm:w-auto md:w-full" />
                     Storage Information
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <span className="text-sm text-muted-foreground">Type:</span>
+                      <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Type:</span>
                       <Badge variant="outline" className="ml-2">{diskUsage.type}</Badge>
                     </div>
                     <div>
-                      <span className="text-sm text-muted-foreground">Permissions:</span>
-                      <span className="ml-2 font-mono text-sm">{diskUsage.permissions}</span>
+                      <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Permissions:</span>
+                      <span className="ml-2 font-mono text-sm md:text-base lg:text-lg">{diskUsage.permissions}</span>
                     </div>
                     <div>
-                      <span className="text-sm text-muted-foreground">Actual Size:</span>
+                      <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Actual Size:</span>
                       <span className="ml-2 font-medium">{formatSize(diskUsage.size_bytes)}</span>
                     </div>
                     <div>
-                      <span className="text-sm text-muted-foreground">Last Modified:</span>
+                      <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Last Modified:</span>
                       <span className="ml-2 font-medium">{formatDate(diskUsage.last_modified)}</span>
                     </div>
                     {diskUsage.file_count && (
                       <div>
-                        <span className="text-sm text-muted-foreground">File Count:</span>
+                        <span className="text-sm text-muted-foreground md:text-base lg:text-lg">File Count:</span>
                         <span className="ml-2 font-medium">{diskUsage.file_count}</span>
                       </div>
                     )}
                   </div>
-
                   <div>
-                    <span className="text-sm text-muted-foreground">Path:</span>
-                    <code className="ml-2 text-xs bg-muted px-2 py-1 rounded">{diskUsage.path}</code>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Path:</span>
+                    <code className="ml-2 text-xs bg-muted px-2 py-1 rounded sm:text-sm md:text-base">{diskUsage.path}</code>
                   </div>
-
                   {diskUsage.reported_size_bytes && (
                     <div className="space-y-2">
-                      <h4 className="text-sm font-medium">Size Comparison</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      <h4 className="text-sm font-medium md:text-base lg:text-lg">Size Comparison</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                         <div>
                           <span className="text-muted-foreground">Reported:</span>
                           <span className="ml-2">{formatSize(diskUsage.reported_size_bytes)}</span>
@@ -540,19 +498,18 @@ export default function ModelDetailsDialog({
               </Card>
             ) : (
               <Alert>
-                <AlertCircle className="h-4 w-4" />
+                <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
                 <AlertDescription>
                   Storage information is not available for this model.
                 </AlertDescription>
               </Alert>
             )}
           </TabsContent>
-
           <TabsContent value="validation" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
+                  <Shield className="h-5 w-5 sm:w-auto md:w-full" />
                   Model Validation
                 </CardTitle>
                 <CardDescription>
@@ -560,64 +517,61 @@ export default function ModelDetailsDialog({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button
-                  onClick={() => handleAction('validate')}
+                <button
+                  onClick={() = aria-label="Button"> handleAction('validate')}
                   disabled={validating}
                   className="gap-2"
                 >
                   {validating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
                   ) : (
-                    <Shield className="h-4 w-4" />
+                    <Shield className="h-4 w-4 sm:w-auto md:w-full" />
                   )}
                   {validating ? 'Validating...' : 'Validate Model'}
                 </Button>
-
                 {validation && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       {validation.valid ? (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <CheckCircle className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />
                       ) : (
-                        <AlertCircle className="h-5 w-5 text-red-600" />
+                        <AlertCircle className="h-5 w-5 text-red-600 sm:w-auto md:w-full" />
                       )}
                       <span className="font-medium">
                         {validation.valid ? 'Validation Passed' : 'Validation Failed'}
                       </span>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                       <div className="flex items-center gap-2">
                         {validation.file_exists ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                         ) : (
-                          <AlertCircle className="h-4 w-4 text-red-600" />
+                          <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                         )}
                         <span>File exists</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {validation.permissions_ok ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                         ) : (
-                          <AlertCircle className="h-4 w-4 text-red-600" />
+                          <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                         )}
                         <span>Permissions OK</span>
                       </div>
                       {validation.checksum_valid !== null && (
                         <div className="flex items-center gap-2">
                           {validation.checksum_valid ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                           ) : (
-                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                           )}
                           <span>Checksum valid</span>
                         </div>
                       )}
                     </div>
-
                     {validation.error && (
                       <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
+                        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
                         <AlertDescription>{validation.error}</AlertDescription>
                       </Alert>
                     )}
@@ -626,12 +580,11 @@ export default function ModelDetailsDialog({
               </CardContent>
             </Card>
           </TabsContent>
-
           <TabsContent value="security" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
+                  <Shield className="h-5 w-5 sm:w-auto md:w-full" />
                   Security Scan
                 </CardTitle>
                 <CardDescription>
@@ -639,31 +592,30 @@ export default function ModelDetailsDialog({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button
-                  onClick={() => handleAction('security-scan')}
+                <button
+                  onClick={() = aria-label="Button"> handleAction('security-scan')}
                   disabled={scanning}
                   className="gap-2"
                 >
                   {scanning ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
                   ) : (
-                    <Shield className="h-4 w-4" />
+                    <Shield className="h-4 w-4 sm:w-auto md:w-full" />
                   )}
                   {scanning ? 'Scanning...' : 'Run Security Scan'}
                 </Button>
-
                 {securityScan && (
                   <div className="space-y-4">
                     {/* Overall Status */}
                     <div className="flex items-center gap-2">
                       {securityScan.overall_status === 'passed' && (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <CheckCircle className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />
                       )}
                       {securityScan.overall_status === 'warning' && (
-                        <AlertCircle className="h-5 w-5 text-yellow-600" />
+                        <AlertCircle className="h-5 w-5 text-yellow-600 sm:w-auto md:w-full" />
                       )}
                       {securityScan.overall_status === 'failed' && (
-                        <AlertCircle className="h-5 w-5 text-red-600" />
+                        <AlertCircle className="h-5 w-5 text-red-600 sm:w-auto md:w-full" />
                       )}
                       <span className="font-medium capitalize">
                         {securityScan.overall_status} 
@@ -672,122 +624,112 @@ export default function ModelDetailsDialog({
                         {securityScan.overall_status === 'failed' && ` - ${securityScan.errors?.length || 0} Errors`}
                       </span>
                     </div>
-
                     {/* Scan Timestamp */}
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                       Scanned: {formatDate(securityScan.scan_timestamp)}
                     </div>
-
                     {/* Security Checks */}
                     <div className="space-y-3">
-                      <h4 className="text-sm font-medium">Security Checks</h4>
-                      
+                      <h4 className="text-sm font-medium md:text-base lg:text-lg">Security Checks</h4>
                       {/* File Integrity */}
                       {securityScan.security_checks.file_integrity && (
-                        <div className="flex items-center gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
                           {securityScan.security_checks.file_integrity.exists && 
                            securityScan.security_checks.file_integrity.readable ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                           ) : (
-                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                           )}
                           <span>File Integrity</span>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                             {securityScan.security_checks.file_integrity.permissions}
                           </Badge>
                         </div>
                       )}
-
                       {/* Checksum */}
                       {securityScan.security_checks.checksum && (
-                        <div className="flex items-center gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
                           {securityScan.security_checks.checksum.valid ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                           ) : securityScan.security_checks.checksum.status === 'skipped' ? (
-                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                            <AlertCircle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
                           ) : (
-                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                           )}
                           <span>Checksum Validation</span>
                           {securityScan.security_checks.checksum.status === 'skipped' && (
-                            <Badge variant="outline" className="text-xs">Skipped</Badge>
+                            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">Skipped</Badge>
                           )}
                         </div>
                       )}
-
                       {/* File Format */}
                       {securityScan.security_checks.file_format && (
-                        <div className="flex items-center gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
                           {securityScan.security_checks.file_format.valid_extension ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                           ) : (
-                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                           )}
                           <span>File Format</span>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                             {securityScan.security_checks.file_format.extension}
                           </Badge>
                         </div>
                       )}
-
                       {/* Size Validation */}
                       {securityScan.security_checks.size_validation && (
-                        <div className="flex items-center gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
                           {securityScan.security_checks.size_validation.size_match ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                           ) : (
-                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                            <AlertCircle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
                           )}
                           <span>Size Validation</span>
                         </div>
                       )}
-
                       {/* Path Security */}
                       {securityScan.security_checks.path_security && (
-                        <div className="flex items-center gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
                           {securityScan.security_checks.path_security.within_models_dir ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                           ) : (
-                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                           )}
                           <span>Path Security</span>
                         </div>
                       )}
-
                       {/* Quarantine Status */}
                       {securityScan.security_checks.quarantine_status && (
-                        <div className="flex items-center gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
                           {!securityScan.security_checks.quarantine_status.quarantined ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                           ) : (
-                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                           )}
                           <span>Quarantine Status</span>
                         </div>
                       )}
                     </div>
-
                     {/* Warnings */}
                     {securityScan.warnings?.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-yellow-600">Warnings</h4>
+                        <h4 className="text-sm font-medium text-yellow-600 md:text-base lg:text-lg">Warnings</h4>
                         {securityScan.warnings.map((warning, index) => (
                           <Alert key={index} variant="default" className="border-yellow-200">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription className="text-sm">{warning}</AlertDescription>
+                            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                            <AlertDescription className="text-sm md:text-base lg:text-lg">{warning}</AlertDescription>
                           </Alert>
                         ))}
                       </div>
                     )}
-
                     {/* Errors */}
                     {securityScan.errors?.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-red-600">Errors</h4>
+                        <h4 className="text-sm font-medium text-red-600 md:text-base lg:text-lg">Errors</h4>
                         {securityScan.errors.map((error, index) => (
                           <Alert key={index} variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription className="text-sm">{error}</AlertDescription>
+                            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                            <AlertDescription className="text-sm md:text-base lg:text-lg">{error}</AlertDescription>
                           </Alert>
                         ))}
                       </div>
@@ -797,36 +739,35 @@ export default function ModelDetailsDialog({
               </CardContent>
             </Card>
           </TabsContent>
-
           <TabsContent value="history" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
+                  <Activity className="h-5 w-5 sm:w-auto md:w-full" />
                   Status History
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <Loader2 className="h-6 w-6 animate-spin sm:w-auto md:w-full" />
                   </div>
                 ) : statusHistory.length > 0 ? (
                   <div className="space-y-3">
                     {statusHistory.map((event, index) => (
                       <div key={index} className="flex items-start gap-3 pb-3 border-b last:border-b-0">
                         <div className="mt-1">
-                          {event.status === 'downloaded' && <Download className="h-4 w-4 text-green-600" />}
-                          {event.status === 'used' && <Activity className="h-4 w-4 text-blue-600" />}
-                          {event.status === 'error' && <AlertCircle className="h-4 w-4 text-red-600" />}
+                          {event.status === 'downloaded' && <Download className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />}
+                          {event.status === 'used' && <Activity className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />}
+                          {event.status === 'error' && <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />}
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium">{event.event}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm font-medium md:text-base lg:text-lg">{event.event}</p>
+                          <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                             {formatDate(event.timestamp)}
                           </p>
                           {Object.keys(event.details).length > 0 && (
-                            <div className="mt-1 text-xs text-muted-foreground">
+                            <div className="mt-1 text-xs text-muted-foreground sm:text-sm md:text-base">
                               {event.details.size && (
                                 <span>Size: {formatSize(event.details.size)}</span>
                               )}
@@ -837,7 +778,7 @@ export default function ModelDetailsDialog({
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">
+                  <p className="text-sm text-muted-foreground text-center py-8 md:text-base lg:text-lg">
                     No history available for this model.
                   </p>
                 )}
@@ -845,26 +786,24 @@ export default function ModelDetailsDialog({
             </Card>
           </TabsContent>
         </Tabs>
-
         <div className="flex justify-between pt-4 border-t">
-          <Button
+          <button
             variant="outline"
-            onClick={() => handleAction('refresh')}
+            onClick={() = aria-label="Button"> handleAction('refresh')}
             disabled={loading}
             className="gap-2"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          
           <div className="flex gap-2">
             {model.status === 'local' && (
-              <Button
+              <button
                 variant="destructive"
-                onClick={() => handleAction('delete')}
+                onClick={() = aria-label="Button"> handleAction('delete')}
                 className="gap-2"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
                 Delete Model
               </Button>
             )}

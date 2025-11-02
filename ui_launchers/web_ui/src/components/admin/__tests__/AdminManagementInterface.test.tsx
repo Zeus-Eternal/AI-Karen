@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useToast } from '@/hooks/use-toast';
 import AdminManagementInterface from '../AdminManagementInterface';

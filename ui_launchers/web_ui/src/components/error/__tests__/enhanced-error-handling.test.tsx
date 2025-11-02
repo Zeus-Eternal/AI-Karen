@@ -3,7 +3,7 @@
  * Tests for the comprehensive error handling system including boundaries, toasts, and API client
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GlobalErrorBoundary } from '../GlobalErrorBoundary';
@@ -37,10 +37,10 @@ const TestComponent = () => {
   
   return (
     <div>
-      <button onClick={() => showError('Test error message')}>
+      <button onClick={() = aria-label="Button"> showError('Test error message')}>
         Show Error Toast
       </button>
-      <button onClick={() => {
+      <button onClick={() = aria-label="Button"> {
         const serviceError = new Error('Service error') as any;
         serviceError.severity = 'high';
         serviceError.retryable = true;
@@ -487,7 +487,7 @@ describe('Enhanced Error Handling System', () => {
 
         return (
           <div>
-            <button onClick={handleApiCall}>Make API Call</button>
+            <button onClick={handleApiCall} aria-label="Button">Make API Call</button>
           </div>
         );
       };

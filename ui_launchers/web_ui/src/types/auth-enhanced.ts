@@ -1,3 +1,4 @@
+import type {
 /**
  * Enhanced Authentication Types and Interfaces
  *
@@ -37,7 +38,7 @@ export {
 export * from './auth-form';
 
 // Import types for use in this file
-import type {
+
   AuthenticationError,
   AuthenticationState,
   LoginCredentials,
@@ -50,7 +51,7 @@ import type {
   User
 } from './auth';
 
-import type {
+
   FormFieldType,
   AuthFormState
 } from './auth-form';

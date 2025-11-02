@@ -9,8 +9,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pathlib import Path
 
-from src.extensions.api_integration import ExtensionAPIIntegration
-from src.extensions.models import (
+from src.extensions.core.api_integration import ExtensionAPIIntegration
+from src.extensions.core.models import (
     ExtensionManifest, 
     ExtensionRecord, 
     ExtensionStatus,
@@ -18,7 +18,7 @@ from src.extensions.models import (
     ExtensionAPI,
     ExtensionAPIEndpoint
 )
-from src.extensions.base import BaseExtension
+from src.extensions.core.base import BaseExtension
 
 
 class MockExtension(BaseExtension):
@@ -92,7 +92,7 @@ def mock_manifest():
 @pytest.fixture
 def mock_extension_record(mock_manifest):
     """Create mock extension record."""
-    from src.extensions.models import ExtensionContext
+    from src.extensions.core.models import ExtensionContext
     
     context = ExtensionContext(extension_name="test-extension")
     instance = MockExtension(mock_manifest, context)

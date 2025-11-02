@@ -14,20 +14,20 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.extensions.background_tasks import (
+from src.extensions.core.background_tasks import (
     BackgroundTaskManager,
     TaskDefinition,
     TaskStatus,
     TaskTriggerType
 )
-from src.extensions.models import (
+from src.extensions.core.models import (
     ExtensionManifest,
     ExtensionRecord,
     ExtensionCapabilities,
     ExtensionBackgroundTask,
     ExtensionContext
 )
-from src.extensions.base import BaseExtension
+from src.extensions.core.base import BaseExtension
 
 
 class TestExtension(BaseExtension):

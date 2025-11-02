@@ -1,47 +1,42 @@
 'use client';
-
 import React, { Suspense, ComponentType, LazyExoticComponent } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
-
 interface LazyComponentProps {
   fallback?: React.ComponentType;
   errorFallback?: React.ComponentType<{ error: Error; retry: () => void }>;
   children: React.ReactNode;
 }
-
 interface LazyLoadOptions {
   fallback?: React.ComponentType;
   errorFallback?: React.ComponentType<{ error: Error; retry: () => void }>;
   delay?: number;
 }
-
 // Default loading fallback component
 const DefaultLoadingFallback: React.FC = () => (
   <motion.div
-    className="flex items-center justify-center p-8"
+    className="flex items-center justify-center p-8 sm:p-4 md:p-6"
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     transition={{ duration: 0.2 }}
   >
     <div className="flex items-center space-x-2 text-muted-foreground">
-      <Loader2 className="h-4 w-4 animate-spin" />
-      <span className="text-sm">Loading...</span>
+      <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+      <span className="text-sm md:text-base lg:text-lg">Loading...</span>
     </div>
   </motion.div>
 );
-
 // Default error fallback component
 const DefaultErrorFallback: React.FC<{ error: Error; retry: () => void }> = ({ error, retry }) => (
   <motion.div
-    className="flex flex-col items-center justify-center p-8 text-center"
+    className="flex flex-col items-center justify-center p-8 text-center sm:p-4 md:p-6"
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.3 }}
   >
     <div className="text-destructive mb-4">
       <svg
-        className="h-12 w-12 mx-auto mb-2"
+        className="h-12 w-12 mx-auto mb-2 sm:w-auto md:w-full"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -54,26 +49,24 @@ const DefaultErrorFallback: React.FC<{ error: Error; retry: () => void }> = ({ e
         />
       </svg>
       <h3 className="text-lg font-semibold">Failed to load component</h3>
-      <p className="text-sm text-muted-foreground mt-1">
+      <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
         {error.message || 'An unexpected error occurred'}
       </p>
     </div>
     <button
       onClick={retry}
       className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-    >
+     aria-label="Button">
       Try Again
     </button>
   </motion.div>
 );
-
 // Enhanced lazy component wrapper with error boundary
 export class LazyComponentErrorBoundary extends React.Component<
   LazyComponentProps & { onRetry?: () => void },
   { hasError: boolean; error: Error | null; retryCount: number }
 > {
   private maxRetries = 3;
-
   constructor(props: LazyComponentProps & { onRetry?: () => void }) {
     super(props);
     this.state = {
@@ -82,15 +75,11 @@ export class LazyComponentErrorBoundary extends React.Component<
       retryCount: 0,
     };
   }
-
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
-
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('LazyComponent Error:', error, errorInfo);
   }
-
   handleRetry = () => {
     if (this.state.retryCount < this.maxRetries) {
       this.setState(prevState => ({
@@ -101,17 +90,14 @@ export class LazyComponentErrorBoundary extends React.Component<
       this.props.onRetry?.();
     }
   };
-
   render() {
     if (this.state.hasError && this.state.error) {
       const ErrorComponent = this.props.errorFallback || DefaultErrorFallback;
       return <ErrorComponent error={this.state.error} retry={this.handleRetry} />;
     }
-
     return this.props.children;
   }
 }
-
 // Main lazy component wrapper
 export const LazyComponent: React.FC<LazyComponentProps> = ({
   fallback: FallbackComponent = DefaultLoadingFallback,
@@ -126,7 +112,6 @@ export const LazyComponent: React.FC<LazyComponentProps> = ({
     </LazyComponentErrorBoundary>
   );
 };
-
 // Utility function to create lazy components with options
 export function createLazyComponent<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
@@ -143,7 +128,6 @@ export function createLazyComponent<T extends ComponentType<any>>(
     }
     return importFn();
   });
-
   // Return a wrapped component that includes error boundary and fallback
   return React.lazy(() =>
     Promise.resolve({
@@ -158,20 +142,16 @@ export function createLazyComponent<T extends ComponentType<any>>(
     })
   );
 }
-
 // Hook for preloading lazy components
 export function useLazyPreload() {
   const preloadComponent = React.useCallback(
     (importFn: () => Promise<{ default: ComponentType<any> }>) => {
       // Preload the component by calling the import function
       importFn().catch(error => {
-        console.warn('Failed to preload component:', error);
       });
     },
     []
   );
-
   return { preloadComponent };
 }
-
 export default LazyComponent;

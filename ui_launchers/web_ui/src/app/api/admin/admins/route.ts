@@ -5,26 +5,21 @@
  * 
  * Requirements: 3.3, 3.4
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import { validateEmail, hashPassword } from '@/lib/auth/setup-validation';
 import type { AdminApiResponse, CreateUserRequest, User } from '@/types/admin';
-
 /**
  * GET /api/admin/admins - List admin users (super admin only)
  */
 export const GET = requireSuperAdmin(async (request: NextRequest, context) => {
   try {
     const adminUtils = getAdminDatabaseUtils();
-    
     // Get all admin and super admin users
     const adminUsers = await adminUtils.getUsersByRole('admin');
     const superAdminUsers = await adminUtils.getUsersByRole('super_admin');
-    
     const allAdmins = [...adminUsers, ...superAdminUsers];
-    
     // Remove sensitive information from response
     const sanitizedAdmins = allAdmins.map((user: User) => ({
       user_id: user.user_id,
@@ -40,14 +35,12 @@ export const GET = requireSuperAdmin(async (request: NextRequest, context) => {
       failed_login_attempts: user.failed_login_attempts,
       locked_until: user.locked_until
     }));
-
     // Sort by role (super_admin first) then by creation date
     sanitizedAdmins.sort((a, b) => {
       if (a.role === 'super_admin' && b.role !== 'super_admin') return -1;
       if (b.role === 'super_admin' && a.role !== 'super_admin') return 1;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-
     const response: AdminApiResponse<{ admins: typeof sanitizedAdmins; statistics: any }> = {
       success: true,
       data: {
@@ -65,12 +58,8 @@ export const GET = requireSuperAdmin(async (request: NextRequest, context) => {
         message: 'Admin users retrieved successfully'
       }
     };
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('Admin list error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {
@@ -81,14 +70,12 @@ export const GET = requireSuperAdmin(async (request: NextRequest, context) => {
     } as AdminApiResponse<never>, { status: 500 });
   }
 });
-
 /**
  * POST /api/admin/admins - Create new admin (super admin only)
  */
 export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
   try {
     const body: CreateUserRequest = await request.json();
-    
     // Validate required fields
     if (!body.email) {
       return NextResponse.json({
@@ -100,7 +87,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Validate email format
     if (!validateEmail(body.email)) {
       return NextResponse.json({
@@ -112,12 +98,9 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Force role to admin (cannot create super admin through this endpoint)
     const adminRole = 'admin';
-
     const adminUtils = getAdminDatabaseUtils();
-    
     // Check if email already exists
     const existingUsers = await adminUtils.getUsersWithRoleFilter({ search: body.email });
     if (existingUsers.data.length > 0) {
@@ -130,13 +113,11 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 409 });
     }
-
     // Hash password if provided
     let passwordHash: string | undefined;
     if (body.password) {
       passwordHash = await hashPassword(body.password);
     }
-
     // Create admin user
     const userId = await adminUtils.createUserWithRole({
       email: body.email,
@@ -146,13 +127,11 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       tenant_id: body.tenant_id || 'default',
       created_by: context.user.user_id
     });
-
     // Get created user for response
     const createdUser = await adminUtils.getUserWithRole(userId);
     if (!createdUser) {
       throw new Error('Failed to retrieve created admin user');
     }
-
     // Log admin creation
     await adminUtils.createAuditLog({
       user_id: context.user.user_id,
@@ -169,7 +148,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
     });
-
     // Remove sensitive information from response
     const responseUser = {
       user_id: createdUser.user_id,
@@ -182,7 +160,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       updated_at: createdUser.updated_at,
       two_factor_enabled: createdUser.two_factor_enabled
     };
-
     const response: AdminApiResponse<{ admin: typeof responseUser; invitation_sent?: boolean }> = {
       success: true,
       data: {
@@ -198,12 +175,8 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
             : ['Admin needs password set', 'Send invitation or provide temporary password']
       }
     };
-
     return NextResponse.json(response, { status: 201 });
-
   } catch (error) {
-    console.error('Admin creation error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {

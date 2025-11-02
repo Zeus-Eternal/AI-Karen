@@ -1,25 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
-
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const directory = searchParams.get('directory') || 'models/stable-diffusion';
-    
-    console.log('🎨 Stable Diffusion Scanner: Scanning directory', { directory });
-    
     // Resolve the directory path relative to the project root
     const projectRoot = process.cwd();
     const fullPath = path.resolve(projectRoot, directory);
-    
-    console.log('🎨 Stable Diffusion Scanner: Full path resolved', { fullPath });
-    
     // Check if directory exists
     try {
       await fs.access(fullPath);
     } catch (error) {
-      console.log('🎨 Stable Diffusion Scanner: Directory not found, creating mock response');
       return NextResponse.json({
         models: [],
         directory,
@@ -27,26 +19,18 @@ export async function GET(request: NextRequest) {
         scan_time: new Date().toISOString()
       });
     }
-    
     // Read directory contents
     const entries = await fs.readdir(fullPath, { withFileTypes: true });
-    
-    console.log('🎨 Stable Diffusion Scanner: Found entries', { 
-      totalEntries: entries.length, 
-      entryNames: entries.map(e => e.name)
     });
-    
     // Process entries (both files and directories)
     const models = [];
     for (const entry of entries) {
       try {
         const entryPath = path.join(fullPath, entry.name);
         const entryStats = await fs.stat(entryPath);
-        
         let modelType: 'checkpoint' | 'diffusers' = 'checkpoint';
         let config = null;
         let size = entryStats.size;
-        
         if (entry.isDirectory()) {
           // Check if it's a diffusers model directory
           const isDiffusersModel = await isDiffusersModelDirectory(entryPath);
@@ -70,7 +54,6 @@ export async function GET(request: NextRequest) {
           // Skip other types
           continue;
         }
-        
         models.push({
           name: entry.name,
           path: path.join(directory, entry.name),
@@ -79,22 +62,9 @@ export async function GET(request: NextRequest) {
           type: modelType,
           config
         });
-        
-        console.log('🎨 Stable Diffusion Scanner: Processed model', {
-          name: entry.name,
-          type: modelType,
-          size: size,
-          hasConfig: !!config
-        });
-        
       } catch (entryError) {
-        console.error('🎨 Stable Diffusion Scanner: Error processing entry', {
-          name: entry.name,
-          error: entryError
-        });
       }
     }
-    
     const response = {
       models,
       directory,
@@ -102,17 +72,8 @@ export async function GET(request: NextRequest) {
       model_count: models.length,
       scan_time: new Date().toISOString()
     };
-    
-    console.log('🎨 Stable Diffusion Scanner: Scan completed', {
-      modelsFound: models.length,
-      directory
-    });
-    
     return NextResponse.json(response);
-    
   } catch (error) {
-    console.error('🎨 Stable Diffusion Scanner: Scan failed', error);
-    
     return NextResponse.json({
       models: [],
       directory: 'models/stable-diffusion',
@@ -121,7 +82,6 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
-
 /**
  * Check if a directory contains a diffusers model
  */
@@ -130,7 +90,6 @@ async function isDiffusersModelDirectory(dirPath: string): Promise<boolean> {
     // Check for common diffusers files
     const requiredFiles = ['model_index.json'];
     const commonFiles = ['unet/config.json', 'text_encoder/config.json', 'vae/config.json'];
-    
     // Check for model_index.json (required for diffusers)
     for (const file of requiredFiles) {
       try {
@@ -139,7 +98,6 @@ async function isDiffusersModelDirectory(dirPath: string): Promise<boolean> {
         return false;
       }
     }
-    
     // Check for at least one common component
     let hasComponent = false;
     for (const file of commonFiles) {
@@ -151,13 +109,11 @@ async function isDiffusersModelDirectory(dirPath: string): Promise<boolean> {
         continue;
       }
     }
-    
     return hasComponent;
   } catch {
     return false;
   }
 }
-
 /**
  * Read diffusers model configuration
  */
@@ -170,7 +126,6 @@ async function readDiffusersConfig(dirPath: string): Promise<any> {
     return null;
   }
 }
-
 /**
  * Calculate directory size recursively
  */
@@ -178,7 +133,6 @@ async function calculateDirectorySize(dirPath: string): Promise<number> {
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
     let totalSize = 0;
-    
     for (const entry of entries) {
       try {
         const entryPath = path.join(dirPath, entry.name);
@@ -195,7 +149,6 @@ async function calculateDirectorySize(dirPath: string): Promise<number> {
         continue;
       }
     }
-    
     return totalSize;
   } catch {
     return 0;

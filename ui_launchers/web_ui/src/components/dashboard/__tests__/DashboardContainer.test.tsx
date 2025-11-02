@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { DashboardContainer } from '../DashboardContainer';
@@ -28,7 +28,7 @@ vi.mock('@/components/ui/button', () => ({
       data-variant={variant}
       data-size={size}
       {...props}
-    >
+     aria-label="Button">
       {children}
     </button>
   )
@@ -60,7 +60,7 @@ vi.mock('../WidgetBase', () => ({
       <div>{config.title}</div>
       {children}
       {onRemove && (
-        <button onClick={() => onRemove()} data-testid={`remove-${config.id}`}>
+        <button onClick={() = aria-label="Button"> onRemove()} data-testid={`remove-${config.id}`}>
           Remove
         </button>
       )}

@@ -60,7 +60,7 @@ export default function SettingsDialog() {
         <h2 className="text-2xl font-semibold tracking-tight">
           Application Settings
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
           Customize Karen AI's behavior, API connections, personal knowledge,
           notifications, and more. Your preferences are saved locally in your
           browser.

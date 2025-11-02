@@ -172,7 +172,7 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => handleViewChange(tab.id as DashboardView)}
+            onClick={() = aria-label="Button"> handleViewChange(tab.id as DashboardView)}
             className={`py-2 px-1 border-b-2 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-t ${
               currentView === tab.id
                 ? 'border-blue-500 text-blue-600'
@@ -190,7 +190,7 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
         
         {selectedUsers.length > 0 && (
           <button
-            onClick={() => handleViewChange('bulk-operations')}
+            onClick={() = aria-label="Button"> handleViewChange('bulk-operations')}
             className={`py-2 px-1 border-b-2 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-t ${
               currentView === 'bulk-operations'
                 ? 'border-blue-500 text-blue-600'
@@ -247,10 +247,10 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
                 color: 'text-purple-600'
               }
             ].map((stat, index) => (
-              <div key={index} className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-sm font-medium text-gray-500">{stat.title}</h3>
+              <div key={index} className="bg-white p-6 rounded-lg shadow sm:p-4 md:p-6">
+                <h3 className="text-sm font-medium text-gray-500 md:text-base lg:text-lg">{stat.title}</h3>
                 <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-                <p className="text-sm text-gray-600 mt-1">{stat.subtitle}</p>
+                <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">{stat.subtitle}</p>
               </div>
             ))}
           </div>
@@ -260,14 +260,14 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
       {/* Recent Activity Summary */}
       {dashboardData.activitySummary && (
         <section aria-labelledby="activity-heading">
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="bg-white p-6 rounded-lg shadow sm:p-4 md:p-6">
             <h2 id="activity-heading" className="text-lg font-medium text-gray-900 mb-4">
               Weekly Activity Summary
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Key Metrics</h3>
-                <dl className="space-y-2 text-sm">
+                <h3 className="text-sm font-medium text-gray-700 mb-2 md:text-base lg:text-lg">Key Metrics</h3>
+                <dl className="space-y-2 text-sm md:text-base lg:text-lg">
                   {[
                     { term: 'New Registrations', value: dashboardData.activitySummary.user_registrations },
                     { term: 'Admin Actions', value: dashboardData.activitySummary.admin_actions },
@@ -282,8 +282,8 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
                 </dl>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Top Actions</h3>
-                <dl className="space-y-2 text-sm">
+                <h3 className="text-sm font-medium text-gray-700 mb-2 md:text-base lg:text-lg">Top Actions</h3>
+                <dl className="space-y-2 text-sm md:text-base lg:text-lg">
                   {dashboardData.activitySummary.top_actions.slice(0, 4).map((action, index) => (
                     <div key={index} className="flex justify-between">
                       <dt className="capitalize">{action.action.replace('_', ' ')}</dt>
@@ -299,7 +299,7 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
 
       {/* Quick Actions */}
       <section aria-labelledby="quick-actions-heading">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow sm:p-4 md:p-6">
           <h2 id="quick-actions-heading" className="text-lg font-medium text-gray-900 mb-4">
             Quick Actions
           </h2>
@@ -327,13 +327,13 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
               <button
                 key={index}
                 onClick={quickAction.action}
-                className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
+                className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:p-4 md:p-6"
+               aria-label="Button">
                 <div className="flex items-start">
                   <span className="text-2xl mr-3" aria-hidden="true">{quickAction.icon}</span>
                   <div>
                     <h3 className="font-medium text-gray-900">{quickAction.title}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{quickAction.description}</p>
+                    <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">{quickAction.description}</p>
                   </div>
                 </div>
               </button>
@@ -406,11 +406,11 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
   if (dashboardData.loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen" role="status" aria-live="polite">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4 sm:w-auto md:w-full"></div>
         <p className="text-gray-600 mb-4">Loading dashboard...</p>
         <SimpleProgressBar 
           progress={isRetrying ? 75 : 50} 
-          className="w-64" 
+          className="w-64 sm:w-auto md:w-full" 
           label="Loading progress"
         />
       </div>

@@ -1,27 +1,20 @@
 'use client';
-
 import { useState, useEffect } from 'react';
-
 export default function TestPage() {
   const [status, setStatus] = useState('Loading...');
   const [authStatus, setAuthStatus] = useState('Checking...');
-
   useEffect(() => {
     // Test basic functionality
     setStatus('Page loaded successfully!');
-    
     // Test API connectivity
     fetch('/api/health')
       .then(res => res.json())
       .then(data => {
-        console.log('Health check:', data);
         setStatus(`API connected! Status: ${data.status}`);
       })
       .catch(err => {
-        console.error('API error:', err);
         setStatus(`API error: ${err.message}`);
       });
-
     // Test authentication
     fetch('/api/auth/login', {
       method: 'POST',
@@ -30,7 +23,6 @@ export default function TestPage() {
     })
       .then(res => res.json())
       .then(data => {
-        console.log('Auth test:', data);
         if (data.access_token) {
           setAuthStatus('Authentication working!');
         } else {
@@ -38,11 +30,9 @@ export default function TestPage() {
         }
       })
       .catch(err => {
-        console.error('Auth error:', err);
         setAuthStatus(`Auth error: ${err.message}`);
       });
   }, []);
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">

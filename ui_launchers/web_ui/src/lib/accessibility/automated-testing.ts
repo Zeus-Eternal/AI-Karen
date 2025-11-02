@@ -4,11 +4,9 @@
  * Provides automated accessibility testing capabilities for CI/CD pipelines
  * with regression detection and comprehensive reporting.
  */
-
 import * as axe from 'axe-core';
 import { AxeResults, RunOptions, RuleObject } from 'axe-core';
 import { Page } from '@playwright/test';
-
 // Configuration for different testing scenarios
 export interface AccessibilityTestConfig {
   rules?: RuleObject;
@@ -25,7 +23,6 @@ export interface AccessibilityTestConfig {
     minor?: number;
   };
 }
-
 // Test result interfaces
 export interface AccessibilityTestResult {
   url: string;
@@ -47,7 +44,6 @@ export interface AccessibilityTestResult {
   complianceScore: number;
   passed: boolean;
 }
-
 export interface AccessibilityRegressionResult {
   current: AccessibilityTestResult;
   baseline?: AccessibilityTestResult;
@@ -66,7 +62,6 @@ export interface AccessibilityRegressionResult {
   }>;
   hasRegressions: boolean;
 }
-
 // Predefined test configurations
 export const AccessibilityTestConfigs = {
   // Basic WCAG 2.0 A compliance
@@ -80,7 +75,6 @@ export const AccessibilityTestConfigs = {
       minor: 10
     }
   } as AccessibilityTestConfig,
-
   // WCAG 2.1 AA compliance (recommended)
   wcag2aa: {
     tags: ['wcag2a', 'wcag2aa'],
@@ -92,7 +86,6 @@ export const AccessibilityTestConfigs = {
       minor: 8
     }
   } as AccessibilityTestConfig,
-
   // WCAG 2.1 AAA compliance (strict)
   wcag2aaa: {
     tags: ['wcag2a', 'wcag2aa', 'wcag2aaa'],
@@ -104,7 +97,6 @@ export const AccessibilityTestConfigs = {
       minor: 3
     }
   } as AccessibilityTestConfig,
-
   // Best practices and experimental rules
   comprehensive: {
     tags: ['wcag2a', 'wcag2aa', 'wcag21aa', 'best-practice'],
@@ -116,7 +108,6 @@ export const AccessibilityTestConfigs = {
       minor: 10
     }
   } as AccessibilityTestConfig,
-
   // Form-specific testing
   forms: {
     tags: ['wcag2a', 'wcag2aa'],
@@ -130,7 +121,6 @@ export const AccessibilityTestConfigs = {
     },
     timeout: 30000
   } as AccessibilityTestConfig,
-
   // Navigation and interaction testing
   navigation: {
     tags: ['wcag2a', 'wcag2aa'],
@@ -144,7 +134,6 @@ export const AccessibilityTestConfigs = {
     },
     timeout: 30000
   } as AccessibilityTestConfig,
-
   // Color and visual testing
   visual: {
     tags: ['wcag2a', 'wcag2aa'],
@@ -157,16 +146,13 @@ export const AccessibilityTestConfigs = {
     timeout: 30000
   } as AccessibilityTestConfig
 };
-
 /**
  * Automated Accessibility Tester Class
  */
 export class AutomatedAccessibilityTester {
   private baselineResults: Map<string, AccessibilityTestResult> = new Map();
   private testHistory: AccessibilityTestResult[] = [];
-
   constructor(private defaultConfig: AccessibilityTestConfig = AccessibilityTestConfigs.wcag2aa) {}
-
   /**
    * Run accessibility test on a DOM element or document
    */
@@ -174,7 +160,6 @@ export class AutomatedAccessibilityTester {
     element: Element | Document,
     config: AccessibilityTestConfig = this.defaultConfig
   ): Promise<AccessibilityTestResult> {
-    
     try {
       // Configure axe-core
       const runOptions: RunOptions = {
@@ -184,17 +169,14 @@ export class AutomatedAccessibilityTester {
         },
         rules: config.rules || {}
       };
-
       if (config.include) {
         (runOptions as any).include = config.include;
       }
       if (config.exclude) {
         (runOptions as any).exclude = config.exclude;
       }
-
       // Run axe-core analysis
       const axeResults = await axe.run(element, runOptions);
-
       // Calculate metrics
       const violationsByImpact = {
         critical: axeResults.violations.filter(v => v.impact === 'critical').length,
@@ -202,10 +184,8 @@ export class AutomatedAccessibilityTester {
         moderate: axeResults.violations.filter(v => v.impact === 'moderate').length,
         minor: axeResults.violations.filter(v => v.impact === 'minor').length
       };
-
       const complianceScore = this.calculateComplianceScore(axeResults);
       const passed = this.evaluateThresholds(violationsByImpact, config.thresholds);
-
       const result: AccessibilityTestResult = {
         url: window.location.href,
         timestamp: new Date().toISOString(),
@@ -221,16 +201,13 @@ export class AutomatedAccessibilityTester {
         complianceScore,
         passed
       };
-
       // Store in history
       this.testHistory.push(result);
-
       return result;
     } catch (error) {
       throw new Error(`Accessibility test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
-
   /**
    * Run accessibility test using Playwright page
    */
@@ -243,7 +220,6 @@ export class AutomatedAccessibilityTester {
       await page.addScriptTag({
         url: 'https://unpkg.com/axe-core@4.10.2/axe.min.js'
       });
-
       // Run axe analysis in the page context
       const runOptions = {
         runOnly: {
@@ -254,11 +230,9 @@ export class AutomatedAccessibilityTester {
         ...(config.include && { include: config.include }),
         ...(config.exclude && { exclude: config.exclude })
       };
-
       const axeResults = await page.evaluate(async (options) => {
         return await (window as any).axe.run(document, options);
       }, runOptions);
-
       // Calculate metrics
       const violationsByImpact = {
         critical: axeResults.violations.filter((v: any) => v.impact === 'critical').length,
@@ -266,10 +240,8 @@ export class AutomatedAccessibilityTester {
         moderate: axeResults.violations.filter((v: any) => v.impact === 'moderate').length,
         minor: axeResults.violations.filter((v: any) => v.impact === 'minor').length
       };
-
       const complianceScore = this.calculateComplianceScore(axeResults);
       const passed = this.evaluateThresholds(violationsByImpact, config.thresholds);
-
       const result: AccessibilityTestResult = {
         url: page.url(),
         timestamp: new Date().toISOString(),
@@ -285,23 +257,19 @@ export class AutomatedAccessibilityTester {
         complianceScore,
         passed
       };
-
       // Store in history
       this.testHistory.push(result);
-
       return result;
     } catch (error) {
       throw new Error(`Page accessibility test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
-
   /**
    * Set baseline results for regression testing
    */
   setBaseline(url: string, result: AccessibilityTestResult): void {
     this.baselineResults.set(url, result);
   }
-
   /**
    * Load baseline results from storage
    */
@@ -309,24 +277,20 @@ export class AutomatedAccessibilityTester {
     try {
       // In a real implementation, this would load from file system or database
       const baselineData = await fetch(baselinePath).then(response => response.json());
-      
       if (Array.isArray(baselineData)) {
         baselineData.forEach((result: AccessibilityTestResult) => {
           this.baselineResults.set(result.url, result);
         });
       }
     } catch (error) {
-      console.warn('Could not load baseline results:', error);
     }
   }
-
   /**
    * Save baseline results to storage
    */
   async saveBaseline(baselinePath: string): Promise<void> {
     try {
       const baselineData = Array.from(this.baselineResults.values());
-      
       // In a real implementation, this would save to file system or database
       const blob = new Blob([JSON.stringify(baselineData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -341,7 +305,6 @@ export class AutomatedAccessibilityTester {
       throw new Error(`Could not save baseline: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
-
   /**
    * Compare current results with baseline for regression detection
    */
@@ -350,7 +313,6 @@ export class AutomatedAccessibilityTester {
     baseline?: AccessibilityTestResult
   ): AccessibilityRegressionResult {
     const baselineResult = baseline || this.baselineResults.get(current.url);
-    
     if (!baselineResult) {
       return {
         current,
@@ -360,10 +322,8 @@ export class AutomatedAccessibilityTester {
         hasRegressions: false
       };
     }
-
     const regressions: AccessibilityRegressionResult['regressions'] = [];
     const improvements: AccessibilityRegressionResult['improvements'] = [];
-
     // Create maps for easier comparison
     const currentViolations = new Map(
       current.axeResults.violations.map(v => [v.id, v.nodes.length])
@@ -371,11 +331,9 @@ export class AutomatedAccessibilityTester {
     const baselineViolations = new Map(
       baselineResult.axeResults.violations.map(v => [v.id, v.nodes.length])
     );
-
     // Check for regressions (new violations or increased counts)
     for (const [ruleId, currentCount] of Array.from(currentViolations.entries())) {
       const baselineCount = baselineViolations.get(ruleId) || 0;
-      
       if (currentCount > baselineCount) {
         const violation = current.axeResults.violations.find(v => v.id === ruleId);
         if (violation) {
@@ -389,11 +347,9 @@ export class AutomatedAccessibilityTester {
         }
       }
     }
-
     // Check for improvements (fixed violations or decreased counts)
     for (const [ruleId, baselineCount] of Array.from(baselineViolations.entries())) {
       const currentCount = currentViolations.get(ruleId) || 0;
-      
       if (currentCount < baselineCount) {
         const violation = baselineResult.axeResults.violations.find(v => v.id === ruleId);
         if (violation) {
@@ -406,7 +362,6 @@ export class AutomatedAccessibilityTester {
         }
       }
     }
-
     return {
       current,
       baseline: baselineResult,
@@ -415,7 +370,6 @@ export class AutomatedAccessibilityTester {
       hasRegressions: regressions.length > 0
     };
   }
-
   /**
    * Generate comprehensive test report
    */
@@ -436,26 +390,21 @@ export class AutomatedAccessibilityTester {
         return this.generateJSONReport(results);
     }
   }
-
   /**
    * Calculate compliance score based on violations
    */
   private calculateComplianceScore(axeResults: AxeResults): number {
     const totalChecks = axeResults.violations.length + axeResults.passes.length;
     if (totalChecks === 0) return 100;
-
     // Weight violations by impact
     const weightedViolations = axeResults.violations.reduce((sum, violation) => {
       const weight = this.getImpactWeight(violation.impact as string);
       return sum + (violation.nodes.length * weight);
     }, 0);
-
     const maxPossibleScore = totalChecks * 4; // Maximum weight is 4 (critical)
     const score = Math.max(0, 100 - (weightedViolations / maxPossibleScore) * 100);
-    
     return Math.round(score * 100) / 100;
   }
-
   /**
    * Get numeric weight for violation impact
    */
@@ -468,7 +417,6 @@ export class AutomatedAccessibilityTester {
       default: return 1;
     }
   }
-
   /**
    * Evaluate if results pass defined thresholds
    */
@@ -477,7 +425,6 @@ export class AutomatedAccessibilityTester {
     thresholds?: AccessibilityTestConfig['thresholds']
   ): boolean {
     if (!thresholds) return true;
-
     return (
       (thresholds.critical === undefined || violations.critical <= thresholds.critical) &&
       (thresholds.serious === undefined || violations.serious <= thresholds.serious) &&
@@ -485,7 +432,6 @@ export class AutomatedAccessibilityTester {
       (thresholds.minor === undefined || violations.minor <= thresholds.minor)
     );
   }
-
   /**
    * Generate JSON report
    */
@@ -500,10 +446,8 @@ export class AutomatedAccessibilityTester {
       },
       results
     };
-
     return JSON.stringify(report, null, 2);
   }
-
   /**
    * Generate HTML report
    */
@@ -511,7 +455,6 @@ export class AutomatedAccessibilityTester {
     const passed = results.filter(r => r.passed).length;
     const failed = results.filter(r => !r.passed).length;
     const avgScore = results.reduce((sum, r) => sum + r.complianceScore, 0) / results.length;
-
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -542,14 +485,12 @@ export class AutomatedAccessibilityTester {
         <p><strong>Failed:</strong> ${failed}</p>
         <p><strong>Average Compliance Score:</strong> ${avgScore.toFixed(2)}%</p>
     </div>
-    
     ${results.map(result => `
         <div class="result ${result.passed ? 'passed' : 'failed'}">
             <h3>${result.url}</h3>
             <p><strong>Compliance Score:</strong> ${result.complianceScore}%</p>
             <p><strong>Violations:</strong> ${result.summary.violations}</p>
             <p><strong>Passes:</strong> ${result.summary.passes}</p>
-            
             ${result.axeResults.violations.map(violation => `
                 <div class="violation ${violation.impact}">
                     <h4>${violation.description}</h4>
@@ -563,7 +504,6 @@ export class AutomatedAccessibilityTester {
 </body>
 </html>`;
   }
-
   /**
    * Generate JUnit XML report
    */
@@ -571,7 +511,6 @@ export class AutomatedAccessibilityTester {
     const totalTests = results.length;
     const failures = results.filter(r => !r.passed).length;
     const time = results.reduce((sum, r) => sum + 1, 0); // Simplified time calculation
-
     return `<?xml version="1.0" encoding="UTF-8"?>
 <testsuite name="Accessibility Tests" tests="${totalTests}" failures="${failures}" time="${time}">
 ${results.map(result => `
@@ -585,7 +524,6 @@ ${results.map(result => `
 `).join('')}
 </testsuite>`;
   }
-
   /**
    * Generate SARIF report for security tools integration
    */
@@ -624,10 +562,8 @@ ${results.map(result => `
         )
       }]
     };
-
     return JSON.stringify(sarif, null, 2);
   }
-
   /**
    * Map axe impact levels to SARIF levels
    */
@@ -640,14 +576,12 @@ ${results.map(result => `
       default: return 'note';
     }
   }
-
   /**
    * Get test history
    */
   getTestHistory(): AccessibilityTestResult[] {
     return [...this.testHistory];
   }
-
   /**
    * Clear test history
    */
@@ -655,19 +589,15 @@ ${results.map(result => `
     this.testHistory = [];
   }
 }
-
 // Export singleton instance
 export const accessibilityTester = new AutomatedAccessibilityTester();
-
 // Export utility functions
 export const runAccessibilityTest = (
   element: Element | Document,
   config?: AccessibilityTestConfig
 ) => accessibilityTester.testElement(element, config);
-
 export const runPageAccessibilityTest = (
   page: Page,
   config?: AccessibilityTestConfig
 ) => accessibilityTester.testPage(page, config);
-
 export default AutomatedAccessibilityTester;

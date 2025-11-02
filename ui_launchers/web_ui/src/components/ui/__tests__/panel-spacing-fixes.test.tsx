@@ -7,7 +7,7 @@
  * Based on requirements: 2.1, 2.3
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, expect, describe, it } from 'vitest';
 import { RightPanel, RightPanelView } from '../right-panel';
@@ -165,7 +165,7 @@ describe('Panel Spacing and Alignment Fixes', () => {
       render(
         <PanelHeader
           title="Test Title"
-          actions={<button>Action</button>}
+          actions={<button aria-label="Button">Action</button>}
           showCloseButton={true}
           onClose={mockClose}
         />

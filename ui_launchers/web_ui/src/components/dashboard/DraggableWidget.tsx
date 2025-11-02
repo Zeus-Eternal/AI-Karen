@@ -53,7 +53,7 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
         )}
         title="Drag to reorder"
       >
-        <GripVertical className="h-3 w-3" />
+        <GripVertical className="h-3 w-3 sm:w-auto md:w-full" />
       </div>
 
       {/* Widget Content */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+
 import { Skeleton } from './skeleton';
 import { SkeletonTableProps } from './types';
 import { cn } from '@/lib/utils';
@@ -17,7 +17,7 @@ export function SkeletonTable({
       <div className="rounded-md border">
         {/* Table Header */}
         {showHeader && (
-          <div className="border-b bg-muted/50 p-4">
+          <div className="border-b bg-muted/50 p-4 sm:p-4 md:p-6">
             <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
               {Array.from({ length: columns }, (_, index) => (
                 <Skeleton
@@ -34,7 +34,7 @@ export function SkeletonTable({
         {/* Table Body */}
         <div className="divide-y">
           {Array.from({ length: rows }, (_, rowIndex) => (
-            <div key={`row-${rowIndex}`} className="p-4">
+            <div key={`row-${rowIndex}`} className="p-4 sm:p-4 md:p-6">
               <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
                 {Array.from({ length: columns }, (_, colIndex) => {
                   // Vary the width of skeleton items to make it look more natural

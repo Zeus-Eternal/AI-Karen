@@ -62,7 +62,7 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <span className="text-lg font-semibold">Authentication Metrics</span>
-          <Badge variant={successRateStatus.variant} className="text-xs">
+          <Badge variant={successRateStatus.variant} className="text-xs sm:text-sm md:text-base">
             {successRateStatus.status.toUpperCase()}
           </Badge>
         </CardTitle>
@@ -75,8 +75,8 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
             <div className={`font-bold text-3xl ${successRateStatus.color}`}>
               {metrics.successRate.toFixed(1)}%
             </div>
-            <div className="text-sm text-muted-foreground mb-2">Success Rate</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">Success Rate</div>
+            <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {metrics.totalAttempts.toLocaleString()} total attempts
             </div>
           </div>
@@ -84,25 +84,25 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
 
         {/* Authentication Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 bg-green-50 rounded-lg text-center">
+          <div className="p-3 bg-green-50 rounded-lg text-center sm:p-4 md:p-6">
             <div className="font-bold text-xl text-green-600">
               {metrics.successfulAttempts.toLocaleString()}
             </div>
-            <div className="text-sm text-muted-foreground">Successful</div>
+            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Successful</div>
           </div>
           
-          <div className="p-3 bg-red-50 rounded-lg text-center">
+          <div className="p-3 bg-red-50 rounded-lg text-center sm:p-4 md:p-6">
             <div className="font-bold text-xl text-red-600">
               {metrics.failedAttempts.toLocaleString()}
             </div>
-            <div className="text-sm text-muted-foreground">Failed</div>
+            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Failed</div>
           </div>
         </div>
 
         {/* Average Auth Time */}
-        <div className="p-3 bg-blue-50 rounded-lg">
+        <div className="p-3 bg-blue-50 rounded-lg sm:p-4 md:p-6">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Average Auth Time</span>
+            <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Average Auth Time</span>
             <div className="text-right">
               <div className={`font-bold text-lg ${
                 metrics.averageAuthTime < 1000 ? 'text-green-600' :
@@ -111,7 +111,7 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
               }`}>
                 {formatAuthTime(metrics.averageAuthTime)}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {metrics.averageAuthTime < 1000 ? 'Fast' :
                  metrics.averageAuthTime < 3000 ? 'Normal' :
                  'Slow'}
@@ -124,12 +124,12 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
         {sortedFailureReasons.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium text-sm">Common Failure Reasons</h4>
-              <Button
+              <h4 className="font-medium text-sm md:text-base lg:text-lg">Common Failure Reasons</h4>
+              <button
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowDetails(!showDetails)}
-                className="text-xs"
+                onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
+                className="text-xs sm:text-sm md:text-base"
               >
                 {showDetails ? 'Hide' : 'Show'} Details
               </Button>
@@ -140,7 +140,7 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
                 const percentage = (count / metrics.failedAttempts) * 100;
                 return (
                   <div key={reason} className="space-y-1">
-                    <div className="flex justify-between items-center text-sm">
+                    <div className="flex justify-between items-center text-sm md:text-base lg:text-lg">
                       <span className="font-medium truncate" title={reason}>
                         {reason}
                       </span>
@@ -148,7 +148,7 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
                         <span className="text-muted-foreground">
                           {count}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                           ({percentage.toFixed(1)}%)
                         </span>
                       </div>
@@ -169,25 +169,25 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
         {/* Recent Failures */}
         {showRecentFailures && metrics.recentFailures.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-medium text-sm">Recent Failures</h4>
+            <h4 className="font-medium text-sm md:text-base lg:text-lg">Recent Failures</h4>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {metrics.recentFailures.slice(0, 8).map((failure, index) => (
                 <div 
                   key={`${failure.timestamp.getTime()}-${index}`}
-                  className="p-2 bg-red-50 rounded border-l-4 border-red-500"
+                  className="p-2 bg-red-50 rounded border-l-4 border-red-500 sm:p-4 md:p-6"
                 >
-                  <div className="flex justify-between items-start text-sm">
-                    <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start text-sm md:text-base lg:text-lg">
+                    <div className="flex-1 min-w-0 sm:w-auto md:w-full">
                       <div className="font-medium text-red-700">
                         {failure.reason}
                       </div>
                       {showDetails && failure.email && (
-                        <div className="text-xs text-red-600 mt-1">
+                        <div className="text-xs text-red-600 mt-1 sm:text-sm md:text-base">
                           User: {failure.email}
                         </div>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                    <div className="text-xs text-muted-foreground ml-2 flex-shrink-0 sm:text-sm md:text-base">
                       {formatTimestamp(failure.timestamp)}
                     </div>
                   </div>
@@ -197,7 +197,7 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
             
             {metrics.recentFailures.length > 8 && (
               <div className="text-center">
-                <Button variant="outline" size="sm" className="text-xs">
+                <button variant="outline" size="sm" className="text-xs sm:text-sm md:text-base" aria-label="Button">
                   View All Failures ({metrics.recentFailures.length})
                 </Button>
               </div>
@@ -206,8 +206,8 @@ export const AuthenticationMetricsDisplay: React.FC<AuthenticationMetricsDisplay
         )}
 
         {/* Authentication Health Indicator */}
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <div className="flex items-center justify-between text-sm">
+        <div className="p-3 bg-gray-50 rounded-lg sm:p-4 md:p-6">
+          <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
             <span className="text-muted-foreground">Authentication Health</span>
             <div className="flex items-center space-x-2">
               <div 

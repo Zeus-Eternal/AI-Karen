@@ -1,6 +1,9 @@
+import React, {
+import {
+import { connectivityLogger } from "@/lib/logging";
 "use client";
 
-import React, {
+
   createContext,
   useContext,
   useState,
@@ -9,21 +12,21 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import {
+
   logout as sessionLogout,
   getCurrentUser,
   hasSessionCookie,
 } from "@/lib/auth/session";
-import {
+
   getConnectionManager,
   ConnectionError,
   ErrorCategory,
 } from "@/lib/connection/connection-manager";
-import {
+
   getTimeoutManager,
   OperationType,
 } from "@/lib/connection/timeout-manager";
-import { connectivityLogger } from "@/lib/logging";
+
 
 export interface User {
   userId: string;

@@ -1,11 +1,5 @@
-/**
- * Resource Monitoring Dashboard
- * Displays resource utilization, alerts, and scaling recommendations
- */
-
-'use client';
-
 import React, { useState, useEffect } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +8,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
+/**
+ * Resource Monitoring Dashboard
+ * Displays resource utilization, alerts, and scaling recommendations
+ */
+
+'use client';
+
+
+
+
+
+
+
+
+
+
   LineChart, 
   Line, 
   XAxis, 
@@ -29,7 +39,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { 
+
   Cpu, 
   MemoryStick, 
   Network, 
@@ -44,7 +54,7 @@ import {
   CheckCircle,
   X
 } from 'lucide-react';
-import { 
+
   resourceMonitor, 
   ResourceMetrics, 
   ResourceAlert, 
@@ -138,30 +148,30 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'critical': return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case 'high': return <AlertTriangle className="h-4 w-4 text-orange-500" />;
-      case 'medium': return <Activity className="h-4 w-4 text-yellow-500" />;
-      case 'low': return <Activity className="h-4 w-4 text-blue-500" />;
-      default: return <Activity className="h-4 w-4" />;
+      case 'critical': return <AlertTriangle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
+      case 'high': return <AlertTriangle className="h-4 w-4 text-orange-500 sm:w-auto md:w-full" />;
+      case 'medium': return <Activity className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
+      case 'low': return <Activity className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />;
+      default: return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
 
   const getResourceIcon = (resource: string) => {
     switch (resource) {
-      case 'cpu': return <Cpu className="h-4 w-4" />;
-      case 'memory': return <MemoryStick className="h-4 w-4" />;
-      case 'network': return <Network className="h-4 w-4" />;
-      case 'storage': return <HardDrive className="h-4 w-4" />;
-      default: return <Activity className="h-4 w-4" />;
+      case 'cpu': return <Cpu className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'memory': return <MemoryStick className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'network': return <Network className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'storage': return <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />;
+      default: return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
 
   const getRecommendationIcon = (type: string) => {
     switch (type) {
-      case 'scale-up': return <TrendingUp className="h-4 w-4 text-green-500" />;
-      case 'scale-down': return <TrendingDown className="h-4 w-4 text-blue-500" />;
-      case 'optimize': return <Zap className="h-4 w-4 text-yellow-500" />;
-      default: return <Activity className="h-4 w-4" />;
+      case 'scale-up': return <TrendingUp className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
+      case 'scale-down': return <TrendingDown className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />;
+      case 'optimize': return <Zap className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
+      default: return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
 
@@ -181,7 +191,8 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   };
 
   return (
-    <div className="space-y-6">
+    <ErrorBoundary fallback={<div>Something went wrong in ResourceMonitoringDashboard</div>}>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -207,13 +218,13 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">CPU Usage</CardTitle>
-              <Cpu className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium md:text-base lg:text-lg">CPU Usage</CardTitle>
+              <Cpu className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{currentMetrics.cpu.usage.toFixed(1)}%</div>
               <Progress value={currentMetrics.cpu.usage} className="mt-2" />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                 {currentMetrics.cpu.cores} cores available
               </p>
             </CardContent>
@@ -221,13 +232,13 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Memory Usage</CardTitle>
-              <MemoryStick className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Memory Usage</CardTitle>
+              <MemoryStick className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{currentMetrics.memory.percentage.toFixed(1)}%</div>
               <Progress value={currentMetrics.memory.percentage} className="mt-2" />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                 {formatBytes(currentMetrics.memory.used)} / {formatBytes(currentMetrics.memory.total)}
               </p>
             </CardContent>
@@ -235,15 +246,15 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Network Latency</CardTitle>
-              <Network className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Network Latency</CardTitle>
+              <Network className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{currentMetrics.network.latency.toFixed(0)}ms</div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {currentMetrics.network.bandwidth}Mbps • {currentMetrics.network.connectionType}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {formatBytes(currentMetrics.network.bytesReceived)} received
               </p>
             </CardContent>
@@ -251,13 +262,13 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Storage Usage</CardTitle>
-              <HardDrive className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Storage Usage</CardTitle>
+              <HardDrive className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{currentMetrics.storage.percentage.toFixed(1)}%</div>
               <Progress value={currentMetrics.storage.percentage} className="mt-2" />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                 {formatBytes(currentMetrics.storage.used)} / {formatBytes(currentMetrics.storage.total)}
               </p>
             </CardContent>
@@ -270,7 +281,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <AlertTriangle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />
               <span>Active Alerts</span>
               <Badge variant="destructive">
                 {alerts.filter(a => !a.resolved).length}
@@ -296,18 +307,18 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
                           <AlertDescription>
                             {alert.message}
                             <br />
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                               {new Date(alert.timestamp).toLocaleString()}
                             </span>
                           </AlertDescription>
                         </div>
                       </div>
-                      <Button
+                      <button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleResolveAlert(alert.id)}
+                        onClick={() = aria-label="Button"> handleResolveAlert(alert.id)}
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4 sm:w-auto md:w-full" />
                       </Button>
                     </div>
                   </Alert>
@@ -414,7 +425,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
             <CardContent>
               {recommendations.length === 0 ? (
                 <div className="text-center py-8">
-                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 sm:w-auto md:w-full" />
                   <h3 className="text-lg font-medium">Resources Optimized</h3>
                   <p className="text-muted-foreground">
                     No scaling recommendations at this time.
@@ -423,7 +434,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
               ) : (
                 <div className="space-y-4">
                   {recommendations.map((rec) => (
-                    <div key={rec.id} className="border rounded-lg p-4">
+                    <div key={rec.id} className="border rounded-lg p-4 sm:p-4 md:p-6">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-3">
                           <div className="flex items-center space-x-2">
@@ -437,17 +448,17 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
                                 {rec.priority}
                               </Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground mb-2">
+                            <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                               {rec.description}
                             </p>
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                               <p><strong>Impact:</strong> {rec.impact}</p>
                               <p><strong>Implementation:</strong> {rec.implementation}</p>
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-medium">
+                          <div className="text-sm font-medium md:text-base lg:text-lg">
                             {rec.estimatedCost > 0 && (
                               <div className="text-red-600">
                                 Cost: {formatCurrency(rec.estimatedCost)}
@@ -459,7 +470,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
                               </div>
                             )}
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                             {rec.confidence}% confidence
                           </div>
                         </div>
@@ -484,7 +495,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
               <CardContent>
                 <div className="space-y-6">
                   {capacityPlans.map((plan) => (
-                    <div key={plan.resource} className="border rounded-lg p-4">
+                    <div key={plan.resource} className="border rounded-lg p-4 sm:p-4 md:p-6">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-2">
                           {getResourceIcon(plan.resource)}
@@ -495,19 +506,19 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <div>
-                          <p className="text-sm text-muted-foreground">Current Usage</p>
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Current Usage</p>
                           <p className="text-lg font-medium">{plan.currentUsage.toFixed(1)}%</p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Projected Usage</p>
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Projected Usage</p>
                           <p className="text-lg font-medium">{plan.projectedUsage.toFixed(1)}%</p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Growth Rate</p>
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Growth Rate</p>
                           <p className="text-lg font-medium">{plan.growthRate.toFixed(1)}%/month</p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Cost Impact</p>
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Cost Impact</p>
                           <p className="text-lg font-medium">
                             {plan.costImpact > 0 ? formatCurrency(plan.costImpact) : 'No change'}
                           </p>
@@ -515,7 +526,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
                       </div>
 
                       <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-sm md:text-base lg:text-lg">
                           <span>Current</span>
                           <span>Projected</span>
                         </div>
@@ -525,7 +536,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
 
                       {plan.projectedUsage > 80 && (
                         <Alert className="mt-4">
-                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
                           <AlertTitle>Capacity Warning</AlertTitle>
                           <AlertDescription>
                             Projected {plan.resource} usage will exceed 80% in {plan.timeframe}. 
@@ -542,5 +553,6 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
         )}
       </Tabs>
     </div>
+    </ErrorBoundary>
   );
 };

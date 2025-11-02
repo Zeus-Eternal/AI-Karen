@@ -2,7 +2,6 @@
  * React hook for using the backend service with graceful degradation
  * This integrates with the existing KarenBackendService to handle 4xx/5xx errors
  */
-
 import React from 'react';
 import { 
   featureFlagManager, 
@@ -11,7 +10,6 @@ import {
   type FeatureFlag 
 } from './index';
 import { EnhancedBackendService } from './enhanced-backend-service';
-
 export interface UseGracefulBackendOptions {
   enableCaching?: boolean;
   useStaleOnError?: boolean;
@@ -19,7 +17,6 @@ export interface UseGracefulBackendOptions {
   retryAttempts?: number;
   retryDelay?: number;
 }
-
 export interface GracefulBackendResult<T> {
   data: T | null;
   isLoading: boolean;
@@ -29,7 +26,6 @@ export interface GracefulBackendResult<T> {
   retry: () => void;
   refresh: () => void;
 }
-
 // Hook for making graceful backend requests
 export function useGracefulBackend<T>(
   endpoint: string,
@@ -51,34 +47,28 @@ export function useGracefulBackend<T>(
     enabled = true,
     refetchInterval
   } = options;
-
   const [data, setData] = React.useState<T | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
   const [isStale, setIsStale] = React.useState(false);
   const [isFromCache, setIsFromCache] = React.useState(false);
   const [retryCount, setRetryCount] = React.useState(0);
-
   // Get the enhanced backend service
   const enhancedService = React.useMemo(() => {
     const originalService = (window as any).karenBackendService;
     if (!originalService) {
-      console.warn('KarenBackendService not found on window object');
       return null;
     }
     return new EnhancedBackendService(originalService);
   }, []);
-
   const fetchData = React.useCallback(async () => {
     if (!enabled || !enhancedService) {
       setIsLoading(false);
       return;
     }
-
     try {
       setIsLoading(true);
       setError(null);
-
       const result = await enhancedService.makeEnhancedRequest<T>({
         endpoint,
         cacheKey,
@@ -88,11 +78,9 @@ export function useGracefulBackend<T>(
         fallbackData,
         serviceName
       });
-
       setData(result);
       setIsStale(false);
       setIsFromCache(false);
-
       // Check if data came from cache
       if (cacheKey && enableCaching) {
         const cachedEntry = extensionCache.getWithMetadata(cacheKey);
@@ -102,11 +90,9 @@ export function useGracefulBackend<T>(
           setIsStale(Date.now() > cachedEntry.metadata.expiresAt);
         }
       }
-
     } catch (err) {
       const error = err as Error;
       setError(error);
-
       // Try to get cached data as fallback
       if (cacheKey && useStaleOnError) {
         const staleData = extensionCache.getStale<T>(cacheKey, maxStaleAge);
@@ -114,12 +100,10 @@ export function useGracefulBackend<T>(
           setData(staleData);
           setIsStale(true);
           setIsFromCache(true);
-          console.warn(`Using stale cached data for ${endpoint}:`, error.message);
         } else if (fallbackData !== undefined) {
           setData(fallbackData);
           setIsStale(false);
           setIsFromCache(false);
-          console.warn(`Using fallback data for ${endpoint}:`, error.message);
         }
       } else if (fallbackData !== undefined) {
         setData(fallbackData);
@@ -141,12 +125,10 @@ export function useGracefulBackend<T>(
     serviceName,
     retryCount
   ]);
-
   // Initial fetch
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
-
   // Refetch interval
   React.useEffect(() => {
     if (refetchInterval && enabled) {
@@ -154,18 +136,15 @@ export function useGracefulBackend<T>(
       return () => clearInterval(interval);
     }
   }, [fetchData, refetchInterval, enabled]);
-
   const retry = React.useCallback(() => {
     setRetryCount(prev => prev + 1);
   }, []);
-
   const refresh = React.useCallback(() => {
     if (cacheKey) {
       extensionCache.delete(cacheKey);
     }
     setRetryCount(prev => prev + 1);
   }, [cacheKey]);
-
   return {
     data,
     isLoading,
@@ -176,11 +155,9 @@ export function useGracefulBackend<T>(
     refresh
   };
 }
-
 // Hook for extension-specific endpoints
 export function useExtensions(options: UseGracefulBackendOptions = {}) {
   const { isEnabled } = useFeatureFlag('extensionSystem');
-  
   return useGracefulBackend('/api/extensions/', {
     ...options,
     cacheKey: 'extensions-list',
@@ -190,10 +167,8 @@ export function useExtensions(options: UseGracefulBackendOptions = {}) {
     refetchInterval: 5 * 60 * 1000 // 5 minutes
   });
 }
-
 export function useBackgroundTasks(options: UseGracefulBackendOptions = {}) {
   const { isEnabled } = useFeatureFlag('backgroundTasks');
-  
   return useGracefulBackend('/api/extensions/background-tasks/', {
     ...options,
     cacheKey: 'background-tasks',
@@ -203,10 +178,8 @@ export function useBackgroundTasks(options: UseGracefulBackendOptions = {}) {
     refetchInterval: 2 * 60 * 1000 // 2 minutes
   });
 }
-
 export function useModelProviders(options: UseGracefulBackendOptions = {}) {
   const { isEnabled } = useFeatureFlag('modelProviderIntegration');
-  
   return useGracefulBackend('/api/models/providers/', {
     ...options,
     cacheKey: 'model-providers',
@@ -216,10 +189,8 @@ export function useModelProviders(options: UseGracefulBackendOptions = {}) {
     refetchInterval: 10 * 60 * 1000 // 10 minutes
   });
 }
-
 export function useExtensionHealth(extensionName: string, options: UseGracefulBackendOptions = {}) {
   const { isEnabled } = useFeatureFlag('extensionHealth');
-  
   return useGracefulBackend(`/api/extensions/${extensionName}/health/`, {
     ...options,
     cacheKey: `extension-health-${extensionName}`,
@@ -229,7 +200,6 @@ export function useExtensionHealth(extensionName: string, options: UseGracefulBa
     refetchInterval: 30 * 1000 // 30 seconds
   });
 }
-
 // Hook for monitoring overall system health
 export function useSystemHealth() {
   const [healthStatus, setHealthStatus] = React.useState({
@@ -237,67 +207,51 @@ export function useSystemHealth() {
     services: {} as Record<string, any>,
     lastUpdate: new Date()
   });
-
   const enhancedService = React.useMemo(() => {
     const originalService = (window as any).karenBackendService;
     return originalService ? new EnhancedBackendService(originalService) : null;
   }, []);
-
   React.useEffect(() => {
     if (!enhancedService) return;
-
     const updateHealthStatus = () => {
       const serviceHealth = enhancedService.getServiceHealthStatus();
       const flags = featureFlagManager.getAllFlags();
-      
       const enabledServices = flags.filter(f => f.enabled).length;
       const totalServices = flags.length;
-      
       let overallHealth: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' = 'healthy';
-      
       if (enabledServices === 0) {
         overallHealth = 'unhealthy';
       } else if (enabledServices < totalServices) {
         overallHealth = 'degraded';
       }
-
       setHealthStatus({
         overallHealth,
         services: serviceHealth,
         lastUpdate: new Date()
       });
     };
-
     // Initial update
     updateHealthStatus();
-
     // Update every 30 seconds
     const interval = setInterval(updateHealthStatus, 30 * 1000);
-
     return () => clearInterval(interval);
   }, [enhancedService]);
-
   return healthStatus;
 }
-
 // Hook for handling graceful degradation in components
 export function useGracefulDegradation(featureName: string) {
   const { isEnabled, fallbackBehavior, flag } = useFeatureFlag(featureName);
   const [showDegradedBanner, setShowDegradedBanner] = React.useState(false);
-
   React.useEffect(() => {
     setShowDegradedBanner(!isEnabled);
   }, [isEnabled]);
-
   const dismissBanner = React.useCallback(() => {
     setShowDegradedBanner(false);
   }, []);
-
   const forceRetry = React.useCallback(() => {
     featureFlagManager.setFlag(featureName, true);
     setShowDegradedBanner(false);
   }, [featureName]);
-
   return {
     isEnabled,
     fallbackBehavior,
@@ -307,21 +261,15 @@ export function useGracefulDegradation(featureName: string) {
     flag
   };
 }
-
 // Global error handler for automatic feature flag management
 export function setupGlobalErrorHandling() {
   // Handle unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
     const error = event.reason;
-    
     if (error?.message?.includes('403') || error?.status === 403) {
-      console.warn('Detected 403 error, disabling extension auth:', error);
       featureFlagManager.handleServiceError('extension-auth', error);
     }
-    
     if (error?.message?.includes('503') || error?.status === 503) {
-      console.warn('Detected 503 error, disabling affected service:', error);
-      
       // Determine which service is affected based on the error
       if (error.message?.includes('/api/extensions')) {
         featureFlagManager.handleServiceError('extension-api', error);
@@ -330,13 +278,11 @@ export function setupGlobalErrorHandling() {
       }
     }
   });
-
   // Handle fetch errors
   const originalFetch = window.fetch;
   window.fetch = async (...args) => {
     try {
       const response = await originalFetch(...args);
-      
       // Handle successful responses - re-enable services if they were disabled
       if (response.ok) {
         const url = args[0] as string;
@@ -346,7 +292,6 @@ export function setupGlobalErrorHandling() {
           featureFlagManager.handleServiceRecovery('model-provider');
         }
       }
-      
       return response;
     } catch (error) {
       // Handle network errors
@@ -356,10 +301,7 @@ export function setupGlobalErrorHandling() {
       } else if (url.includes('/api/models')) {
         featureFlagManager.handleServiceError('model-provider', error as Error);
       }
-      
       throw error;
     }
   };
-
-  console.info('Global error handling for graceful degradation enabled');
 }

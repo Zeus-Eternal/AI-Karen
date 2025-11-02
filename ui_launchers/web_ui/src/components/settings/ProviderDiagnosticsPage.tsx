@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,7 +27,6 @@ import {
   Zap
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
-
 interface DiagnosticInfo {
   provider_name: string;
   status: 'healthy' | 'unhealthy' | 'degraded' | 'unknown';
@@ -101,7 +99,6 @@ interface DiagnosticInfo {
     steps: string[];
   }>;
 }
-
 interface RepairAction {
   id: string;
   title: string;
@@ -112,26 +109,21 @@ interface RepairAction {
   risk_level: 'low' | 'medium' | 'high';
   prerequisites: string[];
 }
-
 interface ProviderDiagnosticsPageProps {
   providerName: string;
   onClose?: () => void;
 }
-
 export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagnosticsPageProps) {
   const [diagnostics, setDiagnostics] = useState<DiagnosticInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [repairActions, setRepairActions] = useState<RepairAction[]>([]);
   const [executingRepair, setExecutingRepair] = useState<string | null>(null);
-  
   const { toast } = useToast();
   const backend = getKarenBackend();
-
   useEffect(() => {
     loadDiagnostics();
   }, [providerName]);
-
   const loadDiagnostics = async () => {
     try {
       setLoading(true);
@@ -139,11 +131,9 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
         backend.makeRequestPublic<DiagnosticInfo>(`/api/providers/${providerName}/diagnostics`),
         backend.makeRequestPublic<RepairAction[]>(`/api/providers/${providerName}/repair-actions`)
       ]);
-      
       setDiagnostics(diagnosticsResponse);
       setRepairActions(repairActionsResponse || []);
     } catch (error) {
-      console.error('Failed to load diagnostics:', error);
       toast({
         title: "Diagnostics Failed",
         description: `Could not load diagnostics for ${providerName}: ${(error as Error).message}`,
@@ -153,7 +143,6 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
       setLoading(false);
     }
   };
-
   const refreshDiagnostics = async () => {
     try {
       setRefreshing(true);
@@ -172,14 +161,12 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
       setRefreshing(false);
     }
   };
-
   const executeRepairAction = async (actionId: string) => {
     try {
       setExecutingRepair(actionId);
       const response = await backend.makeRequestPublic(`/api/providers/${providerName}/repair/${actionId}`, {
         method: 'POST'
       }) as { success?: boolean; message?: string };
-
       if (response?.success) {
         toast({
           title: "Repair Successful",
@@ -191,7 +178,6 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
         throw new Error(response?.message || 'Repair action failed');
       }
     } catch (error) {
-      console.error('Repair action failed:', error);
       toast({
         title: "Repair Failed",
         description: `Could not execute repair: ${(error as Error).message}`,
@@ -201,7 +187,6 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
       setExecutingRepair(null);
     }
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'healthy':
@@ -214,13 +199,11 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
         return 'text-gray-600 bg-gray-100';
     }
   };
-
   const getHealthScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
   };
-
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
@@ -231,7 +214,6 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
         return 'bg-blue-100 text-blue-800';
     }
   };
-
   const getRiskColor = (risk: string) => {
     switch (risk) {
       case 'high':
@@ -242,16 +224,15 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
         return 'bg-green-100 text-green-800';
     }
   };
-
   if (loading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
             <div className="space-y-2">
               <p className="text-lg font-medium">Loading Diagnostics</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Analyzing {providerName} configuration and status...
               </p>
             </div>
@@ -260,11 +241,10 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
       </Card>
     );
   }
-
   if (!diagnostics) {
     return (
       <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
+        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertTitle>Diagnostics Unavailable</AlertTitle>
         <AlertDescription>
           Could not load diagnostics for {providerName}. The provider may not be properly configured.
@@ -272,7 +252,6 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
       </Alert>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -281,7 +260,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
+                <Activity className="h-5 w-5 sm:w-auto md:w-full" />
                 {providerName} Diagnostics
               </CardTitle>
               <CardDescription>
@@ -289,20 +268,20 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={refreshDiagnostics}
                 disabled={refreshing}
-              >
+               aria-label="Button">
                 {refreshing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
                 ) : (
-                  <RefreshCw className="h-4 w-4" />
+                  <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
                 )}
               </Button>
               {onClose && (
-                <Button variant="outline" size="sm" onClick={onClose}>
+                <button variant="outline" size="sm" onClick={onClose} aria-label="Button">
                   Close
                 </Button>
               )}
@@ -310,7 +289,6 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
           </div>
         </CardHeader>
       </Card>
-
       {/* Status Overview */}
       <Card>
         <CardHeader>
@@ -318,36 +296,35 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 border rounded-lg">
+            <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
               <div className={`text-2xl font-bold ${getHealthScoreColor(diagnostics.health_score)}`}>
                 {diagnostics.health_score}%
               </div>
-              <div className="text-sm text-muted-foreground">Health Score</div>
+              <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Health Score</div>
             </div>
-            <div className="text-center p-4 border rounded-lg">
+            <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
               <div className="text-2xl font-bold">
                 <Badge className={getStatusColor(diagnostics.status)}>
                   {diagnostics.status}
                 </Badge>
               </div>
-              <div className="text-sm text-muted-foreground">Status</div>
+              <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Status</div>
             </div>
-            <div className="text-center p-4 border rounded-lg">
+            <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
               <div className="text-2xl font-bold text-red-600">
                 {diagnostics.error_count}
               </div>
-              <div className="text-sm text-muted-foreground">Error Count</div>
+              <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Error Count</div>
             </div>
-            <div className="text-center p-4 border rounded-lg">
+            <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
               <div className="text-2xl font-bold text-green-600">
                 {(diagnostics.performance_metrics.success_rate * 100).toFixed(1)}%
               </div>
-              <div className="text-sm text-muted-foreground">Success Rate</div>
+              <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Success Rate</div>
             </div>
           </div>
         </CardContent>
       </Card>
-
       <Tabs defaultValue="configuration" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
@@ -356,54 +333,52 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
           <TabsTrigger value="errors">Errors</TabsTrigger>
           <TabsTrigger value="repair">Repair</TabsTrigger>
         </TabsList>
-
         <TabsContent value="configuration" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Configuration Status */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-4 w-4 sm:w-auto md:w-full" />
                   Configuration
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">API Key Configured</span>
+                  <span className="text-sm md:text-base lg:text-lg">API Key Configured</span>
                   {diagnostics.configuration.api_key_configured ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">API Key Valid</span>
+                  <span className="text-sm md:text-base lg:text-lg">API Key Valid</span>
                   {diagnostics.configuration.api_key_valid ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Base URL</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-sm md:text-base lg:text-lg">Base URL</span>
+                  <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     {diagnostics.configuration.base_url}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Timeout</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-sm md:text-base lg:text-lg">Timeout</span>
+                  <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     {diagnostics.configuration.timeout_settings}s
                   </span>
                 </div>
               </CardContent>
             </Card>
-
             {/* Capabilities */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
+                  <Shield className="h-4 w-4 sm:w-auto md:w-full" />
                   Capabilities
                 </CardTitle>
               </CardHeader>
@@ -412,22 +387,21 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
                   {Object.entries(diagnostics.capabilities).map(([capability, available]) => (
                     <div key={capability} className="flex items-center gap-2">
                       {available ? (
-                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                        <CheckCircle2 className="h-3 w-3 text-green-600 sm:w-auto md:w-full" />
                       ) : (
-                        <AlertCircle className="h-3 w-3 text-gray-400" />
+                        <AlertCircle className="h-3 w-3 text-gray-400 sm:w-auto md:w-full" />
                       )}
-                      <span className="text-sm capitalize">{capability.replace('_', ' ')}</span>
+                      <span className="text-sm capitalize md:text-base lg:text-lg">{capability.replace('_', ' ')}</span>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
-
             {/* Dependencies */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Download className="h-4 w-4" />
+                  <Download className="h-4 w-4 sm:w-auto md:w-full" />
                   Dependencies
                 </CardTitle>
               </CardHeader>
@@ -435,60 +409,58 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
                 {diagnostics.dependencies.required_packages.map((pkg) => (
                   <div key={pkg.name} className="flex items-center justify-between">
                     <div>
-                      <span className="text-sm font-medium">{pkg.name}</span>
-                      <span className="text-xs text-muted-foreground ml-2">
+                      <span className="text-sm font-medium md:text-base lg:text-lg">{pkg.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2 sm:text-sm md:text-base">
                         {pkg.installed ? pkg.current_version : 'Not installed'}
                       </span>
                     </div>
                     {pkg.installed ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                     ) : (
-                      <AlertCircle className="h-4 w-4 text-red-600" />
+                      <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                     )}
                   </div>
                 ))}
               </CardContent>
             </Card>
-
             {/* System Requirements */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <HardDrive className="h-4 w-4" />
+                  <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />
                   System Requirements
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                   <span>Python Version</span>
                   <span>{diagnostics.dependencies.system_requirements.python_version}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                   <span>Memory Available</span>
                   <span>{diagnostics.dependencies.system_requirements.memory_available}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                   <span>Disk Space</span>
                   <span>{diagnostics.dependencies.system_requirements.disk_space}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                   <span>GPU Available</span>
                   {diagnostics.dependencies.system_requirements.gpu_available ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-gray-400" />
+                    <AlertCircle className="h-4 w-4 text-gray-400 sm:w-auto md:w-full" />
                   )}
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
-
         <TabsContent value="models" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Database className="h-4 w-4" />
+                <Database className="h-4 w-4 sm:w-auto md:w-full" />
                 Model Information
               </CardTitle>
               <CardDescription>
@@ -497,43 +469,42 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="p-3 bg-muted/30 rounded-lg">
+                <div className="p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
                   <div className="text-lg font-semibold">{diagnostics.models.total_available}</div>
-                  <div className="text-xs text-muted-foreground">Total Available</div>
+                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Total Available</div>
                 </div>
-                <div className="p-3 bg-muted/30 rounded-lg">
+                <div className="p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
                   <div className="text-lg font-semibold">{diagnostics.models.cached_locally}</div>
-                  <div className="text-xs text-muted-foreground">Cached Locally</div>
+                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Cached Locally</div>
                 </div>
-                <div className="p-3 bg-muted/30 rounded-lg">
+                <div className="p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
                   <div className="text-lg font-semibold">
                     {new Date(diagnostics.models.last_discovery).toLocaleDateString()}
                   </div>
-                  <div className="text-xs text-muted-foreground">Last Discovery</div>
+                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Last Discovery</div>
                 </div>
               </div>
-
               <div className="space-y-2">
                 <h4 className="font-medium">Model Status</h4>
                 <div className="max-h-60 overflow-y-auto space-y-2">
                   {diagnostics.models.model_list.map((model) => (
-                    <div key={model.id} className="flex items-center justify-between p-2 border rounded">
+                    <div key={model.id} className="flex items-center justify-between p-2 border rounded sm:p-4 md:p-6">
                       <div>
-                        <span className="text-sm font-medium">{model.name}</span>
+                        <span className="text-sm font-medium md:text-base lg:text-lg">{model.name}</span>
                         {model.error && (
-                          <p className="text-xs text-red-600">{model.error}</p>
+                          <p className="text-xs text-red-600 sm:text-sm md:text-base">{model.error}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
                         {model.last_tested && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                             {new Date(model.last_tested).toLocaleString()}
                           </span>
                         )}
                         {model.available ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                         ) : (
-                          <AlertCircle className="h-4 w-4 text-red-600" />
+                          <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                         )}
                       </div>
                     </div>
@@ -543,91 +514,89 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="performance" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Zap className="h-4 w-4" />
+                <Zap className="h-4 w-4 sm:w-auto md:w-full" />
                 Performance Metrics
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="text-center p-4 border rounded-lg">
+                <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
                   <div className="text-lg font-semibold">
                     {diagnostics.performance_metrics.average_response_time.toFixed(0)}ms
                   </div>
-                  <div className="text-xs text-muted-foreground">Avg Response Time</div>
+                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Avg Response Time</div>
                 </div>
-                <div className="text-center p-4 border rounded-lg">
+                <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
                   <div className="text-lg font-semibold text-green-600">
                     {(diagnostics.performance_metrics.success_rate * 100).toFixed(1)}%
                   </div>
-                  <div className="text-xs text-muted-foreground">Success Rate</div>
+                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Success Rate</div>
                 </div>
-                <div className="text-center p-4 border rounded-lg">
+                <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
                   <div className="text-lg font-semibold text-red-600">
                     {(diagnostics.performance_metrics.error_rate * 100).toFixed(1)}%
                   </div>
-                  <div className="text-xs text-muted-foreground">Error Rate</div>
+                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Error Rate</div>
                 </div>
-                <div className="text-center p-4 border rounded-lg">
+                <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
                   <div className="text-lg font-semibold">
                     {diagnostics.performance_metrics.requests_per_minute.toFixed(1)}
                   </div>
-                  <div className="text-xs text-muted-foreground">Requests/Min</div>
+                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Requests/Min</div>
                 </div>
-                <div className="text-center p-4 border rounded-lg">
+                <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
                   <div className="text-lg font-semibold">
                     {diagnostics.performance_metrics.last_24h_requests}
                   </div>
-                  <div className="text-xs text-muted-foreground">24h Requests</div>
+                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">24h Requests</div>
                 </div>
-                <div className="text-center p-4 border rounded-lg">
+                <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
                   <div className="text-lg font-semibold">
                     {diagnostics.performance_metrics.peak_response_time.toFixed(0)}ms
                   </div>
-                  <div className="text-xs text-muted-foreground">Peak Response</div>
+                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Peak Response</div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="errors" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
+                <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
                 Recent Errors
               </CardTitle>
             </CardHeader>
             <CardContent>
               {diagnostics.recent_errors.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-600 sm:w-auto md:w-full" />
                   <p>No recent errors found</p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {diagnostics.recent_errors.map((error, index) => (
-                    <div key={index} className="border rounded-lg p-3">
+                    <div key={index} className="border rounded-lg p-3 sm:p-4 md:p-6">
                       <div className="flex items-center justify-between mb-2">
-                        <Badge variant="destructive" className="text-xs">
+                        <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
                           {error.error_type}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                           {new Date(error.timestamp).toLocaleString()}
                         </span>
                       </div>
-                      <p className="text-sm mb-2">{error.message}</p>
+                      <p className="text-sm mb-2 md:text-base lg:text-lg">{error.message}</p>
                       {error.stack_trace && (
-                        <details className="text-xs">
+                        <details className="text-xs sm:text-sm md:text-base">
                           <summary className="cursor-pointer text-muted-foreground">
                             Stack Trace
                           </summary>
-                          <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto">
+                          <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto sm:text-sm md:text-base">
                             {error.stack_trace}
                           </pre>
                         </details>
@@ -639,20 +608,19 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="repair" className="space-y-4">
           {/* Recovery Suggestions */}
           {diagnostics.recovery_suggestions.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Info className="h-4 w-4" />
+                  <Info className="h-4 w-4 sm:w-auto md:w-full" />
                   Recovery Suggestions
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {diagnostics.recovery_suggestions.map((suggestion, index) => (
-                  <div key={index} className="border rounded-lg p-3">
+                  <div key={index} className="border rounded-lg p-3 sm:p-4 md:p-6">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium">{suggestion.title}</h4>
                       <div className="flex items-center gap-2">
@@ -660,18 +628,18 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
                           {suggestion.priority}
                         </Badge>
                         {suggestion.auto_fixable && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                             Auto-fixable
                           </Badge>
                         )}
                       </div>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">
+                    <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                       {suggestion.description}
                     </p>
                     <div className="space-y-1">
-                      <h5 className="text-xs font-medium">Steps:</h5>
-                      <ol className="list-decimal list-inside text-xs space-y-1">
+                      <h5 className="text-xs font-medium sm:text-sm md:text-base">Steps:</h5>
+                      <ol className="list-decimal list-inside text-xs space-y-1 sm:text-sm md:text-base">
                         {suggestion.steps.map((step, stepIndex) => (
                           <li key={stepIndex}>{step}</li>
                         ))}
@@ -682,13 +650,12 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
               </CardContent>
             </Card>
           )}
-
           {/* Repair Actions */}
           {repairActions.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Wrench className="h-4 w-4" />
+                  <Wrench className="h-4 w-4 sm:w-auto md:w-full" />
                   Automated Repair Actions
                 </CardTitle>
                 <CardDescription>
@@ -697,35 +664,33 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
               </CardHeader>
               <CardContent className="space-y-3">
                 {repairActions.map((action) => (
-                  <div key={action.id} className="border rounded-lg p-3">
+                  <div key={action.id} className="border rounded-lg p-3 sm:p-4 md:p-6">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium">{action.title}</h4>
                       <div className="flex items-center gap-2">
                         <Badge className={getRiskColor(action.risk_level)}>
                           {action.risk_level} risk
                         </Badge>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                           {action.estimated_time}
                         </Badge>
                       </div>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-3">
+                    <p className="text-sm text-muted-foreground mb-3 md:text-base lg:text-lg">
                       {action.description}
                     </p>
-                    
                     {action.prerequisites.length > 0 && (
                       <div className="mb-3">
-                        <h5 className="text-xs font-medium mb-1">Prerequisites:</h5>
-                        <ul className="list-disc list-inside text-xs space-y-1">
+                        <h5 className="text-xs font-medium mb-1 sm:text-sm md:text-base">Prerequisites:</h5>
+                        <ul className="list-disc list-inside text-xs space-y-1 sm:text-sm md:text-base">
                           {action.prerequisites.map((prereq, index) => (
                             <li key={index}>{prereq}</li>
                           ))}
                         </ul>
                       </div>
                     )}
-
-                    <Button
-                      onClick={() => executeRepairAction(action.id)}
+                    <button
+                      onClick={() = aria-label="Button"> executeRepairAction(action.id)}
                       disabled={!action.auto_executable || executingRepair === action.id}
                       variant={action.risk_level === 'high' ? 'destructive' : 'default'}
                       size="sm"
@@ -733,12 +698,12 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
                     >
                       {executingRepair === action.id ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
                           Executing...
                         </>
                       ) : (
                         <>
-                          <Wrench className="h-4 w-4 mr-2" />
+                          <Wrench className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                           Execute Repair
                         </>
                       )}
@@ -753,5 +718,4 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
     </div>
   );
 }
-
 export default ProviderDiagnosticsPage;

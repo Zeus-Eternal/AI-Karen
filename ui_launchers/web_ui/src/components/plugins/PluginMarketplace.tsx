@@ -1,3 +1,15 @@
+import React, { useState, useEffect } from 'react';
+import { 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+import { PluginMarketplaceEntry } from '@/types/plugins';
 /**
  * Plugin Marketplace Component
  * 
@@ -7,8 +19,8 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { 
+
+
   Search, 
   Filter, 
   Star, 
@@ -36,28 +48,28 @@ import {
   SortDesc,
 } from 'lucide-react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { 
+
+
+
+
+
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
+
+
+
+
+
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
+
   Dialog,
   DialogContent,
   DialogDescription,
@@ -65,7 +77,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-import { PluginMarketplaceEntry } from '@/types/plugins';
+
 
 interface PluginMarketplaceProps {
   onClose: () => void;
@@ -369,7 +381,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
 
   const renderPluginCard = (plugin: PluginMarketplaceEntry) => (
     <Card key={plugin.id} className="hover:shadow-md transition-shadow cursor-pointer">
-      <CardContent className="p-4">
+      <CardContent className="p-4 sm:p-4 md:p-6">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
@@ -378,7 +390,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
-                      <CheckCircle className="w-4 h-4 text-blue-600" />
+                      <CheckCircle className="w-4 h-4 text-blue-600 sm:w-auto md:w-full" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Verified plugin</p>
@@ -387,24 +399,24 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                 </TooltipProvider>
               )}
               {plugin.featured && (
-                <Badge variant="default" className="text-xs">
-                  <Award className="w-3 h-3 mr-1" />
+                <Badge variant="default" className="text-xs sm:text-sm md:text-base">
+                  <Award className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                   Featured
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+            <p className="text-sm text-muted-foreground mb-2 line-clamp-2 md:text-base lg:text-lg">
               {plugin.description}
             </p>
             <div className="flex items-center gap-2 mb-2">
               <div className="flex items-center gap-1">
                 {renderStars(plugin.rating)}
-                <span className="text-xs text-muted-foreground ml-1">
+                <span className="text-xs text-muted-foreground ml-1 sm:text-sm md:text-base">
                   {plugin.rating} ({plugin.reviewCount})
                 </span>
               </div>
               <Separator orientation="vertical" className="h-4" />
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {plugin.downloads.toLocaleString()} downloads
               </span>
             </div>
@@ -413,12 +425,12 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
               {plugin.category}
             </Badge>
             <Badge 
               variant={plugin.pricing.type === 'free' ? 'secondary' : 'default'} 
-              className="text-xs"
+              className="text-xs sm:text-sm md:text-base"
             >
               {plugin.pricing.type === 'free' ? 'Free' : 
                plugin.pricing.type === 'freemium' ? 'Freemium' : 
@@ -427,25 +439,25 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
           </div>
           
           <div className="flex items-center gap-1">
-            <Button
+            <button
               variant="ghost"
               size="sm"
-              onClick={(e) => {
+              onClick={(e) = aria-label="Button"> {
                 e.stopPropagation();
                 setSelectedPlugin(plugin);
               }}
             >
-              <Eye className="w-3 h-3" />
+              <Eye className="w-3 h-3 sm:w-auto md:w-full" />
             </Button>
-            <Button
+            <button
               variant="default"
               size="sm"
-              onClick={(e) => {
+              onClick={(e) = aria-label="Button"> {
                 e.stopPropagation();
                 handleInstall(plugin);
               }}
             >
-              <Download className="w-3 h-3 mr-1" />
+              <Download className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
               Install
             </Button>
           </div>
@@ -453,12 +465,12 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
 
         <div className="flex items-center gap-1 mt-3">
           {plugin.tags.slice(0, 3).map((tag) => (
-            <Badge key={tag} variant="outline" className="text-xs">
+            <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
               {tag}
             </Badge>
           ))}
           {plugin.tags.length > 3 && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
               +{plugin.tags.length - 3} more
             </span>
           )}
@@ -469,30 +481,30 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
 
   const renderPluginList = (plugin: PluginMarketplaceEntry) => (
     <Card key={plugin.id} className="hover:shadow-sm transition-shadow">
-      <CardContent className="p-4">
+      <CardContent className="p-4 sm:p-4 md:p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
-            <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-              <Package className="w-6 h-6 text-muted-foreground" />
+            <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center sm:w-auto md:w-full">
+              <Package className="w-6 h-6 text-muted-foreground sm:w-auto md:w-full" />
             </div>
             
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-semibold">{plugin.name}</h3>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                   v{plugin.version}
                 </Badge>
                 {plugin.verified && (
-                  <CheckCircle className="w-4 h-4 text-blue-600" />
+                  <CheckCircle className="w-4 h-4 text-blue-600 sm:w-auto md:w-full" />
                 )}
                 {plugin.featured && (
-                  <Badge variant="default" className="text-xs">Featured</Badge>
+                  <Badge variant="default" className="text-xs sm:text-sm md:text-base">Featured</Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground mb-2">
+              <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                 {plugin.description}
               </p>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground sm:text-sm md:text-base">
                 <div className="flex items-center gap-1">
                   {renderStars(plugin.rating)}
                   <span className="ml-1">{plugin.rating}</span>
@@ -506,25 +518,25 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
           <div className="flex items-center gap-2">
             <Badge 
               variant={plugin.pricing.type === 'free' ? 'secondary' : 'default'} 
-              className="text-xs"
+              className="text-xs sm:text-sm md:text-base"
             >
               {plugin.pricing.type === 'free' ? 'Free' : 
                plugin.pricing.type === 'freemium' ? 'Freemium' : 
                `$${plugin.pricing.price}`}
             </Badge>
-            <Button
+            <button
               variant="ghost"
               size="sm"
-              onClick={() => setSelectedPlugin(plugin)}
+              onClick={() = aria-label="Button"> setSelectedPlugin(plugin)}
             >
-              <Eye className="w-4 h-4" />
+              <Eye className="w-4 h-4 sm:w-auto md:w-full" />
             </Button>
-            <Button
+            <button
               variant="default"
               size="sm"
-              onClick={() => handleInstall(plugin)}
+              onClick={() = aria-label="Button"> handleInstall(plugin)}
             >
-              <Download className="w-4 h-4 mr-2" />
+              <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
               Install
             </Button>
           </div>
@@ -537,8 +549,8 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
+        <button variant="ghost" size="sm" onClick={onClose} aria-label="Button">
+          <ArrowLeft className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
           Back to Plugins
         </Button>
         <div>
@@ -553,72 +565,72 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex-1 max-w-md">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+                <input
                   placeholder="Search plugins..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
                   className="pl-10"
                 />
               </div>
             </div>
             
             <div className="flex items-center gap-2">
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
+              <select value={selectedCategory} onValueChange={setSelectedCategory} aria-label="Select option">
+                <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <selectContent aria-label="Select option">
                   {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
+                    <selectItem key={category} value={category} aria-label="Select option">
                       {category === 'all' ? 'All Categories' : category.charAt(0).toUpperCase() + category.slice(1)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               
-              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
+              <select value={sortBy} onValueChange={(value: any) = aria-label="Select option"> setSortBy(value)}>
+                <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="popular">Popular</SelectItem>
-                  <SelectItem value="rating">Rating</SelectItem>
-                  <SelectItem value="recent">Recent</SelectItem>
-                  <SelectItem value="name">Name</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="popular" aria-label="Select option">Popular</SelectItem>
+                  <selectItem value="rating" aria-label="Select option">Rating</SelectItem>
+                  <selectItem value="recent" aria-label="Select option">Recent</SelectItem>
+                  <selectItem value="name" aria-label="Select option">Name</SelectItem>
                 </SelectContent>
               </Select>
               
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                onClick={() = aria-label="Button"> setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               >
-                {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+                {sortOrder === 'asc' ? <SortAsc className="w-4 h-4 sm:w-auto md:w-full" /> : <SortDesc className="w-4 h-4 sm:w-auto md:w-full" />}
               </Button>
               
               <Separator orientation="vertical" className="h-6" />
               
               <div className="flex items-center border rounded-md">
-                <Button
+                <button
                   variant={viewMode === 'grid' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setViewMode('grid')}
+                  onClick={() = aria-label="Button"> setViewMode('grid')}
                   className="rounded-r-none"
                 >
-                  <Grid className="w-4 h-4" />
+                  <Grid className="w-4 h-4 sm:w-auto md:w-full" />
                 </Button>
-                <Button
+                <button
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setViewMode('list')}
+                  onClick={() = aria-label="Button"> setViewMode('list')}
                   className="rounded-l-none"
                 >
-                  <List className="w-4 h-4" />
+                  <List className="w-4 h-4 sm:w-auto md:w-full" />
                 </Button>
               </div>
               
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+              <button variant="outline" size="sm" onClick={handleRefresh} disabled={loading} aria-label="Button">
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </Button>
             </div>
@@ -629,7 +641,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
       {/* Results */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             {filteredPlugins.length} plugin{filteredPlugins.length !== 1 ? 's' : ''} found
           </p>
         </div>
@@ -637,7 +649,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
         {filteredPlugins.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <Package className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
               <h3 className="text-lg font-medium mb-2">No plugins found</h3>
               <p className="text-muted-foreground">
                 Try adjusting your search or filters
@@ -659,23 +671,23 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
 
       {/* Plugin Detail Dialog */}
       <Dialog open={!!selectedPlugin} onOpenChange={() => setSelectedPlugin(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto sm:w-auto md:w-full">
           {selectedPlugin && (
             <>
               <DialogHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-                    <Package className="w-6 h-6 text-muted-foreground" />
+                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center sm:w-auto md:w-full">
+                    <Package className="w-6 h-6 text-muted-foreground sm:w-auto md:w-full" />
                   </div>
                   <div>
                     <DialogTitle className="flex items-center gap-2">
                       {selectedPlugin.name}
                       {selectedPlugin.verified && (
-                        <CheckCircle className="w-5 h-5 text-blue-600" />
+                        <CheckCircle className="w-5 h-5 text-blue-600 sm:w-auto md:w-full" />
                       )}
                       {selectedPlugin.featured && (
-                        <Badge variant="default" className="text-xs">
-                          <Award className="w-3 h-3 mr-1" />
+                        <Badge variant="default" className="text-xs sm:text-sm md:text-base">
+                          <Award className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                           Featured
                         </Badge>
                       )}
@@ -689,39 +701,39 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
 
               <div className="space-y-6">
                 <div>
-                  <p className="text-sm">{selectedPlugin.description}</p>
+                  <p className="text-sm md:text-base lg:text-lg">{selectedPlugin.description}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Rating</h4>
+                    <h4 className="font-medium text-sm md:text-base lg:text-lg">Rating</h4>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
                         {renderStars(selectedPlugin.rating)}
                       </div>
-                      <span className="text-sm">
+                      <span className="text-sm md:text-base lg:text-lg">
                         {selectedPlugin.rating} ({selectedPlugin.reviewCount} reviews)
                       </span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Downloads</h4>
-                    <p className="text-sm">{selectedPlugin.downloads.toLocaleString()}</p>
+                    <h4 className="font-medium text-sm md:text-base lg:text-lg">Downloads</h4>
+                    <p className="text-sm md:text-base lg:text-lg">{selectedPlugin.downloads.toLocaleString()}</p>
                   </div>
 
                   <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Category</h4>
-                    <Badge variant="outline" className="text-xs">
+                    <h4 className="font-medium text-sm md:text-base lg:text-lg">Category</h4>
+                    <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                       {selectedPlugin.category}
                     </Badge>
                   </div>
 
                   <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Pricing</h4>
+                    <h4 className="font-medium text-sm md:text-base lg:text-lg">Pricing</h4>
                     <Badge 
                       variant={selectedPlugin.pricing.type === 'free' ? 'secondary' : 'default'} 
-                      className="text-xs"
+                      className="text-xs sm:text-sm md:text-base"
                     >
                       {selectedPlugin.pricing.type === 'free' ? 'Free' : 
                        selectedPlugin.pricing.type === 'freemium' ? 'Freemium' : 
@@ -731,10 +743,10 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Tags</h4>
+                  <h4 className="font-medium text-sm md:text-base lg:text-lg">Tags</h4>
                   <div className="flex flex-wrap gap-1">
                     {selectedPlugin.tags.map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-xs">
+                      <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
                         {tag}
                       </Badge>
                     ))}
@@ -742,8 +754,8 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Compatibility</h4>
-                  <div className="text-sm text-muted-foreground">
+                  <h4 className="font-medium text-sm md:text-base lg:text-lg">Compatibility</h4>
+                  <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                     <p>Minimum version: {selectedPlugin.compatibility.minVersion}</p>
                     <p>Platforms: {selectedPlugin.compatibility.platforms.join(', ')}</p>
                   </div>
@@ -751,26 +763,26 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
 
                 <div className="flex items-center justify-between pt-4 border-t">
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      <Heart className="w-4 h-4 mr-2" />
+                    <button variant="outline" size="sm" aria-label="Button">
+                      <Heart className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                       Favorite
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <Share className="w-4 h-4 mr-2" />
+                    <button variant="outline" size="sm" aria-label="Button">
+                      <Share className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                       Share
                     </Button>
                     {selectedPlugin.manifest.homepage && (
-                      <Button variant="outline" size="sm" asChild>
+                      <button variant="outline" size="sm" asChild aria-label="Button">
                         <a href={selectedPlugin.manifest.homepage} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4 mr-2" />
+                          <ExternalLink className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                           Website
                         </a>
                       </Button>
                     )}
                   </div>
                   
-                  <Button onClick={() => handleInstall(selectedPlugin)}>
-                    <Download className="w-4 h-4 mr-2" />
+                  <button onClick={() = aria-label="Button"> handleInstall(selectedPlugin)}>
+                    <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                     Install Plugin
                   </Button>
                 </div>

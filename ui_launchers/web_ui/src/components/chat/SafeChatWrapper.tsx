@@ -58,14 +58,14 @@ export class SafeChatWrapper extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center justify-center h-full p-4">
+        <div className="flex items-center justify-center h-full p-4 sm:p-4 md:p-6">
           <div className="text-center">
             <h3 className="text-lg font-semibold mb-2">Chat Interface Error</h3>
             <p className="text-muted-foreground mb-4">
               The chat interface encountered an error. Please refresh the page to continue.
             </p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() = aria-label="Button"> window.location.reload()}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
             >
               Refresh Page

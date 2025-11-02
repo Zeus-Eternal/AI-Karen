@@ -1,11 +1,13 @@
+import { describe, it, expect } from 'vitest';
+import {
 /**
  * Simple Task 1.1 Verification Tests
  */
 
-import { describe, it, expect } from 'vitest';
+
 
 // Import design tokens
-import {
+
   designTokens,
   primaryColors,
   spacingScale,
@@ -14,7 +16,7 @@ import {
 } from '../index';
 
 // Import CSS generation
-import {
+
   generateColorProperties,
   generateCompleteCSS,
   generateAllCSSProperties,

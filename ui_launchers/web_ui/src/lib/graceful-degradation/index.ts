@@ -4,13 +4,11 @@
  * This module provides a comprehensive system for handling extension failures
  * and maintaining functionality when backend services are unavailable.
  */
-
 // Feature flags - Types
 export type {
   FeatureFlag,
   ExtensionFeatureFlags
 } from './feature-flags';
-
 // Feature flags - Values
 export {
   FeatureFlagManager,
@@ -18,14 +16,12 @@ export {
   useFeatureFlag,
   withFeatureFlag
 } from './feature-flags';
-
 // Fallback UI components - Types
 export type {
   FallbackUIProps,
   ServiceUnavailableProps,
   ExtensionUnavailableProps
 } from './fallback-ui';
-
 // Fallback UI components - Values
 export {
   ServiceUnavailable,
@@ -34,13 +30,11 @@ export {
   DegradedModeBanner,
   ProgressiveEnhancement
 } from './fallback-ui';
-
 // Cache management - Types
 export type {
   CacheEntry,
   CacheOptions
 } from './cache-manager';
-
 // Cache management - Values
 export {
   CacheManager,
@@ -49,13 +43,11 @@ export {
   generalCache,
   CacheAwareDataFetcher
 } from './cache-manager';
-
 // Progressive enhancement - Types
 export type {
   ProgressiveFeatureProps,
   EnhancedComponentProps
 } from './progressive-enhancement';
-
 // Progressive enhancement - Values
 export {
   withProgressiveEnhancement,
@@ -63,11 +55,9 @@ export {
   useProgressiveData,
   ProgressiveDataDisplay
 } from './progressive-enhancement';
-
 // Integration with existing systems
 import { featureFlagManager } from './feature-flags';
 import { extensionCache } from './cache-manager';
-
 /**
  * Initialize the graceful degradation system
  */
@@ -75,14 +65,10 @@ export function initializeGracefulDegradation() {
   // Set up error handlers for automatic feature flag management
   window.addEventListener('unhandledrejection', (event) => {
     const error = event.reason;
-    
     // Check if it's a network error related to extensions
     if (error?.message?.includes('extension') || 
         error?.message?.includes('403') || 
         error?.message?.includes('503')) {
-      
-      console.warn('Detected extension-related error, updating feature flags:', error);
-      
       // Auto-disable related features
       if (error.message.includes('background-task')) {
         featureFlagManager.handleServiceError('background-tasks', error);
@@ -95,28 +81,21 @@ export function initializeGracefulDegradation() {
       }
     }
   });
-
   // Clean up expired cache entries periodically
   setInterval(() => {
     const removedCount = extensionCache.cleanup();
     if (removedCount > 0) {
-      console.debug(`Cleaned up ${removedCount} expired cache entries`);
     }
   }, 5 * 60 * 1000); // Every 5 minutes
-
-  console.info('Graceful degradation system initialized');
 }
-
 /**
  * Get system health status
  */
 export function getSystemHealthStatus() {
   const flags = featureFlagManager.getAllFlags();
   const cacheStats = extensionCache.getStats();
-  
   const enabledFeatures = flags.filter(f => f.enabled).length;
   const totalFeatures = flags.length;
-  
   return {
     features: {
       enabled: enabledFeatures,
@@ -130,15 +109,12 @@ export function getSystemHealthStatus() {
     timestamp: new Date().toISOString()
   };
 }
-
 /**
  * Force refresh all cached data
  */
 export function refreshAllCachedData() {
   extensionCache.clear();
-  console.info('All cached data cleared, fresh data will be fetched on next request');
 }
-
 /**
  * Enable development mode with relaxed error handling
  */
@@ -147,26 +123,19 @@ export function enableDevelopmentMode() {
   featureFlagManager.getAllFlags().forEach(flag => {
     featureFlagManager.setFlag(flag.name, true);
   });
-  
-  console.info('Development mode enabled - all features are now available');
 }
-
 /**
  * Simulate service failures for testing
  */
 export function simulateServiceFailure(serviceName: string) {
   featureFlagManager.handleServiceError(serviceName, new Error(`Simulated failure for ${serviceName}`));
-  console.warn(`Simulated service failure for: ${serviceName}`);
 }
-
 /**
  * Simulate service recovery for testing
  */
 export function simulateServiceRecovery(serviceName: string) {
   featureFlagManager.handleServiceRecovery(serviceName);
-  console.info(`Simulated service recovery for: ${serviceName}`);
 }
-
 // Export default configuration
 export const defaultGracefulDegradationConfig = {
   cacheEnabled: true,

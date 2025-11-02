@@ -4,9 +4,7 @@
  * Provides error handling and fallback mechanisms for AG-UI components
  * including graceful degradation to simplified interfaces.
  */
-
 import { GridApi } from 'ag-grid-community';
-
 export enum AGUIErrorType {
   GRID_LOAD_ERROR = 'grid_load_error',
   GRID_RENDER_ERROR = 'grid_render_error',
@@ -16,7 +14,6 @@ export enum AGUIErrorType {
   MEMORY_ERROR = 'memory_error',
   TIMEOUT_ERROR = 'timeout_error'
 }
-
 export enum FallbackStrategy {
   SIMPLE_TABLE = 'simple_table',
   CACHED_DATA = 'cached_data',
@@ -24,7 +21,6 @@ export enum FallbackStrategy {
   ERROR_MESSAGE = 'error_message',
   RETRY_MECHANISM = 'retry_mechanism'
 }
-
 export interface AGUIErrorContext {
   component: string;
   errorType: AGUIErrorType;
@@ -34,7 +30,6 @@ export interface AGUIErrorContext {
   timestamp: string;
   retryCount: number;
 }
-
 export interface FallbackResponse {
   strategy: FallbackStrategy;
   component: React.ComponentType<any> | null;
@@ -44,37 +39,31 @@ export interface FallbackResponse {
   retryAvailable: boolean;
   degradedFeatures: string[];
 }
-
 export interface CircuitBreakerState {
   isOpen: boolean;
   failureCount: number;
   lastFailureTime: number;
   halfOpenAttempts: number;
 }
-
 export class AGUIErrorHandler {
   private static instance: AGUIErrorHandler;
   private errorCache: Map<string, any> = new Map();
   private circuitBreakers: Map<string, CircuitBreakerState> = new Map();
   private retryAttempts: Map<string, number> = new Map();
-  
   // Configuration
   private readonly maxRetries = 3;
   private readonly circuitBreakerThreshold = 5;
   private readonly circuitBreakerTimeout = 60000; // 1 minute
   private readonly cacheTimeout = 300000; // 5 minutes
-
   private constructor() {
     this.initializeCircuitBreakers();
   }
-
   public static getInstance(): AGUIErrorHandler {
     if (!AGUIErrorHandler.instance) {
       AGUIErrorHandler.instance = new AGUIErrorHandler();
     }
     return AGUIErrorHandler.instance;
   }
-
   private initializeCircuitBreakers(): void {
     const components = ['grid', 'chart', 'analytics', 'memory'];
     components.forEach(component => {
@@ -86,7 +75,6 @@ export class AGUIErrorHandler {
       });
     });
   }
-
   /**
    * Handle AG-Grid specific errors
    */
@@ -105,17 +93,12 @@ export class AGUIErrorHandler {
       timestamp: new Date().toISOString(),
       retryCount: this.getRetryCount('grid')
     };
-
-    console.warn('AG-Grid error:', error);
-
     // Check circuit breaker
     if (this.isCircuitBreakerOpen('grid')) {
       return this.createSimpleTableFallback(context);
     }
-
     // Record failure
     this.recordFailure('grid');
-
     // Try recovery strategies based on error type
     switch (context.errorType) {
       case AGUIErrorType.GRID_LOAD_ERROR:
@@ -128,7 +111,6 @@ export class AGUIErrorHandler {
         return this.createSimpleTableFallback(context);
     }
   }
-
   /**
    * Handle AG-Charts specific errors
    */
@@ -145,17 +127,12 @@ export class AGUIErrorHandler {
       timestamp: new Date().toISOString(),
       retryCount: this.getRetryCount('chart')
     };
-
-    console.warn('AG-Charts error:', error);
-
     // Check circuit breaker
     if (this.isCircuitBreakerOpen('chart')) {
       return this.createSimpleChartFallback(context);
     }
-
     // Record failure
     this.recordFailure('chart');
-
     // Try recovery strategies
     switch (context.errorType) {
       case AGUIErrorType.CHART_RENDER_ERROR:
@@ -166,7 +143,6 @@ export class AGUIErrorHandler {
         return this.createSimpleChartFallback(context);
     }
   }
-
   /**
    * Handle general component errors
    */
@@ -183,30 +159,22 @@ export class AGUIErrorHandler {
       timestamp: new Date().toISOString(),
       retryCount: this.getRetryCount(component)
     };
-
-    console.warn(`AG-UI ${component} error:`, error);
-
     // Check circuit breaker
     if (this.isCircuitBreakerOpen(component)) {
       return this.createErrorMessageFallback(context);
     }
-
     // Record failure
     this.recordFailure(component);
-
     // Try cached data first
     const cachedResponse = this.getCachedResponse(component, data);
     if (cachedResponse) {
       return cachedResponse;
     }
-
     // Return appropriate fallback
     return this.createErrorMessageFallback(context);
   }
-
   private classifyGridError(error: Error): AGUIErrorType {
     const message = error.message.toLowerCase();
-    
     if (message.includes('load') || message.includes('fetch')) {
       return AGUIErrorType.GRID_LOAD_ERROR;
     } else if (message.includes('render') || message.includes('display')) {
@@ -221,10 +189,8 @@ export class AGUIErrorHandler {
       return AGUIErrorType.COMPONENT_CRASH;
     }
   }
-
   private classifyChartError(error: Error): AGUIErrorType {
     const message = error.message.toLowerCase();
-    
     if (message.includes('render') || message.includes('draw')) {
       return AGUIErrorType.CHART_RENDER_ERROR;
     } else if (message.includes('data')) {
@@ -237,10 +203,8 @@ export class AGUIErrorHandler {
       return AGUIErrorType.COMPONENT_CRASH;
     }
   }
-
   private classifyGeneralError(error: Error): AGUIErrorType {
     const message = error.message.toLowerCase();
-    
     if (message.includes('timeout')) {
       return AGUIErrorType.TIMEOUT_ERROR;
     } else if (message.includes('memory') || message.includes('heap')) {
@@ -251,12 +215,10 @@ export class AGUIErrorHandler {
       return AGUIErrorType.COMPONENT_CRASH;
     }
   }
-
   private async handleGridLoadError(context: AGUIErrorContext): Promise<FallbackResponse> {
     // Try to use cached data
     const cacheKey = `grid_data_${JSON.stringify(context.columns)}`;
     const cachedData = this.errorCache.get(cacheKey);
-    
     if (cachedData && this.isCacheValid(cachedData.timestamp)) {
       return {
         strategy: FallbackStrategy.CACHED_DATA,
@@ -268,15 +230,12 @@ export class AGUIErrorHandler {
         degradedFeatures: ['real-time-updates']
       };
     }
-
     // Fallback to simple table
     return this.createSimpleTableFallback(context);
   }
-
   private async handleGridRenderError(context: AGUIErrorContext): Promise<FallbackResponse> {
     // Try with simplified column definitions
     const simplifiedColumns = this.simplifyColumns(context.columns || []);
-    
     if (simplifiedColumns.length > 0 && context.retryCount < this.maxRetries) {
       return {
         strategy: FallbackStrategy.RETRY_MECHANISM,
@@ -288,10 +247,8 @@ export class AGUIErrorHandler {
         degradedFeatures: ['advanced-filtering', 'custom-renderers', 'complex-sorting']
       };
     }
-
     return this.createSimpleTableFallback(context);
   }
-
   private async handleChartRenderError(context: AGUIErrorContext): Promise<FallbackResponse> {
     // Try with simplified chart configuration
     if (context.retryCount < this.maxRetries) {
@@ -305,15 +262,12 @@ export class AGUIErrorHandler {
         degradedFeatures: ['animations', 'advanced-tooltips', 'interactive-features']
       };
     }
-
     return this.createSimpleChartFallback(context);
   }
-
   private async handleDataFetchError(context: AGUIErrorContext): Promise<FallbackResponse> {
     // Try cached data first
     const cacheKey = `${context.component}_data`;
     const cachedData = this.errorCache.get(cacheKey);
-    
     if (cachedData && this.isCacheValid(cachedData.timestamp)) {
       return {
         strategy: FallbackStrategy.CACHED_DATA,
@@ -325,7 +279,6 @@ export class AGUIErrorHandler {
         degradedFeatures: ['real-time-updates']
       };
     }
-
     // Show loading state with retry option
     return {
       strategy: FallbackStrategy.LOADING_STATE,
@@ -337,7 +290,6 @@ export class AGUIErrorHandler {
       degradedFeatures: []
     };
   }
-
   private createSimpleTableFallback(context: AGUIErrorContext): FallbackResponse {
     return {
       strategy: FallbackStrategy.SIMPLE_TABLE,
@@ -349,7 +301,6 @@ export class AGUIErrorHandler {
       degradedFeatures: ['sorting', 'filtering', 'pagination', 'cell-editing']
     };
   }
-
   private createSimpleChartFallback(context: AGUIErrorContext): FallbackResponse {
     return {
       strategy: FallbackStrategy.SIMPLE_TABLE,
@@ -361,7 +312,6 @@ export class AGUIErrorHandler {
       degradedFeatures: ['visualization', 'interactivity', 'animations']
     };
   }
-
   private createErrorMessageFallback(context: AGUIErrorContext): FallbackResponse {
     return {
       strategy: FallbackStrategy.ERROR_MESSAGE,
@@ -373,7 +323,6 @@ export class AGUIErrorHandler {
       degradedFeatures: ['all-features']
     };
   }
-
   private simplifyColumns(columns: any[]): any[] {
     return columns.map(col => ({
       field: col.field,
@@ -384,7 +333,6 @@ export class AGUIErrorHandler {
       cellRenderer: undefined // Remove custom renderers
     }));
   }
-
   private simplifyChartData(data: any[]): any[] {
     // Limit data points to prevent rendering issues
     const maxPoints = 100;
@@ -393,23 +341,19 @@ export class AGUIErrorHandler {
     }
     return data;
   }
-
   private extractSimpleColumns(data: any[]): any[] {
     if (!data || data.length === 0) {
       return [{ field: 'message', headerName: 'Status' }];
     }
-
     const firstRow = data[0];
     return Object.keys(firstRow).map(key => ({
       field: key,
       headerName: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
     }));
   }
-
   private isCircuitBreakerOpen(component: string): boolean {
     const breaker = this.circuitBreakers.get(component);
     if (!breaker) return false;
-
     if (breaker.isOpen) {
       // Check if we should try half-open state
       const now = Date.now();
@@ -420,27 +364,20 @@ export class AGUIErrorHandler {
       }
       return true;
     }
-
     return false;
   }
-
   private recordFailure(component: string): void {
     const breaker = this.circuitBreakers.get(component);
     if (!breaker) return;
-
     breaker.failureCount++;
     breaker.lastFailureTime = Date.now();
-
     if (breaker.failureCount >= this.circuitBreakerThreshold) {
       breaker.isOpen = true;
-      console.warn(`Circuit breaker opened for ${component} component`);
     }
-
     // Increment retry count
     const currentRetries = this.retryAttempts.get(component) || 0;
     this.retryAttempts.set(component, currentRetries + 1);
   }
-
   private recordSuccess(component: string): void {
     const breaker = this.circuitBreakers.get(component);
     if (breaker) {
@@ -448,32 +385,25 @@ export class AGUIErrorHandler {
       breaker.isOpen = false;
       breaker.halfOpenAttempts = 0;
     }
-
     // Reset retry count
     this.retryAttempts.set(component, 0);
   }
-
   private getRetryCount(component: string): number {
     return this.retryAttempts.get(component) || 0;
   }
-
   private getCachedResponse(component: string, data?: any): FallbackResponse | null {
     const cacheKey = `${component}_fallback`;
     const cached = this.errorCache.get(cacheKey);
-    
     if (cached && this.isCacheValid(cached.timestamp)) {
       return cached.response;
     }
-
     return null;
   }
-
   private isCacheValid(timestamp: string): boolean {
     const cacheTime = new Date(timestamp).getTime();
     const now = Date.now();
     return (now - cacheTime) < this.cacheTimeout;
   }
-
   /**
    * Cache successful data for fallback use
    */
@@ -485,20 +415,16 @@ export class AGUIErrorHandler {
       timestamp: new Date().toISOString()
     });
   }
-
   /**
    * Clear error state and reset circuit breaker
    */
   public resetComponent(component: string): void {
     this.recordSuccess(component);
-    
     // Clear related cache entries
     const keysToDelete = Array.from(this.errorCache.keys())
       .filter(key => key.includes(component));
-    
     keysToDelete.forEach(key => this.errorCache.delete(key));
   }
-
   /**
    * Get component health status
    */
@@ -509,7 +435,6 @@ export class AGUIErrorHandler {
     lastFailureTime: number | null;
   } {
     const breaker = this.circuitBreakers.get(component);
-    
     return {
       isHealthy: !breaker?.isOpen && (breaker?.failureCount || 0) < this.circuitBreakerThreshold,
       failureCount: breaker?.failureCount || 0,
@@ -518,6 +443,5 @@ export class AGUIErrorHandler {
     };
   }
 }
-
 // Export singleton instance
 export const agUIErrorHandler = AGUIErrorHandler.getInstance();

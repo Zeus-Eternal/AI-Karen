@@ -5,7 +5,7 @@
  * Based on requirements: 5.1, 5.4
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { PluginManager } from '../PluginManager';
@@ -28,7 +28,7 @@ vi.mock('@/components/ui/button', () => ({
       disabled={disabled} 
       data-variant={variant}
       {...props}
-    >
+     aria-label="Button">
       {children}
     </button>
   ),
@@ -40,8 +40,7 @@ vi.mock('@/components/ui/input', () => ({
       value={value} 
       onChange={onChange} 
       placeholder={placeholder}
-      {...props}
-    />
+      {...props} />
   ),
 }));
 
@@ -68,7 +67,7 @@ vi.mock('@/components/ui/skeleton', () => ({
 
 vi.mock('@/components/ui/select', () => ({
   Select: ({ children, value, onValueChange }: any) => (
-    <select value={value} onChange={(e) => onValueChange(e.target.value)}>
+    <select value={value} onChange={(e) = aria-label="Select option"> onValueChange(e.target.value)}>
       {children}
     </select>
   ),
@@ -82,7 +81,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: any) => <div>{children}</div>,
   DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
   DropdownMenuItem: ({ children, onClick }: any) => (
-    <button onClick={onClick}>{children}</button>
+    <button onClick={onClick} aria-label="Button">{children}</button>
   ),
   DropdownMenuSeparator: () => <hr />,
   DropdownMenuTrigger: ({ children }: any) => <div>{children}</div>,
@@ -97,7 +96,7 @@ vi.mock('../PluginDetailView', () => ({
   PluginDetailView: ({ plugin, onClose }: any) => (
     <div data-testid="plugin-detail-view">
       <h2>{plugin.name} Details</h2>
-      <button onClick={onClose}>Close</button>
+      <button onClick={onClose} aria-label="Button">Close</button>
     </div>
   ),
 }));
@@ -106,8 +105,8 @@ vi.mock('../PluginInstallationWizard', () => ({
   PluginInstallationWizard: ({ onClose, onComplete }: any) => (
     <div data-testid="plugin-installation-wizard">
       <h2>Installation Wizard</h2>
-      <button onClick={onClose}>Close</button>
-      <button onClick={onComplete}>Complete</button>
+      <button onClick={onClose} aria-label="Button">Close</button>
+      <button onClick={onComplete} aria-label="Button">Complete</button>
     </div>
   ),
 }));
@@ -116,7 +115,7 @@ vi.mock('../PluginMarketplace', () => ({
   PluginMarketplace: ({ onClose, onInstall }: any) => (
     <div data-testid="plugin-marketplace">
       <h2>Plugin Marketplace</h2>
-      <button onClick={onClose}>Close</button>
+      <button onClick={onClose} aria-label="Button">Close</button>
     </div>
   ),
 }));

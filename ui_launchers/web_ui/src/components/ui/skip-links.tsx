@@ -78,7 +78,7 @@ export const SkipLinks = React.forwardRef<HTMLDivElement, SkipLinksProps>(
       >
         <nav 
           aria-label="Skip navigation links"
-          className="bg-primary text-primary-foreground p-2 shadow-lg rounded-br-md"
+          className="bg-primary text-primary-foreground p-2 shadow-lg rounded-br-md sm:p-4 md:p-6"
         >
           <ul className="flex flex-col gap-1">
             {links.map((link) => (

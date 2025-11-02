@@ -114,10 +114,10 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
       {/* Full Name Field */}
       <div className="space-y-2">
         <Label htmlFor="full_name" className="flex items-center space-x-2">
-          <User className="h-4 w-4" />
+          <User className="h-4 w-4 sm:w-auto md:w-full" />
           <span>Full Name</span>
         </Label>
-        <Input
+        <input
           id="full_name"
           type="text"
           placeholder="Enter your full name"
@@ -126,11 +126,10 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
           disabled={isLoading}
           required
           autoComplete="name"
-          className={validationErrors.full_name ? 'border-red-500 focus:border-red-500' : ''}
-        />
+          className={validationErrors.full_name ? 'border-red-500 focus:border-red-500' : ''} />
         {validationErrors.full_name && (
-          <p className="text-sm text-red-600 flex items-center space-x-1">
-            <XCircle className="h-4 w-4" />
+          <p className="text-sm text-red-600 flex items-center space-x-1 md:text-base lg:text-lg">
+            <XCircle className="h-4 w-4 sm:w-auto md:w-full" />
             <span>{validationErrors.full_name}</span>
           </p>
         )}
@@ -139,10 +138,10 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
       {/* Email Field */}
       <div className="space-y-2">
         <Label htmlFor="email" className="flex items-center space-x-2">
-          <Mail className="h-4 w-4" />
+          <Mail className="h-4 w-4 sm:w-auto md:w-full" />
           <span>Email Address</span>
         </Label>
-        <Input
+        <input
           id="email"
           type="email"
           placeholder="admin@yourcompany.com"
@@ -151,15 +150,14 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
           disabled={isLoading}
           required
           autoComplete="email"
-          className={validationErrors.email ? 'border-red-500 focus:border-red-500' : ''}
-        />
+          className={validationErrors.email ? 'border-red-500 focus:border-red-500' : ''} />
         {validationErrors.email && (
-          <p className="text-sm text-red-600 flex items-center space-x-1">
-            <XCircle className="h-4 w-4" />
+          <p className="text-sm text-red-600 flex items-center space-x-1 md:text-base lg:text-lg">
+            <XCircle className="h-4 w-4 sm:w-auto md:w-full" />
             <span>{validationErrors.email}</span>
           </p>
         )}
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
           This will be your super admin login email
         </p>
       </div>
@@ -167,11 +165,11 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
       {/* Password Field */}
       <div className="space-y-2">
         <Label htmlFor="password" className="flex items-center space-x-2">
-          <Lock className="h-4 w-4" />
+          <Lock className="h-4 w-4 sm:w-auto md:w-full" />
           <span>Password</span>
         </Label>
         <div className="relative">
-          <Input
+          <input
             id="password"
             type={showPassword ? 'text' : 'password'}
             placeholder="Create a strong password"
@@ -180,20 +178,19 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
             disabled={isLoading}
             required
             autoComplete="new-password"
-            className={`pr-10 ${validationErrors.password ? 'border-red-500 focus:border-red-500' : ''}`}
-          />
-          <Button
+            className={`pr-10 ${validationErrors.password ? 'border-red-500 focus:border-red-500' : ''}`} />
+          <button
             type="button"
             variant="ghost"
             size="sm"
             className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-            onClick={() => setShowPassword(!showPassword)}
+            onClick={() = aria-label="Button"> setShowPassword(!showPassword)}
             disabled={isLoading}
           >
             {showPassword ? (
-              <EyeOff className="h-4 w-4 text-muted-foreground" />
+              <EyeOff className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             ) : (
-              <Eye className="h-4 w-4 text-muted-foreground" />
+              <Eye className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             )}
           </Button>
         </div>
@@ -201,7 +198,7 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
         {/* Password Strength Indicator */}
         {passwordStrength && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
               <span className="text-muted-foreground">Password Strength:</span>
               <span className={`font-medium ${
                 passwordStrength.level === 'very_strong' ? 'text-green-600' :
@@ -220,7 +217,7 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
               />
             </div>
             {passwordStrength.feedback.length > 0 && (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 <p className="font-medium mb-1">Suggestions:</p>
                 <ul className="list-disc list-inside space-y-1">
                   {passwordStrength.feedback.slice(0, 3).map((feedback, index) => (
@@ -233,8 +230,8 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
         )}
         
         {validationErrors.password && (
-          <p className="text-sm text-red-600 flex items-center space-x-1">
-            <XCircle className="h-4 w-4" />
+          <p className="text-sm text-red-600 flex items-center space-x-1 md:text-base lg:text-lg">
+            <XCircle className="h-4 w-4 sm:w-auto md:w-full" />
             <span>{validationErrors.password}</span>
           </p>
         )}
@@ -243,11 +240,11 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
       {/* Confirm Password Field */}
       <div className="space-y-2">
         <Label htmlFor="confirm_password" className="flex items-center space-x-2">
-          <Lock className="h-4 w-4" />
+          <Lock className="h-4 w-4 sm:w-auto md:w-full" />
           <span>Confirm Password</span>
         </Label>
         <div className="relative">
-          <Input
+          <input
             id="confirm_password"
             type={showConfirmPassword ? 'text' : 'password'}
             placeholder="Confirm your password"
@@ -256,35 +253,34 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
             disabled={isLoading}
             required
             autoComplete="new-password"
-            className={`pr-10 ${validationErrors.confirm_password ? 'border-red-500 focus:border-red-500' : ''}`}
-          />
-          <Button
+            className={`pr-10 ${validationErrors.confirm_password ? 'border-red-500 focus:border-red-500' : ''}`} />
+          <button
             type="button"
             variant="ghost"
             size="sm"
             className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            onClick={() = aria-label="Button"> setShowConfirmPassword(!showConfirmPassword)}
             disabled={isLoading}
           >
             {showConfirmPassword ? (
-              <EyeOff className="h-4 w-4 text-muted-foreground" />
+              <EyeOff className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             ) : (
-              <Eye className="h-4 w-4 text-muted-foreground" />
+              <Eye className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             )}
           </Button>
         </div>
         
         {/* Password Match Indicator */}
         {formData.password && formData.confirm_password && (
-          <div className="flex items-center space-x-2 text-sm">
+          <div className="flex items-center space-x-2 text-sm md:text-base lg:text-lg">
             {formData.password === formData.confirm_password ? (
               <>
-                <CheckCircle className="h-4 w-4 text-green-600" />
+                <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                 <span className="text-green-600">Passwords match</span>
               </>
             ) : (
               <>
-                <XCircle className="h-4 w-4 text-red-600" />
+                <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                 <span className="text-red-600">Passwords do not match</span>
               </>
             )}
@@ -292,8 +288,8 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
         )}
         
         {validationErrors.confirm_password && (
-          <p className="text-sm text-red-600 flex items-center space-x-1">
-            <XCircle className="h-4 w-4" />
+          <p className="text-sm text-red-600 flex items-center space-x-1 md:text-base lg:text-lg">
+            <XCircle className="h-4 w-4 sm:w-auto md:w-full" />
             <span>{validationErrors.confirm_password}</span>
           </p>
         )}
@@ -301,49 +297,49 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
 
       {/* Password Requirements */}
       <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-        <CardContent className="p-4">
+        <CardContent className="p-4 sm:p-4 md:p-6">
           <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center">
-            <AlertTriangle className="h-5 w-5 mr-2" />
+            <AlertTriangle className="h-5 w-5 mr-2 sm:w-auto md:w-full" />
             Password Requirements:
           </h3>
-          <ul className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
+          <ul className="space-y-1 text-sm text-blue-800 dark:text-blue-200 md:text-base lg:text-lg">
             <li className="flex items-center">
               {formData.password.length >= 12 ? (
-                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                <CheckCircle className="h-4 w-4 mr-2 text-green-600 sm:w-auto md:w-full" />
               ) : (
-                <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                <XCircle className="h-4 w-4 mr-2 text-red-600 sm:w-auto md:w-full" />
               )}
               At least 12 characters long
             </li>
             <li className="flex items-center">
               {/[a-z]/.test(formData.password) ? (
-                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                <CheckCircle className="h-4 w-4 mr-2 text-green-600 sm:w-auto md:w-full" />
               ) : (
-                <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                <XCircle className="h-4 w-4 mr-2 text-red-600 sm:w-auto md:w-full" />
               )}
               Contains lowercase letters
             </li>
             <li className="flex items-center">
               {/[A-Z]/.test(formData.password) ? (
-                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                <CheckCircle className="h-4 w-4 mr-2 text-green-600 sm:w-auto md:w-full" />
               ) : (
-                <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                <XCircle className="h-4 w-4 mr-2 text-red-600 sm:w-auto md:w-full" />
               )}
               Contains uppercase letters
             </li>
             <li className="flex items-center">
               {/\d/.test(formData.password) ? (
-                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                <CheckCircle className="h-4 w-4 mr-2 text-green-600 sm:w-auto md:w-full" />
               ) : (
-                <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                <XCircle className="h-4 w-4 mr-2 text-red-600 sm:w-auto md:w-full" />
               )}
               Contains numbers
             </li>
             <li className="flex items-center">
               {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password) ? (
-                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                <CheckCircle className="h-4 w-4 mr-2 text-green-600 sm:w-auto md:w-full" />
               ) : (
-                <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                <XCircle className="h-4 w-4 mr-2 text-red-600 sm:w-auto md:w-full" />
               )}
               Contains special characters
             </li>
@@ -354,7 +350,7 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
       {/* Form Validation Summary */}
       {Object.keys(validationErrors).length > 0 && (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
           <AlertDescription>
             Please fix the validation errors above before continuing.
           </AlertDescription>
@@ -363,14 +359,14 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
 
       {/* Submit Button */}
       <div className="pt-4">
-        <Button
+        <button
           type="submit"
           disabled={!isFormValid || isLoading}
           className="w-full h-12 text-base font-semibold"
-        >
+         aria-label="Submit form">
           {isLoading ? (
             <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2 sm:w-auto md:w-full" />
               Creating Admin Account...
             </>
           ) : (

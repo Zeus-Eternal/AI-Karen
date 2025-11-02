@@ -6,23 +6,19 @@
  * 
  * Requirements: 4.1, 4.2, 4.3
  */
-
 import { getConnectionManager } from '@/lib/connection/connection-manager';
 import { getTimeoutManager, OperationType } from '@/lib/connection/timeout-manager';
-
 export interface TestCredentials {
   email: string;
   password: string;
   totp_code?: string;
 }
-
 export interface DatabaseConnectivityResult {
   isConnected: boolean;
   responseTime: number;
   error?: string;
   timestamp: Date;
 }
-
 export interface AuthenticationTestResult {
   success: boolean;
   user?: {
@@ -37,7 +33,6 @@ export interface AuthenticationTestResult {
   retryCount: number;
   databaseConnectivity: DatabaseConnectivityResult;
 }
-
 /**
  * Default test credentials for database authentication testing
  */
@@ -45,7 +40,6 @@ export const TEST_CREDENTIALS: TestCredentials = {
   email: 'admin@example.com',
   password: 'password123',
 };
-
 /**
  * Test database connectivity by attempting to validate session
  */
@@ -53,7 +47,6 @@ export async function testDatabaseConnectivity(): Promise<DatabaseConnectivityRe
   const startTime = Date.now();
   const connectionManager = getConnectionManager();
   const timeoutManager = getTimeoutManager();
-
   try {
     const result = await connectionManager.makeRequest('/api/auth/validate-session', {
       method: 'GET',
@@ -67,18 +60,14 @@ export async function testDatabaseConnectivity(): Promise<DatabaseConnectivityRe
       retryAttempts: 1,
       exponentialBackoff: false,
     });
-
     const responseTime = Date.now() - startTime;
-
     return {
       isConnected: true,
       responseTime,
       timestamp: new Date(),
     };
-
   } catch (error: any) {
     const responseTime = Date.now() - startTime;
-    
     return {
       isConnected: false,
       responseTime,
@@ -87,7 +76,6 @@ export async function testDatabaseConnectivity(): Promise<DatabaseConnectivityRe
     };
   }
 }
-
 /**
  * Test authentication with admin@example.com/password123 credentials
  */
@@ -97,17 +85,14 @@ export async function testDatabaseAuthentication(
   const connectionManager = getConnectionManager();
   const timeoutManager = getTimeoutManager();
   const startTime = Date.now();
-
   // First test database connectivity
   const databaseConnectivity = await testDatabaseConnectivity();
-
   try {
     const requestBody = {
       email: credentials.email,
       password: credentials.password,
       ...(credentials.totp_code && { totp_code: credentials.totp_code })
     };
-
     const result = await connectionManager.makeRequest('/api/auth/login', {
       method: 'POST',
       headers: {
@@ -121,10 +106,8 @@ export async function testDatabaseAuthentication(
       retryAttempts: 2,
       exponentialBackoff: true,
     });
-
     const responseTime = Date.now() - startTime;
     const userData = result.data.user || result.data.user_data;
-
     if (!userData) {
       return {
         success: false,
@@ -134,7 +117,6 @@ export async function testDatabaseAuthentication(
         databaseConnectivity,
       };
     }
-
     return {
       success: true,
       user: {
@@ -148,10 +130,8 @@ export async function testDatabaseAuthentication(
       retryCount: result.retryCount,
       databaseConnectivity,
     };
-
   } catch (error: any) {
     const responseTime = Date.now() - startTime;
-    
     return {
       success: false,
       error: error.message || 'Authentication test failed',
@@ -161,7 +141,6 @@ export async function testDatabaseAuthentication(
     };
   }
 }
-
 /**
  * Test authentication flow with proper error messages for database connection failures
  */
@@ -169,11 +148,9 @@ export async function testAuthenticationWithDatabaseValidation(
   credentials: TestCredentials = TEST_CREDENTIALS
 ): Promise<AuthenticationTestResult & { errorCategory?: string }> {
   const result = await testDatabaseAuthentication(credentials);
-
   // Add enhanced error categorization
   if (!result.success && result.error) {
     let errorCategory = 'unknown';
-    
     if (result.error.includes('network') || result.error.includes('connection')) {
       errorCategory = 'network';
     } else if (result.error.includes('timeout')) {
@@ -183,17 +160,14 @@ export async function testAuthenticationWithDatabaseValidation(
     } else if (result.error.includes('401') || result.error.includes('Unauthorized')) {
       errorCategory = 'credentials';
     }
-
     return {
       ...result,
       errorCategory,
       error: getDatabaseAuthErrorMessage(result.error, errorCategory),
     };
   }
-
   return result;
 }
-
 /**
  * Get user-friendly error messages for database authentication failures
  */
@@ -211,7 +185,6 @@ function getDatabaseAuthErrorMessage(originalError: string, category: string): s
       return `Authentication failed: ${originalError}`;
   }
 }
-
 /**
  * Helper function to determine primary role from roles array
  */
@@ -220,7 +193,6 @@ function determineUserRole(roles: string[]): string {
   if (roles.includes('admin')) return 'admin';
   return 'user';
 }
-
 /**
  * Validate that test credentials work with the actual database
  */
@@ -231,7 +203,6 @@ export async function validateTestCredentials(): Promise<{
 }> {
   try {
     const result = await testAuthenticationWithDatabaseValidation();
-    
     if (result.success) {
       return {
         valid: true,
@@ -252,7 +223,6 @@ export async function validateTestCredentials(): Promise<{
     };
   }
 }
-
 /**
  * Create a test user session for integration testing
  */
@@ -265,7 +235,6 @@ export async function createTestSession(
 }> {
   try {
     const authResult = await testDatabaseAuthentication(credentials);
-    
     if (authResult.success && authResult.user) {
       // Session should be automatically created by the login process
       return {
@@ -291,13 +260,11 @@ export async function createTestSession(
     };
   }
 }
-
 /**
  * Clean up test session
  */
 export async function cleanupTestSession(): Promise<void> {
   const connectionManager = getConnectionManager();
-  
   try {
     await connectionManager.makeRequest('/api/auth/logout', {
       method: 'POST',
@@ -308,41 +275,33 @@ export async function cleanupTestSession(): Promise<void> {
     });
   } catch (error) {
     // Ignore cleanup errors
-    console.warn('Test session cleanup failed:', error);
   }
 }
-
 /**
  * Test suite helper for database authentication testing
  */
 export class DatabaseAuthTestSuite {
   private testResults: AuthenticationTestResult[] = [];
-
   async runBasicAuthTest(): Promise<AuthenticationTestResult> {
     const result = await testDatabaseAuthentication();
     this.testResults.push(result);
     return result;
   }
-
   async runAuthTestWithInvalidCredentials(): Promise<AuthenticationTestResult> {
     const invalidCredentials = {
       email: 'invalid@example.com',
       password: 'wrongpassword',
     };
-    
     const result = await testDatabaseAuthentication(invalidCredentials);
     this.testResults.push(result);
     return result;
   }
-
   async runDatabaseConnectivityTest(): Promise<DatabaseConnectivityResult> {
     return await testDatabaseConnectivity();
   }
-
   getTestResults(): AuthenticationTestResult[] {
     return [...this.testResults];
   }
-
   generateTestReport(): {
     totalTests: number;
     successfulTests: number;
@@ -359,7 +318,6 @@ export class DatabaseAuthTestSuite {
     const databaseConnectivityStatus = this.testResults.length > 0 
       ? this.testResults[this.testResults.length - 1].databaseConnectivity.isConnected 
       : false;
-
     return {
       totalTests,
       successfulTests,
@@ -368,7 +326,6 @@ export class DatabaseAuthTestSuite {
       databaseConnectivityStatus,
     };
   }
-
   reset(): void {
     this.testResults = [];
   }

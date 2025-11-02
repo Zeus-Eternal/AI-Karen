@@ -409,7 +409,7 @@ export const ScreenReaderTestHelper: React.FC<{
 
   return (
     <div className="sr-only">
-      <button onClick={testAnnouncements}>
+      <button onClick={testAnnouncements} aria-label="Button">
         Test Screen Reader Announcements
       </button>
     </div>

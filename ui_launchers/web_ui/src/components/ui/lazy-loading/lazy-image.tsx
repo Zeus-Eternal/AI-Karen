@@ -20,13 +20,13 @@ interface LazyImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>,
 
 const DefaultPlaceholder: React.FC<{ className?: string }> = ({ className }) => (
   <div className={`flex items-center justify-center bg-muted ${className}`}>
-    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+    <ImageIcon className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
   </div>
 );
 
 const DefaultErrorFallback: React.FC<{ className?: string }> = ({ className }) => (
   <div className={`flex items-center justify-center bg-muted ${className}`}>
-    <AlertCircle className="h-8 w-8 text-destructive" />
+    <AlertCircle className="h-8 w-8 text-destructive sm:w-auto md:w-full" />
   </div>
 );
 
@@ -117,7 +117,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
           )}
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin sm:w-auto md:w-full" />
             </div>
           )}
         </motion.div>

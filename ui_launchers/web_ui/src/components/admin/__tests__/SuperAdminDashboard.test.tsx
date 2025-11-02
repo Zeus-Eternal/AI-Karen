@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SuperAdminDashboard from '../SuperAdminDashboard';
@@ -80,7 +80,7 @@ vi.mock('@/components/ui/card', () => ({
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, className, variant }: any) => (
-    <button onClick={onClick} className={className} data-variant={variant}>
+    <button onClick={onClick} className={className} data-variant={variant} aria-label="Button">
       {children}
     </button>
   ),
@@ -97,7 +97,7 @@ vi.mock('@/components/ui/tabs', () => ({
   ),
   TabsList: ({ children }: any) => <div data-testid="tabs-list">{children}</div>,
   TabsTrigger: ({ children, value, onClick }: any) => (
-    <button data-testid={`tab-trigger-${value}`} onClick={onClick}>
+    <button data-testid={`tab-trigger-${value}`} onClick={onClick} aria-label="Button">
       {children}
     </button>
   ),

@@ -4,7 +4,7 @@
  * by testing the actual component behavior and integration points
  */
 
-import React from 'react';
+
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -58,7 +58,7 @@ vi.mock('@/components/ui/form-field', () => ({
         id={name}
         name={name}
         value={value || ''}
-        onChange={(e) => onValueChange?.(e.target.value)}
+        onChange={(e) = aria-label="Input"> onValueChange?.(e.target.value)}
         data-testid={`input-${name}`}
       />
     </div>
@@ -73,7 +73,7 @@ vi.mock('@/components/ui/button', () => ({
       disabled={disabled}
       onClick={onClick}
       data-testid="submit-button"
-    >
+     aria-label="Button">
       {children}
     </button>
   ),

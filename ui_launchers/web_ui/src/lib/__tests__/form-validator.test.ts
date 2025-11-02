@@ -12,7 +12,6 @@ import {
   getFieldErrorMessage
 } from '../form-validator';
 import type { LoginCredentials } from '@/types/auth';
-import type { FormFieldType } from '@/types/auth-form';
 
 describe('FormValidator', () => {
   let validator: FormValidator;

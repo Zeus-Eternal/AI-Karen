@@ -1,26 +1,39 @@
-'use client';
-
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { PermissionGate } from '@/components/rbac';
 import { EvilModeToggle } from './EvilModeToggle';
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+'use client';
+
+
+
+
+
+
+
+
+
+
+
+
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
-import { 
+
+
+
   Table,
   TableBody,
   TableCell,
@@ -29,7 +42,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-import { 
+
   BarChart,
   Bar,
   XAxis,
@@ -46,7 +59,7 @@ import {
   Cell
 } from 'recharts';
 
-import { 
+
   Shield, 
   AlertTriangle, 
   TrendingUp, 
@@ -156,7 +169,7 @@ export function SecurityDashboard({ className }: SecurityDashboardProps) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold flex items-center space-x-2">
-              <Shield className="h-6 w-6 text-blue-600" />
+              <Shield className="h-6 w-6 text-blue-600 sm:w-auto md:w-full" />
               <span>Security Dashboard</span>
             </h2>
             <p className="text-muted-foreground">
@@ -164,25 +177,25 @@ export function SecurityDashboard({ className }: SecurityDashboardProps) {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <Select value={timeframe} onValueChange={(value: '24h' | '7d' | '30d') => setTimeframe(value)}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
+            <select value={timeframe} onValueChange={(value: '24h' | '7d' | '30d') = aria-label="Select option"> setTimeframe(value)}>
+              <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+                <selectValue />
               </SelectTrigger>
-              <SelectContent>
+              <selectContent aria-label="Select option">
                 {Object.entries(timeframeOptions).map(([key, { label }]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                  <selectItem key={key} value={key} aria-label="Select option">{label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4" />
+            <button variant="outline" size="sm" aria-label="Button">
+              <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
             </Button>
           </div>
         </div>
 
         {metricsLoading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
           </div>
         ) : (
           <Tabs defaultValue="overview" className="space-y-4">
@@ -244,10 +257,10 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
 
   const getHealthIcon = (status: string) => {
     switch (status) {
-      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      case 'critical': return <XCircle className="h-4 w-4 text-red-500" />;
-      default: return <Clock className="h-4 w-4 text-gray-500" />;
+      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
+      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
+      case 'critical': return <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
+      default: return <Clock className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
     }
   };
 
@@ -259,13 +272,13 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Security Score</CardTitle>
-            <Shield className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Security Score</CardTitle>
+            <Shield className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.overallSecurityScore}%</div>
             <Progress value={metrics.overallSecurityScore} className="mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
               {metrics.overallSecurityScore >= 90 ? 'Excellent' :
                metrics.overallSecurityScore >= 80 ? 'Good' :
                metrics.overallSecurityScore >= 70 ? 'Fair' : 'Needs Attention'}
@@ -275,15 +288,15 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Threat Level</CardTitle>
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Threat Level</CardTitle>
             <AlertTriangle className={`h-4 w-4 ${getThreatLevelColor(metrics.threatLevel)}`} />
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold capitalize ${getThreatLevelColor(metrics.threatLevel)}`}>
               {metrics.threatLevel}
             </div>
-            <div className="flex items-center text-xs text-muted-foreground mt-1">
-              <TrendingDown className="h-3 w-3 mr-1 text-green-500" />
+            <div className="flex items-center text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
+              <TrendingDown className="h-3 w-3 mr-1 text-green-500 sm:w-auto md:w-full" />
               Decreased from yesterday
             </div>
           </CardContent>
@@ -291,12 +304,12 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Threats</CardTitle>
-            <Target className="h-4 w-4 text-red-600" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Active Threats</CardTitle>
+            <Target className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{metrics.activeThreats}</div>
-            <div className="flex items-center text-xs text-muted-foreground mt-1">
+            <div className="flex items-center text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
               <span>{metrics.resolvedThreats} resolved today</span>
             </div>
           </CardContent>
@@ -304,13 +317,13 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Compliance</CardTitle>
-            <FileText className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Compliance</CardTitle>
+            <FileText className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.complianceScore}%</div>
             <Progress value={metrics.complianceScore} className="mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
               Meeting regulatory requirements
             </p>
           </CardContent>
@@ -327,9 +340,9 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
               <div className="flex items-center space-x-2">
-                <Lock className="h-4 w-4" />
+                <Lock className="h-4 w-4 sm:w-auto md:w-full" />
                 <span className="font-medium">Authentication</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -343,9 +356,9 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
               <div className="flex items-center space-x-2">
-                <Shield className="h-4 w-4" />
+                <Shield className="h-4 w-4 sm:w-auto md:w-full" />
                 <span className="font-medium">Authorization</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -359,9 +372,9 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
               <div className="flex items-center space-x-2">
-                <Database className="h-4 w-4" />
+                <Database className="h-4 w-4 sm:w-auto md:w-full" />
                 <span className="font-medium">Data Protection</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -375,9 +388,9 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
               <div className="flex items-center space-x-2">
-                <Network className="h-4 w-4" />
+                <Network className="h-4 w-4 sm:w-auto md:w-full" />
                 <span className="font-medium">Network Security</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -405,14 +418,14 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
         <CardContent>
           <div className="space-y-3">
             {recentAlerts.map((alert) => (
-              <div key={alert.id} className="flex items-center justify-between p-3 border rounded-lg">
+              <div key={alert.id} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
                 <div className="flex items-center space-x-3">
                   <div className={`p-1 rounded-full ${
                     alert.severity === 'critical' ? 'bg-red-100 dark:bg-red-900/30' :
                     alert.severity === 'high' ? 'bg-orange-100 dark:bg-orange-900/30' :
                     alert.severity === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
                     'bg-blue-100 dark:bg-blue-900/30'
-                  }`}>
+                  }`} role="alert">
                     <AlertTriangle className={`h-3 w-3 ${
                       alert.severity === 'critical' ? 'text-red-600' :
                       alert.severity === 'high' ? 'text-orange-600' :
@@ -422,7 +435,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
                   </div>
                   <div>
                     <p className="font-medium">{alert.title}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                       {format(new Date(alert.timestamp), 'MMM dd, HH:mm')} • {alert.affectedSystems.join(', ')}
                     </p>
                   </div>
@@ -464,31 +477,31 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Active Threats</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Active Threats</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{threatAlerts.length}</div>
-            <p className="text-xs text-muted-foreground">Requiring immediate attention</p>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Requiring immediate attention</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Threat Intelligence</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Threat Intelligence</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeThreatIntel.length}</div>
-            <p className="text-xs text-muted-foreground">High confidence indicators</p>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">High confidence indicators</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Response Time</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Response Time</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">12m</div>
-            <p className="text-xs text-muted-foreground">Average detection to response</p>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Average detection to response</p>
           </CardContent>
         </Card>
       </div>
@@ -502,13 +515,13 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
             <div className="space-y-3">
               {threatAlerts.slice(0, 5).map((alert) => (
                 <Alert key={alert.id} variant={alert.severity === 'critical' ? 'destructive' : 'default'}>
-                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
                   <AlertDescription>
                     <div className="flex items-center justify-between">
                       <div>
                         <strong>{alert.title}</strong>
-                        <p className="text-sm">{alert.description}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm md:text-base lg:text-lg">{alert.description}</p>
+                        <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                           {format(new Date(alert.timestamp), 'MMM dd, HH:mm')}
                         </p>
                       </div>
@@ -530,7 +543,7 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
           <CardContent>
             <div className="space-y-3">
               {activeThreatIntel.slice(0, 5).map((threat) => (
-                <div key={threat.id} className="p-3 border rounded-lg">
+                <div key={threat.id} className="p-3 border rounded-lg sm:p-4 md:p-6">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium">{threat.threatType}</span>
                     <div className="flex items-center space-x-2">
@@ -540,8 +553,8 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
                       </Badge>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">{threat.description}</p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">{threat.description}</p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
                     <span>Source: {threat.source}</span>
                     <span>{format(new Date(threat.lastUpdated), 'MMM dd, HH:mm')}</span>
                   </div>
@@ -704,7 +717,7 @@ function ComplianceMonitoring({ metrics }: ComplianceMonitoringProps) {
             <div className="text-4xl font-bold text-green-600">{metrics.complianceScore}%</div>
             <div className="flex-1">
               <Progress value={metrics.complianceScore} className="h-3" />
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                 Meeting regulatory requirements across all frameworks
               </p>
             </div>
@@ -716,7 +729,7 @@ function ComplianceMonitoring({ metrics }: ComplianceMonitoringProps) {
         {complianceFrameworks.map((framework) => (
           <Card key={framework.name}>
             <CardHeader>
-              <CardTitle className="text-sm">{framework.name}</CardTitle>
+              <CardTitle className="text-sm md:text-base lg:text-lg">{framework.name}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -743,13 +756,13 @@ function ComplianceMonitoring({ metrics }: ComplianceMonitoringProps) {
         <CardContent>
           <div className="space-y-3">
             <Alert>
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>
                 PCI DSS: Credit card data encryption needs to be updated to latest standards
               </AlertDescription>
             </Alert>
             <Alert>
-              <Eye className="h-4 w-4" />
+              <Eye className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>
                 GDPR: Data retention policy review required for user analytics data
               </AlertDescription>
@@ -776,31 +789,31 @@ function IncidentResponse({ metrics, alerts }: IncidentResponseProps) {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Open Incidents</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Open Incidents</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{metrics.incidentResponse.openIncidents}</div>
-            <p className="text-xs text-muted-foreground">Requiring attention</p>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Requiring attention</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Resolved Today</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Resolved Today</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{metrics.incidentResponse.resolvedIncidents}</div>
-            <p className="text-xs text-muted-foreground">Successfully closed</p>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Successfully closed</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Avg Response Time</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Avg Response Time</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.incidentResponse.averageResponseTime}m</div>
-            <p className="text-xs text-muted-foreground">Detection to response</p>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Detection to response</p>
           </CardContent>
         </Card>
       </div>
@@ -867,19 +880,19 @@ function EvilModeManagement() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span>Multi-factor Authentication</span>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Session Time Limits</span>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Real-time Monitoring</span>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Audit Logging</span>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                 </div>
               </div>
             </div>

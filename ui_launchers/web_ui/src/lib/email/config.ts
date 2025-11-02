@@ -4,9 +4,7 @@
  * Configuration management for email services including SMTP, API providers,
  * and service health monitoring.
  */
-
 import { EmailServiceConfig, EmailQueueConfig, EmailServiceHealth } from './types';
-
 // Default email service configuration
 export const DEFAULT_EMAIL_CONFIG: EmailServiceConfig = {
   provider: 'smtp',
@@ -21,9 +19,8 @@ export const DEFAULT_EMAIL_CONFIG: EmailServiceConfig = {
   from_name: process.env.EMAIL_FROM_NAME || 'AI Karen Admin',
   reply_to_email: process.env.EMAIL_REPLY_TO || '',
   enabled: process.env.EMAIL_ENABLED !== 'false',
-  test_mode: process.env.EMAIL_TEST_MODE === 'true',
+  test_mode: process.env.EMAIL_ === 'true',
 };
-
 // Default email queue configuration
 export const DEFAULT_QUEUE_CONFIG: EmailQueueConfig = {
   max_retries: parseInt(process.env.EMAIL_MAX_RETRIES || '3'),
@@ -32,7 +29,6 @@ export const DEFAULT_QUEUE_CONFIG: EmailQueueConfig = {
   rate_limit_per_minute: parseInt(process.env.EMAIL_RATE_LIMIT || '60'),
   priority_processing: process.env.EMAIL_PRIORITY_PROCESSING === 'true',
 };
-
 // Email provider configurations
 export const EMAIL_PROVIDERS = {
   smtp: {
@@ -66,7 +62,6 @@ export const EMAIL_PROVIDERS = {
     optional_fields: [],
   },
 } as const;
-
 // Email template defaults
 export const DEFAULT_TEMPLATES = {
   admin_invitation: {
@@ -89,18 +84,12 @@ export const DEFAULT_TEMPLATES = {
     `,
     text_content: `
 Administrator Invitation
-
 Hello {{full_name}},
-
 You have been invited to join {{system_name}} as an administrator by {{invited_by_name}}.
-
 To accept this invitation and set up your account, please visit:
 {{invitation_link}}
-
 This invitation will expire on {{expiry_date}}.
-
 If you have any questions, please contact your system administrator.
-
 This is an automated message from {{system_name}}. Please do not reply to this email.
     `,
     variables: ['full_name', 'system_name', 'invited_by_name', 'invitation_link', 'expiry_date'],
@@ -130,21 +119,15 @@ This is an automated message from {{system_name}}. Please do not reply to this e
     `,
     text_content: `
 Welcome to {{system_name}}!
-
 Hello {{full_name}},
-
 Your account has been successfully created by {{created_by_name}}.
-
 Account Details:
 - Email: {{email}}
 - Role: {{role}}
 - Account Created: {{created_date}}
-
 To get started, please visit the following link to set up your password:
 {{setup_link}}
-
 If you have any questions, please contact your administrator.
-
 This is an automated message from {{system_name}}. Please do not reply to this email.
     `,
     variables: ['full_name', 'system_name', 'created_by_name', 'email', 'role', 'created_date', 'setup_link'],
@@ -177,27 +160,21 @@ This is an automated message from {{system_name}}. Please do not reply to this e
     `,
     text_content: `
 🚨 SECURITY ALERT 🚨
-
 Alert Type: {{alert_type}}
 Time: {{alert_time}}
 User: {{user_email}}
 IP Address: {{ip_address}}
-
 Description:
 {{alert_description}}
-
 {{#if action_required}}
 ACTION REQUIRED: {{action_required}}
 {{/if}}
-
 If this was not you, please contact your system administrator immediately.
-
 This is an automated security alert from {{system_name}}. Please do not reply to this email.
     `,
     variables: ['alert_type', 'alert_time', 'user_email', 'ip_address', 'alert_description', 'action_required', 'system_name'],
   },
 } as const;
-
 // Email validation patterns
 export const EMAIL_VALIDATION = {
   email_regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
@@ -221,7 +198,6 @@ export const EMAIL_VALIDATION = {
     'no-reply',
   ],
 };
-
 // Rate limiting configuration
 export const RATE_LIMITS = {
   per_user_per_hour: 10,
@@ -229,7 +205,6 @@ export const RATE_LIMITS = {
   bulk_operations_per_day: 5,
   admin_notifications_per_hour: 50,
 };
-
 // Email service health check configuration
 export const HEALTH_CHECK_CONFIG = {
   interval_minutes: 5,
@@ -237,7 +212,6 @@ export const HEALTH_CHECK_CONFIG = {
   failure_threshold: 3,
   recovery_threshold: 2,
 };
-
 /**
  * Get email service configuration from environment variables and database
  */
@@ -249,20 +223,17 @@ export async function getEmailServiceConfig(): Promise<EmailServiceConfig> {
     // Override with database values if available
   };
 }
-
 /**
  * Validate email service configuration
  */
 export function validateEmailConfig(config: Partial<EmailServiceConfig>): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
-  
   if (!config.provider) {
     errors.push('Email provider is required');
   } else if (!(config.provider in EMAIL_PROVIDERS)) {
     errors.push('Invalid email provider');
   } else {
     const provider = EMAIL_PROVIDERS[config.provider];
-    
     // Check required fields
     for (const field of provider.required_fields) {
       if (!config[field as keyof EmailServiceConfig]) {
@@ -270,34 +241,28 @@ export function validateEmailConfig(config: Partial<EmailServiceConfig>): { isVa
       }
     }
   }
-  
   if (!config.from_email) {
     errors.push('From email address is required');
   } else if (!EMAIL_VALIDATION.email_regex.test(config.from_email)) {
     errors.push('Invalid from email address format');
   }
-  
   if (config.reply_to_email && !EMAIL_VALIDATION.email_regex.test(config.reply_to_email)) {
     errors.push('Invalid reply-to email address format');
   }
-  
   return {
     isValid: errors.length === 0,
     errors,
   };
 }
-
 /**
  * Test email service connection
  */
 export async function testEmailService(config: EmailServiceConfig): Promise<EmailServiceHealth> {
   const startTime = Date.now();
-  
   try {
     // This would implement actual connection testing based on provider
     // For now, return a mock response
     const isConnected = config.enabled && config.from_email !== '';
-    
     return {
       provider: config.provider,
       is_connected: isConnected,
@@ -322,14 +287,12 @@ export async function testEmailService(config: EmailServiceConfig): Promise<Emai
     };
   }
 }
-
 /**
  * Get system name for email templates
  */
 export function getSystemName(): string {
   return process.env.SYSTEM_NAME || 'AI Karen Admin System';
 }
-
 /**
  * Get base URL for email links
  */

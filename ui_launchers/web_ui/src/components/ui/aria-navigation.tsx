@@ -435,7 +435,7 @@ export const AriaTab = React.forwardRef<HTMLButtonElement, AriaTabProps>(
         )}
         role={ARIA_ROLES.TAB}
         tabIndex={selected ? 0 : -1}
-        {...(() => {
+        {...(() = aria-label="Button"> {
           const merged = mergeAriaProps(tabProps, ariaProps);
           const { 'aria-relevant': _, ...safeProps } = merged;
           return safeProps;

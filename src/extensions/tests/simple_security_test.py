@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def test_security_imports():
     """Test that security modules can be imported."""
     try:
-        from src.extensions.security import (
+        from src.extensions.core.security import (
             ExtensionSecurityManager,
             ExtensionPermissionManager,
             ResourceLimitEnforcer,
@@ -38,7 +38,7 @@ def test_security_imports():
 def test_security_decorators_import():
     """Test that security decorators can be imported."""
     try:
-        from src.extensions.security_decorators import (
+        from src.extensions.core.security_decorators import (
             require_permission,
             SecurityContext,
             set_security_manager,
@@ -54,7 +54,7 @@ def test_security_decorators_import():
 def test_models_import():
     """Test that models can be imported."""
     try:
-        from src.extensions.models import (
+        from src.extensions.core.models import (
             ExtensionManifest,
             ExtensionPermissions,
             ExtensionResources,
@@ -70,8 +70,8 @@ def test_models_import():
 def test_permission_manager_basic():
     """Test basic permission manager functionality."""
     try:
-        from src.extensions.security import ExtensionPermissionManager
-        from src.extensions.models import ExtensionPermissions
+        from src.extensions.core.security import ExtensionPermissionManager
+        from src.extensions.core.models import ExtensionPermissions
         
         pm = ExtensionPermissionManager()
         
@@ -90,8 +90,8 @@ def test_permission_manager_basic():
 def test_resource_enforcer_basic():
     """Test basic resource enforcer functionality."""
     try:
-        from src.extensions.security import ResourceLimitEnforcer
-        from src.extensions.models import ExtensionResources
+        from src.extensions.core.security import ResourceLimitEnforcer
+        from src.extensions.core.models import ExtensionResources
         
         enforcer = ResourceLimitEnforcer()
         
@@ -110,7 +110,7 @@ def test_resource_enforcer_basic():
 def test_sandbox_basic():
     """Test basic sandbox functionality."""
     try:
-        from src.extensions.security import ExtensionSandbox
+        from src.extensions.core.security import ExtensionSandbox
         
         sandbox = ExtensionSandbox()
         
@@ -129,7 +129,7 @@ def test_sandbox_basic():
 def test_network_controller_basic():
     """Test basic network controller functionality."""
     try:
-        from src.extensions.security import NetworkAccessController
+        from src.extensions.core.security import NetworkAccessController
         
         controller = NetworkAccessController()
         
@@ -147,7 +147,7 @@ def test_network_controller_basic():
 def test_security_manager_basic():
     """Test basic security manager functionality."""
     try:
-        from src.extensions.security import ExtensionSecurityManager
+        from src.extensions.core.security import ExtensionSecurityManager
         
         manager = ExtensionSecurityManager()
         

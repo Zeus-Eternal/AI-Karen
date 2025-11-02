@@ -54,13 +54,13 @@ const ModelLibrarySearch = ({ onSearch, onFilter, onSort, onClear }: {
           type="text"
           placeholder="Search models..."
           value={searchQuery}
-          onChange={(e) => handleSearch(e.target.value)}
+          onChange={(e) = aria-label="Input"> handleSearch(e.target.value)}
           data-testid="search-input"
         />
         
         <select
           value={selectedProvider}
-          onChange={(e) => setSelectedProvider(e.target.value)}
+          onChange={(e) = aria-label="Select option"> setSelectedProvider(e.target.value)}
           data-testid="provider-filter"
           aria-label="Filter by provider"
         >
@@ -72,7 +72,7 @@ const ModelLibrarySearch = ({ onSearch, onFilter, onSort, onClear }: {
         
         <select
           value={selectedCapability}
-          onChange={(e) => setSelectedCapability(e.target.value)}
+          onChange={(e) = aria-label="Select option"> setSelectedCapability(e.target.value)}
           data-testid="capability-filter"
           aria-label="Filter by capability"
         >
@@ -85,7 +85,7 @@ const ModelLibrarySearch = ({ onSearch, onFilter, onSort, onClear }: {
         
         <select
           value={selectedSize}
-          onChange={(e) => setSelectedSize(e.target.value)}
+          onChange={(e) = aria-label="Select option"> setSelectedSize(e.target.value)}
           data-testid="size-filter"
           aria-label="Filter by size"
         >
@@ -97,7 +97,7 @@ const ModelLibrarySearch = ({ onSearch, onFilter, onSort, onClear }: {
         
         <select
           value={sortBy}
-          onChange={(e) => handleSortChange(e.target.value)}
+          onChange={(e) = aria-label="Select option"> handleSortChange(e.target.value)}
           data-testid="sort-select"
           aria-label="Sort by"
         >
@@ -121,25 +121,25 @@ const ModelLibrarySearch = ({ onSearch, onFilter, onSort, onClear }: {
         {searchQuery && (
           <span className="filter-tag">
             Search: "{searchQuery}"
-            <button onClick={() => handleSearch('')}>×</button>
+            <button onClick={() = aria-label="Button"> handleSearch('')}>×</button>
           </span>
         )}
         {selectedProvider && (
           <span className="filter-tag">
             Provider: {selectedProvider}
-            <button onClick={() => setSelectedProvider('')}>×</button>
+            <button onClick={() = aria-label="Button"> setSelectedProvider('')}>×</button>
           </span>
         )}
         {selectedCapability && (
           <span className="filter-tag">
             Capability: {selectedCapability}
-            <button onClick={() => setSelectedCapability('')}>×</button>
+            <button onClick={() = aria-label="Button"> setSelectedCapability('')}>×</button>
           </span>
         )}
         {selectedSize && (
           <span className="filter-tag">
             Size: {selectedSize}
-            <button onClick={() => setSelectedSize('')}>×</button>
+            <button onClick={() = aria-label="Button"> setSelectedSize('')}>×</button>
           </span>
         )}
       </div>

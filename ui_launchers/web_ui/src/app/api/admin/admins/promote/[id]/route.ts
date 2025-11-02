@@ -4,22 +4,18 @@
  * 
  * Requirements: 3.3
  */
-
 import { NextRequest, NextResponse } from 'next/server';
-
 // Force this route to be dynamic
 export const dynamic = 'force-dynamic';
 import { requireSuperAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { AdminApiResponse } from '@/types/admin';
-
 /**
  * POST /api/admin/admins/promote/[id] - Promote user to admin (super admin only)
  */
 export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
   try {
     const userId = request.nextUrl.pathname.split('/').slice(-2)[0]; // Get ID from promote/[id]/route
-    
     if (!userId) {
       return NextResponse.json({
         success: false,
@@ -30,9 +26,7 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     const adminUtils = getAdminDatabaseUtils();
-    
     // Get current user data
     const currentUser = await adminUtils.getUserWithRole(userId);
     if (!currentUser) {
@@ -45,7 +39,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 404 });
     }
-
     // Check if user is already an admin
     if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
       return NextResponse.json({
@@ -57,7 +50,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Cannot promote self (though this should be prevented by super admin requirement)
     if (userId === context.user.user_id) {
       return NextResponse.json({
@@ -69,16 +61,13 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Promote user to admin
     await adminUtils.updateUserRole(userId, 'admin', context.user.user_id);
-
     // Get updated user for response
     const updatedUser = await adminUtils.getUserWithRole(userId);
     if (!updatedUser) {
       throw new Error('Failed to retrieve promoted user');
     }
-
     // Log the promotion
     await adminUtils.createAuditLog({
       user_id: context.user.user_id,
@@ -95,7 +84,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
     });
-
     // Remove sensitive information from response
     const responseUser = {
       user_id: updatedUser.user_id,
@@ -109,7 +97,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       last_login_at: updatedUser.last_login_at,
       two_factor_enabled: updatedUser.two_factor_enabled
     };
-
     const response: AdminApiResponse<{ promoted_user: typeof responseUser }> = {
       success: true,
       data: { promoted_user: responseUser },
@@ -125,12 +112,8 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         ]
       }
     };
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('Admin promotion error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {

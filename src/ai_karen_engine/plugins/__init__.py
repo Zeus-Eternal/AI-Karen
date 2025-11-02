@@ -1,29 +1,32 @@
 """
-AI-Karen plugins package - symlink to root plugins directory.
+AI-Karen plugins package - compatibility layer for consolidated plugin system.
 This provides backward compatibility for imports expecting ai_karen_engine.plugins.
 """
 
-# Re-export from the unified plugins system
-import sys
-from pathlib import Path
-
-# Add the root plugins directory to the path
-plugins_root = Path(__file__).parent.parent.parent.parent / "plugins"
-if str(plugins_root) not in sys.path:
-    sys.path.insert(0, str(plugins_root))
-
-# Import and re-export from the unified plugins system
+# Re-export from the consolidated plugin system
 try:
-    from router import PluginRouter
-    from manager import PluginManager
+    from src.extensions.plugins.core.router import PluginRouter, get_plugin_router, AccessDenied, PluginRecord
+    from src.extensions.plugins.core.manager import PluginManager, get_plugin_manager, create_plugin_manager
+    from src.extensions.plugins.core.sandbox import run_in_sandbox
+    from src.extensions.plugins.core.memory_manager import MemoryManager
     
-    __all__ = ["PluginRouter", "PluginManager"]
+    __all__ = [
+        "PluginRouter", 
+        "PluginManager", 
+        "get_plugin_router", 
+        "get_plugin_manager", 
+        "create_plugin_manager",
+        "AccessDenied", 
+        "PluginRecord",
+        "run_in_sandbox",
+        "MemoryManager"
+    ]
     
 except ImportError as e:
     # Fallback for missing components
     import logging
     logger = logging.getLogger(__name__)
-    logger.warning(f"Failed to import from unified plugins system: {e}")
+    logger.warning(f"Failed to import from consolidated plugin system: {e}")
     
     # Provide minimal stubs
     class PluginRouter:
@@ -34,4 +37,37 @@ except ImportError as e:
         def __init__(self):
             pass
     
-    __all__ = ["PluginRouter", "PluginManager"]
+    class AccessDenied(Exception):
+        pass
+    
+    class PluginRecord:
+        def __init__(self):
+            pass
+    
+    class MemoryManager:
+        def __init__(self):
+            pass
+    
+    def get_plugin_router():
+        return PluginRouter()
+    
+    def get_plugin_manager():
+        return PluginManager()
+    
+    def create_plugin_manager():
+        return PluginManager()
+    
+    async def run_in_sandbox(*args, **kwargs):
+        pass
+    
+    __all__ = [
+        "PluginRouter", 
+        "PluginManager", 
+        "get_plugin_router", 
+        "get_plugin_manager", 
+        "create_plugin_manager",
+        "AccessDenied", 
+        "PluginRecord",
+        "run_in_sandbox",
+        "MemoryManager"
+    ]

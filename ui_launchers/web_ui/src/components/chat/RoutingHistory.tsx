@@ -53,18 +53,18 @@ export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit =
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-      <Card className="w-[90vw] max-w-3xl max-h-[80vh] overflow-hidden">
+      <Card className="w-[90vw] max-w-3xl max-h-[80vh] overflow-hidden sm:w-auto md:w-full">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Activity className="h-4 w-4" /> Routing History
-            <Badge variant="outline" className="text-xs">last {limit}</Badge>
+            <Activity className="h-4 w-4 sm:w-auto md:w-full" /> Routing History
+            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">last {limit}</Badge>
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={load} disabled={loading} title="Refresh" className="h-8 w-8 p-0">
+            <Button variant="ghost" size="sm" onClick={load} disabled={loading} title="Refresh" className="h-8 w-8 p-0 sm:w-auto md:w-full">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
-            <Button variant="ghost" size="sm" onClick={onClose} title="Close" className="h-8 w-8 p-0">
-              <X className="h-4 w-4" />
+            <Button variant="ghost" size="sm" onClick={onClose} title="Close" className="h-8 w-8 p-0 sm:w-auto md:w-full">
+              <X className="h-4 w-4 sm:w-auto md:w-full" />
             </Button>
           </div>
         </CardHeader>
@@ -72,10 +72,10 @@ export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit =
           <ScrollArea className="h-[60vh] pr-2">
             <div className="space-y-2">
               {events.length === 0 && (
-                <div className="text-sm text-muted-foreground py-6 text-center">No recent routing events</div>
+                <div className="text-sm text-muted-foreground py-6 text-center md:text-base lg:text-lg">No recent routing events</div>
               )}
               {events.map((e, idx) => (
-                <div key={`${e.correlation_id || idx}-${idx}`} className="border rounded-md p-2 text-xs">
+                <div key={`${e.correlation_id || idx}-${idx}`} className="border rounded-md p-2 text-xs sm:text-sm md:text-base">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">{e.event || 'routing.done'}</Badge>

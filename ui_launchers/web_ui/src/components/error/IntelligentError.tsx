@@ -6,7 +6,6 @@
  * 
  * Requirements: 3.2, 3.3, 3.7, 4.4
  */
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { IntelligentErrorPanel } from './IntelligentErrorPanel';
 import { withIntelligentError } from './withIntelligentError';
 import { useIntelligentError, useIntelligentApiError } from '@/hooks/use-intelligent-error';
-
 // Example error scenarios
 const ERROR_SCENARIOS = {
   api_key_missing: {
@@ -53,18 +51,15 @@ const ERROR_SCENARIOS = {
     description: 'System/database error'
   }
 };
-
 /**
  * Basic usage example
  */
 export const BasicErrorPanelExample: React.FC = () => {
   const [selectedScenario, setSelectedScenario] = useState<keyof typeof ERROR_SCENARIOS>('api_key_missing');
   const [showPanel, setShowPanel] = useState(false);
-
   const scenario = ERROR_SCENARIOS[selectedScenario];
-
   return (
-    <Card className="w-full max-w-4xl">
+    <Card className="w-full max-w-4xl sm:w-auto md:w-full">
       <CardHeader>
         <CardTitle>Basic Intelligent Error Panel</CardTitle>
         <CardDescription>
@@ -73,33 +68,30 @@ export const BasicErrorPanelExample: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center space-x-4">
-          <Select
+          <select
             value={selectedScenario}
-            onValueChange={(value) => setSelectedScenario(value as keyof typeof ERROR_SCENARIOS)}
+            onValueChange={(value) = aria-label="Select option"> setSelectedScenario(value as keyof typeof ERROR_SCENARIOS)}
           >
-            <SelectTrigger className="w-64">
-              <SelectValue />
+            <selectTrigger className="w-64 sm:w-auto md:w-full" aria-label="Select option">
+              <selectValue />
             </SelectTrigger>
-            <SelectContent>
+            <selectContent aria-label="Select option">
               {Object.entries(ERROR_SCENARIOS).map(([key, scenario]) => (
-                <SelectItem key={key} value={key}>
+                <selectItem key={key} value={key} aria-label="Select option">
                   {scenario.description}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          
-          <Button onClick={() => setShowPanel(true)}>
+          <button onClick={() = aria-label="Button"> setShowPanel(true)}>
             Trigger Error
           </Button>
-          
           {showPanel && (
-            <Button variant="outline" onClick={() => setShowPanel(false)}>
+            <button variant="outline" onClick={() = aria-label="Button"> setShowPanel(false)}>
               Hide Panel
             </Button>
           )}
         </div>
-
         {showPanel && (
           <IntelligentErrorPanel
             error={scenario.error}
@@ -117,22 +109,17 @@ export const BasicErrorPanelExample: React.FC = () => {
     </Card>
   );
 };
-
 /**
  * Hook usage example
  */
 export const HookUsageExample: React.FC = () => {
   const intelligentError = useIntelligentError({
     onAnalysisComplete: (analysis) => {
-      console.log('Analysis complete:', analysis);
     },
     onAnalysisError: (error) => {
-      console.error('Analysis failed:', error);
     }
   });
-
   const [selectedScenario, setSelectedScenario] = useState<keyof typeof ERROR_SCENARIOS>('api_key_missing');
-
   const triggerError = () => {
     const scenario = ERROR_SCENARIOS[selectedScenario];
     intelligentError.analyzeError(scenario.error, {
@@ -142,9 +129,8 @@ export const HookUsageExample: React.FC = () => {
       request_path: '/api/hook-example',
     });
   };
-
   return (
-    <Card className="w-full max-w-4xl">
+    <Card className="w-full max-w-4xl sm:w-auto md:w-full">
       <CardHeader>
         <CardTitle>Hook Usage Example</CardTitle>
         <CardDescription>
@@ -153,57 +139,52 @@ export const HookUsageExample: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center space-x-4">
-          <Select
+          <select
             value={selectedScenario}
-            onValueChange={(value) => setSelectedScenario(value as keyof typeof ERROR_SCENARIOS)}
+            onValueChange={(value) = aria-label="Select option"> setSelectedScenario(value as keyof typeof ERROR_SCENARIOS)}
           >
-            <SelectTrigger className="w-64">
-              <SelectValue />
+            <selectTrigger className="w-64 sm:w-auto md:w-full" aria-label="Select option">
+              <selectValue />
             </SelectTrigger>
-            <SelectContent>
+            <selectContent aria-label="Select option">
               {Object.entries(ERROR_SCENARIOS).map(([key, scenario]) => (
-                <SelectItem key={key} value={key}>
+                <selectItem key={key} value={key} aria-label="Select option">
                   {scenario.description}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          
-          <Button onClick={triggerError} disabled={intelligentError.isAnalyzing}>
+          <button onClick={triggerError} disabled={intelligentError.isAnalyzing} aria-label="Button">
             Analyze Error
           </Button>
-          
           {intelligentError.analysis && (
-            <Button variant="outline" onClick={intelligentError.clearAnalysis}>
+            <button variant="outline" onClick={intelligentError.clearAnalysis} aria-label="Button">
               Clear Analysis
             </Button>
           )}
         </div>
-
         {intelligentError.isAnalyzing && (
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
             Analyzing error...
           </div>
         )}
-
         {intelligentError.analysisError && (
-          <div className="text-sm text-red-600">
+          <div className="text-sm text-red-600 md:text-base lg:text-lg">
             Analysis failed: {intelligentError.analysisError}
-            <Button
+            <button
               variant="link"
               size="sm"
               onClick={intelligentError.retryAnalysis}
               className="ml-2"
-            >
+             aria-label="Button">
               Retry
             </Button>
           </div>
         )}
-
         {intelligentError.analysis && (
-          <div className="bg-muted/50 rounded-lg p-4">
+          <div className="bg-muted/50 rounded-lg p-4 sm:p-4 md:p-6">
             <h4 className="font-medium mb-2">Analysis Result:</h4>
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 text-sm md:text-base lg:text-lg">
               <div><strong>Title:</strong> {intelligentError.analysis.title}</div>
               <div><strong>Summary:</strong> {intelligentError.analysis.summary}</div>
               <div><strong>Severity:</strong> {intelligentError.analysis.severity}</div>
@@ -223,13 +204,11 @@ export const HookUsageExample: React.FC = () => {
     </Card>
   );
 };
-
 /**
  * API Error Hook Example
  */
 export const ApiErrorExample: React.FC = () => {
   const apiError = useIntelligentApiError();
-
   const simulateApiError = () => {
     const mockApiError = {
       message: 'Request failed with status 500',
@@ -240,16 +219,14 @@ export const ApiErrorExample: React.FC = () => {
       isTimeoutError: false,
       responseTime: 2500,
     };
-
     apiError.handleApiError(mockApiError, {
       endpoint: '/api/chat/completions',
       method: 'POST',
       provider: 'openai',
     });
   };
-
   return (
-    <Card className="w-full max-w-4xl">
+    <Card className="w-full max-w-4xl sm:w-auto md:w-full">
       <CardHeader>
         <CardTitle>API Error Hook Example</CardTitle>
         <CardDescription>
@@ -257,10 +234,9 @@ export const ApiErrorExample: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button onClick={simulateApiError} disabled={apiError.isAnalyzing}>
+        <button onClick={simulateApiError} disabled={apiError.isAnalyzing} aria-label="Button">
           Simulate API Error
         </Button>
-
         {apiError.analysis && (
           <IntelligentErrorPanel
             error="API request failed"
@@ -272,7 +248,6 @@ export const ApiErrorExample: React.FC = () => {
     </Card>
   );
 };
-
 /**
  * Component with automatic error detection using HOC
  */
@@ -280,14 +255,12 @@ const ProblematicComponent: React.FC<{ shouldError: boolean }> = ({ shouldError 
   if (shouldError) {
     throw new Error('This component intentionally failed');
   }
-
   return (
-    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+    <div className="p-4 bg-green-50 rounded-lg border border-green-200 sm:p-4 md:p-6">
       <p className="text-green-800">Component is working correctly!</p>
     </div>
   );
 };
-
 const EnhancedProblematicComponent = withIntelligentError(ProblematicComponent, {
   position: 'top',
   replaceOnError: false,
@@ -295,12 +268,10 @@ const EnhancedProblematicComponent = withIntelligentError(ProblematicComponent, 
     showTechnicalDetails: true,
   },
 });
-
 export const HOCExample: React.FC = () => {
   const [shouldError, setShouldError] = useState(false);
-
   return (
-    <Card className="w-full max-w-4xl">
+    <Card className="w-full max-w-4xl sm:w-auto md:w-full">
       <CardHeader>
         <CardTitle>Higher-Order Component Example</CardTitle>
         <CardDescription>
@@ -309,33 +280,30 @@ export const HOCExample: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center space-x-4">
-          <Button
+          <button
             variant={shouldError ? "destructive" : "default"}
-            onClick={() => setShouldError(!shouldError)}
+            onClick={() = aria-label="Button"> setShouldError(!shouldError)}
           >
             {shouldError ? 'Fix Component' : 'Break Component'}
           </Button>
         </div>
-
         <EnhancedProblematicComponent shouldError={shouldError} />
       </CardContent>
     </Card>
   );
 };
-
 /**
  * Complete example showcasing all features
  */
 export const IntelligentErrorExamples: React.FC = () => {
   return (
-    <div className="space-y-8 p-6">
+    <div className="space-y-8 p-6 sm:p-4 md:p-6">
       <div>
         <h1 className="text-3xl font-bold mb-2">Intelligent Error Panel Examples</h1>
         <p className="text-muted-foreground">
           Comprehensive examples showing different ways to use the intelligent error handling system.
         </p>
       </div>
-
       <BasicErrorPanelExample />
       <HookUsageExample />
       <ApiErrorExample />
@@ -343,5 +311,4 @@ export const IntelligentErrorExamples: React.FC = () => {
     </div>
   );
 };
-
 export default IntelligentErrorExamples;

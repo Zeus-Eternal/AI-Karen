@@ -3,7 +3,7 @@
  * Simple test to verify the component renders and basic functionality works
  */
 
-import React from 'react';
+
 import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect } from 'vitest';
 import ChatModeSelector, { ChatMode } from '../ChatModeSelector';
@@ -37,7 +37,7 @@ vi.mock('@/components/ui/card', () => ({
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled }: any) => (
-    <button onClick={onClick} disabled={disabled} data-testid="button">
+    <button onClick={onClick} disabled={disabled} data-testid="button" aria-label="Button">
       {children}
     </button>
   )

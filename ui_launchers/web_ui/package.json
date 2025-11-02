@@ -17,7 +17,7 @@
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
     "build:fast": "node scripts/fast-build.js",
-    "build:production": "node scripts/optimize-production-build.js",
+    "build:production": "npm run optimize:pre-build && next build && npm run optimize:post-build",
     "build:analyze": "npm run analyze && npm run analyze:bundle",
     "prestart": "next build",
     "start": "next start -p 8000",
@@ -49,7 +49,10 @@
     "test:performance:coverage": "vitest --coverage src/lib/performance/__tests__/",
     "test:performance:benchmark": "npx tsx src/scripts/run-performance-tests.ts",
     "storybook": "storybook dev -p 6006",
-    "postinstall": "patch-package --error-on-fail"
+    "postinstall": "patch-package --error-on-fail",
+    "optimize:pre-build": "node scripts/clean-development-artifacts.js && node scripts/optimize-css-js.js",
+    "optimize:post-build": "npm run analyze:bundle",
+    "analyze:production": "ANALYZE=true npm run build:production"
   },
   "dependencies": {
     "@copilotkit/react-core": "^1.9.3",

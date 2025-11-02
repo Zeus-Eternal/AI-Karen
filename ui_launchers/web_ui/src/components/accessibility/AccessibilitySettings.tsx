@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
@@ -68,7 +68,7 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="high-contrast">High Contrast Mode</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Increase contrast for better visibility
               </p>
             </div>
@@ -83,18 +83,18 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
           {/* Font Size */}
           <div className="space-y-2">
             <Label htmlFor="font-size">Font Size</Label>
-            <Select
+            <select
               value={settings.fontSize}
               onValueChange={handleFontSizeChange}
-            >
-              <SelectTrigger id="font-size">
-                <SelectValue />
+             aria-label="Select option">
+              <selectTrigger id="font-size" aria-label="Select option">
+                <selectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="small">Small</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="large">Large</SelectItem>
-                <SelectItem value="extra-large">Extra Large</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="small" aria-label="Select option">Small</SelectItem>
+                <selectItem value="medium" aria-label="Select option">Medium</SelectItem>
+                <selectItem value="large" aria-label="Select option">Large</SelectItem>
+                <selectItem value="extra-large" aria-label="Select option">Extra Large</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -102,17 +102,17 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
           {/* Line Height */}
           <div className="space-y-2">
             <Label htmlFor="line-height">Line Height</Label>
-            <Select
+            <select
               value={settings.lineHeight}
               onValueChange={handleLineHeightChange}
-            >
-              <SelectTrigger id="line-height">
-                <SelectValue />
+             aria-label="Select option">
+              <selectTrigger id="line-height" aria-label="Select option">
+                <selectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="relaxed">Relaxed</SelectItem>
-                <SelectItem value="loose">Loose</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="normal" aria-label="Select option">Normal</SelectItem>
+                <selectItem value="relaxed" aria-label="Select option">Relaxed</SelectItem>
+                <selectItem value="loose" aria-label="Select option">Loose</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -132,7 +132,7 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
               className="w-full"
               aria-describedby="text-scale-description"
             />
-            <p id="text-scale-description" className="text-sm text-muted-foreground">
+            <p id="text-scale-description" className="text-sm text-muted-foreground md:text-base lg:text-lg">
               Adjust the overall text size scaling
             </p>
           </div>
@@ -140,18 +140,18 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
           {/* Color Blindness Support */}
           <div className="space-y-2">
             <Label htmlFor="color-blindness">Color Blindness Support</Label>
-            <Select
+            <select
               value={colorBlindnessFilter}
               onValueChange={setColorBlindnessFilter}
-            >
-              <SelectTrigger id="color-blindness">
-                <SelectValue />
+             aria-label="Select option">
+              <selectTrigger id="color-blindness" aria-label="Select option">
+                <selectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                <SelectItem value="protanopia">Protanopia (Red-blind)</SelectItem>
-                <SelectItem value="deuteranopia">Deuteranopia (Green-blind)</SelectItem>
-                <SelectItem value="tritanopia">Tritanopia (Blue-blind)</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="none" aria-label="Select option">None</SelectItem>
+                <selectItem value="protanopia" aria-label="Select option">Protanopia (Red-blind)</SelectItem>
+                <selectItem value="deuteranopia" aria-label="Select option">Deuteranopia (Green-blind)</SelectItem>
+                <selectItem value="tritanopia" aria-label="Select option">Tritanopia (Blue-blind)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -170,7 +170,7 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="reduced-motion">Reduce Motion</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Minimize animations and transitions
               </p>
             </div>
@@ -196,7 +196,7 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="keyboard-nav">Enhanced Keyboard Navigation</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Enable advanced keyboard navigation features
               </p>
             </div>
@@ -211,7 +211,7 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="focus-visible">Focus Indicators</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Show focus indicators for keyboard navigation
               </p>
             </div>
@@ -237,7 +237,7 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="announcements">Live Announcements</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Enable automatic announcements for screen readers
               </p>
             </div>
@@ -252,7 +252,7 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="verbose-descriptions">Verbose Descriptions</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Provide detailed descriptions for complex elements
               </p>
             </div>
@@ -274,11 +274,11 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button
+          <button
             variant="outline"
             onClick={handleResetSettings}
             className="w-full"
-          >
+           aria-label="Button">
             Reset to Defaults
           </Button>
         </CardContent>

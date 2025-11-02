@@ -188,7 +188,7 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
         size="sm"
         onClick={isRecording ? handleStop : handleStart}
         disabled={!isSupported || isProcessing}
-        className="h-8 w-8 p-0"
+        className="h-8 w-8 p-0 sm:w-auto md:w-full"
         title={
           !isSupported 
             ? "Voice input not supported" 
@@ -198,29 +198,29 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
         }
       >
         {isProcessing ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
         ) : isRecording ? (
-          <Square className="h-4 w-4" />
+          <Square className="h-4 w-4 sm:w-auto md:w-full" />
         ) : (
-          <Mic className="h-4 w-4" />
+          <Mic className="h-4 w-4 sm:w-auto md:w-full" />
         )}
       </Button>
 
       {isRecording && (
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-xs text-muted-foreground">Recording...</span>
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse sm:w-auto md:w-full" />
+            <span className="text-xs text-muted-foreground sm:text-sm md:text-base">Recording...</span>
           </div>
           
           {transcript && (
-            <Badge variant="outline" className="text-xs max-w-32 truncate">
+            <Badge variant="outline" className="text-xs max-w-32 truncate sm:w-auto md:w-full">
               {transcript}
             </Badge>
           )}
           
           {confidence > 0 && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
               {Math.round(confidence * 100)}%
             </Badge>
           )}
@@ -228,7 +228,7 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
       )}
 
       {!isSupported && (
-        <Badge variant="destructive" className="text-xs">
+        <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
           Not supported
         </Badge>
       )}

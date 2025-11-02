@@ -4,9 +4,7 @@
  * Comprehensive debugging and diagnostic tools for extensions including
  * logs, metrics, performance monitoring, and troubleshooting utilities.
  */
-
 'use client';
-
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
@@ -39,17 +37,15 @@ import {
   ExternalLink,
   Settings
 } from 'lucide-react';
-
 interface LogEntry {
   id: string;
   timestamp: string;
-  level: 'debug' | 'info' | 'warning' | 'error';
+  level: '' | 'warning' | 'error';
   message: string;
   source: string;
   metadata?: Record<string, any>;
   stackTrace?: string;
 }
-
 interface MetricData {
   timestamp: string;
   cpu: number;
@@ -59,7 +55,6 @@ interface MetricData {
   errors: number;
   responseTime: number;
 }
-
 interface PerformanceProfile {
   function: string;
   calls: number;
@@ -68,13 +63,11 @@ interface PerformanceProfile {
   maxTime: number;
   minTime: number;
 }
-
 interface ExtensionDebuggerProps {
   extensionId: string;
   extensionName: string;
   className?: string;
 }
-
 export default function ExtensionDebugger({
   extensionId,
   extensionName,
@@ -91,20 +84,16 @@ export default function ExtensionDebugger({
     search: '',
     source: 'all'
   });
-
   // Load debugging data
   useEffect(() => {
     loadDebuggingData();
   }, [extensionId]);
-
   const loadDebuggingData = useCallback(async () => {
     setLoading(true);
-    
     try {
       // Simulate loading debugging data
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Sample log data
+      // 
       const sampleLogs: LogEntry[] = [
         {
           id: '1',
@@ -147,9 +136,8 @@ export default function ExtensionDebugger({
           metadata: { taskId: 'daily-sync', duration: 2.5, recordsProcessed: 150 }
         }
       ];
-
-      // Sample metrics data
-      const sampleMetrics: MetricData[] = Array.from({ length: 30 }, (_, i) => ({
+      // 
+      const [] = Array.from({ length: 30 }, (_, i) => ({
         timestamp: new Date(Date.now() - (29 - i) * 60000).toISOString(),
         cpu: Math.random() * 50 + 10,
         memory: Math.random() * 200 + 100,
@@ -158,7 +146,6 @@ export default function ExtensionDebugger({
         errors: Math.floor(Math.random() * 5),
         responseTime: Math.random() * 500 + 100
       }));
-
       // Sample performance profile
       const sampleProfile: PerformanceProfile[] = [
         {
@@ -194,17 +181,14 @@ export default function ExtensionDebugger({
           minTime: 1.2
         }
       ];
-
       setLogs(sampleLogs);
       setMetrics(sampleMetrics);
       setPerformanceProfile(sampleProfile);
     } catch (error) {
-      console.error('Failed to load debugging data:', error);
     } finally {
       setLoading(false);
     }
   }, [extensionId]);
-
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
       if (logFilter.level !== 'all' && log.level !== logFilter.level) return false;
@@ -213,12 +197,10 @@ export default function ExtensionDebugger({
       return true;
     });
   }, [logs, logFilter]);
-
   const logSources = useMemo(() => {
     const sources = new Set(logs.map(log => log.source));
     return Array.from(sources);
   }, [logs]);
-
   const handleExportLogs = useCallback(() => {
     const logData = filteredLogs.map(log => ({
       timestamp: log.timestamp,
@@ -228,7 +210,6 @@ export default function ExtensionDebugger({
       metadata: log.metadata,
       stackTrace: log.stackTrace
     }));
-
     const blob = new Blob([JSON.stringify(logData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -239,27 +220,23 @@ export default function ExtensionDebugger({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [filteredLogs, extensionId]);
-
   const handleClearLogs = useCallback(() => {
     setLogs([]);
   }, []);
-
   const toggleStreaming = useCallback(() => {
     setStreaming(!streaming);
     // In real implementation, this would start/stop log streaming
   }, [streaming]);
-
   if (loading) {
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4 sm:w-auto md:w-full" />
           <p className="text-gray-600">Loading debugging tools...</p>
         </div>
       </div>
     );
   }
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
@@ -269,46 +246,44 @@ export default function ExtensionDebugger({
           <p className="text-gray-600 mt-1">Debug and monitor {extensionName}</p>
         </div>
         <div className="flex gap-2">
-          <Button
+          <button
             variant="outline"
             onClick={toggleStreaming}
             className={`flex items-center gap-2 ${streaming ? 'text-red-600' : 'text-green-600'}`}
-          >
-            {streaming ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+           aria-label="Button">
+            {streaming ? <Square className="h-4 w-4 sm:w-auto md:w-full" /> : <Play className="h-4 w-4 sm:w-auto md:w-full" />}
             {streaming ? 'Stop' : 'Start'} Live Monitoring
           </Button>
-          <Button
+          <button
             variant="outline"
             onClick={loadDebuggingData}
             className="flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
+           aria-label="Button">
+            <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
             Refresh
           </Button>
         </div>
       </div>
-
       {/* Debug Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="logs">
-            <FileText className="h-4 w-4 mr-2" />
+            <FileText className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Logs ({filteredLogs.length})
           </TabsTrigger>
           <TabsTrigger value="metrics">
-            <BarChart3 className="h-4 w-4 mr-2" />
+            <BarChart3 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Metrics
           </TabsTrigger>
           <TabsTrigger value="performance">
-            <Activity className="h-4 w-4 mr-2" />
+            <Activity className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Performance
           </TabsTrigger>
           <TabsTrigger value="diagnostics">
-            <Bug className="h-4 w-4 mr-2" />
+            <Bug className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Diagnostics
           </TabsTrigger>
         </TabsList>
-
         <TabsContent value="logs" className="space-y-4">
           <LogsPanel
             logs={filteredLogs}
@@ -320,15 +295,12 @@ export default function ExtensionDebugger({
             onClear={handleClearLogs}
           />
         </TabsContent>
-
         <TabsContent value="metrics" className="space-y-4">
           <MetricsPanel metrics={metrics} />
         </TabsContent>
-
         <TabsContent value="performance" className="space-y-4">
           <PerformancePanel profile={performanceProfile} />
         </TabsContent>
-
         <TabsContent value="diagnostics" className="space-y-4">
           <DiagnosticsPanel extensionId={extensionId} />
         </TabsContent>
@@ -336,7 +308,6 @@ export default function ExtensionDebugger({
     </div>
   );
 }
-
 interface LogsPanelProps {
   logs: LogEntry[];
   filter: any;
@@ -346,7 +317,6 @@ interface LogsPanelProps {
   onExport: () => void;
   onClear: () => void;
 }
-
 function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport, onClear }: LogsPanelProps) {
   const getLevelColor = (level: string) => {
     switch (level) {
@@ -362,22 +332,20 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
         return 'bg-gray-100 text-gray-800';
     }
   };
-
   const getLevelIcon = (level: string) => {
     switch (level) {
       case 'error':
-        return <AlertTriangle className="h-4 w-4" />;
+        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4" />;
+        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'info':
-        return <Info className="h-4 w-4" />;
+        return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'debug':
-        return <Bug className="h-4 w-4" />;
+        return <Bug className="h-4 w-4 sm:w-auto md:w-full" />;
       default:
-        return <Info className="h-4 w-4" />;
+        return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
-
   return (
     <div className="space-y-4">
       {/* Log Controls */}
@@ -386,12 +354,12 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
           <div className="flex items-center justify-between">
             <CardTitle>Log Viewer</CardTitle>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={onExport}>
-                <Download className="h-3 w-3 mr-1" />
+              <button size="sm" variant="outline" onClick={onExport} aria-label="Button">
+                <Download className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                 Export
               </Button>
-              <Button size="sm" variant="outline" onClick={onClear}>
-                <Trash2 className="h-3 w-3 mr-1" />
+              <button size="sm" variant="outline" onClick={onClear} aria-label="Button">
+                <Trash2 className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                 Clear
               </Button>
             </div>
@@ -400,19 +368,18 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
         <CardContent>
           <div className="flex gap-4 items-center">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:w-auto md:w-full" />
               <input
                 type="text"
                 placeholder="Search logs..."
                 value={filter.search}
-                onChange={(e) => onFilterChange({ ...filter, search: e.target.value })}
+                onChange={(e) = aria-label="Input"> onFilterChange({ ...filter, search: e.target.value })}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            
             <select
               value={filter.level}
-              onChange={(e) => onFilterChange({ ...filter, level: e.target.value })}
+              onChange={(e) = aria-label="Select option"> onFilterChange({ ...filter, level: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Levels</option>
@@ -421,10 +388,9 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
               <option value="info">Info</option>
               <option value="debug">Debug</option>
             </select>
-            
             <select
               value={filter.source}
-              onChange={(e) => onFilterChange({ ...filter, source: e.target.value })}
+              onChange={(e) = aria-label="Select option"> onFilterChange({ ...filter, source: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Sources</option>
@@ -433,23 +399,21 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
               ))}
             </select>
           </div>
-          
           {streaming && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-green-600">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <div className="mt-3 flex items-center gap-2 text-sm text-green-600 md:text-base lg:text-lg">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse sm:w-auto md:w-full"></div>
               Live monitoring active
             </div>
           )}
         </CardContent>
       </Card>
-
       {/* Log Entries */}
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-0 sm:p-4 md:p-6">
           <div className="max-h-96 overflow-y-auto">
             {logs.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4 sm:w-auto md:w-full" />
                 <p>No log entries found</p>
               </div>
             ) : (
@@ -465,10 +429,8 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
     </div>
   );
 }
-
 function LogEntry({ log }: { log: LogEntry }) {
   const [expanded, setExpanded] = useState(false);
-
   const getLevelColor = (level: string) => {
     switch (level) {
       case 'error':
@@ -483,54 +445,48 @@ function LogEntry({ log }: { log: LogEntry }) {
         return 'bg-gray-100 text-gray-800';
     }
   };
-
   return (
-    <div className="p-4 hover:bg-gray-50">
+    <div className="p-4 hover:bg-gray-50 sm:p-4 md:p-6">
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 mt-1">
           <Badge className={getLevelColor(log.level)}>
             {log.level}
           </Badge>
         </div>
-        
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 sm:w-auto md:w-full">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-mono text-gray-500">
+            <span className="text-sm font-mono text-gray-500 md:text-base lg:text-lg">
               {new Date(log.timestamp).toLocaleTimeString()}
             </span>
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
               {log.source}
             </Badge>
           </div>
-          
-          <p className="text-sm text-gray-900 mb-2">{log.message}</p>
-          
+          <p className="text-sm text-gray-900 mb-2 md:text-base lg:text-lg">{log.message}</p>
           {(log.metadata || log.stackTrace) && (
-            <Button
+            <button
               size="sm"
               variant="ghost"
-              onClick={() => setExpanded(!expanded)}
-              className="text-xs"
+              onClick={() = aria-label="Button"> setExpanded(!expanded)}
+              className="text-xs sm:text-sm md:text-base"
             >
               {expanded ? 'Hide' : 'Show'} Details
             </Button>
           )}
-          
           {expanded && (
             <div className="mt-3 space-y-2">
               {log.metadata && (
                 <div>
-                  <h5 className="text-xs font-medium text-gray-700 mb-1">Metadata:</h5>
-                  <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto">
+                  <h5 className="text-xs font-medium text-gray-700 mb-1 sm:text-sm md:text-base">Metadata:</h5>
+                  <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto sm:text-sm md:text-base">
                     {JSON.stringify(log.metadata, null, 2)}
                   </pre>
                 </div>
               )}
-              
               {log.stackTrace && (
                 <div>
-                  <h5 className="text-xs font-medium text-gray-700 mb-1">Stack Trace:</h5>
-                  <pre className="text-xs bg-red-50 p-2 rounded overflow-x-auto text-red-800">
+                  <h5 className="text-xs font-medium text-gray-700 mb-1 sm:text-sm md:text-base">Stack Trace:</h5>
+                  <pre className="text-xs bg-red-50 p-2 rounded overflow-x-auto text-red-800 sm:text-sm md:text-base">
                     {log.stackTrace}
                   </pre>
                 </div>
@@ -538,105 +494,96 @@ function LogEntry({ log }: { log: LogEntry }) {
             </div>
           )}
         </div>
-        
-        <Button
+        <button
           size="sm"
           variant="ghost"
-          onClick={() => navigator.clipboard.writeText(JSON.stringify(log, null, 2))}
+          onClick={() = aria-label="Button"> navigator.clipboard.writeText(JSON.stringify(log, null, 2))}
         >
-          <Copy className="h-3 w-3" />
+          <Copy className="h-3 w-3 sm:w-auto md:w-full" />
         </Button>
       </div>
     </div>
   );
 }
-
 function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
   const latestMetrics = metrics[metrics.length - 1];
-
   return (
     <div className="space-y-6">
       {/* Current Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">CPU Usage</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">CPU Usage</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{latestMetrics?.cpu.toFixed(1)}%</div>
             <div className="flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-xs text-green-600">Normal</span>
+              <TrendingUp className="h-3 w-3 text-green-500 mr-1 sm:w-auto md:w-full" />
+              <span className="text-xs text-green-600 sm:text-sm md:text-base">Normal</span>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Memory</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Memory</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{Math.round(latestMetrics?.memory || 0)}MB</div>
             <div className="flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-yellow-500 mr-1" />
-              <span className="text-xs text-yellow-600">Moderate</span>
+              <TrendingUp className="h-3 w-3 text-yellow-500 mr-1 sm:w-auto md:w-full" />
+              <span className="text-xs text-yellow-600 sm:text-sm md:text-base">Moderate</span>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Network</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Network</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{Math.round(latestMetrics?.network || 0)} KB/s</div>
             <div className="flex items-center mt-1">
-              <TrendingDown className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-xs text-green-600">Low</span>
+              <TrendingDown className="h-3 w-3 text-green-500 mr-1 sm:w-auto md:w-full" />
+              <span className="text-xs text-green-600 sm:text-sm md:text-base">Low</span>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Requests</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Requests</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{latestMetrics?.requests || 0}</div>
             <div className="flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-blue-500 mr-1" />
-              <span className="text-xs text-blue-600">Active</span>
+              <TrendingUp className="h-3 w-3 text-blue-500 mr-1 sm:w-auto md:w-full" />
+              <span className="text-xs text-blue-600 sm:text-sm md:text-base">Active</span>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Errors</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Errors</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{latestMetrics?.errors || 0}</div>
             <div className="flex items-center mt-1">
-              <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-xs text-green-600">Good</span>
+              <CheckCircle className="h-3 w-3 text-green-500 mr-1 sm:w-auto md:w-full" />
+              <span className="text-xs text-green-600 sm:text-sm md:text-base">Good</span>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Response Time</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Response Time</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{Math.round(latestMetrics?.responseTime || 0)}ms</div>
             <div className="flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-xs text-green-600">Fast</span>
+              <TrendingUp className="h-3 w-3 text-green-500 mr-1 sm:w-auto md:w-full" />
+              <span className="text-xs text-green-600 sm:text-sm md:text-base">Fast</span>
             </div>
           </CardContent>
         </Card>
       </div>
-
       {/* Metrics Chart Placeholder */}
       <Card>
         <CardHeader>
@@ -646,9 +593,9 @@ function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
         <CardContent>
           <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
             <div className="text-center">
-              <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4 sm:w-auto md:w-full" />
               <p className="text-gray-600">Metrics chart would be rendered here</p>
-              <p className="text-sm text-gray-500">Integration with charting library needed</p>
+              <p className="text-sm text-gray-500 md:text-base lg:text-lg">Integration with charting library needed</p>
             </div>
           </div>
         </CardContent>
@@ -656,7 +603,6 @@ function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
     </div>
   );
 }
-
 function PerformancePanel({ profile }: { profile: PerformanceProfile[] }) {
   return (
     <div className="space-y-6">
@@ -667,7 +613,7 @@ function PerformancePanel({ profile }: { profile: PerformanceProfile[] }) {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm md:text-base lg:text-lg">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-2">Function</th>
@@ -697,7 +643,6 @@ function PerformancePanel({ profile }: { profile: PerformanceProfile[] }) {
     </div>
   );
 }
-
 function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
   const [diagnostics, setDiagnostics] = useState({
     health: 'healthy',
@@ -706,11 +651,9 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
     configuration: 'valid',
     connectivity: 'connected'
   });
-
   const runDiagnostics = useCallback(async () => {
     // Simulate running diagnostics
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
     setDiagnostics({
       health: Math.random() > 0.2 ? 'healthy' : 'warning',
       dependencies: Math.random() > 0.1 ? 'ok' : 'missing',
@@ -719,7 +662,6 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
       connectivity: Math.random() > 0.15 ? 'connected' : 'disconnected'
     });
   }, []);
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'healthy':
@@ -739,7 +681,6 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
         return 'text-gray-600 bg-gray-100';
     }
   };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
@@ -747,19 +688,18 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
       case 'granted':
       case 'valid':
       case 'connected':
-        return <CheckCircle className="h-4 w-4" />;
+        return <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4" />;
+        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'missing':
       case 'denied':
       case 'invalid':
       case 'disconnected':
-        return <AlertTriangle className="h-4 w-4" />;
+        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
       default:
-        return <Info className="h-4 w-4" />;
+        return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
-
   return (
     <div className="space-y-6">
       <Card>
@@ -769,8 +709,8 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
               <CardTitle>System Diagnostics</CardTitle>
               <CardDescription>Check extension health and configuration</CardDescription>
             </div>
-            <Button onClick={runDiagnostics}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+            <button onClick={runDiagnostics} aria-label="Button">
+              <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Run Diagnostics
             </Button>
           </div>
@@ -778,14 +718,14 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
         <CardContent>
           <div className="space-y-4">
             {Object.entries(diagnostics).map(([check, status]) => (
-              <div key={check} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+              <div key={check} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg sm:p-4 md:p-6">
                 <div className="flex items-center gap-3">
                   <div className={`p-1 rounded ${getStatusColor(status)}`}>
                     {getStatusIcon(status)}
                   </div>
                   <div>
                     <h4 className="font-medium capitalize">{check.replace('_', ' ')}</h4>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 md:text-base lg:text-lg">
                       {check === 'health' && 'Overall extension health status'}
                       {check === 'dependencies' && 'Required dependencies and plugins'}
                       {check === 'permissions' && 'System permissions and access rights'}
@@ -802,7 +742,6 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
           </div>
         </CardContent>
       </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
@@ -810,20 +749,20 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button variant="outline" className="justify-start">
-              <Terminal className="h-4 w-4 mr-2" />
+            <button variant="outline" className="justify-start" aria-label="Button">
+              <Terminal className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Open Extension Console
             </Button>
-            <Button variant="outline" className="justify-start">
-              <Settings className="h-4 w-4 mr-2" />
+            <button variant="outline" className="justify-start" aria-label="Button">
+              <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Reset Configuration
             </Button>
-            <Button variant="outline" className="justify-start">
-              <RefreshCw className="h-4 w-4 mr-2" />
+            <button variant="outline" className="justify-start" aria-label="Button">
+              <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Restart Extension
             </Button>
-            <Button variant="outline" className="justify-start">
-              <ExternalLink className="h-4 w-4 mr-2" />
+            <button variant="outline" className="justify-start" aria-label="Button">
+              <ExternalLink className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               View Documentation
             </Button>
           </div>

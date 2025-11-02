@@ -4,8 +4,8 @@
  * Provides comprehensive error trend analysis, resolution tracking,
  * and performance impact visualization for production monitoring.
  */
-
 import React, { useState, useEffect, useMemo } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { 
   AlertTriangle, 
   TrendingUp, 
@@ -27,13 +27,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Progress } from '../ui/progress';
 import { ErrorAnalytics, ErrorAnalyticsReport } from '../../lib/error-handling/error-analytics';
-
 interface ErrorAnalyticsDashboardProps {
   analytics: ErrorAnalytics;
   refreshInterval?: number;
   enableRealTimeUpdates?: boolean;
 }
-
 export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = ({
   analytics,
   refreshInterval = 30000,
@@ -44,7 +42,6 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
   const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
-
   // Fetch analytics report
   const fetchReport = async () => {
     try {
@@ -52,40 +49,31 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
       const analyticsReport = analytics.getAnalyticsReport();
       setReport(analyticsReport);
     } catch (error) {
-      console.error('Failed to fetch analytics report:', error);
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchReport();
-
     if (enableRealTimeUpdates) {
       const interval = setInterval(fetchReport, refreshInterval);
       return () => clearInterval(interval);
     }
   }, [refreshInterval, enableRealTimeUpdates]);
-
   // Filter data based on selected filters
   const filteredData = useMemo(() => {
     if (!report) return null;
-
     let filteredErrors = report.topErrors;
-
     if (selectedSeverity !== 'all') {
       filteredErrors = filteredErrors.filter(error => error.severity === selectedSeverity);
     }
-
     return {
       ...report,
       topErrors: filteredErrors
     };
   }, [report, selectedSeverity]);
-
   const handleExportReport = () => {
     if (!report) return;
-
     const exportData = analytics.exportAnalytics();
     const blob = new Blob([exportData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -97,31 +85,29 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
   if (loading && !report) {
     return (
+    <ErrorBoundary fallback={<div>Something went wrong in ErrorAnalyticsDashboard</div>}>
       <div className="flex items-center justify-center h-64">
         <div className="flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 animate-spin" />
+          <RefreshCw className="w-4 h-4 animate-spin sm:w-auto md:w-full" />
           <span>Loading analytics...</span>
         </div>
       </div>
     );
   }
-
   if (!report) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center h-64">
           <div className="text-center">
-            <AlertTriangle className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <AlertTriangle className="w-8 h-8 text-muted-foreground mx-auto mb-2 sm:w-auto md:w-full" />
             <p className="text-muted-foreground">No analytics data available</p>
           </div>
         </CardContent>
       </Card>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -133,67 +119,64 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchReport} disabled={loading}>
+          <button variant="outline" size="sm" onClick={fetchReport} disabled={loading} aria-label="Button">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportReport}>
-            <Download className="w-4 h-4 mr-2" />
+          <button variant="outline" size="sm" onClick={handleExportReport} aria-label="Button">
+            <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Export
           </Button>
         </div>
       </div>
-
       {/* Filters */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4" />
-          <span className="text-sm font-medium">Filters:</span>
+          <Filter className="w-4 h-4 sm:w-auto md:w-full" />
+          <span className="text-sm font-medium md:text-base lg:text-lg">Filters:</span>
         </div>
-        <Select value={timeRange} onValueChange={(value: any) => setTimeRange(value)}>
-          <SelectTrigger className="w-32">
-            <SelectValue />
+        <select value={timeRange} onValueChange={(value: any) = aria-label="Select option"> setTimeRange(value)}>
+          <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+            <selectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1h">Last Hour</SelectItem>
-            <SelectItem value="24h">Last 24h</SelectItem>
-            <SelectItem value="7d">Last 7 days</SelectItem>
-            <SelectItem value="30d">Last 30 days</SelectItem>
+          <selectContent aria-label="Select option">
+            <selectItem value="1h" aria-label="Select option">Last Hour</SelectItem>
+            <selectItem value="24h" aria-label="Select option">Last 24h</SelectItem>
+            <selectItem value="7d" aria-label="Select option">Last 7 days</SelectItem>
+            <selectItem value="30d" aria-label="Select option">Last 30 days</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
-          <SelectTrigger className="w-32">
-            <SelectValue />
+        <select value={selectedSeverity} onValueChange={setSelectedSeverity} aria-label="Select option">
+          <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+            <selectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Severity</SelectItem>
-            <SelectItem value="critical">Critical</SelectItem>
-            <SelectItem value="high">High</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="low">Low</SelectItem>
+          <selectContent aria-label="Select option">
+            <selectItem value="all" aria-label="Select option">All Severity</SelectItem>
+            <selectItem value="critical" aria-label="Select option">Critical</SelectItem>
+            <selectItem value="high" aria-label="Select option">High</SelectItem>
+            <selectItem value="medium" aria-label="Select option">Medium</SelectItem>
+            <selectItem value="low" aria-label="Select option">Low</SelectItem>
           </SelectContent>
         </Select>
       </div>
-
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Errors</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Total Errors</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{report.summary.totalErrors.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {report.summary.uniqueErrors} unique errors
             </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Resolution Rate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Resolution Rate</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -205,59 +188,55 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
             />
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Resolution Time</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Avg Resolution Time</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {Math.round(report.summary.averageResolutionTime / 1000)}s
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               Average time to resolve
             </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Critical Errors</CardTitle>
-            <XCircle className="h-4 w-4 text-destructive" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Critical Errors</CardTitle>
+            <XCircle className="h-4 w-4 text-destructive sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">
               {report.summary.criticalErrors}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               Require immediate attention
             </p>
           </CardContent>
         </Card>
       </div>
-
       {/* Main Content */}
       <Tabs defaultValue="trends" className="space-y-4">
         <TabsList>
           <TabsTrigger value="trends">
-            <TrendingUp className="w-4 h-4 mr-2" />
+            <TrendingUp className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Trends
           </TabsTrigger>
           <TabsTrigger value="errors">
-            <BarChart3 className="w-4 h-4 mr-2" />
+            <BarChart3 className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Top Errors
           </TabsTrigger>
           <TabsTrigger value="sections">
-            <PieChart className="w-4 h-4 mr-2" />
+            <PieChart className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             By Section
           </TabsTrigger>
           <TabsTrigger value="performance">
-            <Activity className="w-4 h-4 mr-2" />
+            <Activity className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Performance Impact
           </TabsTrigger>
         </TabsList>
-
         <TabsContent value="trends" className="space-y-4">
           <Card>
             <CardHeader>
@@ -270,9 +249,9 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
               {report.trends.length > 0 ? (
                 <div className="space-y-4">
                   {report.trends.slice(-12).map((trend, index) => (
-                    <div key={trend.period} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div key={trend.period} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
                       <div className="flex items-center gap-3">
-                        <div className="text-sm font-medium">
+                        <div className="text-sm font-medium md:text-base lg:text-lg">
                           {new Date(trend.period).toLocaleString()}
                         </div>
                         <Badge variant="outline">
@@ -283,12 +262,12 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                           {(trend.resolutionRate * 100).toFixed(1)}% resolved
                         </div>
                         <Progress 
                           value={trend.resolutionRate * 100} 
-                          className="w-20"
+                          className="w-20 sm:w-auto md:w-full"
                         />
                       </div>
                     </div>
@@ -302,7 +281,6 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="errors" className="space-y-4">
           <Card>
             <CardHeader>
@@ -314,8 +292,8 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
             <CardContent>
               <div className="space-y-3">
                 {filteredData?.topErrors.map((error, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex-1 min-w-0">
+                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
+                    <div className="flex-1 min-w-0 sm:w-auto md:w-full">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant={
                           error.severity === 'critical' ? 'destructive' :
@@ -328,10 +306,10 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
                           {error.category}
                         </Badge>
                       </div>
-                      <div className="text-sm font-medium truncate">
+                      <div className="text-sm font-medium truncate md:text-base lg:text-lg">
                         {error.message}
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                         Last seen: {new Date(error.lastOccurrence).toLocaleString()}
                       </div>
                     </div>
@@ -339,7 +317,7 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
                       <div className="text-lg font-bold">
                         {error.count}
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                         occurrences
                       </div>
                     </div>
@@ -349,7 +327,6 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="sections" className="space-y-4">
           <Card>
             <CardHeader>
@@ -361,20 +338,20 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
             <CardContent>
               <div className="space-y-3">
                 {Object.entries(report.sectionBreakdown).map(([section, data]) => (
-                  <div key={section} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={section} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
                     <div>
                       <div className="font-medium">{section}</div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                         {data.count} errors
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-medium">
+                      <div className="text-sm font-medium md:text-base lg:text-lg">
                         {(data.resolutionRate * 100).toFixed(1)}% resolved
                       </div>
                       <Progress 
                         value={data.resolutionRate * 100} 
-                        className="w-24 mt-1"
+                        className="w-24 mt-1 sm:w-auto md:w-full"
                       />
                     </div>
                   </div>
@@ -383,7 +360,6 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="performance" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
@@ -394,12 +370,11 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
                 <div className="text-2xl font-bold">
                   {(report.performanceImpact.averageMemoryIncrease / 1024 / 1024).toFixed(1)}MB
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   Average memory increase per error
                 </p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Render Delay</CardTitle>
@@ -408,12 +383,11 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
                 <div className="text-2xl font-bold">
                   {report.performanceImpact.averageRenderDelay.toFixed(0)}ms
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   Average render delay
                 </p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Network Error Rate</CardTitle>
@@ -422,7 +396,7 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
                 <div className="text-2xl font-bold">
                   {(report.performanceImpact.networkErrorRate * 100).toFixed(1)}%
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   Of all errors are network-related
                 </p>
               </CardContent>
@@ -431,7 +405,7 @@ export const ErrorAnalyticsDashboard: React.FC<ErrorAnalyticsDashboardProps> = (
         </TabsContent>
       </Tabs>
     </div>
+    </ErrorBoundary>
   );
 };
-
 export default ErrorAnalyticsDashboard;

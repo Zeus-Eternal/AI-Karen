@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+
 import { Skeleton } from './skeleton';
 import { SkeletonButtonProps } from './types';
 import { cn } from '@/lib/utils';

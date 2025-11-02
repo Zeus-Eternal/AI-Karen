@@ -1,9 +1,6 @@
-
 'use client';
-
 import { HookProvider } from '@/contexts/HookContext';
 import { AuthProvider } from '@/contexts/AuthContext';
-
 import { ErrorProvider } from '@/contexts/ErrorProvider';
 import { CopilotKitProvider } from '@/components/chat/copilot';
 import { GlobalErrorBoundary } from '@/components/error/GlobalErrorBoundary';
@@ -15,11 +12,9 @@ import { I18nProvider } from '@/providers/i18n-provider';
 import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { webUIConfig } from '@/lib/config';
-
 export function Providers({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const pinged = useRef(false);
-
   useEffect(() => {
     if (pinged.current) return;
     pinged.current = true;
@@ -54,7 +49,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <SimpleErrorFallback error={error} resetError={retry} />
       )}
       onError={(error, errorInfo) => {
-        console.error('Global error caught:', error, errorInfo);
         // Could integrate with error reporting service here
       }}
     >
@@ -66,10 +60,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           maxRetries: 3,
         }}
         onErrorAnalyzed={(analysis) => {
-          console.log('Error analyzed:', analysis);
         }}
         onAnalysisError={(error) => {
-          console.error('Error analysis failed:', error);
         }}
         maxGlobalErrors={10}
       >

@@ -4,10 +4,8 @@
  * Ensures text selection works properly across the entire application.
  * Add this component to your app root or layout to enable text selection globally.
  */
-
 import React, { useEffect } from 'react';
 import { ensureTextSelectable } from '@/hooks/useTextSelection';
-
 export interface TextSelectionProviderProps {
   children: React.ReactNode;
   enableGlobalSelection?: boolean;
@@ -15,7 +13,6 @@ export interface TextSelectionProviderProps {
   enableContextMenu?: boolean;
   debug?: boolean;
 }
-
 export function TextSelectionProvider({
   children,
   enableGlobalSelection = true,
@@ -23,17 +20,14 @@ export function TextSelectionProvider({
   enableContextMenu = true,
   debug = false,
 }: TextSelectionProviderProps) {
-  
   useEffect(() => {
     if (!enableGlobalSelection) return;
-
     // Ensure text selection is enabled globally
     const ensureGlobalSelection = () => {
       // Apply to document body
       if (document.body) {
         ensureTextSelectable(document.body);
       }
-
       // Apply to all existing elements
       const allElements = document.querySelectorAll('*');
       allElements.forEach((element) => {
@@ -46,10 +40,8 @@ export function TextSelectionProvider({
         }
       });
     };
-
     // Run immediately
     ensureGlobalSelection();
-
     // Also run when DOM changes
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
@@ -60,29 +52,23 @@ export function TextSelectionProvider({
         });
       });
     });
-
     observer.observe(document.body, {
       childList: true,
       subtree: true,
     });
-
     return () => {
       observer.disconnect();
     };
   }, [enableGlobalSelection]);
-
   useEffect(() => {
     if (!enableKeyboardShortcuts) return;
-
     const handleKeyDown = (event: KeyboardEvent) => {
       // Ctrl+A or Cmd+A - Select All
       if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
         // Let the browser handle this naturally
         if (debug) {
-          console.log('Select All triggered');
         }
       }
-
       // Ctrl+C or Cmd+C - Copy
       if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
         const selection = window.getSelection();
@@ -93,17 +79,13 @@ export function TextSelectionProvider({
         }
       }
     };
-
     document.addEventListener('keydown', handleKeyDown);
-
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [enableKeyboardShortcuts, debug]);
-
   useEffect(() => {
     if (!enableContextMenu) return;
-
     const handleContextMenu = (event: MouseEvent) => {
       // Allow context menu on text selections
       const selection = window.getSelection();
@@ -115,34 +97,26 @@ export function TextSelectionProvider({
         return;
       }
     };
-
     document.addEventListener('contextmenu', handleContextMenu);
-
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
     };
   }, [enableContextMenu, debug]);
-
   useEffect(() => {
     if (!debug) return;
-
     const handleSelectionChange = () => {
       const selection = window.getSelection();
       if (selection && selection.toString()) {
         console.log('Selection changed:', selection.toString());
       }
     };
-
     document.addEventListener('selectionchange', handleSelectionChange);
-
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
   }, [debug]);
-
   return <>{children}</>;
 }
-
 // Higher-order component version
 export function withTextSelection<P extends object>(
   Component: React.ComponentType<P>,
@@ -156,5 +130,4 @@ export function withTextSelection<P extends object>(
     );
   };
 }
-
 export default TextSelectionProvider;

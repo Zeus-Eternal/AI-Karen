@@ -13,7 +13,7 @@
  * - End-to-end tests for critical admin user journeys
  */
 
-import React from 'react';
+
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { resetRouterMocks } from '@/test-utils/router-mocks';

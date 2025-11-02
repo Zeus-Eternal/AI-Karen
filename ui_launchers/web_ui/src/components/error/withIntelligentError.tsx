@@ -222,8 +222,8 @@ export function withIntelligentError<P extends object>(
 
         {/* Overlay error panel */}
         {position === 'overlay' && shouldShowPanel && (
-          <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="w-full max-w-2xl">
+          <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-4 md:p-6">
+            <div className="w-full max-w-2xl sm:w-auto md:w-full">
               <IntelligentErrorPanel
                 error={detectedError || 'Unknown error'}
                 onDismiss={handleDismiss}

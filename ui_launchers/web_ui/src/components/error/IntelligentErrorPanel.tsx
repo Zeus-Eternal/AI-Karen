@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -10,7 +9,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getApiClient } from '@/lib/api-client';
 import { errorAnalysisRateLimiter } from '@/lib/rate-limiter';
 import { cn } from '@/lib/utils';
-
 // Types based on the backend API
 export interface ErrorAnalysisRequest {
   error_message: string;
@@ -21,7 +19,6 @@ export interface ErrorAnalysisRequest {
   user_context?: Record<string, any>;
   use_ai_analysis?: boolean;
 }
-
 export interface ErrorAnalysisResponse {
   title: string;
   summary: string;
@@ -43,7 +40,6 @@ export interface ErrorAnalysisResponse {
   cached: boolean;
   response_time_ms: number;
 }
-
 export interface IntelligentErrorPanelProps {
   error: Error | string;
   errorType?: string;
@@ -59,22 +55,20 @@ export interface IntelligentErrorPanelProps {
   showTechnicalDetails?: boolean;
   maxRetries?: number;
 }
-
 const getSeverityIcon = (severity: string) => {
   switch (severity) {
     case 'critical':
-      return <XCircle className="h-5 w-5 text-red-500" />;
+      return <XCircle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />;
     case 'high':
-      return <AlertTriangle className="h-5 w-5 text-orange-500" />;
+      return <AlertTriangle className="h-5 w-5 text-orange-500 sm:w-auto md:w-full" />;
     case 'medium':
-      return <AlertCircle className="h-5 w-5 text-yellow-500" />;
+      return <AlertCircle className="h-5 w-5 text-yellow-500 sm:w-auto md:w-full" />;
     case 'low':
-      return <Info className="h-5 w-5 text-blue-500" />;
+      return <Info className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />;
     default:
-      return <AlertCircle className="h-5 w-5 text-gray-500" />;
+      return <AlertCircle className="h-5 w-5 text-gray-500 sm:w-auto md:w-full" />;
   }
 };
-
 const getSeverityColor = (severity: string) => {
   switch (severity) {
     case 'critical':
@@ -89,20 +83,18 @@ const getSeverityColor = (severity: string) => {
       return 'outline';
   }
 };
-
 const getProviderHealthIcon = (status: string) => {
   switch (status) {
     case 'healthy':
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
+      return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
     case 'degraded':
-      return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+      return <AlertTriangle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
     case 'unhealthy':
-      return <XCircle className="h-4 w-4 text-red-500" />;
+      return <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
     default:
-      return <AlertCircle className="h-4 w-4 text-gray-500" />;
+      return <AlertCircle className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
   }
 };
-
 export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
   error,
   errorType,
@@ -123,17 +115,12 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [showDetails, setShowDetails] = useState(showTechnicalDetails);
-
   const apiClient = getApiClient();
-
   const errorMessage = typeof error === 'string' ? error : error.message;
-
   const fetchAnalysis = useCallback(async () => {
     if (!errorMessage || isLoading) return;
-
     setIsLoading(true);
     setFetchError(null);
-
     try {
       const request: ErrorAnalysisRequest = {
         error_message: errorMessage,
@@ -144,7 +131,6 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
         user_context: userContext,
         use_ai_analysis: useAiAnalysis,
       };
-
       // Use rate limiter to prevent 429 errors
       const response = await errorAnalysisRateLimiter.execute(() =>
         apiClient.post<ErrorAnalysisResponse>(
@@ -152,12 +138,9 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
           request
         )
       );
-
       setAnalysis(response.data);
     } catch (err: any) {
-      console.error('Failed to fetch error analysis:', err);
       setFetchError(err.message || 'Failed to analyze error');
-      
       // Create fallback analysis
       setAnalysis({
         title: 'Error Analysis Unavailable',
@@ -177,32 +160,28 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
       setIsLoading(false);
     }
   }, [errorMessage, errorType, statusCode, providerName, requestPath, userContext, useAiAnalysis, apiClient, isLoading]);
-
   const handleRetry = useCallback(() => {
     if (retryCount < maxRetries) {
       setRetryCount(prev => prev + 1);
       onRetry?.();
     }
   }, [retryCount, maxRetries, onRetry]);
-
   const handleRefreshAnalysis = useCallback(() => {
     fetchAnalysis();
   }, [fetchAnalysis]);
-
   // Auto-fetch analysis on mount or when error changes
   useEffect(() => {
     if (autoFetch) {
       fetchAnalysis();
     }
   }, [autoFetch, fetchAnalysis]);
-
   // Loading state
   if (isLoading && !analysis) {
     return (
       <Card className={cn('w-full', className)}>
         <CardHeader>
           <div className="flex items-center space-x-2">
-            <RefreshCw className="h-5 w-5 animate-spin text-blue-500" />
+            <RefreshCw className="h-5 w-5 animate-spin text-blue-500 sm:w-auto md:w-full" />
             <CardTitle className="text-lg">Analyzing Error...</CardTitle>
           </div>
           <CardDescription>
@@ -211,9 +190,9 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
         </CardHeader>
         <CardContent className="space-y-4">
           <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-3/4 sm:w-auto md:w-full" />
           <div className="space-y-2">
-            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-3 w-1/2 sm:w-auto md:w-full" />
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
           </div>
@@ -221,27 +200,26 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
       </Card>
     );
   }
-
   // Error state
   if (fetchError && !analysis) {
     return (
       <Alert variant="destructive" className={className}>
-        <AlertTriangle className="h-4 w-4" />
+        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertTitle>Analysis Failed</AlertTitle>
         <AlertDescription className="mt-2">
           <p>{fetchError}</p>
           <div className="flex gap-2 mt-3">
-            <Button
+            <button
               variant="outline"
               size="sm"
               onClick={handleRefreshAnalysis}
               disabled={isLoading}
-            >
+             aria-label="Button">
               <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
               Try Again
             </Button>
             {onDismiss && (
-              <Button variant="ghost" size="sm" onClick={onDismiss}>
+              <button variant="ghost" size="sm" onClick={onDismiss} aria-label="Button">
                 Dismiss
               </Button>
             )}
@@ -250,11 +228,9 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
       </Alert>
     );
   }
-
   if (!analysis) {
     return null;
   }
-
   return (
     <Card className={cn('w-full border-l-4', {
       'border-l-red-500': analysis.severity === 'critical',
@@ -273,8 +249,8 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
                   {analysis.severity.toUpperCase()}
                 </Badge>
                 {analysis.cached && (
-                  <Badge variant="outline" className="text-xs">
-                    <Clock className="h-3 w-3 mr-1" />
+                  <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
+                    <Clock className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                     Cached
                   </Badge>
                 )}
@@ -292,7 +268,7 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
               <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
             </Button>
             {onDismiss && (
-              <Button variant="ghost" size="sm" onClick={onDismiss}>
+              <button variant="ghost" size="sm" onClick={onDismiss} aria-label="Button">
                 ×
               </Button>
             )}
@@ -302,39 +278,37 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
           {analysis.summary}
         </CardDescription>
       </CardHeader>
-
       <CardContent className="space-y-4">
         {/* Provider Health Status */}
         {analysis.provider_health && (
-          <div className="bg-muted/50 rounded-lg p-3">
+          <div className="bg-muted/50 rounded-lg p-3 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 {getProviderHealthIcon(analysis.provider_health.status)}
-                <span className="font-medium text-sm">
+                <span className="font-medium text-sm md:text-base lg:text-lg">
                   {analysis.provider_health.name} Status
                 </span>
               </div>
-              <div className="text-right text-sm text-muted-foreground">
+              <div className="text-right text-sm text-muted-foreground md:text-base lg:text-lg">
                 <div>{analysis.provider_health.success_rate}% success rate</div>
                 <div>{analysis.provider_health.response_time}ms avg</div>
               </div>
             </div>
             {analysis.provider_health.error_message && (
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-sm text-muted-foreground mt-2 md:text-base lg:text-lg">
                 {analysis.provider_health.error_message}
               </p>
             )}
           </div>
         )}
-
         {/* Next Steps */}
         {analysis.next_steps.length > 0 && (
           <div>
-            <h4 className="font-medium text-sm mb-2">Next Steps:</h4>
+            <h4 className="font-medium text-sm mb-2 md:text-base lg:text-lg">Next Steps:</h4>
             <ol className="space-y-2">
               {analysis.next_steps.map((step, index) => (
-                <li key={index} className="flex items-start space-x-2 text-sm">
-                  <span className="flex-shrink-0 w-5 h-5 bg-primary/10 text-primary rounded-full flex items-center justify-center text-xs font-medium">
+                <li key={index} className="flex items-start space-x-2 text-sm md:text-base lg:text-lg">
+                  <span className="flex-shrink-0 w-5 h-5 bg-primary/10 text-primary rounded-full flex items-center justify-center text-xs font-medium sm:w-auto md:w-full">
                     {index + 1}
                   </span>
                   <span>{step}</span>
@@ -343,46 +317,43 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
             </ol>
           </div>
         )}
-
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2 pt-2">
           {onRetry && retryCount < maxRetries && (
-            <Button
+            <button
               variant="default"
               size="sm"
               onClick={handleRetry}
               disabled={analysis.retry_after ? true : false}
-            >
+             aria-label="Button">
               {analysis.retry_after ? (
                 <>
-                  <Clock className="h-4 w-4 mr-2" />
+                  <Clock className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Retry in {analysis.retry_after}s
                 </>
               ) : (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Try Again {retryCount > 0 && `(${retryCount}/${maxRetries})`}
                 </>
               )}
             </Button>
           )}
-
           {analysis.help_url && (
-            <Button
+            <button
               variant="outline"
               size="sm"
-              onClick={() => window.open(analysis.help_url, '_blank')}
+              onClick={() = aria-label="Button"> window.open(analysis.help_url, '_blank')}
             >
-              <ExternalLink className="h-4 w-4 mr-2" />
+              <ExternalLink className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Help
             </Button>
           )}
-
           {analysis.contact_admin && (
-            <Button
+            <button
               variant="outline"
               size="sm"
-              onClick={() => {
+              onClick={() = aria-label="Button"> {
                 // This could open a support modal or mailto link
                 const subject = encodeURIComponent(`Error: ${analysis.title}`);
                 const body = encodeURIComponent(`Error Details:\n${analysis.summary}\n\nTechnical Details:\n${analysis.technical_details || errorMessage}`);
@@ -392,30 +363,27 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
               Contact Admin
             </Button>
           )}
-
           {analysis.technical_details && (
-            <Button
+            <button
               variant="ghost"
               size="sm"
-              onClick={() => setShowDetails(!showDetails)}
+              onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
             >
               {showDetails ? 'Hide' : 'Show'} Details
             </Button>
           )}
         </div>
-
         {/* Technical Details */}
         {showDetails && analysis.technical_details && (
-          <div className="bg-muted/30 rounded-lg p-3 border">
-            <h4 className="font-medium text-sm mb-2">Technical Details:</h4>
-            <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">
+          <div className="bg-muted/30 rounded-lg p-3 border sm:p-4 md:p-6">
+            <h4 className="font-medium text-sm mb-2 md:text-base lg:text-lg">Technical Details:</h4>
+            <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono sm:text-sm md:text-base">
               {analysis.technical_details}
             </pre>
           </div>
         )}
-
         {/* Analysis Metadata */}
-        <div className="flex justify-between items-center text-xs text-muted-foreground pt-2 border-t">
+        <div className="flex justify-between items-center text-xs text-muted-foreground pt-2 border-t sm:text-sm md:text-base">
           <span>
             Analysis: {analysis.response_time_ms.toFixed(1)}ms
             {analysis.cached && ' (cached)'}
@@ -426,5 +394,4 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
     </Card>
   );
 };
-
 export default IntelligentErrorPanel;

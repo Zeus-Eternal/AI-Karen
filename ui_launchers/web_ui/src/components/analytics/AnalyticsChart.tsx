@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AgCharts } from 'ag-charts-react';
 import { AgChartOptions } from 'ag-charts-community';
@@ -26,7 +25,6 @@ import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays, subHours } from 'date-fns';
-
 export interface EnhancedAnalyticsData {
   timestamp: string;
   messageCount: number;
@@ -39,7 +37,6 @@ export interface EnhancedAnalyticsData {
   messageId?: string;
   confidence?: number;
 }
-
 export interface AnalyticsStats {
   totalConversations: number;
   totalMessages: number;
@@ -49,7 +46,6 @@ export interface AnalyticsStats {
   activeUsers: number;
   topLlmProviders: Array<{ provider: string; count: number }>;
 }
-
 interface AnalyticsChartProps {
   data?: EnhancedAnalyticsData[];
   stats?: AnalyticsStats;
@@ -58,11 +54,9 @@ interface AnalyticsChartProps {
   onRefresh?: () => Promise<void>;
   className?: string;
 }
-
 type ChartType = 'line' | 'bar' | 'area' | 'scatter' | 'pie';
 type MetricType = 'messages' | 'responseTime' | 'satisfaction' | 'insights' | 'tokens' | 'providers';
 type ViewMode = 'overview' | 'detailed' | 'comparison';
-
 export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
   data = [],
   stats,
@@ -74,17 +68,14 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
   const { user } = useAuth();
   const { triggerHooks, registerChartHook } = useHooks();
   const { toast } = useToast();
-  
   const [chartType, setChartType] = useState<ChartType>('line');
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('messages');
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
-
   // Process and enhance data
   const processedData = useMemo(() => {
     if (data.length === 0) return [];
-    
     // Convert timestamp strings to Date objects and sort
     const sortedData = data
       .map(item => ({
@@ -97,15 +88,12 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
         )
       }))
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-    
     // Filter by selected providers if any
     if (selectedProviders.length > 0) {
       return sortedData.filter(item => selectedProviders.includes(item.llmProvider));
     }
-    
     return sortedData;
   }, [data, timeframe, selectedProviders]);
-
   // Chart configuration based on selected metric and type
   const chartOptions: AgChartOptions = useMemo(() => {
     if (processedData.length === 0) {
@@ -115,7 +103,6 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
         background: { fill: 'transparent' }
       };
     }
-
     const baseOptions: AgChartOptions = {
       data: processedData,
       theme: 'ag-default',
@@ -123,7 +110,6 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
       padding: { top: 20, right: 20, bottom: 40, left: 60 },
       legend: { enabled: true, position: 'bottom' }
     };
-
     // Configure series based on metric and chart type
     switch (selectedMetric) {
       case 'messages':
@@ -159,7 +145,6 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
             { type: 'number', position: 'left', title: { text: 'Message Count' } },
           ],
         } as AgChartOptions;
-
       case 'responseTime':
         return {
           ...baseOptions,
@@ -177,7 +162,6 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
             { type: 'number', position: 'left', title: { text: 'Response Time (ms)' } }
           ]
         };
-
       case 'satisfaction':
         return {
           ...baseOptions,
@@ -195,7 +179,6 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
             { type: 'number', position: 'left', title: { text: 'Satisfaction Score' }, min: 0, max: 5 }
           ]
         };
-
       case 'providers':
         // Group data by provider for pie chart
         const providerData = processedData.reduce((acc, item) => {
@@ -203,13 +186,11 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
           acc[provider] = (acc[provider] || 0) + 1;
           return acc;
         }, {} as Record<string, number>);
-
         const providerChartData = Object.entries(providerData).map(([provider, count]) => ({
           provider,
           count,
           percentage: (count / processedData.length * 100).toFixed(1)
         }));
-
         return {
           ...(baseOptions as any),
           data: providerChartData,
@@ -226,7 +207,6 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
             } as any,
           ],
         } as unknown as AgChartOptions;
-
       case 'tokens':
         return {
           ...baseOptions,
@@ -244,31 +224,23 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
             { type: 'number', position: 'left', title: { text: 'Tokens Used' } }
           ]
         };
-
       default:
         return baseOptions;
     }
   }, [processedData, chartType, selectedMetric]);
-
   // Register analytics hooks
   useEffect(() => {
     const hookIds: string[] = [];
-
     hookIds.push(registerChartHook('enhancedAnalytics', 'dataLoad', async (params) => {
-      console.log('Analytics Chart data loaded:', params);
       return { success: true, dataPoints: processedData.length };
     }));
-
     hookIds.push(registerChartHook('enhancedAnalytics', 'metricChange', async (params) => {
-      console.log('Analytics metric changed:', params);
       return { success: true, newMetric: selectedMetric };
     }));
-
     return () => {
       // Cleanup hooks
     };
   }, [registerChartHook, processedData.length, selectedMetric]);
-
   // Handle chart events
   const handleChartReady = useCallback(async () => {
     await triggerHooks('chart_enhancedAnalytics_dataLoad', {
@@ -279,10 +251,8 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
       viewMode
     }, { userId: user?.userId });
   }, [triggerHooks, processedData.length, selectedMetric, timeframe, viewMode, user?.userId]);
-
   const handleRefresh = useCallback(async () => {
     if (!onRefresh) return;
-    
     setIsLoading(true);
     try {
       await onRefresh();
@@ -300,24 +270,19 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
       setIsLoading(false);
     }
   }, [onRefresh, toast]);
-
   // Trigger a ready hook when the chart context changes significantly
   useEffect(() => {
     void handleChartReady();
   }, [handleChartReady]);
-
   // Calculate trend indicators
   const trendData = useMemo(() => {
     if (processedData.length < 2) return null;
-
     const latest = processedData[processedData.length - 1];
     const previous = processedData[processedData.length - 2];
-
     const calculateChange = (current: number, prev: number) => {
       if (!prev) return 0;
       return ((current - prev) / prev) * 100;
     };
-
     return {
       messageChange: calculateChange(latest.messageCount, previous.messageCount),
       responseTimeChange: calculateChange(latest.responseTime, previous.responseTime),
@@ -325,7 +290,6 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
       insightsChange: calculateChange(latest.aiInsights, previous.aiInsights)
     };
   }, [processedData]);
-
   const StatCard = ({ 
     icon: Icon, 
     title, 
@@ -341,20 +305,20 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
     suffix?: string;
     trend?: 'up' | 'down' | 'neutral';
   }) => (
-    <div className="flex items-center space-x-3 p-4 bg-muted/50 rounded-lg border">
-      <div className="p-3 bg-primary/10 rounded-lg">
-        <Icon className="h-5 w-5 text-primary" />
+    <div className="flex items-center space-x-3 p-4 bg-muted/50 rounded-lg border sm:p-4 md:p-6">
+      <div className="p-3 bg-primary/10 rounded-lg sm:p-4 md:p-6">
+        <Icon className="h-5 w-5 text-primary sm:w-auto md:w-full" />
       </div>
       <div className="flex-1">
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+        <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">{title}</p>
         <div className="flex items-center space-x-2">
           <span className="text-xl font-bold">{value}{suffix}</span>
           {change !== undefined && (
             <Badge 
               variant={change >= 0 ? 'default' : 'destructive'} 
-              className="text-xs"
+              className="text-xs sm:text-sm md:text-base"
             >
-              {change >= 0 ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
+              {change >= 0 ? <TrendingUp className="h-3 w-3 mr-1 sm:w-auto md:w-full" /> : <TrendingDown className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
               {Math.abs(change).toFixed(1)}%
             </Badge>
           )}
@@ -362,29 +326,26 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
       </div>
     </div>
   );
-
   return (
     <Card className={`w-full ${className}`}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-6 w-6" />
+            <BarChart3 className="h-6 w-6 sm:w-auto md:w-full" />
             Enhanced Analytics Dashboard
           </CardTitle>
-          
           <div className="flex items-center gap-2">
-            <Button
+            <button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={isLoading}
-            >
+             aria-label="Button">
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
         </div>
-
         {/* Stats Overview */}
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
@@ -415,7 +376,6 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
             />
           </div>
         )}
-
         {/* Controls */}
         <div className="flex items-center justify-between mt-6">
           <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
@@ -425,75 +385,70 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
               <TabsTrigger value="comparison">Comparison</TabsTrigger>
             </TabsList>
           </Tabs>
-
           <div className="flex items-center gap-2">
-            <Select value={selectedMetric} onValueChange={(value) => setSelectedMetric(value as MetricType)}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
+            <select value={selectedMetric} onValueChange={(value) = aria-label="Select option"> setSelectedMetric(value as MetricType)}>
+              <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+                <selectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="messages">Messages</SelectItem>
-                <SelectItem value="responseTime">Response Time</SelectItem>
-                <SelectItem value="satisfaction">Satisfaction</SelectItem>
-                <SelectItem value="insights">AI Insights</SelectItem>
-                <SelectItem value="tokens">Token Usage</SelectItem>
-                <SelectItem value="providers">LLM Providers</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="messages" aria-label="Select option">Messages</SelectItem>
+                <selectItem value="responseTime" aria-label="Select option">Response Time</SelectItem>
+                <selectItem value="satisfaction" aria-label="Select option">Satisfaction</SelectItem>
+                <selectItem value="insights" aria-label="Select option">AI Insights</SelectItem>
+                <selectItem value="tokens" aria-label="Select option">Token Usage</SelectItem>
+                <selectItem value="providers" aria-label="Select option">LLM Providers</SelectItem>
               </SelectContent>
             </Select>
-            
-            <Select value={chartType} onValueChange={(value) => setChartType(value as ChartType)}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
+            <select value={chartType} onValueChange={(value) = aria-label="Select option"> setChartType(value as ChartType)}>
+              <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+                <selectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="line">
+              <selectContent aria-label="Select option">
+                <selectItem value="line" aria-label="Select option">
                   <div className="flex items-center gap-2">
-                    <LineChart className="h-4 w-4" />
+                    <LineChart className="h-4 w-4 sm:w-auto md:w-full" />
                     Line
                   </div>
                 </SelectItem>
-                <SelectItem value="bar">
+                <selectItem value="bar" aria-label="Select option">
                   <div className="flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4" />
+                    <BarChart3 className="h-4 w-4 sm:w-auto md:w-full" />
                     Bar
                   </div>
                 </SelectItem>
-                <SelectItem value="area">Area</SelectItem>
+                <selectItem value="area" aria-label="Select option">Area</SelectItem>
                 {/* Column maps to bar in Ag Charts; omit separate option */}
-                <SelectItem value="pie">
+                <selectItem value="pie" aria-label="Select option">
                   <div className="flex items-center gap-2">
-                    <PieChart className="h-4 w-4" />
+                    <PieChart className="h-4 w-4 sm:w-auto md:w-full" />
                     Pie
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
-
-            <Select value={timeframe} onValueChange={onTimeframeChange}>
-              <SelectTrigger className="w-24">
-                <SelectValue />
+            <select value={timeframe} onValueChange={onTimeframeChange} aria-label="Select option">
+              <selectTrigger className="w-24 sm:w-auto md:w-full" aria-label="Select option">
+                <selectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1h">1H</SelectItem>
-                <SelectItem value="24h">24H</SelectItem>
-                <SelectItem value="7d">7D</SelectItem>
-                <SelectItem value="30d">30D</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="1h" aria-label="Select option">1H</SelectItem>
+                <selectItem value="24h" aria-label="Select option">24H</SelectItem>
+                <selectItem value="7d" aria-label="Select option">7D</SelectItem>
+                <selectItem value="30d" aria-label="Select option">30D</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
       </CardHeader>
-
-      <CardContent className="p-0">
+      <CardContent className="p-0 sm:p-4 md:p-6">
         <Tabs value={viewMode} className="w-full">
           <TabsContent value="overview" className="mt-0">
-            <div className="h-[500px] w-full p-6">
+            <div className="h-[500px] w-full p-6 sm:p-4 md:p-6">
               <AgCharts options={chartOptions} />
             </div>
           </TabsContent>
-          
           <TabsContent value="detailed" className="mt-0">
-            <div className="p-6">
+            <div className="p-6 sm:p-4 md:p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="h-[400px]">
                   <AgCharts
@@ -529,9 +484,8 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
               </div>
             </div>
           </TabsContent>
-          
           <TabsContent value="comparison" className="mt-0">
-            <div className="h-[500px] w-full p-6">
+            <div className="h-[500px] w-full p-6 sm:p-4 md:p-6">
               <AgCharts
                 options={{
                   data: processedData,

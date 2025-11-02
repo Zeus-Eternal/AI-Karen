@@ -1,14 +1,5 @@
-"use client";
-
 import React, { useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,7 +9,27 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import {
+import { useToast } from '@/hooks/use-toast';
+"use client";
+
+
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+
+
+
+
+
+
+
+
+
+
   RefreshCw,
   FolderTree,
   AlertTriangle,
@@ -31,7 +42,6 @@ import {
   Clock,
   Shield
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 interface MigrationPlan {
   models_to_move: ModelMigrationItem[];
@@ -41,7 +51,6 @@ interface MigrationPlan {
   backup_required: boolean;
   conflicts: MigrationConflict[];
 }
-
 interface ModelMigrationItem {
   id: string;
   name: string;
@@ -51,14 +60,12 @@ interface ModelMigrationItem {
   status: 'pending' | 'moving' | 'completed' | 'failed';
   error?: string;
 }
-
 interface MigrationConflict {
   type: 'duplicate' | 'permission' | 'space' | 'corruption';
   model_id: string;
   description: string;
   resolution: string;
 }
-
 interface MigrationOptions {
   dry_run: boolean;
   create_backup: boolean;
@@ -66,13 +73,11 @@ interface MigrationOptions {
   fix_permissions: boolean;
   validate_checksums: boolean;
 }
-
 interface ModelMigrationWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onMigrate: (options: MigrationOptions) => Promise<void>;
 }
-
 /**
  * Model migration wizard using existing multi-step form components
  * Guides users through the migration process with validation and preview
@@ -94,35 +99,29 @@ export default function ModelMigrationWizard({
   const [loading, setLoading] = useState(false);
   const [migrating, setMigrating] = useState(false);
   const [migrationProgress, setMigrationProgress] = useState(0);
-  
   const { toast } = useToast();
-
   const steps = [
     { title: 'Analysis', description: 'Analyze current model layout' },
     { title: 'Options', description: 'Configure migration settings' },
     { title: 'Preview', description: 'Review migration plan' },
     { title: 'Execute', description: 'Perform migration' }
   ];
-
   const formatSize = (bytes: number): string => {
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     if (bytes === 0) return '0 B';
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
-
   const formatDuration = (seconds: number): string => {
     if (seconds < 60) return `${Math.round(seconds)}s`;
     if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
     return `${Math.round(seconds / 3600)}h`;
   };
-
   const analyzeMigration = async () => {
     setLoading(true);
     try {
       // Mock migration analysis - in real implementation, this would call the API
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
       const mockPlan: MigrationPlan = {
         models_to_move: [
           {
@@ -170,11 +169,9 @@ export default function ModelMigrationWizard({
           }
         ]
       };
-      
       setMigrationPlan(mockPlan);
       setCurrentStep(1);
     } catch (error: any) {
-      console.error('Migration analysis failed:', error);
       toast({
         title: 'Analysis failed',
         description: error.message || 'Failed to analyze migration',
@@ -184,13 +181,10 @@ export default function ModelMigrationWizard({
       setLoading(false);
     }
   };
-
   const executeMigration = async () => {
     if (!migrationPlan) return;
-    
     setMigrating(true);
     setMigrationProgress(0);
-    
     try {
       // Simulate migration progress
       const progressInterval = setInterval(() => {
@@ -202,23 +196,18 @@ export default function ModelMigrationWizard({
           return prev + Math.random() * 10;
         });
       }, 500);
-
       await onMigrate(migrationOptions);
-      
       clearInterval(progressInterval);
       setMigrationProgress(100);
-      
       toast({
         title: 'Migration completed',
         description: 'Model layout has been successfully migrated'
       });
-      
       setTimeout(() => {
         onOpenChange(false);
         resetWizard();
       }, 2000);
     } catch (error: any) {
-      console.error('Migration failed:', error);
       toast({
         title: 'Migration failed',
         description: error.message || 'Failed to migrate models',
@@ -228,7 +217,6 @@ export default function ModelMigrationWizard({
       setMigrating(false);
     }
   };
-
   const resetWizard = () => {
     setCurrentStep(0);
     setMigrationPlan(null);
@@ -243,53 +231,47 @@ export default function ModelMigrationWizard({
     setMigrating(false);
     setMigrationProgress(0);
   };
-
   const nextStep = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     }
   };
-
   const prevStep = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
   };
-
   const getConflictIcon = (type: string) => {
     switch (type) {
       case 'duplicate':
-        return <FileText className="h-4 w-4 text-orange-500" />;
+        return <FileText className="h-4 w-4 text-orange-500 sm:w-auto md:w-full" />;
       case 'permission':
-        return <Shield className="h-4 w-4 text-red-500" />;
+        return <Shield className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
       case 'space':
-        return <HardDrive className="h-4 w-4 text-red-500" />;
+        return <HardDrive className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
       case 'corruption':
-        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+        return <AlertTriangle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
       default:
-        return <Info className="h-4 w-4 text-blue-500" />;
+        return <Info className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />;
     }
   };
-
   React.useEffect(() => {
     if (!open) {
       resetWizard();
     }
   }, [open]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden sm:w-auto md:w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5" />
+            <RefreshCw className="h-5 w-5 sm:w-auto md:w-full" />
             Model Layout Migration
           </DialogTitle>
           <DialogDescription>
             Migrate your models to the new normalized directory structure
           </DialogDescription>
         </DialogHeader>
-
         {/* Step Indicator */}
         <div className="flex items-center justify-between mb-6">
           {steps.map((step, index) => (
@@ -302,26 +284,25 @@ export default function ModelMigrationWizard({
                 }
               `}>
                 {index < currentStep ? (
-                  <CheckCircle className="h-4 w-4" />
+                  <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
                 ) : (
                   index + 1
                 )}
               </div>
-              <div className="ml-2 text-sm">
+              <div className="ml-2 text-sm md:text-base lg:text-lg">
                 <div className={`font-medium ${index <= currentStep ? 'text-foreground' : 'text-muted-foreground'}`}>
                   {step.title}
                 </div>
-                <div className="text-muted-foreground text-xs">
+                <div className="text-muted-foreground text-xs sm:text-sm md:text-base">
                   {step.description}
                 </div>
               </div>
               {index < steps.length - 1 && (
-                <ArrowRight className="h-4 w-4 text-muted-foreground mx-4" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground mx-4 sm:w-auto md:w-full" />
               )}
             </div>
           ))}
         </div>
-
         <ScrollArea className="max-h-[calc(90vh-16rem)]">
           {/* Step 0: Analysis */}
           {currentStep === 0 && (
@@ -329,7 +310,7 @@ export default function ModelMigrationWizard({
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <FolderTree className="h-5 w-5" />
+                    <FolderTree className="h-5 w-5 sm:w-auto md:w-full" />
                     Migration Analysis
                   </CardTitle>
                   <CardDescription>
@@ -338,16 +319,15 @@ export default function ModelMigrationWizard({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Alert>
-                    <Info className="h-4 w-4" />
+                    <Info className="h-4 w-4 sm:w-auto md:w-full" />
                     <AlertDescription>
                       This process will scan your models directory and identify models that need to be migrated 
                       to the new normalized structure. No changes will be made during analysis.
                     </AlertDescription>
                   </Alert>
-                  
                   <div className="space-y-2">
                     <h4 className="font-medium">What will be analyzed:</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4 md:text-base lg:text-lg">
                       <li>• Current model directory structure</li>
                       <li>• Model file integrity and checksums</li>
                       <li>• Duplicate models and conflicts</li>
@@ -359,7 +339,6 @@ export default function ModelMigrationWizard({
               </Card>
             </div>
           )}
-
           {/* Step 1: Options */}
           {currentStep === 1 && migrationPlan && (
             <div className="space-y-4">
@@ -382,11 +361,10 @@ export default function ModelMigrationWizard({
                             dry_run: checked as boolean 
                           }))}
                         />
-                        <Label htmlFor="dry-run" className="text-sm">
+                        <Label htmlFor="dry-run" className="text-sm md:text-base lg:text-lg">
                           Dry run (preview only, no actual changes)
                         </Label>
                       </div>
-                      
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="create-backup"
@@ -396,11 +374,10 @@ export default function ModelMigrationWizard({
                             create_backup: checked as boolean 
                           }))}
                         />
-                        <Label htmlFor="create-backup" className="text-sm">
+                        <Label htmlFor="create-backup" className="text-sm md:text-base lg:text-lg">
                           Create backup before migration
                         </Label>
                       </div>
-                      
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="remove-duplicates"
@@ -410,12 +387,11 @@ export default function ModelMigrationWizard({
                             remove_duplicates: checked as boolean 
                           }))}
                         />
-                        <Label htmlFor="remove-duplicates" className="text-sm">
+                        <Label htmlFor="remove-duplicates" className="text-sm md:text-base lg:text-lg">
                           Remove duplicate models
                         </Label>
                       </div>
                     </div>
-                    
                     <div className="space-y-3">
                       <div className="flex items-center space-x-2">
                         <Checkbox
@@ -426,11 +402,10 @@ export default function ModelMigrationWizard({
                             fix_permissions: checked as boolean 
                           }))}
                         />
-                        <Label htmlFor="fix-permissions" className="text-sm">
+                        <Label htmlFor="fix-permissions" className="text-sm md:text-base lg:text-lg">
                           Fix file permissions
                         </Label>
                       </div>
-                      
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="validate-checksums"
@@ -440,16 +415,15 @@ export default function ModelMigrationWizard({
                             validate_checksums: checked as boolean 
                           }))}
                         />
-                        <Label htmlFor="validate-checksums" className="text-sm">
+                        <Label htmlFor="validate-checksums" className="text-sm md:text-base lg:text-lg">
                           Validate file checksums
                         </Label>
                       </div>
                     </div>
                   </div>
-                  
                   {migrationOptions.dry_run && (
                     <Alert>
-                      <Info className="h-4 w-4" />
+                      <Info className="h-4 w-4 sm:w-auto md:w-full" />
                       <AlertDescription>
                         Dry run mode is enabled. No actual changes will be made to your files.
                         This allows you to preview the migration plan safely.
@@ -460,7 +434,6 @@ export default function ModelMigrationWizard({
               </Card>
             </div>
           )}
-
           {/* Step 2: Preview */}
           {currentStep === 2 && migrationPlan && (
             <div className="space-y-4">
@@ -499,14 +472,12 @@ export default function ModelMigrationWizard({
                       <div className="text-muted-foreground">Est. Duration</div>
                     </div>
                   </div>
-
                   <Separator />
-
                   {/* Conflicts */}
                   {migrationPlan.conflicts.length > 0 && (
                     <div className="space-y-2">
                       <h4 className="font-medium flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-orange-500" />
+                        <AlertTriangle className="h-4 w-4 text-orange-500 sm:w-auto md:w-full" />
                         Conflicts Found ({migrationPlan.conflicts.length})
                       </h4>
                       <div className="space-y-2">
@@ -516,8 +487,8 @@ export default function ModelMigrationWizard({
                               {getConflictIcon(conflict.type)}
                               <div className="flex-1">
                                 <div className="font-medium">{conflict.model_id}</div>
-                                <div className="text-sm">{conflict.description}</div>
-                                <div className="text-sm text-muted-foreground mt-1">
+                                <div className="text-sm md:text-base lg:text-lg">{conflict.description}</div>
+                                <div className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                                   Resolution: {conflict.resolution}
                                 </div>
                               </div>
@@ -527,23 +498,22 @@ export default function ModelMigrationWizard({
                       </div>
                     </div>
                   )}
-
                   {/* Models to Move */}
                   {migrationPlan.models_to_move.length > 0 && (
                     <div className="space-y-2">
                       <h4 className="font-medium">Models to Move</h4>
                       <ScrollArea className="h-32 border rounded">
-                        <div className="p-2 space-y-2">
+                        <div className="p-2 space-y-2 sm:p-4 md:p-6">
                           {migrationPlan.models_to_move.map((model, index) => (
-                            <div key={index} className="text-sm space-y-1">
+                            <div key={index} className="text-sm space-y-1 md:text-base lg:text-lg">
                               <div className="font-medium">{model.name}</div>
-                              <div className="text-muted-foreground text-xs">
+                              <div className="text-muted-foreground text-xs sm:text-sm md:text-base">
                                 From: {model.current_path}
                               </div>
-                              <div className="text-muted-foreground text-xs">
+                              <div className="text-muted-foreground text-xs sm:text-sm md:text-base">
                                 To: {model.target_path}
                               </div>
-                              <div className="text-muted-foreground text-xs">
+                              <div className="text-muted-foreground text-xs sm:text-sm md:text-base">
                                 Size: {formatSize(model.size)}
                               </div>
                               {index < migrationPlan.models_to_move.length - 1 && <Separator />}
@@ -553,20 +523,19 @@ export default function ModelMigrationWizard({
                       </ScrollArea>
                     </div>
                   )}
-
                   {/* Models to Remove */}
                   {migrationPlan.models_to_remove.length > 0 && (
                     <div className="space-y-2">
                       <h4 className="font-medium text-red-600">Models to Remove</h4>
                       <ScrollArea className="h-24 border rounded">
-                        <div className="p-2 space-y-2">
+                        <div className="p-2 space-y-2 sm:p-4 md:p-6">
                           {migrationPlan.models_to_remove.map((model, index) => (
-                            <div key={index} className="text-sm space-y-1">
+                            <div key={index} className="text-sm space-y-1 md:text-base lg:text-lg">
                               <div className="font-medium">{model.name}</div>
-                              <div className="text-muted-foreground text-xs">
+                              <div className="text-muted-foreground text-xs sm:text-sm md:text-base">
                                 Path: {model.current_path}
                               </div>
-                              <div className="text-muted-foreground text-xs">
+                              <div className="text-muted-foreground text-xs sm:text-sm md:text-base">
                                 Size: {formatSize(model.size)}
                               </div>
                               {index < migrationPlan.models_to_remove.length - 1 && <Separator />}
@@ -580,7 +549,6 @@ export default function ModelMigrationWizard({
               </Card>
             </div>
           )}
-
           {/* Step 3: Execute */}
           {currentStep === 3 && (
             <div className="space-y-4">
@@ -588,11 +556,11 @@ export default function ModelMigrationWizard({
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     {migrating ? (
-                      <RefreshCw className="h-5 w-5 animate-spin" />
+                      <RefreshCw className="h-5 w-5 animate-spin sm:w-auto md:w-full" />
                     ) : migrationProgress === 100 ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <CheckCircle className="h-5 w-5 text-green-500 sm:w-auto md:w-full" />
                     ) : (
-                      <Clock className="h-5 w-5" />
+                      <Clock className="h-5 w-5 sm:w-auto md:w-full" />
                     )}
                     Migration Execution
                   </CardTitle>
@@ -608,27 +576,25 @@ export default function ModelMigrationWizard({
                 <CardContent className="space-y-4">
                   {migrating && (
                     <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-sm md:text-base lg:text-lg">
                         <span>Progress</span>
                         <span>{Math.round(migrationProgress)}%</span>
                       </div>
                       <Progress value={migrationProgress} className="h-2" />
                     </div>
                   )}
-                  
                   {migrationProgress === 100 && (
                     <Alert>
-                      <CheckCircle className="h-4 w-4" />
+                      <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
                       <AlertDescription>
                         Migration completed successfully! Your models have been organized 
                         according to the new directory structure.
                       </AlertDescription>
                     </Alert>
                   )}
-                  
                   {!migrating && migrationProgress === 0 && (
                     <Alert>
-                      <Info className="h-4 w-4" />
+                      <Info className="h-4 w-4 sm:w-auto md:w-full" />
                       <AlertDescription>
                         Click "Start Migration" to begin the process. 
                         {migrationOptions.dry_run 
@@ -643,27 +609,24 @@ export default function ModelMigrationWizard({
             </div>
           )}
         </ScrollArea>
-
         <DialogFooter>
           <div className="flex justify-between w-full">
             <div>
               {currentStep > 0 && currentStep < 3 && (
-                <Button variant="outline" onClick={prevStep}>
+                <button variant="outline" onClick={prevStep} aria-label="Button">
                   Previous
                 </Button>
               )}
             </div>
-            
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <button variant="outline" onClick={() = aria-label="Button"> onOpenChange(false)}>
                 Cancel
               </Button>
-              
               {currentStep === 0 && (
-                <Button onClick={analyzeMigration} disabled={loading}>
+                <button onClick={analyzeMigration} disabled={loading} aria-label="Button">
                   {loading ? (
                     <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
                       Analyzing...
                     </>
                   ) : (
@@ -671,24 +634,21 @@ export default function ModelMigrationWizard({
                   )}
                 </Button>
               )}
-              
               {currentStep === 1 && (
-                <Button onClick={nextStep}>
+                <button onClick={nextStep} aria-label="Button">
                   Next: Preview
                 </Button>
               )}
-              
               {currentStep === 2 && (
-                <Button onClick={nextStep}>
+                <button onClick={nextStep} aria-label="Button">
                   Next: Execute
                 </Button>
               )}
-              
               {currentStep === 3 && migrationProgress === 0 && (
-                <Button onClick={executeMigration} disabled={migrating}>
+                <button onClick={executeMigration} disabled={migrating} aria-label="Button">
                   {migrating ? (
                     <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
                       Migrating...
                     </>
                   ) : (

@@ -1,16 +1,13 @@
 'use client';
-
 import React, { Suspense, ComponentType } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { ErrorBoundary } from 'react-error-boundary';
-
 interface RouteLazyLoaderProps {
   children: React.ReactNode;
   fallback?: React.ComponentType;
   errorFallback?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>;
 }
-
 // Enhanced loading fallback for routes
 const DefaultRouteFallback: React.FC = () => (
   <motion.div
@@ -25,7 +22,7 @@ const DefaultRouteFallback: React.FC = () => (
         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         className="inline-block mb-4"
       >
-        <Loader2 className="h-8 w-8 text-primary" />
+        <Loader2 className="h-8 w-8 text-primary sm:w-auto md:w-full" />
       </motion.div>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -33,19 +30,18 @@ const DefaultRouteFallback: React.FC = () => (
         transition={{ delay: 0.2 }}
       >
         <h2 className="text-lg font-semibold text-foreground mb-2">Loading page...</h2>
-        <p className="text-sm text-muted-foreground">Please wait while we prepare your content</p>
+        <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Please wait while we prepare your content</p>
       </motion.div>
     </div>
   </motion.div>
 );
-
 // Enhanced error fallback for routes
 const DefaultRouteErrorFallback: React.FC<{ error: Error; resetErrorBoundary: () => void }> = ({
   error,
   resetErrorBoundary,
 }) => (
   <motion.div
-    className="min-h-screen flex items-center justify-center bg-background p-4"
+    className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-4 md:p-6"
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.4 }}
@@ -57,9 +53,8 @@ const DefaultRouteErrorFallback: React.FC<{ error: Error; resetErrorBoundary: ()
         transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
         className="mb-6"
       >
-        <AlertTriangle className="h-16 w-16 text-destructive mx-auto" />
+        <AlertTriangle className="h-16 w-16 text-destructive mx-auto sm:w-auto md:w-full" />
       </motion.div>
-      
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -71,26 +66,24 @@ const DefaultRouteErrorFallback: React.FC<{ error: Error; resetErrorBoundary: ()
         <p className="text-muted-foreground mb-6">
           We encountered an error while loading this page. This might be a temporary issue.
         </p>
-        
         <details className="mb-6 text-left">
-          <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors md:text-base lg:text-lg">
             Technical details
           </summary>
-          <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-auto max-h-32">
+          <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-auto max-h-32 sm:text-sm md:text-base">
             {error.message}
             {error.stack && `\n\n${error.stack}`}
           </pre>
         </details>
-        
         <div className="space-y-3">
           <button
             onClick={resetErrorBoundary}
             className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-          >
+           aria-label="Button">
             Try Again
           </button>
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() = aria-label="Button"> window.location.href = '/'}
             className="w-full px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors"
           >
             Go to Home
@@ -100,7 +93,6 @@ const DefaultRouteErrorFallback: React.FC<{ error: Error; resetErrorBoundary: ()
     </div>
   </motion.div>
 );
-
 // Main route lazy loader component
 export const RouteLazyLoader: React.FC<RouteLazyLoaderProps> = ({
   children,
@@ -111,7 +103,6 @@ export const RouteLazyLoader: React.FC<RouteLazyLoaderProps> = ({
     <ErrorBoundary
       FallbackComponent={ErrorFallbackComponent}
       onError={(error, errorInfo) => {
-        console.error('Route Error:', error, errorInfo);
         // Here you could send error to monitoring service
       }}
     >
@@ -121,7 +112,6 @@ export const RouteLazyLoader: React.FC<RouteLazyLoaderProps> = ({
     </ErrorBoundary>
   );
 };
-
 // Utility function to create lazy route components
 export function createLazyRoute<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
@@ -132,14 +122,11 @@ export function createLazyRoute<T extends ComponentType<any>>(
   } = {}
 ) {
   const LazyRouteComponent = React.lazy(importFn);
-
   // Preload the component if requested
   if (options.preload) {
     importFn().catch(error => {
-      console.warn('Failed to preload route component:', error);
     });
   }
-
   return ((props: any) => (
     <RouteLazyLoader
       fallback={options.fallback}
@@ -149,21 +136,17 @@ export function createLazyRoute<T extends ComponentType<any>>(
     </RouteLazyLoader>
   )) as unknown as T;
 }
-
 // Hook for route preloading
 export function useRoutePreloader() {
   const preloadRoute = React.useCallback(
     (importFn: () => Promise<{ default: ComponentType<any> }>) => {
       importFn().catch(error => {
-        console.warn('Failed to preload route:', error);
       });
     },
     []
   );
-
   return { preloadRoute };
 }
-
 // Higher-order component for wrapping pages with lazy loading
 export function withLazyLoading<P extends object>(
   Component: ComponentType<P>,
@@ -180,10 +163,7 @@ export function withLazyLoading<P extends object>(
       <Component {...props} />
     </RouteLazyLoader>
   );
-
   WrappedComponent.displayName = `withLazyLoading(${Component.displayName || Component.name})`;
-
   return WrappedComponent;
 }
-
 export default RouteLazyLoader;

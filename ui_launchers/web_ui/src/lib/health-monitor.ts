@@ -2,10 +2,8 @@
  * Health Check Monitoring for AI Karen Web UI API Integration
  * Monitors backend API endpoints and provides alerting for issues
  */
-
 import { webUIConfig } from './config';
 import { getKarenBackend } from './karen-backend';
-
 export interface HealthCheckResult {
   endpoint: string;
   status: 'healthy' | 'degraded' | 'error';
@@ -14,7 +12,6 @@ export interface HealthCheckResult {
   error?: string;
   details?: Record<string, any>;
 }
-
 export interface HealthMetrics {
   totalRequests: number;
   successfulRequests: number;
@@ -25,7 +22,6 @@ export interface HealthMetrics {
   uptime: number;
   endpoints: Record<string, HealthCheckResult>;
 }
-
 export interface AlertRule {
   id: string;
   name: string;
@@ -35,7 +31,6 @@ export interface AlertRule {
   cooldown: number; // milliseconds
   lastTriggered?: number;
 }
-
 export interface Alert {
   id: string;
   ruleId: string;
@@ -45,7 +40,6 @@ export interface Alert {
   acknowledged: boolean;
   metrics?: Partial<HealthMetrics>;
 }
-
 class HealthMonitor {
   private metrics: HealthMetrics;
   private alerts: Alert[] = [];
@@ -55,7 +49,6 @@ class HealthMonitor {
   private startTime: number = Date.now();
   private listeners: Array<(metrics: HealthMetrics) => void> = [];
   private alertListeners: Array<(alert: Alert) => void> = [];
-
   constructor() {
     this.metrics = {
       totalRequests: 0,
@@ -67,10 +60,8 @@ class HealthMonitor {
       uptime: 0,
       endpoints: {},
     };
-
     this.initializeDefaultAlertRules();
   }
-
   private initializeDefaultAlertRules(): void {
     this.alertRules = [
       {
@@ -144,35 +135,26 @@ class HealthMonitor {
       // - memory-endpoint-down
     ];
   }
-
   /**
    * Start health monitoring
    */
   public start(): void {
     if (this.isMonitoring) {
-      console.warn('Health monitoring is already running');
       return;
     }
-
     if (!webUIConfig.enableHealthChecks) {
-      console.log('Health checks are disabled in configuration');
       return;
     }
-
     this.isMonitoring = true;
     this.startTime = Date.now();
-
     console.log(`🏥 Starting health monitoring (interval: ${webUIConfig.healthCheckInterval}ms)`);
-
     // Run initial health check
     this.performHealthCheck();
-
     // Set up periodic health checks
     this.monitoringInterval = setInterval(() => {
       this.performHealthCheck();
     }, webUIConfig.healthCheckInterval);
   }
-
   /**
    * Stop health monitoring
    */
@@ -180,30 +162,23 @@ class HealthMonitor {
     if (!this.isMonitoring) {
       return;
     }
-
     this.isMonitoring = false;
-
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = undefined;
     }
-
-    console.log('🏥 Health monitoring stopped');
   }
-
   /**
    * Perform a comprehensive health check
    */
   private async performHealthCheck(): Promise<void> {
     const backend = getKarenBackend();
     const startTime = Date.now();
-
     try {
       // Check main health endpoint first
       await this.checkEndpoint('/health', async (_signal) => {
         return await backend.healthCheck();
       });
-
       // Only check other endpoints if health check passes and we're not rate limited
       const healthEndpoint = this.metrics.endpoints['/health'];
       if (healthEndpoint && healthEndpoint.status === 'healthy') {
@@ -214,7 +189,6 @@ class HealthMonitor {
             return await backend.getAvailablePlugins();
           });
         }
-
         // Only check analytics endpoint every third health check
         if (this.metrics.totalRequests % 3 === 0) {
           await this.checkEndpointSafely('/api/web/analytics/system', async (_signal) => {
@@ -222,26 +196,18 @@ class HealthMonitor {
           });
         }
       }
-
     } catch (error) {
-      console.error('Health check failed:', error);
     }
-
     // Update metrics
     this.updateMetrics();
-
     // Check alert rules
     this.checkAlertRules();
-
     // Notify listeners
     this.notifyListeners();
-
     if (webUIConfig.debugLogging) {
       const duration = Date.now() - startTime;
-      console.log(`🏥 Health check completed in ${duration}ms`);
     }
   }
-
   /**
    * Check a specific endpoint with graceful failure handling
    */
@@ -254,7 +220,6 @@ class HealthMonitor {
     } catch (error) {
       // Handle rate limiting specifically
       if (error instanceof Error && error.message.includes('429')) {
-        console.warn(`🚦 Rate limited on ${endpoint}, will retry later`);
         this.metrics.endpoints[endpoint] = {
           endpoint,
           status: 'degraded',
@@ -264,12 +229,9 @@ class HealthMonitor {
         };
         return;
       }
-
       // Log as debug instead of error for missing endpoints
       if (webUIConfig.debugLogging) {
-        console.debug(`Endpoint ${endpoint} not available:`, error);
       }
-      
       // Mark endpoint as degraded instead of error for missing endpoints
       this.metrics.endpoints[endpoint] = {
         endpoint,
@@ -280,7 +242,6 @@ class HealthMonitor {
       };
     }
   }
-
   /**
    * Check a specific endpoint
    */
@@ -290,7 +251,6 @@ class HealthMonitor {
   ): Promise<void> {
     const startTime = Date.now();
     const controller = new AbortController();
-
     try {
       let timeoutId: NodeJS.Timeout;
       const timeoutPromise = new Promise((_, reject) => {
@@ -299,15 +259,12 @@ class HealthMonitor {
           reject(new Error('Health check timeout'));
         }, webUIConfig.healthCheckTimeout);
       });
-
       const result = await Promise.race([
         checkFunction(controller.signal),
         timeoutPromise,
       ]);
       clearTimeout(timeoutId!);
-
       const responseTime = Date.now() - startTime;
-
       const summarize = (data: any) => {
         if (Array.isArray(data)) {
           return { length: data.length };
@@ -318,12 +275,10 @@ class HealthMonitor {
         }
         return data;
       };
-
       // Recognize degraded mode explicitly
       let status: 'healthy' | 'degraded' | 'error' = 'healthy';
       if (result?.status === 'error') status = 'error';
       else if (result?.status === 'degraded') status = 'degraded';
-
       this.metrics.endpoints[endpoint] = {
         endpoint,
         status,
@@ -331,17 +286,14 @@ class HealthMonitor {
         timestamp: new Date().toISOString(),
         details: summarize(result),
       };
-
       this.metrics.totalRequests++;
       if (status === 'healthy') {
         this.metrics.successfulRequests++;
       } else {
         this.metrics.failedRequests++;
       }
-
     } catch (error) {
       const responseTime = Date.now() - startTime;
-
       this.metrics.endpoints[endpoint] = {
         endpoint,
         status: 'error',
@@ -349,12 +301,10 @@ class HealthMonitor {
         timestamp: new Date().toISOString(),
         error: error instanceof Error ? error.message : String(error),
       };
-
       this.metrics.totalRequests++;
       this.metrics.failedRequests++;
     }
   }
-
   /**
    * Update overall metrics
    */
@@ -363,32 +313,26 @@ class HealthMonitor {
     this.metrics.errorRate = this.metrics.totalRequests > 0
       ? this.metrics.failedRequests / this.metrics.totalRequests
       : 0;
-
     // Calculate average response time
     const responseTimes = Object.values(this.metrics.endpoints).map(e => e.responseTime);
     this.metrics.averageResponseTime = responseTimes.length > 0
       ? responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length
       : 0;
-
     // Update uptime
     this.metrics.uptime = Date.now() - this.startTime;
-
     // Update last health check timestamp
     this.metrics.lastHealthCheck = new Date().toISOString();
   }
-
   /**
    * Check alert rules and trigger alerts if necessary
    */
   private checkAlertRules(): void {
     const now = Date.now();
-
     for (const rule of this.alertRules) {
       // Check cooldown
       if (rule.lastTriggered && (now - rule.lastTriggered) < rule.cooldown) {
         continue;
       }
-
       // Check condition
       if (rule.condition(this.metrics)) {
         this.triggerAlert(rule);
@@ -396,7 +340,6 @@ class HealthMonitor {
       }
     }
   }
-
   /**
    * Trigger an alert
    */
@@ -410,19 +353,15 @@ class HealthMonitor {
       acknowledged: false,
       metrics: { ...this.metrics },
     };
-
     this.alerts.unshift(alert); // Add to beginning of array
-
     // Keep only last 100 alerts
     if (this.alerts.length > 100) {
       this.alerts = this.alerts.slice(0, 100);
     }
-
     // Log alert with appropriate level (avoid console.error for health monitoring alerts)
     const logLevel = alert.severity === 'critical' ? 'warn' : 
                     alert.severity === 'high' ? 'warn' :
                     alert.severity === 'medium' ? 'warn' : 'info';
-
     console[logLevel](`🚨 [${alert.severity.toUpperCase()}] Health Alert: ${alert.message}`, {
       alertId: alert.id,
       ruleId: alert.ruleId,
@@ -434,17 +373,14 @@ class HealthMonitor {
         failedRequests: this.metrics.failedRequests,
       },
     });
-
     // Notify alert listeners
     this.alertListeners.forEach(listener => {
       try {
         listener(alert);
       } catch (error) {
-        console.warn('Error in alert listener:', error);
       }
     });
   }
-
   /**
    * Notify metrics listeners
    */
@@ -453,32 +389,27 @@ class HealthMonitor {
       try {
         listener(this.metrics);
       } catch (error) {
-        console.error('Error in metrics listener:', error);
       }
     });
   }
-
   /**
    * Get current metrics
    */
   public getMetrics(): HealthMetrics {
     return { ...this.metrics };
   }
-
   /**
    * Get recent alerts
    */
   public getAlerts(limit: number = 50): Alert[] {
     return this.alerts.slice(0, limit);
   }
-
   /**
    * Get unacknowledged alerts
    */
   public getUnacknowledgedAlerts(): Alert[] {
     return this.alerts.filter(alert => !alert.acknowledged);
   }
-
   /**
    * Acknowledge an alert
    */
@@ -490,7 +421,6 @@ class HealthMonitor {
     }
     return false;
   }
-
   /**
    * Add a metrics listener
    */
@@ -503,7 +433,6 @@ class HealthMonitor {
       }
     };
   }
-
   /**
    * Add an alert listener
    */
@@ -516,14 +445,12 @@ class HealthMonitor {
       }
     };
   }
-
   /**
    * Add a custom alert rule
    */
   public addAlertRule(rule: AlertRule): void {
     this.alertRules.push(rule);
   }
-
   /**
    * Remove an alert rule
    */
@@ -535,7 +462,6 @@ class HealthMonitor {
     }
     return false;
   }
-
   /**
    * Get monitoring status
    */
@@ -556,7 +482,6 @@ class HealthMonitor {
       averageResponseTime: this.metrics.averageResponseTime,
     };
   }
-
   /**
    * Reset metrics
    */
@@ -573,7 +498,6 @@ class HealthMonitor {
     };
     this.startTime = Date.now();
   }
-
   /**
    * Clear alerts
    */
@@ -581,22 +505,17 @@ class HealthMonitor {
     this.alerts = [];
   }
 }
-
 // Global health monitor instance
 let healthMonitor: HealthMonitor | null = null;
-
 export function getHealthMonitor(): HealthMonitor {
   if (!healthMonitor) {
     healthMonitor = new HealthMonitor();
   }
   return healthMonitor;
 }
-
 export function initializeHealthMonitor(): HealthMonitor {
   healthMonitor = new HealthMonitor();
   return healthMonitor;
 }
-
 // Types are already exported via export interface declarations above
-
 export { HealthMonitor };

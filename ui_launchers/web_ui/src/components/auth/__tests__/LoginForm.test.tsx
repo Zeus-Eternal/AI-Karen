@@ -53,7 +53,7 @@ vi.mock('@/hooks/use-form-validation', () => ({
 // Mock UI components
 vi.mock('@/components/ui/button', () => ({
     Button: ({ children, disabled, ...props }: any) => (
-        <button disabled={disabled} {...props}>
+        <button disabled={disabled} {...props} aria-label="Button">
             {children}
         </button>
     ),
@@ -91,7 +91,7 @@ vi.mock('@/components/ui/form-field', () => ({
                 id={name}
                 name={name}
                 value={value}
-                onChange={(e) => onValueChange(e.target.value)}
+                onChange={(e) = aria-label="Input"> onValueChange(e.target.value)}
                 placeholder={placeholder}
                 disabled={disabled}
                 aria-invalid={error ? 'true' : 'false'}

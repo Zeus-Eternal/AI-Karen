@@ -5,7 +5,7 @@
  * role assignment, and invitation functionality.
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { jest } from '@jest/globals';
 import { UserCreationForm } from '../UserCreationForm';

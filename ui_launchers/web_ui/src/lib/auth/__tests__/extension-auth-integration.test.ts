@@ -1,22 +1,26 @@
+import {
+import { extensionAuthRecoveryManager } from "../extension-auth-recovery";
+import { getExtensionAuthManager } from "../extension-auth-manager";
+import { vi, describe, it, beforeEach, expect } from "vitest";
 /**
  * Integration Tests for Extension Authentication Error Handling System
  *
  * Tests the complete flow from error detection through recovery and degradation.
  */
 
-import {
+
   ExtensionAuthErrorFactory,
   ExtensionAuthRecoveryStrategy,
   extensionAuthErrorHandler,
 } from "../extension-auth-errors";
-import {
+
   ExtensionFeatureLevel,
   extensionAuthDegradationManager,
 } from "../extension-auth-degradation";
-import { extensionAuthRecoveryManager } from "../extension-auth-recovery";
-import { getExtensionAuthManager } from "../extension-auth-manager";
 
-import { vi, describe, it, beforeEach, expect } from "vitest";
+
+
+
 
 // Mock the extension auth manager
 vi.mock("../extension-auth-manager");

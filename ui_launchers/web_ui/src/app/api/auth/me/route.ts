@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 import { withBackendPath } from '@/app/api/_utils/backend';
-
 export async function GET(request: NextRequest) {
   try {
     // Get authorization header from the request
     const authorization = request.headers.get('authorization');
     const cookie = request.headers.get('cookie');
-
     // Forward the request to the backend /api/auth/me endpoint
     const backendUrl = withBackendPath('/api/auth/me');
-
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
-
     // Forward auth headers if present
     if (authorization) {
       headers['Authorization'] = authorization;
@@ -22,15 +17,12 @@ export async function GET(request: NextRequest) {
     if (cookie) {
       headers['Cookie'] = cookie;
     }
-
     const response = await fetch(backendUrl, {
       method: 'GET',
       headers,
       signal: AbortSignal.timeout(10000), // 10 second timeout
     });
-
     const data = await response.json();
-
     // Return the backend response with appropriate status
     return NextResponse.json(data, { 
       status: response.status,
@@ -40,10 +32,7 @@ export async function GET(request: NextRequest) {
         'Expires': '0'
       }
     });
-
   } catch (error) {
-    console.error('Auth me endpoint error:', error);
-    
     // Return structured error response
     return NextResponse.json(
       { 

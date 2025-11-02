@@ -1,3 +1,7 @@
+import { logger } from '@/lib/logger';
+import { errorHandler, type ErrorInfo } from '@/lib/error-handler';
+import { 
+import { getExtensionAuthManager } from './extension-auth-manager';
 /**
  * Extension Authentication Error Recovery Manager
  * 
@@ -12,19 +16,19 @@
  * - 9.2: Fallback behavior for extension unavailability
  */
 
-import { logger } from '@/lib/logger';
-import { errorHandler, type ErrorInfo } from '@/lib/error-handler';
-import { 
+
+
+
   ExtensionAuthError, 
   ExtensionAuthRecoveryStrategy,
   ExtensionAuthErrorFactory,
   extensionAuthErrorHandler
 } from './extension-auth-errors';
-import { 
+
   extensionAuthDegradationManager,
   ExtensionFeatureLevel
 } from './extension-auth-degradation';
-import { getExtensionAuthManager } from './extension-auth-manager';
+
 
 /**
  * Recovery attempt result

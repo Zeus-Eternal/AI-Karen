@@ -3,7 +3,6 @@
  * Implements automatic performance optimizations including bundle splitting,
  * image optimization, caching strategies, and memory management
  */
-
 export interface OptimizationConfig {
   bundleSplitting: {
     enabled: boolean;
@@ -33,7 +32,6 @@ export interface OptimizationConfig {
     eventListenerCleanup: boolean;
   };
 }
-
 export interface OptimizationMetrics {
   bundleSize: {
     before: number;
@@ -57,7 +55,6 @@ export interface OptimizationMetrics {
     gcFrequency: number;
   };
 }
-
 export interface OptimizationRecommendation {
   id: string;
   type: 'bundle' | 'image' | 'cache' | 'memory' | 'code';
@@ -68,14 +65,12 @@ export interface OptimizationRecommendation {
   implementation: string;
   estimatedGain: number; // percentage improvement
 }
-
 export class PerformanceOptimizer {
   private config: OptimizationConfig;
   private metrics: OptimizationMetrics;
   private recommendations: OptimizationRecommendation[] = [];
   private observers: PerformanceObserver[] = [];
   private memoryLeakDetector: MemoryLeakDetector;
-
   constructor(config?: Partial<OptimizationConfig>) {
     this.config = {
       bundleSplitting: {
@@ -107,18 +102,15 @@ export class PerformanceOptimizer {
       },
       ...config,
     };
-
     this.metrics = {
       bundleSize: { before: 0, after: 0, reduction: 0 },
       imageOptimization: { imagesOptimized: 0, sizeReduction: 0, webpConversions: 0 },
       cachePerformance: { hitRate: 0, missRate: 0, averageLoadTime: 0 },
       memoryUsage: { heapUsed: 0, heapTotal: 0, leaksDetected: 0, gcFrequency: 0 },
     };
-
     this.memoryLeakDetector = new MemoryLeakDetector();
     this.initialize();
   }
-
   /**
    * Initialize the performance optimizer
    */
@@ -126,23 +118,18 @@ export class PerformanceOptimizer {
     if (this.config.bundleSplitting.enabled) {
       this.initializeBundleOptimization();
     }
-
     if (this.config.imageOptimization.enabled) {
       this.initializeImageOptimization();
     }
-
     if (this.config.caching.enabled) {
       this.initializeCacheOptimization();
     }
-
     if (this.config.memoryManagement.enabled) {
       this.initializeMemoryManagement();
     }
-
     this.startPerformanceMonitoring();
     this.generateInitialRecommendations();
   }
-
   /**
    * Initialize bundle optimization
    */
@@ -151,16 +138,13 @@ export class PerformanceOptimizer {
     if (this.config.bundleSplitting.routeBasedSplitting) {
       this.implementRouteSplitting();
     }
-
     // Implement component-based splitting
     if (this.config.bundleSplitting.componentBasedSplitting) {
       this.implementComponentSplitting();
     }
-
     // Monitor bundle sizes
     this.monitorBundleSizes();
   }
-
   /**
    * Initialize image optimization
    */
@@ -169,16 +153,13 @@ export class PerformanceOptimizer {
     if (this.config.imageOptimization.lazyLoading) {
       this.setupLazyLoading();
     }
-
     // Monitor image loading performance
     this.monitorImagePerformance();
-
     // Set up WebP conversion detection
     if (this.config.imageOptimization.webpConversion) {
       this.setupWebPDetection();
     }
   }
-
   /**
    * Initialize cache optimization
    */
@@ -187,14 +168,11 @@ export class PerformanceOptimizer {
     if (this.config.caching.serviceWorker) {
       this.setupServiceWorkerCaching();
     }
-
     // Implement preloading strategies
     this.implementPreloadingStrategies();
-
     // Monitor cache performance
     this.monitorCachePerformance();
   }
-
   /**
    * Initialize memory management
    */
@@ -203,38 +181,32 @@ export class PerformanceOptimizer {
     if (this.config.memoryManagement.leakDetection) {
       this.memoryLeakDetector.start();
     }
-
     // Monitor garbage collection
     if (this.config.memoryManagement.gcMonitoring) {
       this.monitorGarbageCollection();
     }
-
     // Set up component cleanup monitoring
     if (this.config.memoryManagement.componentCleanup) {
       this.monitorComponentCleanup();
     }
   }
-
   /**
    * Implement route-based code splitting
    */
   private implementRouteSplitting(): void {
     // This would typically be handled at build time, but we can provide runtime optimizations
     const routes = this.getApplicationRoutes();
-    
     routes.forEach(route => {
       // Preload next likely routes based on user behavior
       this.preloadRoute(route);
     });
   }
-
   /**
    * Implement component-based code splitting
    */
   private implementComponentSplitting(): void {
     // Monitor component usage and suggest splitting for large components
     const largeComponents = this.identifyLargeComponents();
-    
     largeComponents.forEach(component => {
       this.recommendations.push({
         id: `component-split-${component.name}`,
@@ -248,7 +220,6 @@ export class PerformanceOptimizer {
       });
     });
   }
-
   /**
    * Set up lazy loading for images
    */
@@ -270,25 +241,21 @@ export class PerformanceOptimizer {
         rootMargin: '50px 0px',
         threshold: 0.01,
       });
-
       // Observe all images with data-src attribute
       document.querySelectorAll('img[data-src]').forEach(img => {
         imageObserver.observe(img);
       });
     }
   }
-
   /**
    * Set up WebP detection and conversion
    */
   private setupWebPDetection(): void {
     const supportsWebP = this.checkWebPSupport();
-    
     if (supportsWebP) {
       // Replace image sources with WebP versions when available
       document.querySelectorAll('img').forEach(img => {
         const webpSrc = img.src.replace(/\.(jpg|jpeg|png)$/i, '.webp');
-        
         // Check if WebP version exists
         this.checkImageExists(webpSrc).then(exists => {
           if (exists) {
@@ -299,7 +266,6 @@ export class PerformanceOptimizer {
       });
     }
   }
-
   /**
    * Set up service worker caching
    */
@@ -307,15 +273,12 @@ export class PerformanceOptimizer {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then(registration => {
-          console.log('Service Worker registered:', registration);
           this.monitorServiceWorkerCache(registration);
         })
         .catch(error => {
-          console.error('Service Worker registration failed:', error);
         });
     }
   }
-
   /**
    * Implement preloading strategies
    */
@@ -334,7 +297,6 @@ export class PerformanceOptimizer {
       }
     });
   }
-
   /**
    * Monitor garbage collection
    */
@@ -349,26 +311,21 @@ export class PerformanceOptimizer {
             }
           }
         });
-
         gcObserver.observe({ entryTypes: ['measure'] });
         this.observers.push(gcObserver);
       } catch (error) {
-        console.warn('GC monitoring not supported:', error);
       }
     }
-
     // Fallback: monitor memory usage periodically
     setInterval(() => {
       if ('memory' in performance) {
         const memory = (performance as any).memory;
         this.metrics.memoryUsage.heapUsed = memory.usedJSHeapSize;
         this.metrics.memoryUsage.heapTotal = memory.totalJSHeapSize;
-        
         this.detectMemoryLeaks();
       }
     }, 10000);
   }
-
   /**
    * Start performance monitoring
    */
@@ -380,54 +337,45 @@ export class PerformanceOptimizer {
           this.analyzeResourcePerformance(entry as PerformanceResourceTiming);
         }
       });
-
       try {
         resourceObserver.observe({ entryTypes: ['resource'] });
         this.observers.push(resourceObserver);
       } catch (error) {
-        console.warn('Resource monitoring not supported:', error);
       }
     }
   }
-
   /**
    * Generate optimization recommendations
    */
   generateRecommendations(): OptimizationRecommendation[] {
     this.recommendations = [];
-
     // Analyze current performance and generate recommendations
     this.analyzeBundleSize();
     this.analyzeImageOptimization();
     this.analyzeCachePerformance();
     this.analyzeMemoryUsage();
-
     return this.recommendations.sort((a, b) => {
       const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
       return priorityOrder[b.priority] - priorityOrder[a.priority];
     });
   }
-
   /**
    * Apply automatic optimizations
    */
   async applyOptimizations(): Promise<void> {
     const recommendations = this.generateRecommendations();
-    
     for (const recommendation of recommendations) {
       if (recommendation.priority === 'critical' || recommendation.priority === 'high') {
         await this.applyOptimization(recommendation);
       }
     }
   }
-
   /**
    * Get optimization metrics
    */
   getMetrics(): OptimizationMetrics {
     return { ...this.metrics };
   }
-
   /**
    * Update configuration
    */
@@ -435,9 +383,7 @@ export class PerformanceOptimizer {
     this.config = { ...this.config, ...config };
     this.initialize(); // Re-initialize with new config
   }
-
   // Private helper methods
-
   private getApplicationRoutes(): Array<{ name: string; path: string; size: number }> {
     // This would typically be provided by the routing system
     return [
@@ -446,7 +392,6 @@ export class PerformanceOptimizer {
       { name: 'settings', path: '/settings', size: 100 },
     ];
   }
-
   private identifyLargeComponents(): Array<{ name: string; size: number }> {
     // This would analyze the bundle to identify large components
     return [
@@ -454,7 +399,6 @@ export class PerformanceOptimizer {
       { name: 'ComplexForm', size: 250 },
     ];
   }
-
   private preloadRoute(route: { name: string; path: string }): void {
     // Implement route preloading logic
     const link = document.createElement('link');
@@ -462,14 +406,12 @@ export class PerformanceOptimizer {
     link.href = route.path;
     document.head.appendChild(link);
   }
-
   private checkWebPSupport(): boolean {
     const canvas = document.createElement('canvas');
     canvas.width = 1;
     canvas.height = 1;
     return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
   }
-
   private async checkImageExists(url: string): Promise<boolean> {
     try {
       const response = await fetch(url, { method: 'HEAD' });
@@ -478,7 +420,6 @@ export class PerformanceOptimizer {
       return false;
     }
   }
-
   private monitorBundleSizes(): void {
     // Monitor and track bundle size changes
     if ('PerformanceObserver' in window) {
@@ -488,16 +429,13 @@ export class PerformanceOptimizer {
           this.metrics.bundleSize.after = navEntry.transferSize || 0;
         }
       });
-
       try {
         navigationObserver.observe({ entryTypes: ['navigation'] });
         this.observers.push(navigationObserver);
       } catch (error) {
-        console.warn('Navigation monitoring not supported:', error);
       }
     }
   }
-
   private monitorImagePerformance(): void {
     document.addEventListener('load', (event) => {
       const target = event.target as HTMLImageElement;
@@ -507,7 +445,6 @@ export class PerformanceOptimizer {
       }
     }, true);
   }
-
   private monitorCachePerformance(): void {
     // Monitor cache hit/miss rates
     if ('PerformanceObserver' in window) {
@@ -522,31 +459,24 @@ export class PerformanceOptimizer {
           }
         }
       });
-
       try {
         resourceObserver.observe({ entryTypes: ['resource'] });
         this.observers.push(resourceObserver);
       } catch (error) {
-        console.warn('Cache monitoring not supported:', error);
       }
     }
   }
-
   private monitorServiceWorkerCache(registration: ServiceWorkerRegistration): void {
     // Monitor service worker cache performance
     registration.addEventListener('updatefound', () => {
-      console.log('Service Worker update found');
     });
   }
-
   private monitorComponentCleanup(): void {
     // Monitor React component cleanup
     // This would integrate with React DevTools or custom hooks
   }
-
   private preloadCriticalResources(): void {
     const criticalResources = ['/api/user', '/api/config'];
-    
     criticalResources.forEach(resource => {
       const link = document.createElement('link');
       link.rel = 'prefetch';
@@ -554,37 +484,30 @@ export class PerformanceOptimizer {
       document.head.appendChild(link);
     });
   }
-
   private preloadNextPage(): void {
     // Predict and preload the next likely page based on current route
     const currentPath = window.location.pathname;
     const nextPage = this.predictNextPage(currentPath);
-    
     if (nextPage) {
       this.preloadRoute({ name: nextPage, path: nextPage });
     }
   }
-
   private preloadBasedOnBehavior(): void {
     // Analyze user behavior and preload resources
     // This would use analytics data to predict user actions
   }
-
   private predictNextPage(currentPath: string): string | null {
     const predictions: Record<string, string> = {
       '/dashboard': '/analytics',
       '/analytics': '/reports',
       '/settings': '/profile',
     };
-    
     return predictions[currentPath] || null;
   }
-
   private detectMemoryLeaks(): void {
     const memory = (performance as any).memory;
     if (memory) {
       const usagePercent = (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100;
-      
       if (usagePercent > 90) {
         this.metrics.memoryUsage.leaksDetected++;
         this.recommendations.push({
@@ -600,7 +523,6 @@ export class PerformanceOptimizer {
       }
     }
   }
-
   private analyzeResourcePerformance(entry: PerformanceResourceTiming): void {
     // Analyze resource loading performance and generate recommendations
     if (entry.duration > 1000) {
@@ -616,7 +538,6 @@ export class PerformanceOptimizer {
       });
     }
   }
-
   private analyzeGCPattern(entry: PerformanceEntry): void {
     // Analyze garbage collection patterns
     if (entry.duration > 50) {
@@ -632,7 +553,6 @@ export class PerformanceOptimizer {
       });
     }
   }
-
   private generateInitialRecommendations(): void {
     // Generate initial set of recommendations based on configuration
     if (!this.config.imageOptimization.webpConversion) {
@@ -647,7 +567,6 @@ export class PerformanceOptimizer {
         estimatedGain: 30,
       });
     }
-
     if (!this.config.caching.serviceWorker) {
       this.recommendations.push({
         id: 'enable-service-worker',
@@ -661,7 +580,6 @@ export class PerformanceOptimizer {
       });
     }
   }
-
   private analyzeBundleSize(): void {
     // Analyze bundle size and suggest optimizations
     if (this.metrics.bundleSize.after > 500 * 1024) { // 500KB
@@ -677,18 +595,15 @@ export class PerformanceOptimizer {
       });
     }
   }
-
   private analyzeImageOptimization(): void {
     // Analyze image optimization opportunities
     const images = document.querySelectorAll('img');
     let unoptimizedImages = 0;
-
     images.forEach(img => {
       if (!img.loading || img.loading !== 'lazy') {
         unoptimizedImages++;
       }
     });
-
     if (unoptimizedImages > 0) {
       this.recommendations.push({
         id: 'lazy-loading-images',
@@ -702,13 +617,11 @@ export class PerformanceOptimizer {
       });
     }
   }
-
   private analyzeCachePerformance(): void {
     // Analyze cache performance
     const totalRequests = this.metrics.cachePerformance.hitRate + this.metrics.cachePerformance.missRate;
     if (totalRequests > 0) {
       const hitRate = (this.metrics.cachePerformance.hitRate / totalRequests) * 100;
-      
       if (hitRate < 70) {
         this.recommendations.push({
           id: 'low-cache-hit-rate',
@@ -723,13 +636,11 @@ export class PerformanceOptimizer {
       }
     }
   }
-
   private analyzeMemoryUsage(): void {
     // Analyze memory usage patterns
     if ('memory' in performance) {
       const memory = (performance as any).memory;
       const usagePercent = (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100;
-      
       if (usagePercent > 80) {
         this.recommendations.push({
           id: 'high-memory-usage',
@@ -744,7 +655,6 @@ export class PerformanceOptimizer {
       }
     }
   }
-
   private async applyOptimization(recommendation: OptimizationRecommendation): Promise<void> {
     // Apply automatic optimizations based on recommendation type
     switch (recommendation.type) {
@@ -762,7 +672,6 @@ export class PerformanceOptimizer {
         break;
     }
   }
-
   private async applyImageOptimization(recommendation: OptimizationRecommendation): Promise<void> {
     if (recommendation.id === 'lazy-loading-images') {
       document.querySelectorAll('img:not([loading])').forEach(img => {
@@ -770,13 +679,11 @@ export class PerformanceOptimizer {
       });
     }
   }
-
   private async applyCacheOptimization(recommendation: OptimizationRecommendation): Promise<void> {
     if (recommendation.id === 'enable-service-worker') {
       this.setupServiceWorkerCaching();
     }
   }
-
   private async applyMemoryOptimization(recommendation: OptimizationRecommendation): Promise<void> {
     if (recommendation.id === 'memory-leak-detected') {
       // Trigger garbage collection if possible
@@ -785,12 +692,9 @@ export class PerformanceOptimizer {
       }
     }
   }
-
   private async applyBundleOptimization(recommendation: OptimizationRecommendation): Promise<void> {
     // Bundle optimizations are typically handled at build time
-    console.log('Bundle optimization recommendation:', recommendation.title);
   }
-
   /**
    * Cleanup observers and resources
    */
@@ -800,7 +704,6 @@ export class PerformanceOptimizer {
     this.memoryLeakDetector.stop();
   }
 }
-
 /**
  * Memory Leak Detector
  * Detects potential memory leaks in the application
@@ -809,16 +712,13 @@ class MemoryLeakDetector {
   private monitoring = false;
   private memorySnapshots: number[] = [];
   private interval?: NodeJS.Timeout;
-
   start(): void {
     if (this.monitoring) return;
-    
     this.monitoring = true;
     this.interval = setInterval(() => {
       this.takeMemorySnapshot();
     }, 30000); // Every 30 seconds
   }
-
   stop(): void {
     this.monitoring = false;
     if (this.interval) {
@@ -826,24 +726,19 @@ class MemoryLeakDetector {
       this.interval = undefined;
     }
   }
-
   private takeMemorySnapshot(): void {
     if ('memory' in performance) {
       const memory = (performance as any).memory;
       this.memorySnapshots.push(memory.usedJSHeapSize);
-      
       // Keep only last 10 snapshots
       if (this.memorySnapshots.length > 10) {
         this.memorySnapshots.shift();
       }
-      
       this.analyzeMemoryTrend();
     }
   }
-
   private analyzeMemoryTrend(): void {
     if (this.memorySnapshots.length < 5) return;
-    
     // Check for consistent memory growth
     let growthCount = 0;
     for (let i = 1; i < this.memorySnapshots.length; i++) {
@@ -851,13 +746,10 @@ class MemoryLeakDetector {
         growthCount++;
       }
     }
-    
     // If memory is consistently growing, it might be a leak
     if (growthCount >= this.memorySnapshots.length * 0.8) {
-      console.warn('Potential memory leak detected: consistent memory growth');
     }
   }
 }
-
 // Singleton instance
 export const performanceOptimizer = new PerformanceOptimizer();

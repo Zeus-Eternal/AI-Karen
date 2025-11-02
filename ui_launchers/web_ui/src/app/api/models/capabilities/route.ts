@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 interface ModelCapability {
   name: string;
   description: string;
@@ -10,7 +9,6 @@ interface ModelCapability {
     dependencies?: string[];
   };
 }
-
 interface CapabilitiesResponse {
   model_id: string;
   model_name: string;
@@ -29,36 +27,23 @@ interface CapabilitiesResponse {
     batch_processing: boolean;
   };
 }
-
 export async function GET(request: NextRequest) {
-  console.log('🔍 Model Capabilities API: Request received');
-
   try {
     const { searchParams } = new URL(request.url);
     const modelId = searchParams.get('model_id');
     const includeParameters = searchParams.get('include_parameters') === 'true';
     const includeCompatibility = searchParams.get('include_compatibility') === 'true';
-
     if (!modelId) {
       return NextResponse.json(
         { error: 'Missing required parameter: model_id' },
         { status: 400 }
       );
     }
-
-    console.log('🔍 Model Capabilities API: Fetching capabilities', {
-      modelId,
-      includeParameters,
-      includeCompatibility
-    });
-
     const { modelSelectionService } = await import('@/lib/model-selection-service');
-
     try {
       // Get model information
       const models = await modelSelectionService.getAvailableModels();
       const targetModel = models.find(m => m.id === modelId);
-
       if (!targetModel) {
         return NextResponse.json(
           {
@@ -68,11 +53,9 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
-
       // Build detailed capabilities based on model type and provider
       const capabilities = buildModelCapabilities(targetModel);
       const supportedModes = getSupportedModes(targetModel);
-      
       const response: CapabilitiesResponse = {
         model_id: modelId,
         model_name: targetModel.name,
@@ -87,13 +70,6 @@ export async function GET(request: NextRequest) {
           batch_processing: false
         }
       };
-
-      console.log('🔍 Model Capabilities API: Capabilities retrieved', {
-        modelId,
-        capabilitiesCount: capabilities.length,
-        supportedModes: supportedModes.length
-      });
-
       return NextResponse.json(response, {
         headers: {
           'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
@@ -101,10 +77,7 @@ export async function GET(request: NextRequest) {
           'X-Model-Provider': targetModel.provider
         }
       });
-
     } catch (capabilityError) {
-      console.error('🔍 Model Capabilities API: Capability fetch error', capabilityError);
-      
       return NextResponse.json(
         {
           error: 'Failed to fetch model capabilities',
@@ -114,10 +87,7 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-
   } catch (error) {
-    console.error('🔍 Model Capabilities API: Request error', error);
-    
     return NextResponse.json(
       {
         error: 'Invalid request',
@@ -127,13 +97,11 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
 /**
  * Build detailed capabilities for a model based on its type and metadata
  */
 function buildModelCapabilities(model: any): ModelCapability[] {
   const capabilities: ModelCapability[] = [];
-
   // Base capabilities from model.capabilities array
   if (model.capabilities) {
     model.capabilities.forEach((cap: string) => {
@@ -199,23 +167,19 @@ function buildModelCapabilities(model: any): ModelCapability[] {
       }
     });
   }
-
   return capabilities;
 }
-
 /**
  * Get supported interaction modes for a model
  */
 function getSupportedModes(model: any): string[] {
   const modes: string[] = [];
-
   if (model.type === 'text' || model.type === 'text_generation') {
     modes.push('text');
     if (model.capabilities?.includes('chat')) {
       modes.push('chat');
     }
   }
-
   if (model.type === 'image' || model.type === 'image_generation') {
     modes.push('image');
     if (model.capabilities?.includes('text2img')) {
@@ -225,20 +189,16 @@ function getSupportedModes(model: any): string[] {
       modes.push('img2img');
     }
   }
-
   if (model.type === 'embedding') {
     modes.push('embedding');
   }
-
   return modes;
 }
-
 /**
  * Build parameter specifications for different model types
  */
 function buildParameterSpecs(model: any): Record<string, any> {
   const parameters: Record<string, any> = {};
-
   if (model.type === 'text' || model.type === 'text_generation') {
     parameters.text_generation = {
       temperature: { type: 'float', min: 0.0, max: 2.0, default: 0.7 },
@@ -248,7 +208,6 @@ function buildParameterSpecs(model: any): Record<string, any> {
       repeat_penalty: { type: 'float', min: 0.0, max: 2.0, default: 1.1 }
     };
   }
-
   if (model.type === 'image' || model.type === 'image_generation') {
     parameters.image_generation = {
       width: { type: 'integer', min: 256, max: 1024, default: 512, step: 64 },
@@ -259,17 +218,14 @@ function buildParameterSpecs(model: any): Record<string, any> {
       batch_size: { type: 'integer', min: 1, max: 4, default: 1 }
     };
   }
-
   if (model.type === 'embedding') {
     parameters.embedding = {
       normalize: { type: 'boolean', default: true },
       batch_size: { type: 'integer', min: 1, max: 32, default: 8 }
     };
   }
-
   return parameters;
 }
-
 /**
  * Build compatibility information for a model
  */

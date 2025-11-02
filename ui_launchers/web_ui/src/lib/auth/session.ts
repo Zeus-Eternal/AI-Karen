@@ -6,9 +6,6 @@
  *
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
  */
-
-
-
 // Simplified types for session management
 export interface SessionData {
   userId: string;
@@ -18,44 +15,32 @@ export interface SessionData {
   role?: 'super_admin' | 'admin' | 'user';
   permissions?: string[];
 }
-
 // Simple in-memory session storage
 let currentSession: SessionData | null = null;
-
 /**
  * Store session data in memory (no localStorage or token management)
  */
 export function setSession(sessionData: SessionData): void {
   currentSession = sessionData;
-  console.log("Session stored successfully:", {
-    userId: sessionData.userId,
-    email: sessionData.email,
-    roles: sessionData.roles.length,
-  });
 }
-
 /**
  * Get current session data from memory
  */
 export function getSession(): SessionData | null {
   return currentSession;
 }
-
 /**
  * Clear current session from memory
  */
 export function clearSession(): void {
   currentSession = null;
-  console.log("Session cleared successfully");
 }
-
 /**
  * Check if current session exists (simple boolean check)
  */
 export function isSessionValid(): boolean {
   return currentSession !== null;
 }
-
 /**
  * Check if session cookie exists in browser
  */
@@ -63,11 +48,9 @@ export function hasSessionCookie(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
-  
   // Check for auth token cookie (backend sets 'auth_token' cookie)
   return document.cookie.includes('auth_token=');
 }
-
 /**
  * Simple session validation that makes single API call
  * No retry logic or complex error handling - uses cookie-based authentication
@@ -83,10 +66,8 @@ export async function validateSession(): Promise<boolean> {
       },
       credentials: "include", // Include cookies for authentication
     });
-
     if (response.ok) {
       const data = await response.json();
-      
       if (data.valid && (data.user || data.user_data)) {
         // Store session data - handle both user and user_data response formats
         const userData = data.user || data.user_data;
@@ -98,75 +79,61 @@ export async function validateSession(): Promise<boolean> {
           role: userData.role || determineUserRole(userData.roles || []),
           permissions: userData.permissions,
         };
-
         setSession(sessionData);
-        console.log("Session validated successfully");
         return true;
       }
     }
-
     // Invalid session or error response
     clearSession();
     return false;
   } catch (error: any) {
     // Any error means invalid session
-    console.log("Session validation failed:", error.message);
     clearSession();
     return false;
   }
 }
-
 /**
  * Get current user data from session
  */
 export function getCurrentUser(): SessionData | null {
   return currentSession;
 }
-
 /**
  * Check if user has specific role
  */
 export function hasRole(role: string): boolean {
   if (!currentSession) return false;
-  
   // Check the new role field first, then fall back to roles array
   if (currentSession.role) {
     return currentSession.role === role;
   }
-  
   return currentSession.roles.includes(role);
 }
-
 /**
  * Check if user has specific permission
  */
 export function hasPermission(permission: string): boolean {
   if (!currentSession) return false;
-  
   // Check permissions array if available
   if (currentSession.permissions) {
     return currentSession.permissions.includes(permission);
   }
-  
   // Default permissions based on role
   const rolePermissions = getRolePermissions(currentSession.role || (currentSession.roles[0] as 'super_admin' | 'admin' | 'user'));
   return rolePermissions.includes(permission);
 }
-
 /**
  * Check if user is admin (admin or super_admin)
  */
 export function isAdmin(): boolean {
   return hasRole('admin') || hasRole('super_admin');
 }
-
 /**
  * Check if user is super admin
  */
 export function isSuperAdmin(): boolean {
   return hasRole('super_admin');
 }
-
 /**
  * Helper function to determine primary role from roles array
  */
@@ -175,7 +142,6 @@ function determineUserRole(roles: string[]): 'super_admin' | 'admin' | 'user' {
   if (roles.includes('admin')) return 'admin';
   return 'user';
 }
-
 /**
  * Helper function to get default permissions for a role
  */
@@ -207,14 +173,12 @@ function getRolePermissions(role: 'super_admin' | 'admin' | 'user'): string[] {
       return [];
   }
 }
-
 /**
  * Check if user is authenticated (simple boolean check)
  */
 export function isAuthenticated(): boolean {
   return currentSession !== null;
 }
-
 /**
  * Simple login with credentials - single API call, no complex retry logic
  */
@@ -224,13 +188,10 @@ export async function login(
   totpCode?: string
 ): Promise<void> {
   try {
-    console.log("Starting simple login process");
-
     const credentials: any = { email, password };
     if (totpCode) {
       credentials.totp_code = totpCode;
     }
-
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: {
@@ -240,21 +201,17 @@ export async function login(
       body: JSON.stringify(credentials),
       credentials: "include", // Include cookies for session management
     });
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.error || errorData.detail || errorData.message || `Login failed: ${response.status}`;
       throw new Error(errorMessage);
     }
-
     const data = await response.json();
-
     // Store simple session data - handle both user and user_data response formats
     const userData = data.user || data.user_data;
     if (!userData) {
       throw new Error('No user data in login response');
     }
-
     const sessionData: SessionData = {
       userId: userData.user_id,
       email: userData.email,
@@ -263,16 +220,12 @@ export async function login(
       role: userData.role || determineUserRole(userData.roles || []),
       permissions: userData.permissions,
     };
-
     setSession(sessionData);
-    console.log("Login successful, session established");
   } catch (error: any) {
-    console.error("Login failed:", error.message);
     clearSession();
     throw error;
   }
 }
-
 /**
  * Simple logout that clears session cookie
  * No complex error handling - just clear session and cookie
@@ -280,16 +233,13 @@ export async function login(
 export async function logout(): Promise<void> {
   // Always clear local session first
   clearSession();
-  
   try {
     // Call logout endpoint to clear server-side session cookie
     await fetch("/api/auth/logout", {
       method: "POST",
       credentials: "include",
     });
-    console.log("Session cookie cleared successfully");
   } catch (error) {
     // Logout should not throw errors, just log them
-    console.warn("Logout request failed, but local session cleared:", error);
   }
 }

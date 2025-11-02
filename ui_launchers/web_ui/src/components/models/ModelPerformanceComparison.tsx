@@ -1,13 +1,5 @@
-"use client";
-
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +7,25 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
+import { getKarenBackend } from '@/lib/karen-backend';
+import { useToast } from '@/hooks/use-toast';
+"use client";
+
+
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+
+
+
+
+
+
+
   BarChart3,
   TrendingUp,
   Clock,
@@ -28,8 +38,7 @@ import {
   Loader2,
   Download
 } from 'lucide-react';
-import { getKarenBackend } from '@/lib/karen-backend';
-import { useToast } from '@/hooks/use-toast';
+
 
 interface ModelInfo {
   id: string;
@@ -62,7 +71,6 @@ interface ModelInfo {
     };
   };
 }
-
 interface PerformanceMetrics {
   model_id: string;
   model_name: string;
@@ -87,13 +95,11 @@ interface PerformanceMetrics {
     use_cases: string[];
   };
 }
-
 interface ModelPerformanceComparisonProps {
   models: ModelInfo[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
 const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
   models,
   open,
@@ -105,23 +111,18 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [comparisonMetric, setComparisonMetric] = useState<string>('overall');
   const [sortBy, setSortBy] = useState<string>('quality_score');
-
   const { toast } = useToast();
   const backend = getKarenBackend();
-
   // Filter to only local models for performance comparison
   const availableModels = useMemo(() => {
     return models.filter(model => model.status === 'local');
   }, [models]);
-
   // Load performance data for selected models
   const loadPerformanceData = async () => {
     if (selectedModels.length === 0) return;
-
     try {
       setLoading(true);
       setError(null);
-
       const performancePromises = selectedModels.map(async (modelId) => {
         try {
           // Try to get performance metrics from the intelligent model routes
@@ -133,7 +134,6 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
           // Fallback to mock data based on model metadata
           const model = models.find(m => m.id === modelId);
           if (!model) return null;
-
           return {
             model_id: modelId,
             model_name: model.display_name || model.name,
@@ -160,13 +160,10 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
           } as PerformanceMetrics;
         }
       });
-
       const results = await Promise.all(performancePromises);
       const validResults = results.filter(Boolean) as PerformanceMetrics[];
       setPerformanceData(validResults);
-
     } catch (err) {
-      console.error('Failed to load performance data:', err);
       setError('Failed to load performance data');
       toast({
         title: "Error Loading Performance Data",
@@ -177,13 +174,11 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
       setLoading(false);
     }
   };
-
   useEffect(() => {
     if (open && selectedModels.length > 0) {
       loadPerformanceData();
     }
   }, [open, selectedModels]);
-
   // Handle model selection
   const handleModelSelection = (modelId: string, checked: boolean) => {
     if (checked) {
@@ -200,11 +195,9 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
       setSelectedModels(selectedModels.filter(id => id !== modelId));
     }
   };
-
   // Sort performance data
   const sortedPerformanceData = useMemo(() => {
     if (!performanceData.length) return [];
-
     return [...performanceData].sort((a, b) => {
       switch (sortBy) {
         case 'quality_score':
@@ -224,7 +217,6 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
       }
     });
   }, [performanceData, sortBy]);
-
   // Get metric color based on value and type
   const getMetricColor = (value: number, metricType: string) => {
     switch (metricType) {
@@ -242,7 +234,6 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
         return 'text-foreground';
     }
   };
-
   // Format metric value for display
   const formatMetricValue = (value: number, metricType: string) => {
     switch (metricType) {
@@ -266,20 +257,18 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
         return value.toString();
     }
   };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto sm:w-auto md:w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
+            <BarChart3 className="h-5 w-5 sm:w-auto md:w-full" />
             Model Performance Comparison
           </DialogTitle>
           <DialogDescription>
             Compare performance metrics and recommendations across different models
           </DialogDescription>
         </DialogHeader>
-
         <div className="space-y-6">
           {/* Model Selection */}
           <Card>
@@ -302,11 +291,11 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                     />
                     <label
                       htmlFor={model.id}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer md:text-base lg:text-lg"
                     >
                       <div className="flex items-center gap-2">
                         <span>{model.display_name || model.name}</span>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                           {model.provider}
                         </Badge>
                       </div>
@@ -314,10 +303,9 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                   </div>
                 ))}
               </div>
-
               {availableModels.length === 0 && (
                 <Alert>
-                  <AlertCircle className="h-4 w-4" />
+                  <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
                   <AlertDescription>
                     No local models available for comparison. Download some models first.
                   </AlertDescription>
@@ -325,7 +313,6 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
               )}
             </CardContent>
           </Card>
-
           {/* Comparison Controls */}
           {selectedModels.length > 0 && (
             <Card>
@@ -334,56 +321,52 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
               </CardHeader>
               <CardContent className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium">Sort by:</label>
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
+                  <label className="text-sm font-medium md:text-base lg:text-lg">Sort by:</label>
+                  <select value={sortBy} onValueChange={setSortBy} aria-label="Select option">
+                    <selectTrigger className="w-48 sm:w-auto md:w-full" aria-label="Select option">
+                      <selectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="quality_score">Quality Score</SelectItem>
-                      <SelectItem value="response_time">Response Time</SelectItem>
-                      <SelectItem value="throughput">Throughput</SelectItem>
-                      <SelectItem value="success_rate">Success Rate</SelectItem>
-                      <SelectItem value="memory_usage">Memory Usage</SelectItem>
-                      <SelectItem value="user_satisfaction">User Satisfaction</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="quality_score" aria-label="Select option">Quality Score</SelectItem>
+                      <selectItem value="response_time" aria-label="Select option">Response Time</SelectItem>
+                      <selectItem value="throughput" aria-label="Select option">Throughput</SelectItem>
+                      <selectItem value="success_rate" aria-label="Select option">Success Rate</SelectItem>
+                      <selectItem value="memory_usage" aria-label="Select option">Memory Usage</SelectItem>
+                      <selectItem value="user_satisfaction" aria-label="Select option">User Satisfaction</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-
-                <Button
+                <button
                   onClick={loadPerformanceData}
                   disabled={loading}
                   variant="outline"
                   size="sm"
-                >
+                 aria-label="Button">
                   {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-1 sm:w-auto md:w-full" />
                   ) : (
-                    <BarChart3 className="h-4 w-4 mr-1" />
+                    <BarChart3 className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                   )}
                   Refresh Data
                 </Button>
               </CardContent>
             </Card>
           )}
-
           {/* Performance Comparison Results */}
           {loading && (
             <Card>
               <CardContent className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <Loader2 className="h-6 w-6 animate-spin mr-2 sm:w-auto md:w-full" />
                 Loading performance data...
               </CardContent>
             </Card>
           )}
-
           {error && (
             <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-
           {!loading && !error && sortedPerformanceData.length > 0 && (
             <div className="space-y-4">
               {/* Performance Overview Cards */}
@@ -395,7 +378,7 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                         <CardTitle className="text-base">{data.model_name}</CardTitle>
                         {index === 0 && (
                           <Badge variant="default" className="bg-green-500">
-                            <Star className="h-3 w-3 mr-1" />
+                            <Star className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                             Best
                           </Badge>
                         )}
@@ -405,7 +388,7 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                     <CardContent className="space-y-3">
                       {/* Quality Score */}
                       <div>
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-sm md:text-base lg:text-lg">
                           <span>Quality Score</span>
                           <span className={getMetricColor(data.metrics.quality_score, 'quality_score')}>
                             {formatMetricValue(data.metrics.quality_score, 'quality_score')}
@@ -413,10 +396,9 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                         </div>
                         <Progress value={data.metrics.quality_score * 100} className="h-2" />
                       </div>
-
                       {/* Response Time */}
                       <div>
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-sm md:text-base lg:text-lg">
                           <span>Avg Response</span>
                           <span className={getMetricColor(data.metrics.response_time_avg, 'response_time')}>
                             {formatMetricValue(data.metrics.response_time_avg, 'response_time')}
@@ -427,10 +409,9 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                           className="h-2" 
                         />
                       </div>
-
                       {/* Success Rate */}
                       <div>
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-sm md:text-base lg:text-lg">
                           <span>Success Rate</span>
                           <span className={getMetricColor(data.metrics.success_rate, 'success_rate')}>
                             {formatMetricValue(data.metrics.success_rate, 'success_rate')}
@@ -438,10 +419,9 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                         </div>
                         <Progress value={data.metrics.success_rate * 100} className="h-2" />
                       </div>
-
                       {/* Throughput */}
                       <div>
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-sm md:text-base lg:text-lg">
                           <span>Throughput</span>
                           <span className={getMetricColor(data.metrics.throughput, 'throughput')}>
                             {formatMetricValue(data.metrics.throughput, 'throughput')}
@@ -449,16 +429,15 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                         </div>
                         <Progress value={(data.metrics.throughput / 100) * 100} className="h-2" />
                       </div>
-
                       {/* Recommendation Score */}
                       <div className="pt-2 border-t">
                         <div className="flex items-center gap-2">
-                          <TrendingUp className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm font-medium">
+                          <TrendingUp className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />
+                          <span className="text-sm font-medium md:text-base lg:text-lg">
                             Recommendation: {(data.recommendations.score * 100).toFixed(0)}%
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                           {data.recommendations.reasoning}
                         </p>
                       </div>
@@ -466,7 +445,6 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                   </Card>
                 ))}
               </div>
-
               {/* Detailed Metrics Table */}
               <Card>
                 <CardHeader>
@@ -474,28 +452,28 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm md:text-base lg:text-lg">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left p-2">Model</th>
-                          <th className="text-right p-2">Quality</th>
-                          <th className="text-right p-2">Avg Response</th>
-                          <th className="text-right p-2">P95 Response</th>
-                          <th className="text-right p-2">Throughput</th>
-                          <th className="text-right p-2">Success Rate</th>
-                          <th className="text-right p-2">Memory</th>
-                          <th className="text-right p-2">CPU</th>
-                          <th className="text-right p-2">GPU</th>
-                          <th className="text-right p-2">Satisfaction</th>
+                          <th className="text-left p-2 sm:p-4 md:p-6">Model</th>
+                          <th className="text-right p-2 sm:p-4 md:p-6">Quality</th>
+                          <th className="text-right p-2 sm:p-4 md:p-6">Avg Response</th>
+                          <th className="text-right p-2 sm:p-4 md:p-6">P95 Response</th>
+                          <th className="text-right p-2 sm:p-4 md:p-6">Throughput</th>
+                          <th className="text-right p-2 sm:p-4 md:p-6">Success Rate</th>
+                          <th className="text-right p-2 sm:p-4 md:p-6">Memory</th>
+                          <th className="text-right p-2 sm:p-4 md:p-6">CPU</th>
+                          <th className="text-right p-2 sm:p-4 md:p-6">GPU</th>
+                          <th className="text-right p-2 sm:p-4 md:p-6">Satisfaction</th>
                         </tr>
                       </thead>
                       <tbody>
                         {sortedPerformanceData.map((data, index) => (
                           <tr key={data.model_id} className={`border-b ${index === 0 ? 'bg-green-50' : ''}`}>
-                            <td className="p-2">
+                            <td className="p-2 sm:p-4 md:p-6">
                               <div>
                                 <div className="font-medium">{data.model_name}</div>
-                                <div className="text-xs text-muted-foreground">{data.provider}</div>
+                                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">{data.provider}</div>
                               </div>
                             </td>
                             <td className={`text-right p-2 ${getMetricColor(data.metrics.quality_score, 'quality_score')}`}>
@@ -513,13 +491,13 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                             <td className={`text-right p-2 ${getMetricColor(data.metrics.success_rate, 'success_rate')}`}>
                               {formatMetricValue(data.metrics.success_rate, 'success_rate')}
                             </td>
-                            <td className="text-right p-2">
+                            <td className="text-right p-2 sm:p-4 md:p-6">
                               {formatMetricValue(data.metrics.memory_usage, 'memory_usage')}
                             </td>
-                            <td className="text-right p-2">
+                            <td className="text-right p-2 sm:p-4 md:p-6">
                               {formatMetricValue(data.metrics.cpu_usage, 'cpu_usage')}
                             </td>
-                            <td className="text-right p-2">
+                            <td className="text-right p-2 sm:p-4 md:p-6">
                               {data.metrics.gpu_usage ? formatMetricValue(data.metrics.gpu_usage, 'gpu_usage') : 'N/A'}
                             </td>
                             <td className={`text-right p-2 ${getMetricColor(data.metrics.user_satisfaction, 'user_satisfaction')}`}>
@@ -532,7 +510,6 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                   </div>
                 </CardContent>
               </Card>
-
               {/* Use Case Recommendations */}
               <Card>
                 <CardHeader>
@@ -541,19 +518,19 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
                 <CardContent>
                   <div className="space-y-4">
                     {sortedPerformanceData.map(data => (
-                      <div key={data.model_id} className="border rounded-lg p-4">
+                      <div key={data.model_id} className="border rounded-lg p-4 sm:p-4 md:p-6">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium">{data.model_name}</h4>
                           <Badge variant="outline">
                             Score: {(data.recommendations.score * 100).toFixed(0)}%
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                           {data.recommendations.reasoning}
                         </p>
                         <div className="flex flex-wrap gap-1">
                           {data.recommendations.use_cases.map(useCase => (
-                            <Badge key={useCase} variant="secondary" className="text-xs">
+                            <Badge key={useCase} variant="secondary" className="text-xs sm:text-sm md:text-base">
                               {useCase}
                             </Badge>
                           ))}
@@ -565,19 +542,18 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
               </Card>
             </div>
           )}
-
           {!loading && !error && selectedModels.length > 0 && sortedPerformanceData.length === 0 && (
             <Card>
               <CardContent className="text-center py-8">
                 <p className="text-muted-foreground">
                   No performance data available for the selected models.
                 </p>
-                <Button
+                <button
                   onClick={loadPerformanceData}
                   variant="outline"
                   className="mt-2"
-                >
-                  <BarChart3 className="h-4 w-4 mr-1" />
+                 aria-label="Button">
+                  <BarChart3 className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                   Load Performance Data
                 </Button>
               </CardContent>
@@ -588,5 +564,4 @@ const ModelPerformanceComparison: React.FC<ModelPerformanceComparisonProps> = ({
     </Dialog>
   );
 };
-
 export default ModelPerformanceComparison;

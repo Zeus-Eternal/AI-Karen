@@ -2,9 +2,7 @@
  * Unified Error Handler - Provides consistent error handling across the web UI
  * Integrates with Python backend error response format
  */
-
 import { safeError, safeWarn, safeInfo } from './safe-console';
-
 export enum ErrorCode {
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   AUTHENTICATION_ERROR = 'AUTHENTICATION_ERROR',
@@ -19,7 +17,6 @@ export enum ErrorCode {
   NETWORK_ERROR = 'NETWORK_ERROR',
   TIMEOUT_ERROR = 'TIMEOUT_ERROR',
 }
-
 export interface ErrorResponse {
   errorCode: ErrorCode;
   message: string;
@@ -28,7 +25,6 @@ export interface ErrorResponse {
   timestamp: string;
   userFriendlyMessage?: string;
 }
-
 export interface ErrorContext {
   operation?: string;
   userId?: string;
@@ -36,19 +32,16 @@ export interface ErrorContext {
   component?: string;
   additionalData?: Record<string, any>;
 }
-
 export class UnifiedErrorHandler {
   private static instance: UnifiedErrorHandler | null = null;
   private errorLog: ErrorResponse[] = [];
   private maxLogSize = 100;
-
   static getInstance(): UnifiedErrorHandler {
     if (!UnifiedErrorHandler.instance) {
       UnifiedErrorHandler.instance = new UnifiedErrorHandler();
     }
     return UnifiedErrorHandler.instance;
   }
-
   /**
    * Handle and format errors consistently
    */
@@ -58,14 +51,11 @@ export class UnifiedErrorHandler {
   ): ErrorResponse {
     const timestamp = new Date().toISOString();
     const requestId = this.generateRequestId();
-
     let errorResponse: ErrorResponse;
-
     // Check if it's already a formatted error response
     if (this.isErrorResponse(error)) {
       return error;
     }
-
     // Handle different error types
     if (error instanceof Error) {
       errorResponse = this.handleJavaScriptError(error, context, timestamp, requestId);
@@ -77,13 +67,10 @@ export class UnifiedErrorHandler {
     } else {
       errorResponse = this.handleUnknownError(error, context, timestamp, requestId);
     }
-
     // Log the error
     this.logError(errorResponse, context);
-
     return errorResponse;
   }
-
   /**
    * Handle JavaScript Error objects
    */
@@ -95,7 +82,6 @@ export class UnifiedErrorHandler {
   ): ErrorResponse {
     let errorCode = ErrorCode.INTERNAL_ERROR;
     let userFriendlyMessage = "I encountered an unexpected issue. Please try again.";
-
     // Categorize based on error message patterns
     if (error.message.includes("API key not valid") || error.message.includes("API_KEY_INVALID")) {
       errorCode = ErrorCode.AUTHENTICATION_ERROR;
@@ -119,7 +105,6 @@ export class UnifiedErrorHandler {
       errorCode = ErrorCode.AI_PROCESSING_ERROR;
       userFriendlyMessage = "I'm having trouble processing your request right now. Please try again.";
     }
-
     return {
       errorCode,
       message: error.message,
@@ -133,7 +118,6 @@ export class UnifiedErrorHandler {
       userFriendlyMessage,
     };
   }
-
   /**
    * Handle HTTP response errors
    */
@@ -146,10 +130,8 @@ export class UnifiedErrorHandler {
     const status = error.response?.status || 0;
     const statusText = error.response?.statusText || 'Unknown';
     const responseData = error.response?.data;
-
     let errorCode = ErrorCode.INTERNAL_ERROR;
     let userFriendlyMessage = "I encountered a service error. Please try again.";
-
     // Map HTTP status codes to error codes
     switch (status) {
       case 400:
@@ -183,7 +165,6 @@ export class UnifiedErrorHandler {
         userFriendlyMessage = "The request timed out. Please try again.";
         break;
     }
-
     return {
       errorCode,
       message: `HTTP ${status}: ${statusText}`,
@@ -198,7 +179,6 @@ export class UnifiedErrorHandler {
       userFriendlyMessage,
     };
   }
-
   /**
    * Handle string errors
    */
@@ -217,7 +197,6 @@ export class UnifiedErrorHandler {
       userFriendlyMessage: error.startsWith("Karen:") ? error : "I encountered an issue. Please try again.",
     };
   }
-
   /**
    * Handle unknown error types
    */
@@ -239,33 +218,28 @@ export class UnifiedErrorHandler {
       userFriendlyMessage: "I encountered an unexpected issue. Please try again.",
     };
   }
-
   /**
    * Check if an object is already an ErrorResponse
    */
   private isErrorResponse(obj: any): obj is ErrorResponse {
     return obj && typeof obj === 'object' && 'errorCode' in obj && 'message' in obj && 'timestamp' in obj;
   }
-
   /**
    * Generate a unique request ID
    */
   private generateRequestId(): string {
     return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
-
   /**
    * Log error for debugging and monitoring
    */
   private logError(errorResponse: ErrorResponse, context: ErrorContext): void {
     // Add to internal log
     this.errorLog.push(errorResponse);
-    
     // Keep log size manageable
     if (this.errorLog.length > this.maxLogSize) {
       this.errorLog.splice(0, this.errorLog.length - this.maxLogSize);
     }
-
     // Console logging based on error severity
     const logLevel = this.getLogLevel(errorResponse.errorCode);
     const logMessage = `[${errorResponse.errorCode}] ${errorResponse.message}`;
@@ -275,7 +249,6 @@ export class UnifiedErrorHandler {
       context,
       details: errorResponse.details,
     };
-
     switch (logLevel) {
       case 'error':
         safeError(logMessage, logDetails);
@@ -287,10 +260,8 @@ export class UnifiedErrorHandler {
         safeInfo(logMessage, logDetails);
         break;
       default:
-        console.log(logMessage, logDetails);
     }
   }
-
   /**
    * Get appropriate log level for error code
    */
@@ -313,21 +284,18 @@ export class UnifiedErrorHandler {
         return 'log';
     }
   }
-
   /**
    * Get recent error log
    */
   getErrorLog(limit: number = 10): ErrorResponse[] {
     return this.errorLog.slice(-limit);
   }
-
   /**
    * Clear error log
    */
   clearErrorLog(): void {
     this.errorLog = [];
   }
-
   /**
    * Get error statistics
    */
@@ -337,11 +305,9 @@ export class UnifiedErrorHandler {
     recent: ErrorResponse[];
   } {
     const byCode: Record<string, number> = {};
-    
     this.errorLog.forEach(error => {
       byCode[error.errorCode] = (byCode[error.errorCode] || 0) + 1;
     });
-
     return {
       total: this.errorLog.length,
       byCode,
@@ -349,25 +315,20 @@ export class UnifiedErrorHandler {
     };
   }
 }
-
 // Convenience functions
 export function handleError(error: any, context: ErrorContext = {}): ErrorResponse {
   return UnifiedErrorHandler.getInstance().handleError(error, context);
 }
-
 export function getUserFriendlyMessage(error: any, context: ErrorContext = {}): string {
   const errorResponse = handleError(error, context);
   return errorResponse.userFriendlyMessage || errorResponse.message;
 }
-
 export function getErrorLog(limit?: number): ErrorResponse[] {
   return UnifiedErrorHandler.getInstance().getErrorLog(limit);
 }
-
 export function clearErrorLog(): void {
   UnifiedErrorHandler.getInstance().clearErrorLog();
 }
-
 export function getErrorStats() {
   return UnifiedErrorHandler.getInstance().getErrorStats();
 }

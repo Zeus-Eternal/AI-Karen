@@ -1,3 +1,8 @@
+import { promises as fs } from "fs";
+import * as path from "path";
+import { BaseModelService } from "./base-service";
+import {
+import { DirectoryWatchError } from "./errors/model-selection-errors";
 /**
  * Directory Watcher Service
  *
@@ -5,17 +10,17 @@
  * Supports both native file system watching and polling fallback.
  */
 
-import { promises as fs } from "fs";
-import * as path from "path";
-import { BaseModelService } from "./base-service";
-import {
+
+
+
+
   IDirectoryWatcher,
   DirectoryWatchOptions,
   FileSystemChangeEvent,
   DirectoryWatcherConfig,
 } from "./types";
-import { DirectoryWatchError } from "./errors/model-selection-errors";
-import {
+
+
   directoryExists,
   readDirectory,
   getFileModTime,

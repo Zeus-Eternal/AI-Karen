@@ -1,23 +1,27 @@
-/**
- * Extension Performance Monitor Component
- * 
- * Comprehensive performance monitoring dashboard for extensions including
- * real-time metrics, resource usage tracking, and performance analytics.
- */
-
-'use client';
-
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { 
+/**
+ * Extension Performance Monitor Component
+ * 
+ * Comprehensive performance monitoring dashboard for extensions including
+ * real-time metrics, resource usage tracking, and performance analytics.
+ */
+'use client';
+
+
+
+
+
+
   useExtensionStatuses, 
   useExtensionPerformance, 
   useExtensionTaskMonitoring 
 } from '../../../lib/extensions/hooks';
-import { 
+
   Activity, 
   Zap, 
   Database, 
@@ -46,7 +50,6 @@ import {
   ArrowDown,
   Minus
 } from 'lucide-react';
-
 interface PerformanceMetric {
   name: string;
   value: number;
@@ -58,7 +61,6 @@ interface PerformanceMetric {
     critical: number;
   };
 }
-
 interface ResourceAlert {
   id: string;
   type: 'cpu' | 'memory' | 'network' | 'storage';
@@ -70,12 +72,10 @@ interface ResourceAlert {
   value: number;
   threshold: number;
 }
-
 interface ExtensionPerformanceMonitorProps {
   className?: string;
   extensionId?: string; // If provided, show metrics for specific extension
 }
-
 export default function ExtensionPerformanceMonitor({
   className,
   extensionId
@@ -85,18 +85,15 @@ export default function ExtensionPerformanceMonitor({
   const [selectedMetric, setSelectedMetric] = useState<string>('cpu');
   const [alerts, setAlerts] = useState<ResourceAlert[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(true);
-
   const { statuses, loading } = useExtensionStatuses();
   const performanceData = useExtensionPerformance(extensionId);
   const taskData = useExtensionTaskMonitoring(extensionId);
-
   // Filter statuses if specific extension is selected
   const filteredStatuses = useMemo(() => {
     return extensionId 
       ? statuses.filter(s => s.id === extensionId)
       : statuses;
   }, [statuses, extensionId]);
-
   // Generate performance metrics
   const performanceMetrics = useMemo((): PerformanceMetric[] => {
     return [
@@ -151,7 +148,6 @@ export default function ExtensionPerformanceMonitor({
       }
     ];
   }, [performanceData, filteredStatuses, taskData]);
-
   // Generate sample alerts
   useEffect(() => {
     const sampleAlerts: ResourceAlert[] = [
@@ -180,19 +176,14 @@ export default function ExtensionPerformanceMonitor({
     ];
     setAlerts(sampleAlerts);
   }, []);
-
   // Auto-refresh functionality
   useEffect(() => {
     if (!autoRefresh) return;
-
     const interval = setInterval(() => {
       // In real implementation, this would trigger data refresh
-      console.log('Auto-refreshing performance data...');
     }, 30000); // Refresh every 30 seconds
-
     return () => clearInterval(interval);
   }, [autoRefresh]);
-
   const handleExportMetrics = useCallback(() => {
     const metricsData = {
       timestamp: new Date().toISOString(),
@@ -206,7 +197,6 @@ export default function ExtensionPerformanceMonitor({
       })),
       alerts
     };
-
     const blob = new Blob([JSON.stringify(metricsData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -217,18 +207,16 @@ export default function ExtensionPerformanceMonitor({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [performanceMetrics, filteredStatuses, alerts, timeRange]);
-
   if (loading) {
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4 sm:w-auto md:w-full" />
           <p className="text-gray-600">Loading performance monitor...</p>
         </div>
       </div>
     );
   }
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
@@ -245,7 +233,7 @@ export default function ExtensionPerformanceMonitor({
         <div className="flex gap-2">
           <select
             value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as any)}
+            onChange={(e) = aria-label="Select option"> setTimeRange(e.target.value as any)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="1h">Last Hour</option>
@@ -253,56 +241,55 @@ export default function ExtensionPerformanceMonitor({
             <option value="24h">Last 24 Hours</option>
             <option value="7d">Last 7 Days</option>
           </select>
-          <Button
+          <button
             variant="outline"
-            onClick={() => setAutoRefresh(!autoRefresh)}
+            onClick={() = aria-label="Button"> setAutoRefresh(!autoRefresh)}
             className={`flex items-center gap-2 ${autoRefresh ? 'text-green-600' : 'text-gray-600'}`}
           >
             <RefreshCw className={`h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
             Auto Refresh
           </Button>
-          <Button
+          <button
             variant="outline"
             onClick={handleExportMetrics}
             className="flex items-center gap-2"
-          >
-            <Download className="h-4 w-4" />
+           aria-label="Button">
+            <Download className="h-4 w-4 sm:w-auto md:w-full" />
             Export
           </Button>
         </div>
       </div>
-
       {/* Alerts */}
       {alerts.length > 0 && (
         <Card className="border-yellow-200 bg-yellow-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-yellow-800">
-              <AlertTriangle className="h-5 w-5" />
+              <AlertTriangle className="h-5 w-5 sm:w-auto md:w-full" />
               Performance Alerts ({alerts.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {alerts.slice(0, 3).map(alert => (
-                <div key={alert.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                <div key={alert.id} className="flex items-center justify-between p-3 bg-white rounded-lg border sm:p-4 md:p-6">
                   <div className="flex items-center gap-3">
                     <Badge variant={alert.severity === 'critical' ? 'destructive' : 'secondary'}>
                       {alert.severity}
                     </Badge>
                     <div>
                       <p className="font-medium">{alert.message}</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 md:text-base lg:text-lg">
                         {alert.extensionName} • {alert.value}{alert.type === 'cpu' ? '%' : 'MB'} / {alert.threshold}{alert.type === 'cpu' ? '%' : 'MB'}
                       </p>
                     </div>
                   </div>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 md:text-base lg:text-lg">
                     {new Date(alert.timestamp).toLocaleTimeString()}
                   </span>
                 </div>
               ))}
               {alerts.length > 3 && (
-                <p className="text-sm text-gray-600 text-center pt-2">
+                <p className="text-sm text-gray-600 text-center pt-2 md:text-base lg:text-lg">
                   +{alerts.length - 3} more alerts
                 </p>
               )}
@@ -310,35 +297,32 @@ export default function ExtensionPerformanceMonitor({
           </CardContent>
         </Card>
       )}
-
       {/* Performance Metrics Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {performanceMetrics.map((metric, index) => (
           <MetricCard key={index} metric={metric} />
         ))}
       </div>
-
       {/* Performance Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">
-            <Monitor className="h-4 w-4 mr-2" />
+            <Monitor className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Overview
           </TabsTrigger>
           <TabsTrigger value="resources">
-            <Gauge className="h-4 w-4 mr-2" />
+            <Gauge className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Resources
           </TabsTrigger>
           <TabsTrigger value="extensions">
-            <Activity className="h-4 w-4 mr-2" />
+            <Activity className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Extensions
           </TabsTrigger>
           <TabsTrigger value="analytics">
-            <BarChart3 className="h-4 w-4 mr-2" />
+            <BarChart3 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Analytics
           </TabsTrigger>
         </TabsList>
-
         <TabsContent value="overview" className="space-y-6">
           <OverviewPanel 
             metrics={performanceMetrics} 
@@ -346,7 +330,6 @@ export default function ExtensionPerformanceMonitor({
             taskData={taskData}
           />
         </TabsContent>
-
         <TabsContent value="resources" className="space-y-6">
           <ResourcesPanel 
             statuses={filteredStatuses}
@@ -354,11 +337,9 @@ export default function ExtensionPerformanceMonitor({
             onMetricChange={setSelectedMetric}
           />
         </TabsContent>
-
         <TabsContent value="extensions" className="space-y-6">
           <ExtensionsPanel statuses={filteredStatuses} />
         </TabsContent>
-
         <TabsContent value="analytics" className="space-y-6">
           <AnalyticsPanel 
             metrics={performanceMetrics}
@@ -369,11 +350,9 @@ export default function ExtensionPerformanceMonitor({
     </div>
   );
 }
-
 interface MetricCardProps {
   metric: PerformanceMetric;
 }
-
 function MetricCard({ metric }: MetricCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -387,24 +366,22 @@ function MetricCard({ metric }: MetricCardProps) {
         return 'text-gray-600 bg-gray-100';
     }
   };
-
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'up':
-        return <TrendingUp className="h-4 w-4 text-red-500" />;
+        return <TrendingUp className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
       case 'down':
-        return <TrendingDown className="h-4 w-4 text-green-500" />;
+        return <TrendingDown className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
       case 'stable':
-        return <Minus className="h-4 w-4 text-gray-500" />;
+        return <Minus className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
       default:
-        return <Minus className="h-4 w-4 text-gray-500" />;
+        return <Minus className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
     }
   };
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{metric.name}</CardTitle>
+        <CardTitle className="text-sm font-medium md:text-base lg:text-lg">{metric.name}</CardTitle>
         <Badge className={getStatusColor(metric.status)}>
           {metric.status}
         </Badge>
@@ -417,17 +394,17 @@ function MetricCard({ metric }: MetricCardProps) {
             </div>
             <div className="flex items-center mt-1">
               {getTrendIcon(metric.trend)}
-              <span className="text-xs text-gray-500 ml-1">
+              <span className="text-xs text-gray-500 ml-1 sm:text-sm md:text-base">
                 {metric.trend === 'stable' ? 'Stable' : 
                  metric.trend === 'up' ? 'Increasing' : 'Decreasing'}
               </span>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 sm:text-sm md:text-base">
               Warning: {metric.threshold.warning}{metric.unit}
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 sm:text-sm md:text-base">
               Critical: {metric.threshold.critical}{metric.unit}
             </div>
           </div>
@@ -436,7 +413,6 @@ function MetricCard({ metric }: MetricCardProps) {
     </Card>
   );
 }
-
 function OverviewPanel({ metrics, statuses, taskData }: any) {
   return (
     <div className="space-y-6">
@@ -452,30 +428,29 @@ function OverviewPanel({ metrics, statuses, taskData }: any) {
               <div className="text-3xl font-bold text-green-600">
                 {statuses.filter((s: any) => s.status === 'active').length}
               </div>
-              <p className="text-sm text-gray-600">Active Extensions</p>
+              <p className="text-sm text-gray-600 md:text-base lg:text-lg">Active Extensions</p>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-blue-600">
                 {taskData.totalActiveTasks}
               </div>
-              <p className="text-sm text-gray-600">Active Tasks</p>
+              <p className="text-sm text-gray-600 md:text-base lg:text-lg">Active Tasks</p>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-yellow-600">
                 {statuses.filter((s: any) => s.status === 'inactive').length}
               </div>
-              <p className="text-sm text-gray-600">Inactive Extensions</p>
+              <p className="text-sm text-gray-600 md:text-base lg:text-lg">Inactive Extensions</p>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-red-600">
                 {statuses.filter((s: any) => s.status === 'error').length}
               </div>
-              <p className="text-sm text-gray-600">Error Extensions</p>
+              <p className="text-sm text-gray-600 md:text-base lg:text-lg">Error Extensions</p>
             </div>
           </div>
         </CardContent>
       </Card>
-
       {/* Performance Trends Chart Placeholder */}
       <Card>
         <CardHeader>
@@ -485,9 +460,9 @@ function OverviewPanel({ metrics, statuses, taskData }: any) {
         <CardContent>
           <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
             <div className="text-center">
-              <LineChart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <LineChart className="h-12 w-12 text-gray-400 mx-auto mb-4 sm:w-auto md:w-full" />
               <p className="text-gray-600">Performance trends chart would be rendered here</p>
-              <p className="text-sm text-gray-500">Integration with charting library needed</p>
+              <p className="text-sm text-gray-500 md:text-base lg:text-lg">Integration with charting library needed</p>
             </div>
           </div>
         </CardContent>
@@ -495,10 +470,8 @@ function OverviewPanel({ metrics, statuses, taskData }: any) {
     </div>
   );
 }
-
 function ResourcesPanel({ statuses, selectedMetric, onMetricChange }: any) {
   const resourceMetrics = ['cpu', 'memory', 'network', 'storage'];
-
   return (
     <div className="space-y-6">
       {/* Resource Selector */}
@@ -510,26 +483,25 @@ function ResourcesPanel({ statuses, selectedMetric, onMetricChange }: any) {
         <CardContent>
           <div className="flex gap-2 mb-4">
             {resourceMetrics.map(metric => (
-              <Button
+              <button
                 key={metric}
                 variant={selectedMetric === metric ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => onMetricChange(metric)}
+                onClick={() = aria-label="Button"> onMetricChange(metric)}
                 className="capitalize"
               >
-                {metric === 'cpu' && <Cpu className="h-3 w-3 mr-1" />}
-                {metric === 'memory' && <Database className="h-3 w-3 mr-1" />}
-                {metric === 'network' && <Wifi className="h-3 w-3 mr-1" />}
-                {metric === 'storage' && <HardDrive className="h-3 w-3 mr-1" />}
+                {metric === 'cpu' && <Cpu className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
+                {metric === 'memory' && <Database className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
+                {metric === 'network' && <Wifi className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
+                {metric === 'storage' && <HardDrive className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
                 {metric}
               </Button>
             ))}
           </div>
-
           {/* Resource Usage by Extension */}
           <div className="space-y-3">
             {statuses.map((status: any) => (
-              <div key={status.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+              <div key={status.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg sm:p-4 md:p-6">
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${
                     status.status === 'active' ? 'bg-green-400' :
@@ -537,7 +509,7 @@ function ResourcesPanel({ statuses, selectedMetric, onMetricChange }: any) {
                   }`}></div>
                   <div>
                     <h4 className="font-medium">{status.name}</h4>
-                    <p className="text-sm text-gray-600">ID: {status.id}</p>
+                    <p className="text-sm text-gray-600 md:text-base lg:text-lg">ID: {status.id}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -547,7 +519,7 @@ function ResourcesPanel({ statuses, selectedMetric, onMetricChange }: any) {
                     {selectedMetric === 'network' && `${status.resources.network.toFixed(1)} KB/s`}
                     {selectedMetric === 'storage' && `${Math.round(status.resources.storage)}MB`}
                   </div>
-                  <div className="w-24 bg-gray-200 rounded-full h-2 mt-1">
+                  <div className="w-24 bg-gray-200 rounded-full h-2 mt-1 sm:w-auto md:w-full">
                     <div 
                       className={`h-2 rounded-full ${
                         selectedMetric === 'cpu' && status.resources.cpu > 80 ? 'bg-red-500' :
@@ -575,7 +547,6 @@ function ResourcesPanel({ statuses, selectedMetric, onMetricChange }: any) {
     </div>
   );
 }
-
 function ExtensionsPanel({ statuses }: any) {
   return (
     <div className="space-y-6">
@@ -586,7 +557,7 @@ function ExtensionsPanel({ statuses }: any) {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm md:text-base lg:text-lg">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-2">Extension</th>
@@ -604,7 +575,7 @@ function ExtensionsPanel({ statuses }: any) {
                     <td className="py-2">
                       <div>
                         <div className="font-medium">{status.name}</div>
-                        <div className="text-xs text-gray-500">{status.id}</div>
+                        <div className="text-xs text-gray-500 sm:text-sm md:text-base">{status.id}</div>
                       </div>
                     </td>
                     <td className="text-center py-2">
@@ -626,9 +597,9 @@ function ExtensionsPanel({ statuses }: any) {
                     </td>
                     <td className="text-center py-2">
                       {status.health.status === 'healthy' ? (
-                        <CheckCircle className="h-4 w-4 text-green-500 mx-auto" />
+                        <CheckCircle className="h-4 w-4 text-green-500 mx-auto sm:w-auto md:w-full" />
                       ) : (
-                        <AlertTriangle className="h-4 w-4 text-yellow-500 mx-auto" />
+                        <AlertTriangle className="h-4 w-4 text-yellow-500 mx-auto sm:w-auto md:w-full" />
                       )}
                     </td>
                   </tr>
@@ -641,7 +612,6 @@ function ExtensionsPanel({ statuses }: any) {
     </div>
   );
 }
-
 function AnalyticsPanel({ metrics, timeRange }: any) {
   return (
     <div className="space-y-6">
@@ -655,14 +625,13 @@ function AnalyticsPanel({ metrics, timeRange }: any) {
           <CardContent>
             <div className="h-48 flex items-center justify-center bg-gray-50 rounded-lg">
               <div className="text-center">
-                <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-4 sm:w-auto md:w-full" />
                 <p className="text-gray-600">Resource distribution chart</p>
-                <p className="text-sm text-gray-500">Pie chart would be rendered here</p>
+                <p className="text-sm text-gray-500 md:text-base lg:text-lg">Pie chart would be rendered here</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader>
             <CardTitle>Performance Trends</CardTitle>
@@ -671,15 +640,14 @@ function AnalyticsPanel({ metrics, timeRange }: any) {
           <CardContent>
             <div className="h-48 flex items-center justify-center bg-gray-50 rounded-lg">
               <div className="text-center">
-                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4 sm:w-auto md:w-full" />
                 <p className="text-gray-600">Performance trends chart</p>
-                <p className="text-sm text-gray-500">Bar chart would be rendered here</p>
+                <p className="text-sm text-gray-500 md:text-base lg:text-lg">Bar chart would be rendered here</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-
       {/* Performance Insights */}
       <Card>
         <CardHeader>
@@ -688,33 +656,31 @@ function AnalyticsPanel({ metrics, timeRange }: any) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-              <Target className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg sm:p-4 md:p-6">
+              <Target className="h-5 w-5 text-blue-600 mt-0.5 sm:w-auto md:w-full" />
               <div>
                 <h4 className="font-medium text-blue-900">Optimization Opportunity</h4>
-                <p className="text-sm text-blue-800">
+                <p className="text-sm text-blue-800 md:text-base lg:text-lg">
                   The Analytics Dashboard extension is using 45% more memory than average. 
                   Consider reviewing data caching strategies.
                 </p>
               </div>
             </div>
-            
-            <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+            <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg sm:p-4 md:p-6">
+              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 sm:w-auto md:w-full" />
               <div>
                 <h4 className="font-medium text-green-900">Good Performance</h4>
-                <p className="text-sm text-green-800">
+                <p className="text-sm text-green-800 md:text-base lg:text-lg">
                   CPU usage is well within normal ranges across all extensions. 
                   Current load balancing is effective.
                 </p>
               </div>
             </div>
-            
-            <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+            <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg sm:p-4 md:p-6">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 sm:w-auto md:w-full" />
               <div>
                 <h4 className="font-medium text-yellow-900">Resource Alert</h4>
-                <p className="text-sm text-yellow-800">
+                <p className="text-sm text-yellow-800 md:text-base lg:text-lg">
                   Network usage has increased by 30% in the last hour. 
                   Monitor for potential API rate limiting issues.
                 </p>

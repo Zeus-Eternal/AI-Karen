@@ -1,5 +1,4 @@
 import { HapticPattern, HapticConfig } from './types';
-
 const hapticPatterns: Record<HapticPattern, HapticConfig> = {
   light: { pattern: 10 },
   medium: { pattern: 50 },
@@ -11,20 +10,16 @@ const hapticPatterns: Record<HapticPattern, HapticConfig> = {
   selection: { pattern: 25 },
   impact: { pattern: [150, 50, 150] }
 };
-
 export function triggerHapticFeedback(pattern: HapticPattern = 'light'): void {
   // Check if the device supports vibration
   if (!isHapticSupported()) {
     return;
   }
-
   // Check if user has enabled haptic feedback
   if (!isHapticEnabled()) {
     return;
   }
-
   const config = hapticPatterns[pattern];
-  
   try {
     if (Array.isArray(config.pattern)) {
       navigator.vibrate(config.pattern);
@@ -33,17 +28,13 @@ export function triggerHapticFeedback(pattern: HapticPattern = 'light'): void {
     }
   } catch (error) {
     // Silently fail if vibration is not supported or blocked
-    console.debug('Haptic feedback not available:', error);
   }
 }
-
 export function isHapticSupported(): boolean {
   return 'vibrate' in navigator && typeof navigator.vibrate === 'function';
 }
-
 export function isHapticEnabled(): boolean {
   if (typeof window === 'undefined') return false;
-  
   try {
     const stored = localStorage.getItem('haptic-feedback-enabled');
     return stored !== 'false'; // Default to true if not set
@@ -51,17 +42,13 @@ export function isHapticEnabled(): boolean {
     return true; // Default to true if localStorage is not available
   }
 }
-
 export function setHapticEnabled(enabled: boolean): void {
   if (typeof window === 'undefined') return;
-  
   try {
     localStorage.setItem('haptic-feedback-enabled', enabled.toString());
   } catch (error) {
-    console.debug('Could not save haptic preference:', error);
   }
 }
-
 export function getHapticPatternInfo(pattern: HapticPattern): { 
   name: string; 
   description: string; 
@@ -78,6 +65,5 @@ export function getHapticPatternInfo(pattern: HapticPattern): {
     selection: { name: 'Selection', description: 'Gentle feedback for selections', intensity: 'low' as const },
     impact: { name: 'Impact', description: 'Impactful feedback for significant actions', intensity: 'high' as const }
   };
-
   return patternInfo[pattern];
 }

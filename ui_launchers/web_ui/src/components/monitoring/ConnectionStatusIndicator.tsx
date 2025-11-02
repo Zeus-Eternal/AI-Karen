@@ -73,7 +73,7 @@ export const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps>
   return (
     <Card className={`${className}`}>
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between text-sm font-medium">
+        <CardTitle className="flex items-center justify-between text-sm font-medium md:text-base lg:text-lg">
           <span>{title}</span>
           <div className="flex items-center space-x-2">
             <div 
@@ -82,7 +82,7 @@ export const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps>
             />
             <Badge 
               variant={status.status === 'healthy' ? 'default' : 'destructive'}
-              className="text-xs"
+              className="text-xs sm:text-sm md:text-base"
             >
               {getStatusText(status.status)}
             </Badge>
@@ -92,7 +92,7 @@ export const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps>
       
       <CardContent className="pt-0">
         <div className="space-y-2">
-          <div className="flex justify-between items-center text-sm">
+          <div className="flex justify-between items-center text-sm md:text-base lg:text-lg">
             <span className="text-muted-foreground">Response Time:</span>
             <span className={`font-medium ${
               status.responseTime > 5000 ? 'text-red-600' : 
@@ -103,7 +103,7 @@ export const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps>
             </span>
           </div>
           
-          <div className="flex justify-between items-center text-sm">
+          <div className="flex justify-between items-center text-sm md:text-base lg:text-lg">
             <span className="text-muted-foreground">Last Check:</span>
             <span className="font-medium">
               {formatLastCheck(status.lastCheck)}
@@ -112,7 +112,7 @@ export const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps>
 
           {showDetails && (
             <>
-              <div className="flex justify-between items-center text-sm">
+              <div className="flex justify-between items-center text-sm md:text-base lg:text-lg">
                 <span className="text-muted-foreground">Success Rate:</span>
                 <span className={`font-medium ${
                   successRate >= 95 ? 'text-green-600' : 
@@ -123,19 +123,19 @@ export const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps>
                 </span>
               </div>
               
-              <div className="flex justify-between items-center text-sm">
+              <div className="flex justify-between items-center text-sm md:text-base lg:text-lg">
                 <span className="text-muted-foreground">Endpoint:</span>
-                <span className="font-mono text-xs truncate max-w-32" title={status.endpoint}>
+                <span className="font-mono text-xs truncate max-w-32 sm:w-auto md:w-full" title={status.endpoint}>
                   {status.endpoint}
                 </span>
               </div>
               
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="text-center p-2 bg-green-50 rounded">
+              <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm md:text-base">
+                <div className="text-center p-2 bg-green-50 rounded sm:p-4 md:p-6">
                   <div className="font-medium text-green-700">{status.successCount}</div>
                   <div className="text-green-600">Success</div>
                 </div>
-                <div className="text-center p-2 bg-red-50 rounded">
+                <div className="text-center p-2 bg-red-50 rounded sm:p-4 md:p-6">
                   <div className="font-medium text-red-700">{status.errorCount}</div>
                   <div className="text-red-600">Errors</div>
                 </div>

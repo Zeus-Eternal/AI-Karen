@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,6 @@ import { handleApiError } from '@/lib/error-handler';
 import ModelUploadInterface from './ModelUploadInterface';
 import JobCenter from './JobCenter';
 import ModelConfiguration from './ModelConfiguration';
-
 interface StorageInfo {
   total_space_gb: number;
   used_space_gb: number;
@@ -44,7 +42,6 @@ interface StorageInfo {
     action: string;
   }>;
 }
-
 interface SystemHealth {
   llama_cpp_available: boolean;
   gpu_available: boolean;
@@ -55,7 +52,6 @@ interface SystemHealth {
   python_version: string;
   dependencies: Record<string, { available: boolean; version?: string }>;
 }
-
 export default function AdvancedModelManagement() {
   const [activeTab, setActiveTab] = useState('upload');
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
@@ -63,27 +59,21 @@ export default function AdvancedModelManagement() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<string>('');
-  
   const { toast } = useToast();
   const backend = getKarenBackend();
-
   useEffect(() => {
     loadSystemInfo();
   }, []);
-
   const loadSystemInfo = async () => {
     try {
       setLoading(true);
-      
       const [storageResponse, healthResponse] = await Promise.all([
         backend.makeRequestPublic<StorageInfo>('/api/models/storage-info'),
         backend.makeRequestPublic<SystemHealth>('/api/models/system-health')
       ]);
-      
       setStorageInfo(storageResponse);
       setSystemHealth(healthResponse);
     } catch (error) {
-      console.error('Failed to load system info:', error);
       const info = handleApiError(error as any, 'loadSystemInfo');
       toast({
         variant: 'destructive',
@@ -94,7 +84,6 @@ export default function AdvancedModelManagement() {
       setLoading(false);
     }
   };
-
   const refreshSystemInfo = async () => {
     try {
       setRefreshing(true);
@@ -104,29 +93,24 @@ export default function AdvancedModelManagement() {
         description: 'Storage and system health information has been updated.',
       });
     } catch (error) {
-      console.error('Failed to refresh system info:', error);
     } finally {
       setRefreshing(false);
     }
   };
-
   const runStorageCleanup = async () => {
     try {
       const response = await backend.makeRequestPublic('/api/models/cleanup', {
         method: 'POST'
       });
-
       toast({
         title: 'Cleanup Started',
         description: 'Storage cleanup job has been queued. Check the job center for progress.',
       });
-
       // Refresh storage info after cleanup
       setTimeout(() => {
         loadSystemInfo();
       }, 2000);
     } catch (error) {
-      console.error('Failed to start cleanup:', error);
       const info = handleApiError(error as any, 'runCleanup');
       toast({
         variant: 'destructive',
@@ -135,45 +119,37 @@ export default function AdvancedModelManagement() {
       });
     }
   };
-
   const handleJobCreated = (jobId: string) => {
     // Switch to job center tab when a new job is created
     setActiveTab('jobs');
-    
     toast({
       title: 'Job Created',
       description: 'New job has been queued. You can monitor its progress in the Job Center.',
     });
   };
-
   const handleModelUploaded = (modelId: string) => {
     // Refresh system info and optionally switch to configuration
     loadSystemInfo();
     setSelectedModelId(modelId);
-    
     toast({
       title: 'Model Uploaded',
       description: 'Model has been uploaded successfully and is now available for configuration.',
     });
   };
-
   const formatFileSize = (gb: number) => {
     if (gb < 1) return `${(gb * 1024).toFixed(1)} MB`;
     return `${gb.toFixed(1)} GB`;
   };
-
   const getStorageUsagePercentage = () => {
     if (!storageInfo) return 0;
     return (storageInfo.used_space_gb / storageInfo.total_space_gb) * 100;
   };
-
   const getStorageStatusColor = () => {
     const percentage = getStorageUsagePercentage();
     if (percentage > 90) return 'text-red-600';
     if (percentage > 75) return 'text-yellow-600';
     return 'text-green-600';
   };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -184,23 +160,22 @@ export default function AdvancedModelManagement() {
             Upload, convert, configure, and manage your AI models with advanced tools
           </p>
         </div>
-        <Button
+        <button
           variant="outline"
           onClick={refreshSystemInfo}
           disabled={refreshing}
-        >
+         aria-label="Button">
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
-
       {/* System Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Storage Info */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2 mb-2">
-              <HardDrive className="h-4 w-4" />
+              <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />
               <span className="font-medium">Storage</span>
             </div>
             {storageInfo ? (
@@ -208,91 +183,88 @@ export default function AdvancedModelManagement() {
                 <div className={`text-2xl font-bold ${getStorageStatusColor()}`}>
                   {getStorageUsagePercentage().toFixed(1)}%
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   {formatFileSize(storageInfo.used_space_gb)} / {formatFileSize(storageInfo.total_space_gb)} used
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">
+                <div className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                   {storageInfo.model_count} models • {formatFileSize(storageInfo.total_model_size_gb)} total
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">Loading...</div>
+              <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading...</div>
             )}
           </CardContent>
         </Card>
-
         {/* System Health */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2 mb-2">
-              <Zap className="h-4 w-4" />
+              <Zap className="h-4 w-4 sm:w-auto md:w-full" />
               <span className="font-medium">System</span>
             </div>
             {systemHealth ? (
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   {systemHealth.llama_cpp_available ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                   )}
-                  <span className="text-sm">llama.cpp</span>
+                  <span className="text-sm md:text-base lg:text-lg">llama.cpp</span>
                 </div>
                 <div className="flex items-center gap-2 mb-1">
                   {systemHealth.gpu_available ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    <AlertCircle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
                   )}
-                  <span className="text-sm">
+                  <span className="text-sm md:text-base lg:text-lg">
                     GPU {systemHealth.gpu_memory_gb ? `(${systemHealth.gpu_memory_gb}GB)` : ''}
                   </span>
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   {systemHealth.cpu_cores} cores • {systemHealth.ram_gb}GB RAM
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">Loading...</div>
+              <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading...</div>
             )}
           </CardContent>
         </Card>
-
         {/* Quick Actions */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2 mb-2">
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4 sm:w-auto md:w-full" />
               <span className="font-medium">Quick Actions</span>
             </div>
             <div className="space-y-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 className="w-full justify-start"
-                onClick={() => setActiveTab('upload')}
+                onClick={() = aria-label="Button"> setActiveTab('upload')}
               >
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Upload Model
               </Button>
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 className="w-full justify-start"
-                onClick={() => setActiveTab('jobs')}
+                onClick={() = aria-label="Button"> setActiveTab('jobs')}
               >
-                <Briefcase className="h-4 w-4 mr-2" />
+                <Briefcase className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 View Jobs
               </Button>
             </div>
           </CardContent>
         </Card>
-
         {/* Cleanup Recommendations */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2 mb-2">
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
               <span className="font-medium">Cleanup</span>
             </div>
             {storageInfo?.cleanup_recommendations && storageInfo.cleanup_recommendations.length > 0 ? (
@@ -304,80 +276,75 @@ export default function AdvancedModelManagement() {
                     )
                   )}
                 </div>
-                <div className="text-sm text-muted-foreground mb-2">
+                <div className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                   Potential savings
                 </div>
-                <Button
+                <button
                   variant="outline"
                   size="sm"
                   className="w-full"
                   onClick={runStorageCleanup}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                 aria-label="Button">
+                  <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Run Cleanup
                 </Button>
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 No cleanup needed
               </div>
             )}
           </CardContent>
         </Card>
       </div>
-
       {/* System Alerts */}
       {systemHealth && !systemHealth.llama_cpp_available && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
           <AlertDescription>
             llama.cpp tools are not available. Model conversion and quantization features will be limited.
             Please install llama.cpp to enable full functionality.
           </AlertDescription>
         </Alert>
       )}
-
       {storageInfo && getStorageUsagePercentage() > 90 && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
           <AlertDescription>
             Storage is nearly full ({getStorageUsagePercentage().toFixed(1)}% used). 
             Consider running cleanup or removing unused models to free up space.
           </AlertDescription>
         </Alert>
       )}
-
       {systemHealth && !systemHealth.gpu_available && (
         <Alert>
-          <Info className="h-4 w-4" />
+          <Info className="h-4 w-4 sm:w-auto md:w-full" />
           <AlertDescription>
             No GPU detected. Models will run on CPU only, which may be slower.
             Consider using quantized models for better performance.
           </AlertDescription>
         </Alert>
       )}
-
       {/* Main Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="upload" className="flex items-center gap-2">
-            <Upload className="h-4 w-4" />
+            <Upload className="h-4 w-4 sm:w-auto md:w-full" />
             Upload & Convert
           </TabsTrigger>
           <TabsTrigger value="jobs" className="flex items-center gap-2">
-            <Briefcase className="h-4 w-4" />
+            <Briefcase className="h-4 w-4 sm:w-auto md:w-full" />
             Job Center
           </TabsTrigger>
           <TabsTrigger value="configure" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
+            <Settings className="h-4 w-4 sm:w-auto md:w-full" />
             Configuration
           </TabsTrigger>
           <TabsTrigger value="storage" className="flex items-center gap-2">
-            <Database className="h-4 w-4" />
+            <Database className="h-4 w-4 sm:w-auto md:w-full" />
             Storage Management
           </TabsTrigger>
         </TabsList>
-
         {/* Upload & Convert Tab */}
         <TabsContent value="upload">
           <ModelUploadInterface
@@ -385,7 +352,6 @@ export default function AdvancedModelManagement() {
             onJobCreated={handleJobCreated}
           />
         </TabsContent>
-
         {/* Job Center Tab */}
         <TabsContent value="jobs">
           <JobCenter
@@ -394,7 +360,6 @@ export default function AdvancedModelManagement() {
             showCompletedJobs={true}
           />
         </TabsContent>
-
         {/* Configuration Tab */}
         <TabsContent value="configure">
           <ModelConfiguration
@@ -402,7 +367,6 @@ export default function AdvancedModelManagement() {
             onModelChange={setSelectedModelId}
           />
         </TabsContent>
-
         {/* Storage Management Tab */}
         <TabsContent value="storage">
           <div className="space-y-6">
@@ -421,34 +385,32 @@ export default function AdvancedModelManagement() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="text-center">
                         <div className="text-3xl font-bold">{formatFileSize(storageInfo.total_space_gb)}</div>
-                        <div className="text-sm text-muted-foreground">Total Space</div>
+                        <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Total Space</div>
                       </div>
                       <div className="text-center">
                         <div className="text-3xl font-bold">{formatFileSize(storageInfo.used_space_gb)}</div>
-                        <div className="text-sm text-muted-foreground">Used Space</div>
+                        <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Used Space</div>
                       </div>
                       <div className="text-center">
                         <div className="text-3xl font-bold">{formatFileSize(storageInfo.available_space_gb)}</div>
-                        <div className="text-sm text-muted-foreground">Available Space</div>
+                        <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Available Space</div>
                       </div>
                     </div>
-
                     {/* Model Stats */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="text-center">
                         <div className="text-2xl font-bold">{storageInfo.model_count}</div>
-                        <div className="text-sm text-muted-foreground">Total Models</div>
+                        <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Total Models</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold">{formatFileSize(storageInfo.total_model_size_gb)}</div>
-                        <div className="text-sm text-muted-foreground">Models Size</div>
+                        <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Models Size</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold">{formatFileSize(storageInfo.largest_model_gb)}</div>
-                        <div className="text-sm text-muted-foreground">Largest Model</div>
+                        <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Largest Model</div>
                       </div>
                     </div>
-
                     {/* Cleanup Recommendations */}
                     {storageInfo.cleanup_recommendations.length > 0 && (
                       <div>
@@ -456,27 +418,26 @@ export default function AdvancedModelManagement() {
                         <div className="space-y-3">
                           {storageInfo.cleanup_recommendations.map((rec, index) => (
                             <Card key={index}>
-                              <CardContent className="p-4">
+                              <CardContent className="p-4 sm:p-4 md:p-6">
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <div className="font-medium">{rec.type}</div>
-                                    <div className="text-sm text-muted-foreground">{rec.description}</div>
+                                    <div className="text-sm text-muted-foreground md:text-base lg:text-lg">{rec.description}</div>
                                   </div>
                                   <div className="text-right">
                                     <div className="font-medium text-green-600">
                                       {formatFileSize(rec.potential_savings_gb)}
                                     </div>
-                                    <div className="text-xs text-muted-foreground">savings</div>
+                                    <div className="text-xs text-muted-foreground sm:text-sm md:text-base">savings</div>
                                   </div>
                                 </div>
                               </CardContent>
                             </Card>
                           ))}
                         </div>
-                        
                         <div className="mt-4 flex justify-center">
-                          <Button onClick={runStorageCleanup}>
-                            <Trash2 className="h-4 w-4 mr-2" />
+                          <button onClick={runStorageCleanup} aria-label="Button">
+                            <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                             Run All Cleanup Tasks
                           </Button>
                         </div>
@@ -485,13 +446,12 @@ export default function AdvancedModelManagement() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-                    <p className="text-sm text-muted-foreground">Loading storage information...</p>
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary sm:w-auto md:w-full" />
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading storage information...</p>
                   </div>
                 )}
               </CardContent>
             </Card>
-
             {/* System Dependencies */}
             <Card>
               <CardHeader>
@@ -504,53 +464,51 @@ export default function AdvancedModelManagement() {
                 {systemHealth ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded">
+                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded sm:p-4 md:p-6">
                         <span className="font-medium">llama.cpp Tools</span>
                         {systemHealth.llama_cpp_available ? (
                           <Badge variant="default" className="bg-green-100 text-green-800">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            <CheckCircle2 className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                             Available
                           </Badge>
                         ) : (
                           <Badge variant="destructive">
-                            <AlertCircle className="h-3 w-3 mr-1" />
+                            <AlertCircle className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                             Missing
                           </Badge>
                         )}
                       </div>
-
-                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded">
+                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded sm:p-4 md:p-6">
                         <span className="font-medium">GPU Support</span>
                         {systemHealth.gpu_available ? (
                           <Badge variant="default" className="bg-green-100 text-green-800">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            <CheckCircle2 className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                             Available
                           </Badge>
                         ) : (
                           <Badge variant="secondary">
-                            <Info className="h-3 w-3 mr-1" />
+                            <Info className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                             CPU Only
                           </Badge>
                         )}
                       </div>
                     </div>
-
                     {/* Python Dependencies */}
                     {systemHealth.dependencies && Object.keys(systemHealth.dependencies).length > 0 && (
                       <div>
                         <h4 className="font-medium mb-3">Python Dependencies</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           {Object.entries(systemHealth.dependencies).map(([name, info]) => (
-                            <div key={name} className="flex items-center justify-between p-2 bg-muted/20 rounded">
-                              <span className="text-sm">{name}</span>
+                            <div key={name} className="flex items-center justify-between p-2 bg-muted/20 rounded sm:p-4 md:p-6">
+                              <span className="text-sm md:text-base lg:text-lg">{name}</span>
                               <div className="flex items-center gap-2">
                                 {info.version && (
-                                  <span className="text-xs text-muted-foreground">{info.version}</span>
+                                  <span className="text-xs text-muted-foreground sm:text-sm md:text-base">{info.version}</span>
                                 )}
                                 {info.available ? (
-                                  <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                  <CheckCircle2 className="h-3 w-3 text-green-600 sm:w-auto md:w-full" />
                                 ) : (
-                                  <AlertCircle className="h-3 w-3 text-red-600" />
+                                  <AlertCircle className="h-3 w-3 text-red-600 sm:w-auto md:w-full" />
                                 )}
                               </div>
                             </div>
@@ -558,7 +516,6 @@ export default function AdvancedModelManagement() {
                         </div>
                       </div>
                     )}
-
                     {/* System Specs */}
                     <div>
                       <h4 className="font-medium mb-3">System Specifications</h4>
@@ -584,8 +541,8 @@ export default function AdvancedModelManagement() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-                    <p className="text-sm text-muted-foreground">Loading system information...</p>
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary sm:w-auto md:w-full" />
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading system information...</p>
                   </div>
                 )}
               </CardContent>

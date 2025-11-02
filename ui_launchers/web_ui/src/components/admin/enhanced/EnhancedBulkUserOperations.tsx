@@ -6,9 +6,7 @@
  * 
  * Requirements: 7.2, 7.5, 7.7
  */
-
 'use client';
-
 import React, { useState, useRef, useCallback } from 'react';
 import { useRole } from '@/hooks/useRole';
 import ErrorDisplay from '@/components/ui/error-display';
@@ -18,14 +16,12 @@ import { useKeyboardNavigation } from '@/lib/accessibility/keyboard-navigation';
 import { useAriaLiveRegion, AriaManager } from '@/lib/accessibility/aria-helpers';
 import AdminErrorHandler, { type AdminError } from '@/lib/errors/admin-error-handler';
 import { Download, Upload, UserX, UserCheck, Trash2, Mail, FileText } from 'lucide-react';
-
 interface EnhancedBulkUserOperationsProps {
   selectedUserIds: string[];
   onOperationComplete: () => void;
   onCancel: () => void;
   className?: string;
 }
-
 type BulkOperation = 
   | 'activate'
   | 'deactivate' 
@@ -34,7 +30,6 @@ type BulkOperation =
   | 'send_welcome_email'
   | 'reset_password'
   | 'verify_email';
-
 interface BulkOperationConfig {
   id: BulkOperation;
   label: string;
@@ -45,13 +40,12 @@ interface BulkOperationConfig {
   requiresSuperAdmin?: boolean;
   estimatedTimePerItem?: number; // milliseconds
 }
-
 const bulkOperations: BulkOperationConfig[] = [
   {
     id: 'activate',
     label: 'Activate Users',
     description: 'Enable login access for selected users',
-    icon: <UserCheck className="h-5 w-5" />,
+    icon: <UserCheck className="h-5 w-5 sm:w-auto md:w-full" />,
     confirmationRequired: true,
     destructive: false,
     estimatedTimePerItem: 500
@@ -60,7 +54,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'deactivate',
     label: 'Deactivate Users',
     description: 'Disable login access for selected users',
-    icon: <UserX className="h-5 w-5" />,
+    icon: <UserX className="h-5 w-5 sm:w-auto md:w-full" />,
     confirmationRequired: true,
     destructive: true,
     estimatedTimePerItem: 500
@@ -69,7 +63,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'delete',
     label: 'Delete Users',
     description: 'Permanently remove selected user accounts',
-    icon: <Trash2 className="h-5 w-5" />,
+    icon: <Trash2 className="h-5 w-5 sm:w-auto md:w-full" />,
     confirmationRequired: true,
     destructive: true,
     requiresSuperAdmin: true,
@@ -79,7 +73,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'export',
     label: 'Export Users',
     description: 'Download user data as CSV file',
-    icon: <Download className="h-5 w-5" />,
+    icon: <Download className="h-5 w-5 sm:w-auto md:w-full" />,
     confirmationRequired: false,
     destructive: false,
     estimatedTimePerItem: 100
@@ -88,7 +82,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'send_welcome_email',
     label: 'Send Welcome Emails',
     description: 'Send welcome emails to selected users',
-    icon: <Mail className="h-5 w-5" />,
+    icon: <Mail className="h-5 w-5 sm:w-auto md:w-full" />,
     confirmationRequired: true,
     destructive: false,
     estimatedTimePerItem: 2000
@@ -97,7 +91,7 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'reset_password',
     label: 'Reset Passwords',
     description: 'Send password reset emails to selected users',
-    icon: <FileText className="h-5 w-5" />,
+    icon: <FileText className="h-5 w-5 sm:w-auto md:w-full" />,
     confirmationRequired: true,
     destructive: false,
     estimatedTimePerItem: 1500
@@ -106,13 +100,12 @@ const bulkOperations: BulkOperationConfig[] = [
     id: 'verify_email',
     label: 'Mark as Verified',
     description: 'Mark selected users as email verified',
-    icon: <UserCheck className="h-5 w-5" />,
+    icon: <UserCheck className="h-5 w-5 sm:w-auto md:w-full" />,
     confirmationRequired: true,
     destructive: false,
     estimatedTimePerItem: 300
   }
 ];
-
 export function EnhancedBulkUserOperations({
   selectedUserIds,
   onOperationComplete,
@@ -122,14 +115,12 @@ export function EnhancedBulkUserOperations({
   const { hasRole } = useRole();
   const containerRef = useRef<HTMLDivElement>(null);
   const { announce } = useAriaLiveRegion();
-  
   // State management
   const [selectedOperation, setSelectedOperation] = useState<BulkOperation | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [progress, setProgress] = useState<BulkOperationProgress | null>(null);
   const [error, setError] = useState<AdminError | null>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
-
   // Keyboard navigation
   useKeyboardNavigation(containerRef, {
     enableArrowKeys: true,
@@ -143,7 +134,6 @@ export function EnhancedBulkUserOperations({
       }
     }
   });
-
   const getAvailableOperations = () => {
     return bulkOperations.filter(op => {
       if (op.requiresSuperAdmin && !hasRole('super_admin')) {
@@ -152,24 +142,19 @@ export function EnhancedBulkUserOperations({
       return true;
     });
   };
-
   const estimateOperationTime = (operation: BulkOperationConfig) => {
     const timePerItem = operation.estimatedTimePerItem || 1000;
     const totalTime = timePerItem * selectedUserIds.length;
-    
     if (totalTime < 60000) {
       return `~${Math.ceil(totalTime / 1000)} seconds`;
     } else {
       return `~${Math.ceil(totalTime / 60000)} minutes`;
     }
   };
-
   const handleOperationSelect = (operationId: BulkOperation) => {
     const operation = bulkOperations.find(op => op.id === operationId);
     if (!operation) return;
-
     setSelectedOperation(operationId);
-    
     if (operation.confirmationRequired) {
       setShowConfirmation(true);
       announce(`Selected ${operation.label}. Confirmation required.`);
@@ -177,19 +162,15 @@ export function EnhancedBulkUserOperations({
       executeOperation(operationId);
     }
   };
-
   const executeOperation = useCallback(async (operationId: BulkOperation) => {
     const operation = bulkOperations.find(op => op.id === operationId);
     if (!operation) return;
-
     try {
       setShowConfirmation(false);
       setError(null);
-      
       // Create abort controller for cancellation
       const controller = new AbortController();
       setAbortController(controller);
-
       // Initialize progress
       const initialProgress: BulkOperationProgress = {
         operationId: `bulk-${operationId}-${Date.now()}`,
@@ -211,10 +192,8 @@ export function EnhancedBulkUserOperations({
         errors: [],
         canCancel: true
       };
-      
       setProgress(initialProgress);
       announce(`Starting ${operation.label} for ${selectedUserIds.length} users`, 'assertive');
-
       // Execute the bulk operation
       const response = await fetch('/api/admin/users/bulk', {
         method: 'POST',
@@ -227,32 +206,25 @@ export function EnhancedBulkUserOperations({
         }),
         signal: controller.signal
       });
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw AdminErrorHandler.fromHttpError(response.status, errorData);
       }
-
       // Handle streaming response for real-time progress updates
       if (response.body) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
             const chunk = decoder.decode(value);
             const lines = chunk.split('\n').filter(line => line.trim());
-
             for (const line of lines) {
               try {
                 const update = JSON.parse(line);
-                
                 setProgress(prev => {
                   if (!prev) return prev;
-                  
                   const updatedProgress = {
                     ...prev,
                     ...update,
@@ -260,7 +232,6 @@ export function EnhancedBulkUserOperations({
                       ? new Date() 
                       : prev.endTime
                   };
-
                   // Announce progress milestones
                   if (update.processedItems && update.processedItems % 10 === 0) {
                     AriaManager.announceProgress(
@@ -269,12 +240,9 @@ export function EnhancedBulkUserOperations({
                       prev.operation
                     );
                   }
-
                   return updatedProgress;
                 });
-
               } catch (parseError) {
-                console.warn('Failed to parse progress update:', parseError);
               }
             }
           }
@@ -282,21 +250,18 @@ export function EnhancedBulkUserOperations({
           reader.releaseLock();
         }
       }
-
       // Operation completed successfully
       setProgress(prev => prev ? {
         ...prev,
         status: 'completed',
         endTime: new Date()
       } : null);
-
       AriaManager.announceBulkOperationResult(
         operation.label,
         progress?.successfulItems || 0,
         progress?.failedItems || 0,
         selectedUserIds.length
       );
-
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         // Operation was cancelled
@@ -305,55 +270,45 @@ export function EnhancedBulkUserOperations({
           status: 'cancelled',
           endTime: new Date()
         } : null);
-        
         announce(`${operation.label} was cancelled`, 'assertive');
         return;
       }
-
       const adminError = err instanceof Error 
         ? AdminErrorHandler.fromNetworkError(err)
         : err as AdminError;
-
       AdminErrorHandler.logError(adminError, {
         operation: `bulk_${operationId}`,
         resource: `${selectedUserIds.length}_users`,
         timestamp: new Date()
       });
-
       setError(adminError);
       setProgress(prev => prev ? {
         ...prev,
         status: 'failed',
         endTime: new Date()
       } : null);
-
       announce(`${operation.label} failed: ${adminError.message}`, 'assertive');
-
     } finally {
       setAbortController(null);
     }
   }, [selectedUserIds, announce, progress?.successfulItems, progress?.failedItems]);
-
   const handleCancelOperation = () => {
     if (abortController) {
       abortController.abort();
       announce('Cancelling operation...', 'assertive');
     }
   };
-
   const handleCloseProgress = () => {
     setProgress(null);
     setSelectedOperation(null);
     onOperationComplete();
   };
-
   const renderOperationButton = (operation: BulkOperationConfig) => {
     const isDisabled = progress?.status === 'running';
-    
     return (
       <button
         key={operation.id}
-        onClick={() => handleOperationSelect(operation.id)}
+        onClick={() = aria-label="Button"> handleOperationSelect(operation.id)}
         disabled={isDisabled}
         className={`flex items-center p-4 border rounded-lg text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
           operation.destructive
@@ -366,20 +321,19 @@ export function EnhancedBulkUserOperations({
           {operation.icon}
         </div>
         <div className="ml-3 flex-1">
-          <h3 className="text-sm font-medium text-gray-900">
+          <h3 className="text-sm font-medium text-gray-900 md:text-base lg:text-lg">
             {operation.label}
           </h3>
-          <p id={`${operation.id}-description`} className="text-sm text-gray-600 mt-1">
+          <p id={`${operation.id}-description`} className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">
             {operation.description}
           </p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 mt-1 sm:text-sm md:text-base">
             Estimated time: {estimateOperationTime(operation)}
           </p>
         </div>
       </button>
     );
   };
-
   if (selectedUserIds.length === 0) {
     return (
       <div className={`bg-white p-6 rounded-lg shadow ${className}`}>
@@ -390,15 +344,14 @@ export function EnhancedBulkUserOperations({
           </p>
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 md:text-base lg:text-lg"
+           aria-label="Button">
             Back to User List
           </button>
         </div>
       </div>
     );
   }
-
   return (
     <div className={`bg-white rounded-lg shadow ${className}`} ref={containerRef}>
       {/* Header */}
@@ -408,7 +361,7 @@ export function EnhancedBulkUserOperations({
             <h2 className="text-lg font-medium text-gray-900">
               Bulk Operations
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">
               {selectedUserIds.length} user{selectedUserIds.length === 1 ? '' : 's'} selected
             </p>
           </div>
@@ -421,10 +374,9 @@ export function EnhancedBulkUserOperations({
           </button>
         </div>
       </div>
-
       {/* Error Display */}
       {error && (
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 sm:p-4 md:p-6">
           <ErrorDisplay
             error={error}
             onRetry={() => selectedOperation && executeOperation(selectedOperation)}
@@ -433,10 +385,9 @@ export function EnhancedBulkUserOperations({
           />
         </div>
       )}
-
       {/* Progress Indicator */}
       {progress && (
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 sm:p-4 md:p-6">
           <ProgressIndicator
             progress={progress}
             onCancel={progress.canCancel && progress.status === 'running' ? handleCancelOperation : undefined}
@@ -445,29 +396,25 @@ export function EnhancedBulkUserOperations({
           />
         </div>
       )}
-
       {/* Operation Selection */}
       {!progress && (
-        <div className="p-6">
-          <h3 className="text-sm font-medium text-gray-900 mb-4">
+        <div className="p-6 sm:p-4 md:p-6">
+          <h3 className="text-sm font-medium text-gray-900 mb-4 md:text-base lg:text-lg">
             Select an operation to perform:
           </h3>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {getAvailableOperations().map(renderOperationButton)}
           </div>
-
           <div className="mt-6 flex justify-end space-x-3">
             <button
               onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 md:text-base lg:text-lg"
+             aria-label="Button">
               Cancel
             </button>
           </div>
         </div>
       )}
-
       {/* Confirmation Dialog */}
       {showConfirmation && selectedOperation && (
         <BulkOperationConfirmation
@@ -482,5 +429,4 @@ export function EnhancedBulkUserOperations({
     </div>
   );
 }
-
 export default EnhancedBulkUserOperations;

@@ -7,7 +7,7 @@
  * It provides navigation to all admin management features.
  */
 
-import React from 'react';
+
 import { SuperAdminRoute } from '@/components/auth/SuperAdminRoute';
 import SuperAdminDashboard from '@/components/admin/SuperAdminDashboard';
 

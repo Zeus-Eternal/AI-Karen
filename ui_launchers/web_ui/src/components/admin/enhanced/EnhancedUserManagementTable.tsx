@@ -342,7 +342,7 @@ export function EnhancedUserManagementTable({
         <th className="px-6 py-3 text-left" scope="col">
           <input
             type="checkbox"
-            checked={selectedUsers.length === users.length && users.length > 0}
+            checked={selectedUsers.length === users.length && users.length  aria-label="Input"> 0}
             onChange={(e) => handleSelectAll(e.target.checked)}
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
             aria-label={`Select all ${users.length} users on this page`}
@@ -356,7 +356,7 @@ export function EnhancedUserManagementTable({
           >
             {column.sortable ? (
               <button
-                onClick={() => handleSort(column.key as keyof User)}
+                onClick={() = aria-label="Button"> handleSort(column.key as keyof User)}
                 className="flex items-center space-x-1 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
                 aria-label={column.ariaLabel}
                 aria-sort={
@@ -391,16 +391,16 @@ export function EnhancedUserManagementTable({
         <input
           type="checkbox"
           checked={selectedUsers.includes(user.user_id)}
-          onChange={(e) => handleSelectUser(user.user_id, e.target.checked)}
+          onChange={(e) = aria-label="Input"> handleSelectUser(user.user_id, e.target.checked)}
           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
           aria-label={`Select user ${user.email}`}
         />
       </td>
       <td className="px-6 py-4 whitespace-nowrap" role="gridcell">
-        <div className="text-sm font-medium text-gray-900">{user.email}</div>
+        <div className="text-sm font-medium text-gray-900 md:text-base lg:text-lg">{user.email}</div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap" role="gridcell">
-        <div className="text-sm text-gray-900">{user.full_name || 'Not set'}</div>
+        <div className="text-sm text-gray-900 md:text-base lg:text-lg">{user.full_name || 'Not set'}</div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap" role="gridcell">
         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.role)}`}>
@@ -417,22 +417,22 @@ export function EnhancedUserManagementTable({
           {user.is_verified ? 'Verified' : 'Pending'}
         </span>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" role="gridcell">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 md:text-base lg:text-lg" role="gridcell">
         <time dateTime={user.last_login_at?.toString()}>
           {formatDate(user.last_login_at)}
         </time>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" role="gridcell">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 md:text-base lg:text-lg" role="gridcell">
         <time dateTime={user.created_at?.toString()}>
           {formatDate(user.created_at)}
         </time>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" role="gridcell">
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium md:text-base lg:text-lg" role="gridcell">
         <div className="flex space-x-2">
           {canEditUser(user) && (
             <>
               <button
-                onClick={() => handleEditUser(user)}
+                onClick={() = aria-label="Button"> handleEditUser(user)}
                 className="text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
                 aria-label={`Edit user ${user.email}`}
                 disabled={operationLoading === `edit-${user.user_id}`}
@@ -440,7 +440,7 @@ export function EnhancedUserManagementTable({
                 Edit
               </button>
               <button
-                onClick={() => {
+                onClick={() = aria-label="Button"> {
                   if (user.is_active) {
                     setDeactivatingUser(user);
                   } else {
@@ -457,7 +457,7 @@ export function EnhancedUserManagementTable({
               >
                 {operationLoading === `toggle-${user.user_id}` ? (
                   <span className="flex items-center">
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1" />
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1 sm:w-auto md:w-full" />
                     Processing...
                   </span>
                 ) : (
@@ -466,7 +466,7 @@ export function EnhancedUserManagementTable({
               </button>
               {hasRole('super_admin') && (
                 <button
-                  onClick={() => setDeletingUser(user)}
+                  onClick={() = aria-label="Button"> setDeletingUser(user)}
                   className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded"
                   aria-label={`Delete user ${user.email}`}
                   disabled={operationLoading === `delete-${user.user_id}`}
@@ -488,17 +488,17 @@ export function EnhancedUserManagementTable({
     >
       <div className="flex-1 flex justify-between sm:hidden">
         <button
-          onClick={() => handlePageChange(pagination.page - 1)}
+          onClick={() = aria-label="Button"> handlePageChange(pagination.page - 1)}
           disabled={pagination.page <= 1}
-          className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
           aria-label="Go to previous page"
         >
           Previous
         </button>
         <button
-          onClick={() => handlePageChange(pagination.page + 1)}
+          onClick={() = aria-label="Button"> handlePageChange(pagination.page + 1)}
           disabled={pagination.page >= totalPages}
-          className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
           aria-label="Go to next page"
         >
           Next
@@ -506,17 +506,17 @@ export function EnhancedUserManagementTable({
       </div>
       <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
         <div className="flex items-center space-x-4">
-          <p className="text-sm text-gray-700" role="status" aria-live="polite">
+          <p className="text-sm text-gray-700 md:text-base lg:text-lg" role="status" aria-live="polite">
             Showing <span className="font-medium">{((pagination.page - 1) * pagination.limit) + 1}</span> to{' '}
             <span className="font-medium">{Math.min(pagination.page * pagination.limit, totalUsers)}</span> of{' '}
             <span className="font-medium">{totalUsers}</span> results
           </p>
-          <label className="flex items-center text-sm">
+          <label className="flex items-center text-sm md:text-base lg:text-lg">
             <span className="mr-2">Show:</span>
             <select
               value={pagination.limit}
-              onChange={(e) => handleLimitChange(parseInt(e.target.value))}
-              className="border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onChange={(e) = aria-label="Select option"> handleLimitChange(parseInt(e.target.value))}
+              className="border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 md:text-base lg:text-lg"
               aria-label="Number of users per page"
             >
               <option value={10}>10 per page</option>
@@ -529,9 +529,9 @@ export function EnhancedUserManagementTable({
         <div>
           <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
             <button
-              onClick={() => handlePageChange(pagination.page - 1)}
+              onClick={() = aria-label="Button"> handlePageChange(pagination.page - 1)}
               disabled={pagination.page <= 1}
-              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
               aria-label="Go to previous page"
             >
               Previous
@@ -542,7 +542,7 @@ export function EnhancedUserManagementTable({
               return (
                 <button
                   key={pageNum}
-                  onClick={() => handlePageChange(pageNum)}
+                  onClick={() = aria-label="Button"> handlePageChange(pageNum)}
                   className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                     pageNum === pagination.page
                       ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
@@ -556,9 +556,9 @@ export function EnhancedUserManagementTable({
               );
             })}
             <button
-              onClick={() => handlePageChange(pagination.page + 1)}
+              onClick={() = aria-label="Button"> handlePageChange(pagination.page + 1)}
               disabled={pagination.page >= totalPages}
-              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
               aria-label="Go to next page"
             >
               Next
@@ -572,9 +572,9 @@ export function EnhancedUserManagementTable({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12" role="status" aria-live="polite">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4 sm:w-auto md:w-full"></div>
         <p className="text-gray-600">Loading users...</p>
-        <SimpleProgressBar progress={50} className="w-48 mt-4" />
+        <SimpleProgressBar progress={50} className="w-48 mt-4 sm:w-auto md:w-full" />
       </div>
     );
   }
@@ -615,7 +615,7 @@ export function EnhancedUserManagementTable({
                 <td colSpan={columns.length + 1} className="px-6 py-12 text-center text-gray-500">
                   <div className="flex flex-col items-center">
                     <p className="text-lg font-medium mb-2">No users found</p>
-                    <p className="text-sm">Try adjusting your search criteria or filters.</p>
+                    <p className="text-sm md:text-base lg:text-lg">Try adjusting your search criteria or filters.</p>
                   </div>
                 </td>
               </tr>

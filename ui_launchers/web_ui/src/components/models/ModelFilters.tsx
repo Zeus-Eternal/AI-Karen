@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -89,22 +89,22 @@ export default function ModelFilters({
       {/* Filter Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Filter className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           <span className="font-medium">Filters</span>
           {hasActiveFilters() && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
               {getActiveFilterCount()} active
             </Badge>
           )}
         </div>
         {hasActiveFilters() && (
-          <Button
+          <button
             variant="ghost"
             size="sm"
             onClick={clearAllFilters}
             className="gap-1 text-muted-foreground hover:text-foreground"
-          >
-            <RotateCcw className="h-3 w-3" />
+           aria-label="Button">
+            <RotateCcw className="h-3 w-3 sm:w-auto md:w-full" />
             Clear All
           </Button>
         )}
@@ -114,18 +114,18 @@ export default function ModelFilters({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Library Filter */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Library</Label>
-          <Select
+          <Label className="text-sm font-medium md:text-base lg:text-lg">Library</Label>
+          <select
             value={filters.library}
-            onValueChange={(value) => updateFilter('library', value === 'all' ? '' : value)}
+            onValueChange={(value) = aria-label="Select option"> updateFilter('library', value === 'all' ? '' : value)}
           >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All libraries" />
+            <selectTrigger className="w-full" aria-label="Select option">
+              <selectValue placeholder="All libraries" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All libraries</SelectItem>
+            <selectContent aria-label="Select option">
+              <selectItem value="all" aria-label="Select option">All libraries</SelectItem>
               {filterOptions.libraries.map(library => (
-                <SelectItem key={library} value={library}>
+                <selectItem key={library} value={library} aria-label="Select option">
                   {library}
                 </SelectItem>
               ))}
@@ -135,18 +135,18 @@ export default function ModelFilters({
 
         {/* Status Filter */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Status</Label>
-          <Select
+          <Label className="text-sm font-medium md:text-base lg:text-lg">Status</Label>
+          <select
             value={filters.status}
-            onValueChange={(value) => updateFilter('status', value === 'all' ? '' : value)}
+            onValueChange={(value) = aria-label="Select option"> updateFilter('status', value === 'all' ? '' : value)}
           >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All statuses" />
+            <selectTrigger className="w-full" aria-label="Select option">
+              <selectValue placeholder="All statuses" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
+            <selectContent aria-label="Select option">
+              <selectItem value="all" aria-label="Select option">All statuses</SelectItem>
               {filterOptions.statuses.map(status => (
-                <SelectItem key={status} value={status}>
+                <selectItem key={status} value={status} aria-label="Select option">
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </SelectItem>
               ))}
@@ -156,23 +156,23 @@ export default function ModelFilters({
 
         {/* Owner Filter */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Owner</Label>
-          <Select
+          <Label className="text-sm font-medium md:text-base lg:text-lg">Owner</Label>
+          <select
             value={filters.owner}
-            onValueChange={(value) => updateFilter('owner', value === 'all' ? '' : value)}
+            onValueChange={(value) = aria-label="Select option"> updateFilter('owner', value === 'all' ? '' : value)}
           >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All owners" />
+            <selectTrigger className="w-full" aria-label="Select option">
+              <selectValue placeholder="All owners" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All owners</SelectItem>
+            <selectContent aria-label="Select option">
+              <selectItem value="all" aria-label="Select option">All owners</SelectItem>
               {filterOptions.owners.slice(0, 20).map(owner => (
-                <SelectItem key={owner} value={owner}>
+                <selectItem key={owner} value={owner} aria-label="Select option">
                   {owner}
                 </SelectItem>
               ))}
               {filterOptions.owners.length > 20 && (
-                <SelectItem value="" disabled>
+                <selectItem value="" disabled aria-label="Select option">
                   ... and {filterOptions.owners.length - 20} more
                 </SelectItem>
               )}
@@ -182,21 +182,21 @@ export default function ModelFilters({
 
         {/* Quick Filters */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Quick Filters</Label>
+          <Label className="text-sm font-medium md:text-base lg:text-lg">Quick Filters</Label>
           <div className="flex flex-wrap gap-1">
-            <Button
+            <button
               variant={filters.status === 'local' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateFilter('status', filters.status === 'local' ? '' : 'local')}
-              className="text-xs"
+              onClick={() = aria-label="Button"> updateFilter('status', filters.status === 'local' ? '' : 'local')}
+              className="text-xs sm:text-sm md:text-base"
             >
               Local Only
             </Button>
-            <Button
+            <button
               variant={filters.status === 'available' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateFilter('status', filters.status === 'available' ? '' : 'available')}
-              className="text-xs"
+              onClick={() = aria-label="Button"> updateFilter('status', filters.status === 'available' ? '' : 'available')}
+              className="text-xs sm:text-sm md:text-base"
             >
               Available
             </Button>
@@ -207,10 +207,10 @@ export default function ModelFilters({
       {/* Tags Filter */}
       {filterOptions.allTags.length > 0 && (
         <div className="space-y-2">
-          <Label className="text-sm font-medium">
+          <Label className="text-sm font-medium md:text-base lg:text-lg">
             Tags
             {filters.tags && filters.tags.length > 0 && (
-              <span className="ml-2 text-xs text-muted-foreground">
+              <span className="ml-2 text-xs text-muted-foreground sm:text-sm md:text-base">
                 ({filters.tags.length} selected)
               </span>
             )}
@@ -219,11 +219,11 @@ export default function ModelFilters({
             {filterOptions.allTags.slice(0, 50).map(tag => {
               const isSelected = filters.tags?.includes(tag) || false;
               return (
-                <Button
+                <button
                   key={tag}
                   variant={isSelected ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => toggleTag(tag)}
+                  onClick={() = aria-label="Button"> toggleTag(tag)}
                   className={cn(
                     "text-xs h-6 px-2",
                     isSelected && "bg-primary text-primary-foreground"
@@ -231,13 +231,13 @@ export default function ModelFilters({
                 >
                   {tag}
                   {isSelected && (
-                    <X className="h-2 w-2 ml-1" />
+                    <X className="h-2 w-2 ml-1 sm:w-auto md:w-full" />
                   )}
                 </Button>
               );
             })}
             {filterOptions.allTags.length > 50 && (
-              <span className="text-xs text-muted-foreground px-2 py-1">
+              <span className="text-xs text-muted-foreground px-2 py-1 sm:text-sm md:text-base">
                 ... and {filterOptions.allTags.length - 50} more tags
               </span>
             )}
@@ -250,18 +250,18 @@ export default function ModelFilters({
         <>
           <Separator />
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Active Filters</Label>
+            <Label className="text-sm font-medium md:text-base lg:text-lg">Active Filters</Label>
             <div className="flex flex-wrap gap-1">
               {filters.library && (
                 <Badge variant="secondary" className="gap-1">
                   Library: {filters.library}
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    onClick={() => updateFilter('library', '')}
-                    className="h-3 w-3 p-0 hover:bg-transparent"
+                    onClick={() = aria-label="Button"> updateFilter('library', '')}
+                    className="h-3 w-3 p-0 hover:bg-transparent sm:w-auto md:w-full"
                   >
-                    <X className="h-2 w-2" />
+                    <X className="h-2 w-2 sm:w-auto md:w-full" />
                   </Button>
                 </Badge>
               )}
@@ -269,13 +269,13 @@ export default function ModelFilters({
               {filters.status && (
                 <Badge variant="secondary" className="gap-1">
                   Status: {filters.status}
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    onClick={() => updateFilter('status', '')}
-                    className="h-3 w-3 p-0 hover:bg-transparent"
+                    onClick={() = aria-label="Button"> updateFilter('status', '')}
+                    className="h-3 w-3 p-0 hover:bg-transparent sm:w-auto md:w-full"
                   >
-                    <X className="h-2 w-2" />
+                    <X className="h-2 w-2 sm:w-auto md:w-full" />
                   </Button>
                 </Badge>
               )}
@@ -283,13 +283,13 @@ export default function ModelFilters({
               {filters.owner && (
                 <Badge variant="secondary" className="gap-1">
                   Owner: {filters.owner}
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    onClick={() => updateFilter('owner', '')}
-                    className="h-3 w-3 p-0 hover:bg-transparent"
+                    onClick={() = aria-label="Button"> updateFilter('owner', '')}
+                    className="h-3 w-3 p-0 hover:bg-transparent sm:w-auto md:w-full"
                   >
-                    <X className="h-2 w-2" />
+                    <X className="h-2 w-2 sm:w-auto md:w-full" />
                   </Button>
                 </Badge>
               )}
@@ -297,13 +297,13 @@ export default function ModelFilters({
               {filters.tags?.map(tag => (
                 <Badge key={tag} variant="secondary" className="gap-1">
                   Tag: {tag}
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    onClick={() => toggleTag(tag)}
-                    className="h-3 w-3 p-0 hover:bg-transparent"
+                    onClick={() = aria-label="Button"> toggleTag(tag)}
+                    className="h-3 w-3 p-0 hover:bg-transparent sm:w-auto md:w-full"
                   >
-                    <X className="h-2 w-2" />
+                    <X className="h-2 w-2 sm:w-auto md:w-full" />
                   </Button>
                 </Badge>
               ))}

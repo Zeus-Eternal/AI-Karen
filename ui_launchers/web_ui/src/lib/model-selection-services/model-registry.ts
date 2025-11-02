@@ -1,3 +1,6 @@
+import { BaseModelService } from "./base-service";
+import {
+import type { Model } from "../model-utils";
 /**
  * Model Registry Service
  *
@@ -5,14 +8,14 @@
  * Provides efficient categorization and filtering of models by various attributes.
  */
 
-import { BaseModelService } from "./base-service";
-import {
+
+
   ModelCategories,
   ModelLookupOptions,
   DirectoryWatchOptions,
 } from "./types";
-import type { Model } from "../model-utils";
-import {
+
+
   ModelRegistryError,
   ErrorUtils,
 } from "./errors/model-selection-errors";

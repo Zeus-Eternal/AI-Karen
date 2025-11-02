@@ -6,26 +6,21 @@
  * 
  * Requirements: 5.2, 5.3, 1.1, 1.2
  */
-
 import { getApiClient, type ApiClient, type RequestConfig, type ApiResponse, type ApiError } from './api-client';
 import { isAuthenticated, clearSession } from './auth/session';
-
 export interface ApiRequest extends RequestConfig {
   endpoint: string;
 }
-
 export interface IntegratedApiClientOptions {
   autoRetryOn401?: boolean;
   includeCredentials?: boolean;
 }
-
 /**
  * Integrated API Client that combines the existing API client with simplified session management
  */
 export class IntegratedApiClient {
   private apiClient: ApiClient;
   private options: IntegratedApiClientOptions;
-
   constructor(options: IntegratedApiClientOptions = {}) {
     this.apiClient = getApiClient();
     this.options = {
@@ -34,7 +29,6 @@ export class IntegratedApiClient {
       ...options,
     };
   }
-
   /**
    * Make an authenticated request with simple 401 handling
    */
@@ -46,18 +40,15 @@ export class IntegratedApiClient {
     } catch (error: any) {
       // Simple 401 error handling - clear session and redirect to login
       if (error.status === 401) {
-        console.log('Integrated API Client: 401 error detected, clearing session and redirecting');
         clearSession();
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
         }
       }
-      
       // For all other errors, throw immediately (no complex retry logic)
       throw error;
     }
   }
-
   /**
    * Determine if an endpoint requires authentication
    */
@@ -72,10 +63,8 @@ export class IntegratedApiClient {
       '/api/health',
       '/api/public/',
     ];
-
     return !publicEndpoints.some(publicEndpoint => endpoint.startsWith(publicEndpoint));
   }
-
   /**
    * GET request
    */
@@ -89,7 +78,6 @@ export class IntegratedApiClient {
       ...options,
     });
   }
-
   /**
    * POST request
    */
@@ -105,7 +93,6 @@ export class IntegratedApiClient {
       ...options,
     });
   }
-
   /**
    * PUT request
    */
@@ -121,7 +108,6 @@ export class IntegratedApiClient {
       ...options,
     });
   }
-
   /**
    * DELETE request
    */
@@ -135,7 +121,6 @@ export class IntegratedApiClient {
       ...options,
     });
   }
-
   /**
    * PATCH request
    */
@@ -151,7 +136,6 @@ export class IntegratedApiClient {
       ...options,
     });
   }
-
   /**
    * Upload file
    */
@@ -165,13 +149,11 @@ export class IntegratedApiClient {
     // Create form data
     const formData = new FormData();
     formData.append(fieldName, file);
-    
     if (additionalFields) {
       Object.entries(additionalFields).forEach(([key, value]) => {
         formData.append(key, value);
       });
     }
-
     return this.makeAuthenticatedRequest<T>({
       endpoint,
       method: 'POST',
@@ -179,7 +161,6 @@ export class IntegratedApiClient {
       ...options,
     });
   }
-
   /**
    * Make a public request (no authentication)
    */
@@ -187,14 +168,12 @@ export class IntegratedApiClient {
     const { endpoint, ...config } = request;
     return this.apiClient.request<T>(endpoint, config);
   }
-
   /**
    * Health check
    */
   async healthCheck(): Promise<ApiResponse<any>> {
     return this.apiClient.get('/api/health');
   }
-
   /**
    * Get backend URL
    */
@@ -205,21 +184,18 @@ export class IntegratedApiClient {
     }
     return process.env.NEXT_PUBLIC_API_URL || '/api';
   }
-
   /**
    * Get the underlying API client
    */
   getClient() {
     return this.apiClient;
   }
-
   /**
    * Update options
    */
   updateOptions(options: Partial<IntegratedApiClientOptions>): void {
     this.options = { ...this.options, ...options };
   }
-
   /**
    * Get current options
    */
@@ -227,10 +203,8 @@ export class IntegratedApiClient {
     return { ...this.options };
   }
 }
-
 // Singleton instance
 let integratedApiClient: IntegratedApiClient | null = null;
-
 /**
  * Get the integrated API client instance
  */
@@ -242,7 +216,6 @@ export function getIntegratedApiClient(options?: IntegratedApiClientOptions): In
   }
   return integratedApiClient;
 }
-
 /**
  * Initialize integrated API client with custom options
  */
@@ -250,7 +223,6 @@ export function initializeIntegratedApiClient(options?: IntegratedApiClientOptio
   integratedApiClient = new IntegratedApiClient(options);
   return integratedApiClient;
 }
-
 /**
  * Hook for using the integrated API client in React components
  */
@@ -259,13 +231,11 @@ export function useIntegratedApiClient(options?: IntegratedApiClientOptions) {
   // React.useMemo will be available when imported in a React component
   return getIntegratedApiClient(options);
 }
-
 // Re-export types for convenience
 export type {
   ApiResponse,
   ApiError,
   IntegratedApiClientOptions as IntegratedApiClientOptionsType,
 };
-
 // Default export
 export default IntegratedApiClient;

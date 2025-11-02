@@ -1,11 +1,5 @@
-/**
- * Performance Optimization Dashboard
- * Interface for managing automatic performance optimizations
- */
-
-'use client';
-
 import React, { useState, useEffect } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +8,20 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
+/**
+ * Performance Optimization Dashboard
+ * Interface for managing automatic performance optimizations
+ */
+'use client';
+
+
+
+
+
+
+
+
+
   Dialog, 
   DialogContent, 
   DialogDescription, 
@@ -21,7 +29,7 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from '@/components/ui/dialog';
-import { 
+
   BarChart, 
   Bar, 
   XAxis, 
@@ -35,7 +43,7 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import { 
+
   Zap, 
   Image, 
   Package, 
@@ -49,20 +57,17 @@ import {
   Info,
   Lightbulb
 } from 'lucide-react';
-import { 
+
   performanceOptimizer, 
   OptimizationConfig, 
   OptimizationMetrics, 
   OptimizationRecommendation 
 } from '@/services/performance-optimizer';
-
 interface PerformanceOptimizationDashboardProps {
   autoApply?: boolean;
   showAdvancedSettings?: boolean;
 }
-
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-
 export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationDashboardProps> = ({
   autoApply = false,
   showAdvancedSettings = true,
@@ -72,33 +77,27 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
   const [recommendations, setRecommendations] = useState<OptimizationRecommendation[]>([]);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-
   // Load data on mount
   useEffect(() => {
     const loadData = () => {
       setMetrics(performanceOptimizer.getMetrics());
       setRecommendations(performanceOptimizer.generateRecommendations());
     };
-
     loadData();
     const interval = setInterval(loadData, 10000); // Update every 10 seconds
-
     return () => clearInterval(interval);
   }, []);
-
   // Auto-apply optimizations if enabled
   useEffect(() => {
     if (autoApply && recommendations.length > 0) {
       const criticalRecommendations = recommendations.filter(
         r => r.priority === 'critical' || r.priority === 'high'
       );
-      
       if (criticalRecommendations.length > 0) {
         handleApplyOptimizations();
       }
     }
   }, [recommendations, autoApply]);
-
   const handleApplyOptimizations = async () => {
     setIsOptimizing(true);
     try {
@@ -107,17 +106,14 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
       setMetrics(performanceOptimizer.getMetrics());
       setRecommendations(performanceOptimizer.generateRecommendations());
     } catch (error) {
-      console.error('Failed to apply optimizations:', error);
     } finally {
       setIsOptimizing(false);
     }
   };
-
   const handleConfigUpdate = (newConfig: Partial<OptimizationConfig>) => {
     performanceOptimizer.updateConfig(newConfig);
     setConfig(performanceOptimizer['config']); // Access private config for display
   };
-
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical': return 'destructive';
@@ -127,43 +123,39 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
       default: return 'outline';
     }
   };
-
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case 'critical': return <AlertTriangle className="h-4 w-4" />;
-      case 'high': return <AlertTriangle className="h-4 w-4" />;
-      case 'medium': return <Info className="h-4 w-4" />;
-      case 'low': return <Lightbulb className="h-4 w-4" />;
-      default: return <Info className="h-4 w-4" />;
+      case 'critical': return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'high': return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'medium': return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'low': return <Lightbulb className="h-4 w-4 sm:w-auto md:w-full" />;
+      default: return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
-
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'bundle': return <Package className="h-4 w-4" />;
-      case 'image': return <Image className="h-4 w-4" />;
-      case 'cache': return <Database className="h-4 w-4" />;
-      case 'memory': return <MemoryStick className="h-4 w-4" />;
-      default: return <Zap className="h-4 w-4" />;
+      case 'bundle': return <Package className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'image': return <Image className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'cache': return <Database className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'memory': return <MemoryStick className="h-4 w-4 sm:w-auto md:w-full" />;
+      default: return <Zap className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
-
   // Prepare chart data
   const optimizationImpactData = recommendations.map(rec => ({
     name: rec.title.substring(0, 20) + '...',
     impact: rec.estimatedGain,
     priority: rec.priority,
   }));
-
   const metricsOverviewData = metrics ? [
     { name: 'Bundle Size', value: metrics.bundleSize.reduction, color: COLORS[0] },
     { name: 'Images', value: metrics.imageOptimization.sizeReduction, color: COLORS[1] },
     { name: 'Cache Hit Rate', value: metrics.cachePerformance.hitRate, color: COLORS[2] },
     { name: 'Memory Usage', value: 100 - (metrics.memoryUsage.heapUsed / metrics.memoryUsage.heapTotal * 100), color: COLORS[3] },
   ] : [];
-
   return (
-    <div className="space-y-6">
+    <ErrorBoundary fallback={<div>Something went wrong in PerformanceOptimizationDashboard</div>}>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -173,23 +165,23 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button
+          <button
             onClick={handleApplyOptimizations}
             disabled={isOptimizing || recommendations.length === 0}
             className="flex items-center space-x-2"
-          >
-            <Play className="h-4 w-4" />
+           aria-label="Button">
+            <Play className="h-4 w-4 sm:w-auto md:w-full" />
             <span>{isOptimizing ? 'Optimizing...' : 'Apply Optimizations'}</span>
           </Button>
           {showAdvancedSettings && (
             <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Settings className="h-4 w-4 mr-2" />
+                <button variant="outline" aria-label="Button">
+                  <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Settings
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl sm:w-auto md:w-full">
                 <DialogHeader>
                   <DialogTitle>Optimization Settings</DialogTitle>
                   <DialogDescription>
@@ -202,25 +194,23 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
           )}
         </div>
       </div>
-
       {/* Optimization Status */}
       {isOptimizing && (
         <Alert>
-          <Zap className="h-4 w-4" />
+          <Zap className="h-4 w-4 sm:w-auto md:w-full" />
           <AlertTitle>Optimization in Progress</AlertTitle>
           <AlertDescription>
             Applying performance optimizations. This may take a few moments.
           </AlertDescription>
         </Alert>
       )}
-
       {/* Metrics Overview */}
       {metrics && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Bundle Size</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Bundle Size</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -229,29 +219,27 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
                   : `${(metrics.bundleSize.after / 1024).toFixed(0)}KB`
                 }
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {metrics.bundleSize.reduction > 0 ? 'Size reduction' : 'Current size'}
               </p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Images Optimized</CardTitle>
-              <Image className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Images Optimized</CardTitle>
+              <Image className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metrics.imageOptimization.imagesOptimized}</div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {metrics.imageOptimization.webpConversions} WebP conversions
               </p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Cache Hit Rate</CardTitle>
-              <Database className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Cache Hit Rate</CardTitle>
+              <Database className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -260,16 +248,15 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
                   : '0%'
                 }
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {metrics.cachePerformance.hitRate + metrics.cachePerformance.missRate} total requests
               </p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Memory Usage</CardTitle>
-              <MemoryStick className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Memory Usage</CardTitle>
+              <MemoryStick className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -278,14 +265,13 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
                   : '0%'
                 }
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {metrics.memoryUsage.leaksDetected} leaks detected
               </p>
             </CardContent>
           </Card>
         </div>
       )}
-
       {/* Recommendations */}
       <Card>
         <CardHeader>
@@ -304,7 +290,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
         <CardContent>
           {recommendations.length === 0 ? (
             <div className="text-center py-8">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 sm:w-auto md:w-full" />
               <h3 className="text-lg font-medium">All Optimized!</h3>
               <p className="text-muted-foreground">
                 No performance optimizations needed at this time.
@@ -313,7 +299,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
           ) : (
             <div className="space-y-4">
               {recommendations.slice(0, 5).map((recommendation) => (
-                <div key={recommendation.id} className="border rounded-lg p-4">
+                <div key={recommendation.id} className="border rounded-lg p-4 sm:p-4 md:p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3">
                       <div className="flex items-center space-x-2">
@@ -327,10 +313,10 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
                             {recommendation.priority}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                           {recommendation.description}
                         </p>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                           <p><strong>Impact:</strong> {recommendation.impact}</p>
                           <p><strong>Implementation:</strong> {recommendation.implementation}</p>
                         </div>
@@ -340,17 +326,16 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
                       <div className="text-lg font-bold text-green-600">
                         +{recommendation.estimatedGain}%
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                         Est. improvement
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
-              
               {recommendations.length > 5 && (
                 <div className="text-center">
-                  <Button variant="outline">
+                  <button variant="outline" aria-label="Button">
                     View {recommendations.length - 5} more recommendations
                   </Button>
                 </div>
@@ -359,7 +344,6 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
           )}
         </CardContent>
       </Card>
-
       {/* Charts */}
       <Tabs defaultValue="impact" className="space-y-4">
         <TabsList>
@@ -367,7 +351,6 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
           <TabsTrigger value="metrics">Performance Metrics</TabsTrigger>
           <TabsTrigger value="trends">Optimization Trends</TabsTrigger>
         </TabsList>
-
         <TabsContent value="impact" className="space-y-4">
           <Card>
             <CardHeader>
@@ -389,7 +372,6 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="metrics" className="space-y-4">
           <Card>
             <CardHeader>
@@ -418,7 +400,6 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="trends" className="space-y-4">
           <Card>
             <CardHeader>
@@ -444,14 +425,12 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
     </div>
   );
 };
-
 /**
  * Optimization Settings Component
  */
 interface OptimizationSettingsProps {
   onConfigUpdate: (config: Partial<OptimizationConfig>) => void;
 }
-
 const OptimizationSettings: React.FC<OptimizationSettingsProps> = ({ onConfigUpdate }) => {
   const [config, setConfig] = useState<OptimizationConfig>({
     bundleSplitting: {
@@ -482,7 +461,6 @@ const OptimizationSettings: React.FC<OptimizationSettingsProps> = ({ onConfigUpd
       eventListenerCleanup: true,
     },
   });
-
   const handleConfigChange = (section: keyof OptimizationConfig, key: string, value: any) => {
     const newConfig = {
       ...config,
@@ -494,7 +472,6 @@ const OptimizationSettings: React.FC<OptimizationSettingsProps> = ({ onConfigUpd
     setConfig(newConfig);
     onConfigUpdate(newConfig);
   };
-
   return (
     <div className="space-y-6">
       {/* Bundle Splitting */}
@@ -502,21 +479,21 @@ const OptimizationSettings: React.FC<OptimizationSettingsProps> = ({ onConfigUpd
         <h3 className="text-lg font-medium mb-4">Bundle Splitting</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Enable Bundle Splitting</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Enable Bundle Splitting</label>
             <Switch
               checked={config.bundleSplitting.enabled}
               onCheckedChange={(checked) => handleConfigChange('bundleSplitting', 'enabled', checked)}
             />
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Route-based Splitting</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Route-based Splitting</label>
             <Switch
               checked={config.bundleSplitting.routeBasedSplitting}
               onCheckedChange={(checked) => handleConfigChange('bundleSplitting', 'routeBasedSplitting', checked)}
             />
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Component-based Splitting</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Component-based Splitting</label>
             <Switch
               checked={config.bundleSplitting.componentBasedSplitting}
               onCheckedChange={(checked) => handleConfigChange('bundleSplitting', 'componentBasedSplitting', checked)}
@@ -524,27 +501,26 @@ const OptimizationSettings: React.FC<OptimizationSettingsProps> = ({ onConfigUpd
           </div>
         </div>
       </div>
-
       {/* Image Optimization */}
       <div>
         <h3 className="text-lg font-medium mb-4">Image Optimization</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Enable Image Optimization</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Enable Image Optimization</label>
             <Switch
               checked={config.imageOptimization.enabled}
               onCheckedChange={(checked) => handleConfigChange('imageOptimization', 'enabled', checked)}
             />
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">WebP Conversion</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">WebP Conversion</label>
             <Switch
               checked={config.imageOptimization.webpConversion}
               onCheckedChange={(checked) => handleConfigChange('imageOptimization', 'webpConversion', checked)}
             />
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Lazy Loading</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Lazy Loading</label>
             <Switch
               checked={config.imageOptimization.lazyLoading}
               onCheckedChange={(checked) => handleConfigChange('imageOptimization', 'lazyLoading', checked)}
@@ -552,27 +528,26 @@ const OptimizationSettings: React.FC<OptimizationSettingsProps> = ({ onConfigUpd
           </div>
         </div>
       </div>
-
       {/* Caching */}
       <div>
         <h3 className="text-lg font-medium mb-4">Caching</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Enable Caching</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Enable Caching</label>
             <Switch
               checked={config.caching.enabled}
               onCheckedChange={(checked) => handleConfigChange('caching', 'enabled', checked)}
             />
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Service Worker</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Service Worker</label>
             <Switch
               checked={config.caching.serviceWorker}
               onCheckedChange={(checked) => handleConfigChange('caching', 'serviceWorker', checked)}
             />
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Browser Cache</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Browser Cache</label>
             <Switch
               checked={config.caching.browserCache}
               onCheckedChange={(checked) => handleConfigChange('caching', 'browserCache', checked)}
@@ -580,27 +555,26 @@ const OptimizationSettings: React.FC<OptimizationSettingsProps> = ({ onConfigUpd
           </div>
         </div>
       </div>
-
       {/* Memory Management */}
       <div>
         <h3 className="text-lg font-medium mb-4">Memory Management</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Enable Memory Management</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Enable Memory Management</label>
             <Switch
               checked={config.memoryManagement.enabled}
               onCheckedChange={(checked) => handleConfigChange('memoryManagement', 'enabled', checked)}
             />
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">GC Monitoring</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">GC Monitoring</label>
             <Switch
               checked={config.memoryManagement.gcMonitoring}
               onCheckedChange={(checked) => handleConfigChange('memoryManagement', 'gcMonitoring', checked)}
             />
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Leak Detection</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Leak Detection</label>
             <Switch
               checked={config.memoryManagement.leakDetection}
               onCheckedChange={(checked) => handleConfigChange('memoryManagement', 'leakDetection', checked)}
@@ -609,5 +583,6 @@ const OptimizationSettings: React.FC<OptimizationSettingsProps> = ({ onConfigUpd
         </div>
       </div>
     </div>
+    </ErrorBoundary>
   );
 };

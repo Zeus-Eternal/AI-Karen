@@ -6,7 +6,6 @@
  * 
  * Requirements: 1.4, 4.4
  */
-
 export interface CacheConfig {
   maxSize: number;
   defaultTtl: number;
@@ -15,7 +14,6 @@ export interface CacheConfig {
   enablePersistence: boolean;
   persistenceKey: string;
 }
-
 export interface CacheEntry {
   key: string;
   data: any;
@@ -28,7 +26,6 @@ export interface CacheEntry {
   size: number;
   compressed: boolean;
 }
-
 export interface CacheMetrics {
   totalEntries: number;
   memoryUsage: number;
@@ -40,7 +37,6 @@ export interface CacheMetrics {
   evictions: number;
   compressionRatio: number;
 }
-
 export interface CacheOptions {
   ttl?: number;
   tags?: string[];
@@ -49,7 +45,6 @@ export interface CacheOptions {
   skipCache?: boolean;
   cacheKey?: string;
 }
-
 /**
  * Request/Response Cache Manager
  * 
@@ -62,7 +57,6 @@ export class RequestResponseCache {
   private tagIndex: Map<string, Set<string>> = new Map();
   private metrics: CacheMetrics;
   private cleanupInterval: NodeJS.Timeout | null = null;
-
   constructor(config?: Partial<CacheConfig>) {
     this.config = {
       maxSize: 1000,
@@ -73,7 +67,6 @@ export class RequestResponseCache {
       persistenceKey: 'ai-karen-request-cache',
       ...config,
     };
-
     this.metrics = {
       totalEntries: 0,
       memoryUsage: 0,
@@ -85,54 +78,43 @@ export class RequestResponseCache {
       evictions: 0,
       compressionRatio: 0,
     };
-
     this.startCleanupTimer();
     this.loadFromPersistence();
   }
-
   /**
    * Get cached response for a request
    */
   async get(key: string, options?: CacheOptions): Promise<CacheEntry | null> {
     this.metrics.totalRequests++;
-    
     if (options?.skipCache) {
       this.metrics.cacheMisses++;
       return null;
     }
-
     const cacheKey = options?.cacheKey || this.generateCacheKey(key);
     const entry = this.cache.get(cacheKey);
-
     if (!entry) {
       this.metrics.cacheMisses++;
       return null;
     }
-
     // Check if entry is expired
     if (this.isExpired(entry)) {
       this.delete(cacheKey);
       this.metrics.cacheMisses++;
       return null;
     }
-
     // Update access information
     entry.accessCount++;
     entry.lastAccessed = Date.now();
     this.updateAccessOrder(cacheKey);
-
     this.metrics.cacheHits++;
     this.updateHitRate();
-
     // Decompress data if needed
     if (entry.compressed && this.config.enableCompression) {
       entry.data = await this.decompress(entry.data);
       entry.compressed = false;
     }
-
     return { ...entry };
   }
-
   /**
    * Store response in cache
    */
@@ -146,16 +128,13 @@ export class RequestResponseCache {
     if (options?.skipCache) {
       return;
     }
-
     const cacheKey = options?.cacheKey || this.generateCacheKey(key);
     const ttl = options?.ttl || this.getTtlFromHeaders(headers) || this.config.defaultTtl;
     const timestamp = Date.now();
-
     // Prepare data for storage
     let processedData = data;
     let compressed = false;
     let size = this.estimateSize(data);
-
     // Compress data if enabled and beneficial
     if (this.config.enableCompression && options?.compress !== false && size > 1024) {
       try {
@@ -168,11 +147,9 @@ export class RequestResponseCache {
           processedData = data; // Revert to original if compression not beneficial
         }
       } catch (error) {
-        console.warn('Compression failed, storing uncompressed:', error);
         processedData = data;
       }
     }
-
     const entry: CacheEntry = {
       key: cacheKey,
       data: processedData,
@@ -185,14 +162,11 @@ export class RequestResponseCache {
       size,
       compressed,
     };
-
     // Check if we need to evict entries
     await this.ensureCapacity(size);
-
     // Store the entry
     this.cache.set(cacheKey, entry);
     this.updateAccessOrder(cacheKey);
-
     // Update tag index
     if (options?.tags) {
       for (const tag of options.tags) {
@@ -202,18 +176,15 @@ export class RequestResponseCache {
         this.tagIndex.get(tag)!.add(cacheKey);
       }
     }
-
     // Update metrics
     this.metrics.totalEntries = this.cache.size;
     this.metrics.memoryUsage += size;
     this.updateCompressionRatio();
-
     // Persist if enabled
     if (this.config.enablePersistence && options?.persist !== false) {
       this.saveToPersistence();
     }
   }
-
   /**
    * Delete entry from cache
    */
@@ -222,16 +193,13 @@ export class RequestResponseCache {
     if (!entry) {
       return false;
     }
-
     // Remove from cache
     this.cache.delete(key);
-
     // Remove from access order
     const index = this.accessOrder.indexOf(key);
     if (index !== -1) {
       this.accessOrder.splice(index, 1);
     }
-
     // Remove from tag index
     for (const [tag, keys] of this.tagIndex.entries()) {
       keys.delete(key);
@@ -239,20 +207,16 @@ export class RequestResponseCache {
         this.tagIndex.delete(tag);
       }
     }
-
     // Update metrics
     this.metrics.totalEntries = this.cache.size;
     this.metrics.memoryUsage -= entry.size;
-
     return true;
   }
-
   /**
    * Clear cache by tags
    */
   clearByTags(tags: string[]): number {
     let cleared = 0;
-    
     for (const tag of tags) {
       const keys = this.tagIndex.get(tag);
       if (keys) {
@@ -263,10 +227,8 @@ export class RequestResponseCache {
         }
       }
     }
-
     return cleared;
   }
-
   /**
    * Clear all cache entries
    */
@@ -277,12 +239,10 @@ export class RequestResponseCache {
     this.metrics.totalEntries = 0;
     this.metrics.memoryUsage = 0;
     this.metrics.evictions = 0;
-
     if (this.config.enablePersistence) {
       this.clearPersistence();
     }
   }
-
   /**
    * Get cache metrics
    */
@@ -290,14 +250,12 @@ export class RequestResponseCache {
     this.updateHitRate();
     return { ...this.metrics };
   }
-
   /**
    * Get cache configuration
    */
   getConfig(): CacheConfig {
     return { ...this.config };
   }
-
   /**
    * Shutdown the cache
    */
@@ -306,14 +264,11 @@ export class RequestResponseCache {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-
     if (this.config.enablePersistence) {
       this.saveToPersistence();
     }
-
     this.clear();
   }
-
   /**
    * Generate cache key from request details
    */
@@ -327,14 +282,12 @@ export class RequestResponseCache {
     }
     return `cache_${Math.abs(hash).toString(36)}`;
   }
-
   /**
    * Check if cache entry is expired
    */
   private isExpired(entry: CacheEntry): boolean {
     return Date.now() - entry.timestamp > entry.ttl;
   }
-
   /**
    * Get TTL from response headers
    */
@@ -346,7 +299,6 @@ export class RequestResponseCache {
         return parseInt(maxAgeMatch[1]) * 1000; // Convert to milliseconds
       }
     }
-
     const expires = headers['expires'] || headers['Expires'];
     if (expires) {
       const expiresDate = new Date(expires);
@@ -354,10 +306,8 @@ export class RequestResponseCache {
         return expiresDate.getTime() - Date.now();
       }
     }
-
     return null;
   }
-
   /**
    * Update access order for LRU eviction
    */
@@ -368,7 +318,6 @@ export class RequestResponseCache {
     }
     this.accessOrder.push(key);
   }
-
   /**
    * Ensure cache capacity by evicting entries if needed
    */
@@ -381,7 +330,6 @@ export class RequestResponseCache {
       if (this.accessOrder.length === 0) {
         break; // No entries to evict
       }
-
       // Evict least recently used entry
       const lruKey = this.accessOrder[0];
       if (this.delete(lruKey)) {
@@ -389,7 +337,6 @@ export class RequestResponseCache {
       }
     }
   }
-
   /**
    * Estimate size of data in bytes
    */
@@ -397,15 +344,12 @@ export class RequestResponseCache {
     if (typeof data === 'string') {
       return data.length * 2; // Rough estimate for UTF-16
     }
-    
     if (data instanceof ArrayBuffer) {
       return data.byteLength;
     }
-    
     if (data instanceof Uint8Array) {
       return data.length;
     }
-    
     // For objects, use JSON string length as approximation
     try {
       return JSON.stringify(data).length * 2;
@@ -413,7 +357,6 @@ export class RequestResponseCache {
       return 1024; // Default estimate
     }
   }
-
   /**
    * Compress data using built-in compression
    */
@@ -421,23 +364,18 @@ export class RequestResponseCache {
     if (typeof CompressionStream === 'undefined') {
       throw new Error('Compression not supported');
     }
-
     const stream = new CompressionStream('gzip');
     const writer = stream.writable.getWriter();
     const reader = stream.readable.getReader();
-
     // Convert data to Uint8Array
     const encoder = new TextEncoder();
     const input = typeof data === 'string' ? encoder.encode(data) : encoder.encode(JSON.stringify(data));
-
     // Compress
     writer.write(input);
     writer.close();
-
     // Read compressed data
     const chunks: Uint8Array[] = [];
     let done = false;
-    
     while (!done) {
       const { value, done: readerDone } = await reader.read();
       done = readerDone;
@@ -445,20 +383,16 @@ export class RequestResponseCache {
         chunks.push(value);
       }
     }
-
     // Combine chunks
     const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
     const result = new Uint8Array(totalLength);
     let offset = 0;
-    
     for (const chunk of chunks) {
       result.set(chunk, offset);
       offset += chunk.length;
     }
-
     return result;
   }
-
   /**
    * Decompress data
    */
@@ -466,19 +400,15 @@ export class RequestResponseCache {
     if (typeof DecompressionStream === 'undefined') {
       throw new Error('Decompression not supported');
     }
-
     const stream = new DecompressionStream('gzip');
     const writer = stream.writable.getWriter();
     const reader = stream.readable.getReader();
-
     // Decompress
     writer.write(compressedData as BufferSource);
     writer.close();
-
     // Read decompressed data
     const chunks: Uint8Array[] = [];
     let done = false;
-    
     while (!done) {
       const { value, done: readerDone } = await reader.read();
       done = readerDone;
@@ -486,27 +416,22 @@ export class RequestResponseCache {
         chunks.push(value);
       }
     }
-
     // Combine chunks and decode
     const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
     const result = new Uint8Array(totalLength);
     let offset = 0;
-    
     for (const chunk of chunks) {
       result.set(chunk, offset);
       offset += chunk.length;
     }
-
     const decoder = new TextDecoder();
     const decompressed = decoder.decode(result);
-    
     try {
       return JSON.parse(decompressed);
     } catch {
       return decompressed;
     }
   }
-
   /**
    * Update hit rate metrics
    */
@@ -516,14 +441,12 @@ export class RequestResponseCache {
       this.metrics.missRate = this.metrics.cacheMisses / this.metrics.totalRequests;
     }
   }
-
   /**
    * Update compression ratio metrics
    */
   private updateCompressionRatio(): void {
     let totalOriginalSize = 0;
     let totalCompressedSize = 0;
-    
     for (const entry of this.cache.values()) {
       if (entry.compressed) {
         totalCompressedSize += entry.size;
@@ -531,12 +454,10 @@ export class RequestResponseCache {
         totalOriginalSize += entry.size * 2;
       }
     }
-    
     if (totalOriginalSize > 0) {
       this.metrics.compressionRatio = totalCompressedSize / totalOriginalSize;
     }
   }
-
   /**
    * Start cleanup timer for expired entries
    */
@@ -545,25 +466,21 @@ export class RequestResponseCache {
       this.cleanupExpiredEntries();
     }, 60000); // Run every minute
   }
-
   /**
    * Cleanup expired entries
    */
   private cleanupExpiredEntries(): void {
     const now = Date.now();
     const expiredKeys: string[] = [];
-    
     for (const [key, entry] of this.cache.entries()) {
       if (now - entry.timestamp > entry.ttl) {
         expiredKeys.push(key);
       }
     }
-    
     for (const key of expiredKeys) {
       this.delete(key);
     }
   }
-
   /**
    * Save cache to persistence
    */
@@ -571,19 +488,15 @@ export class RequestResponseCache {
     if (typeof localStorage === 'undefined') {
       return;
     }
-
     try {
       const cacheData = {
         entries: Array.from(this.cache.entries()),
         timestamp: Date.now(),
       };
-      
       localStorage.setItem(this.config.persistenceKey, JSON.stringify(cacheData));
     } catch (error) {
-      console.warn('Failed to save cache to persistence:', error);
     }
   }
-
   /**
    * Load cache from persistence
    */
@@ -591,22 +504,18 @@ export class RequestResponseCache {
     if (!this.config.enablePersistence || typeof localStorage === 'undefined') {
       return;
     }
-
     try {
       const stored = localStorage.getItem(this.config.persistenceKey);
       if (!stored) {
         return;
       }
-
       const cacheData = JSON.parse(stored);
       const now = Date.now();
-      
       // Only load if data is not too old (1 hour)
       if (now - cacheData.timestamp > 3600000) {
         this.clearPersistence();
         return;
       }
-
       // Restore cache entries
       for (const [key, entry] of cacheData.entries) {
         if (!this.isExpired(entry)) {
@@ -614,17 +523,13 @@ export class RequestResponseCache {
           this.accessOrder.push(key);
         }
       }
-
       this.metrics.totalEntries = this.cache.size;
       this.metrics.memoryUsage = Array.from(this.cache.values())
         .reduce((sum, entry) => sum + entry.size, 0);
-        
     } catch (error) {
-      console.warn('Failed to load cache from persistence:', error);
       this.clearPersistence();
     }
   }
-
   /**
    * Clear persistence storage
    */
@@ -634,10 +539,8 @@ export class RequestResponseCache {
     }
   }
 }
-
 // Global cache instance
 let requestResponseCache: RequestResponseCache | null = null;
-
 /**
  * Get the global request/response cache instance
  */
@@ -647,7 +550,6 @@ export function getRequestResponseCache(): RequestResponseCache {
   }
   return requestResponseCache;
 }
-
 /**
  * Initialize request/response cache with custom configuration
  */
@@ -655,11 +557,9 @@ export function initializeRequestResponseCache(config?: Partial<CacheConfig>): R
   if (requestResponseCache) {
     requestResponseCache.shutdown();
   }
-  
   requestResponseCache = new RequestResponseCache(config);
   return requestResponseCache;
 }
-
 /**
  * Shutdown the global request/response cache
  */

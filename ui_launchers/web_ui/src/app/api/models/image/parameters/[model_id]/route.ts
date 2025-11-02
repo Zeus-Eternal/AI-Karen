@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 interface ImageModelParameters {
   model_id: string;
   model_name: string;
@@ -82,7 +81,6 @@ interface ImageModelParameters {
     estimated_time_per_image: number;
   };
 }
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ model_id: string }> }
@@ -90,25 +88,17 @@ export async function GET(
   try {
     const resolvedParams = await params;
     const modelId = resolvedParams.model_id;
-
-    console.log('🎨 Image Model Parameters API: Request received', {
-      modelId
-    });
-
     if (!modelId) {
       return NextResponse.json(
         { error: 'Missing model_id parameter' },
         { status: 400 }
       );
     }
-
     const { modelSelectionService } = await import('@/lib/model-selection-service');
-
     try {
       // Get model information
       const models = await modelSelectionService.getAvailableModels();
       const targetModel = models.find(m => m.id === modelId);
-
       if (!targetModel) {
         return NextResponse.json(
           {
@@ -118,12 +108,10 @@ export async function GET(
           { status: 404 }
         );
       }
-
       // Check if model supports image generation
       const isImageModel = targetModel.type === 'image' || 
                           targetModel.capabilities?.includes('text2img') ||
                           targetModel.capabilities?.includes('image-generation');
-
       if (!isImageModel) {
         return NextResponse.json(
           {
@@ -133,12 +121,10 @@ export async function GET(
           { status: 400 }
         );
       }
-
       // Build parameter specifications based on model type and provider
       const parameters = buildImageModelParameters(targetModel);
       const presets = buildImageModelPresets(targetModel);
       const limitations = buildImageModelLimitations(targetModel);
-
       const response: ImageModelParameters = {
         model_id: modelId,
         model_name: targetModel.name,
@@ -148,14 +134,6 @@ export async function GET(
         presets,
         limitations
       };
-
-      console.log('🎨 Image Model Parameters API: Parameters retrieved', {
-        modelId,
-        provider: targetModel.provider,
-        supportedModes: response.supported_modes.length,
-        presetsCount: presets.length
-      });
-
       return NextResponse.json(response, {
         headers: {
           'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
@@ -163,10 +141,7 @@ export async function GET(
           'X-Model-Type': targetModel.type || 'unknown'
         }
       });
-
     } catch (parameterError) {
-      console.error('🎨 Image Model Parameters API: Parameter fetch error', parameterError);
-      
       return NextResponse.json(
         {
           error: 'Failed to fetch model parameters',
@@ -176,10 +151,7 @@ export async function GET(
         { status: 500 }
       );
     }
-
   } catch (error) {
-    console.error('🎨 Image Model Parameters API: Request error', error);
-    
     return NextResponse.json(
       {
         error: 'Invalid request',
@@ -189,7 +161,6 @@ export async function GET(
     );
   }
 }
-
 /**
  * Build parameter specifications for image models
  */
@@ -252,7 +223,6 @@ function buildImageModelParameters(model: any): ImageModelParameters['parameters
       description: 'Number of images to generate in one batch'
     }
   };
-
   // Add img2img specific parameters if supported
   if (model.capabilities?.includes('img2img')) {
     baseParameters.strength = {
@@ -263,7 +233,6 @@ function buildImageModelParameters(model: any): ImageModelParameters['parameters
       description: 'How much to transform the input image (0 = no change, 1 = complete transformation)'
     };
   }
-
   // Adjust parameters based on provider
   if (model.provider === 'flux') {
     // Flux models typically support higher resolutions
@@ -281,16 +250,13 @@ function buildImageModelParameters(model: any): ImageModelParameters['parameters
       baseParameters.height.default = 1024;
     }
   }
-
   return baseParameters;
 }
-
 /**
  * Get supported image generation modes for a model
  */
 function getSupportedImageModes(model: any): string[] {
   const modes: string[] = [];
-
   if (model.capabilities?.includes('text2img')) {
     modes.push('text2img');
   }
@@ -303,10 +269,8 @@ function getSupportedImageModes(model: any): string[] {
   if (model.capabilities?.includes('outpainting')) {
     modes.push('outpainting');
   }
-
   return modes.length > 0 ? modes : ['text2img']; // Default to text2img
 }
-
 /**
  * Build preset configurations for image models
  */
@@ -353,7 +317,6 @@ function buildImageModelPresets(model: any): Array<{ name: string; description: 
       }
     }
   ];
-
   // Add provider-specific presets
   if (model.provider === 'flux') {
     presets.push({
@@ -367,10 +330,8 @@ function buildImageModelPresets(model: any): Array<{ name: string; description: 
       }
     });
   }
-
   return presets;
 }
-
 /**
  * Build limitation information for image models
  */
@@ -381,7 +342,6 @@ function buildImageModelLimitations(model: any): ImageModelParameters['limitatio
     memory_requirement_mb: 4000,
     estimated_time_per_image: 30 // seconds
   };
-
   // Adjust based on provider
   if (model.provider === 'flux') {
     baseLimitations.max_resolution = 2048 * 2048; // 4MP
@@ -394,6 +354,5 @@ function buildImageModelLimitations(model: any): ImageModelParameters['limitatio
       baseLimitations.estimated_time_per_image = 40;
     }
   }
-
   return baseLimitations;
 }

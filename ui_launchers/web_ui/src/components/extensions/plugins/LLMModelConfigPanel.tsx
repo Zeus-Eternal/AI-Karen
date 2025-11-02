@@ -35,7 +35,7 @@ export default function LLMModelConfigPanel({ onSave }: { onSave?: (cfg: LLMMode
     >
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Model Configuration</CardTitle>
+          <CardTitle className="text-sm md:text-base lg:text-lg">Model Configuration</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
@@ -50,19 +50,19 @@ export default function LLMModelConfigPanel({ onSave }: { onSave?: (cfg: LLMMode
           </div>
           <div className="space-y-1">
             <Label htmlFor="maxTokens">Max Tokens</Label>
-            <Input id="maxTokens" type="number" {...register("maxTokens", { valueAsNumber: true })} />
+            <input id="maxTokens" type="number" {...register("maxTokens", { valueAsNumber: true })} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="systemPrompt">System Prompt</Label>
-            <Textarea id="systemPrompt" rows={3} {...register("systemPrompt")} />
+            <textarea id="systemPrompt" rows={3} {...register("systemPrompt")} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="apiKey">API Key</Label>
-            <Input id="apiKey" type="password" {...register("apiKey")} />
+            <input id="apiKey" type="password" {...register("apiKey")} />
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <Button size="sm" type="submit">Save</Button>
+          <button size="sm" type="submit" aria-label="Submit form">Save</Button>
         </CardFooter>
       </Card>
     </form>

@@ -1,6 +1,4 @@
-
 "use client";
-
 import { useState, useEffect, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
 import {
@@ -17,9 +15,7 @@ import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
 const DEFAULT_VOICE_SENTINEL = "_DEFAULT_VOICE_";
-
 /**
  * @file VoiceSettings.tsx
  * @description Component for selecting a preferred Text-To-Speech (TTS) voice.
@@ -32,7 +28,6 @@ export default function VoiceSettings() {
   );
   const [isLoadingVoices, setIsLoadingVoices] = useState(true);
   const { toast } = useToast();
-
   const populateVoiceList = useCallback(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       const voices = window.speechSynthesis.getVoices();
@@ -57,7 +52,6 @@ export default function VoiceSettings() {
       setIsLoadingVoices(false); // Speech synthesis not supported
     }
   }, []); // Empty dependency array: populateVoiceList reference is stable
-
   useEffect(() => {
     populateVoiceList(); // Initial call
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -68,7 +62,6 @@ export default function VoiceSettings() {
       };
     }
   }, [populateVoiceList]); // populateVoiceList is stable due to its own empty dep array
-
   useEffect(() => {
     try {
       const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
@@ -105,17 +98,14 @@ export default function VoiceSettings() {
       }
       setSelectedVoiceURI(fullSettings.ttsVoiceURI);
     } catch (error) {
-      console.error("Failed to load voice settings from localStorage:", error);
       setSelectedVoiceURI(DEFAULT_KAREN_SETTINGS.ttsVoiceURI);
       // Attempt to ensure localStorage is initialized with defaults if an error occurred
       try {
         localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
       } catch (lsError) {
-         console.error("Failed to save default voice settings to localStorage after error:", lsError);
       }
     }
   }, []);
-
   const getFullCurrentSettingsFromStorage = (): KarenSettings => {
     let currentFullSettings = { ...DEFAULT_KAREN_SETTINGS };
     try {
@@ -136,11 +126,9 @@ export default function VoiceSettings() {
         };
       }
     } catch (e) {
-      console.error("Error parsing current settings from storage, falling back to defaults for merge", e);
     }
     return currentFullSettings;
   };
-
   const saveSettings = () => {
     try {
       const currentFullSettings = getFullCurrentSettingsFromStorage();
@@ -154,7 +142,6 @@ export default function VoiceSettings() {
         description: "Your preferred voice has been updated.",
       });
     } catch (error) {
-      console.error("Failed to save voice settings to localStorage:", error);
       toast({
         title: "Error Saving Voice Settings",
         description: "Could not save voice preferences. localStorage might be disabled or full.",
@@ -162,7 +149,6 @@ export default function VoiceSettings() {
       });
     }
   };
-
   const resetToDefaults = () => {
     setSelectedVoiceURI(DEFAULT_KAREN_SETTINGS.ttsVoiceURI);
     try {
@@ -177,7 +163,6 @@ export default function VoiceSettings() {
         description: "Voice preference has been reset to default.",
       });
     } catch (error) {
-       console.error("Failed to reset voice settings in localStorage:", error);
        toast({
           title: "Error Resetting Voice Settings",
           description: "Could not reset voice preferences.",
@@ -185,7 +170,6 @@ export default function VoiceSettings() {
         });
     }
   };
-
   if (typeof window !== 'undefined' && !window.speechSynthesis) {
     return (
       <Card variant="elevated">
@@ -194,7 +178,7 @@ export default function VoiceSettings() {
         </CardHeader>
         <CardContent className="space-y-6">
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
             <AlertTitle>Speech Synthesis Not Supported</AlertTitle>
             <AlertDescription>
               Your browser does not support the Web Speech API, which is required for changing voices.
@@ -204,7 +188,6 @@ export default function VoiceSettings() {
       </Card>
     );
   }
-
   return (
     <Card variant="elevated" className="interactive">
       <CardHeader>
@@ -213,20 +196,20 @@ export default function VoiceSettings() {
           Choose a preferred voice for Karen AI's spoken responses. Availability depends on your browser and operating system.
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="p-0 sm:p-4 md:p-6">
         <div className="divide-y divide-border">
             <div className="px-6 py-4">
                 {isLoadingVoices && (
                 <div className="flex items-center space-x-2 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin sm:w-auto md:w-full" />
                     <span>Loading available voices...</span>
                 </div>
                 )}
                 {!isLoadingVoices && availableVoices.length === 0 && (
                 <Alert variant="default" className="bg-muted/30">
-                    <AlertCircle className="h-4 w-4 !text-accent-foreground" />
+                    <AlertCircle className="h-4 w-4 !text-accent-foreground sm:w-auto md:w-full" />
                     <AlertTitle className="font-semibold text-accent-foreground">No Voices Found</AlertTitle>
-                    <AlertDescription className="text-muted-foreground text-xs">
+                    <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
                     No speech synthesis voices were found in your browser. Voice selection is not available.
                     Karen will use the default system voice if TTS is attempted.
                     </AlertDescription>
@@ -235,27 +218,27 @@ export default function VoiceSettings() {
                 {availableVoices.length > 0 && (
                 <div className="space-y-2">
                     <Label htmlFor="tts-voice">Select Voice</Label>
-                    <Select
+                    <select
                     value={selectedVoiceURI || DEFAULT_VOICE_SENTINEL} 
-                    onValueChange={(value) => setSelectedVoiceURI(value === DEFAULT_VOICE_SENTINEL ? null : value)}
+                    onValueChange={(value) = aria-label="Select option"> setSelectedVoiceURI(value === DEFAULT_VOICE_SENTINEL ? null : value)}
                     disabled={availableVoices.length === 0 || isLoadingVoices}
                     >
-                    <SelectTrigger id="tts-voice">
-                        <SelectValue placeholder="Default system voice" />
+                    <selectTrigger id="tts-voice" aria-label="Select option">
+                        <selectValue placeholder="Default system voice" />
                     </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value={DEFAULT_VOICE_SENTINEL}>Default system voice</SelectItem>
+                    <selectContent aria-label="Select option">
+                        <selectItem value={DEFAULT_VOICE_SENTINEL} aria-label="Select option">Default system voice</SelectItem>
                         {availableVoices.map((voice, index) => (
-                        <SelectItem
+                        <selectItem
                             key={`voice-option-${voice.voiceURI}-${index}`} // Ensures unique key
                             value={voice.voiceURI} // Value should still be voice.voiceURI
-                        >
+                         aria-label="Select option">
                             {voice.name} ({voice.lang}) {voice.default ? "[System Default]" : ""}
                         </SelectItem>
                         ))}
                     </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     If no voice is selected, or the selected voice is unavailable, the browser's default will be used.
                     </p>
                 </div>
@@ -264,11 +247,9 @@ export default function VoiceSettings() {
         </div>
       </CardContent>
       <CardFooter className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={resetToDefaults}>Reset to Default</Button>
-          <Button onClick={saveSettings}>Save Settings</Button>
+          <button variant="outline" onClick={resetToDefaults} aria-label="Button">Reset to Default</Button>
+          <button onClick={saveSettings} aria-label="Button">Save Settings</Button>
       </CardFooter>
     </Card>
   );
 }
-
-    

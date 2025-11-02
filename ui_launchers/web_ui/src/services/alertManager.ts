@@ -4,7 +4,6 @@
  * This service provides centralized alert management with queue handling,
  * rate limiting, prioritization, and user preference management.
  */
-
 import { toast } from '@/hooks/use-toast';
 import type {
   KarenAlert,
@@ -18,22 +17,18 @@ import type {
   AlertPriority,
   ErrorRecoveryConfig,
 } from '@/types/karen-alerts';
-
 import {
   DEFAULT_ALERT_SETTINGS,
   DEFAULT_ERROR_RECOVERY_CONFIG,
 } from '@/types/karen-alerts';
-
 // Storage keys for persistence
 const ALERT_SETTINGS_KEY = 'karen-alert-settings';
 const ALERT_HISTORY_KEY = 'karen-alert-history';
 const ALERT_METRICS_KEY = 'karen-alert-metrics';
-
 /**
  * Event types for the alert system
  */
 type AlertEventType = 'alert-shown' | 'alert-dismissed' | 'alert-action-clicked' | 'settings-updated';
-
 /**
  * Event listener interface
  */
@@ -41,7 +36,6 @@ interface AlertEventListener {
   type: AlertEventType;
   callback: (data: any) => void;
 }
-
 /**
  * Rate limiting tracker
  */
@@ -51,7 +45,6 @@ interface RateLimitTracker {
     lastReset: number;
   };
 }
-
 /**
  * Core AlertManager class that handles all alert operations
  */
@@ -84,13 +77,11 @@ class AlertManager {
   private rateLimitTracker: RateLimitTracker = {};
   private errorRecoveryConfig: ErrorRecoveryConfig = DEFAULT_ERROR_RECOVERY_CONFIG;
   private isInitialized = false;
-
   /**
    * Initialize the AlertManager
    */
   public async initialize(): Promise<void> {
     if (this.isInitialized) return;
-
     try {
       await this.loadSettings();
       await this.loadHistory();
@@ -98,11 +89,9 @@ class AlertManager {
       this.cleanupExpiredHistory();
       this.isInitialized = true;
     } catch (error) {
-      console.error('Failed to initialize AlertManager:', error);
       this.handleError('initialization-failed', error);
     }
   }
-
   /**
    * Show an alert with queue management and rate limiting
    */
@@ -114,7 +103,6 @@ class AlertManager {
         id: this.generateAlertId(),
         timestamp: Date.now(),
       };
-
       // Check rate limiting
       if (!this.checkRateLimit(alert)) {
         return {
@@ -123,7 +111,6 @@ class AlertManager {
           alertId: alert.id,
         };
       }
-
       // Check if category is enabled
       if (!this.isCategoryEnabled(alert.type)) {
         return {
@@ -132,29 +119,22 @@ class AlertManager {
           alertId: alert.id,
         };
       }
-
       // Add to queue with prioritization
       this.addToQueue(alert);
-
       // Process queue
       await this.processQueue();
-
       // Update metrics
       this.updateMetrics('shown', alert);
-
       // Emit event
       this.emitEvent('alert-shown', alert);
-
       return {
         success: true,
         alertId: alert.id,
       };
     } catch (error) {
-      console.error('Failed to show alert:', error);
       return this.handleError('show-alert-failed', error, alertData.title || 'Unknown Alert');
     }
   }
-
   /**
    * Dismiss a specific alert
    */
@@ -168,72 +148,58 @@ class AlertManager {
           alertId,
         };
       }
-
       // Remove from active alerts
       this.activeAlerts.delete(alertId);
-
       // Dismiss the toast using the stored instance
       const toastInstance = this.toastInstances.get(alertId);
       if (toastInstance) {
         toastInstance.dismiss();
         this.toastInstances.delete(alertId);
       }
-
       // Add to history
       this.addToHistory(alert, true);
-
       // Update metrics
       this.updateMetrics('dismissed', alert);
-
       // Emit event
       this.emitEvent('alert-dismissed', { alertId, alert });
-
       return {
         success: true,
         alertId,
       };
     } catch (error) {
-      console.error('Failed to dismiss alert:', error);
       return this.handleError('dismiss-alert-failed', error, alertId);
     }
   }
-
   /**
    * Dismiss all active alerts
    */
   public async dismissAllAlerts(): Promise<AlertResult[]> {
     const results: AlertResult[] = [];
     const activeAlertIds = Array.from(this.activeAlerts.keys());
-
     for (const alertId of activeAlertIds) {
       const result = await this.dismissAlert(alertId);
       results.push(result);
     }
-
     return results;
   }
-
   /**
    * Get queued alerts
    */
   public getQueuedAlerts(): KarenAlert[] {
     return [...this.alertQueue];
   }
-
   /**
    * Clear the alert queue
    */
   public clearQueue(): void {
     this.alertQueue = [];
   }
-
   /**
    * Get active alerts
    */
   public getActiveAlerts(): KarenAlert[] {
     return Array.from(this.activeAlerts.values());
   }
-
   /**
    * Update alert settings
    */
@@ -242,46 +208,39 @@ class AlertManager {
       this.settings = { ...this.settings, ...newSettings };
       await this.saveSettings();
       this.emitEvent('settings-updated', this.settings);
-
       return {
         success: true,
         alertId: 'settings-update',
         data: this.settings,
       };
     } catch (error) {
-      console.error('Failed to update settings:', error);
       return this.handleError('settings-update-failed', error, 'Settings Update');
     }
   }
-
   /**
    * Get current settings
    */
   public getSettings(): AlertSettings {
     return { ...this.settings };
   }
-
   /**
    * Get alert history
    */
   public getHistory(): AlertHistory {
     return { ...this.history };
   }
-
   /**
    * Get alert metrics
    */
   public getMetrics(): AlertMetrics {
     return { ...this.metrics };
   }
-
   /**
    * Add event listener
    */
   public addEventListener(type: AlertEventType, callback: (data: any) => void): () => void {
     const listener: AlertEventListener = { type, callback };
     this.eventListeners.push(listener);
-
     // Return unsubscribe function
     return () => {
       const index = this.eventListeners.indexOf(listener);
@@ -290,7 +249,6 @@ class AlertManager {
       }
     };
   }
-
   /**
    * Convenience methods for common alert types
    */
@@ -306,7 +264,6 @@ class AlertManager {
       ...options,
     });
   }
-
   public async showError(title: string, message: string, options?: Partial<KarenAlert>): Promise<AlertResult> {
     return this.showAlert({
       type: 'validation',
@@ -319,7 +276,6 @@ class AlertManager {
       ...options,
     });
   }
-
   public async showWarning(title: string, message: string, options?: Partial<KarenAlert>): Promise<AlertResult> {
     return this.showAlert({
       type: 'info',
@@ -332,7 +288,6 @@ class AlertManager {
       ...options,
     });
   }
-
   public async showInfo(title: string, message: string, options?: Partial<KarenAlert>): Promise<AlertResult> {
     return this.showAlert({
       type: 'info',
@@ -345,39 +300,30 @@ class AlertManager {
       ...options,
     });
   }
-
   // Private methods
-
   private generateAlertId(): string {
     return `karen-alert-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
-
   private checkRateLimit(alert: KarenAlert): boolean {
     const key = `${alert.type}-${alert.variant}`;
     const now = Date.now();
     const oneMinute = 60 * 1000;
-
     if (!this.rateLimitTracker[key]) {
       this.rateLimitTracker[key] = { count: 0, lastReset: now };
     }
-
     const tracker = this.rateLimitTracker[key];
-
     // Reset counter if more than a minute has passed
     if (now - tracker.lastReset > oneMinute) {
       tracker.count = 0;
       tracker.lastReset = now;
     }
-
     // Check if we're within limits (max 5 alerts per minute per type)
     if (tracker.count >= 5) {
       return false;
     }
-
     tracker.count++;
     return true;
   }
-
   private isCategoryEnabled(type: AlertType): boolean {
     switch (type) {
       case 'performance':
@@ -392,12 +338,10 @@ class AlertManager {
         return true; // Enable success, info, user-action by default
     }
   }
-
   private addToQueue(alert: KarenAlert): void {
     // Insert alert based on priority
     const priorityOrder: AlertPriority[] = ['critical', 'high', 'normal', 'low'];
     const alertPriorityIndex = priorityOrder.indexOf(alert.priority);
-
     let insertIndex = this.alertQueue.length;
     for (let i = 0; i < this.alertQueue.length; i++) {
       const queuedPriorityIndex = priorityOrder.indexOf(this.alertQueue[i].priority);
@@ -406,52 +350,41 @@ class AlertManager {
         break;
       }
     }
-
     this.alertQueue.splice(insertIndex, 0, alert);
   }
-
   private async processQueue(): Promise<void> {
     // Check if we can show more alerts
     const maxConcurrent = this.settings.maxConcurrentAlerts;
     const currentActive = this.activeAlerts.size;
-
     if (currentActive >= maxConcurrent || this.alertQueue.length === 0) {
       return;
     }
-
     // Get next alert from queue
     const alert = this.alertQueue.shift();
     if (!alert) return;
-
     // Add to active alerts
     this.activeAlerts.set(alert.id, alert);
-
     // Show the toast
     const duration = alert.duration || this.getDurationForType(alert.type);
-
     const toastInstance = toast({
       title: `${alert.emoji || ''} ${alert.title}`.trim(),
       description: alert.message,
       variant: alert.variant === 'karen-error' ? 'destructive' : 'default',
       duration,
     });
-
     // Store the toast instance for dismissal
     this.toastInstances.set(alert.id, toastInstance);
-
     // Auto-dismiss after duration
     setTimeout(() => {
       if (this.activeAlerts.has(alert.id)) {
         this.dismissAlert(alert.id);
       }
     }, duration);
-
     // Process next alert if queue has more
     if (this.alertQueue.length > 0) {
       setTimeout(() => this.processQueue(), 100);
     }
   }
-
   private getDurationForType(type: AlertType): number {
     switch (type) {
       case 'success':
@@ -468,17 +401,14 @@ class AlertManager {
         return this.settings.durations.info;
     }
   }
-
   private async handleAlertAction(alert: KarenAlert, action: any): Promise<void> {
     try {
       await action.action();
       this.updateMetrics('action-clicked', alert);
       this.emitEvent('alert-action-clicked', { alert, action });
     } catch (error) {
-      console.error('Alert action failed:', error);
     }
   }
-
   private addToHistory(alert: KarenAlert, dismissed: boolean): void {
     const storedAlert: StoredAlert = {
       ...alert,
@@ -487,17 +417,13 @@ class AlertManager {
       interactionCount: 0,
       lastInteraction: Date.now(),
     };
-
     this.history.alerts.unshift(storedAlert);
-
     // Trim history to max size
     if (this.history.alerts.length > this.history.maxHistory) {
       this.history.alerts = this.history.alerts.slice(0, this.history.maxHistory);
     }
-
     this.saveHistory();
   }
-
   private updateMetrics(action: 'shown' | 'dismissed' | 'action-clicked', alert: KarenAlert): void {
     switch (action) {
       case 'shown':
@@ -513,10 +439,8 @@ class AlertManager {
           (this.metrics.actionClickRate * (this.metrics.totalShown - 1) + 1) / this.metrics.totalShown;
         break;
     }
-
     this.saveMetrics();
   }
-
   private emitEvent(type: AlertEventType, data: any): void {
     this.eventListeners
       .filter(listener => listener.type === type)
@@ -524,32 +448,24 @@ class AlertManager {
         try {
           listener.callback(data);
         } catch (error) {
-          console.error('Error in alert event listener:', error);
         }
       });
   }
-
   private cleanupExpiredHistory(): void {
     if (!this.history.alerts || !Array.isArray(this.history.alerts)) {
       this.history.alerts = [];
       return;
     }
-
     const cutoffDate = Date.now() - (this.history.retentionDays * 24 * 60 * 60 * 1000);
     this.history.alerts = this.history.alerts.filter(alert => alert.timestamp > cutoffDate);
     this.saveHistory();
   }
-
   private handleError(type: string, error: any, context?: string): AlertResult {
     const errorMessage = error instanceof Error ? error.message : String(error);
-
     // Log error for debugging
-    console.error(`AlertManager Error [${type}]:`, errorMessage, { context, error });
-
     // Apply fallback behavior
     switch (this.errorRecoveryConfig.fallbackBehavior) {
       case 'console':
-        console.warn(`Karen Alert: ${context || 'Alert'} - ${errorMessage}`);
         break;
       case 'basic-alert':
         if (typeof window !== 'undefined' && window.alert) {
@@ -561,16 +477,13 @@ class AlertManager {
         // Do nothing
         break;
     }
-
     return {
       success: false,
       error: errorMessage,
       alertId: 'error-' + Date.now(),
     };
   }
-
   // Storage methods
-
   private async loadSettings(): Promise<void> {
     try {
       const stored = localStorage.getItem(ALERT_SETTINGS_KEY);
@@ -579,11 +492,9 @@ class AlertManager {
         this.settings = { ...DEFAULT_ALERT_SETTINGS, ...parsed.settings };
       }
     } catch (error) {
-      console.warn('Failed to load alert settings, using defaults:', error);
       this.settings = DEFAULT_ALERT_SETTINGS;
     }
   }
-
   private async saveSettings(): Promise<void> {
     try {
       const data = {
@@ -593,10 +504,8 @@ class AlertManager {
       };
       localStorage.setItem(ALERT_SETTINGS_KEY, JSON.stringify(data));
     } catch (error) {
-      console.error('Failed to save alert settings:', error);
     }
   }
-
   private async loadHistory(): Promise<void> {
     try {
       const stored = localStorage.getItem(ALERT_HISTORY_KEY);
@@ -604,18 +513,14 @@ class AlertManager {
         this.history = JSON.parse(stored);
       }
     } catch (error) {
-      console.warn('Failed to load alert history:', error);
     }
   }
-
   private async saveHistory(): Promise<void> {
     try {
       localStorage.setItem(ALERT_HISTORY_KEY, JSON.stringify(this.history));
     } catch (error) {
-      console.error('Failed to save alert history:', error);
     }
   }
-
   private async loadMetrics(): Promise<void> {
     try {
       const stored = localStorage.getItem(ALERT_METRICS_KEY);
@@ -623,25 +528,19 @@ class AlertManager {
         this.metrics = { ...this.metrics, ...JSON.parse(stored) };
       }
     } catch (error) {
-      console.warn('Failed to load alert metrics:', error);
     }
   }
-
   private async saveMetrics(): Promise<void> {
     try {
       localStorage.setItem(ALERT_METRICS_KEY, JSON.stringify(this.metrics));
     } catch (error) {
-      console.error('Failed to save alert metrics:', error);
     }
   }
 }
-
 // Create and export singleton instance
 export const alertManager = new AlertManager();
-
 // Export the class for testing
 export { AlertManager };
-
 // Export convenience methods
 export const {
   showAlert,

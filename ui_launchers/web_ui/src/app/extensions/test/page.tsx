@@ -1,3 +1,8 @@
+import React, { useState } from 'react';
+import { 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 /**
  * Extension Integration Test Page
  * 
@@ -6,8 +11,8 @@
 
 'use client';
 
-import React, { useState } from 'react';
-import { 
+
+
   useExtensionStatuses, 
   useExtensionRoutes, 
   useExtensionNavigation,
@@ -15,10 +20,10 @@ import {
   useExtensionPerformance,
   useExtensionTaskMonitoring
 } from '@/lib/extensions/hooks';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
+
+
+
+
   ExtensionMarketplace,
   ExtensionManager,
   ExtensionConfigurationPanel,

@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,25 +27,21 @@ import {
   BarChart3
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
-
 interface TransformerConfig {
   // Precision settings
   precision: string;
   torch_dtype: string;
   load_in_8bit: boolean;
   load_in_4bit: boolean;
-  
   // Device and memory settings
   device: string;
   device_map: string;
   low_cpu_mem_usage: boolean;
   max_memory?: Record<string, string>;
-  
   // Batch and sequence settings
   batch_size: number;
   max_length: number;
   dynamic_batch_size: boolean;
-  
   // Performance optimizations
   use_cache: boolean;
   attention_implementation: string;
@@ -54,23 +49,19 @@ interface TransformerConfig {
   gradient_checkpointing: boolean;
   mixed_precision: boolean;
   compile_model: boolean;
-  
   // Multi-GPU settings
   multi_gpu_strategy: string;
   gpu_memory_fraction: number;
   enable_cpu_offload: boolean;
-  
   // Quantization settings
   bnb_4bit_compute_dtype: string;
   bnb_4bit_use_double_quant: boolean;
   bnb_4bit_quant_type: string;
-  
   // Advanced optimization flags
   use_bettertransformer: boolean;
   optimize_for_inference: boolean;
   enable_xformers: boolean;
 }
-
 interface SystemModelInfo {
   id: string;
   name: string;
@@ -90,7 +81,6 @@ interface SystemModelInfo {
   configuration: Record<string, any>;
   is_system_model: boolean;
 }
-
 interface HardwareRecommendations {
   system_info: {
     memory_gb: number;
@@ -100,7 +90,6 @@ interface HardwareRecommendations {
   };
   [key: string]: any;
 }
-
 interface PerformanceMetrics {
   model_id: string;
   last_inference_time: number;
@@ -110,12 +99,10 @@ interface PerformanceMetrics {
   throughput_tokens_per_second: number;
   last_updated: number;
 }
-
 interface SystemModelConfigProps {
   selectedModel: SystemModelInfo | null;
   onClose: () => void;
 }
-
 export default function SystemModelConfig({ selectedModel, onClose }: SystemModelConfigProps) {
   const [model, setModel] = useState<SystemModelInfo | null>(selectedModel);
   const [configuration, setConfiguration] = useState<Record<string, any>>({});
@@ -151,15 +138,12 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [validationResult, setValidationResult] = useState<any>(null);
-  
   const { toast } = useToast();
   const backend = getKarenBackend();
-
   useEffect(() => {
     if (selectedModel) {
       setModel(selectedModel);
       setConfiguration(selectedModel.configuration || {});
-      
       // Initialize transformer configuration with defaults merged with existing config
       if (selectedModel.id === 'distilbert-base-uncased') {
         setTransformerConfiguration({
@@ -191,41 +175,32 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
           max_memory: selectedModel.configuration?.max_memory
         });
       }
-      
       loadRecommendations();
       loadMetrics();
     }
   }, [selectedModel]);
-
   const loadRecommendations = async () => {
     if (!selectedModel) return;
-    
     try {
       const response = await backend.makeRequestPublic<HardwareRecommendations>(
         `/api/models/system/${selectedModel.id}/hardware-recommendations`
       );
       setRecommendations(response);
     } catch (error) {
-      console.error('Failed to load hardware recommendations:', error);
     }
   };
-
   const loadMetrics = async () => {
     if (!selectedModel) return;
-    
     try {
       const response = await backend.makeRequestPublic<PerformanceMetrics>(
         `/api/models/system/${selectedModel.id}/performance-metrics`
       );
       setMetrics(response);
     } catch (error) {
-      console.error('Failed to load performance metrics:', error);
     }
   };
-
   const validateConfiguration = async (config: Record<string, any>) => {
     if (!selectedModel) return;
-    
     try {
       const response = await backend.makeRequestPublic(
         `/api/models/system/validate-configuration?model_id=${selectedModel.id}`,
@@ -237,14 +212,11 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       setValidationResult(response);
       return response;
     } catch (error) {
-      console.error('Failed to validate configuration:', error);
       return { valid: false, error: 'Validation failed' };
     }
   };
-
   const saveConfiguration = async () => {
     if (!selectedModel) return;
-    
     setSaving(true);
     try {
       // Validate first
@@ -257,7 +229,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
         });
         return;
       }
-
       await backend.makeRequestPublic(
         `/api/models/system/${selectedModel.id}/configuration`,
         {
@@ -265,20 +236,16 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
           body: JSON.stringify({ configuration })
         }
       );
-
       toast({
         title: "Configuration Saved",
         description: "Model configuration updated successfully",
       });
-
       // Reload model data
       const updatedModel = await backend.makeRequestPublic<SystemModelInfo>(
         `/api/models/system/${selectedModel.id}`
       );
       setModel(updatedModel);
-      
     } catch (error) {
-      console.error('Failed to save configuration:', error);
       toast({
         variant: 'destructive',
         title: "Save Failed",
@@ -288,31 +255,25 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       setSaving(false);
     }
   };
-
   const resetConfiguration = async () => {
     if (!selectedModel) return;
-    
     setLoading(true);
     try {
       await backend.makeRequestPublic(
         `/api/models/system/${selectedModel.id}/reset-configuration`,
         { method: 'POST' }
       );
-
       // Reload model data
       const updatedModel = await backend.makeRequestPublic<SystemModelInfo>(
         `/api/models/system/${selectedModel.id}`
       );
       setModel(updatedModel);
       setConfiguration(updatedModel.configuration || {});
-
       toast({
         title: "Configuration Reset",
         description: "Model configuration reset to defaults",
       });
-      
     } catch (error) {
-      console.error('Failed to reset configuration:', error);
       toast({
         variant: 'destructive',
         title: "Reset Failed",
@@ -322,17 +283,14 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       setLoading(false);
     }
   };
-
   const performHealthCheck = async () => {
     if (!selectedModel) return;
-    
     setLoading(true);
     try {
       const response = await backend.makeRequestPublic(
         `/api/models/system/${selectedModel.id}/health-check`,
         { method: 'POST' }
       );
-
       // Update model status
       if (model) {
         setModel({
@@ -342,14 +300,11 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
           error_message: (response as any).error_message
         });
       }
-
       toast({
         title: "Health Check Complete",
         description: `Model status: ${(response as any).status}`,
       });
-      
     } catch (error) {
-      console.error('Failed to perform health check:', error);
       toast({
         variant: 'destructive',
         title: "Health Check Failed",
@@ -359,57 +314,51 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       setLoading(false);
     }
   };
-
   const updateConfigValue = (key: string, value: any) => {
     const newConfig = { ...configuration, [key]: value };
     setConfiguration(newConfig);
-    
     // Validate in real-time
     validateConfiguration(newConfig);
   };
-
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return 'Unknown';
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
       case 'unhealthy':
-        return <XCircle className="h-4 w-4 text-red-600" />;
+        return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
       case 'loading':
-        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />;
+        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin sm:w-auto md:w-full" />;
       default:
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
     }
   };
-
   if (!model) {
     return (
       <Card>
         <CardContent className="text-center py-12">
-          <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
           <p className="text-lg font-medium mb-2">No Model Selected</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             Select a system model to configure its settings.
           </p>
         </CardContent>
       </Card>
     );
   }
-
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Settings className="h-5 w-5 text-primary" />
+              <div className="p-2 bg-primary/10 rounded-lg sm:p-4 md:p-6">
+                <Settings className="h-5 w-5 text-primary sm:w-auto md:w-full" />
               </div>
               <div>
                 <CardTitle>{model.name}</CardTitle>
@@ -426,61 +375,58 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
             </div>
           </div>
         </CardHeader>
-        
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div>
-              <span className="text-xs text-muted-foreground">Size</span>
+              <span className="text-xs text-muted-foreground sm:text-sm md:text-base">Size</span>
               <div className="font-medium">{formatFileSize(model.size)}</div>
             </div>
             <div>
-              <span className="text-xs text-muted-foreground">Memory Usage</span>
+              <span className="text-xs text-muted-foreground sm:text-sm md:text-base">Memory Usage</span>
               <div className="font-medium">{model.memory_usage ? `${model.memory_usage}MB` : 'N/A'}</div>
             </div>
             <div>
-              <span className="text-xs text-muted-foreground">Load Time</span>
+              <span className="text-xs text-muted-foreground sm:text-sm md:text-base">Load Time</span>
               <div className="font-medium">{model.load_time ? `${model.load_time}s` : 'N/A'}</div>
             </div>
             <div>
-              <span className="text-xs text-muted-foreground">Inference Time</span>
+              <span className="text-xs text-muted-foreground sm:text-sm md:text-base">Inference Time</span>
               <div className="font-medium">{model.inference_time ? `${model.inference_time}s` : 'N/A'}</div>
             </div>
           </div>
-
           <div className="flex gap-2">
-            <Button
+            <button
               variant="outline"
               size="sm"
               onClick={performHealthCheck}
               disabled={loading}
-            >
+             aria-label="Button">
               {loading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               )}
               Health Check
             </Button>
-            <Button
+            <button
               variant="outline"
               size="sm"
               onClick={resetConfiguration}
               disabled={loading}
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
+             aria-label="Button">
+              <RotateCcw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Reset to Defaults
             </Button>
-            <Button
+            <button
               variant="outline"
               size="sm"
               onClick={onClose}
-            >
+             aria-label="Button">
               Close
             </Button>
           </div>
         </CardContent>
       </Card>
-
       <Tabs defaultValue="configuration" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
@@ -488,40 +434,34 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
           <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
           <TabsTrigger value="capabilities">Capabilities</TabsTrigger>
         </TabsList>
-
         <TabsContent value="configuration" className="space-y-4">
           {renderConfigurationPanel()}
         </TabsContent>
-
         <TabsContent value="performance" className="space-y-4">
           {renderPerformancePanel()}
         </TabsContent>
-
         <TabsContent value="recommendations" className="space-y-4">
           {renderRecommendationsPanel()}
         </TabsContent>
-
         <TabsContent value="capabilities" className="space-y-4">
           {renderCapabilitiesPanel()}
         </TabsContent>
       </Tabs>
-
       {validationResult && !validationResult.valid && (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
           <AlertTitle>Configuration Error</AlertTitle>
           <AlertDescription>{validationResult.error}</AlertDescription>
         </Alert>
       )}
-
       <div className="flex justify-end gap-2">
-        <Button
+        <button
           onClick={saveConfiguration}
           disabled={saving || (validationResult && !validationResult.valid)}
-        >
+         aria-label="Button">
           {saving ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
               Saving...
             </>
           ) : (
@@ -531,7 +471,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       </div>
     </div>
   );
-
   function renderConfigurationPanel() {
     if (model?.id === 'llama-cpp') {
       return renderLlamaCppConfig();
@@ -540,26 +479,24 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     } else if (model?.id === 'basic_cls') {
       return renderBasicClsConfig();
     }
-    
     return (
       <Card>
         <CardContent className="text-center py-12">
-          <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
           <p className="text-lg font-medium mb-2">No Configuration Available</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             This model type does not have configurable settings.
           </p>
         </CardContent>
       </Card>
     );
   }
-
   function renderLlamaCppConfig() {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Cpu className="h-5 w-5" />
+            <Cpu className="h-5 w-5 sm:w-auto md:w-full" />
             LLaMA-CPP Configuration
           </CardTitle>
           <CardDescription>
@@ -571,24 +508,23 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
             <div className="space-y-4">
               <div>
                 <Label htmlFor="quantization">Quantization Format</Label>
-                <Select
+                <select
                   value={configuration.quantization || 'Q4_K_M'}
-                  onValueChange={(value) => updateConfigValue('quantization', value)}
+                  onValueChange={(value) = aria-label="Select option"> updateConfigValue('quantization', value)}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Q2_K">Q2_K (Smallest)</SelectItem>
-                    <SelectItem value="Q3_K">Q3_K</SelectItem>
-                    <SelectItem value="Q4_K_M">Q4_K_M (Recommended)</SelectItem>
-                    <SelectItem value="Q5_K_M">Q5_K_M</SelectItem>
-                    <SelectItem value="Q6_K">Q6_K</SelectItem>
-                    <SelectItem value="Q8_0">Q8_0 (Largest)</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="Q2_K" aria-label="Select option">Q2_K (Smallest)</SelectItem>
+                    <selectItem value="Q3_K" aria-label="Select option">Q3_K</SelectItem>
+                    <selectItem value="Q4_K_M" aria-label="Select option">Q4_K_M (Recommended)</SelectItem>
+                    <selectItem value="Q5_K_M" aria-label="Select option">Q5_K_M</SelectItem>
+                    <selectItem value="Q6_K" aria-label="Select option">Q6_K</SelectItem>
+                    <selectItem value="Q8_0" aria-label="Select option">Q8_0 (Largest)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
                 <Label htmlFor="context_length">Context Length: {configuration.context_length || 2048}</Label>
                 <Slider
@@ -599,12 +535,11 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                   step={512}
                   className="mt-2"
                 />
-                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <div className="flex justify-between text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                   <span>512</span>
                   <span>16384</span>
                 </div>
               </div>
-
               <div>
                 <Label htmlFor="gpu_layers">GPU Layers: {configuration.gpu_layers || 0}</Label>
                 <Slider
@@ -615,13 +550,12 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                   step={1}
                   className="mt-2"
                 />
-                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <div className="flex justify-between text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                   <span>0 (CPU only)</span>
                   <span>64 (Full GPU)</span>
                 </div>
               </div>
             </div>
-
             <div className="space-y-4">
               <div>
                 <Label htmlFor="threads">CPU Threads: {configuration.threads || 4}</Label>
@@ -634,7 +568,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                   className="mt-2"
                 />
               </div>
-
               <div>
                 <Label htmlFor="temperature">Temperature: {configuration.temperature || 0.7}</Label>
                 <Slider
@@ -646,7 +579,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                   className="mt-2"
                 />
               </div>
-
               <div className="flex items-center justify-between">
                 <Label htmlFor="mmap">Memory Mapping</Label>
                 <Switch
@@ -654,7 +586,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                   onCheckedChange={(checked) => updateConfigValue('mmap', checked)}
                 />
               </div>
-
               <div className="flex items-center justify-between">
                 <Label htmlFor="mlock">Memory Lock</Label>
                 <Switch
@@ -668,22 +599,19 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       </Card>
     );
   }
-
   function renderTransformerConfig() {
     // Import the enhanced transformer config component
     const TransformerModelConfig = React.lazy(() => import('./TransformerModelConfig'));
-    
     const handleTransformerConfigChange = (newConfig: TransformerConfig) => {
       setTransformerConfiguration(newConfig);
       // Also update the generic configuration for consistency
       setConfiguration(newConfig as Record<string, any>);
     };
-    
     return (
       <React.Suspense fallback={
         <Card>
           <CardContent className="text-center py-12">
-            <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin" />
+            <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin sm:w-auto md:w-full" />
             <p className="text-lg font-medium mb-2">Loading Configuration</p>
           </CardContent>
         </Card>
@@ -701,13 +629,12 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       </React.Suspense>
     );
   }
-
   function renderBasicClsConfig() {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+            <Activity className="h-5 w-5 sm:w-auto md:w-full" />
             Basic Classifier Configuration
           </CardTitle>
           <CardDescription>
@@ -728,7 +655,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                   className="mt-2"
                 />
               </div>
-
               <div>
                 <Label htmlFor="max_features">Max Features: {configuration.max_features || 10000}</Label>
                 <Slider
@@ -740,7 +666,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                   className="mt-2"
                 />
               </div>
-
               <div>
                 <Label htmlFor="min_df">Min Document Frequency: {configuration.min_df || 2}</Label>
                 <Slider
@@ -753,7 +678,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                 />
               </div>
             </div>
-
             <div className="space-y-4">
               <div>
                 <Label htmlFor="max_df">Max Document Frequency: {configuration.max_df || 0.95}</Label>
@@ -766,7 +690,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                   className="mt-2"
                 />
               </div>
-
               <div className="flex items-center justify-between">
                 <Label htmlFor="use_idf">Use IDF</Label>
                 <Switch
@@ -774,7 +697,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                   onCheckedChange={(checked) => updateConfigValue('use_idf', checked)}
                 />
               </div>
-
               <div className="flex items-center justify-between">
                 <Label htmlFor="smooth_idf">Smooth IDF</Label>
                 <Switch
@@ -782,7 +704,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                   onCheckedChange={(checked) => updateConfigValue('smooth_idf', checked)}
                 />
               </div>
-
               <div className="flex items-center justify-between">
                 <Label htmlFor="sublinear_tf">Sublinear TF</Label>
                 <Switch
@@ -796,13 +717,12 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       </Card>
     );
   }
-
   function renderPerformancePanel() {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
+            <BarChart3 className="h-5 w-5 sm:w-auto md:w-full" />
             Performance Metrics
           </CardTitle>
           <CardDescription>
@@ -812,38 +732,38 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
         <CardContent>
           {metrics ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
+              <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
                 <div className="text-2xl font-bold text-primary">{metrics.last_inference_time.toFixed(3)}s</div>
-                <div className="text-sm text-muted-foreground">Last Inference</div>
+                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Last Inference</div>
               </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
+              <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
                 <div className="text-2xl font-bold text-primary">{metrics.average_inference_time.toFixed(3)}s</div>
-                <div className="text-sm text-muted-foreground">Average Inference</div>
+                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Average Inference</div>
               </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
+              <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
                 <div className="text-2xl font-bold text-primary">{metrics.memory_usage_mb}MB</div>
-                <div className="text-sm text-muted-foreground">Memory Usage</div>
+                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Memory Usage</div>
               </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
+              <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
                 <div className="text-2xl font-bold text-primary">{metrics.gpu_utilization.toFixed(1)}%</div>
-                <div className="text-sm text-muted-foreground">GPU Utilization</div>
+                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">GPU Utilization</div>
               </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
+              <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
                 <div className="text-2xl font-bold text-primary">{metrics.throughput_tokens_per_second.toFixed(1)}</div>
-                <div className="text-sm text-muted-foreground">Tokens/sec</div>
+                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Tokens/sec</div>
               </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
+              <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
                 <div className="text-2xl font-bold text-primary">
                   {new Date(metrics.last_updated * 1000).toLocaleTimeString()}
                 </div>
-                <div className="text-sm text-muted-foreground">Last Updated</div>
+                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Last Updated</div>
               </div>
             </div>
           ) : (
             <div className="text-center py-12">
-              <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
               <p className="text-lg font-medium mb-2">No Performance Data</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Performance metrics will appear after model usage.
               </p>
             </div>
@@ -852,13 +772,12 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       </Card>
     );
   }
-
   function renderRecommendationsPanel() {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5" />
+            <Lightbulb className="h-5 w-5 sm:w-auto md:w-full" />
             Hardware Recommendations
           </CardTitle>
           <CardDescription>
@@ -869,28 +788,27 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
           {recommendations ? (
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
                   <div className="text-2xl font-bold text-primary">{recommendations.system_info.memory_gb.toFixed(1)}GB</div>
-                  <div className="text-sm text-muted-foreground">System RAM</div>
+                  <div className="text-sm text-muted-foreground md:text-base lg:text-lg">System RAM</div>
                 </div>
-                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
                   <div className="text-2xl font-bold text-primary">{recommendations.system_info.cpu_count}</div>
-                  <div className="text-sm text-muted-foreground">CPU Cores</div>
+                  <div className="text-sm text-muted-foreground md:text-base lg:text-lg">CPU Cores</div>
                 </div>
-                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
                   <div className="text-2xl font-bold text-primary">
                     {recommendations.system_info.gpu_available ? 'Yes' : 'No'}
                   </div>
-                  <div className="text-sm text-muted-foreground">GPU Available</div>
+                  <div className="text-sm text-muted-foreground md:text-base lg:text-lg">GPU Available</div>
                 </div>
-                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
                   <div className="text-2xl font-bold text-primary">
                     {recommendations.system_info.gpu_memory_gb.toFixed(1)}GB
                   </div>
-                  <div className="text-sm text-muted-foreground">GPU Memory</div>
+                  <div className="text-sm text-muted-foreground md:text-base lg:text-lg">GPU Memory</div>
                 </div>
               </div>
-
               {Object.keys(recommendations).filter(key => key !== 'system_info').length > 0 && (
                 <div className="space-y-4">
                   <h4 className="font-medium">Recommended Settings</h4>
@@ -898,7 +816,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                     {Object.entries(recommendations)
                       .filter(([key]) => key !== 'system_info')
                       .map(([key, value]) => (
-                        <div key={key} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                        <div key={key} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
                           <span className="font-medium capitalize">
                             {key.replace(/recommended_|_/g, ' ').trim()}
                           </span>
@@ -911,9 +829,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
             </div>
           ) : (
             <div className="text-center py-12">
-              <Lightbulb className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <Lightbulb className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
               <p className="text-lg font-medium mb-2">Loading Recommendations</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Analyzing your hardware configuration...
               </p>
             </div>
@@ -922,13 +840,12 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       </Card>
     );
   }
-
   function renderCapabilitiesPanel() {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Info className="h-5 w-5" />
+            <Info className="h-5 w-5 sm:w-auto md:w-full" />
             Model Capabilities
           </CardTitle>
           <CardDescription>
@@ -946,7 +863,6 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
               ))}
             </div>
           </div>
-
           <div>
             <h4 className="font-medium mb-3">Runtime Compatibility</h4>
             <div className="flex flex-wrap gap-2">
@@ -957,26 +873,25 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
               ))}
             </div>
           </div>
-
           <div>
             <h4 className="font-medium mb-3">Model Information</h4>
             <div className="grid gap-3">
-              <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
                 <span className="font-medium">Local Path</span>
-                <span className="text-sm font-mono text-muted-foreground">{model?.local_path}</span>
+                <span className="text-sm font-mono text-muted-foreground md:text-base lg:text-lg">{model?.local_path}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
                 <span className="font-medium">Format</span>
-                <span className="text-sm font-mono">{model?.format.toUpperCase()}</span>
+                <span className="text-sm font-mono md:text-base lg:text-lg">{model?.format.toUpperCase()}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
                 <span className="font-medium">Family</span>
-                <span className="text-sm font-mono">{model?.family}</span>
+                <span className="text-sm font-mono md:text-base lg:text-lg">{model?.family}</span>
               </div>
               {model?.last_health_check && (
-                <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
                   <span className="font-medium">Last Health Check</span>
-                  <span className="text-sm">
+                  <span className="text-sm md:text-base lg:text-lg">
                     {new Date(model?.last_health_check * 1000).toLocaleString()}
                   </span>
                 </div>

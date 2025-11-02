@@ -2,8 +2,8 @@
  * Model Comparison Interface
  * Side-by-side performance and capability analysis
  */
-
 import React, { useState, useEffect } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,11 +24,9 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
 interface ModelComparisonInterfaceProps {
   className?: string;
 }
-
 interface ModelForComparison {
   id: string;
   name: string;
@@ -60,28 +58,23 @@ interface ModelForComparison {
     lastUsed: Date;
   };
 }
-
 const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ className }) => {
   const { toast } = useToast();
   const [availableModels, setAvailableModels] = useState<ModelForComparison[]>([]);
   const [selectedModels, setSelectedModels] = useState<ModelForComparison[]>([]);
   const [loading, setLoading] = useState(true);
   const [comparisonMetric, setComparisonMetric] = useState<'latency' | 'cost' | 'accuracy' | 'throughput'>('latency');
-
   useEffect(() => {
     loadAvailableModels();
   }, []);
-
   const loadAvailableModels = async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/models/comparison-data');
       if (!response.ok) throw new Error('Failed to load models');
-      
       const data = await response.json();
       setAvailableModels(data.models || []);
     } catch (error) {
-      console.error('Error loading models:', error);
       toast({
         title: 'Error',
         description: 'Failed to load model comparison data',
@@ -91,7 +84,6 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
       setLoading(false);
     }
   };
-
   const addModelToComparison = (modelId: string) => {
     const model = availableModels.find(m => m.id === modelId);
     if (model && !selectedModels.find(m => m.id === modelId)) {
@@ -106,11 +98,9 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
       setSelectedModels(prev => [...prev, model]);
     }
   };
-
   const removeModelFromComparison = (modelId: string) => {
     setSelectedModels(prev => prev.filter(m => m.id !== modelId));
   };
-
   const getMetricValue = (model: ModelForComparison, metric: string): number => {
     switch (metric) {
       case 'latency':
@@ -125,25 +115,20 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
         return 0;
     }
   };
-
   const getBestModelForMetric = (metric: string): string | null => {
     if (selectedModels.length === 0) return null;
-    
     const isLowerBetter = metric === 'latency' || metric === 'cost';
     const bestModel = selectedModels.reduce((best, current) => {
       const bestValue = getMetricValue(best, metric);
       const currentValue = getMetricValue(current, metric);
-      
       if (isLowerBetter) {
         return currentValue < bestValue ? current : best;
       } else {
         return currentValue > bestValue ? current : best;
       }
     });
-    
     return bestModel.id;
   };
-
   const formatMetricValue = (value: number, metric: string): string => {
     switch (metric) {
       case 'latency':
@@ -158,29 +143,26 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
         return value.toString();
     }
   };
-
   const getMetricIcon = (metric: string) => {
     switch (metric) {
       case 'latency':
-        return <Clock className="w-4 h-4" />;
+        return <Clock className="w-4 h-4 sm:w-auto md:w-full" />;
       case 'cost':
-        return <DollarSign className="w-4 h-4" />;
+        return <DollarSign className="w-4 h-4 sm:w-auto md:w-full" />;
       case 'accuracy':
-        return <Target className="w-4 h-4" />;
+        return <Target className="w-4 h-4 sm:w-auto md:w-full" />;
       case 'throughput':
-        return <Zap className="w-4 h-4" />;
+        return <Zap className="w-4 h-4 sm:w-auto md:w-full" />;
       default:
-        return <Activity className="w-4 h-4" />;
+        return <Activity className="w-4 h-4 sm:w-auto md:w-full" />;
     }
   };
-
   const getPerformanceColor = (value: number, metric: string, isNormalized: boolean = false): string => {
     if (isNormalized) {
       if (value >= 80) return 'text-green-600';
       if (value >= 60) return 'text-yellow-600';
       return 'text-red-600';
     }
-
     // Raw values - context dependent
     switch (metric) {
       case 'latency':
@@ -203,15 +185,11 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
         return 'text-gray-600';
     }
   };
-
   const normalizeMetricForProgress = (value: number, metric: string, allValues: number[]): number => {
     const min = Math.min(...allValues);
     const max = Math.max(...allValues);
-    
     if (min === max) return 100;
-    
     const isLowerBetter = metric === 'latency' || metric === 'cost';
-    
     if (isLowerBetter) {
       // For metrics where lower is better, invert the scale
       return ((max - value) / (max - min)) * 100;
@@ -220,36 +198,35 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
       return ((value - min) / (max - min)) * 100;
     }
   };
-
   if (loading) {
     return (
+    <ErrorBoundary fallback={<div>Something went wrong in ModelComparisonInterface</div>}>
       <Card className={className}>
-        <CardContent className="flex items-center justify-center p-8">
+        <CardContent className="flex items-center justify-center p-8 sm:p-4 md:p-6">
           <div className="text-center space-y-2">
-            <BarChart3 className="w-8 h-8 animate-pulse mx-auto text-blue-500" />
+            <BarChart3 className="w-8 h-8 animate-pulse mx-auto text-blue-500 sm:w-auto md:w-full" />
             <div>Loading model comparison data...</div>
           </div>
         </CardContent>
       </Card>
     );
   }
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Model Selection */}
       <div className="flex items-center gap-4">
-        <Select onValueChange={addModelToComparison}>
-          <SelectTrigger className="w-64">
-            <SelectValue placeholder="Add model to compare" />
+        <select onValueChange={addModelToComparison} aria-label="Select option">
+          <selectTrigger className="w-64 sm:w-auto md:w-full" aria-label="Select option">
+            <selectValue placeholder="Add model to compare" />
           </SelectTrigger>
-          <SelectContent>
+          <selectContent aria-label="Select option">
             {availableModels
               .filter(model => !selectedModels.find(m => m.id === model.id))
               .map(model => (
-                <SelectItem key={model.id} value={model.id}>
+                <selectItem key={model.id} value={model.id} aria-label="Select option">
                   <div className="flex items-center gap-2">
                     <span>{model.name}</span>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                       {model.provider}
                     </Badge>
                   </div>
@@ -257,61 +234,58 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
               ))}
           </SelectContent>
         </Select>
-
-        <Select value={comparisonMetric} onValueChange={(value: any) => setComparisonMetric(value)}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
+        <select value={comparisonMetric} onValueChange={(value: any) = aria-label="Select option"> setComparisonMetric(value)}>
+          <selectTrigger className="w-48 sm:w-auto md:w-full" aria-label="Select option">
+            <selectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="latency">
+          <selectContent aria-label="Select option">
+            <selectItem value="latency" aria-label="Select option">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
+                <Clock className="w-4 h-4 sm:w-auto md:w-full" />
                 Latency
               </div>
             </SelectItem>
-            <SelectItem value="cost">
+            <selectItem value="cost" aria-label="Select option">
               <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4" />
+                <DollarSign className="w-4 h-4 sm:w-auto md:w-full" />
                 Cost per Request
               </div>
             </SelectItem>
-            <SelectItem value="accuracy">
+            <selectItem value="accuracy" aria-label="Select option">
               <div className="flex items-center gap-2">
-                <Target className="w-4 h-4" />
+                <Target className="w-4 h-4 sm:w-auto md:w-full" />
                 Accuracy
               </div>
             </SelectItem>
-            <SelectItem value="throughput">
+            <selectItem value="throughput" aria-label="Select option">
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4" />
+                <Zap className="w-4 h-4 sm:w-auto md:w-full" />
                 Throughput
               </div>
             </SelectItem>
           </SelectContent>
         </Select>
       </div>
-
       {/* Selected Models */}
       <div className="flex gap-2 flex-wrap">
         {selectedModels.map(model => (
           <Badge key={model.id} variant="secondary" className="flex items-center gap-2">
             {model.name}
-            <Button
+            <button
               size="sm"
               variant="ghost"
-              className="h-4 w-4 p-0"
-              onClick={() => removeModelFromComparison(model.id)}
+              className="h-4 w-4 p-0 sm:w-auto md:w-full"
+              onClick={() = aria-label="Button"> removeModelFromComparison(model.id)}
             >
-              <X className="w-3 h-3" />
+              <X className="w-3 h-3 sm:w-auto md:w-full" />
             </Button>
           </Badge>
         ))}
       </div>
-
       {selectedModels.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
-            <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-400 sm:w-auto md:w-full" />
             <h3 className="text-lg font-medium mb-2">No Models Selected</h3>
             <p className="text-gray-600">
               Select models from the dropdown above to start comparing their performance
@@ -335,23 +309,21 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
                   const allValues = selectedModels.map(m => getMetricValue(m, comparisonMetric));
                   const normalizedValue = normalizeMetricForProgress(metricValue, comparisonMetric, allValues);
                   const isBest = getBestModelForMetric(comparisonMetric) === model.id;
-                  
                   return (
                     <div key={model.id} className="flex items-center gap-4">
-                      <div className="w-48">
+                      <div className="w-48 sm:w-auto md:w-full">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{model.name}</span>
-                          {isBest && <CheckCircle className="w-4 h-4 text-green-600" />}
+                          {isBest && <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />}
                         </div>
-                        <div className="text-sm text-gray-600">{model.provider}</div>
+                        <div className="text-sm text-gray-600 md:text-base lg:text-lg">{model.provider}</div>
                       </div>
-                      
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
                           <span className={`text-sm font-medium ${getPerformanceColor(metricValue, comparisonMetric)}`}>
                             {formatMetricValue(metricValue, comparisonMetric)}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 sm:text-sm md:text-base">
                             {normalizedValue.toFixed(0)}%
                           </span>
                         </div>
@@ -366,7 +338,6 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
               </div>
             </CardContent>
           </Card>
-
           {/* Detailed Comparison */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {selectedModels.map(model => (
@@ -374,19 +345,19 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{model.name}</CardTitle>
-                    <Button
+                    <button
                       size="sm"
                       variant="ghost"
-                      onClick={() => removeModelFromComparison(model.id)}
+                      onClick={() = aria-label="Button"> removeModelFromComparison(model.id)}
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-4 h-4 sm:w-auto md:w-full" />
                     </Button>
                   </div>
                   <CardDescription>{model.provider} • {model.type}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Key Metrics */}
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-2 gap-3 text-sm md:text-base lg:text-lg">
                     <div>
                       <div className="text-gray-600">Latency</div>
                       <div className={`font-medium ${getPerformanceColor(model.metrics.latency, 'latency')}`}>
@@ -412,9 +383,8 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
                       </div>
                     </div>
                   </div>
-
                   {/* Specifications */}
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-sm md:text-base lg:text-lg">
                     <div className="font-medium">Specifications</div>
                     <div className="space-y-1 text-gray-600">
                       <div>Parameters: {model.specifications.parameters}</div>
@@ -422,26 +392,24 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
                       <div>Memory: {model.specifications.memoryRequirement}</div>
                     </div>
                   </div>
-
                   {/* Capabilities */}
                   <div className="space-y-2">
-                    <div className="text-sm font-medium">Capabilities</div>
+                    <div className="text-sm font-medium md:text-base lg:text-lg">Capabilities</div>
                     <div className="flex flex-wrap gap-1">
                       {model.capabilities.slice(0, 3).map(capability => (
-                        <Badge key={capability} variant="outline" className="text-xs">
+                        <Badge key={capability} variant="outline" className="text-xs sm:text-sm md:text-base">
                           {capability}
                         </Badge>
                       ))}
                       {model.capabilities.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                           +{model.capabilities.length - 3}
                         </Badge>
                       )}
                     </div>
                   </div>
-
                   {/* Usage Stats */}
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-sm md:text-base lg:text-lg">
                     <div className="font-medium">Usage</div>
                     <div className="space-y-1 text-gray-600">
                       <div>Total: {model.usage.totalRequests.toLocaleString()} requests</div>
@@ -449,14 +417,13 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
                       <div>Last used: {new Date(model.usage.lastUsed).toLocaleDateString()}</div>
                     </div>
                   </div>
-
                   {/* Top Benchmarks */}
                   {model.benchmarks.length > 0 && (
                     <div className="space-y-2">
-                      <div className="text-sm font-medium">Top Benchmarks</div>
+                      <div className="text-sm font-medium md:text-base lg:text-lg">Top Benchmarks</div>
                       <div className="space-y-1">
                         {model.benchmarks.slice(0, 2).map(benchmark => (
-                          <div key={benchmark.name} className="flex justify-between text-sm">
+                          <div key={benchmark.name} className="flex justify-between text-sm md:text-base lg:text-lg">
                             <span className="text-gray-600">{benchmark.name}</span>
                             <span className="font-medium">{benchmark.score.toFixed(1)}</span>
                           </div>
@@ -471,7 +438,7 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ cla
         </div>
       )}
     </div>
+    </ErrorBoundary>
   );
 };
-
 export default ModelComparisonInterface;

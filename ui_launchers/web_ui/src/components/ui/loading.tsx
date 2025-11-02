@@ -117,7 +117,7 @@ const Loading: React.FC<LoadingProps> = ({
       <div className="flex flex-col items-center gap-3">
         {renderLoadingIndicator()}
         {message && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400 text-center md:text-base lg:text-lg">
             {message}
           </p>
         )}
@@ -134,21 +134,21 @@ const PageLoading: React.FC<{ message?: string }> = ({
 }) => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
     <Card className="w-full max-w-md">
-      <CardContent className="p-8">
+      <CardContent className="p-8 sm:p-4 md:p-6">
         <div className="flex flex-col items-center gap-4">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full"
+            className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full sm:p-4 md:p-6"
           >
-            <Sparkles className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            <Sparkles className="h-8 w-8 text-blue-600 dark:text-blue-400 sm:w-auto md:w-full" />
           </motion.div>
           
           <div className="text-center">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               {message}
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-600 dark:text-gray-400 md:text-base lg:text-lg">
               Please wait while we prepare your experience
             </p>
           </div>
@@ -167,7 +167,7 @@ const PageLoading: React.FC<{ message?: string }> = ({
                   delay,
                   ease: "easeInOut"
                 }}
-                className="w-2 h-2 rounded-full bg-blue-500"
+                className="w-2 h-2 rounded-full bg-blue-500 sm:w-auto md:w-full"
               />
             ))}
           </div>
@@ -189,9 +189,9 @@ const ComponentLoading: React.FC<{
 }) => {
   if (variant === 'inline') {
     return (
-      <div className="flex items-center gap-2 p-2">
-        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+      <div className="flex items-center gap-2 p-2 sm:p-4 md:p-6">
+        <Loader2 className="h-4 w-4 animate-spin text-blue-500 sm:w-auto md:w-full" />
+        <span className="text-sm text-gray-600 dark:text-gray-400 md:text-base lg:text-lg">
           {message}
         </span>
       </div>
@@ -202,8 +202,8 @@ const ComponentLoading: React.FC<{
     return (
       <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10">
         <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-          <span className="text-sm text-gray-600 dark:text-gray-400">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-500 sm:w-auto md:w-full" />
+          <span className="text-sm text-gray-600 dark:text-gray-400 md:text-base lg:text-lg">
             {message}
           </span>
         </div>
@@ -213,9 +213,9 @@ const ComponentLoading: React.FC<{
 
   return (
     <Card className="w-full">
-      <CardContent className="p-6">
+      <CardContent className="p-6 sm:p-4 md:p-6">
         <div className="flex items-center justify-center gap-3">
-          <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+          <Loader2 className="h-5 w-5 animate-spin text-blue-500 sm:w-auto md:w-full" />
           <span className="text-gray-600 dark:text-gray-400">
             {message}
           </span>
@@ -230,21 +230,21 @@ const ComponentLoading: React.FC<{
  */
 const ChatLoading: React.FC = () => (
   <div className="flex gap-3 mb-6">
-    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow-sm">
-      <Bot className="h-4 w-4" />
+    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow-sm sm:w-auto md:w-full">
+      <Bot className="h-4 w-4 sm:w-auto md:w-full" />
     </div>
     <div className="flex-1">
-      <div className="inline-block p-4 rounded-2xl bg-white border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700">
+      <div className="inline-block p-4 rounded-2xl bg-white border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700 sm:p-4 md:p-6">
         <div className="flex items-center gap-2">
           {[0, 0.2, 0.4].map((delay, index) => (
             <motion.div
               key={index}
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ repeat: Infinity, duration: 1.5, delay }}
-              className="w-2 h-2 bg-emerald-500 rounded-full"
+              className="w-2 h-2 bg-emerald-500 rounded-full sm:w-auto md:w-full"
             />
           ))}
-          <span className="text-sm text-gray-500 ml-2">AI is thinking...</span>
+          <span className="text-sm text-gray-500 ml-2 md:text-base lg:text-lg">AI is thinking...</span>
         </div>
       </div>
     </div>

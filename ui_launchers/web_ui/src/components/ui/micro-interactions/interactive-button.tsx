@@ -81,7 +81,7 @@ export const InteractiveButton = React.forwardRef<HTMLButtonElement, Interactive
           <div className="absolute inset-0 flex items-center justify-center">
             <LoadingSpinner size="sm" className="mr-2" />
             {loadingText && (
-              <span className="text-sm">{loadingText}</span>
+              <span className="text-sm md:text-base lg:text-lg">{loadingText}</span>
             )}
           </div>
         )}

@@ -16,6 +16,7 @@ const nextConfig = {
   
   // Explicitly set the root directory to prevent Next.js from looking at parent directories
   experimental: {
+    removeConsole: process.env.NODE_ENV === 'production',
     // Other experimental features can go here
   },
   

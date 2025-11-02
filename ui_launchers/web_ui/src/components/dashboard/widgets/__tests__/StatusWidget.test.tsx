@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import StatusWidget from '../StatusWidget';

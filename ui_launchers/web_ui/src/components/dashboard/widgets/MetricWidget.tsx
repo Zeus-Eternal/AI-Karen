@@ -47,12 +47,12 @@ const formatValue = (value: number, format?: string, unit?: string): string => {
 const getTrendIcon = (direction: 'up' | 'down' | 'stable') => {
   switch (direction) {
     case 'up':
-      return <TrendingUp className="h-4 w-4" />;
+      return <TrendingUp className="h-4 w-4 sm:w-auto md:w-full" />;
     case 'down':
-      return <TrendingDown className="h-4 w-4" />;
+      return <TrendingDown className="h-4 w-4 sm:w-auto md:w-full" />;
     case 'stable':
     default:
-      return <Minus className="h-4 w-4" />;
+      return <Minus className="h-4 w-4 sm:w-auto md:w-full" />;
   }
 };
 
@@ -105,7 +105,7 @@ export const MetricWidget: React.FC<MetricWidgetProps> = (props) => {
                 thresholdStatus.bgColor,
                 thresholdStatus.color
               )}>
-                <ThresholdIcon className="h-3 w-3" />
+                <ThresholdIcon className="h-3 w-3 sm:w-auto md:w-full" />
                 {thresholdStatus.status === 'critical' ? 'Critical' : 'Warning'}
               </div>
             )}
@@ -121,7 +121,7 @@ export const MetricWidget: React.FC<MetricWidgetProps> = (props) => {
             </div>
 
             {/* Label */}
-            <div className="text-sm text-muted-foreground mb-3">
+            <div className="text-sm text-muted-foreground mb-3 md:text-base lg:text-lg">
               {metric.label}
             </div>
 
@@ -136,7 +136,7 @@ export const MetricWidget: React.FC<MetricWidgetProps> = (props) => {
                   {metric.trend.percentage > 0 ? '+' : ''}
                   {metric.trend.percentage.toFixed(1)}%
                 </span>
-                <span className="text-muted-foreground text-xs">
+                <span className="text-muted-foreground text-xs sm:text-sm md:text-base">
                   vs last period
                 </span>
               </div>
@@ -147,15 +147,15 @@ export const MetricWidget: React.FC<MetricWidgetProps> = (props) => {
         {/* Threshold Indicators */}
         {metric.threshold && (
           <div className="mt-4 pt-3 border-t">
-            <div className="flex justify-between text-xs text-muted-foreground">
+            <div className="flex justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
               <span>Thresholds:</span>
               <div className="flex gap-3">
                 <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                  <div className="w-2 h-2 rounded-full bg-yellow-500 sm:w-auto md:w-full"></div>
                   {formatValue(metric.threshold.warning, metric.format, metric.unit)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                  <div className="w-2 h-2 rounded-full bg-red-500 sm:w-auto md:w-full"></div>
                   {formatValue(metric.threshold.critical, metric.format, metric.unit)}
                 </span>
               </div>

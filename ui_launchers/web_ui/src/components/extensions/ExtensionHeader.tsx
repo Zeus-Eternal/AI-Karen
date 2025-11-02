@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+
 import {
   SidebarHeader,
   SidebarTrigger,
@@ -37,13 +37,13 @@ export default function ExtensionHeader() {
         </TabsList>
       </Tabs>
       {level > 0 && (
-        <Button
+        <button
           variant="ghost"
           size="sm"
           className="px-1 gap-1 h-6"
-          onClick={() => dispatch({ type: "GO_BACK" })}
+          onClick={() = aria-label="Button"> dispatch({ type: "GO_BACK" })}
         >
-          <ArrowLeft className="h-3 w-3" /> Back
+          <ArrowLeft className="h-3 w-3 sm:w-auto md:w-full" /> Back
         </Button>
       )}
       <ExtensionBreadcrumbs />

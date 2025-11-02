@@ -3,7 +3,7 @@
  * Tests for the main orchestrator component
  */
 
-import React from 'react';
+
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ModelProviderManagementHub from '../ModelProviderManagementHub';
@@ -23,7 +23,7 @@ vi.mock('../EnhancedModelSelector', () => ({
   default: ({ onModelChange }: any) => (
     <div data-testid="enhanced-model-selector">
       Enhanced Model Selector
-      <button onClick={() => onModelChange?.({ id: 'test-model', name: 'Test Model' })}>
+      <button onClick={() = aria-label="Button"> onModelChange?.({ id: 'test-model', name: 'Test Model' })}>
         Select Model
       </button>
     </div>

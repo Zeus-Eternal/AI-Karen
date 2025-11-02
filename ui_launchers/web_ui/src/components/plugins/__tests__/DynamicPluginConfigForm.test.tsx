@@ -4,7 +4,7 @@
  * Unit tests for the DynamicPluginConfigForm component.
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { DynamicPluginConfigForm } from '../DynamicPluginConfigForm';

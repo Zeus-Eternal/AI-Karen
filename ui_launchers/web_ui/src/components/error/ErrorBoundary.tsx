@@ -1,37 +1,28 @@
 'use client';
-
 import React, { Component, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
-
 interface State {
   hasError: boolean;
   error?: Error;
 }
-
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
   }
-
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
-
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
     // Call optional error handler
     this.props.onError?.(error, errorInfo);
-    
     // Report to error monitoring service
     if (typeof window !== 'undefined' && 'gtag' in window) {
       (window as any).gtag('event', 'exception', {
@@ -40,23 +31,20 @@ export class ErrorBoundary extends Component<Props, State> {
       });
     }
   }
-
   handleReset = () => {
     this.setState({ hasError: false, error: undefined });
   };
-
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
       }
-
       return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-background sm:p-4 md:p-6">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
-                <AlertTriangle className="h-12 w-12 text-destructive" />
+                <AlertTriangle className="h-12 w-12 text-destructive sm:w-auto md:w-full" />
               </div>
               <CardTitle className="text-xl font-semibold">
                 Something went wrong
@@ -67,7 +55,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </CardHeader>
             <CardContent className="space-y-4">
               {process.env.NODE_ENV === 'development' && this.state.error && (
-                <details className="bg-muted p-3 rounded text-xs font-mono">
+                <details className="bg-muted p-3 rounded text-xs font-mono sm:text-sm md:text-base">
                   <summary className="cursor-pointer font-sans font-medium">
                     Error Details
                   </summary>
@@ -88,12 +76,12 @@ export class ErrorBoundary extends Component<Props, State> {
                   className="flex-1"
                   aria-label="Try again"
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Try Again
                 </Button>
-                <Button 
+                <button 
                   variant="outline" 
-                  onClick={() => window.location.reload()}
+                  onClick={() = aria-label="Button"> window.location.reload()}
                   className="flex-1"
                   aria-label="Refresh page"
                 >
@@ -105,7 +93,6 @@ export class ErrorBoundary extends Component<Props, State> {
         </div>
       );
     }
-
     return this.props.children;
   }
 }

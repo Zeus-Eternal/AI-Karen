@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { getAdminUtils } from '@/lib/database/admin-utils';
 import { getAuditLogger } from '@/lib/audit/audit-logger';
-
 /**
  * GET /api/admin/security/report
  * 
@@ -15,9 +14,7 @@ export async function GET(request: NextRequest) {
     if (authResult instanceof NextResponse) {
       return authResult;
     }
-
     const { user: currentUser } = authResult;
-
     if (!currentUser) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -27,13 +24,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'json';
     const days = parseInt(searchParams.get('days') || '30');
-
     const adminUtils = getAdminUtils();
     const auditLogger = getAuditLogger();
-
     // Generate report data
     const reportData = await generateSecurityReport(adminUtils, days);
-
     // Log the report generation
     await auditLogger.log(
       currentUser.user_id,
@@ -51,7 +45,6 @@ export async function GET(request: NextRequest) {
                    'unknown'
       }
     );
-
     if (format === 'json') {
       return NextResponse.json(reportData);
     } else if (format === 'csv') {
@@ -70,14 +63,12 @@ export async function GET(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error('Generate security report error:', error);
     return NextResponse.json(
       { error: 'Failed to generate security report' },
       { status: 500 }
     );
   }
 }
-
 /**
  * Generate comprehensive security report data
  */
@@ -85,7 +76,6 @@ async function generateSecurityReport(adminUtils: any, days: number) {
   const endDate = new Date();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
-
   // Get various security metrics
   const [
     securityAlerts,
@@ -106,7 +96,6 @@ async function generateSecurityReport(adminUtils: any, days: number) {
     adminUtils.getUserStatistics({ startDate, endDate }),
     adminUtils.getSystemHealthMetrics()
   ]);
-
   // Calculate summary statistics
   const summary = {
     reportPeriod: {
@@ -134,23 +123,19 @@ async function generateSecurityReport(adminUtils: any, days: number) {
       lastIncident: systemHealth.lastIncident
     }
   };
-
   // Categorize alerts by type
   const alertsByType = securityAlerts.reduce((acc: any, alert: any) => {
     acc[alert.type] = (acc[alert.type] || 0) + 1;
     return acc;
   }, {});
-
   // Top blocked IPs
   const topBlockedIPs = blockedIPs
     .sort((a: any, b: any) => b.failedAttempts - a.failedAttempts)
     .slice(0, 10);
-
   // Recent admin actions
   const recentAdminActions = adminActions
     .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 50);
-
   return {
     generatedAt: new Date().toISOString(),
     summary,
@@ -164,41 +149,34 @@ async function generateSecurityReport(adminUtils: any, days: number) {
     recommendations: generateSecurityRecommendations(summary, alertsByType, blockedIPs)
   };
 }
-
 /**
  * Generate failed login trends
  */
 function generateFailedLoginTrends(failedLogins: any[], days: number) {
   const trends = [];
   const now = new Date();
-  
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
     const dayStart = new Date(date.setHours(0, 0, 0, 0));
     const dayEnd = new Date(date.setHours(23, 59, 59, 999));
-    
     const dayFailedLogins = failedLogins.filter(login => {
       const loginDate = new Date(login.timestamp);
       return loginDate >= dayStart && loginDate <= dayEnd;
     });
-    
     trends.push({
       date: dayStart.toISOString().split('T')[0],
       count: dayFailedLogins.length,
       uniqueIPs: new Set(dayFailedLogins.map(login => login.ipAddress)).size
     });
   }
-  
   return trends;
 }
-
 /**
  * Generate security recommendations based on report data
  */
 function generateSecurityRecommendations(summary: any, alertsByType: any, blockedIPs: any[]) {
   const recommendations = [];
-  
   // High number of failed logins
   if (summary.securityOverview.failedLogins > 100) {
     recommendations.push({
@@ -209,7 +187,6 @@ function generateSecurityRecommendations(summary: any, alertsByType: any, blocke
       action: 'Review authentication security settings'
     });
   }
-  
   // Many blocked IPs
   if (blockedIPs.length > 50) {
     recommendations.push({
@@ -220,7 +197,6 @@ function generateSecurityRecommendations(summary: any, alertsByType: any, blocke
       action: 'Analyze blocked IP geographical distribution'
     });
   }
-  
   // Unresolved critical alerts
   if (summary.securityOverview.criticalAlerts > summary.securityOverview.resolvedAlerts) {
     recommendations.push({
@@ -231,7 +207,6 @@ function generateSecurityRecommendations(summary: any, alertsByType: any, blocke
       action: 'Review and resolve all critical security alerts'
     });
   }
-  
   // Frequent admin actions
   if (alertsByType['admin_action'] > 200) {
     recommendations.push({
@@ -242,21 +217,17 @@ function generateSecurityRecommendations(summary: any, alertsByType: any, blocke
       action: 'Audit recent administrative changes'
     });
   }
-  
   return recommendations;
 }
-
 /**
  * Generate CSV format report
  */
 function generateCSVReport(reportData: any): string {
   const lines = [];
-  
   // Header
   lines.push('Security Report Generated: ' + reportData.generatedAt);
   lines.push('Report Period: ' + reportData.summary.reportPeriod.startDate + ' to ' + reportData.summary.reportPeriod.endDate);
   lines.push('');
-  
   // Summary
   lines.push('SECURITY OVERVIEW');
   lines.push('Metric,Value');
@@ -267,7 +238,6 @@ function generateCSVReport(reportData: any): string {
   lines.push(`Blocked IPs,${reportData.summary.securityOverview.blockedIPs}`);
   lines.push(`Failed Logins,${reportData.summary.securityOverview.failedLogins}`);
   lines.push('');
-  
   // Alerts by type
   lines.push('ALERTS BY TYPE');
   lines.push('Type,Count');
@@ -275,13 +245,11 @@ function generateCSVReport(reportData: any): string {
     lines.push(`${type},${count}`);
   });
   lines.push('');
-  
   // Top blocked IPs
   lines.push('TOP BLOCKED IPs');
   lines.push('IP Address,Failed Attempts,Blocked At,Reason');
   reportData.details.topBlockedIPs.forEach((ip: any) => {
     lines.push(`${ip.ipAddress},${ip.failedAttempts},${ip.blockedAt},${ip.reason}`);
   });
-  
   return lines.join('\n');
 }

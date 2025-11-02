@@ -1,7 +1,6 @@
 /**
  * Feature flags system for extension availability and graceful degradation
  */
-
 export interface FeatureFlag {
   name: string;
   enabled: boolean;
@@ -9,7 +8,6 @@ export interface FeatureFlag {
   description?: string;
   dependencies?: string[];
 }
-
 export interface ExtensionFeatureFlags {
   extensionSystem: FeatureFlag;
   backgroundTasks: FeatureFlag;
@@ -17,16 +15,13 @@ export interface ExtensionFeatureFlags {
   extensionHealth: FeatureFlag;
   extensionAuth: FeatureFlag;
 }
-
 export class FeatureFlagManager {
   private flags: Map<string, FeatureFlag> = new Map();
   private listeners: Map<string, ((flag: FeatureFlag) => void)[]> = new Map();
-
   constructor() {
     this.initializeDefaultFlags();
     this.loadFlagsFromStorage();
   }
-
   private initializeDefaultFlags(): void {
     const defaultFlags: ExtensionFeatureFlags = {
       extensionSystem: {
@@ -65,12 +60,10 @@ export class FeatureFlagManager {
         dependencies: [],
       },
     };
-
     Object.values(defaultFlags).forEach((flag) => {
       this.flags.set(flag.name, flag);
     });
   }
-
   private loadFlagsFromStorage(): void {
     try {
       const stored = localStorage.getItem("extension-feature-flags");
@@ -86,10 +79,8 @@ export class FeatureFlagManager {
         });
       }
     } catch (error) {
-      console.warn("Failed to load feature flags from storage:", error);
     }
   }
-
   private saveFlagsToStorage(): void {
     try {
       const flagsObject = Object.fromEntries(this.flags);
@@ -98,17 +89,13 @@ export class FeatureFlagManager {
         JSON.stringify(flagsObject)
       );
     } catch (error) {
-      console.warn("Failed to save feature flags to storage:", error);
     }
   }
-
   isEnabled(flagName: string): boolean {
     const flag = this.flags.get(flagName);
     if (!flag) {
-      console.warn(`Feature flag '${flagName}' not found, defaulting to false`);
       return false;
     }
-
     // Check dependencies
     if (flag.dependencies) {
       for (const dependency of flag.dependencies) {
@@ -117,14 +104,11 @@ export class FeatureFlagManager {
         }
       }
     }
-
     return flag.enabled;
   }
-
   getFlag(flagName: string): FeatureFlag | undefined {
     return this.flags.get(flagName);
   }
-
   setFlag(flagName: string, enabled: boolean): void {
     const flag = this.flags.get(flagName);
     if (flag) {
@@ -134,7 +118,6 @@ export class FeatureFlagManager {
       this.notifyListeners(flagName, flag);
     }
   }
-
   updateFlag(flagName: string, updates: Partial<FeatureFlag>): void {
     const flag = this.flags.get(flagName);
     if (flag) {
@@ -144,16 +127,13 @@ export class FeatureFlagManager {
       this.notifyListeners(flagName, updatedFlag);
     }
   }
-
   getFallbackBehavior(flagName: string): "hide" | "disable" | "cache" | "mock" {
     const flag = this.flags.get(flagName);
     return flag?.fallbackBehavior || "disable";
   }
-
   getAllFlags(): FeatureFlag[] {
     return Array.from(this.flags.values());
   }
-
   onFlagChange(
     flagName: string,
     callback: (flag: FeatureFlag) => void
@@ -162,7 +142,6 @@ export class FeatureFlagManager {
       this.listeners.set(flagName, []);
     }
     this.listeners.get(flagName)!.push(callback);
-
     // Return unsubscribe function
     return () => {
       const callbacks = this.listeners.get(flagName);
@@ -174,7 +153,6 @@ export class FeatureFlagManager {
       }
     };
   }
-
   private notifyListeners(flagName: string, flag: FeatureFlag): void {
     const callbacks = this.listeners.get(flagName);
     if (callbacks) {
@@ -182,15 +160,10 @@ export class FeatureFlagManager {
         try {
           callback(flag);
         } catch (error) {
-          console.error(
-            `Error in feature flag listener for '${flagName}':`,
-            error
-          );
         }
       });
     }
   }
-
   // Auto-disable flags based on service health
   handleServiceError(serviceName: string, error: any): void {
     const flagMappings: Record<string, string> = {
@@ -200,16 +173,11 @@ export class FeatureFlagManager {
       "extension-health": "extensionHealth",
       "extension-auth": "extensionAuth",
     };
-
     const flagName = flagMappings[serviceName];
     if (flagName) {
-      console.warn(
-        `Service '${serviceName}' error detected, disabling feature flag '${flagName}'`
-      );
       this.setFlag(flagName, false);
     }
   }
-
   // Re-enable flags when services recover
   handleServiceRecovery(serviceName: string): void {
     const flagMappings: Record<string, string> = {
@@ -219,40 +187,30 @@ export class FeatureFlagManager {
       "extension-health": "extensionHealth",
       "extension-auth": "extensionAuth",
     };
-
     const flagName = flagMappings[serviceName];
     if (flagName) {
-      console.info(
-        `Service '${serviceName}' recovered, re-enabling feature flag '${flagName}'`
-      );
       this.setFlag(flagName, true);
     }
   }
 }
-
 // Global feature flag manager instance
 export const featureFlagManager = new FeatureFlagManager();
-
 // React hook for using feature flags
 import React from "react";
-
 export function useFeatureFlag(flagName: string) {
   const [flag, setFlag] = React.useState<FeatureFlag | undefined>(
     featureFlagManager.getFlag(flagName)
   );
-
   React.useEffect(() => {
     const unsubscribe = featureFlagManager.onFlagChange(flagName, setFlag);
     return unsubscribe;
   }, [flagName]);
-
   return {
     isEnabled: flag?.enabled || false,
     fallbackBehavior: flag?.fallbackBehavior || "disable",
     flag,
   };
 }
-
 // Helper functions for common patterns
 export function withFeatureFlag<T>(
   flagName: string,
@@ -260,13 +218,10 @@ export function withFeatureFlag<T>(
   fallback?: T
 ): T | null {
   const isEnabled = featureFlagManager.isEnabled(flagName);
-
   if (isEnabled) {
     return component;
   }
-
   const behavior = featureFlagManager.getFallbackBehavior(flagName);
-
   switch (behavior) {
     case "hide":
       return null;

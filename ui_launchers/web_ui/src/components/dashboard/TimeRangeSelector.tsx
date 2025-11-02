@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState } from 'react';
 import { Calendar, Clock, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,19 +5,30 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+import { cn } from '@/lib/utils';
+import type { TimeRange } from '@/store/dashboard-store';
+'use client';
+
+
+
+
+
+
+
+
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
+
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import type { TimeRange } from '@/store/dashboard-store';
+
+
 
 interface TimeRangeSelectorProps {
   value: TimeRange;
@@ -111,16 +120,16 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <Clock className="h-4 w-4 text-muted-foreground" />
+      <Clock className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8">
+          <button variant="outline" size="sm" className="h-8" aria-label="Button">
             {getCurrentPresetLabel()}
-            <ChevronDown className="h-3 w-3 ml-2" />
+            <ChevronDown className="h-3 w-3 ml-2 sm:w-auto md:w-full" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-48 sm:w-auto md:w-full">
           {presetRanges.map((preset) => (
             <DropdownMenuItem
               key={preset.key}
@@ -134,7 +143,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
           ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setIsCustomOpen(true)}>
-            <Calendar className="h-4 w-4 mr-2" />
+            <Calendar className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Custom Range...
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -144,15 +153,15 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
         <PopoverTrigger asChild>
           <div />
         </PopoverTrigger>
-        <PopoverContent className="w-80" align="end">
-          <Card className="p-4">
+        <PopoverContent className="w-80 sm:w-auto md:w-full" align="end">
+          <Card className="p-4 sm:p-4 md:p-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium">Custom Time Range</h4>
-                <Button
+                <button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setIsCustomOpen(false)}
+                  onClick={() = aria-label="Button"> setIsCustomOpen(false)}
                 >
                   ×
                 </Button>
@@ -161,38 +170,38 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="start-time">Start Time</Label>
-                  <Input
+                  <input
                     id="start-time"
                     type="datetime-local"
                     value={customStart}
-                    onChange={(e) => setCustomStart(e.target.value)}
+                    onChange={(e) = aria-label="Input"> setCustomStart(e.target.value)}
                   />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="end-time">End Time</Label>
-                  <Input
+                  <input
                     id="end-time"
                     type="datetime-local"
                     value={customEnd}
-                    onChange={(e) => setCustomEnd(e.target.value)}
+                    onChange={(e) = aria-label="Input"> setCustomEnd(e.target.value)}
                   />
                 </div>
               </div>
               
               <div className="flex justify-end gap-2">
-                <Button
+                <button
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsCustomOpen(false)}
+                  onClick={() = aria-label="Button"> setIsCustomOpen(false)}
                 >
                   Cancel
                 </Button>
-                <Button
+                <button
                   size="sm"
                   onClick={handleCustomApply}
                   disabled={!customStart || !customEnd}
-                >
+                 aria-label="Button">
                   Apply
                 </Button>
               </div>
@@ -201,7 +210,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
         </PopoverContent>
       </Popover>
       
-      <div className="text-xs text-muted-foreground">
+      <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
         {formatTimeRange(value)}
       </div>
     </div>

@@ -1,6 +1,5 @@
-'use client';
-
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { format, addDays } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+'use client';
+
+
+
+
+
+
+
+
+
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,15 +27,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
+
+
   Download,
   Share2,
   Copy,
@@ -41,9 +53,9 @@ import {
   Clock,
   Shield
 } from 'lucide-react';
-import { format, addDays } from 'date-fns';
-import { useToast } from '@/hooks/use-toast';
-import {
+
+
+
   ConversationExport,
   ConversationShare,
   ConversationThread,
@@ -172,20 +184,34 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
     }
   };
 
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Handle escape key
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+
   return (
     <div className={`flex gap-2 ${className}`}>
       {/* Export Dialog */}
       <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
+          <button variant="outline" size="sm" aria-label="Button">
+            <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Export
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5" />
+              <Download className="h-5 w-5 sm:w-auto md:w-full" />
               Export Conversation
             </DialogTitle>
             <DialogDescription>
@@ -197,37 +223,37 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
             {/* Format Selection */}
             <div className="space-y-2">
               <Label>Export Format</Label>
-              <Select
+              <select
                 value={exportConfig.format}
-                onValueChange={(value) => 
+                onValueChange={(value) = aria-label="Select option"> 
                   setExportConfig(prev => ({ ...prev, format: value as any }))
                 }
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <selectTrigger aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="json">
+                <selectContent aria-label="Select option">
+                  <selectItem value="json" aria-label="Select option">
                     <div className="flex items-center gap-2">
-                      <Code className="h-4 w-4" />
+                      <Code className="h-4 w-4 sm:w-auto md:w-full" />
                       JSON (Machine readable)
                     </div>
                   </SelectItem>
-                  <SelectItem value="markdown">
+                  <selectItem value="markdown" aria-label="Select option">
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
+                      <FileText className="h-4 w-4 sm:w-auto md:w-full" />
                       Markdown (Human readable)
                     </div>
                   </SelectItem>
-                  <SelectItem value="pdf">
+                  <selectItem value="pdf" aria-label="Select option">
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
+                      <FileText className="h-4 w-4 sm:w-auto md:w-full" />
                       PDF (Print ready)
                     </div>
                   </SelectItem>
-                  <SelectItem value="html">
+                  <selectItem value="html" aria-label="Select option">
                     <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
+                      <Globe className="h-4 w-4 sm:w-auto md:w-full" />
                       HTML (Web ready)
                     </div>
                   </SelectItem>
@@ -248,7 +274,7 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
                       setExportConfig(prev => ({ ...prev, includeMetadata: !!checked }))
                     }
                   />
-                  <Label htmlFor="metadata" className="text-sm">
+                  <Label htmlFor="metadata" className="text-sm md:text-base lg:text-lg">
                     Message metadata (timestamps, confidence, etc.)
                   </Label>
                 </div>
@@ -261,7 +287,7 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
                       setExportConfig(prev => ({ ...prev, includeReasoning: !!checked }))
                     }
                   />
-                  <Label htmlFor="reasoning" className="text-sm">
+                  <Label htmlFor="reasoning" className="text-sm md:text-base lg:text-lg">
                     AI reasoning chains and explanations
                   </Label>
                 </div>
@@ -274,7 +300,7 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
                       setExportConfig(prev => ({ ...prev, includeAttachments: !!checked }))
                     }
                   />
-                  <Label htmlFor="attachments" className="text-sm">
+                  <Label htmlFor="attachments" className="text-sm md:text-base lg:text-lg">
                     File attachments and media
                   </Label>
                 </div>
@@ -283,22 +309,22 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
 
             {/* Conversation Stats */}
             <Card>
-              <CardContent className="p-3">
-                <div className="grid grid-cols-2 gap-3 text-sm">
+              <CardContent className="p-3 sm:p-4 md:p-6">
+                <div className="grid grid-cols-2 gap-3 text-sm md:text-base lg:text-lg">
                   <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <MessageSquare className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                     <span>{thread.metadata.messageCount} messages</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Clock className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                     <span>{format(thread.createdAt, 'MMM dd, yyyy')}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <Users className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                     <span>{thread.participants.length} participants</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                       {thread.metadata.complexity}
                     </Badge>
                   </div>
@@ -307,16 +333,16 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
             </Card>
 
             <div className="flex gap-2 pt-2">
-              <Button 
+              <button 
                 onClick={handleExport} 
                 disabled={isExporting}
                 className="flex-1"
-              >
+               aria-label="Button">
                 {isExporting ? 'Exporting...' : 'Export'}
               </Button>
-              <Button 
+              <button 
                 variant="outline" 
-                onClick={() => setExportDialogOpen(false)}
+                onClick={() = aria-label="Button"> setExportDialogOpen(false)}
               >
                 Cancel
               </Button>
@@ -328,15 +354,15 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
       {/* Share Dialog */}
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm">
-            <Share2 className="h-4 w-4 mr-2" />
+          <button variant="outline" size="sm" aria-label="Button">
+            <Share2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Share
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Share2 className="h-5 w-5" />
+              <Share2 className="h-5 w-5 sm:w-auto md:w-full" />
               Share Conversation
             </DialogTitle>
             <DialogDescription>
@@ -354,31 +380,31 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
               {/* Share Type */}
               <div className="space-y-2">
                 <Label>Share Type</Label>
-                <Select
+                <select
                   value={shareConfig.type}
-                  onValueChange={(value) => 
+                  onValueChange={(value) = aria-label="Select option"> 
                     setShareConfig(prev => ({ ...prev, type: value as any }))
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="private">
+                  <selectContent aria-label="Select option">
+                    <selectItem value="private" aria-label="Select option">
                       <div className="flex items-center gap-2">
-                        <Lock className="h-4 w-4" />
+                        <Lock className="h-4 w-4 sm:w-auto md:w-full" />
                         Private (Password protected)
                       </div>
                     </SelectItem>
-                    <SelectItem value="team">
+                    <selectItem value="team" aria-label="Select option">
                       <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4" />
+                        <Users className="h-4 w-4 sm:w-auto md:w-full" />
                         Team (Organization members)
                       </div>
                     </SelectItem>
-                    <SelectItem value="public">
+                    <selectItem value="public" aria-label="Select option">
                       <div className="flex items-center gap-2">
-                        <Globe className="h-4 w-4" />
+                        <Globe className="h-4 w-4 sm:w-auto md:w-full" />
                         Public (Anyone with link)
                       </div>
                     </SelectItem>
@@ -390,11 +416,11 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
               {shareConfig.type === 'private' && (
                 <div className="space-y-2">
                   <Label>Password (Optional)</Label>
-                  <Input
+                  <input
                     type="password"
                     placeholder="Leave empty for no password"
                     value={shareConfig.password || ''}
-                    onChange={(e) => 
+                    onChange={(e) = aria-label="Input"> 
                       setShareConfig(prev => ({ ...prev, password: e.target.value }))
                     }
                   />
@@ -404,9 +430,9 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
               {/* Expiration */}
               <div className="space-y-2">
                 <Label>Link Expires</Label>
-                <Select
+                <select
                   value={shareConfig.expiresAt ? 'custom' : 'never'}
-                  onValueChange={(value) => {
+                  onValueChange={(value) = aria-label="Select option"> {
                     if (value === 'never') {
                       setShareConfig(prev => ({ ...prev, expiresAt: undefined }));
                     } else {
@@ -420,14 +446,14 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
                     }
                   }}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="never">Never</SelectItem>
-                    <SelectItem value="1">1 day</SelectItem>
-                    <SelectItem value="7">1 week</SelectItem>
-                    <SelectItem value="30">1 month</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="never" aria-label="Select option">Never</SelectItem>
+                    <selectItem value="1" aria-label="Select option">1 day</SelectItem>
+                    <selectItem value="7" aria-label="Select option">1 week</SelectItem>
+                    <selectItem value="30" aria-label="Select option">1 month</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -445,7 +471,7 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
                         setShareConfig(prev => ({ ...prev, allowComments: !!checked }))
                       }
                     />
-                    <Label htmlFor="comments" className="text-sm">
+                    <Label htmlFor="comments" className="text-sm md:text-base lg:text-lg">
                       Allow comments
                     </Label>
                   </div>
@@ -458,7 +484,7 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
                         setShareConfig(prev => ({ ...prev, allowDownload: !!checked }))
                       }
                     />
-                    <Label htmlFor="download" className="text-sm">
+                    <Label htmlFor="download" className="text-sm md:text-base lg:text-lg">
                       Allow download
                     </Label>
                   </div>
@@ -466,16 +492,16 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
               </div>
 
               <div className="flex gap-2 pt-2">
-                <Button 
+                <button 
                   onClick={handleShare} 
                   disabled={isSharing}
                   className="flex-1"
-                >
+                 aria-label="Button">
                   {isSharing ? 'Creating Link...' : 'Create Share Link'}
                 </Button>
-                <Button 
+                <button 
                   variant="outline" 
-                  onClick={() => setShareDialogOpen(false)}
+                  onClick={() = aria-label="Button"> setShareDialogOpen(false)}
                 >
                   Cancel
                 </Button>
@@ -488,49 +514,48 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
                   <div className="space-y-2">
                     <Label>Share Link</Label>
                     <div className="flex gap-2">
-                      <Input
+                      <input
                         value={shareUrl}
                         readOnly
-                        className="font-mono text-sm"
-                      />
-                      <Button
+                        className="font-mono text-sm md:text-base lg:text-lg" />
+                      <button
                         variant="outline"
                         size="sm"
-                        onClick={() => copyToClipboard(shareUrl)}
+                        onClick={() = aria-label="Button"> copyToClipboard(shareUrl)}
                       >
-                        <Copy className="h-4 w-4" />
+                        <Copy className="h-4 w-4 sm:w-auto md:w-full" />
                       </Button>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <Button
+                    <button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
+                      onClick={() = aria-label="Button"> {
                         const subject = `Shared Conversation: ${thread.title}`;
                         const body = `I've shared a conversation with you: ${shareUrl}`;
                         window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
                       }}
                     >
-                      <Mail className="h-4 w-4 mr-2" />
+                      <Mail className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                       Email
                     </Button>
                     
-                    <Button
+                    <button
                       variant="outline"
                       size="sm"
-                      onClick={() => copyToClipboard(shareUrl)}
+                      onClick={() = aria-label="Button"> copyToClipboard(shareUrl)}
                     >
-                      <Link className="h-4 w-4 mr-2" />
+                      <Link className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                       Copy Link
                     </Button>
                   </div>
 
                   <Card>
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Shield className="h-4 w-4" />
+                    <CardContent className="p-3 sm:p-4 md:p-6">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground md:text-base lg:text-lg">
+                        <Shield className="h-4 w-4 sm:w-auto md:w-full" />
                         <span>
                           {shareConfig.type === 'public' ? 'Anyone with this link can view the conversation' :
                            shareConfig.type === 'team' ? 'Only team members can access this link' :
@@ -538,8 +563,8 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
                         </span>
                       </div>
                       {shareConfig.expiresAt && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                          <Calendar className="h-4 w-4" />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
+                          <Calendar className="h-4 w-4 sm:w-auto md:w-full" />
                           <span>Expires {format(shareConfig.expiresAt, 'MMM dd, yyyy')}</span>
                         </div>
                       )}

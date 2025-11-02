@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+
 import { AlertTriangle, RefreshCw, Home, Wifi, WifiOff, Database, Server, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,7 +34,7 @@ export function ErrorFallback({
       <Card className="w-full max-w-md border-destructive/50">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <AlertTriangle className="h-12 w-12 text-destructive" />
+            <AlertTriangle className="h-12 w-12 text-destructive sm:w-auto md:w-full" />
           </div>
           <CardTitle className="text-xl font-semibold">
             Something went wrong
@@ -51,9 +51,9 @@ export function ErrorFallback({
         <CardContent className="space-y-4">
           {error && (
             <Alert>
-              <Bug className="h-4 w-4" />
+              <Bug className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertTitle>Error Details</AlertTitle>
-              <AlertDescription className="text-sm">
+              <AlertDescription className="text-sm md:text-base lg:text-lg">
                 {error.message}
               </AlertDescription>
             </Alert>
@@ -61,20 +61,20 @@ export function ErrorFallback({
           
           <div className="flex gap-2">
             {canRetry && onRetry && (
-              <Button onClick={onRetry} className="flex-1">
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <button onClick={onRetry} className="flex-1" aria-label="Button">
+                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Try Again
               </Button>
             )}
             {onReload && (
-              <Button variant="outline" onClick={onReload} className="flex-1">
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <button variant="outline" onClick={onReload} className="flex-1" aria-label="Button">
+                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Reload
               </Button>
             )}
             {onGoHome && (
-              <Button variant="outline" onClick={onGoHome} className="flex-1">
-                <Home className="h-4 w-4 mr-2" />
+              <button variant="outline" onClick={onGoHome} className="flex-1" aria-label="Button">
+                <Home className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Home
               </Button>
             )}
@@ -99,7 +99,7 @@ export function NetworkErrorFallback({
       <Card className="w-full max-w-md border-orange-500/50">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <WifiOff className="h-12 w-12 text-orange-500" />
+            <WifiOff className="h-12 w-12 text-orange-500 sm:w-auto md:w-full" />
           </div>
           <CardTitle className="text-xl font-semibold">
             Connection Error
@@ -110,23 +110,23 @@ export function NetworkErrorFallback({
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
-            <Wifi className="h-4 w-4" />
+            <Wifi className="h-4 w-4 sm:w-auto md:w-full" />
             <AlertTitle>Network Issue</AlertTitle>
-            <AlertDescription className="text-sm">
+            <AlertDescription className="text-sm md:text-base lg:text-lg">
               This could be due to a temporary network issue or server maintenance.
             </AlertDescription>
           </Alert>
           
           <div className="flex gap-2">
             {canRetry && onRetry && (
-              <Button onClick={onRetry} className="flex-1">
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <button onClick={onRetry} className="flex-1" aria-label="Button">
+                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Try Again
               </Button>
             )}
             {onReload && (
-              <Button variant="outline" onClick={onReload} className="flex-1">
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <button variant="outline" onClick={onReload} className="flex-1" aria-label="Button">
+                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Reload Page
               </Button>
             )}
@@ -152,7 +152,7 @@ export function ServerErrorFallback({
       <Card className="w-full max-w-md border-red-500/50">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Server className="h-12 w-12 text-red-500" />
+            <Server className="h-12 w-12 text-red-500 sm:w-auto md:w-full" />
           </div>
           <CardTitle className="text-xl font-semibold">
             Server Error
@@ -168,23 +168,23 @@ export function ServerErrorFallback({
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
-            <Server className="h-4 w-4" />
+            <Server className="h-4 w-4 sm:w-auto md:w-full" />
             <AlertTitle>Server Issue</AlertTitle>
-            <AlertDescription className="text-sm">
+            <AlertDescription className="text-sm md:text-base lg:text-lg">
               This is likely a temporary issue. Please try again in a few moments.
             </AlertDescription>
           </Alert>
           
           <div className="flex gap-2">
             {canRetry && onRetry && (
-              <Button onClick={onRetry} className="flex-1">
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <button onClick={onRetry} className="flex-1" aria-label="Button">
+                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Try Again
               </Button>
             )}
             {onReload && (
-              <Button variant="outline" onClick={onReload} className="flex-1">
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <button variant="outline" onClick={onReload} className="flex-1" aria-label="Button">
+                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Reload Page
               </Button>
             )}
@@ -210,7 +210,7 @@ export function DatabaseErrorFallback({
       <Card className="w-full max-w-md border-yellow-500/50">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Database className="h-12 w-12 text-yellow-500" />
+            <Database className="h-12 w-12 text-yellow-500 sm:w-auto md:w-full" />
           </div>
           <CardTitle className="text-xl font-semibold">
             Data Error
@@ -226,23 +226,23 @@ export function DatabaseErrorFallback({
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
-            <Database className="h-4 w-4" />
+            <Database className="h-4 w-4 sm:w-auto md:w-full" />
             <AlertTitle>Data Loading Issue</AlertTitle>
-            <AlertDescription className="text-sm">
+            <AlertDescription className="text-sm md:text-base lg:text-lg">
               We're having trouble accessing the data. Please try again.
             </AlertDescription>
           </Alert>
           
           <div className="flex gap-2">
             {canRetry && onRetry && (
-              <Button onClick={onRetry} className="flex-1">
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <button onClick={onRetry} className="flex-1" aria-label="Button">
+                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Retry
               </Button>
             )}
             {onReload && (
-              <Button variant="outline" onClick={onReload} className="flex-1">
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <button variant="outline" onClick={onReload} className="flex-1" aria-label="Button">
+                <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Refresh
               </Button>
             )}
@@ -265,20 +265,20 @@ export function CompactErrorFallback({
   return (
     <div className={`p-4 border border-destructive/50 rounded-lg bg-destructive/5 ${className || ''}`}>
       <div className="flex items-center space-x-3">
-        <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-destructive">
+        <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 sm:w-auto md:w-full" />
+        <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+          <div className="text-sm font-medium text-destructive md:text-base lg:text-lg">
             Error occurred
           </div>
           {error && (
-            <div className="text-xs text-muted-foreground truncate">
+            <div className="text-xs text-muted-foreground truncate sm:text-sm md:text-base">
               {error.message}
             </div>
           )}
         </div>
         {canRetry && onRetry && (
-          <Button size="sm" variant="outline" onClick={onRetry}>
-            <RefreshCw className="h-3 w-3" />
+          <button size="sm" variant="outline" onClick={onRetry} aria-label="Button">
+            <RefreshCw className="h-3 w-3 sm:w-auto md:w-full" />
           </Button>
         )}
       </div>
@@ -297,15 +297,15 @@ export function InlineErrorFallback({
 }: ErrorFallbackProps) {
   return (
     <div className={`flex items-center space-x-2 text-sm ${className || ''}`}>
-      <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+      <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 sm:w-auto md:w-full" />
       <span className="text-destructive flex-1">
         {error?.message || 'An error occurred'}
       </span>
       {canRetry && onRetry && (
         <button
           onClick={onRetry}
-          className="text-xs text-primary hover:text-primary/80 underline"
-        >
+          className="text-xs text-primary hover:text-primary/80 underline sm:text-sm md:text-base"
+         aria-label="Button">
           Retry
         </button>
       )}
@@ -324,17 +324,17 @@ export function LoadingErrorFallback({
   return (
     <div className={`space-y-3 ${className || ''}`}>
       <div className="animate-pulse">
-        <div className="h-4 bg-muted rounded w-3/4"></div>
-        <div className="h-4 bg-muted rounded w-1/2 mt-2"></div>
+        <div className="h-4 bg-muted rounded w-3/4 sm:w-auto md:w-full"></div>
+        <div className="h-4 bg-muted rounded w-1/2 mt-2 sm:w-auto md:w-full"></div>
       </div>
-      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-        <AlertTriangle className="h-4 w-4" />
+      <div className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg">
+        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
         <span>Failed to load content</span>
         {canRetry && onRetry && (
           <button
             onClick={onRetry}
             className="text-primary hover:text-primary/80 underline ml-2"
-          >
+           aria-label="Button">
             Retry
           </button>
         )}

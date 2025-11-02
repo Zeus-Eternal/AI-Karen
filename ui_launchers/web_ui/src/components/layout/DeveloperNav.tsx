@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,7 @@ export default function DeveloperNav({ className }: DeveloperNavProps) {
     <nav className={cn("space-y-2", className)}>
       <div className="px-3 py-2">
         <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight flex items-center gap-2">
-          <Zap className="h-5 w-5 text-blue-500" />
+          <Zap className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />
           Developer Tools
         </h2>
         <div className="space-y-1">
@@ -83,15 +83,15 @@ export default function DeveloperNav({ className }: DeveloperNavProps) {
             
             return (
               <Link key={item.href} href={item.href}>
-                <Button
+                <button
                   variant={isActive ? "secondary" : "ghost"}
                   className={cn(
                     "w-full justify-start h-auto p-3",
                     isActive && "bg-secondary"
                   )}
-                >
+                 aria-label="Button">
                   <div className="flex items-center gap-3 w-full">
-                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <Icon className="h-4 w-4 flex-shrink-0 sm:w-auto md:w-full" />
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{item.label}</span>
@@ -101,13 +101,13 @@ export default function DeveloperNav({ className }: DeveloperNavProps) {
                                    item.badge === "Live" ? "destructive" :
                                    item.badge === "Beta" ? "secondary" :
                                    "outline"}
-                            className="text-xs"
+                            className="text-xs sm:text-sm md:text-base"
                           >
                             {item.badge}
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                         {item.description}
                       </p>
                     </div>
@@ -122,10 +122,10 @@ export default function DeveloperNav({ className }: DeveloperNavProps) {
       <div className="px-3 py-2">
         <div className="px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 rounded-lg border">
           <div className="flex items-center gap-2 mb-1">
-            <Brain className="h-4 w-4 text-purple-500" />
-            <span className="text-sm font-medium">AI Assistant</span>
+            <Brain className="h-4 w-4 text-purple-500 sm:w-auto md:w-full" />
+            <span className="text-sm font-medium md:text-base lg:text-lg">AI Assistant</span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
             Ask me about component optimization, code generation, or system health.
           </p>
         </div>

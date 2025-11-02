@@ -9,12 +9,10 @@
  * - Automatic retry logic with exponential backoff
  * - Request/response logging and monitoring
  */
-
 import { getApiClient, type ApiResponse, type ApiError } from './api-client';
 import { safeError } from './safe-console';
 import { getConfigManager } from './endpoint-config';
 import { useToast } from '@/hooks/use-toast';
-
 export interface UnifiedApiClientConfig {
   enableFallback: boolean;
   maxRetries: number;
@@ -22,7 +20,6 @@ export interface UnifiedApiClientConfig {
   timeout: number;
   enableLogging: boolean;
 }
-
 export interface ConsolidatedEndpoints {
   copilotAssist: string;
   memorySearch: string;
@@ -30,7 +27,6 @@ export interface ConsolidatedEndpoints {
   memoryUpdate: string;
   memoryDelete: string;
 }
-
 export interface CopilotAssistRequest {
   user_id: string;
   org_id?: string;
@@ -39,7 +35,6 @@ export interface CopilotAssistRequest {
   context?: Record<string, any>;
   stream?: boolean;
 }
-
 export interface CopilotAssistResponse {
   answer: string;
   context: Array<{
@@ -62,7 +57,6 @@ export interface CopilotAssistResponse {
   };
   correlation_id: string;
 }
-
 export interface MemorySearchRequest {
   user_id: string;
   org_id?: string;
@@ -72,7 +66,6 @@ export interface MemorySearchRequest {
   time_range?: [string, string];
   similarity_threshold?: number;
 }
-
 export interface MemorySearchResponse {
   hits: Array<{
     id: string;
@@ -89,7 +82,6 @@ export interface MemorySearchResponse {
   query_time_ms: number;
   correlation_id: string;
 }
-
 export interface MemoryCommitRequest {
   user_id: string;
   org_id?: string;
@@ -99,7 +91,6 @@ export interface MemoryCommitRequest {
   decay?: 'short' | 'medium' | 'long' | 'pinned';
   metadata?: Record<string, any>;
 }
-
 export interface MemoryCommitResponse {
   id: string;
   status: 'created' | 'updated';
@@ -107,7 +98,6 @@ export interface MemoryCommitResponse {
   decay_tier_assigned: string;
   correlation_id: string;
 }
-
 /**
  * Unified API Client for consolidated endpoints
  */
@@ -116,7 +106,6 @@ export class UnifiedApiClient {
   private configManager = getConfigManager();
   private config: UnifiedApiClientConfig;
   private endpoints: ConsolidatedEndpoints;
-
   constructor(config?: Partial<UnifiedApiClientConfig>) {
     this.config = {
       enableFallback: true,
@@ -126,7 +115,6 @@ export class UnifiedApiClient {
       enableLogging: true,
       ...config
     };
-
     this.endpoints = {
       copilotAssist: '/copilot/assist',
       memorySearch: '/memory/search',
@@ -135,13 +123,11 @@ export class UnifiedApiClient {
       memoryDelete: '/memory/delete'
     };
   }
-
   /**
    * Copilot Assist - Primary AI interaction endpoint
    */
   async copilotAssist(request: CopilotAssistRequest): Promise<CopilotAssistResponse> {
     this.validateRequest(request, ['user_id', 'message']);
-
     try {
       const response = await this.apiClient.post<CopilotAssistResponse>(
         this.endpoints.copilotAssist,
@@ -152,7 +138,6 @@ export class UnifiedApiClient {
           stream: request.stream || false
         }
       );
-
       this.logSuccess('copilot_assist', 0);
       return response;
     } catch (error) {
@@ -160,13 +145,11 @@ export class UnifiedApiClient {
       throw this.createUserFriendlyError(error, 'Failed to get AI assistance');
     }
   }
-
   /**
    * Memory Search - Unified memory query endpoint
    */
   async memorySearch(request: MemorySearchRequest): Promise<MemorySearchResponse> {
     this.validateRequest(request, ['user_id', 'query']);
-
     try {
       const response = await this.apiClient.post<MemorySearchResponse>(
         this.endpoints.memorySearch,
@@ -176,7 +159,6 @@ export class UnifiedApiClient {
           similarity_threshold: request.similarity_threshold || 0.6
         }
       );
-
       this.logSuccess('memory_search', 0);
       return response;
     } catch (error) {
@@ -184,13 +166,11 @@ export class UnifiedApiClient {
       throw this.createUserFriendlyError(error, 'Failed to search memories');
     }
   }
-
   /**
    * Memory Commit - Unified memory storage endpoint
    */
   async memoryCommit(request: MemoryCommitRequest): Promise<MemoryCommitResponse> {
     this.validateRequest(request, ['user_id', 'text']);
-
     try {
       const response = await this.apiClient.post<MemoryCommitResponse>(
         this.endpoints.memoryCommit,
@@ -202,7 +182,6 @@ export class UnifiedApiClient {
           metadata: request.metadata || {}
         }
       );
-
       this.logSuccess('memory_commit', 0);
       return response;
     } catch (error) {
@@ -210,7 +189,6 @@ export class UnifiedApiClient {
       throw this.createUserFriendlyError(error, 'Failed to store memory');
     }
   }
-
   /**
    * Memory Update - Update existing memory
    */
@@ -221,13 +199,11 @@ export class UnifiedApiClient {
     if (!memoryId) {
       throw new Error('Memory ID is required for updates');
     }
-
     try {
       const response = await this.apiClient.put<MemoryCommitResponse>(
         `${this.endpoints.memoryUpdate}/${memoryId}`,
         updates
       );
-
       this.logSuccess('memory_update', 0);
       return response;
     } catch (error) {
@@ -235,7 +211,6 @@ export class UnifiedApiClient {
       throw this.createUserFriendlyError(error, 'Failed to update memory');
     }
   }
-
   /**
    * Memory Delete - Remove memory
    */
@@ -250,14 +225,11 @@ export class UnifiedApiClient {
     if (!memoryId) {
       throw new Error('Memory ID is required for deletion');
     }
-
     this.validateRequest(options, ['user_id']);
-
     try {
       const response = await this.apiClient.delete<{ success: boolean; correlation_id: string }>(
         `${this.endpoints.memoryDelete}/${memoryId}`
       );
-
       this.logSuccess('memory_delete', 0);
       return response;
     } catch (error) {
@@ -265,7 +237,6 @@ export class UnifiedApiClient {
       throw this.createUserFriendlyError(error, 'Failed to delete memory');
     }
   }
-
   /**
    * Batch Memory Operations - Handle multiple memory operations
    */
@@ -274,7 +245,6 @@ export class UnifiedApiClient {
     data: any;
   }>): Promise<Array<{ success: boolean; result?: any; error?: string }>> {
     const results = [];
-
     for (const operation of operations) {
       try {
         let result;
@@ -294,7 +264,6 @@ export class UnifiedApiClient {
           default:
             throw new Error(`Unknown operation type: ${operation.type}`);
         }
-        
         results.push({ success: true, result });
       } catch (error) {
         results.push({ 
@@ -303,10 +272,8 @@ export class UnifiedApiClient {
         });
       }
     }
-
     return results;
   }
-
   /**
    * Health Check - Test endpoint connectivity
    */
@@ -320,7 +287,6 @@ export class UnifiedApiClient {
         const startTime = Date.now();
         await this.apiClient.get(`${endpoint}/health`);
         const responseTime = Date.now() - startTime;
-        
         return {
           name,
           available: true,
@@ -334,7 +300,6 @@ export class UnifiedApiClient {
         };
       }
     });
-
     const results = await Promise.all(endpointTests);
     const endpointStatus = results.reduce((acc, result) => {
       acc[result.name] = {
@@ -344,10 +309,8 @@ export class UnifiedApiClient {
       };
       return acc;
     }, {} as Record<string, any>);
-
     const availableCount = results.filter(r => r.available).length;
     const totalCount = results.length;
-    
     let status: 'healthy' | 'degraded' | 'unhealthy';
     if (availableCount === totalCount) {
       status = 'healthy';
@@ -356,42 +319,36 @@ export class UnifiedApiClient {
     } else {
       status = 'unhealthy';
     }
-
     return {
       status,
       endpoints: endpointStatus,
       timestamp: new Date().toISOString()
     };
   }
-
   /**
    * Get endpoint statistics
    */
   getEndpointStats() {
     return this.apiClient.getEndpointStats();
   }
-
   /**
    * Clear caches and reset statistics
    */
   clearCaches(): void {
     this.apiClient.clearCaches();
   }
-
   /**
    * Update configuration
    */
   updateConfig(config: Partial<UnifiedApiClientConfig>): void {
     this.config = { ...this.config, ...config };
   }
-
   /**
    * Get current configuration
    */
   getConfig(): UnifiedApiClientConfig {
     return { ...this.config };
   }
-
   /**
    * Validate request parameters
    */
@@ -402,7 +359,6 @@ export class UnifiedApiClient {
       }
     }
   }
-
   /**
    * Create user-friendly error messages
    */
@@ -412,45 +368,35 @@ export class UnifiedApiClient {
       if (error.message.includes('timeout')) {
         return new Error('Request timed out. Please check your connection and try again.');
       }
-      
       if (error.message.includes('CORS')) {
         return new Error('Connection blocked by browser security. Please check your network settings.');
       }
-      
       if (error.message.includes('404')) {
         return new Error('Service endpoint not found. The feature may not be available.');
       }
-      
       if (error.message.includes('401') || error.message.includes('403')) {
         return new Error('Authentication required. Please log in and try again.');
       }
-      
       if (error.message.includes('429')) {
         return new Error('Too many requests. Please wait a moment and try again.');
       }
-      
       if (error.message.includes('500')) {
         return new Error('Server error. Please try again later.');
       }
-      
       // Return original error message if it's already user-friendly
       if (error.message.length < 100 && !error.message.includes('fetch')) {
         return error;
       }
     }
-    
     return new Error(defaultMessage);
   }
-
   /**
    * Log successful operations
    */
   private logSuccess(operation: string, responseTime: number): void {
     if (this.config.enableLogging) {
-      console.log(`✅ ${operation} completed in ${responseTime}ms`);
     }
   }
-
   /**
    * Log errors
    */
@@ -460,10 +406,8 @@ export class UnifiedApiClient {
     }
   }
 }
-
 // Global instance
 let unifiedApiClient: UnifiedApiClient | null = null;
-
 /**
  * Get the global unified API client instance
  */
@@ -473,7 +417,6 @@ export function getUnifiedApiClient(): UnifiedApiClient {
   }
   return unifiedApiClient;
 }
-
 /**
  * Initialize unified API client with custom configuration
  */
@@ -481,5 +424,4 @@ export function initializeUnifiedApiClient(config?: Partial<UnifiedApiClientConf
   unifiedApiClient = new UnifiedApiClient(config);
   return unifiedApiClient;
 }
-
 // Types are already exported via export interface declarations above

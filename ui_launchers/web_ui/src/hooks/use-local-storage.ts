@@ -1,7 +1,5 @@
 "use client"
-
 import { useState, useEffect, useCallback } from "react"
-
 /**
  * Hook for managing localStorage with React state synchronization
  * 
@@ -18,30 +16,24 @@ export function useLocalStorage<T>(
     if (typeof window === "undefined") {
       return initialValue
     }
-
     try {
       const item = window.localStorage.getItem(key)
       return item ? JSON.parse(item) : initialValue
     } catch (error) {
-      console.warn(`Error reading localStorage key "${key}":`, error)
       return initialValue
     }
   })
-
   // Return a wrapped version of useState's setter function that persists the new value to localStorage
   const setValue = useCallback(
     (value: T | ((prev: T) => T)) => {
       try {
         // Allow value to be a function so we have the same API as useState
         const valueToStore = value instanceof Function ? value(storedValue) : value
-        
         // Save state
         setStoredValue(valueToStore)
-        
         // Save to localStorage
         if (typeof window !== "undefined") {
           window.localStorage.setItem(key, JSON.stringify(valueToStore))
-          
           // Dispatch custom event to sync across tabs/components
           window.dispatchEvent(
             new CustomEvent("localStorage", {
@@ -50,19 +42,16 @@ export function useLocalStorage<T>(
           )
         }
       } catch (error) {
-        console.warn(`Error setting localStorage key "${key}":`, error)
       }
     },
     [key, storedValue]
   )
-
   // Function to remove the value from localStorage
   const removeValue = useCallback(() => {
     try {
       setStoredValue(initialValue)
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(key)
-        
         // Dispatch custom event to sync across tabs/components
         window.dispatchEvent(
           new CustomEvent("localStorage", {
@@ -71,45 +60,36 @@ export function useLocalStorage<T>(
         )
       }
     } catch (error) {
-      console.warn(`Error removing localStorage key "${key}":`, error)
     }
   }, [key, initialValue])
-
   // Listen for changes in localStorage from other tabs/windows
   useEffect(() => {
     if (typeof window === "undefined") {
       return
     }
-
     const handleStorageChange = (e: StorageEvent | CustomEvent) => {
       if ("key" in e && e.key === key) {
         try {
           const newValue = e.newValue ? JSON.parse(e.newValue) : initialValue
           setStoredValue(newValue)
         } catch (error) {
-          console.warn(`Error parsing localStorage value for key "${key}":`, error)
         }
       } else if ("detail" in e && e.detail?.key === key) {
         // Handle custom event for same-tab synchronization
         setStoredValue(e.detail.value ?? initialValue)
       }
     }
-
     // Listen for storage events (cross-tab)
     window.addEventListener("storage", handleStorageChange)
-    
     // Listen for custom events (same-tab)
     window.addEventListener("localStorage", handleStorageChange as EventListener)
-
     return () => {
       window.removeEventListener("storage", handleStorageChange)
       window.removeEventListener("localStorage", handleStorageChange as EventListener)
     }
   }, [key, initialValue])
-
   return [storedValue, setValue, removeValue]
 }
-
 /**
  * Hook for managing sessionStorage with React state synchronization
  * 
@@ -125,32 +105,26 @@ export function useSessionStorage<T>(
     if (typeof window === "undefined") {
       return initialValue
     }
-
     try {
       const item = window.sessionStorage.getItem(key)
       return item ? JSON.parse(item) : initialValue
     } catch (error) {
-      console.warn(`Error reading sessionStorage key "${key}":`, error)
       return initialValue
     }
   })
-
   const setValue = useCallback(
     (value: T | ((prev: T) => T)) => {
       try {
         const valueToStore = value instanceof Function ? value(storedValue) : value
         setStoredValue(valueToStore)
-        
         if (typeof window !== "undefined") {
           window.sessionStorage.setItem(key, JSON.stringify(valueToStore))
         }
       } catch (error) {
-        console.warn(`Error setting sessionStorage key "${key}":`, error)
       }
     },
     [key, storedValue]
   )
-
   const removeValue = useCallback(() => {
     try {
       setStoredValue(initialValue)
@@ -158,13 +132,10 @@ export function useSessionStorage<T>(
         window.sessionStorage.removeItem(key)
       }
     } catch (error) {
-      console.warn(`Error removing sessionStorage key "${key}":`, error)
     }
   }, [key, initialValue])
-
   return [storedValue, setValue, removeValue]
 }
-
 /**
  * Hook for managing persistent UI state with localStorage
  * Provides common UI state management patterns
@@ -176,7 +147,6 @@ export function usePersistentUIState() {
   const [reducedMotion, setReducedMotion] = useLocalStorage("ui:reduced-motion", false)
   const [highContrast, setHighContrast] = useLocalStorage("ui:high-contrast", false)
   const [fontSize, setFontSize] = useLocalStorage<"sm" | "md" | "lg">("ui:font-size", "md")
-
   return {
     sidebar: {
       collapsed: sidebarCollapsed,
@@ -200,7 +170,6 @@ export function usePersistentUIState() {
     },
   }
 }
-
 /**
  * Hook for managing form state persistence
  * Useful for preserving form data across page refreshes
@@ -215,29 +184,24 @@ export function usePersistentForm<T extends Record<string, any>>(
 ) {
   const { clearOnSubmit = true, storage = "sessionStorage" } = options
   const storageKey = `form:${formId}`
-  
   const [values, setValues] = storage === "localStorage" 
     ? useLocalStorage(storageKey, initialValues)
     : useSessionStorage(storageKey, initialValues)
-
   const updateField = useCallback(
     (field: keyof T, value: T[keyof T]) => {
       setValues((prev) => ({ ...prev, [field]: value }))
     },
     [setValues]
   )
-
   const updateFields = useCallback(
     (updates: Partial<T>) => {
       setValues((prev) => ({ ...prev, ...updates }))
     },
     [setValues]
   )
-
   const resetForm = useCallback(() => {
     setValues(initialValues)
   }, [setValues, initialValues])
-
   const clearForm = useCallback(() => {
     if (storage === "localStorage") {
       const [, , removeValue] = useLocalStorage(storageKey, initialValues)
@@ -247,7 +211,6 @@ export function usePersistentForm<T extends Record<string, any>>(
       removeValue()
     }
   }, [storageKey, initialValues, storage])
-
   return {
     values,
     setValues,

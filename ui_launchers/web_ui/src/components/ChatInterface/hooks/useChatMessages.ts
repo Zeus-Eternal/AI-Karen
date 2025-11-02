@@ -8,7 +8,6 @@ import { getConfigManager } from "@/lib/endpoint-config";
 import { sanitizeInput } from "@/lib/utils";
 import { safeError, safeWarn, safeInfo, safeDebug } from "@/lib/safe-console";
 import { generateUUID } from "@/lib/uuid";
-import type { ChatRuntimeRequest as BackendChatRuntimeRequest } from "@/types/chat";
 import { ChatMessage, ChatSettings, CopilotArtifact } from "../types";
 
 export const useChatMessages = (

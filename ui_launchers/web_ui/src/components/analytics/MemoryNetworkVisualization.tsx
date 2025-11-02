@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { AgCharts } from 'ag-charts-react';
 import { AgChartOptions } from 'ag-charts-community';
@@ -25,7 +24,6 @@ import {
 import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-
 export interface MemoryNode {
   id: string;
   label: string;
@@ -37,21 +35,18 @@ export interface MemoryNode {
   x?: number;
   y?: number;
 }
-
 export interface MemoryEdge {
   from: string;
   to: string;
   weight: number;
   type?: 'relationship' | 'cluster' | 'semantic';
 }
-
 export interface MemoryNetworkData {
   nodes: MemoryNode[];
   edges: MemoryEdge[];
   clusters: string[];
   totalMemories: number;
 }
-
 interface MemoryNetworkVisualizationProps {
   data?: MemoryNetworkData;
   onNodeClick?: (node: MemoryNode) => void;
@@ -59,10 +54,8 @@ interface MemoryNetworkVisualizationProps {
   onRefresh?: () => Promise<void>;
   className?: string;
 }
-
 type LayoutType = 'force' | 'circular' | 'hierarchical' | 'grid';
 type FilterType = 'all' | 'high-confidence' | 'recent' | 'cluster';
-
 export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProps> = ({
   data,
   onNodeClick,
@@ -73,7 +66,6 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
   const { user } = useAuth();
   const { triggerHooks, registerChartHook } = useHooks();
   const { toast } = useToast();
-  
   const [layoutType, setLayoutType] = useState<LayoutType>('force');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [confidenceThreshold, setConfidenceThreshold] = useState([0.5]);
@@ -82,23 +74,18 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
   const [showEdges, setShowEdges] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
-  
   const chartRef = useRef<any>(null);
-
   // Process network data based on filters
   const processedData = useMemo(() => {
     if (!data) return { nodes: [], edges: [] };
-
     let filteredNodes = [...data.nodes];
     let filteredEdges = [...data.edges];
-
     // Apply confidence filter
     if (filterType === 'high-confidence') {
       filteredNodes = filteredNodes.filter(node => 
         node.type === 'cluster' || (node.confidence && node.confidence >= confidenceThreshold[0])
       );
     }
-
     // Apply cluster filter
     if (selectedClusters.length > 0) {
       filteredNodes = filteredNodes.filter(node =>
@@ -106,25 +93,20 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         node.cluster ? selectedClusters.includes(node.cluster) : false
       );
     }
-
     // Filter edges based on remaining nodes
     const nodeIds = new Set(filteredNodes.map(node => node.id));
     filteredEdges = filteredEdges.filter(edge =>
       nodeIds.has(edge.from) && nodeIds.has(edge.to)
     );
-
     return { nodes: filteredNodes, edges: filteredEdges };
   }, [data, filterType, confidenceThreshold, selectedClusters]);
-
   // Generate chart data for AG-Charts network visualization
   const chartData = useMemo(() => {
     const { nodes, edges } = processedData;
-    
     // Create scatter plot data for nodes
     const nodeData = nodes.map((node, index) => {
       // Calculate position based on layout type
       let x, y;
-      
       switch (layoutType) {
         case 'circular':
           const angle = (index / nodes.length) * 2 * Math.PI;
@@ -132,23 +114,19 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
           x = Math.cos(angle) * radius;
           y = Math.sin(angle) * radius;
           break;
-          
         case 'grid':
           const cols = Math.ceil(Math.sqrt(nodes.length));
           x = (index % cols) * 100;
           y = Math.floor(index / cols) * 100;
           break;
-          
         case 'hierarchical':
           x = node.type === 'cluster' ? index * 200 : (index % 3) * 100;
           y = node.type === 'cluster' ? 0 : 150;
           break;
-          
         default: // force layout
           x = node.x || Math.random() * 400;
           y = node.y || Math.random() * 400;
       }
-
       return {
         id: node.id,
         label: node.label,
@@ -161,10 +139,8 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         color: node.color || (node.type === 'cluster' ? '#3b82f6' : '#10b981')
       };
     });
-
     return nodeData;
   }, [processedData, layoutType]);
-
   // Chart options for network visualization
   const chartOptions: AgChartOptions = useMemo(() => {
     return {
@@ -228,33 +204,25 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
       legend: { enabled: false }
     } as AgChartOptions;
   }, [chartData, processedData, showLabels]);
-
   // Register network visualization hooks
   useEffect(() => {
     const hookIds: string[] = [];
-
     hookIds.push(registerChartHook('memoryNetwork', 'dataLoad', async (params) => {
-      console.log('Memory network data loaded:', params);
       return { success: true, nodeCount: processedData.nodes.length };
     }));
-
     hookIds.push(registerChartHook('memoryNetwork', 'nodeClick', async (params) => {
-      console.log('Memory network node clicked:', params);
       return { success: true, clickedNode: params };
     }));
-
     return () => {
       // Cleanup hooks
     };
   }, [registerChartHook, processedData.nodes.length]);
-
   // Handle chart ready event
   useEffect(() => {
     if (chartRef.current && processedData.nodes.length > 0) {
       handleChartReady();
     }
   }, [chartRef.current, processedData.nodes.length, processedData.edges.length]);
-
   // Handle chart events
   const handleChartReady = useCallback(async () => {
     await triggerHooks('chart_memoryNetwork_dataLoad', {
@@ -265,7 +233,6 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
       filterType
     }, { userId: user?.userId });
   }, [triggerHooks, processedData, layoutType, filterType, user?.userId]);
-
   const handleNodeClick = useCallback(async (event: any) => {
     const datum = event.datum;
     if (datum && onNodeClick) {
@@ -277,17 +244,14 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         cluster: datum.cluster
       };
       onNodeClick(node);
-      
       await triggerHooks('chart_memoryNetwork_nodeClick', {
         chartId: 'memoryNetwork',
         node: datum
       }, { userId: user?.userId });
     }
   }, [onNodeClick, triggerHooks, user?.userId]);
-
   const handleRefresh = useCallback(async () => {
     if (!onRefresh) return;
-    
     try {
       await onRefresh();
       toast({
@@ -302,20 +266,16 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
       });
     }
   }, [onRefresh, toast]);
-
   const handleZoomIn = () => {
     setZoomLevel(prev => Math.min(prev * 1.2, 3));
   };
-
   const handleZoomOut = () => {
     setZoomLevel(prev => Math.max(prev / 1.2, 0.3));
   };
-
   const handleResetView = () => {
     setZoomLevel(1);
     setLayoutType('force');
   };
-
   const ClusterBadge = ({ cluster, isSelected, onClick }: {
     cluster: string;
     isSelected: boolean;
@@ -329,45 +289,41 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
       {cluster.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
     </Badge>
   );
-
   return (
     <Card className={`w-full ${isFullscreen ? 'fixed inset-0 z-50' : ''} ${className}`}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <Network className="h-5 w-5" />
+            <Network className="h-5 w-5 sm:w-auto md:w-full" />
             Memory Network Visualization
           </CardTitle>
-          
           <div className="flex items-center gap-2">
-            <Button
+            <button
               variant="outline"
               size="sm"
-              onClick={() => setIsFullscreen(!isFullscreen)}
+              onClick={() = aria-label="Button"> setIsFullscreen(!isFullscreen)}
             >
-              <Maximize2 className="h-4 w-4" />
+              <Maximize2 className="h-4 w-4 sm:w-auto md:w-full" />
             </Button>
-            
-            <Button
+            <button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
+             aria-label="Button">
+              <RotateCcw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Refresh
             </Button>
           </div>
         </div>
-
         {/* Network Stats */}
         {data && (
           <div className="flex items-center gap-4 mt-4">
             <Badge variant="secondary">
-              <Brain className="h-3 w-3 mr-1" />
+              <Brain className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
               {data.totalMemories} Memories
             </Badge>
             <Badge variant="secondary">
-              <Network className="h-3 w-3 mr-1" />
+              <Network className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
               {processedData.nodes.length} Nodes
             </Badge>
             <Badge variant="secondary">
@@ -378,11 +334,10 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             </Badge>
           </div>
         )}
-
         {/* Cluster Filter */}
         {data && data.clusters.length > 0 && (
           <div className="mt-4">
-            <Label className="text-sm font-medium mb-2 block">Filter by Clusters:</Label>
+            <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">Filter by Clusters:</Label>
             <div className="flex flex-wrap gap-2">
               {data.clusters.map(cluster => (
                 <ClusterBadge
@@ -401,45 +356,42 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             </div>
           </div>
         )}
-
         {/* Controls */}
-        <div className="flex items-center justify-between mt-4 p-4 bg-muted/50 rounded-lg">
+        <div className="flex items-center justify-between mt-4 p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Label htmlFor="layout-select" className="text-sm">Layout:</Label>
-              <Select value={layoutType} onValueChange={(value) => setLayoutType(value as LayoutType)}>
-                <SelectTrigger className="w-32" id="layout-select">
-                  <SelectValue />
+              <Label htmlFor="layout-select" className="text-sm md:text-base lg:text-lg">Layout:</Label>
+              <select value={layoutType} onValueChange={(value) = aria-label="Select option"> setLayoutType(value as LayoutType)}>
+                <selectTrigger className="w-32 sm:w-auto md:w-full" id="layout-select" aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="force">Force</SelectItem>
-                  <SelectItem value="circular">Circular</SelectItem>
-                  <SelectItem value="hierarchical">Hierarchical</SelectItem>
-                  <SelectItem value="grid">Grid</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="force" aria-label="Select option">Force</SelectItem>
+                  <selectItem value="circular" aria-label="Select option">Circular</SelectItem>
+                  <selectItem value="hierarchical" aria-label="Select option">Hierarchical</SelectItem>
+                  <selectItem value="grid" aria-label="Select option">Grid</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
             <div className="flex items-center gap-2">
-              <Label htmlFor="filter-select" className="text-sm">Filter:</Label>
-              <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterType)}>
-                <SelectTrigger className="w-40" id="filter-select">
-                  <SelectValue />
+              <Label htmlFor="filter-select" className="text-sm md:text-base lg:text-lg">Filter:</Label>
+              <select value={filterType} onValueChange={(value) = aria-label="Select option"> setFilterType(value as FilterType)}>
+                <selectTrigger className="w-40 sm:w-auto md:w-full" id="filter-select" aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Memories</SelectItem>
-                  <SelectItem value="high-confidence">High Confidence</SelectItem>
-                  <SelectItem value="recent">Recent</SelectItem>
-                  <SelectItem value="cluster">By Cluster</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="all" aria-label="Select option">All Memories</SelectItem>
+                  <selectItem value="high-confidence" aria-label="Select option">High Confidence</SelectItem>
+                  <selectItem value="recent" aria-label="Select option">Recent</SelectItem>
+                  <selectItem value="cluster" aria-label="Select option">By Cluster</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Label htmlFor="confidence-slider" className="text-sm">Min Confidence:</Label>
-              <div className="w-24">
+              <Label htmlFor="confidence-slider" className="text-sm md:text-base lg:text-lg">Min Confidence:</Label>
+              <div className="w-24 sm:w-auto md:w-full">
                 <Slider
                   id="confidence-slider"
                   value={confidenceThreshold}
@@ -450,50 +402,46 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
                   className="w-full"
                 />
               </div>
-              <span className="text-xs text-muted-foreground w-8">
+              <span className="text-xs text-muted-foreground w-8 sm:w-auto md:w-full">
                 {Math.round(confidenceThreshold[0] * 100)}%
               </span>
             </div>
-
             <div className="flex items-center gap-2">
               <Switch
                 id="show-labels"
                 checked={showLabels}
                 onCheckedChange={setShowLabels}
               />
-              <Label htmlFor="show-labels" className="text-sm">Labels</Label>
+              <Label htmlFor="show-labels" className="text-sm md:text-base lg:text-lg">Labels</Label>
             </div>
-
             <div className="flex items-center gap-2">
               <Switch
                 id="show-edges"
                 checked={showEdges}
                 onCheckedChange={setShowEdges}
               />
-              <Label htmlFor="show-edges" className="text-sm">Edges</Label>
+              <Label htmlFor="show-edges" className="text-sm md:text-base lg:text-lg">Edges</Label>
             </div>
           </div>
         </div>
-
         {/* Zoom Controls */}
         <div className="flex items-center gap-2 mt-2">
-          <Button variant="outline" size="sm" onClick={handleZoomOut}>
-            <ZoomOut className="h-4 w-4" />
+          <button variant="outline" size="sm" onClick={handleZoomOut} aria-label="Button">
+            <ZoomOut className="h-4 w-4 sm:w-auto md:w-full" />
           </Button>
-          <span className="text-sm text-muted-foreground px-2">
+          <span className="text-sm text-muted-foreground px-2 md:text-base lg:text-lg">
             {Math.round(zoomLevel * 100)}%
           </span>
-          <Button variant="outline" size="sm" onClick={handleZoomIn}>
-            <ZoomIn className="h-4 w-4" />
+          <button variant="outline" size="sm" onClick={handleZoomIn} aria-label="Button">
+            <ZoomIn className="h-4 w-4 sm:w-auto md:w-full" />
           </Button>
-          <Button variant="outline" size="sm" onClick={handleResetView}>
-            <RotateCcw className="h-4 w-4 mr-2" />
+          <button variant="outline" size="sm" onClick={handleResetView} aria-label="Button">
+            <RotateCcw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Reset
           </Button>
         </div>
       </CardHeader>
-
-      <CardContent className="p-0">
+      <CardContent className="p-0 sm:p-4 md:p-6">
         <div 
           className={`w-full ${isFullscreen ? 'h-[calc(100vh-200px)]' : 'h-[600px]'}`}
           style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
@@ -503,22 +451,20 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             options={chartOptions}
           />
         </div>
-
         {/* Network Legend */}
-        <div className="p-4 border-t bg-muted/30">
+        <div className="p-4 border-t bg-muted/30 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-                <span className="text-sm">Clusters</span>
+                <div className="w-4 h-4 rounded-full bg-blue-500 sm:w-auto md:w-full"></div>
+                <span className="text-sm md:text-base lg:text-lg">Clusters</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                <span className="text-sm">Memories</span>
+                <div className="w-4 h-4 rounded-full bg-green-500 sm:w-auto md:w-full"></div>
+                <span className="text-sm md:text-base lg:text-lg">Memories</span>
               </div>
             </div>
-            
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
               Click nodes to explore • Drag to pan • Scroll to zoom
             </div>
           </div>

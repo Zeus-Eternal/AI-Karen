@@ -184,8 +184,8 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+      <div className="flex items-center justify-center p-8 sm:p-4 md:p-6">
+        <RefreshCw className="h-6 w-6 animate-spin mr-2 sm:w-auto md:w-full" />
         <span>Loading models...</span>
       </div>
     );
@@ -194,7 +194,7 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
   if (error) {
     return (
       <Alert className="m-4">
-        <XCircle className="h-4 w-4" />
+        <XCircle className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
@@ -210,11 +210,11 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
             Discovered models with integration status and capabilities
           </p>
         </div>
-        <Button 
+        <button 
           onClick={refreshModels} 
           disabled={refreshing}
           variant="outline"
-        >
+         aria-label="Button">
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
@@ -238,7 +238,7 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-lg">{model.display_name}</CardTitle>
-                    <CardDescription className="text-sm">
+                    <CardDescription className="text-sm md:text-base lg:text-lg">
                       {model.type} • {formatFileSize(model.size)}
                     </CardDescription>
                   </div>
@@ -247,7 +247,7 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                       className={`h-5 w-5 ${status ? getStatusColor(status) : 'text-gray-500'}`} 
                     />
                     {status?.routing_enabled && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                         Active
                       </Badge>
                     )}
@@ -258,13 +258,13 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
               <CardContent className="space-y-4">
                 {/* Modalities */}
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Modalities</h4>
+                  <h4 className="text-sm font-medium mb-2 md:text-base lg:text-lg">Modalities</h4>
                   <div className="flex flex-wrap gap-1">
                     {model.modalities.map((modality) => {
                       const Icon = modalityIcons[modality.type as keyof typeof modalityIcons];
                       return (
-                        <Badge key={modality.type} variant="outline" className="text-xs">
-                          {Icon && <Icon className="h-3 w-3 mr-1" />}
+                        <Badge key={modality.type} variant="outline" className="text-xs sm:text-sm md:text-base">
+                          {Icon && <Icon className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
                           {modality.type}
                         </Badge>
                       );
@@ -274,19 +274,19 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
 
                 {/* Capabilities */}
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Capabilities</h4>
+                  <h4 className="text-sm font-medium mb-2 md:text-base lg:text-lg">Capabilities</h4>
                   <div className="flex flex-wrap gap-1">
                     {model.capabilities.slice(0, 3).map((capability) => {
                       const Icon = capabilityIcons[capability as keyof typeof capabilityIcons];
                       return (
-                        <Badge key={capability} variant="secondary" className="text-xs">
-                          {Icon && <Icon className="h-3 w-3 mr-1" />}
+                        <Badge key={capability} variant="secondary" className="text-xs sm:text-sm md:text-base">
+                          {Icon && <Icon className="h-3 w-3 mr-1 sm:w-auto md:w-full" />}
                           {capability}
                         </Badge>
                       );
                     })}
                     {model.capabilities.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                         +{model.capabilities.length - 3} more
                       </Badge>
                     )}
@@ -295,18 +295,18 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
 
                 {/* Resource Requirements */}
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Resource Requirements</h4>
+                  <h4 className="text-sm font-medium md:text-base lg:text-lg">Resource Requirements</h4>
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center justify-between text-xs sm:text-sm md:text-base">
                       <span className="flex items-center">
-                        <HardDrive className="h-3 w-3 mr-1" />
+                        <HardDrive className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                         Memory
                       </span>
                       <span>{Math.round(model.requirements.memory_mb)} MB</span>
                     </div>
-                    <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center justify-between text-xs sm:text-sm md:text-base">
                       <span className="flex items-center">
-                        <Cpu className="h-3 w-3 mr-1" />
+                        <Cpu className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                         Context
                       </span>
                       <span>{model.metadata.context_length.toLocaleString()}</span>
@@ -317,13 +317,13 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                 {/* Performance Metrics */}
                 {model.performance_metrics && (
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium">Performance</h4>
+                    <h4 className="text-sm font-medium md:text-base lg:text-lg">Performance</h4>
                     <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center justify-between text-xs sm:text-sm md:text-base">
                         <span>Response Time</span>
                         <span>{Math.round(model.performance_metrics.avg_response_time_ms)}ms</span>
                       </div>
-                      <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center justify-between text-xs sm:text-sm md:text-base">
                         <span>Success Rate</span>
                         <span>{Math.round(model.performance_metrics.success_rate * 100)}%</span>
                       </div>
@@ -335,11 +335,11 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                 {status && (
                   <div className="pt-2 border-t">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Integration Status</span>
-                      <Button
+                      <span className="text-xs text-muted-foreground sm:text-sm md:text-base">Integration Status</span>
+                      <button
                         size="sm"
                         variant={status.routing_enabled ? "destructive" : "default"}
-                        onClick={(e) => {
+                        onClick={(e) = aria-label="Button"> {
                           e.stopPropagation();
                           toggleModelRouting(model.id, !status.routing_enabled);
                         }}
@@ -349,7 +349,7 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                       </Button>
                     </div>
                     {status.error_message && (
-                      <p className="text-xs text-red-500 mt-1">{status.error_message}</p>
+                      <p className="text-xs text-red-500 mt-1 sm:text-sm md:text-base">{status.error_message}</p>
                     )}
                   </div>
                 )}
@@ -383,7 +383,7 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <h4 className="font-medium mb-2">Basic Information</h4>
-                        <dl className="space-y-1 text-sm">
+                        <dl className="space-y-1 text-sm md:text-base lg:text-lg">
                           <div className="flex justify-between">
                             <dt>Name:</dt>
                             <dd>{model.display_name}</dd>
@@ -404,7 +404,7 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                       </div>
                       <div>
                         <h4 className="font-medium mb-2">Specifications</h4>
-                        <dl className="space-y-1 text-sm">
+                        <dl className="space-y-1 text-sm md:text-base lg:text-lg">
                           <div className="flex justify-between">
                             <dt>Size:</dt>
                             <dd>{formatFileSize(model.size)}</dd>
@@ -426,7 +426,7 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                     </div>
                     <div>
                       <h4 className="font-medium mb-2">Description</h4>
-                      <p className="text-sm text-muted-foreground">{model.metadata.description}</p>
+                      <p className="text-sm text-muted-foreground md:text-base lg:text-lg">{model.metadata.description}</p>
                     </div>
                   </TabsContent>
 
@@ -438,9 +438,9 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                           {model.modalities.map((modality) => {
                             const Icon = modalityIcons[modality.type as keyof typeof modalityIcons];
                             return (
-                              <div key={modality.type} className="flex items-center justify-between p-2 border rounded">
+                              <div key={modality.type} className="flex items-center justify-between p-2 border rounded sm:p-4 md:p-6">
                                 <div className="flex items-center">
-                                  {Icon && <Icon className="h-4 w-4 mr-2" />}
+                                  {Icon && <Icon className="h-4 w-4 mr-2 sm:w-auto md:w-full" />}
                                   <span className="font-medium">{modality.type}</span>
                                 </div>
                                 <div className="flex space-x-2">
@@ -484,14 +484,14 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                           <h4 className="font-medium mb-2">Response Metrics</h4>
                           <div className="space-y-3">
                             <div>
-                              <div className="flex justify-between text-sm mb-1">
+                              <div className="flex justify-between text-sm mb-1 md:text-base lg:text-lg">
                                 <span>Average Response Time</span>
                                 <span>{Math.round(model.performance_metrics.avg_response_time_ms)}ms</span>
                               </div>
                               <Progress value={Math.min(100, (1000 - model.performance_metrics.avg_response_time_ms) / 10)} />
                             </div>
                             <div>
-                              <div className="flex justify-between text-sm mb-1">
+                              <div className="flex justify-between text-sm mb-1 md:text-base lg:text-lg">
                                 <span>Success Rate</span>
                                 <span>{Math.round(model.performance_metrics.success_rate * 100)}%</span>
                               </div>
@@ -501,7 +501,7 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                         </div>
                         <div>
                           <h4 className="font-medium mb-2">Usage Information</h4>
-                          <dl className="space-y-1 text-sm">
+                          <dl className="space-y-1 text-sm md:text-base lg:text-lg">
                             <div className="flex justify-between">
                               <dt>Last Used:</dt>
                               <dd>{new Date(model.performance_metrics.last_used).toLocaleDateString()}</dd>
@@ -511,9 +511,9 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                       </div>
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
-                        <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
                         <p>No performance metrics available yet</p>
-                        <p className="text-sm">Metrics will appear after the model is used</p>
+                        <p className="text-sm md:text-base lg:text-lg">Metrics will appear after the model is used</p>
                       </div>
                     )}
                   </TabsContent>
@@ -530,35 +530,35 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                               <h4 className="font-medium mb-2">Integration Status</h4>
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm">Discovered</span>
+                                  <span className="text-sm md:text-base lg:text-lg">Discovered</span>
                                   {status.discovered ? (
-                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                                   ) : (
-                                    <XCircle className="h-4 w-4 text-red-500" />
+                                    <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
                                   )}
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm">Profile Compatible</span>
+                                  <span className="text-sm md:text-base lg:text-lg">Profile Compatible</span>
                                   {status.profile_compatible ? (
-                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                                   ) : (
-                                    <XCircle className="h-4 w-4 text-red-500" />
+                                    <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
                                   )}
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm">Connection Verified</span>
+                                  <span className="text-sm md:text-base lg:text-lg">Connection Verified</span>
                                   {status.connection_verified ? (
-                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                                   ) : (
-                                    <XCircle className="h-4 w-4 text-red-500" />
+                                    <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
                                   )}
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm">Routing Enabled</span>
+                                  <span className="text-sm md:text-base lg:text-lg">Routing Enabled</span>
                                   {status.routing_enabled ? (
-                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                                   ) : (
-                                    <Clock className="h-4 w-4 text-yellow-500" />
+                                    <Clock className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />
                                   )}
                                 </div>
                               </div>
@@ -566,17 +566,17 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                             <div>
                               <h4 className="font-medium mb-2">Actions</h4>
                               <div className="space-y-2">
-                                <Button
+                                <button
                                   size="sm"
                                   variant={status.routing_enabled ? "destructive" : "default"}
-                                  onClick={() => toggleModelRouting(model.id, !status.routing_enabled)}
+                                  onClick={() = aria-label="Button"> toggleModelRouting(model.id, !status.routing_enabled)}
                                   disabled={!status.connection_verified}
                                   className="w-full"
                                 >
                                   {status.routing_enabled ? 'Disable Routing' : 'Enable Routing'}
                                 </Button>
-                                <Button size="sm" variant="outline" className="w-full">
-                                  <Settings className="h-4 w-4 mr-2" />
+                                <button size="sm" variant="outline" className="w-full" aria-label="Button">
+                                  <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                                   Configure
                                 </Button>
                               </div>
@@ -584,13 +584,13 @@ const IntegratedModelDisplay: React.FC<IntegratedModelDisplayProps> = ({ classNa
                           </div>
                           {status.error_message && (
                             <Alert>
-                              <XCircle className="h-4 w-4" />
+                              <XCircle className="h-4 w-4 sm:w-auto md:w-full" />
                               <AlertDescription>{status.error_message}</AlertDescription>
                             </Alert>
                           )}
                           <div>
                             <h4 className="font-medium mb-2">Integration Details</h4>
-                            <dl className="space-y-1 text-sm">
+                            <dl className="space-y-1 text-sm md:text-base lg:text-lg">
                               <div className="flex justify-between">
                                 <dt>Last Updated:</dt>
                                 <dd>{new Date(status.last_updated * 1000).toLocaleString()}</dd>

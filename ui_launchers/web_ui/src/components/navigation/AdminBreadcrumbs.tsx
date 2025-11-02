@@ -108,7 +108,7 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
           return (
             <li key={index} className="flex items-center">
               {index > 0 && (
-                <ChevronRight className="h-4 w-4 mx-1 text-muted-foreground/50" />
+                <ChevronRight className="h-4 w-4 mx-1 text-muted-foreground/50 sm:w-auto md:w-full" />
               )}
               
               {item.href ? (
@@ -116,7 +116,7 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
                   href={item.href}
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
                 >
-                  {Icon && <Icon className="h-4 w-4" />}
+                  {Icon && <Icon className="h-4 w-4 sm:w-auto md:w-full" />}
                   <span>{item.label}</span>
                 </Link>
               ) : (
@@ -127,7 +127,7 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
                   )}
                   aria-current={item.isActive ? 'page' : undefined}
                 >
-                  {Icon && <Icon className="h-4 w-4" />}
+                  {Icon && <Icon className="h-4 w-4 sm:w-auto md:w-full" />}
                   <span>{item.label}</span>
                 </span>
               )}

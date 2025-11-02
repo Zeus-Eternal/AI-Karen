@@ -224,7 +224,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
     <Card className={`h-full flex flex-col ${className}`}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
-          <Brain className="h-5 w-5" />
+          <Brain className="h-5 w-5 sm:w-auto md:w-full" />
           Image Analysis
         </CardTitle>
       </CardHeader>
@@ -246,12 +246,12 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
 
         {/* Analysis Controls */}
         <div className="flex items-center gap-2">
-          <Button
+          <button
             onClick={handleAnalyze}
             disabled={isAnalyzing}
             className="flex-1"
-          >
-            <Zap className="h-4 w-4 mr-2" />
+           aria-label="Button">
+            <Zap className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             {isAnalyzing ? 'Analyzing...' : 'Analyze Image'}
           </Button>
         </div>
@@ -260,7 +260,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
         {isAnalyzing && (
           <div className="space-y-2">
             <Progress value={analysisProgress} className="h-2" />
-            <p className="text-sm text-muted-foreground text-center">
+            <p className="text-sm text-muted-foreground text-center md:text-base lg:text-lg">
               Processing image... {Math.round(analysisProgress)}%
             </p>
           </div>
@@ -273,17 +273,17 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
               {/* Objects Detected */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Eye className="h-4 w-4" />
+                  <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
+                    <Eye className="h-4 w-4 sm:w-auto md:w-full" />
                     Objects Detected ({analysisResult.objects.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2">
                     {analysisResult.objects.map((object, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 border rounded">
-                        <span className="text-sm font-medium">{object.name}</span>
-                        <Badge variant="secondary" className="text-xs">
+                      <div key={index} className="flex items-center justify-between p-2 border rounded sm:p-4 md:p-6">
+                        <span className="text-sm font-medium md:text-base lg:text-lg">{object.name}</span>
+                        <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                           {Math.round(object.confidence * 100)}%
                         </Badge>
                       </div>
@@ -296,25 +296,25 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
               {analysisResult.text.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Search className="h-4 w-4" />
+                    <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
+                      <Search className="h-4 w-4 sm:w-auto md:w-full" />
                       Text Extracted ({analysisResult.text.length})
-                      <Button
+                      <button
                         variant="ghost"
                         size="sm"
                         onClick={copyExtractedText}
                         className="ml-auto"
-                      >
-                        <Copy className="h-4 w-4" />
+                       aria-label="Button">
+                        <Copy className="h-4 w-4 sm:w-auto md:w-full" />
                       </Button>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
                       {analysisResult.text.map((text, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 border rounded">
-                          <span className="text-sm font-mono">{text.content}</span>
-                          <Badge variant="outline" className="text-xs">
+                        <div key={index} className="flex items-center justify-between p-2 border rounded sm:p-4 md:p-6">
+                          <span className="text-sm font-mono md:text-base lg:text-lg">{text.content}</span>
+                          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                             {Math.round(text.confidence * 100)}%
                           </Badge>
                         </div>
@@ -327,22 +327,22 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
               {/* Color Palette */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Palette className="h-4 w-4" />
+                  <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
+                    <Palette className="h-4 w-4 sm:w-auto md:w-full" />
                     Color Palette
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2">
                     {analysisResult.colors.map((color, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                      <div key={index} className="flex items-center gap-2 p-2 border rounded sm:p-4 md:p-6">
                         <div
-                          className="w-6 h-6 rounded border"
+                          className="w-6 h-6 rounded border sm:w-auto md:w-full"
                           style={{ backgroundColor: color.hex }}
                         />
                         <div className="flex-1">
-                          <span className="text-sm font-medium">{color.color}</span>
-                          <div className="text-xs text-muted-foreground">
+                          <span className="text-sm font-medium md:text-base lg:text-lg">{color.color}</span>
+                          <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                             {color.percentage}%
                           </div>
                         </div>
@@ -356,23 +356,23 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
               {analysisResult.faces.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <ImageIcon className="h-4 w-4" />
+                    <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
+                      <ImageIcon className="h-4 w-4 sm:w-auto md:w-full" />
                       Faces Detected ({analysisResult.faces.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {analysisResult.faces.map((face, index) => (
-                      <div key={index} className="space-y-2 p-3 border rounded">
+                      <div key={index} className="space-y-2 p-3 border rounded sm:p-4 md:p-6">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Face {index + 1}</span>
-                          <Badge variant="secondary" className="text-xs">
+                          <span className="text-sm font-medium md:text-base lg:text-lg">Face {index + 1}</span>
+                          <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                             {Math.round(face.confidence * 100)}% confidence
                           </Badge>
                         </div>
                         
                         {face.age && face.gender && (
-                          <div className="flex gap-4 text-sm text-muted-foreground">
+                          <div className="flex gap-4 text-sm text-muted-foreground md:text-base lg:text-lg">
                             <span>Age: ~{face.age}</span>
                             <span>Gender: {face.gender}</span>
                           </div>
@@ -380,10 +380,10 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
                         
                         {face.emotions && (
                           <div className="space-y-1">
-                            <span className="text-xs font-medium">Emotions:</span>
+                            <span className="text-xs font-medium sm:text-sm md:text-base">Emotions:</span>
                             <div className="grid grid-cols-3 gap-1">
                               {Object.entries(face.emotions).map(([emotion, score]) => (
-                                <div key={emotion} className="text-xs">
+                                <div key={emotion} className="text-xs sm:text-sm md:text-base">
                                   <span className="capitalize">{emotion}: </span>
                                   <span className="font-medium">{Math.round(score * 100)}%</span>
                                 </div>
@@ -400,28 +400,28 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
               {/* Scene Understanding */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Tag className="h-4 w-4" />
+                  <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
+                    <Tag className="h-4 w-4 sm:w-auto md:w-full" />
                     Scene Understanding
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div>
-                      <p className="text-sm font-medium mb-2">Description</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm font-medium mb-2 md:text-base lg:text-lg">Description</p>
+                      <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                         {analysisResult.scene.description}
                       </p>
-                      <Badge variant="outline" className="mt-2 text-xs">
+                      <Badge variant="outline" className="mt-2 text-xs sm:text-sm md:text-base">
                         {Math.round(analysisResult.scene.confidence * 100)}% confidence
                       </Badge>
                     </div>
                     
                     <div>
-                      <p className="text-sm font-medium mb-2">Tags</p>
+                      <p className="text-sm font-medium mb-2 md:text-base lg:text-lg">Tags</p>
                       <div className="flex flex-wrap gap-1">
                         {analysisResult.scene.tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
+                          <Badge key={index} variant="secondary" className="text-xs sm:text-sm md:text-base">
                             {tag}
                           </Badge>
                         ))}
@@ -434,26 +434,26 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
               {/* Image Quality */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4" />
+                  <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
+                    <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
                     Image Quality
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Overall Quality</span>
+                      <span className="text-sm font-medium md:text-base lg:text-lg">Overall Quality</span>
                       <div className="flex items-center gap-2">
                         <span className={`text-sm font-medium ${getQualityColor(analysisResult.quality.overall)}`}>
                           {getQualityLabel(analysisResult.quality.overall)}
                         </span>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                           {Math.round(analysisResult.quality.overall * 100)}%
                         </Badge>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div className="grid grid-cols-3 gap-3 text-sm md:text-base lg:text-lg">
                       <div className="text-center">
                         <div className="font-medium">Sharpness</div>
                         <div className={getQualityColor(analysisResult.quality.sharpness)}>
@@ -483,11 +483,11 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
         {/* No Analysis State */}
         {!analysisResult && !isAnalyzing && (
           <div className="text-center py-8">
-            <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-sm text-muted-foreground mb-4">
+            <Brain className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
+            <p className="text-sm text-muted-foreground mb-4 md:text-base lg:text-lg">
               Click "Analyze Image" to extract insights from this image
             </p>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
               Analysis includes object detection, text extraction, color analysis, and more
             </div>
           </div>

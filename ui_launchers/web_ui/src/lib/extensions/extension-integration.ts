@@ -4,7 +4,6 @@
  * This service handles the integration of extensions with the web UI,
  * including component registration, routing, and real-time updates.
  */
-
 import React from 'react';
 import { getKarenBackend, APIError } from '../karen-backend';
 import { safeError, safeLog } from '../safe-console';
@@ -15,7 +14,6 @@ import type {
   HealthStatus,
   ResourceUsage 
 } from '../../extensions/types';
-
 export interface ExtensionUIComponent {
   id: string;
   extensionId: string;
@@ -31,7 +29,6 @@ export interface ExtensionUIComponent {
   order?: number;
   lazy?: boolean;
 }
-
 export interface ExtensionRoute {
   path: string;
   component: React.ComponentType<any>;
@@ -41,7 +38,6 @@ export interface ExtensionRoute {
   layout?: 'default' | 'fullscreen' | 'minimal';
   preload?: boolean;
 }
-
 export interface ExtensionNavItem {
   id: string;
   extensionId: string;
@@ -52,7 +48,6 @@ export interface ExtensionNavItem {
   order?: number;
   parent?: string;
 }
-
 export interface ExtensionStatus {
   id: string;
   name: string;
@@ -66,7 +61,6 @@ export interface ExtensionStatus {
   };
   lastUpdate: string;
 }
-
 export class ExtensionIntegrationService {
   private static instance: ExtensionIntegrationService;
   private registeredComponents: Map<string, ExtensionUIComponent> = new Map();
@@ -76,14 +70,12 @@ export class ExtensionIntegrationService {
   private statusUpdateInterval: NodeJS.Timeout | null = null;
   private eventListeners: Map<string, Set<Function>> = new Map();
   private extensionsAccessDenied = false;
-
   static getInstance(): ExtensionIntegrationService {
     if (!ExtensionIntegrationService.instance) {
       ExtensionIntegrationService.instance = new ExtensionIntegrationService();
     }
     return ExtensionIntegrationService.instance;
   }
-
   /**
    * Initialize the extension integration service
    */
@@ -91,44 +83,36 @@ export class ExtensionIntegrationService {
     try {
       this.extensionsAccessDenied = false;
       safeLog('ExtensionIntegrationService: Initializing...');
-      
       // Load existing extensions
       await this.loadExtensions();
-      
       // Start status monitoring when backend access is available
       if (!this.extensionsAccessDenied) {
         this.startStatusMonitoring();
       }
-      
       safeLog('ExtensionIntegrationService: Initialized successfully');
     } catch (error) {
       safeError('ExtensionIntegrationService: Failed to initialize:', error);
       throw error;
     }
   }
-
   /**
    * Shutdown the service
    */
   shutdown(): void {
     this.stopStatusMonitoring();
-
     this.registeredComponents.clear();
     this.registeredRoutes.clear();
     this.navigationItems.clear();
     this.extensionStatuses.clear();
     this.eventListeners.clear();
     this.extensionsAccessDenied = false;
-    
     safeLog('ExtensionIntegrationService: Shut down');
   }
-
   /**
    * Register a UI component for an extension
    */
   registerComponent(component: ExtensionUIComponent): void {
     this.registeredComponents.set(component.id, component);
-    
     // If it's a page component, also register as a route
     if (component.type === 'page' && component.route) {
       this.registerRoute({
@@ -139,11 +123,9 @@ export class ExtensionIntegrationService {
         exact: true
       });
     }
-    
     this.emit('componentRegistered', component);
     safeLog(`ExtensionIntegrationService: Registered component ${component.id} for extension ${component.extensionId}`);
   }
-
   /**
    * Unregister a UI component
    */
@@ -151,17 +133,14 @@ export class ExtensionIntegrationService {
     const component = this.registeredComponents.get(componentId);
     if (component) {
       this.registeredComponents.delete(componentId);
-      
       // Also remove route if it was a page
       if (component.type === 'page' && component.route) {
         this.unregisterRoute(component.route);
       }
-      
       this.emit('componentUnregistered', component);
       safeLog(`ExtensionIntegrationService: Unregistered component ${componentId}`);
     }
   }
-
   /**
    * Register a route for an extension
    */
@@ -170,7 +149,6 @@ export class ExtensionIntegrationService {
     this.emit('routeRegistered', route);
     safeLog(`ExtensionIntegrationService: Registered route ${route.path} for extension ${route.extensionId}`);
   }
-
   /**
    * Unregister a route
    */
@@ -182,7 +160,6 @@ export class ExtensionIntegrationService {
       safeLog(`ExtensionIntegrationService: Unregistered route ${path}`);
     }
   }
-
   /**
    * Register a navigation item for an extension
    */
@@ -191,7 +168,6 @@ export class ExtensionIntegrationService {
     this.emit('navItemRegistered', navItem);
     safeLog(`ExtensionIntegrationService: Registered nav item ${navItem.id} for extension ${navItem.extensionId}`);
   }
-
   /**
    * Unregister a navigation item
    */
@@ -203,7 +179,6 @@ export class ExtensionIntegrationService {
       safeLog(`ExtensionIntegrationService: Unregistered nav item ${navItemId}`);
     }
   }
-
   /**
    * Get all registered components
    */
@@ -213,7 +188,6 @@ export class ExtensionIntegrationService {
       ? components.filter(c => c.extensionId === extensionId)
       : components;
   }
-
   /**
    * Get components by type
    */
@@ -221,7 +195,6 @@ export class ExtensionIntegrationService {
     const components = this.getComponents(extensionId);
     return components.filter(c => c.type === type && c.enabled);
   }
-
   /**
    * Get all registered routes
    */
@@ -231,7 +204,6 @@ export class ExtensionIntegrationService {
       ? routes.filter(r => r.extensionId === extensionId)
       : routes;
   }
-
   /**
    * Get navigation items sorted by order
    */
@@ -240,24 +212,20 @@ export class ExtensionIntegrationService {
     const filtered = extensionId 
       ? items.filter(item => item.extensionId === extensionId)
       : items;
-    
     return filtered.sort((a, b) => (a.order || 999) - (b.order || 999));
   }
-
   /**
    * Get extension status
    */
   getExtensionStatus(extensionId: string): ExtensionStatus | null {
     return this.extensionStatuses.get(extensionId) || null;
   }
-
   /**
    * Get all extension statuses
    */
   getAllExtensionStatuses(): ExtensionStatus[] {
     return Array.from(this.extensionStatuses.values());
   }
-
   /**
    * Load extensions from backend
    */
@@ -265,7 +233,6 @@ export class ExtensionIntegrationService {
     try {
       const backend = getKarenBackend();
       const response = await backend.makeRequestPublic('/api/extensions/');
-      
       if (response && (response as any).extensions) {
         for (const [extensionId, extensionData] of Object.entries((response as any).extensions)) {
           await this.processExtension(extensionId, extensionData as any);
@@ -284,7 +251,6 @@ export class ExtensionIntegrationService {
       await this.loadSampleExtensions();
     }
   }
-
   /**
    * Load sample extensions for demonstration
    */
@@ -371,14 +337,11 @@ export class ExtensionIntegrationService {
         }
       }
     ];
-
     for (const extensionData of sampleExtensions) {
       await this.processExtension(extensionData.id, extensionData);
     }
-
     safeLog('ExtensionIntegrationService: Loaded sample extensions for demonstration');
   }
-
   /**
    * Process an extension and register its UI components
    */
@@ -388,7 +351,6 @@ export class ExtensionIntegrationService {
       const resourceUsage = this.generateResourceUsage(extensionData);
       const healthStatus = this.generateHealthStatus(extensionData);
       const backgroundTasks = this.generateBackgroundTasksInfo(extensionData);
-
       // Update extension status
       this.updateExtensionStatus(extensionId, {
         id: extensionId,
@@ -400,20 +362,16 @@ export class ExtensionIntegrationService {
         backgroundTasks,
         lastUpdate: new Date().toISOString()
       });
-
       // Register UI components if extension provides them
       if (extensionData.capabilities?.provides_ui) {
         await this.registerExtensionUIComponents(extensionId, extensionData);
       }
-
       // Register background task monitoring if extension provides them
       if (extensionData.capabilities?.provides_background_tasks) {
         await this.registerBackgroundTaskMonitoring(extensionId);
       }
-
     } catch (error) {
       safeError(`ExtensionIntegrationService: Failed to process extension ${extensionId}:`, error);
-      
       // Update status to error
       this.updateExtensionStatus(extensionId, {
         id: extensionId,
@@ -434,14 +392,12 @@ export class ExtensionIntegrationService {
       });
     }
   }
-
   /**
    * Register UI components for an extension
    */
   private async registerExtensionUIComponents(extensionId: string, extensionData: any): Promise<void> {
     // This would dynamically load and register React components
     // For now, we'll create placeholder components based on manifest data
-    
     // Register extension management page
     this.registerComponent({
       id: `${extensionId}-management`,
@@ -456,7 +412,6 @@ export class ExtensionIntegrationService {
       category: 'management',
       order: 100
     });
-
     // Register navigation item
     this.registerNavItem({
       id: `${extensionId}-nav`,
@@ -467,7 +422,6 @@ export class ExtensionIntegrationService {
       permissions: ['user'],
       order: 100
     });
-
     // Register status widget
     this.registerComponent({
       id: `${extensionId}-status-widget`,
@@ -480,7 +434,6 @@ export class ExtensionIntegrationService {
       category: 'monitoring',
       order: 50
     });
-
     // Register dashboard widget if extension provides dashboard capabilities
     if (extensionData.capabilities?.provides_ui) {
       this.registerComponent({
@@ -495,7 +448,6 @@ export class ExtensionIntegrationService {
         order: 75
       });
     }
-
     // Register settings panel
     this.registerComponent({
       id: `${extensionId}-settings`,
@@ -511,7 +463,6 @@ export class ExtensionIntegrationService {
       order: 200
     });
   }
-
   /**
    * Register background task monitoring for an extension
    */
@@ -519,7 +470,6 @@ export class ExtensionIntegrationService {
     try {
       const backend = getKarenBackend();
       const tasksResponse = await backend.makeRequestPublic(`/api/extensions/background-tasks/?extension_name=${extensionId}`);
-      
       if (tasksResponse && Array.isArray(tasksResponse)) {
         // Update extension status with background task info
         const status = this.extensionStatuses.get(extensionId);
@@ -536,7 +486,6 @@ export class ExtensionIntegrationService {
       safeError(`ExtensionIntegrationService: Failed to register background task monitoring for ${extensionId}:`, error);
     }
   }
-
   /**
    * Get appropriate icon for extension type
    */
@@ -555,7 +504,6 @@ export class ExtensionIntegrationService {
     };
     return iconMap[category] || 'puzzle';
   }
-
   /**
    * Create a management component for an extension
    */
@@ -588,7 +536,6 @@ export class ExtensionIntegrationService {
             }`
           }, extensionData.status)
         ]),
-        
         // Extension Information Card
         React.createElement('div', {
           key: 'info-card',
@@ -598,7 +545,6 @@ export class ExtensionIntegrationService {
             key: 'info-title',
             className: 'text-lg font-semibold mb-4'
           }, 'Extension Information'),
-          
           React.createElement('dl', {
             key: 'info-list',
             className: 'grid grid-cols-1 md:grid-cols-2 gap-4'
@@ -621,7 +567,6 @@ export class ExtensionIntegrationService {
             ])
           ])
         ]),
-
         // Capabilities Card
         extensionData.capabilities && React.createElement('div', {
           key: 'capabilities-card',
@@ -631,7 +576,6 @@ export class ExtensionIntegrationService {
             key: 'capabilities-title',
             className: 'text-lg font-semibold mb-4'
           }, 'Capabilities'),
-          
           React.createElement('div', {
             key: 'capabilities-list',
             className: 'grid grid-cols-2 md:grid-cols-4 gap-4'
@@ -656,7 +600,6 @@ export class ExtensionIntegrationService {
       ]);
     };
   }
-
   /**
    * Create a status widget for an extension
    */
@@ -664,13 +607,11 @@ export class ExtensionIntegrationService {
     return function ExtensionStatusWidget(props: any) {
       const service = ExtensionIntegrationService.getInstance();
       const status = service.getExtensionStatus(extensionId);
-      
       if (!status) {
         return React.createElement('div', {
           className: 'text-gray-500 p-4'
         }, 'Extension not found');
       }
-      
       return React.createElement('div', {
         className: 'space-y-3'
       }, [
@@ -691,7 +632,6 @@ export class ExtensionIntegrationService {
             }`
           }, status.status)
         ]),
-        
         React.createElement('div', {
           key: 'metrics',
           className: 'grid grid-cols-2 gap-3 text-sm'
@@ -705,7 +645,6 @@ export class ExtensionIntegrationService {
             React.createElement('div', { key: 'memory-value', className: 'font-medium' }, `${Math.round(status.resources.memory)}MB`)
           ])
         ]),
-        
         status.backgroundTasks && React.createElement('div', {
           key: 'tasks',
           className: 'flex items-center justify-between text-sm'
@@ -717,7 +656,6 @@ export class ExtensionIntegrationService {
       ]);
     };
   }
-
   /**
    * Create a dashboard widget for an extension
    */
@@ -725,7 +663,6 @@ export class ExtensionIntegrationService {
     return function ExtensionDashboardWidget(props: any) {
       const service = ExtensionIntegrationService.getInstance();
       const status = service.getExtensionStatus(extensionId);
-      
       return React.createElement('div', {
         className: 'space-y-4'
       }, [
@@ -745,12 +682,10 @@ export class ExtensionIntegrationService {
             }`
           })
         ]),
-        
         React.createElement('div', {
           key: 'content',
           className: 'text-sm text-gray-600'
         }, extensionData.description),
-        
         status && React.createElement('div', {
           key: 'quick-stats',
           className: 'grid grid-cols-3 gap-2 text-xs'
@@ -772,7 +707,6 @@ export class ExtensionIntegrationService {
       ]);
     };
   }
-
   /**
    * Create a settings component for an extension
    */
@@ -793,7 +727,6 @@ export class ExtensionIntegrationService {
             className: 'text-gray-600 mt-1'
           }, 'Configure extension settings and preferences')
         ]),
-        
         React.createElement('div', {
           key: 'settings-placeholder',
           className: 'bg-white rounded-lg shadow border p-6'
@@ -810,7 +743,6 @@ export class ExtensionIntegrationService {
       ]);
     };
   }
-
   /**
    * Update extension status
    */
@@ -818,7 +750,6 @@ export class ExtensionIntegrationService {
     this.extensionStatuses.set(extensionId, status);
     this.emit('statusUpdated', status);
   }
-
   /**
    * Start monitoring extension statuses
    */
@@ -827,7 +758,6 @@ export class ExtensionIntegrationService {
       await this.updateAllExtensionStatuses();
     }, 30000); // Update every 30 seconds
   }
-
   /**
    * Stop monitoring extension statuses
    */
@@ -838,7 +768,6 @@ export class ExtensionIntegrationService {
       safeLog('ExtensionIntegrationService: Status monitoring stopped');
     }
   }
-
   /**
    * Handle authorization failures from backend requests
    */
@@ -854,7 +783,6 @@ export class ExtensionIntegrationService {
     }
     return false;
   }
-
   /**
    * Update all extension statuses
    */
@@ -862,7 +790,6 @@ export class ExtensionIntegrationService {
     try {
       const backend = getKarenBackend();
       const response = await backend.makeRequestPublic('/api/extensions/system/health');
-      
       if (response) {
         // Update statuses based on health check response
         for (const [extensionId, status] of this.extensionStatuses.entries()) {
@@ -878,7 +805,6 @@ export class ExtensionIntegrationService {
       safeError('ExtensionIntegrationService: Failed to update extension statuses:', error);
     }
   }
-
   /**
    * Event system for UI updates
    */
@@ -886,15 +812,12 @@ export class ExtensionIntegrationService {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
     }
-    
     this.eventListeners.get(event)!.add(listener);
-    
     // Return unsubscribe function
     return () => {
       this.eventListeners.get(event)?.delete(listener);
     };
   }
-
   /**
    * Emit an event
    */
@@ -910,7 +833,6 @@ export class ExtensionIntegrationService {
       });
     }
   }
-
   /**
    * Execute an extension background task manually
    */
@@ -928,14 +850,12 @@ export class ExtensionIntegrationService {
           'Content-Type': 'application/json'
         }
       });
-      
       return response;
     } catch (error) {
       safeError(`ExtensionIntegrationService: Failed to execute task ${taskName} for extension ${extensionId}:`, error);
       throw error;
     }
   }
-
   /**
    * Get extension task execution history
    */
@@ -946,14 +866,11 @@ export class ExtensionIntegrationService {
       if (taskName) {
         params.append('task_name', taskName);
       }
-      
       const response = await backend.makeRequestPublic(`/api/extensions/tasks/history?${params}`);
-      
       if (Array.isArray(response)) {
         return response;
       }
-      
-      // Return sample data if API not available
+      // Return  if API not available
       return [
         {
           execution_id: 'exec-1',
@@ -979,7 +896,6 @@ export class ExtensionIntegrationService {
       return [];
     }
   }
-
   /**
    * Generate realistic resource usage based on extension type
    */
@@ -993,9 +909,7 @@ export class ExtensionIntegrationService {
       experimental: { cpu: 5, memory: 64, network: 10, storage: 25 },
       general: { cpu: 8, memory: 128, network: 20, storage: 50 }
     };
-
     const base = baseUsage[category as keyof typeof baseUsage] || baseUsage.general;
-    
     // Add some randomness to make it more realistic
     const variance = 0.3; // 30% variance
     return {
@@ -1005,13 +919,11 @@ export class ExtensionIntegrationService {
       storage: Math.max(0, base.storage + (Math.random() - 0.5) * base.storage * variance)
     };
   }
-
   /**
    * Generate health status based on extension status
    */
   private generateHealthStatus(extensionData: any): HealthStatus {
     const now = new Date().toISOString();
-    
     switch (extensionData.status) {
       case 'active':
         return {
@@ -1043,7 +955,6 @@ export class ExtensionIntegrationService {
         };
     }
   }
-
   /**
    * Generate background tasks info
    */
@@ -1051,7 +962,6 @@ export class ExtensionIntegrationService {
     if (!extensionData.capabilities?.provides_background_tasks) {
       return undefined;
     }
-
     const category = extensionData.category || 'general';
     const taskCounts = {
       analytics: { total: 5, activeRatio: 0.8 },
@@ -1061,21 +971,17 @@ export class ExtensionIntegrationService {
       experimental: { total: 2, activeRatio: 0.5 },
       general: { total: 3, activeRatio: 0.6 }
     };
-
     const config = taskCounts[category as keyof typeof taskCounts] || taskCounts.general;
     const total = config.total;
     const active = Math.floor(total * config.activeRatio);
-    
     // Generate last execution time (within last 24 hours)
     const lastExecution = new Date(Date.now() - Math.random() * 86400000).toISOString();
-
     return {
       active,
       total,
       lastExecution
     };
   }
-
   /**
    * Generate sample task execution history
    */
@@ -1088,15 +994,12 @@ export class ExtensionIntegrationService {
       'backup_task',
       'notification_sender'
     ];
-
     const history = [];
     const count = Math.floor(Math.random() * 10) + 5; // 5-15 executions
-
     for (let i = 0; i < count; i++) {
       const executionTime = new Date(Date.now() - i * 3600000 - Math.random() * 3600000); // Spread over hours
       const duration = Math.random() * 30 + 1; // 1-30 seconds
       const status = Math.random() > 0.1 ? 'completed' : (Math.random() > 0.5 ? 'failed' : 'running');
-      
       const execution = {
         execution_id: `exec_${Date.now()}_${i}`,
         task_name: taskName || taskNames[Math.floor(Math.random() * taskNames.length)],
@@ -1107,13 +1010,10 @@ export class ExtensionIntegrationService {
         error: status === 'failed' ? 'Sample error message for demonstration' : undefined,
         result: status === 'completed' ? { processed: Math.floor(Math.random() * 100), success: true } : undefined
       };
-
       history.push(execution);
     }
-
     return history.sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
   }
 }
-
 // Export singleton instance
 export const extensionIntegration = ExtensionIntegrationService.getInstance();

@@ -246,7 +246,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </CardHeader>
         )}
 
-        <CardContent className="flex-1 flex flex-col p-0">
+        <CardContent className="flex-1 flex flex-col p-0 sm:p-4 md:p-6">
           {showTabs ? (
             <ChatTabs
               activeTab={chatState.activeTab}

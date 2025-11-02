@@ -1,9 +1,23 @@
-'use client';
-
 import React, { useState, useCallback, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { 
+import { auditLogger } from '@/services/audit-logger';
+import { PermissionGate } from '@/components/rbac';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+'use client';
+
+
+
+
   AuditEvent, 
   AuditFilter, 
   AuditEventType, 
@@ -11,24 +25,23 @@ import {
   AuditOutcome,
   AuditSearchResult 
 } from '@/types/audit';
-import { auditLogger } from '@/services/audit-logger';
-import { PermissionGate } from '@/components/rbac';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { 
+
+
+
+
+
+
+
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { 
+
+
   Dialog, 
   DialogContent, 
   DialogDescription, 
@@ -36,8 +49,8 @@ import {
   DialogTitle,
   DialogTrigger 
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+
+
   Table,
   TableBody,
   TableCell,
@@ -46,7 +59,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-import { 
   Search, 
   Filter, 
   Download, 
@@ -61,11 +73,9 @@ import {
   FileText,
   Settings
 } from 'lucide-react';
-
 interface AuditLogViewerProps {
   className?: string;
 }
-
 export function AuditLogViewer({ className }: AuditLogViewerProps) {
   const [filter, setFilter] = useState<AuditFilter>({
     limit: 50,
@@ -75,17 +85,14 @@ export function AuditLogViewer({ className }: AuditLogViewerProps) {
   });
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-
   const { data: searchResult, isLoading, refetch } = useQuery({
     queryKey: ['audit', 'events', filter],
     queryFn: () => auditLogger.searchEvents(filter),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
-
   const handleFilterChange = useCallback((newFilter: Partial<AuditFilter>) => {
     setFilter(prev => ({ ...prev, ...newFilter, offset: 0 }));
   }, []);
-
   const handleExport = useCallback(async (format: 'json' | 'csv' | 'xlsx') => {
     try {
       const blob = await auditLogger.exportEvents(filter, format);
@@ -98,9 +105,21 @@ export function AuditLogViewer({ className }: AuditLogViewerProps) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Export failed:', error);
     }
   }, [filter]);
+
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Handle escape key
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   return (
     <PermissionGate permission="security:audit">
@@ -113,17 +132,16 @@ export function AuditLogViewer({ className }: AuditLogViewerProps) {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <Button
+            <button
               variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={() = aria-label="Button"> setShowFilters(!showFilters)}
             >
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Filters
             </Button>
             <ExportDropdown onExport={handleExport} />
           </div>
         </div>
-
         {showFilters && (
           <Card className="mb-6">
             <CardHeader>
@@ -134,18 +152,17 @@ export function AuditLogViewer({ className }: AuditLogViewerProps) {
             </CardContent>
           </Card>
         )}
-
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Audit Events</CardTitle>
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg">
                 <span>
                   {searchResult?.totalCount || 0} events
                   {searchResult?.hasMore && ' (showing first ' + (filter.limit || 50) + ')'}
                 </span>
-                <Button variant="ghost" size="sm" onClick={() => refetch()}>
-                  <Clock className="h-4 w-4" />
+                <button variant="ghost" size="sm" onClick={() = aria-label="Button"> refetch()}>
+                  <Clock className="h-4 w-4 sm:w-auto md:w-full" />
                 </Button>
               </div>
             </div>
@@ -153,7 +170,7 @@ export function AuditLogViewer({ className }: AuditLogViewerProps) {
           <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
               </div>
             ) : (
               <AuditEventTable 
@@ -163,10 +180,9 @@ export function AuditLogViewer({ className }: AuditLogViewerProps) {
             )}
           </CardContent>
         </Card>
-
         {/* Event Detail Dialog */}
         <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-4xl sm:w-auto md:w-full">
             <DialogHeader>
               <DialogTitle>Audit Event Details</DialogTitle>
               <DialogDescription>
@@ -180,12 +196,10 @@ export function AuditLogViewer({ className }: AuditLogViewerProps) {
     </PermissionGate>
   );
 }
-
 interface AuditFiltersProps {
   filter: AuditFilter;
   onFilterChange: (filter: Partial<AuditFilter>) => void;
 }
-
 function AuditFilters({ filter, onFilterChange }: AuditFiltersProps) {
   const eventTypes: AuditEventType[] = [
     'auth:login', 'auth:logout', 'auth:failed_login',
@@ -194,102 +208,95 @@ function AuditFilters({ filter, onFilterChange }: AuditFiltersProps) {
     'system:config_change', 'system:error',
     'security:threat_detected', 'security:policy_violation'
   ];
-
   const severities: AuditSeverity[] = ['low', 'medium', 'high', 'critical'];
   const outcomes: AuditOutcome[] = ['success', 'failure', 'partial', 'unknown'];
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <div className="space-y-2">
         <Label>Search Term</Label>
-        <Input
+        <input
           placeholder="Search events..."
           value={filter.searchTerm || ''}
-          onChange={(e) => onFilterChange({ searchTerm: e.target.value })}
+          onChange={(e) = aria-label="Input"> onFilterChange({ searchTerm: e.target.value })}
         />
       </div>
-
       <div className="space-y-2">
         <Label>Start Date</Label>
-        <Input
+        <input
           type="datetime-local"
           value={filter.startDate ? format(filter.startDate, "yyyy-MM-dd'T'HH:mm") : ''}
-          onChange={(e) => onFilterChange({ 
+          onChange={(e) = aria-label="Input"> onFilterChange({ 
             startDate: e.target.value ? new Date(e.target.value) : undefined 
           })}
         />
       </div>
-
       <div className="space-y-2">
         <Label>End Date</Label>
-        <Input
+        <input
           type="datetime-local"
           value={filter.endDate ? format(filter.endDate, "yyyy-MM-dd'T'HH:mm") : ''}
-          onChange={(e) => onFilterChange({ 
+          onChange={(e) = aria-label="Input"> onFilterChange({ 
             endDate: e.target.value ? new Date(e.target.value) : undefined 
           })}
         />
       </div>
-
       <div className="space-y-2">
         <Label>Event Types</Label>
-        <Select
+        <select
           value={filter.eventTypes?.[0] || ''}
-          onValueChange={(value) => onFilterChange({ 
+          onValueChange={(value) = aria-label="Select option"> onFilterChange({ 
             eventTypes: value ? [value as AuditEventType] : undefined 
           })}
         >
-          <SelectTrigger>
-            <SelectValue placeholder="All event types" />
+          <selectTrigger aria-label="Select option">
+            <selectValue placeholder="All event types" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All event types</SelectItem>
+          <selectContent aria-label="Select option">
+            <selectItem value="" aria-label="Select option">All event types</SelectItem>
             {eventTypes.map((type) => (
-              <SelectItem key={type} value={type}>
+              <selectItem key={type} value={type} aria-label="Select option">
                 {type}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-
       <div className="space-y-2">
         <Label>Severity</Label>
-        <Select
+        <select
           value={filter.severities?.[0] || ''}
-          onValueChange={(value) => onFilterChange({ 
+          onValueChange={(value) = aria-label="Select option"> onFilterChange({ 
             severities: value ? [value as AuditSeverity] : undefined 
           })}
         >
-          <SelectTrigger>
-            <SelectValue placeholder="All severities" />
+          <selectTrigger aria-label="Select option">
+            <selectValue placeholder="All severities" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All severities</SelectItem>
+          <selectContent aria-label="Select option">
+            <selectItem value="" aria-label="Select option">All severities</SelectItem>
             {severities.map((severity) => (
-              <SelectItem key={severity} value={severity}>
+              <selectItem key={severity} value={severity} aria-label="Select option">
                 {severity}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-
       <div className="space-y-2">
         <Label>Outcome</Label>
-        <Select
+        <select
           value={filter.outcomes?.[0] || ''}
-          onValueChange={(value) => onFilterChange({ 
+          onValueChange={(value) = aria-label="Select option"> onFilterChange({ 
             outcomes: value ? [value as AuditOutcome] : undefined 
           })}
         >
-          <SelectTrigger>
-            <SelectValue placeholder="All outcomes" />
+          <selectTrigger aria-label="Select option">
+            <selectValue placeholder="All outcomes" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All outcomes</SelectItem>
+          <selectContent aria-label="Select option">
+            <selectItem value="" aria-label="Select option">All outcomes</SelectItem>
             {outcomes.map((outcome) => (
-              <SelectItem key={outcome} value={outcome}>
+              <selectItem key={outcome} value={outcome} aria-label="Select option">
                 {outcome}
               </SelectItem>
             ))}
@@ -299,31 +306,27 @@ function AuditFilters({ filter, onFilterChange }: AuditFiltersProps) {
     </div>
   );
 }
-
 interface AuditEventTableProps {
   events: AuditEvent[];
   onEventSelect: (event: AuditEvent) => void;
 }
-
 function AuditEventTable({ events, onEventSelect }: AuditEventTableProps) {
   const getSeverityIcon = (severity: AuditSeverity) => {
     switch (severity) {
-      case 'critical': return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case 'high': return <AlertTriangle className="h-4 w-4 text-orange-500" />;
-      case 'medium': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      default: return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'critical': return <AlertTriangle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
+      case 'high': return <AlertTriangle className="h-4 w-4 text-orange-500 sm:w-auto md:w-full" />;
+      case 'medium': return <AlertTriangle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
+      default: return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
     }
   };
-
   const getOutcomeIcon = (outcome: AuditOutcome) => {
     switch (outcome) {
-      case 'success': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'failure': return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'partial': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      default: return <Clock className="h-4 w-4 text-gray-500" />;
+      case 'success': return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
+      case 'failure': return <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
+      case 'partial': return <AlertTriangle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
+      default: return <Clock className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
     }
   };
-
   return (
     <div className="rounded-md border">
       <Table>
@@ -342,7 +345,7 @@ function AuditEventTable({ events, onEventSelect }: AuditEventTableProps) {
         <TableBody>
           {events.map((event) => (
             <TableRow key={event.id} className="cursor-pointer hover:bg-muted/50">
-              <TableCell className="font-mono text-sm">
+              <TableCell className="font-mono text-sm md:text-base lg:text-lg">
                 {format(new Date(event.timestamp), 'MMM dd, HH:mm:ss')}
               </TableCell>
               <TableCell>
@@ -350,7 +353,7 @@ function AuditEventTable({ events, onEventSelect }: AuditEventTableProps) {
               </TableCell>
               <TableCell>
                 <div className="flex items-center space-x-2">
-                  <User className="h-4 w-4" />
+                  <User className="h-4 w-4 sm:w-auto md:w-full" />
                   <span>{event.username || 'System'}</span>
                 </div>
               </TableCell>
@@ -380,12 +383,12 @@ function AuditEventTable({ events, onEventSelect }: AuditEventTableProps) {
                 </Badge>
               </TableCell>
               <TableCell>
-                <Button
+                <button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onEventSelect(event)}
+                  onClick={() = aria-label="Button"> onEventSelect(event)}
                 >
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-4 w-4 sm:w-auto md:w-full" />
                 </Button>
               </TableCell>
             </TableRow>
@@ -395,11 +398,9 @@ function AuditEventTable({ events, onEventSelect }: AuditEventTableProps) {
     </div>
   );
 }
-
 interface AuditEventDetailsProps {
   event: AuditEvent;
 }
-
 function AuditEventDetails({ event }: AuditEventDetailsProps) {
   return (
     <ScrollArea className="max-h-[600px]">
@@ -407,31 +408,29 @@ function AuditEventDetails({ event }: AuditEventDetailsProps) {
         {/* Basic Information */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-sm font-medium">Event ID</Label>
-            <p className="font-mono text-sm">{event.id}</p>
+            <Label className="text-sm font-medium md:text-base lg:text-lg">Event ID</Label>
+            <p className="font-mono text-sm md:text-base lg:text-lg">{event.id}</p>
           </div>
           <div>
-            <Label className="text-sm font-medium">Timestamp</Label>
-            <p className="text-sm">{format(new Date(event.timestamp), 'PPpp')}</p>
+            <Label className="text-sm font-medium md:text-base lg:text-lg">Timestamp</Label>
+            <p className="text-sm md:text-base lg:text-lg">{format(new Date(event.timestamp), 'PPpp')}</p>
           </div>
           <div>
-            <Label className="text-sm font-medium">Event Type</Label>
+            <Label className="text-sm font-medium md:text-base lg:text-lg">Event Type</Label>
             <Badge variant="outline">{event.eventType}</Badge>
           </div>
           <div>
-            <Label className="text-sm font-medium">Severity</Label>
+            <Label className="text-sm font-medium md:text-base lg:text-lg">Severity</Label>
             <Badge variant={event.severity === 'critical' ? 'destructive' : 'default'}>
               {event.severity}
             </Badge>
           </div>
         </div>
-
         <Separator />
-
         {/* User Context */}
         <div>
           <h4 className="font-medium mb-2">User Context</h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
             <div>
               <Label>User ID</Label>
               <p>{event.userId || 'N/A'}</p>
@@ -450,13 +449,11 @@ function AuditEventDetails({ event }: AuditEventDetailsProps) {
             </div>
           </div>
         </div>
-
         <Separator />
-
         {/* Action Details */}
         <div>
           <h4 className="font-medium mb-2">Action Details</h4>
-          <div className="space-y-2 text-sm">
+          <div className="space-y-2 text-sm md:text-base lg:text-lg">
             <div>
               <Label>Action</Label>
               <p>{event.action}</p>
@@ -473,14 +470,13 @@ function AuditEventDetails({ event }: AuditEventDetailsProps) {
             </div>
           </div>
         </div>
-
         {/* Resource Context */}
         {(event.resourceType || event.resourceId || event.resourceName) && (
           <>
             <Separator />
             <div>
               <h4 className="font-medium mb-2">Resource Context</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                 {event.resourceType && (
                   <div>
                     <Label>Resource Type</Label>
@@ -503,14 +499,13 @@ function AuditEventDetails({ event }: AuditEventDetailsProps) {
             </div>
           </>
         )}
-
         {/* Security Context */}
         {(event.riskScore || event.threatLevel) && (
           <>
             <Separator />
             <div>
               <h4 className="font-medium mb-2">Security Context</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                 {event.riskScore && (
                   <div>
                     <Label>Risk Score</Label>
@@ -531,20 +526,18 @@ function AuditEventDetails({ event }: AuditEventDetailsProps) {
             </div>
           </>
         )}
-
         {/* Details */}
         {Object.keys(event.details).length > 0 && (
           <>
             <Separator />
             <div>
               <h4 className="font-medium mb-2">Additional Details</h4>
-              <pre className="bg-muted p-3 rounded-md text-xs overflow-auto">
+              <pre className="bg-muted p-3 rounded-md text-xs overflow-auto sm:text-sm md:text-base">
                 {JSON.stringify(event.details, null, 2)}
               </pre>
             </div>
           </>
         )}
-
         {/* Tags */}
         {event.tags && event.tags.length > 0 && (
           <>
@@ -563,22 +556,20 @@ function AuditEventDetails({ event }: AuditEventDetailsProps) {
     </ScrollArea>
   );
 }
-
 interface ExportDropdownProps {
   onExport: (format: 'json' | 'csv' | 'xlsx') => void;
 }
-
 function ExportDropdown({ onExport }: ExportDropdownProps) {
   return (
-    <Select onValueChange={(value) => onExport(value as 'json' | 'csv' | 'xlsx')}>
-      <SelectTrigger className="w-32">
-        <Download className="h-4 w-4 mr-2" />
-        <SelectValue placeholder="Export" />
+    <select onValueChange={(value) = aria-label="Select option"> onExport(value as 'json' | 'csv' | 'xlsx')}>
+      <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+        <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+        <selectValue placeholder="Export" />
       </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="json">JSON</SelectItem>
-        <SelectItem value="csv">CSV</SelectItem>
-        <SelectItem value="xlsx">Excel</SelectItem>
+      <selectContent aria-label="Select option">
+        <selectItem value="json" aria-label="Select option">JSON</SelectItem>
+        <selectItem value="csv" aria-label="Select option">CSV</SelectItem>
+        <selectItem value="xlsx" aria-label="Select option">Excel</SelectItem>
       </SelectContent>
     </Select>
   );

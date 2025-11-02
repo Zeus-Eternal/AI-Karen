@@ -4,7 +4,6 @@
  * Reliable email delivery system with retry mechanisms, rate limiting,
  * and priority processing for admin notifications.
  */
-
 import { 
   EmailMessage, 
   EmailQueueConfig, 
@@ -14,7 +13,6 @@ import {
 } from './types';
 import { DEFAULT_QUEUE_CONFIG } from './config';
 import { emailService } from './email-service';
-
 /**
  * Email Queue Item
  */
@@ -27,7 +25,6 @@ interface QueueItem {
   createdAt: Date;
   lastError?: string;
 }
-
 /**
  * Email Queue Manager
  */
@@ -38,17 +35,14 @@ export class EmailQueueManager {
   private processingInterval: NodeJS.Timeout | null = null;
   private rateLimitCounter = 0;
   private rateLimitResetTime = Date.now() + 60000; // Reset every minute
-  
   constructor(config: EmailQueueConfig = DEFAULT_QUEUE_CONFIG) {
     this.config = config;
   }
-  
   /**
    * Add email to queue
    */
   async addToQueue(message: EmailMessage): Promise<void> {
     const priority = this.getPriorityScore(message.priority);
-    
     const queueItem: QueueItem = {
       id: message.id,
       message,
@@ -57,7 +51,6 @@ export class EmailQueueManager {
       nextRetryAt: message.scheduled_at || new Date(),
       createdAt: new Date(),
     };
-    
     // Insert in priority order
     const insertIndex = this.queue.findIndex(item => item.priority < priority);
     if (insertIndex === -1) {
@@ -65,13 +58,11 @@ export class EmailQueueManager {
     } else {
       this.queue.splice(insertIndex, 0, queueItem);
     }
-    
     // Start processing if not already running
     if (!this.processing) {
       this.startProcessing();
     }
   }
-  
   /**
    * Add multiple emails to queue
    */
@@ -79,7 +70,6 @@ export class EmailQueueManager {
     let queuedCount = 0;
     let failedCount = 0;
     const errors: string[] = [];
-    
     for (const message of messages) {
       try {
         await this.addToQueue(message);
@@ -89,7 +79,6 @@ export class EmailQueueManager {
         errors.push(`Failed to queue ${message?.to || 'unknown'}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
-    
     return {
       success: failedCount === 0,
       queued_count: queuedCount,
@@ -97,19 +86,16 @@ export class EmailQueueManager {
       errors,
     };
   }
-  
   /**
    * Start queue processing
    */
   startProcessing(): void {
     if (this.processing) return;
-    
     this.processing = true;
     this.processingInterval = setInterval(() => {
       this.processQueue();
     }, 5000); // Process every 5 seconds
   }
-  
   /**
    * Stop queue processing
    */
@@ -120,7 +106,6 @@ export class EmailQueueManager {
       this.processingInterval = null;
     }
   }
-  
   /**
    * Process queue items
    */
@@ -128,28 +113,23 @@ export class EmailQueueManager {
     if (this.queue.length === 0) {
       return;
     }
-    
     // Check rate limit
     if (!this.checkRateLimit()) {
       return;
     }
-    
     // Get items ready for processing
     const now = new Date();
     const readyItems = this.queue
       .filter(item => item.nextRetryAt <= now)
       .slice(0, this.config.batch_size);
-    
     if (readyItems.length === 0) {
       return;
     }
-    
     // Process items
     for (const item of readyItems) {
       await this.processQueueItem(item);
     }
   }
-  
   /**
    * Process individual queue item
    */
@@ -158,12 +138,10 @@ export class EmailQueueManager {
       item.attempts++;
       item.message.retry_count = item.attempts - 1;
       item.message.status = 'sending';
-      
       // Initialize email service if needed
       if (!emailService.getConfig()) {
         await emailService.initialize();
       }
-      
       // Send email
       const result = await emailService.sendEmail(
         item.message.to,
@@ -175,52 +153,43 @@ export class EmailQueueManager {
           replyTo: item.message.reply_to,
         }
       );
-      
       if (result.success) {
         // Success - remove from queue
         item.message.status = 'sent';
         item.message.sent_at = new Date();
         this.removeFromQueue(item.id);
-        
         // Log success
         await this.logDeliveryStatus(item.message.id, 'sent', 'Email sent successfully');
       } else {
         // Failed - retry or give up
         await this.handleFailure(item, result.error || 'Unknown error');
       }
-      
       // Update rate limit counter
       this.rateLimitCounter++;
-      
     } catch (error) {
       await this.handleFailure(item, error instanceof Error ? error.message : 'Unknown error');
     }
   }
-  
   /**
    * Handle email sending failure
    */
   private async handleFailure(item: QueueItem, error: string): Promise<void> {
     item.lastError = error;
     item.message.error_message = error;
-    
     if (item.attempts >= this.config.max_retries) {
       // Max retries reached - mark as failed and remove from queue
       item.message.status = 'failed';
       item.message.failed_at = new Date();
       this.removeFromQueue(item.id);
-      
       await this.logDeliveryStatus(item.message.id, 'failed', error);
     } else {
       // Schedule retry
       const retryDelay = this.config.retry_delay_minutes * Math.pow(2, item.attempts - 1); // Exponential backoff
       item.nextRetryAt = new Date(Date.now() + retryDelay * 60000);
       item.message.status = 'queued';
-      
       await this.logDeliveryStatus(item.message.id, 'failed', `Retry ${item.attempts}/${this.config.max_retries}: ${error}`);
     }
   }
-  
   /**
    * Remove item from queue
    */
@@ -230,22 +199,18 @@ export class EmailQueueManager {
       this.queue.splice(index, 1);
     }
   }
-  
   /**
    * Check rate limit
    */
   private checkRateLimit(): boolean {
     const now = Date.now();
-    
     // Reset counter if minute has passed
     if (now >= this.rateLimitResetTime) {
       this.rateLimitCounter = 0;
       this.rateLimitResetTime = now + 60000;
     }
-    
     return this.rateLimitCounter < this.config.rate_limit_per_minute;
   }
-  
   /**
    * Get priority score for message
    */
@@ -258,15 +223,12 @@ export class EmailQueueManager {
       default: return 50;
     }
   }
-  
   /**
    * Log delivery status
    */
   private async logDeliveryStatus(messageId: string, status: string, details: string): Promise<void> {
     // In a real implementation, this would save to database
-    console.log(`Email ${messageId}: ${status} - ${details}`);
   }
-  
   /**
    * Get queue statistics
    */
@@ -284,33 +246,27 @@ export class EmailQueueManager {
       oldestItem: undefined as Date | undefined,
       rateLimitRemaining: Math.max(0, this.config.rate_limit_per_minute - this.rateLimitCounter),
     };
-    
     // Calculate statistics
     this.queue.forEach(item => {
       // Priority stats
       const priorityKey = item.message.priority;
       stats.byPriority[priorityKey] = (stats.byPriority[priorityKey] || 0) + 1;
-      
       // Status stats
       const statusKey = item.message.status;
       stats.byStatus[statusKey] = (stats.byStatus[statusKey] || 0) + 1;
-      
       // Oldest item
       if (!stats.oldestItem || item.createdAt < stats.oldestItem) {
         stats.oldestItem = item.createdAt;
       }
     });
-    
     return stats;
   }
-  
   /**
    * Clear queue (for testing/maintenance)
    */
   clearQueue(): void {
     this.queue = [];
   }
-  
   /**
    * Get queue items (for monitoring)
    */
@@ -335,14 +291,12 @@ export class EmailQueueManager {
       lastError: item.lastError,
     }));
   }
-  
   /**
    * Retry failed items
    */
   retryFailedItems(): number {
     let retriedCount = 0;
     const now = new Date();
-    
     this.queue.forEach(item => {
       if (item.message.status === 'failed' && item.attempts < this.config.max_retries) {
         item.nextRetryAt = now;
@@ -350,10 +304,8 @@ export class EmailQueueManager {
         retriedCount++;
       }
     });
-    
     return retriedCount;
   }
-  
   /**
    * Update queue configuration
    */
@@ -361,23 +313,19 @@ export class EmailQueueManager {
     this.config = { ...this.config, ...newConfig };
   }
 }
-
 /**
  * Bulk Email Processor
  */
 export class BulkEmailProcessor {
   constructor(private queueManager: EmailQueueManager) {}
-  
   /**
    * Process bulk email operation
    */
   async processBulkOperation(operation: BulkEmailOperation): Promise<void> {
     operation.status = 'processing';
     operation.started_at = new Date();
-    
     try {
       const messages: EmailMessage[] = [];
-      
       // Create email messages for all recipients
       for (const recipient of operation.recipients) {
         if (recipient.status === 'pending') {
@@ -397,22 +345,17 @@ export class BulkEmailProcessor {
             created_at: new Date(),
             updated_at: new Date(),
           };
-          
           messages.push(message);
         }
       }
-      
       // Add to queue in batches
       const batchSize = operation.batch_size;
       for (let i = 0; i < messages.length; i += batchSize) {
         const batch = messages.slice(i, i + batchSize);
-        
         const result = await this.queueManager.addBulkToQueue(batch);
-        
         // Update operation status
         operation.sent_count += result.queued_count;
         operation.failed_count += result.failed_count;
-        
         // Update recipient statuses
         batch.forEach((message, index) => {
           const recipientIndex = i + index;
@@ -424,16 +367,13 @@ export class BulkEmailProcessor {
             }
           }
         });
-        
         // Delay between batches if configured
         if (operation.delay_between_batches > 0 && i + batchSize < messages.length) {
           await new Promise(resolve => setTimeout(resolve, operation.delay_between_batches * 1000));
         }
       }
-      
       operation.status = 'completed';
       operation.completed_at = new Date();
-      
     } catch (error) {
       operation.status = 'failed';
       operation.error_message = error instanceof Error ? error.message : 'Unknown error';
@@ -441,10 +381,8 @@ export class BulkEmailProcessor {
     }
   }
 }
-
 // Singleton instances
 export const emailQueueManager = new EmailQueueManager();
 export const bulkEmailProcessor = new BulkEmailProcessor(emailQueueManager);
-
 // Auto-start queue processing
 emailQueueManager.startProcessing();

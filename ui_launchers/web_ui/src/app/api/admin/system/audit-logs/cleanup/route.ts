@@ -4,13 +4,11 @@
  * 
  * Requirements: 5.1, 5.2, 5.3
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAuditCleanupManager, auditCleanup } from '@/lib/audit/audit-cleanup';
 import { getAuditLogger } from '@/lib/audit/audit-logger';
 import type { AdminApiResponse } from '@/types/admin';
-
 /**
  * POST /api/admin/system/audit-logs/cleanup - Audit log cleanup operations
  */
@@ -27,19 +25,15 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 403 });
     }
-
     const body = await request.json();
     const { action, retention_days, resource_types, actions: actionFilter, dry_run = true } = body;
-
     const cleanupManager = getAuditCleanupManager();
     const auditLogger = getAuditLogger();
-
     switch (action) {
       case 'get_stats':
         {
           const stats = await cleanupManager.getCleanupStats();
           const archiveStats = await cleanupManager.getArchiveStats();
-
           return NextResponse.json({
             success: true,
             data: {
@@ -48,7 +42,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           });
         }
-
       case 'cleanup':
         {
           if (!retention_days || retention_days < 1) {
@@ -61,14 +54,12 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               }
             } as AdminApiResponse<never>, { status: 400 });
           }
-
           const result = await cleanupManager.cleanupLogs(
             retention_days,
             resource_types,
             actionFilter,
             dry_run
           );
-
           // Log the cleanup operation
           await auditLogger.log(
             context.user.user_id,
@@ -85,7 +76,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               request
             }
           );
-
           return NextResponse.json({
             success: true,
             data: {
@@ -95,11 +85,9 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           });
         }
-
       case 'cleanup_default_policies':
         {
           const results = await cleanupManager.cleanupWithDefaultPolicies(dry_run);
-
           // Log the policy-based cleanup
           await auditLogger.log(
             context.user.user_id,
@@ -114,7 +102,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               request
             }
           );
-
           return NextResponse.json({
             success: true,
             data: {
@@ -125,7 +112,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           });
         }
-
       case 'archive':
         {
           if (!retention_days || retention_days < 1) {
@@ -138,13 +124,11 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               }
             } as AdminApiResponse<never>, { status: 400 });
           }
-
           const result = await cleanupManager.archiveLogs(
             retention_days,
             resource_types,
             actionFilter
           );
-
           return NextResponse.json({
             success: true,
             data: {
@@ -152,11 +136,9 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           });
         }
-
       case 'optimize':
         {
           const result = await cleanupManager.optimizeAuditTable();
-
           // Log the optimization
           await auditLogger.log(
             context.user.user_id,
@@ -167,7 +149,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               request
             }
           );
-
           return NextResponse.json({
             success: true,
             data: {
@@ -175,11 +156,9 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           });
         }
-
       case 'schedule_cleanup':
         {
           await cleanupManager.scheduleCleanup();
-
           return NextResponse.json({
             success: true,
             data: {
@@ -187,11 +166,9 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           });
         }
-
       case 'cleanup_auth_logs':
         {
           const result = await auditCleanup.cleanupAuthLogs(dry_run);
-
           return NextResponse.json({
             success: true,
             data: {
@@ -201,11 +178,9 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           });
         }
-
       case 'cleanup_user_logs':
         {
           const result = await auditCleanup.cleanupUserLogs(dry_run);
-
           return NextResponse.json({
             success: true,
             data: {
@@ -215,11 +190,9 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           });
         }
-
       case 'cleanup_older_than':
         {
           const { days } = body;
-          
           if (!days || days < 1) {
             return NextResponse.json({
               success: false,
@@ -230,9 +203,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               }
             } as AdminApiResponse<never>, { status: 400 });
           }
-
           const result = await auditCleanup.cleanupOlderThan(days, dry_run);
-
           return NextResponse.json({
             success: true,
             data: {
@@ -242,7 +213,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           });
         }
-
       default:
         return NextResponse.json({
           success: false,
@@ -260,10 +230,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           }
         } as AdminApiResponse<never>, { status: 400 });
     }
-
   } catch (error) {
-    console.error('Audit cleanup API error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {
@@ -274,7 +241,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
     } as AdminApiResponse<never>, { status: 500 });
   }
 });
-
 /**
  * GET /api/admin/system/audit-logs/cleanup - Get cleanup statistics and status
  */
@@ -291,18 +257,14 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 403 });
     }
-
     const cleanupManager = getAuditCleanupManager();
-    
     // Get cleanup and archive statistics
     const [cleanupStats, archiveStats] = await Promise.all([
       cleanupManager.getCleanupStats(),
       cleanupManager.getArchiveStats()
     ]);
-
     // Calculate recommendations
     const recommendations = [];
-    
     if (cleanupStats.logs_to_delete > 1000) {
       recommendations.push({
         type: 'cleanup',
@@ -312,7 +274,6 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         parameters: { days: 90 }
       });
     }
-
     if (cleanupStats.total_logs > 50000) {
       recommendations.push({
         type: 'archive',
@@ -322,7 +283,6 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         parameters: { retention_days: 365 }
       });
     }
-
     if (cleanupStats.oldest_log_date && cleanupStats.oldest_log_date < new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)) {
       recommendations.push({
         type: 'optimize',
@@ -332,7 +292,6 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         parameters: {}
       });
     }
-
     return NextResponse.json({
       success: true,
       data: {
@@ -352,10 +311,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         last_updated: new Date().toISOString()
       }
     });
-
   } catch (error) {
-    console.error('Audit cleanup GET API error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {

@@ -1,6 +1,5 @@
-'use client';
-
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
+import { useToast } from '@/hooks/use-toast';
+'use client';
+
+
+
+
+
+
+
+
+
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,21 +25,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
+
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import {
+
   FileText as Template,
   Plus,
   Search,
@@ -46,7 +56,7 @@ import {
   MoreHorizontal,
   Play
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+
 
 interface ConversationTemplate {
   id: string;
@@ -330,16 +340,30 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
   // Render template item
   const renderTemplate = (template: ConversationTemplate) => {
     const CategoryIcon = getCategoryIcon(template.category);
+
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Handle escape key
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
     
     return (
       <Card key={template.id} className="hover:shadow-sm transition-shadow">
-        <CardContent className="p-4">
+        <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-start gap-3 flex-1">
-              <CategoryIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-sm">{template.name}</h3>
-                <p className="text-xs text-muted-foreground mt-1">
+              <CategoryIcon className="h-5 w-5 text-muted-foreground mt-0.5 sm:w-auto md:w-full" />
+              <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                <h3 className="font-medium text-sm md:text-base lg:text-lg">{template.name}</h3>
+                <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                   {template.description}
                 </p>
               </div>
@@ -347,21 +371,21 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                  <MoreHorizontal className="h-3 w-3" />
+                <button variant="ghost" size="sm" className="h-6 w-6 p-0 sm:w-auto md:w-full" aria-label="Button">
+                  <MoreHorizontal className="h-3 w-3 sm:w-auto md:w-full" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handleTemplateSelect(template)}>
-                  <Play className="h-4 w-4 mr-2" />
+                  <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Use Template
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setEditingTemplate(template)}>
-                  <Edit className="h-4 w-4 mr-2" />
+                  <Edit className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Copy className="h-4 w-4 mr-2" />
+                  <Copy className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Duplicate
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -370,7 +394,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                     onClick={() => onTemplateDelete?.(template.id)}
                     className="text-destructive"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                     Delete
                   </DropdownMenuItem>
                 )}
@@ -383,44 +407,44 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
               {template.category}
             </Badge>
             
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Star className="h-3 w-3 fill-current text-yellow-500" />
+            <div className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm md:text-base">
+              <Star className="h-3 w-3 fill-current text-yellow-500 sm:w-auto md:w-full" />
               <span>{template.rating.toFixed(1)}</span>
             </div>
             
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
               Used {template.usageCount} times
             </span>
           </div>
 
           <div className="flex flex-wrap gap-1 mb-3">
             {template.tags.map(tag => (
-              <Badge key={tag} variant="outline" className="text-xs">
+              <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
                 {tag}
               </Badge>
             ))}
           </div>
 
           <div className="space-y-1">
-            <span className="text-xs font-medium">Prompts ({template.prompts.length}):</span>
+            <span className="text-xs font-medium sm:text-sm md:text-base">Prompts ({template.prompts.length}):</span>
             {template.prompts.slice(0, 2).map(prompt => (
-              <p key={prompt.id} className="text-xs text-muted-foreground line-clamp-1">
+              <p key={prompt.id} className="text-xs text-muted-foreground line-clamp-1 sm:text-sm md:text-base">
                 {prompt.order}. {prompt.text}
               </p>
             ))}
             {template.prompts.length > 2 && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 +{template.prompts.length - 2} more prompts
               </p>
             )}
           </div>
 
-          <Button
-            onClick={() => handleTemplateSelect(template)}
+          <button
+            onClick={() = aria-label="Button"> handleTemplateSelect(template)}
             className="w-full mt-3"
             size="sm"
           >
-            <Play className="h-4 w-4 mr-2" />
+            <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Use Template
           </Button>
         </CardContent>
@@ -438,20 +462,20 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
         className="hover:shadow-sm transition-shadow cursor-pointer"
         onClick={() => onQuickActionSelect(action)}
       >
-        <CardContent className="p-4">
+        <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center gap-3 mb-2">
-            <Icon className="h-5 w-5 text-primary" />
+            <Icon className="h-5 w-5 text-primary sm:w-auto md:w-full" />
             <div className="flex-1">
-              <h3 className="font-medium text-sm">{action.name}</h3>
+              <h3 className="font-medium text-sm md:text-base lg:text-lg">{action.name}</h3>
               {action.shortcut && (
-                <Badge variant="outline" className="text-xs mt-1">
+                <Badge variant="outline" className="text-xs mt-1 sm:text-sm md:text-base">
                   {action.shortcut}
                 </Badge>
               )}
             </div>
           </div>
           
-          <p className="text-xs text-muted-foreground mb-3">
+          <p className="text-xs text-muted-foreground mb-3 sm:text-sm md:text-base">
             {action.description}
           </p>
           
@@ -468,15 +492,15 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Template className="h-5 w-5" />
+            <Template className="h-5 w-5 sm:w-auto md:w-full" />
             Templates & Quick Actions
           </CardTitle>
           
           {onTemplateCreate && (
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
+                <button size="sm" aria-label="Button">
+                  <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Create
                 </Button>
               </DialogTrigger>
@@ -490,51 +514,51 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium">Name</label>
-                    <Input
+                    <label className="text-sm font-medium md:text-base lg:text-lg">Name</label>
+                    <input
                       value={newTemplate.name}
-                      onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) = aria-label="Input"> setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
                       placeholder="Template name"
                     />
                   </div>
                   
                   <div>
-                    <label className="text-sm font-medium">Description</label>
-                    <Textarea
+                    <label className="text-sm font-medium md:text-base lg:text-lg">Description</label>
+                    <textarea
                       value={newTemplate.description}
-                      onChange={(e) => setNewTemplate(prev => ({ ...prev, description: e.target.value }))}
+                      onChange={(e) = aria-label="Textarea"> setNewTemplate(prev => ({ ...prev, description: e.target.value }))}
                       placeholder="Template description"
                       rows={2}
                     />
                   </div>
                   
                   <div>
-                    <label className="text-sm font-medium">Category</label>
-                    <Select
+                    <label className="text-sm font-medium md:text-base lg:text-lg">Category</label>
+                    <select
                       value={newTemplate.category}
-                      onValueChange={(value) => setNewTemplate(prev => ({ ...prev, category: value as any }))}
+                      onValueChange={(value) = aria-label="Select option"> setNewTemplate(prev => ({ ...prev, category: value as any }))}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
+                      <selectTrigger aria-label="Select option">
+                        <selectValue />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="general">General</SelectItem>
-                        <SelectItem value="coding">Coding</SelectItem>
-                        <SelectItem value="learning">Learning</SelectItem>
-                        <SelectItem value="problem-solving">Problem Solving</SelectItem>
-                        <SelectItem value="creative">Creative</SelectItem>
-                        <SelectItem value="analysis">Analysis</SelectItem>
+                      <selectContent aria-label="Select option">
+                        <selectItem value="general" aria-label="Select option">General</SelectItem>
+                        <selectItem value="coding" aria-label="Select option">Coding</SelectItem>
+                        <selectItem value="learning" aria-label="Select option">Learning</SelectItem>
+                        <selectItem value="problem-solving" aria-label="Select option">Problem Solving</SelectItem>
+                        <selectItem value="creative" aria-label="Select option">Creative</SelectItem>
+                        <selectItem value="analysis" aria-label="Select option">Analysis</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <div className="flex gap-2">
-                    <Button onClick={handleCreateTemplate} className="flex-1">
+                    <button onClick={handleCreateTemplate} className="flex-1" aria-label="Button">
                       Create Template
                     </Button>
-                    <Button 
+                    <button 
                       variant="outline" 
-                      onClick={() => setShowCreateDialog(false)}
+                      onClick={() = aria-label="Button"> setShowCreateDialog(false)}
                     >
                       Cancel
                     </Button>
@@ -548,39 +572,39 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
         {/* Search and Filters */}
         <div className="space-y-3">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <input
               placeholder="Search templates and actions..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
               className="pl-8 h-9"
             />
           </div>
           
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full h-8 text-xs">
-              <SelectValue />
+          <select value={categoryFilter} onValueChange={setCategoryFilter} aria-label="Select option">
+            <selectTrigger className="w-full h-8 text-xs sm:text-sm md:text-base" aria-label="Select option">
+              <selectValue />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="general">General</SelectItem>
-              <SelectItem value="coding">Coding</SelectItem>
-              <SelectItem value="learning">Learning</SelectItem>
-              <SelectItem value="problem-solving">Problem Solving</SelectItem>
-              <SelectItem value="creative">Creative</SelectItem>
-              <SelectItem value="analysis">Analysis</SelectItem>
+            <selectContent aria-label="Select option">
+              <selectItem value="all" aria-label="Select option">All Categories</SelectItem>
+              <selectItem value="general" aria-label="Select option">General</SelectItem>
+              <selectItem value="coding" aria-label="Select option">Coding</SelectItem>
+              <selectItem value="learning" aria-label="Select option">Learning</SelectItem>
+              <selectItem value="problem-solving" aria-label="Select option">Problem Solving</SelectItem>
+              <selectItem value="creative" aria-label="Select option">Creative</SelectItem>
+              <selectItem value="analysis" aria-label="Select option">Analysis</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 p-0">
+      <CardContent className="flex-1 p-0 sm:p-4 md:p-6">
         <ScrollArea className="h-full px-4">
           <div className="space-y-6 pb-4">
             {/* Quick Actions */}
             {filteredQuickActions.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-sm font-medium">Quick Actions</h3>
+                <h3 className="text-sm font-medium md:text-base lg:text-lg">Quick Actions</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {filteredQuickActions.map(renderQuickAction)}
                 </div>
@@ -590,7 +614,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             {/* Templates */}
             {filteredTemplates.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-sm font-medium">Templates</h3>
+                <h3 className="text-sm font-medium md:text-base lg:text-lg">Templates</h3>
                 <div className="space-y-3">
                   {filteredTemplates.map(renderTemplate)}
                 </div>
@@ -600,8 +624,8 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             {/* Empty State */}
             {filteredTemplates.length === 0 && filteredQuickActions.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                <Template className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">
+                <Template className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                <p className="text-sm md:text-base lg:text-lg">
                   {searchQuery || categoryFilter !== 'all'
                     ? 'No templates or actions match your search'
                     : 'No templates or actions available'}

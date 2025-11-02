@@ -6,7 +6,6 @@
  * 
  * Requirements: 7.2, 7.4
  */
-
 export interface AdminError {
   code: string;
   message: string;
@@ -15,14 +14,12 @@ export interface AdminError {
   severity: 'low' | 'medium' | 'high' | 'critical';
   retryable: boolean;
 }
-
 export interface ErrorContext {
   operation: string;
   resource?: string;
   userId?: string;
   timestamp: Date;
 }
-
 export class AdminErrorHandler {
   private static errorMap: Record<string, Omit<AdminError, 'details'>> = {
     // Authentication Errors
@@ -59,7 +56,6 @@ export class AdminErrorHandler {
       severity: 'low',
       retryable: true
     },
-
     // User Management Errors
     'USER_NOT_FOUND': {
       code: 'USER_NOT_FOUND',
@@ -105,7 +101,6 @@ export class AdminErrorHandler {
       severity: 'high',
       retryable: false
     },
-
     // Validation Errors
     'VALIDATION_WEAK_PASSWORD': {
       code: 'VALIDATION_WEAK_PASSWORD',
@@ -141,7 +136,6 @@ export class AdminErrorHandler {
       severity: 'low',
       retryable: true
     },
-
     // System Errors
     'SYSTEM_DATABASE_ERROR': {
       code: 'SYSTEM_DATABASE_ERROR',
@@ -179,7 +173,6 @@ export class AdminErrorHandler {
       severity: 'high',
       retryable: true
     },
-
     // Bulk Operation Errors
     'BULK_OPERATION_PARTIAL_FAILURE': {
       code: 'BULK_OPERATION_PARTIAL_FAILURE',
@@ -205,7 +198,6 @@ export class AdminErrorHandler {
       severity: 'medium',
       retryable: true
     },
-
     // Email Errors
     'EMAIL_SEND_FAILED': {
       code: 'EMAIL_SEND_FAILED',
@@ -232,14 +224,12 @@ export class AdminErrorHandler {
       retryable: true
     }
   };
-
   static createError(
     code: string, 
     details?: string, 
     context?: ErrorContext
   ): AdminError {
     const baseError = this.errorMap[code];
-    
     if (!baseError) {
       return {
         code: 'UNKNOWN_ERROR',
@@ -254,13 +244,11 @@ export class AdminErrorHandler {
         retryable: true
       };
     }
-
     return {
       ...baseError,
       details: details || baseError.message
     };
   }
-
   static fromHttpError(
     status: number, 
     response?: any, 
@@ -302,12 +290,10 @@ export class AdminErrorHandler {
         return this.createError('UNKNOWN_ERROR', `HTTP ${status}: ${response?.message || 'Unknown error'}`);
     }
   }
-
   static fromNetworkError(error: Error, context?: ErrorContext): AdminError {
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       return this.createError('SYSTEM_NETWORK_ERROR', error.message);
     }
-    
     if (error.name === 'AbortError') {
       return {
         code: 'OPERATION_CANCELLED',
@@ -322,30 +308,23 @@ export class AdminErrorHandler {
         retryable: true
       };
     }
-
     return this.createError('UNKNOWN_ERROR', error.message);
   }
-
   static getRetryDelay(error: AdminError, attemptNumber: number): number {
     if (!error.retryable) return 0;
-    
     // Exponential backoff with jitter
     const baseDelay = Math.min(1000 * Math.pow(2, attemptNumber - 1), 30000);
     const jitter = Math.random() * 1000;
     return baseDelay + jitter;
   }
-
   static shouldRetry(error: AdminError, attemptNumber: number): boolean {
     if (!error.retryable) return false;
     if (attemptNumber >= 3) return false;
-    
     // Don't retry validation errors or permission errors
     if (error.severity === 'low' && error.code.startsWith('VALIDATION_')) return false;
     if (error.code.startsWith('AUTH_')) return false;
-    
     return true;
   }
-
   static logError(error: AdminError, context?: ErrorContext): void {
     const logData = {
       error: error.code,
@@ -355,18 +334,13 @@ export class AdminErrorHandler {
       context,
       timestamp: new Date().toISOString()
     };
-
     if (error.severity === 'critical' || error.severity === 'high') {
-      console.error('Admin Error:', logData);
     } else {
-      console.warn('Admin Warning:', logData);
     }
-
     // In production, send to error tracking service
     if (typeof window !== 'undefined' && (window as any).errorTracker) {
       (window as any).errorTracker.captureException(error, { extra: logData });
     }
   }
 }
-
 export default AdminErrorHandler;

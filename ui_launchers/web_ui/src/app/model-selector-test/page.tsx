@@ -1,16 +1,13 @@
 "use client";
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ModelSelector, EnhancedModelSelector as ChatEnhancedModelSelector } from "@/components/chat";
 import EnhancedModelSelector from "@/components/models/EnhancedModelSelector";
 import { Model } from "@/lib/model-utils";
-
 export default function ModelSelectorTestPage() {
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [intelligentSelectedModel, setIntelligentSelectedModel] = useState<Model | null>(null);
-
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="space-y-6">
@@ -20,7 +17,6 @@ export default function ModelSelectorTestPage() {
             Test the new modern model selector component with real data from the backend.
           </p>
         </div>
-
         <div className="grid gap-6 md:grid-cols-2">
           {/* Basic Model Selector */}
           <Card>
@@ -33,7 +29,6 @@ export default function ModelSelectorTestPage() {
                 onValueChange={setSelectedModel}
                 placeholder="Choose a model..."
               />
-              
               {selectedModel && (
                 <div className="p-3 bg-muted rounded-md">
                   <p className="text-sm font-medium">Selected Model:</p>
@@ -44,7 +39,6 @@ export default function ModelSelectorTestPage() {
               )}
             </CardContent>
           </Card>
-
           {/* Compact Model Selector */}
           <Card>
             <CardHeader>
@@ -58,13 +52,11 @@ export default function ModelSelectorTestPage() {
                 showDetails={false}
                 className="w-full"
               />
-              
               <p className="text-sm text-muted-foreground">
                 This version shows less detail for space-constrained layouts.
               </p>
             </CardContent>
           </Card>
-
           {/* Disabled State */}
           <Card>
             <CardHeader>
@@ -79,7 +71,6 @@ export default function ModelSelectorTestPage() {
               />
             </CardContent>
           </Card>
-
           {/* Enhanced Model Selector */}
           <Card>
             <CardHeader>
@@ -92,17 +83,14 @@ export default function ModelSelectorTestPage() {
                 placeholder="Choose a model..."
                 showActions={true}
                 onModelAction={(action, modelId) => {
-                  console.log(`Action: ${action} on model: ${modelId}`);
                 }}
               />
-              
               <p className="text-sm text-muted-foreground">
                 This version includes model actions like download, delete, and info.
               </p>
             </CardContent>
           </Card>
         </div>
-
         {/* Intelligent Model Selector */}
         <Card>
           <CardHeader>
@@ -118,11 +106,9 @@ export default function ModelSelectorTestPage() {
               showActions={true}
               onModelChange={(model) => {
                 setIntelligentSelectedModel(model);
-                console.log('Intelligent selector chose:', model);
               }}
               className="w-full"
             />
-            
             {intelligentSelectedModel && (
               <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                 <h4 className="font-medium text-blue-900">Currently Selected Model</h4>
@@ -134,7 +120,6 @@ export default function ModelSelectorTestPage() {
             )}
           </CardContent>
         </Card>
-
         {/* Features List */}
         <Card>
           <CardHeader>
@@ -153,7 +138,6 @@ export default function ModelSelectorTestPage() {
                   <li>• Responsive design with proper truncation</li>
                 </ul>
               </div>
-              
               <div>
                 <h4 className="font-medium mb-2">Functional Features</h4>
                 <ul className="text-sm space-y-1 text-muted-foreground">
@@ -165,7 +149,6 @@ export default function ModelSelectorTestPage() {
                   <li>• Accessible with screen readers</li>
                 </ul>
               </div>
-              
               <div>
                 <h4 className="font-medium mb-2">🧠 Intelligent Selection Features</h4>
                 <ul className="text-sm space-y-1 text-muted-foreground">

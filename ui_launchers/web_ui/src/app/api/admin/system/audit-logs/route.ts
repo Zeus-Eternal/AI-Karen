@@ -5,7 +5,6 @@
  * 
  * Requirements: 5.1, 5.2, 5.3
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
@@ -17,14 +16,12 @@ import type {
   AuditLogFilter, 
   PaginationParams
 } from '@/types/admin';
-
 /**
  * GET /api/admin/system/audit-logs - Get audit logs with filtering
  */
 export const GET = requireAdmin(async (request: NextRequest, context) => {
   try {
     const { searchParams } = new URL(request.url);
-    
     // Parse filter parameters
     const filter: AuditLogFilter = {
       user_id: searchParams.get('user_id') || undefined,
@@ -34,7 +31,6 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       end_date: searchParams.get('end_date') ? new Date(searchParams.get('end_date')!) : undefined,
       ip_address: searchParams.get('ip_address') || undefined,
     };
-
     // Parse pagination parameters
     const pagination: PaginationParams = {
       page: parseInt(searchParams.get('page') || '1'),
@@ -42,16 +38,13 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       sort_by: searchParams.get('sort_by') || 'timestamp',
       sort_order: (searchParams.get('sort_order') as 'asc' | 'desc') || 'desc'
     };
-
     // Handle search query parsing
     const searchQuery = searchParams.get('search');
     if (searchQuery) {
       const parsed = AuditSearchParser.parseSearchQuery(searchQuery);
       Object.assign(filter, parsed.filters);
     }
-
     const auditLogger = getAuditLogger();
-    
     // Non-super admins have restricted access to audit logs
     if (!context.isSuperAdmin()) {
       // Regular admins can only see their own actions and user management actions
@@ -76,9 +69,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         }
       }
     }
-
     const result = await auditLogger.getAuditLogs(filter, pagination);
-
     // Log the audit log access
     await auditLog.dataExported(
       context.user.user_id,
@@ -86,31 +77,26 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       result.data.length,
       request
     );
-
     // Get action statistics for the current filter
     const actionStats = result.data.reduce((acc, log) => {
       acc[log.action] = (acc[log.action] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-
     // Get resource type statistics
     const resourceStats = result.data.reduce((acc, log) => {
       acc[log.resource_type] = (acc[log.resource_type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-
     // Get unique users in the result set
     const uniqueUsers = Array.from(
       new Set(result.data.map(log => log.user_id))
     ).length;
-
     // Get date range of results
     const dates = result.data.map(log => new Date(log.timestamp).getTime());
     const dateRange = dates.length > 0 ? {
       earliest: new Date(Math.min(...dates)),
       latest: new Date(Math.max(...dates))
     } : null;
-
     const response: AdminApiResponse<typeof result & {
       statistics: {
         action_breakdown: Record<string, number>;
@@ -137,12 +123,8 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         message: 'Audit logs retrieved successfully'
       }
     };
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('Audit logs retrieval error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {
@@ -153,7 +135,6 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
     } as AdminApiResponse<never>, { status: 500 });
   }
 });
-
 /**
  * POST /api/admin/system/audit-logs - Advanced audit log operations
  */
@@ -161,10 +142,8 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
   try {
     const body = await request.json();
     const { action, filter, export_options, pagination } = body;
-
     const auditLogger = getAuditLogger();
     const exporter = getAuditLogExporter();
-
     switch (action) {
       case 'search':
         {
@@ -173,7 +152,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             query,
             pagination || auditPagination.default()
           );
-
           // Log the search action
           await auditLogger.log(
             context.user.user_id,
@@ -184,13 +162,11 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               request
             }
           );
-
           return NextResponse.json({
             success: true,
             data: searchResult
           });
         }
-
       case 'stats':
         {
           const { start_date, end_date } = body;
@@ -198,13 +174,11 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             start_date ? new Date(start_date) : undefined,
             end_date ? new Date(end_date) : undefined
           );
-
           return NextResponse.json({
             success: true,
             data: stats
           });
         }
-
       case 'export':
         {
           // Validate export format
@@ -219,20 +193,17 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               }
             } as AdminApiResponse<never>, { status: 400 });
           }
-
           // Apply access restrictions for non-super admins
           let exportFilter = filter || {};
           if (!context.isSuperAdmin()) {
             exportFilter.user_id = context.user.user_id;
           }
-
           const exportResult = await exporter.exportLogs({
             format: exportFormat,
             filter: exportFilter,
             ...export_options,
             maxRecords: 10000 // Limit exports to 10k records
           });
-
           if (!exportResult.success) {
             return NextResponse.json({
               success: false,
@@ -243,7 +214,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               }
             } as AdminApiResponse<never>, { status: 500 });
           }
-
           // Log the export action
           await auditLog.dataExported(
             context.user.user_id,
@@ -251,7 +221,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             exportResult.recordCount,
             request
           );
-
           return NextResponse.json({
             success: true,
             data: {
@@ -264,40 +233,32 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           });
         }
-
       case 'user_activity':
         {
           const { target_user_id } = body;
-          
           // Non-super admins can only view their own activity
           const userId = context.isSuperAdmin() ? target_user_id : context.user.user_id;
-          
           const userLogs = await auditLogger.getUserAuditLogs(
             userId,
             pagination || auditPagination.default()
           );
-
           return NextResponse.json({
             success: true,
             data: userLogs
           });
         }
-
       case 'recent':
         {
           const { limit = 100 } = body;
           const recentLogs = await auditLogger.getRecentAuditLogs(Math.min(limit, 500));
-
           return NextResponse.json({
             success: true,
             data: recentLogs
           });
         }
-
       case 'compliance_export':
         {
           const { compliance_type, date_range } = body;
-          
           if (!context.isSuperAdmin()) {
             return NextResponse.json({
               success: false,
@@ -308,7 +269,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               }
             } as AdminApiResponse<never>, { status: 403 });
           }
-
           const exportResult = await exporter.exportForCompliance(
             compliance_type,
             date_range ? {
@@ -316,7 +276,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               end_date: new Date(date_range.end)
             } : undefined
           );
-
           if (!exportResult.success) {
             return NextResponse.json({
               success: false,
@@ -327,7 +286,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               }
             } as AdminApiResponse<never>, { status: 500 });
           }
-
           // Log the compliance export
           await auditLogger.log(
             context.user.user_id,
@@ -342,7 +300,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
               request
             }
           );
-
           return NextResponse.json({
             success: true,
             data: {
@@ -355,7 +312,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           });
         }
-
       default:
         return NextResponse.json({
           success: false,
@@ -366,10 +322,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           }
         } as AdminApiResponse<never>, { status: 400 });
     }
-
   } catch (error) {
-    console.error('Audit logs POST API error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {

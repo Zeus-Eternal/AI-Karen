@@ -1,7 +1,6 @@
 /**
  * Navigation utilities for the hierarchical extension management system
  */
-
 import React from 'react';
 import type {
   ExtensionCategory,
@@ -10,7 +9,6 @@ import type {
   NavigationState,
   ExtensionAction
 } from '../../extensions/types';
-
 /**
  * Creates a breadcrumb item for navigation
  */
@@ -31,7 +29,6 @@ export function createBreadcrumbItem(
     icon: options.icon,
   };
 }
-
 /**
  * Navigation action creators for common navigation patterns
  */
@@ -43,7 +40,6 @@ export const navigationActions = {
     type: 'SET_CATEGORY',
     category,
   }),
-
   /**
    * Navigate to a plugin provider (LLM, Voice, Video, Service)
    */
@@ -67,7 +63,6 @@ export const navigationActions = {
         }),
       },
     ],
-
   /**
    * Navigate to a specific provider item
    */
@@ -89,7 +84,6 @@ export const navigationActions = {
         }),
       },
     ],
-
   /**
    * Navigate to model/service settings
    */
@@ -112,7 +106,6 @@ export const navigationActions = {
         }),
       },
     ],
-
   /**
    * Navigate to extension submenu (Agents, Automations, System)
    */
@@ -135,7 +128,6 @@ export const navigationActions = {
         }),
       },
     ],
-
   /**
    * Navigate to extension category (analytics, communication, etc.)
    */
@@ -158,7 +150,6 @@ export const navigationActions = {
         }),
       },
     ],
-
   /**
    * Navigate to specific extension item
    */
@@ -181,21 +172,18 @@ export const navigationActions = {
         }),
       },
     ],
-
   /**
    * Go back one level in navigation
    */
   goBack: (): ExtensionAction => ({
     type: 'GO_BACK',
   }),
-
   /**
    * Reset navigation to category level
    */
   resetToCategory: (): ExtensionAction => ({
     type: 'RESET_BREADCRUMBS',
   }),
-
   /**
    * Navigate to specific breadcrumb level
    */
@@ -204,7 +192,6 @@ export const navigationActions = {
     level,
   }),
 };
-
 /**
  * Get icon for provider type
  */
@@ -217,7 +204,6 @@ function getProviderIcon(providerType: string): string {
   };
   return icons[providerType] || 'puzzle';
 }
-
 /**
  * Get icon for extension submenu
  */
@@ -229,7 +215,6 @@ function getSubmenuIcon(submenu: string): string {
   };
   return icons[submenu] || 'folder';
 }
-
 /**
  * Get icon for extension category
  */
@@ -246,7 +231,6 @@ function getCategoryIcon(category: string): string {
   };
   return icons[category] || 'folder';
 }
-
 /**
  * Navigation state helpers
  */
@@ -257,13 +241,11 @@ export const navigationHelpers = {
   canGoBack: (state: NavigationState): boolean => {
     return state.canGoBack && state.breadcrumb.length > 0;
   },
-
   /**
    * Get current navigation path as string
    */
   getCurrentPath: (state: NavigationState): string => {
     const parts: string[] = [state.currentCategory];
-
     if (state.currentCategory === 'Plugins') {
       if (state.selectedPluginProvider) {
         parts.push(state.selectedPluginProvider);
@@ -285,31 +267,26 @@ export const navigationHelpers = {
         parts.push(state.selectedExtensionItem);
       }
     }
-
     return parts.join(' > ');
   },
-
   /**
    * Get breadcrumb trail as string array
    */
   getBreadcrumbTrail: (state: NavigationState): string[] => {
     return state.breadcrumb.map(item => item.name);
   },
-
   /**
    * Check if we're at a specific navigation level
    */
   isAtLevel: (state: NavigationState, level: NavigationLevel): boolean => {
     return state.currentLevel === level;
   },
-
   /**
    * Check if we're in a specific category
    */
   isInCategory: (state: NavigationState, category: ExtensionCategory): boolean => {
     return state.currentCategory === category;
   },
-
   /**
    * Get the current navigation context for display
    */
@@ -323,7 +300,6 @@ export const navigationHelpers = {
     };
   },
 };
-
 /**
  * Validation helpers for navigation state
  */
@@ -335,37 +311,26 @@ export const navigationValidation = {
     // Check that breadcrumb length matches navigation depth
     const expectedDepth = calculateExpectedDepth(state);
     if (state.breadcrumb.length !== expectedDepth) {
-      console.warn('Navigation breadcrumb length mismatch', {
-        expected: expectedDepth,
-        actual: state.breadcrumb.length,
-        state,
-      });
       return false;
     }
-
     // Check that category-specific selections are consistent
     if (state.currentCategory === 'Plugins') {
       if (state.selectedExtensionSubmenu || state.selectedExtensionCategory || state.selectedExtensionItem) {
-        console.warn('Plugin category has extension selections', state);
         return false;
       }
     } else if (state.currentCategory === 'Extensions') {
       if (state.selectedPluginProvider || state.selectedProviderItem || state.selectedModel) {
-        console.warn('Extension category has plugin selections', state);
         return false;
       }
     }
-
     return true;
   },
 };
-
 /**
  * Calculate expected navigation depth based on selections
  */
 function calculateExpectedDepth(state: NavigationState): number {
   let depth = 0;
-
   if (state.currentCategory === 'Plugins') {
     if (state.selectedPluginProvider) depth++;
     if (state.selectedProviderItem) depth++;
@@ -375,10 +340,8 @@ function calculateExpectedDepth(state: NavigationState): number {
     if (state.selectedExtensionCategory) depth++;
     if (state.selectedExtensionItem) depth++;
   }
-
   return depth;
 }
-
 /**
  * Hook for dispatching multiple actions in sequence
  */
@@ -390,7 +353,6 @@ export function useNavigationActions(dispatch: React.Dispatch<ExtensionAction>) 
     dispatchMultiple: (actions: ExtensionAction[]) => {
       actions.forEach(action => dispatch(action));
     },
-
     /**
      * Navigate using action creators
      */
@@ -398,45 +360,36 @@ export function useNavigationActions(dispatch: React.Dispatch<ExtensionAction>) 
       toCategory: (category: ExtensionCategory) => {
         dispatch(navigationActions.switchCategory(category));
       },
-
       toPluginProvider: (providerType: string, providerName: string) => {
         navigationActions.navigateToPluginProvider(providerType, providerName)
           .forEach(action => dispatch(action));
       },
-
       toProviderItem: (providerId: string, providerName: string) => {
         navigationActions.navigateToProviderItem(providerId, providerName)
           .forEach(action => dispatch(action));
       },
-
       toModelSettings: (modelId: string, modelName: string) => {
         navigationActions.navigateToModelSettings(modelId, modelName)
           .forEach(action => dispatch(action));
       },
-
       toExtensionSubmenu: (submenu: 'agents' | 'automations' | 'system', submenuName: string) => {
         navigationActions.navigateToExtensionSubmenu(submenu, submenuName)
           .forEach(action => dispatch(action));
       },
-
       toExtensionCategory: (category: string, categoryName: string) => {
         navigationActions.navigateToExtensionCategory(category, categoryName)
           .forEach(action => dispatch(action));
       },
-
       toExtensionItem: (extensionId: string, extensionName: string) => {
         navigationActions.navigateToExtensionItem(extensionId, extensionName)
           .forEach(action => dispatch(action));
       },
-
       back: () => {
         dispatch(navigationActions.goBack());
       },
-
       reset: () => {
         dispatch(navigationActions.resetToCategory());
       },
-
       toBreadcrumb: (level: number) => {
         dispatch(navigationActions.navigateToBreadcrumb(level));
       },

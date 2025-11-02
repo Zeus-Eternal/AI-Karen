@@ -954,6 +954,23 @@ class LLMOrchestrator:
             mode=mode,
             metadata={"latency": round(latency, 3)},
         )
+        
+        # Apply response formatting if available
+        try:
+            formatted_result = self._apply_response_formatting(prompt, result, context)
+            if formatted_result != result:
+                self._log_request_event(
+                    "formatted",
+                    model_id,
+                    prompt,
+                    mode=mode,
+                    metadata={"formatting_applied": True},
+                )
+                return formatted_result
+        except Exception as format_error:
+            logger.warning(f"Response formatting failed for {model_id}: {format_error}")
+            # Continue with unformatted response
+        
         return result
 
     def _log_request_event(
@@ -989,6 +1006,112 @@ class LLMOrchestrator:
         model.rate_limit_until = 0.0
         model.consecutive_failures = 0
         model.last_error = None
+
+    def _apply_response_formatting(
+        self, 
+        prompt: str, 
+        response: str, 
+        context: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Apply intelligent response formatting to the model response.
+        
+        Args:
+            prompt: The original user prompt
+            response: The raw model response
+            context: Additional context for formatting
+            
+        Returns:
+            Formatted response or original response if formatting fails
+        """
+        try:
+            # Import response formatting integration
+            from extensions.response_formatting.integration import get_response_formatting_integration
+            
+            integration = get_response_formatting_integration()
+            
+            # Get theme context from existing theme manager if available
+            theme_context = {'current_theme': 'light'}  # Default fallback
+            try:
+                from src.ui_logic.themes.theme_manager import get_available_themes
+                available_themes = get_available_themes()
+                if available_themes:
+                    # Use the first available theme or default to light
+                    theme_context = {
+                        'current_theme': 'light' if 'light' in available_themes else list(available_themes.keys())[0],
+                        'available_themes': list(available_themes.keys())
+                    }
+            except ImportError:
+                logger.debug("Theme manager not available, using default theme context")
+            
+            # Format the response asynchronously
+            import asyncio
+            
+            # Check if we're already in an event loop
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an async context, run in thread pool to avoid blocking
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run,
+                        integration.format_response(
+                            user_query=prompt,
+                            response_content=response,
+                            user_preferences={},
+                            theme_context=theme_context,
+                            session_data=context or {}
+                        )
+                    )
+                    formatted_response = future.result(timeout=5.0)  # 5 second timeout
+            except RuntimeError:
+                # No event loop running, create one
+                formatted_response = asyncio.run(
+                    integration.format_response(
+                        user_query=prompt,
+                        response_content=response,
+                        user_preferences={},
+                        theme_context=theme_context,
+                        session_data=context or {}
+                    )
+                )
+            
+            # Return formatted content if formatting was successful
+            if formatted_response and formatted_response.content:
+                # Update metrics
+                self._update_formatting_metrics(True, formatted_response.metadata.get('formatter'))
+                logger.debug(f"Response formatted successfully using {formatted_response.metadata.get('formatter', 'unknown')} formatter")
+                return formatted_response.content
+            else:
+                self._update_formatting_metrics(False, None)
+                logger.debug("Response formatting returned empty result, using original response")
+                return response
+                
+        except Exception as e:
+            logger.debug(f"Response formatting failed: {e}")
+            self._update_formatting_metrics(False, None)
+            return response
+
+    def _update_formatting_metrics(self, success: bool, formatter_name: Optional[str]) -> None:
+        """Update response formatting metrics."""
+        if not hasattr(self, '_formatting_metrics'):
+            self._formatting_metrics = {
+                'total_attempts': 0,
+                'successful_formats': 0,
+                'failed_formats': 0,
+                'formatter_usage': {}
+            }
+        
+        self._formatting_metrics['total_attempts'] += 1
+        
+        if success:
+            self._formatting_metrics['successful_formats'] += 1
+            if formatter_name:
+                self._formatting_metrics['formatter_usage'][formatter_name] = (
+                    self._formatting_metrics['formatter_usage'].get(formatter_name, 0) + 1
+                )
+        else:
+            self._formatting_metrics['failed_formats'] += 1
 
     def _handle_model_failure(
         self, model_id: str, model: ModelInfo, error: Exception
@@ -1465,13 +1588,48 @@ class LLMOrchestrator:
 
     def health_check(self) -> Dict[str, Any]:
         """System health status"""
-        return {
+        health_data = {
             "status": "operational",
             "models": len(self.registry._models),
             "active_workers": self.pool.executor._work_queue.qsize(),
             "memory_ok": self.hardware.check_memory(),
             "timestamp": time.time(),
         }
+        
+        # Add response formatting health
+        try:
+            from extensions.response_formatting.integration import get_response_formatting_integration
+            integration = get_response_formatting_integration()
+            formatting_metrics = integration.get_integration_metrics()
+            
+            # Get orchestrator-level formatting metrics
+            orchestrator_metrics = self.get_formatting_metrics()
+            
+            health_data["response_formatting"] = {
+                "available": True,
+                "formatters_registered": len(integration.get_available_formatters()),
+                "supported_content_types": integration.get_supported_content_types(),
+                "integration_metrics": {
+                    "total_requests": formatting_metrics.get('total_requests', 0),
+                    "successful_formats": formatting_metrics.get('successful_formats', 0),
+                    "failed_formats": formatting_metrics.get('failed_formats', 0),
+                    "fallback_uses": formatting_metrics.get('fallback_uses', 0),
+                    "success_rate": (
+                        formatting_metrics.get('successful_formats', 0) / 
+                        max(1, formatting_metrics.get('total_requests', 1))
+                    )
+                },
+                "orchestrator_metrics": orchestrator_metrics,
+                "content_type_distribution": formatting_metrics.get('content_type_detections', {}),
+                "formatter_usage": formatting_metrics.get('registry_stats', {}).get('formatter_usage', {})
+            }
+        except Exception as e:
+            health_data["response_formatting"] = {
+                "available": False,
+                "error": str(e)
+            }
+        
+        return health_data
     
     def reset_circuit_breakers(self) -> None:
         """Reset circuit breakers for all models to allow retry"""
@@ -1488,6 +1646,72 @@ class LLMOrchestrator:
                 model_id: model.status.value 
                 for model_id, model in self.registry._models.items()
             }
+
+    def get_formatting_metrics(self) -> Dict[str, Any]:
+        """Get response formatting metrics."""
+        if not hasattr(self, '_formatting_metrics'):
+            return {
+                'total_attempts': 0,
+                'successful_formats': 0,
+                'failed_formats': 0,
+                'formatter_usage': {},
+                'success_rate': 0.0
+            }
+        
+        metrics = dict(self._formatting_metrics)
+        total = metrics['total_attempts']
+        metrics['success_rate'] = (
+            metrics['successful_formats'] / max(1, total)
+        )
+        
+        return metrics
+
+    def get_detailed_formatting_stats(self) -> Dict[str, Any]:
+        """Get detailed response formatting statistics."""
+        orchestrator_metrics = self.get_formatting_metrics()
+        
+        try:
+            from extensions.response_formatting.integration import get_response_formatting_integration
+            integration = get_response_formatting_integration()
+            integration_metrics = integration.get_integration_metrics()
+            
+            return {
+                'orchestrator_level': orchestrator_metrics,
+                'integration_level': integration_metrics,
+                'available_formatters': integration.get_available_formatters(),
+                'supported_content_types': integration.get_supported_content_types(),
+                'theme_requirements': {
+                    content_type: integration.get_theme_requirements(
+                        getattr(integration.content_detector, 'ContentType', type('ContentType', (), {content_type: content_type}))
+                    ) for content_type in integration.get_supported_content_types()
+                }
+            }
+        except Exception as e:
+            return {
+                'orchestrator_level': orchestrator_metrics,
+                'integration_level': {'error': str(e)},
+                'available_formatters': [],
+                'supported_content_types': [],
+                'theme_requirements': {}
+            }
+
+    def reset_formatting_metrics(self) -> None:
+        """Reset response formatting metrics."""
+        if hasattr(self, '_formatting_metrics'):
+            self._formatting_metrics = {
+                'total_attempts': 0,
+                'successful_formats': 0,
+                'failed_formats': 0,
+                'formatter_usage': {}
+            }
+        
+        try:
+            from extensions.response_formatting.integration import get_response_formatting_integration
+            integration = get_response_formatting_integration()
+            integration.reset_metrics()
+            logger.info("Response formatting metrics reset")
+        except Exception as e:
+            logger.warning(f"Failed to reset integration metrics: {e}")
 
 
 # === Singleton Access ===

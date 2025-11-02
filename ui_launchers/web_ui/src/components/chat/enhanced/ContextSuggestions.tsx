@@ -1,11 +1,17 @@
-'use client';
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
+'use client';
+
+
+
+
+
+
+
   Lightbulb,
   MessageSquare,
   HelpCircle,
@@ -15,7 +21,7 @@ import {
   Clock,
   TrendingUp
 } from 'lucide-react';
-import {
+
   ContextSuggestion,
   EnhancedChatMessage,
   ConversationContext,
@@ -215,13 +221,13 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
 
   return (
     <Card className={`${className}`}>
-      <CardContent className="p-4">
+      <CardContent className="p-4 sm:p-4 md:p-6">
         <div className="flex items-center gap-2 mb-3">
-          <Lightbulb className="h-4 w-4 text-primary" />
-          <h3 className="font-medium text-sm">Smart Suggestions</h3>
+          <Lightbulb className="h-4 w-4 text-primary sm:w-auto md:w-full" />
+          <h3 className="font-medium text-sm md:text-base lg:text-lg">Smart Suggestions</h3>
           {isGenerating && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm md:text-base">
+              <div className="w-2 h-2 bg-primary rounded-full animate-pulse sm:w-auto md:w-full"></div>
               Generating...
             </div>
           )}
@@ -239,28 +245,28 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
               {suggestions.map((suggestion) => {
                 const Icon = getSuggestionIcon(suggestion.type);
                 return (
-                  <Button
+                  <button
                     key={suggestion.id}
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start h-auto p-3 text-left hover:bg-muted/50"
-                    onClick={() => onSuggestionSelect(suggestion)}
+                    className="w-full justify-start h-auto p-3 text-left hover:bg-muted/50 sm:p-4 md:p-6"
+                    onClick={() = aria-label="Button"> onSuggestionSelect(suggestion)}
                   >
                     <div className="flex items-start gap-3 w-full">
-                      <Icon className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-left">
+                      <Icon className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground sm:w-auto md:w-full" />
+                      <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                        <p className="text-sm font-medium text-left md:text-base lg:text-lg">
                           {suggestion.text}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge 
                             variant={getSuggestionColor(suggestion.confidence)} 
-                            className="text-xs"
+                            className="text-xs sm:text-sm md:text-base"
                           >
                             {suggestion.type.replace('_', ' ')}
                           </Badge>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <TrendingUp className="h-3 w-3" />
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm md:text-base">
+                            <TrendingUp className="h-3 w-3 sm:w-auto md:w-full" />
                             {Math.round(suggestion.confidence * 100)}%
                           </div>
                         </div>
@@ -275,7 +281,7 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
 
         {suggestions.length > 0 && (
           <div className="mt-3 pt-3 border-t">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               Suggestions based on conversation context and your patterns
             </p>
           </div>

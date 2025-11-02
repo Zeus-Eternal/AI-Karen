@@ -1,13 +1,12 @@
 'use client';
-
 /**
  * Admin Management Interface Component
  * 
  * This component provides the interface for managing administrators,
  * including creating, promoting, demoting, and inviting admin users.
  */
-
 import React, { useState, useEffect } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,18 +28,15 @@ import {
   Search,
   Filter
 } from 'lucide-react';
-
 interface AdminUser extends User {
   lastLogin?: Date;
   invitedAt?: Date;
   invitedBy?: string;
 }
-
 interface InviteAdminForm {
   email: string;
   message: string;
 }
-
 export default function AdminManagementInterface() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -55,19 +51,16 @@ export default function AdminManagementInterface() {
     message: ''
   });
   const { toast } = useToast();
-
   // Load admins and users
   useEffect(() => {
     loadAdmins();
     loadUsers();
   }, []);
-
   const normalizeAdmin = (admin: any): AdminUser => {
     const createdAt = admin.created_at ? new Date(admin.created_at) : new Date();
     const updatedAt = admin.updated_at ? new Date(admin.updated_at) : createdAt;
     const lastLogin = admin.last_login_at ? new Date(admin.last_login_at) : undefined;
     const invitedAt = admin.invited_at ? new Date(admin.invited_at) : createdAt;
-
     return {
       user_id: admin.user_id,
       email: admin.email,
@@ -90,7 +83,6 @@ export default function AdminManagementInterface() {
       invitedBy: admin.invited_by ?? admin.created_by ?? undefined,
     };
   };
-
   const loadAdmins = async () => {
     setLoading(true);
     try {
@@ -118,7 +110,6 @@ export default function AdminManagementInterface() {
       setLoading(false);
     }
   };
-
   const loadUsers = async () => {
     try {
       const response = await fetch('/api/admin/users?role=user');
@@ -127,10 +118,8 @@ export default function AdminManagementInterface() {
         setUsers(data.data || []);
       }
     } catch (error) {
-      console.error('Failed to load users:', error);
     }
   };
-
   const handleInviteAdmin = async () => {
     if (!inviteForm.email) {
       toast({
@@ -140,7 +129,6 @@ export default function AdminManagementInterface() {
       });
       return;
     }
-
     try {
       const response = await fetch('/api/admin/admins/invite', {
         method: 'POST',
@@ -149,7 +137,6 @@ export default function AdminManagementInterface() {
         },
         body: JSON.stringify(inviteForm)
       });
-
       if (response.ok) {
         toast({
           title: 'Success',
@@ -170,13 +157,11 @@ export default function AdminManagementInterface() {
       });
     }
   };
-
   const handlePromoteUser = async (userId: string) => {
     try {
       const response = await fetch(`/api/admin/admins/promote/${userId}`, {
         method: 'POST'
       });
-
       if (response.ok) {
         toast({
           title: 'Success',
@@ -198,17 +183,14 @@ export default function AdminManagementInterface() {
       });
     }
   };
-
   const handleDemoteAdmin = async (adminId: string) => {
     if (!confirm('Are you sure you want to demote this administrator? They will lose all admin privileges.')) {
       return;
     }
-
     try {
       const response = await fetch(`/api/admin/admins/demote/${adminId}`, {
         method: 'POST'
       });
-
       if (response.ok) {
         toast({
           title: 'Success',
@@ -228,7 +210,6 @@ export default function AdminManagementInterface() {
       });
     }
   };
-
   const handleToggleAdminStatus = async (adminId: string, isActive: boolean) => {
     try {
       const response = await fetch(`/api/admin/admins/${adminId}`, {
@@ -238,7 +219,6 @@ export default function AdminManagementInterface() {
         },
         body: JSON.stringify({ isActive: !isActive })
       });
-
       if (response.ok) {
         toast({
           title: 'Success',
@@ -257,7 +237,6 @@ export default function AdminManagementInterface() {
       });
     }
   };
-
   const filteredAdmins = admins.filter(admin => {
     const matchesSearch = admin.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          admin.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -266,44 +245,42 @@ export default function AdminManagementInterface() {
                          (statusFilter === 'inactive' && !admin.is_active);
     return matchesSearch && matchesStatus;
   });
-
   const formatLastLogin = (date?: Date | string | null) => {
     if (!date) return 'Never';
     return new Date(date).toLocaleDateString();
   };
-
   return (
-    <div className="space-y-6">
+    <ErrorBoundary fallback={<div>Something went wrong in AdminManagementInterface</div>}>
+      <div className="space-y-6">
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
         <div className="flex flex-1 gap-4">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:w-auto md:w-full" />
+            <input
               placeholder="Search administrators..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
-          <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-            <SelectTrigger className="w-32">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue />
+          <select value={statusFilter} onValueChange={(value: any) = aria-label="Select option"> setStatusFilter(value)}>
+            <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+              <Filter className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
+              <selectValue />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+            <selectContent aria-label="Select option">
+              <selectItem value="all" aria-label="Select option">All</SelectItem>
+              <selectItem value="active" aria-label="Select option">Active</SelectItem>
+              <selectItem value="inactive" aria-label="Select option">Inactive</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        
         <div className="flex gap-2">
           <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
             <DialogTrigger asChild>
-              <Button>
-                <Mail className="mr-2 h-4 w-4" />
+              <button aria-label="Button">
+                <Mail className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                 Invite Admin
               </Button>
             </DialogTrigger>
@@ -317,40 +294,39 @@ export default function AdminManagementInterface() {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="email">Email Address</Label>
-                  <Input
+                  <input
                     id="email"
                     type="email"
                     placeholder="admin@example.com"
                     value={inviteForm.email}
-                    onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) = aria-label="Input"> setInviteForm(prev => ({ ...prev, email: e.target.value }))}
                   />
                 </div>
                 <div>
                   <Label htmlFor="message">Custom Message (Optional)</Label>
-                  <Textarea
+                  <textarea
                     id="message"
                     placeholder="Welcome to the admin team..."
                     value={inviteForm.message}
-                    onChange={(e) => setInviteForm(prev => ({ ...prev, message: e.target.value }))}
+                    onChange={(e) = aria-label="Textarea"> setInviteForm(prev => ({ ...prev, message: e.target.value }))}
                     rows={3}
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
+                <button variant="outline" onClick={() = aria-label="Button"> setShowInviteDialog(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleInviteAdmin}>
+                <button onClick={handleInviteAdmin} aria-label="Button">
                   Send Invitation
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-
           <Dialog open={showPromoteDialog} onOpenChange={setShowPromoteDialog}>
             <DialogTrigger asChild>
-              <Button variant="outline">
-                <UserPlus className="mr-2 h-4 w-4" />
+              <button variant="outline" aria-label="Button">
+                <UserPlus className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                 Promote User
               </Button>
             </DialogTrigger>
@@ -364,16 +340,16 @@ export default function AdminManagementInterface() {
               <div className="space-y-4">
                 <div>
                   <Label>Select User</Label>
-                  <Select onValueChange={(value) => {
+                  <select onValueChange={(value) = aria-label="Select option"> {
                     const user = users.find(u => u.user_id === value);
                     setSelectedUser(user || null);
                   }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a user to promote" />
+                    <selectTrigger aria-label="Select option">
+                      <selectValue placeholder="Choose a user to promote" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <selectContent aria-label="Select option">
                       {users.map(user => (
-                        <SelectItem key={user.user_id} value={user.user_id}>
+                        <selectItem key={user.user_id} value={user.user_id} aria-label="Select option">
                           {user.email} ({user.full_name || 'No name'})
                         </SelectItem>
                       ))}
@@ -381,25 +357,25 @@ export default function AdminManagementInterface() {
                   </Select>
                 </div>
                 {selectedUser && (
-                  <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="p-4 bg-gray-50 rounded-lg sm:p-4 md:p-6">
                     <h4 className="font-medium">Selected User</h4>
-                    <p className="text-sm text-gray-600">{selectedUser.email}</p>
-                    <p className="text-sm text-gray-600">Name: {selectedUser.full_name || 'Not provided'}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 md:text-base lg:text-lg">{selectedUser.email}</p>
+                    <p className="text-sm text-gray-600 md:text-base lg:text-lg">Name: {selectedUser.full_name || 'Not provided'}</p>
+                    <p className="text-sm text-gray-600 md:text-base lg:text-lg">
                       Joined: {new Date(selectedUser.created_at).toLocaleDateString()}
                     </p>
                   </div>
                 )}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => {
+                <button variant="outline" onClick={() = aria-label="Button"> {
                   setShowPromoteDialog(false);
                   setSelectedUser(null);
                 }}>
                   Cancel
                 </Button>
-                <Button 
-                  onClick={() => selectedUser && handlePromoteUser(selectedUser.user_id)}
+                <button 
+                  onClick={() = aria-label="Button"> selectedUser && handlePromoteUser(selectedUser.user_id)}
                   disabled={!selectedUser}
                 >
                   Promote to Admin
@@ -409,7 +385,6 @@ export default function AdminManagementInterface() {
           </Dialog>
         </div>
       </div>
-
       {/* Administrators Table */}
       <Card>
         <CardHeader>
@@ -421,7 +396,7 @@ export default function AdminManagementInterface() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
               <span className="ml-2">Loading administrators...</span>
             </div>
           ) : (
@@ -449,19 +424,19 @@ export default function AdminManagementInterface() {
                       <TableCell>
                         <div>
                           <div className="font-medium">{admin.email}</div>
-                          <div className="text-sm text-gray-500">{admin.full_name || 'No name'}</div>
+                          <div className="text-sm text-gray-500 md:text-base lg:text-lg">{admin.full_name || 'No name'}</div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={admin.role === 'super_admin' ? 'default' : 'secondary'}>
                           {admin.role === 'super_admin' ? (
                             <>
-                              <ShieldCheck className="mr-1 h-3 w-3" />
+                              <ShieldCheck className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                               Super Admin
                             </>
                           ) : (
                             <>
-                              <Shield className="mr-1 h-3 w-3" />
+                              <Shield className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                               Admin
                             </>
                           )}
@@ -472,15 +447,15 @@ export default function AdminManagementInterface() {
                           {admin.is_active ? 'Active' : 'Inactive'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-gray-500">
+                      <TableCell className="text-sm text-gray-500 md:text-base lg:text-lg">
                         {formatLastLogin(admin.lastLogin ?? admin.last_login_at)}
                       </TableCell>
-                      <TableCell className="text-sm text-gray-500">
+                      <TableCell className="text-sm text-gray-500 md:text-base lg:text-lg">
                         {(admin.invitedAt ?? admin.created_at) ? (
                           <div>
                             <div>{new Date(admin.invitedAt ?? admin.created_at).toLocaleDateString()}</div>
                             {admin.invitedBy && (
-                              <div className="text-xs">by {admin.invitedBy}</div>
+                              <div className="text-xs sm:text-sm md:text-base">by {admin.invitedBy}</div>
                             )}
                           </div>
                         ) : (
@@ -491,27 +466,27 @@ export default function AdminManagementInterface() {
                         <div className="flex items-center justify-end gap-2">
                           {admin.role !== 'super_admin' && (
                             <>
-                              <Button
+                              <button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleToggleAdminStatus(admin.user_id, admin.is_active)}
+                                onClick={() = aria-label="Button"> handleToggleAdminStatus(admin.user_id, admin.is_active)}
                               >
                                 {admin.is_active ? (
                                   <>
-                                    <UserX className="mr-1 h-3 w-3" />
+                                    <UserX className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                                     Deactivate
                                   </>
                                 ) : (
                                   <>
-                                    <UserCheck className="mr-1 h-3 w-3" />
+                                    <UserCheck className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
                                     Activate
                                   </>
                                 )}
                               </Button>
-                              <Button
+                              <button
                                 variant="destructive"
                                 size="sm"
-                                onClick={() => handleDemoteAdmin(admin.user_id)}
+                                onClick={() = aria-label="Button"> handleDemoteAdmin(admin.user_id)}
                               >
                                 Demote
                               </Button>
@@ -528,5 +503,6 @@ export default function AdminManagementInterface() {
         </CardContent>
       </Card>
     </div>
+    </ErrorBoundary>
   );
 }

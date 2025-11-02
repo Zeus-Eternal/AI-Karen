@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import React from 'react';
+
 import { render, screen, waitFor } from '@testing-library/react';
 import { LiveRegion, useLiveRegion } from '../LiveRegion';
 
@@ -104,7 +104,7 @@ describe('useLiveRegion', () => {
 
     return (
       <div>
-        <button onClick={() => announce('Test announcement')}>
+        <button onClick={() = aria-label="Button"> announce('Test announcement')}>
           Announce
         </button>
         <LiveRegionComponent />

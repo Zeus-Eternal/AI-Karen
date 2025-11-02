@@ -1,3 +1,10 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
+import {
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 /**
  * Extension Monitoring Dashboard Component
  * 
@@ -5,19 +12,18 @@
  * service health monitoring, and performance data.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import {
+
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
+
+
+
+
+
   LineChart,
   Line,
   XAxis,
@@ -31,7 +37,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import {
+
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -42,7 +48,6 @@ import {
   TrendingUp,
   RefreshCw,
 } from 'lucide-react';
-
 interface AuthMetrics {
   total_requests: number;
   success_count: number;
@@ -52,7 +57,6 @@ interface AuthMetrics {
   average_response_time: number;
   last_updated: string;
 }
-
 interface ServiceHealthMetrics {
   healthy_services: number;
   total_services: number;
@@ -65,7 +69,6 @@ interface ServiceHealthMetrics {
   }>;
   last_updated: string;
 }
-
 interface ApiPerformanceMetrics {
   total_requests: number;
   error_count: number;
@@ -85,7 +88,6 @@ interface ApiPerformanceMetrics {
   }>;
   last_updated: string;
 }
-
 interface ActiveAlert {
   id: string;
   name: string;
@@ -94,7 +96,6 @@ interface ActiveAlert {
   triggered_at: string;
   trigger_count: number;
 }
-
 interface DashboardData {
   timestamp: string;
   monitoring_active: boolean;
@@ -104,14 +105,12 @@ interface DashboardData {
   active_alerts: ActiveAlert[];
   alert_history: any[];
 }
-
 const ExtensionMonitoringDashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(30000); // 30 seconds
-
   const fetchDashboardData = useCallback(async () => {
     try {
       const response = await fetch('/api/monitoring/dashboard');
@@ -122,24 +121,19 @@ const ExtensionMonitoringDashboard: React.FC = () => {
       setDashboardData(data);
       setError(null);
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
-
   useEffect(() => {
     if (!autoRefresh) return;
-
     const interval = setInterval(fetchDashboardData, refreshInterval);
     return () => clearInterval(interval);
   }, [autoRefresh, refreshInterval, fetchDashboardData]);
-
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical':
@@ -154,64 +148,59 @@ const ExtensionMonitoringDashboard: React.FC = () => {
         return 'default';
     }
   };
-
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'critical':
       case 'error':
-        return <XCircle className="h-4 w-4" />;
+        return <XCircle className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4" />;
+        return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'info':
-        return <CheckCircle className="h-4 w-4" />;
+        return <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />;
       default:
-        return <Activity className="h-4 w-4" />;
+        return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
-
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleString();
   };
-
   const formatDuration = (seconds: number) => {
     if (seconds < 60) return `${seconds.toFixed(1)}s`;
     if (seconds < 3600) return `${(seconds / 60).toFixed(1)}m`;
     return `${(seconds / 3600).toFixed(1)}h`;
   };
-
   if (loading) {
     return (
+    <ErrorBoundary fallback={<div>Something went wrong in ExtensionMonitoringDashboard</div>}>
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 animate-spin" />
+        <RefreshCw className="h-8 w-8 animate-spin sm:w-auto md:w-full" />
         <span className="ml-2">Loading monitoring data...</span>
       </div>
     );
   }
-
   if (error) {
     return (
       <Alert variant="destructive">
-        <XCircle className="h-4 w-4" />
+        <XCircle className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertTitle>Error Loading Dashboard</AlertTitle>
         <AlertDescription>
           {error}
-          <Button
+          <button
             variant="outline"
             size="sm"
             className="ml-2"
             onClick={fetchDashboardData}
-          >
+           aria-label="Button">
             Retry
           </Button>
         </AlertDescription>
       </Alert>
     );
   }
-
   if (!dashboardData) {
     return (
       <Alert>
-        <AlertTriangle className="h-4 w-4" />
+        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertTitle>No Data Available</AlertTitle>
         <AlertDescription>
           No monitoring data is currently available.
@@ -219,22 +208,18 @@ const ExtensionMonitoringDashboard: React.FC = () => {
       </Alert>
     );
   }
-
   const { authentication, service_health, api_performance, active_alerts } = dashboardData;
-
   // Prepare chart data
   const authChartData = [
     { name: 'Success', value: authentication.success_count, color: '#10b981' },
     { name: 'Failure', value: authentication.failure_count, color: '#ef4444' },
   ];
-
   const serviceStatusData = Object.entries(service_health.services).map(([name, service]) => ({
     name,
     status: service.status,
     response_time: service.average_response_time,
     error_count: service.error_count,
   }));
-
   const endpointPerformanceData = Object.entries(api_performance.endpoints)
     .slice(0, 10) // Show top 10 endpoints
     .map(([endpoint, data]) => ({
@@ -243,7 +228,6 @@ const ExtensionMonitoringDashboard: React.FC = () => {
       errors: data.error_count,
       avg_time: data.average_response_time,
     }));
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -258,31 +242,30 @@ const ExtensionMonitoringDashboard: React.FC = () => {
           <Badge variant={dashboardData.monitoring_active ? 'default' : 'secondary'}>
             {dashboardData.monitoring_active ? 'Active' : 'Inactive'}
           </Badge>
-          <Button
+          <button
             variant="outline"
             size="sm"
             onClick={fetchDashboardData}
             disabled={loading}
-          >
+           aria-label="Button">
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button
+          <button
             variant={autoRefresh ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setAutoRefresh(!autoRefresh)}
+            onClick={() = aria-label="Button"> setAutoRefresh(!autoRefresh)}
           >
             Auto Refresh
           </Button>
         </div>
       </div>
-
       {/* Active Alerts */}
       {active_alerts.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2 text-yellow-500" />
+              <AlertTriangle className="h-5 w-5 mr-2 text-yellow-500 sm:w-auto md:w-full" />
               Active Alerts ({active_alerts.length})
             </CardTitle>
           </CardHeader>
@@ -296,7 +279,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
                       <AlertTitle>{alert.name}</AlertTitle>
                       <AlertDescription>
                         {alert.description}
-                        <div className="text-xs text-muted-foreground mt-1">
+                        <div className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                           Triggered: {formatTimestamp(alert.triggered_at)} 
                           {alert.trigger_count > 1 && ` (${alert.trigger_count} times)`}
                         </div>
@@ -309,64 +292,59 @@ const ExtensionMonitoringDashboard: React.FC = () => {
           </CardContent>
         </Card>
       )}
-
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Auth Success Rate</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Auth Success Rate</CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{authentication.success_rate.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {authentication.total_requests} total requests
             </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Service Health</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Service Health</CardTitle>
+            <Server className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{service_health.health_percentage.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {service_health.healthy_services}/{service_health.total_services} services healthy
             </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">API Error Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">API Error Rate</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{api_performance.error_rate.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {api_performance.total_requests} total requests
             </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Avg Response Time</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {(api_performance.average_response_time * 1000).toFixed(0)}ms
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               P95: {(api_performance.percentiles.p95 * 1000).toFixed(0)}ms
             </p>
           </CardContent>
         </Card>
       </div>
-
       {/* Detailed Metrics Tabs */}
       <Tabs defaultValue="authentication" className="space-y-4">
         <TabsList>
@@ -374,7 +352,6 @@ const ExtensionMonitoringDashboard: React.FC = () => {
           <TabsTrigger value="health">Service Health</TabsTrigger>
           <TabsTrigger value="performance">API Performance</TabsTrigger>
         </TabsList>
-
         <TabsContent value="authentication" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
@@ -406,7 +383,6 @@ const ExtensionMonitoringDashboard: React.FC = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle>Authentication Metrics</CardTitle>
@@ -438,7 +414,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
                       {(authentication.average_response_time * 1000).toFixed(0)}ms
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
+                  <div className="flex justify-between text-sm text-muted-foreground md:text-base lg:text-lg">
                     <span>Last Updated:</span>
                     <span>{formatTimestamp(authentication.last_updated)}</span>
                   </div>
@@ -447,7 +423,6 @@ const ExtensionMonitoringDashboard: React.FC = () => {
             </Card>
           </div>
         </TabsContent>
-
         <TabsContent value="health" className="space-y-4">
           <Card>
             <CardHeader>
@@ -459,7 +434,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
             <CardContent>
               <div className="space-y-4">
                 {serviceStatusData.map((service) => (
-                  <div key={service.name} className="flex items-center justify-between p-3 border rounded">
+                  <div key={service.name} className="flex items-center justify-between p-3 border rounded sm:p-4 md:p-6">
                     <div className="flex items-center space-x-3">
                       <div className={`w-3 h-3 rounded-full ${
                         service.status === 'healthy' ? 'bg-green-500' :
@@ -467,7 +442,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
                       }`} />
                       <span className="font-medium">{service.name}</span>
                     </div>
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                    <div className="flex items-center space-x-4 text-sm text-muted-foreground md:text-base lg:text-lg">
                       <span>Errors: {service.error_count}</span>
                       <span>Avg: {(service.response_time * 1000).toFixed(0)}ms</span>
                       <Badge variant={
@@ -483,7 +458,6 @@ const ExtensionMonitoringDashboard: React.FC = () => {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="performance" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
@@ -510,7 +484,6 @@ const ExtensionMonitoringDashboard: React.FC = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle>Response Time Percentiles</CardTitle>
@@ -559,7 +532,7 @@ const ExtensionMonitoringDashboard: React.FC = () => {
         </TabsContent>
       </Tabs>
     </div>
+    </ErrorBoundary>
   );
 };
-
 export default ExtensionMonitoringDashboard;

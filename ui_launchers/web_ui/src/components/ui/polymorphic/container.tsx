@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import type { PolymorphicComponentPropWithRef, PolymorphicRef } from "../compound/types"
 
 // Container component variants and sizes
 type ContainerVariant = "default" | "fluid" | "constrained" | "centered" | "padded"

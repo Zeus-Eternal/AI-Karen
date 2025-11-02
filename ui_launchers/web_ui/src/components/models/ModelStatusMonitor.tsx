@@ -1,20 +1,29 @@
-"use client";
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
-import {
+import { getKarenBackend } from '@/lib/karen-backend';
+import { useToast } from '@/hooks/use-toast';
+"use client";
+
+
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+
+
+
+
+
+
   Activity,
   CheckCircle,
   AlertCircle,
@@ -31,8 +40,7 @@ import {
   TrendingDown,
   Minus
 } from 'lucide-react';
-import { getKarenBackend } from '@/lib/karen-backend';
-import { useToast } from '@/hooks/use-toast';
+
 
 interface ModelInfo {
   id: string;
@@ -45,7 +53,6 @@ interface ModelInfo {
     memory_requirement?: string;
   };
 }
-
 interface ModelStatus {
   model_id: string;
   model_name: string;
@@ -69,13 +76,11 @@ interface ModelStatus {
   }>;
   performance_trend: 'up' | 'down' | 'stable';
 }
-
 interface ModelStatusMonitorProps {
   models: ModelInfo[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
 const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
   models,
   open,
@@ -87,20 +92,16 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(5000); // 5 seconds
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
-
   const { toast } = useToast();
   const backend = getKarenBackend();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
   // Load model status data
   const loadModelStatuses = async () => {
     try {
       setLoading(true);
       setError(null);
-
       // Filter to only local models
       const localModels = models.filter(model => model.status === 'local');
-      
       const statusPromises = localModels.map(async (model) => {
         try {
           // Try to get real status from the intelligent model routes
@@ -112,7 +113,6 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
           // Generate mock status data
           const now = Date.now();
           const isOnline = Math.random() > 0.1; // 90% chance of being online
-          
           return {
             model_id: model.id,
             model_name: model.display_name || model.name,
@@ -134,12 +134,9 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
           } as ModelStatus;
         }
       });
-
       const statuses = await Promise.all(statusPromises);
       setModelStatuses(statuses.filter(Boolean));
-
     } catch (err) {
-      console.error('Failed to load model statuses:', err);
       setError('Failed to load model status information');
       toast({
         title: "Error Loading Status",
@@ -150,12 +147,10 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
       setLoading(false);
     }
   };
-
   // Generate mock issues for demonstration
   const generateMockIssues = (isOnline: boolean) => {
     const issues = [];
     const now = Date.now();
-
     if (!isOnline) {
       issues.push({
         severity: 'error' as const,
@@ -178,19 +173,15 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
         });
       }
     }
-
     return issues;
   };
-
   // Setup auto-refresh
   useEffect(() => {
     if (open && autoRefresh) {
       loadModelStatuses(); // Initial load
-      
       intervalRef.current = setInterval(() => {
         loadModelStatuses();
       }, refreshInterval);
-
       return () => {
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
@@ -198,7 +189,6 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
       };
     }
   }, [open, autoRefresh, refreshInterval]);
-
   // Cleanup interval on unmount
   useEffect(() => {
     return () => {
@@ -207,7 +197,6 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
       }
     };
   }, []);
-
   // Get status color and icon
   const getStatusDisplay = (status: string) => {
     switch (status) {
@@ -215,65 +204,62 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
         return {
           color: 'text-green-600',
           bgColor: 'bg-green-100',
-          icon: <CheckCircle className="h-4 w-4" />,
+          icon: <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />,
           label: 'Online'
         };
       case 'offline':
         return {
           color: 'text-gray-600',
           bgColor: 'bg-gray-100',
-          icon: <WifiOff className="h-4 w-4" />,
+          icon: <WifiOff className="h-4 w-4 sm:w-auto md:w-full" />,
           label: 'Offline'
         };
       case 'loading':
         return {
           color: 'text-blue-600',
           bgColor: 'bg-blue-100',
-          icon: <Loader2 className="h-4 w-4 animate-spin" />,
+          icon: <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />,
           label: 'Loading'
         };
       case 'error':
         return {
           color: 'text-red-600',
           bgColor: 'bg-red-100',
-          icon: <AlertCircle className="h-4 w-4" />,
+          icon: <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />,
           label: 'Error'
         };
       case 'maintenance':
         return {
           color: 'text-yellow-600',
           bgColor: 'bg-yellow-100',
-          icon: <Clock className="h-4 w-4" />,
+          icon: <Clock className="h-4 w-4 sm:w-auto md:w-full" />,
           label: 'Maintenance'
         };
       default:
         return {
           color: 'text-gray-600',
           bgColor: 'bg-gray-100',
-          icon: <AlertCircle className="h-4 w-4" />,
+          icon: <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />,
           label: 'Unknown'
         };
     }
   };
-
   // Get performance trend icon
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'up':
-        return <TrendingUp className="h-4 w-4 text-green-600" />;
+        return <TrendingUp className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
       case 'down':
-        return <TrendingDown className="h-4 w-4 text-red-600" />;
+        return <TrendingDown className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
       default:
-        return <Minus className="h-4 w-4 text-gray-600" />;
+        return <Minus className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
     }
   };
-
   // Format uptime
   const formatUptime = (seconds: number) => {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-
     if (days > 0) {
       return `${days}d ${hours}h`;
     } else if (hours > 0) {
@@ -282,17 +268,14 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
       return `${minutes}m`;
     }
   };
-
   // Format last request time
   const formatLastRequest = (timestamp: number) => {
     if (!timestamp) return 'Never';
-    
     const now = Date.now();
     const diff = now - timestamp;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-
     if (days > 0) {
       return `${days}d ago`;
     } else if (hours > 0) {
@@ -303,27 +286,24 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
       return 'Just now';
     }
   };
-
   // Get health score color
   const getHealthScoreColor = (score: number) => {
     if (score >= 0.8) return 'text-green-600';
     if (score >= 0.6) return 'text-yellow-600';
     return 'text-red-600';
   };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto sm:w-auto md:w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+            <Activity className="h-5 w-5 sm:w-auto md:w-full" />
             Model Status Monitor
           </DialogTitle>
           <DialogDescription>
             Real-time monitoring of model availability and performance
           </DialogDescription>
         </DialogHeader>
-
         <div className="space-y-6">
           {/* Controls */}
           <Card>
@@ -337,15 +317,14 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
                     checked={autoRefresh}
                     onCheckedChange={setAutoRefresh}
                   />
-                  <label className="text-sm font-medium">Auto Refresh</label>
+                  <label className="text-sm font-medium md:text-base lg:text-lg">Auto Refresh</label>
                 </div>
-                
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium">Interval:</label>
+                  <label className="text-sm font-medium md:text-base lg:text-lg">Interval:</label>
                   <select
                     value={refreshInterval}
-                    onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                    className="text-sm border rounded px-2 py-1"
+                    onChange={(e) = aria-label="Select option"> setRefreshInterval(Number(e.target.value))}
+                    className="text-sm border rounded px-2 py-1 md:text-base lg:text-lg"
                   >
                     <option value={1000}>1s</option>
                     <option value={5000}>5s</option>
@@ -355,97 +334,89 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
                   </select>
                 </div>
               </div>
-
-              <Button
+              <button
                 onClick={loadModelStatuses}
                 disabled={loading}
                 variant="outline"
                 size="sm"
-              >
+               aria-label="Button">
                 {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  <Loader2 className="h-4 w-4 animate-spin mr-1 sm:w-auto md:w-full" />
                 ) : (
-                  <RefreshCw className="h-4 w-4 mr-1" />
+                  <RefreshCw className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                 )}
                 Refresh
               </Button>
             </CardContent>
           </Card>
-
           {/* Status Overview */}
           {error && (
             <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-
           {modelStatuses.length > 0 && (
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 sm:p-4 md:p-6">
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <CheckCircle className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />
                       <div>
                         <p className="text-2xl font-bold">
                           {modelStatuses.filter(s => s.status === 'online').length}
                         </p>
-                        <p className="text-sm text-muted-foreground">Online</p>
+                        <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Online</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 sm:p-4 md:p-6">
                     <div className="flex items-center gap-2">
-                      <WifiOff className="h-5 w-5 text-gray-600" />
+                      <WifiOff className="h-5 w-5 text-gray-600 sm:w-auto md:w-full" />
                       <div>
                         <p className="text-2xl font-bold">
                           {modelStatuses.filter(s => s.status === 'offline').length}
                         </p>
-                        <p className="text-sm text-muted-foreground">Offline</p>
+                        <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Offline</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 sm:p-4 md:p-6">
                     <div className="flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5 text-red-600" />
+                      <AlertCircle className="h-5 w-5 text-red-600 sm:w-auto md:w-full" />
                       <div>
                         <p className="text-2xl font-bold">
                           {modelStatuses.filter(s => s.status === 'error').length}
                         </p>
-                        <p className="text-sm text-muted-foreground">Errors</p>
+                        <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Errors</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 sm:p-4 md:p-6">
                     <div className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-blue-600" />
+                      <Activity className="h-5 w-5 text-blue-600 sm:w-auto md:w-full" />
                       <div>
                         <p className="text-2xl font-bold">
                           {modelStatuses.reduce((sum, s) => sum + s.active_connections, 0)}
                         </p>
-                        <p className="text-sm text-muted-foreground">Active Connections</p>
+                        <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Active Connections</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
-
               {/* Model Status Cards */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {modelStatuses.map(status => {
                   const statusDisplay = getStatusDisplay(status.status);
-                  
                   return (
                     <Card key={status.model_id} className="relative">
                       <CardHeader className="pb-3">
@@ -464,11 +435,10 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
                         </div>
                         <CardDescription>{status.provider}</CardDescription>
                       </CardHeader>
-
                       <CardContent className="space-y-4">
                         {/* Health Score */}
                         <div>
-                          <div className="flex justify-between text-sm mb-1">
+                          <div className="flex justify-between text-sm mb-1 md:text-base lg:text-lg">
                             <span>Health Score</span>
                             <span className={getHealthScoreColor(status.health_score)}>
                               {(status.health_score * 100).toFixed(0)}%
@@ -476,18 +446,16 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
                           </div>
                           <Progress value={status.health_score * 100} className="h-2" />
                         </div>
-
                         {/* Availability */}
                         <div>
-                          <div className="flex justify-between text-sm mb-1">
+                          <div className="flex justify-between text-sm mb-1 md:text-base lg:text-lg">
                             <span>Availability</span>
                             <span>{(status.availability * 100).toFixed(1)}%</span>
                           </div>
                           <Progress value={status.availability * 100} className="h-2" />
                         </div>
-
                         {/* Key Metrics */}
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                           <div>
                             <span className="text-muted-foreground">Response Time:</span>
                             <span className="ml-2 font-medium">
@@ -529,9 +497,8 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
                             </>
                           )}
                         </div>
-
                         {/* Additional Info */}
-                        <div className="grid grid-cols-2 gap-4 text-sm pt-2 border-t">
+                        <div className="grid grid-cols-2 gap-4 text-sm pt-2 border-t md:text-base lg:text-lg">
                           <div>
                             <span className="text-muted-foreground">Uptime:</span>
                             <span className="ml-2 font-medium">
@@ -551,19 +518,18 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
                             </span>
                           </div>
                         </div>
-
                         {/* Issues */}
                         {status.issues.length > 0 && (
                           <div className="space-y-2">
-                            <h4 className="text-sm font-medium">Recent Issues</h4>
+                            <h4 className="text-sm font-medium md:text-base lg:text-lg">Recent Issues</h4>
                             {status.issues.slice(0, 3).map((issue, index) => (
                               <Alert 
                                 key={index}
                                 variant={issue.severity === 'error' ? 'destructive' : 'default'}
                                 className="py-2"
                               >
-                                <AlertCircle className="h-3 w-3" />
-                                <AlertDescription className="text-xs">
+                                <AlertCircle className="h-3 w-3 sm:w-auto md:w-full" />
+                                <AlertDescription className="text-xs sm:text-sm md:text-base">
                                   {issue.message}
                                   <span className="ml-2 text-muted-foreground">
                                     {formatLastRequest(issue.timestamp)}
@@ -580,14 +546,13 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
               </div>
             </>
           )}
-
           {!loading && modelStatuses.length === 0 && (
             <Card>
               <CardContent className="text-center py-8">
                 <p className="text-muted-foreground">
                   No local models available for monitoring.
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                   Download some models to see their status here.
                 </p>
               </CardContent>
@@ -598,5 +563,4 @@ const ModelStatusMonitor: React.FC<ModelStatusMonitorProps> = ({
     </Dialog>
   );
 };
-
 export default ModelStatusMonitor;

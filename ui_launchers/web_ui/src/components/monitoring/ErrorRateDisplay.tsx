@@ -46,7 +46,7 @@ export const ErrorRateDisplay: React.FC<ErrorRateDisplayProps> = ({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <span className="text-lg font-semibold">Error Metrics</span>
-          <Badge variant={errorStatus.variant} className="text-xs">
+          <Badge variant={errorStatus.variant} className="text-xs sm:text-sm md:text-base">
             {errorStatus.status.toUpperCase()} RATE
           </Badge>
         </CardTitle>
@@ -59,8 +59,8 @@ export const ErrorRateDisplay: React.FC<ErrorRateDisplayProps> = ({
             <div className={`font-bold text-3xl ${errorStatus.color}`}>
               {errorMetrics.errorRate.toFixed(1)}%
             </div>
-            <div className="text-sm text-muted-foreground mb-2">Error Rate</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">Error Rate</div>
+            <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {errorMetrics.totalErrors.toLocaleString()} total errors
             </div>
           </div>
@@ -70,12 +70,12 @@ export const ErrorRateDisplay: React.FC<ErrorRateDisplayProps> = ({
         {sortedErrorTypes.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium text-sm">Error Types</h4>
-              <Button
+              <h4 className="font-medium text-sm md:text-base lg:text-lg">Error Types</h4>
+              <button
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowDetails(!showDetails)}
-                className="text-xs"
+                onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
+                className="text-xs sm:text-sm md:text-base"
               >
                 {showDetails ? 'Hide' : 'Show'} Details
               </Button>
@@ -86,7 +86,7 @@ export const ErrorRateDisplay: React.FC<ErrorRateDisplayProps> = ({
                 const percentage = (count / errorMetrics.totalErrors) * 100;
                 return (
                   <div key={errorType} className="space-y-1">
-                    <div className="flex justify-between items-center text-sm">
+                    <div className="flex justify-between items-center text-sm md:text-base lg:text-lg">
                       <span className="font-medium truncate" title={errorType}>
                         {errorType}
                       </span>
@@ -94,7 +94,7 @@ export const ErrorRateDisplay: React.FC<ErrorRateDisplayProps> = ({
                         <span className="text-muted-foreground">
                           {count}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                           ({percentage.toFixed(1)}%)
                         </span>
                       </div>
@@ -115,28 +115,28 @@ export const ErrorRateDisplay: React.FC<ErrorRateDisplayProps> = ({
         {/* Recent Errors */}
         {showRecentErrors && errorMetrics.recentErrors.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-medium text-sm">Recent Errors</h4>
+            <h4 className="font-medium text-sm md:text-base lg:text-lg">Recent Errors</h4>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {errorMetrics.recentErrors.slice(0, 10).map((error, index) => (
                 <div 
                   key={`${error.correlationId}-${index}`}
-                  className="p-2 bg-red-50 rounded border-l-4 border-red-500"
+                  className="p-2 bg-red-50 rounded border-l-4 border-red-500 sm:p-4 md:p-6"
                 >
-                  <div className="flex justify-between items-start text-sm">
-                    <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start text-sm md:text-base lg:text-lg">
+                    <div className="flex-1 min-w-0 sm:w-auto md:w-full">
                       <div className="font-medium text-red-700 truncate" title={error.message}>
                         {error.message}
                       </div>
-                      <div className="text-xs text-red-600 mt-1">
+                      <div className="text-xs text-red-600 mt-1 sm:text-sm md:text-base">
                         Type: {error.type}
                       </div>
                       {showDetails && (
-                        <div className="text-xs text-muted-foreground mt-1 font-mono">
+                        <div className="text-xs text-muted-foreground mt-1 font-mono sm:text-sm md:text-base">
                           ID: {error.correlationId}
                         </div>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                    <div className="text-xs text-muted-foreground ml-2 flex-shrink-0 sm:text-sm md:text-base">
                       {formatTimestamp(error.timestamp)}
                     </div>
                   </div>
@@ -146,7 +146,7 @@ export const ErrorRateDisplay: React.FC<ErrorRateDisplayProps> = ({
             
             {errorMetrics.recentErrors.length > 10 && (
               <div className="text-center">
-                <Button variant="outline" size="sm" className="text-xs">
+                <button variant="outline" size="sm" className="text-xs sm:text-sm md:text-base" aria-label="Button">
                   View All Errors ({errorMetrics.recentErrors.length})
                 </Button>
               </div>
@@ -155,8 +155,8 @@ export const ErrorRateDisplay: React.FC<ErrorRateDisplayProps> = ({
         )}
 
         {/* Error Rate Trend Indicator */}
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <div className="flex items-center justify-between text-sm">
+        <div className="p-3 bg-gray-50 rounded-lg sm:p-4 md:p-6">
+          <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
             <span className="text-muted-foreground">Status</span>
             <div className="flex items-center space-x-2">
               <div 

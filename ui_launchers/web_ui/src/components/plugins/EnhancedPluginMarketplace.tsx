@@ -1,3 +1,15 @@
+import React, { useState, useEffect } from "react";
+import {
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { PluginMarketplaceEntry } from "@/types/plugins";
 /**
  * Enhanced Plugin Marketplace Component
  *
@@ -7,8 +19,8 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
-import {
+
+
   Search,
   Filter,
   Star,
@@ -33,30 +45,30 @@ import {
   ImageIcon,
 } from "lucide-react";
 
-import {
+
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
+
+
+
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import {
+
+
+
+
+
+
+
   Dialog,
   DialogContent,
   DialogDescription,
@@ -65,7 +77,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { PluginMarketplaceEntry } from "@/types/plugins";
+
 
 interface PluginReview {
   id: string;
@@ -428,80 +440,80 @@ export const EnhancedPluginMarketplace: React.FC<
         key={plugin.id}
         className="hover:shadow-lg transition-all duration-200 group"
       >
-        <CardContent className="p-0">
+        <CardContent className="p-0 sm:p-4 md:p-6">
           {/* Plugin Image/Icon */}
           <div className="relative h-48 bg-gradient-to-br from-blue-500 to-purple-600 rounded-t-lg">
             <div className="absolute inset-0 flex items-center justify-center">
-              <Package className="w-16 h-16 text-white opacity-80" />
+              <Package className="w-16 h-16 text-white opacity-80 sm:w-auto md:w-full" />
             </div>
             <div className="absolute top-3 right-3 flex gap-2">
               {plugin.featured && (
-                <Badge variant="default" className="text-xs">
-                  <Award className="w-3 h-3 mr-1" />
+                <Badge variant="default" className="text-xs sm:text-sm md:text-base">
+                  <Award className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                   Featured
                 </Badge>
               )}
               {plugin.verified && (
-                <Badge variant="secondary" className="text-xs">
-                  <CheckCircle className="w-3 h-3 mr-1" />
+                <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
+                  <CheckCircle className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                   Verified
                 </Badge>
               )}
             </div>
-            <Button
+            <button
               variant="ghost"
               size="sm"
               className="absolute top-3 left-3 text-white hover:bg-white/20"
-              onClick={(e) => {
+              onClick={(e) = aria-label="Button"> {
                 e.stopPropagation();
                 toggleBookmark(plugin.id);
               }}
             >
               {isBookmarked ? (
-                <BookmarkCheck className="w-4 h-4" />
+                <BookmarkCheck className="w-4 h-4 sm:w-auto md:w-full" />
               ) : (
-                <Bookmark className="w-4 h-4" />
+                <Bookmark className="w-4 h-4 sm:w-auto md:w-full" />
               )}
             </Button>
           </div>
 
-          <div className="p-4">
+          <div className="p-4 sm:p-4 md:p-6">
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1">
                 <h3 className="font-semibold text-lg line-clamp-1">
                   {plugin.name}
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   by {plugin.author.name}
                 </p>
               </div>
               <div className="text-right">
                 <div className="flex items-center gap-1 mb-1">
                   {renderStars(plugin.rating)}
-                  <span className="text-xs text-muted-foreground ml-1">
+                  <span className="text-xs text-muted-foreground ml-1 sm:text-sm md:text-base">
                     {plugin.rating}
                   </span>
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   {plugin.reviewCount} reviews
                 </div>
               </div>
             </div>
 
-            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+            <p className="text-sm text-muted-foreground mb-3 line-clamp-2 md:text-base lg:text-lg">
               {plugin.description}
             </p>
 
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                   {plugin.category}
                 </Badge>
                 <Badge
                   variant={
                     plugin.pricing.type === "free" ? "secondary" : "default"
                   }
-                  className="text-xs"
+                  className="text-xs sm:text-sm md:text-base"
                 >
                   {plugin.pricing.type === "free"
                     ? "Free"
@@ -510,53 +522,53 @@ export const EnhancedPluginMarketplace: React.FC<
                     : `$${plugin.pricing.price}`}
                 </Badge>
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {plugin.downloads.toLocaleString()} downloads
               </div>
             </div>
 
             <div className="flex items-center gap-1 mb-4">
               {plugin.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs">
+                <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
                   {tag}
                 </Badge>
               ))}
               {plugin.tags.length > 3 && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   +{plugin.tags.length - 3}
                 </span>
               )}
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 className="flex-1"
-                onClick={(e) => {
+                onClick={(e) = aria-label="Button"> {
                   e.stopPropagation();
                   setSelectedPlugin(plugin);
                 }}
               >
-                <Eye className="w-3 h-3 mr-1" />
+                <Eye className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                 Details
               </Button>
-              <Button
+              <button
                 size="sm"
                 className="flex-1"
-                onClick={(e) => {
+                onClick={(e) = aria-label="Button"> {
                   e.stopPropagation();
                   handleInstall(plugin);
                 }}
               >
                 {plugin.pricing.type === "paid" ? (
                   <>
-                    <ShoppingCart className="w-3 h-3 mr-1" />
+                    <ShoppingCart className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                     Buy
                   </>
                 ) : (
                   <>
-                    <Download className="w-3 h-3 mr-1" />
+                    <Download className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                     Install
                   </>
                 )}
@@ -574,7 +586,7 @@ export const EnhancedPluginMarketplace: React.FC<
     if (pluginReviews.length === 0) {
       return (
         <div className="text-center py-8">
-          <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
           <h3 className="text-lg font-medium mb-2">No Reviews Yet</h3>
           <p className="text-muted-foreground">
             Be the first to review this plugin
@@ -587,9 +599,9 @@ export const EnhancedPluginMarketplace: React.FC<
       <div className="space-y-4">
         {pluginReviews.map((review) => (
           <Card key={review.id}>
-            <CardContent className="p-4">
+            <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-start gap-3">
-                <Avatar className="w-10 h-10">
+                <Avatar className="w-10 h-10 sm:w-auto md:w-full">
                   <AvatarImage src={review.userAvatar} />
                   <AvatarFallback>
                     {review.userName
@@ -605,8 +617,8 @@ export const EnhancedPluginMarketplace: React.FC<
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{review.userName}</span>
                         {review.verified && (
-                          <Badge variant="outline" className="text-xs">
-                            <CheckCircle className="w-3 h-3 mr-1" />
+                          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
+                            <CheckCircle className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                             Verified
                           </Badge>
                         )}
@@ -615,10 +627,10 @@ export const EnhancedPluginMarketplace: React.FC<
                         <div className="flex items-center gap-1">
                           {renderStars(review.rating)}
                         </div>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                           v{review.version}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                           {review.timestamp.toLocaleDateString()}
                         </span>
                       </div>
@@ -626,17 +638,17 @@ export const EnhancedPluginMarketplace: React.FC<
                   </div>
 
                   <h4 className="font-medium mb-2">{review.title}</h4>
-                  <p className="text-sm text-muted-foreground mb-3">
+                  <p className="text-sm text-muted-foreground mb-3 md:text-base lg:text-lg">
                     {review.content}
                   </p>
 
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" className="text-xs">
-                      <ThumbsUp className="w-3 h-3 mr-1" />
+                    <button variant="ghost" size="sm" className="text-xs sm:text-sm md:text-base" aria-label="Button">
+                      <ThumbsUp className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                       Helpful ({review.helpful})
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-xs">
-                      <Flag className="w-3 h-3 mr-1" />
+                    <button variant="ghost" size="sm" className="text-xs sm:text-sm md:text-base" aria-label="Button">
+                      <Flag className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                       Report
                     </Button>
                   </div>
@@ -653,8 +665,8 @@ export const EnhancedPluginMarketplace: React.FC<
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
+        <button variant="ghost" size="sm" onClick={onClose} aria-label="Button">
+          <ArrowLeft className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
           Back to Plugins
         </Button>
         <div>
@@ -671,19 +683,19 @@ export const EnhancedPluginMarketplace: React.FC<
           <div className="flex flex-col gap-4">
             <div className="flex gap-2">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+                <input
                   placeholder="Search plugins..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
                   className="pl-10"
                 />
               </div>
-              <Button
+              <button
                 variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={() = aria-label="Button"> setShowFilters(!showFilters)}
               >
-                <Filter className="w-4 h-4 mr-2" />
+                <Filter className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                 Filters
               </Button>
             </div>
@@ -691,7 +703,7 @@ export const EnhancedPluginMarketplace: React.FC<
             {showFilters && (
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 bg-muted/50 rounded-lg">
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">
+                  <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">
                     Category
                   </Label>
                   <div className="space-y-2">
@@ -721,7 +733,7 @@ export const EnhancedPluginMarketplace: React.FC<
                         />
                         <Label
                           htmlFor={`category-${category}`}
-                          className="text-sm capitalize"
+                          className="text-sm capitalize md:text-base lg:text-lg"
                         >
                           {category}
                         </Label>
@@ -731,7 +743,7 @@ export const EnhancedPluginMarketplace: React.FC<
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">
+                  <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">
                     Pricing
                   </Label>
                   <div className="space-y-2">
@@ -756,7 +768,7 @@ export const EnhancedPluginMarketplace: React.FC<
                         />
                         <Label
                           htmlFor={`pricing-${type}`}
-                          className="text-sm capitalize"
+                          className="text-sm capitalize md:text-base lg:text-lg"
                         >
                           {type}
                         </Label>
@@ -766,29 +778,29 @@ export const EnhancedPluginMarketplace: React.FC<
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">
+                  <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">
                     Rating
                   </Label>
-                  <Select
+                  <select
                     value={filters.rating.toString()}
-                    onValueChange={(value) =>
+                    onValueChange={(value) = aria-label="Select option">
                       setFilters((prev) => ({ ...prev, rating: Number(value) }))
                     }
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Any rating" />
+                    <selectTrigger aria-label="Select option">
+                      <selectValue placeholder="Any rating" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Any rating</SelectItem>
-                      <SelectItem value="4">4+ stars</SelectItem>
-                      <SelectItem value="3">3+ stars</SelectItem>
-                      <SelectItem value="2">2+ stars</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="0" aria-label="Select option">Any rating</SelectItem>
+                      <selectItem value="4" aria-label="Select option">4+ stars</SelectItem>
+                      <selectItem value="3" aria-label="Select option">3+ stars</SelectItem>
+                      <selectItem value="2" aria-label="Select option">2+ stars</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">
+                  <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">
                     Options
                   </Label>
                   <div className="space-y-2">
@@ -803,7 +815,7 @@ export const EnhancedPluginMarketplace: React.FC<
                           }))
                         }
                       />
-                      <Label htmlFor="verified" className="text-sm">
+                      <Label htmlFor="verified" className="text-sm md:text-base lg:text-lg">
                         Verified only
                       </Label>
                     </div>
@@ -818,7 +830,7 @@ export const EnhancedPluginMarketplace: React.FC<
                           }))
                         }
                       />
-                      <Label htmlFor="featured" className="text-sm">
+                      <Label htmlFor="featured" className="text-sm md:text-base lg:text-lg">
                         Featured only
                       </Label>
                     </div>
@@ -826,37 +838,37 @@ export const EnhancedPluginMarketplace: React.FC<
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium mb-2 block">Sort</Label>
+                  <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">Sort</Label>
                   <div className="space-y-2">
-                    <Select
+                    <select
                       value={sortBy}
-                      onValueChange={(value: any) => setSortBy(value)}
+                      onValueChange={(value: any) = aria-label="Select option"> setSortBy(value)}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
+                      <selectTrigger aria-label="Select option">
+                        <selectValue />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="popular">Most Popular</SelectItem>
-                        <SelectItem value="rating">Highest Rated</SelectItem>
-                        <SelectItem value="recent">Most Recent</SelectItem>
-                        <SelectItem value="name">Name</SelectItem>
-                        <SelectItem value="price">Price</SelectItem>
+                      <selectContent aria-label="Select option">
+                        <selectItem value="popular" aria-label="Select option">Most Popular</SelectItem>
+                        <selectItem value="rating" aria-label="Select option">Highest Rated</SelectItem>
+                        <selectItem value="recent" aria-label="Select option">Most Recent</SelectItem>
+                        <selectItem value="name" aria-label="Select option">Name</SelectItem>
+                        <selectItem value="price" aria-label="Select option">Price</SelectItem>
                       </SelectContent>
                     </Select>
                     <div className="flex gap-1">
-                      <Button
+                      <button
                         variant={sortOrder === "desc" ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setSortOrder("desc")}
+                        onClick={() = aria-label="Button"> setSortOrder("desc")}
                       >
-                        <SortDesc className="w-3 h-3" />
+                        <SortDesc className="w-3 h-3 sm:w-auto md:w-full" />
                       </Button>
-                      <Button
+                      <button
                         variant={sortOrder === "asc" ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setSortOrder("asc")}
+                        onClick={() = aria-label="Button"> setSortOrder("asc")}
                       >
-                        <SortAsc className="w-3 h-3" />
+                        <SortAsc className="w-3 h-3 sm:w-auto md:w-full" />
                       </Button>
                     </div>
                   </div>
@@ -865,28 +877,28 @@ export const EnhancedPluginMarketplace: React.FC<
             )}
 
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 {filteredPlugins.length} plugin
                 {filteredPlugins.length !== 1 ? "s" : ""} found
               </p>
 
               <div className="flex items-center gap-2">
                 <div className="flex items-center border rounded-md">
-                  <Button
+                  <button
                     variant={viewMode === "grid" ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => setViewMode("grid")}
+                    onClick={() = aria-label="Button"> setViewMode("grid")}
                     className="rounded-r-none"
                   >
-                    <Grid className="w-4 h-4" />
+                    <Grid className="w-4 h-4 sm:w-auto md:w-full" />
                   </Button>
-                  <Button
+                  <button
                     variant={viewMode === "list" ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => setViewMode("list")}
+                    onClick={() = aria-label="Button"> setViewMode("list")}
                     className="rounded-l-none"
                   >
-                    <List className="w-4 h-4" />
+                    <List className="w-4 h-4 sm:w-auto md:w-full" />
                   </Button>
                 </div>
               </div>
@@ -899,7 +911,7 @@ export const EnhancedPluginMarketplace: React.FC<
       {filteredPlugins.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <Package className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
             <h3 className="text-lg font-medium mb-2">No plugins found</h3>
             <p className="text-muted-foreground">
               Try adjusting your search or filters
@@ -923,23 +935,23 @@ export const EnhancedPluginMarketplace: React.FC<
         open={!!selectedPlugin}
         onOpenChange={() => setSelectedPlugin(null)}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:w-auto md:w-full">
           {selectedPlugin && (
             <>
               <DialogHeader>
                 <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <Package className="w-8 h-8 text-white" />
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center sm:w-auto md:w-full">
+                    <Package className="w-8 h-8 text-white sm:w-auto md:w-full" />
                   </div>
                   <div className="flex-1">
                     <DialogTitle className="flex items-center gap-2 text-xl">
                       {selectedPlugin.name}
                       {selectedPlugin.verified && (
-                        <CheckCircle className="w-5 h-5 text-blue-600" />
+                        <CheckCircle className="w-5 h-5 text-blue-600 sm:w-auto md:w-full" />
                       )}
                       {selectedPlugin.featured && (
-                        <Badge variant="default" className="text-xs">
-                          <Award className="w-3 h-3 mr-1" />
+                        <Badge variant="default" className="text-xs sm:text-sm md:text-base">
+                          <Award className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                           Featured
                         </Badge>
                       )}
@@ -974,19 +986,19 @@ export const EnhancedPluginMarketplace: React.FC<
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
+                    <button
                       variant="outline"
                       size="sm"
-                      onClick={() => toggleBookmark(selectedPlugin.id)}
+                      onClick={() = aria-label="Button"> toggleBookmark(selectedPlugin.id)}
                     >
                       {bookmarkedPlugins.has(selectedPlugin.id) ? (
-                        <BookmarkCheck className="w-4 h-4" />
+                        <BookmarkCheck className="w-4 h-4 sm:w-auto md:w-full" />
                       ) : (
-                        <Bookmark className="w-4 h-4" />
+                        <Bookmark className="w-4 h-4 sm:w-auto md:w-full" />
                       )}
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <Share className="w-4 h-4" />
+                    <button variant="outline" size="sm" aria-label="Button">
+                      <Share className="w-4 h-4 sm:w-auto md:w-full" />
                     </Button>
                   </div>
                 </div>
@@ -1003,7 +1015,7 @@ export const EnhancedPluginMarketplace: React.FC<
 
                 <TabsContent value="overview" className="space-y-6">
                   <div>
-                    <p className="text-sm leading-relaxed">
+                    <p className="text-sm leading-relaxed md:text-base lg:text-lg">
                       {selectedPlugin.description}
                     </p>
                   </div>
@@ -1017,7 +1029,7 @@ export const EnhancedPluginMarketplace: React.FC<
                             key={index}
                             className="aspect-video bg-muted rounded-lg flex items-center justify-center"
                           >
-                            <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                            <ImageIcon className="w-8 h-8 text-muted-foreground sm:w-auto md:w-full" />
                           </div>
                         ))}
                       </div>
@@ -1027,7 +1039,7 @@ export const EnhancedPluginMarketplace: React.FC<
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <h4 className="font-medium mb-3">Information</h4>
-                      <div className="space-y-2 text-sm">
+                      <div className="space-y-2 text-sm md:text-base lg:text-lg">
                         <div className="flex justify-between">
                           <span>Downloads</span>
                           <span>
@@ -1036,7 +1048,7 @@ export const EnhancedPluginMarketplace: React.FC<
                         </div>
                         <div className="flex justify-between">
                           <span>Category</span>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                             {selectedPlugin.category}
                           </Badge>
                         </div>
@@ -1060,7 +1072,7 @@ export const EnhancedPluginMarketplace: React.FC<
                           <Badge
                             key={tag}
                             variant="outline"
-                            className="text-xs"
+                            className="text-xs sm:text-sm md:text-base"
                           >
                             {tag}
                           </Badge>
@@ -1072,40 +1084,40 @@ export const EnhancedPluginMarketplace: React.FC<
                   <div className="flex items-center justify-between pt-4 border-t">
                     <div className="flex items-center gap-2">
                       {selectedPlugin.manifest.homepage && (
-                        <Button variant="outline" size="sm" asChild>
+                        <button variant="outline" size="sm" asChild aria-label="Button">
                           <a
                             href={selectedPlugin.manifest.homepage}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            <ExternalLink className="w-4 h-4 mr-2" />
+                            <ExternalLink className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                             Website
                           </a>
                         </Button>
                       )}
                       {selectedPlugin.manifest.repository && (
-                        <Button variant="outline" size="sm" asChild>
+                        <button variant="outline" size="sm" asChild aria-label="Button">
                           <a
                             href={selectedPlugin.manifest.repository}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            <ExternalLink className="w-4 h-4 mr-2" />
+                            <ExternalLink className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                             Repository
                           </a>
                         </Button>
                       )}
                     </div>
 
-                    <Button onClick={() => handleInstall(selectedPlugin)}>
+                    <button onClick={() = aria-label="Button"> handleInstall(selectedPlugin)}>
                       {selectedPlugin.pricing.type === "paid" ? (
                         <>
-                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          <ShoppingCart className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                           Buy for ${selectedPlugin.pricing.price}
                         </>
                       ) : (
                         <>
-                          <Download className="w-4 h-4 mr-2" />
+                          <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                           Install Plugin
                         </>
                       )}
@@ -1121,7 +1133,7 @@ export const EnhancedPluginMarketplace: React.FC<
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <h4 className="font-medium mb-3">System Requirements</h4>
-                      <div className="space-y-2 text-sm">
+                      <div className="space-y-2 text-sm md:text-base lg:text-lg">
                         <div className="flex justify-between">
                           <span>Min Memory</span>
                           <span>
@@ -1149,7 +1161,7 @@ export const EnhancedPluginMarketplace: React.FC<
 
                     <div>
                       <h4 className="font-medium mb-3">Security</h4>
-                      <div className="space-y-2 text-sm">
+                      <div className="space-y-2 text-sm md:text-base lg:text-lg">
                         <div className="flex justify-between">
                           <span>Sandboxed</span>
                           <Badge

@@ -1,3 +1,9 @@
+import React from 'react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/hooks/useRole';
 /**
  * Integration Tests for Test Providers
  * 
@@ -5,9 +11,9 @@
  * to ensure they work together correctly and provide proper isolation.
  */
 
-import React from 'react';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+
+
 
 // Mock the hooks at the top level
 vi.mock('@/contexts/AuthContext', async () => {
@@ -25,7 +31,7 @@ vi.mock('@/hooks/useRole', () => ({
   useIsAdmin: vi.fn(),
   useIsSuperAdmin: vi.fn(),
 }));
-import {
+
   TestAuthProvider,
   renderWithProviders,
   renderWithSuperAdmin,
@@ -42,21 +48,21 @@ import {
   resetAllMocks,
   cleanupTestEnvironment
 } from '../test-providers';
-import {
+
   setupAuthAndRoleMocks,
   mockScenarios,
   createTestMocks,
   resetHookMocks,
   cleanupHookMocks
 } from '../hook-mocks';
-import {
+
   setupAuthTestEnvironment,
   setupTimerMocks,
   waitForAsync,
   flushPromises
 } from '../test-setup';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRole } from '@/hooks/useRole';
+
+
 
 // Complex test component that uses multiple authentication features
 const ComplexAuthComponent: React.FC = () => {

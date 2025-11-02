@@ -2,7 +2,6 @@
  * ARIA Enhanced Input Component
  * Extends the base input with comprehensive accessibility features
  */
-
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { 
@@ -11,7 +10,6 @@ import {
   mergeAriaProps,
   type AriaProps 
 } from "@/utils/aria";
-
 export interface AriaEnhancedInputProps extends React.ComponentProps<"input"> {
   /** Accessible label for the input */
   ariaLabel?: string;
@@ -36,7 +34,6 @@ export interface AriaEnhancedInputProps extends React.ComponentProps<"input"> {
   /** Error state */
   error?: boolean;
 }
-
 const AriaEnhancedInput = React.forwardRef<HTMLInputElement, AriaEnhancedInputProps>(
   ({ 
     className, 
@@ -60,17 +57,13 @@ const AriaEnhancedInput = React.forwardRef<HTMLInputElement, AriaEnhancedInputPr
     if (helpId) describedByParts.push(helpId);
     if (ariaDescribedBy) describedByParts.push(ariaDescribedBy);
     if (invalid && errorId) describedByParts.push(errorId);
-
     const finalDescribedBy = describedByParts.length > 0 ? describedByParts.join(' ') : undefined;
-
     // Create ARIA attributes
     const labelProps = createAriaLabel(ariaLabel, ariaLabelledBy, finalDescribedBy);
     const formProps = createFormAria(invalid, required, finalDescribedBy, errorId);
-    
     // Additional ARIA attributes
     const additionalProps: Partial<AriaProps> = {};
     if (loading) additionalProps['aria-busy'] = true;
-    
     // Merge all ARIA props
     const mergedAriaProps = mergeAriaProps(
       labelProps,
@@ -78,15 +71,13 @@ const AriaEnhancedInput = React.forwardRef<HTMLInputElement, AriaEnhancedInputPr
       additionalProps,
       ariaProps
     );
-
     // Filter out properties that conflict with HTML input attributes
     const { 'aria-relevant': _, ...finalAriaProps } = mergedAriaProps;
-
     return (
       <input
         type={type}
         className={cn(
-          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground -sm",
           {
             'border-destructive focus-visible:ring-destructive': invalid || error,
             'border-green-500 focus-visible:ring-green-500': success,
@@ -97,14 +88,11 @@ const AriaEnhancedInput = React.forwardRef<HTMLInputElement, AriaEnhancedInputPr
         ref={ref}
         disabled={disabled || loading}
         {...finalAriaProps}
-        {...props}
-      />
+        {...props} />
     );
   }
 );
-
 AriaEnhancedInput.displayName = "AriaEnhancedInput";
-
 /**
  * Search Input - Specialized input for search functionality
  */
@@ -115,10 +103,9 @@ export interface SearchInputProps extends Omit<AriaEnhancedInputProps, 'type' | 
   showSearchIcon?: boolean;
   /** Whether to show clear button */
   showClearButton?: boolean;
-  /** Placeholder text */
+  /**  */
   placeholder?: string;
 }
-
 export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
   ({ 
     onSearch,
@@ -134,40 +121,33 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
       typeof value === 'string' ? value : ''
     );
     const inputRef = React.useRef<HTMLInputElement>(null);
-
     React.useImperativeHandle(ref, () => inputRef.current!);
-
     React.useEffect(() => {
       if (typeof value === 'string') {
         setInternalValue(value);
       }
     }, [value]);
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
       setInternalValue(newValue);
       onChange?.(e);
     };
-
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
         onSearch?.(internalValue);
       }
     };
-
     const handleClear = () => {
       setInternalValue('');
       onSearch?.('');
       inputRef.current?.focus();
     };
-
     const currentValue = typeof value === 'string' ? value : internalValue;
-
     return (
       <div className="relative">
         {showSearchIcon && (
           <svg
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none sm:w-auto md:w-full"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -201,7 +181,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:text-foreground focus:outline-none"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:text-foreground focus:outline-none sm:w-auto md:w-full"
             aria-label="Clear search"
           >
             <svg
@@ -223,9 +203,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
     );
   }
 );
-
 SearchInput.displayName = "SearchInput";
-
 /**
  * Password Input - Specialized input for passwords with show/hide toggle
  */
@@ -233,20 +211,16 @@ export interface PasswordInputProps extends Omit<AriaEnhancedInputProps, 'type'>
   /** Whether to show the password toggle button */
   showToggle?: boolean;
 }
-
 export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
   ({ showToggle = true, className, ...props }, ref) => {
     const [showPassword, setShowPassword] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
-
     React.useImperativeHandle(ref, () => inputRef.current!);
-
     const togglePasswordVisibility = () => {
       setShowPassword(!showPassword);
       // Keep focus on input after toggle
       setTimeout(() => inputRef.current?.focus(), 0);
     };
-
     return (
       <div className="relative">
         <AriaEnhancedInput
@@ -262,7 +236,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
           <button
             type="button"
             onClick={togglePasswordVisibility}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded sm:w-auto md:w-full"
             aria-label={showPassword ? "Hide password" : "Show password"}
             aria-pressed={showPassword}
           >
@@ -307,7 +281,5 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
     );
   }
 );
-
 PasswordInput.displayName = "PasswordInput";
-
 export { AriaEnhancedInput };

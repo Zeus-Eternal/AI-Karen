@@ -5,5 +5,19 @@ This package contains specific formatter implementations for different content t
 """
 
 from .movie_formatter import MovieResponseFormatter
+from .news_formatter import NewsResponseFormatter
+from .product_formatter import ProductResponseFormatter
+from .recipe_formatter import RecipeResponseFormatter
+from .travel_formatter import TravelResponseFormatter
+from .weather_formatter import WeatherResponseFormatter
+from .code_formatter import CodeResponseFormatter
 
-__all__ = ["MovieResponseFormatter"]
+__all__ = [
+    "MovieResponseFormatter",
+    "NewsResponseFormatter", 
+    "ProductResponseFormatter",
+    "RecipeResponseFormatter",
+    "TravelResponseFormatter",
+    "WeatherResponseFormatter",
+    "CodeResponseFormatter"
+]

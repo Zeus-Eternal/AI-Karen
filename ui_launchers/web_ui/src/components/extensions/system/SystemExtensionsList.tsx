@@ -39,24 +39,24 @@ export default function SystemExtensionsList() {
       {exts.map(ext => (
         <Card key={ext.id}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">{ext.name}</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">{ext.name}</CardTitle>
             <Badge variant={ext.health === "healthy" ? "default" : ext.health === "degraded" ? "secondary" : "destructive"}>
               {ext.health}
             </Badge>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
+          <CardContent className="space-y-2 text-sm md:text-base lg:text-lg">
             <div className="flex items-center justify-between">
               <span>CPU</span>
-              <Progress value={ext.cpu} className="w-40" />
+              <Progress value={ext.cpu} className="w-40 sm:w-auto md:w-full" />
             </div>
             <div className="flex items-center justify-between">
               <span>Memory</span>
-              <Progress value={ext.memory / 500 * 100} className="w-40" />
+              <Progress value={ext.memory / 500 * 100} className="w-40 sm:w-auto md:w-full" />
             </div>
           </CardContent>
           <CardFooter className="flex items-center justify-between">
             <Switch checked={ext.enabled} onCheckedChange={(val) => toggleExtension(ext.id, val)} />
-            <Button size="sm" variant="outline">Configure</Button>
+            <button size="sm" variant="outline" aria-label="Button">Configure</Button>
           </CardFooter>
         </Card>
       ))}

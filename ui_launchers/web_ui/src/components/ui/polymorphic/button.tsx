@@ -3,7 +3,6 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cn } from "@/lib/utils"
-import type { PolymorphicComponentPropWithRef, PolymorphicRef } from "../compound/types"
 
 // Button component variants and sizes
 type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
@@ -88,7 +87,7 @@ const Button = React.forwardRef<
       >
         {loading && (
           <svg
-            className="animate-spin -ml-1 mr-2 h-4 w-4"
+            className="animate-spin -ml-1 mr-2 h-4 w-4 sm:w-auto md:w-full"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -121,7 +120,7 @@ const IconButton = React.forwardRef<
   HTMLButtonElement,
   ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement> & { icon: React.ReactNode; "aria-label": string }
 >(({ icon, children, className, size = "md", ...props }, ref) => (
-  <Button
+  <button
     ref={ref}
     size={size}
     className={cn(
@@ -136,7 +135,7 @@ const IconButton = React.forwardRef<
       className
     )}
     {...props}
-  >
+   aria-label="Button">
     {icon}
     {children && <span className="sr-only">{children}</span>}
   </Button>
@@ -147,7 +146,7 @@ const LinkButton = React.forwardRef<
   any,
   ButtonProps & { href: string; as?: React.ElementType; [key: string]: any }
 >(({ as = "a", variant = "link", children, ...props }, ref) => (
-  <Button as={as} ref={ref} variant={variant} {...props}>
+  <button as={as} ref={ref} variant={variant} {...props} aria-label="Button">
     {children}
   </Button>
 ))
@@ -157,7 +156,7 @@ const SubmitButton = React.forwardRef<
   HTMLButtonElement,
   ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ type = "submit", variant = "default", ...props }, ref) => (
-  <Button ref={ref} type={type} variant={variant} {...props} />
+  <button ref={ref} type={type} variant={variant} {...props} />
 ))
 SubmitButton.displayName = "SubmitButton"
 
@@ -165,7 +164,7 @@ const ResetButton = React.forwardRef<
   HTMLButtonElement,
   ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ type = "reset", variant = "outline", ...props }, ref) => (
-  <Button ref={ref} type={type} variant={variant} {...props} />
+  <button ref={ref} type={type} variant={variant} {...props} />
 ))
 ResetButton.displayName = "ResetButton"
 
@@ -173,7 +172,7 @@ const CancelButton = React.forwardRef<
   HTMLButtonElement,
   ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ variant = "ghost", ...props }, ref) => (
-  <Button ref={ref} variant={variant} {...props} />
+  <button ref={ref} variant={variant} {...props} />
 ))
 CancelButton.displayName = "CancelButton"
 
@@ -181,7 +180,7 @@ const DestructiveButton = React.forwardRef<
   HTMLButtonElement,
   ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ variant = "destructive", ...props }, ref) => (
-  <Button ref={ref} variant={variant} {...props} />
+  <button ref={ref} variant={variant} {...props} />
 ))
 DestructiveButton.displayName = "DestructiveButton"
 

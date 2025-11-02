@@ -83,7 +83,7 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Activity className="h-5 w-5 text-primary" />
+          <Activity className="h-5 w-5 text-primary sm:w-auto md:w-full" />
           <h3 className="text-lg font-semibold">Animation Performance</h3>
         </div>
         
@@ -91,15 +91,15 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
           {isMonitoring ? (
             <button
               onClick={stopMonitoring}
-              className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
-            >
+              className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors md:text-base lg:text-lg"
+             aria-label="Button">
               Stop Monitoring
             </button>
           ) : (
             <button
               onClick={startMonitoring}
-              className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
-            >
+              className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors md:text-base lg:text-lg"
+             aria-label="Button">
               Start Monitoring
             </button>
           )}
@@ -108,13 +108,13 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
 
       {/* Status */}
       {isMonitoring ? (
-        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        <div className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse sm:w-auto md:w-full" />
           <span>Monitoring active - {metrics?.frameCount || 0} frames analyzed</span>
         </div>
       ) : (
-        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-          <div className="w-2 h-2 bg-gray-400 rounded-full" />
+        <div className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg">
+          <div className="w-2 h-2 bg-gray-400 rounded-full sm:w-auto md:w-full" />
           <span>Monitoring inactive</span>
         </div>
       )}
@@ -129,7 +129,7 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-2">
-              <RatingIcon className="h-5 w-5" />
+              <RatingIcon className="h-5 w-5 sm:w-auto md:w-full" />
               <span className="font-semibold capitalize">{currentRating} Performance</span>
             </div>
             <div className="text-2xl font-bold">
@@ -140,19 +140,19 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
           {showDetails && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
-                <div className="text-xs opacity-75 mb-1">Avg Frame Time</div>
+                <div className="text-xs opacity-75 mb-1 sm:text-sm md:text-base">Avg Frame Time</div>
                 <div className="font-medium">{metrics.averageFrameTime.toFixed(2)}ms</div>
               </div>
               <div>
-                <div className="text-xs opacity-75 mb-1">Max Frame Time</div>
+                <div className="text-xs opacity-75 mb-1 sm:text-sm md:text-base">Max Frame Time</div>
                 <div className="font-medium">{metrics.maxFrameTime.toFixed(2)}ms</div>
               </div>
               <div>
-                <div className="text-xs opacity-75 mb-1">Dropped Frames</div>
+                <div className="text-xs opacity-75 mb-1 sm:text-sm md:text-base">Dropped Frames</div>
                 <div className="font-medium">{metrics.droppedFrames}</div>
               </div>
               <div>
-                <div className="text-xs opacity-75 mb-1">Smoothness</div>
+                <div className="text-xs opacity-75 mb-1 sm:text-sm md:text-base">Smoothness</div>
                 <div className="font-medium">{metrics.isSmooth ? 'Smooth' : 'Choppy'}</div>
               </div>
             </div>
@@ -162,9 +162,9 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
 
       {/* Performance Chart */}
       {showDetails && historicalMetrics.length > 1 && (
-        <div className="p-4 bg-card rounded-lg border">
-          <h4 className="text-sm font-semibold mb-3 flex items-center space-x-2">
-            <TrendingUp className="h-4 w-4" />
+        <div className="p-4 bg-card rounded-lg border sm:p-4 md:p-6">
+          <h4 className="text-sm font-semibold mb-3 flex items-center space-x-2 md:text-base lg:text-lg">
+            <TrendingUp className="h-4 w-4 sm:w-auto md:w-full" />
             <span>FPS History</span>
           </h4>
           
@@ -221,7 +221,7 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
             </svg>
           </div>
           
-          <div className="flex justify-between text-xs text-muted-foreground mt-2">
+          <div className="flex justify-between text-xs text-muted-foreground mt-2 sm:text-sm md:text-base">
             <span>0 FPS</span>
             <span>30 FPS (min)</span>
             <span>60 FPS (target)</span>
@@ -232,18 +232,18 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
       {/* Performance Tips */}
       {metrics && !metrics.isSmooth && (
         <motion.div
-          className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg"
+          className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg sm:p-4 md:p-6"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
         >
           <div className="flex items-start space-x-2">
-            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 sm:w-auto md:w-full" />
             <div>
-              <div className="text-sm font-medium text-yellow-800 mb-1">
+              <div className="text-sm font-medium text-yellow-800 mb-1 md:text-base lg:text-lg">
                 Performance Issues Detected
               </div>
-              <div className="text-xs text-yellow-700 space-y-1">
+              <div className="text-xs text-yellow-700 space-y-1 sm:text-sm md:text-base">
                 <div>• Consider reducing animation complexity</div>
                 <div>• Use transform and opacity properties only</div>
                 <div>• Enable GPU acceleration with will-change</div>
@@ -256,24 +256,24 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
 
       {/* Performance Summary */}
       {showDetails && historicalMetrics.length > 5 && (
-        <div className="p-4 bg-card rounded-lg border">
-          <h4 className="text-sm font-semibold mb-3">Performance Summary</h4>
+        <div className="p-4 bg-card rounded-lg border sm:p-4 md:p-6">
+          <h4 className="text-sm font-semibold mb-3 md:text-base lg:text-lg">Performance Summary</h4>
           
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             <div>
-              <div className="text-xs text-muted-foreground mb-1">Average FPS</div>
+              <div className="text-xs text-muted-foreground mb-1 sm:text-sm md:text-base">Average FPS</div>
               <div className="font-medium">
                 {(historicalMetrics.reduce((sum, m) => sum + m.fps, 0) / historicalMetrics.length).toFixed(1)}
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground mb-1">Best FPS</div>
+              <div className="text-xs text-muted-foreground mb-1 sm:text-sm md:text-base">Best FPS</div>
               <div className="font-medium">
                 {Math.max(...historicalMetrics.map(m => m.fps)).toFixed(1)}
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground mb-1">Worst FPS</div>
+              <div className="text-xs text-muted-foreground mb-1 sm:text-sm md:text-base">Worst FPS</div>
               <div className="font-medium">
                 {Math.min(...historicalMetrics.map(m => m.fps)).toFixed(1)}
               </div>

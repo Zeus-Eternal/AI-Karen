@@ -1,21 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
   // Handle chunk loading errors by redirecting to a safe route
   if (pathname.includes('_next/static/chunks') && request.method === 'GET') {
     // Log the missing chunk for debugging
-    console.log(`Missing chunk requested: ${pathname}`);
-    
     // If it's a page chunk that's missing, we can try to regenerate it
     if (pathname.includes('/app/') && pathname.endsWith('.js')) {
       // Return a 404 response that Next.js can handle gracefully
       return new NextResponse(null, { status: 404 });
     }
   }
-
   // Handle API routes - no authentication required
   if (pathname.startsWith('/api/')) {
     const response = NextResponse.next();
@@ -24,11 +19,9 @@ export function middleware(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
     return response;
   }
-
   // No authentication checks - allow all requests
   return NextResponse.next();
 }
-
 export const config = {
   matcher: [
     /*

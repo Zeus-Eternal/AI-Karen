@@ -1,6 +1,6 @@
 "use client";
-
 import { useState, useEffect, useCallback } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +37,6 @@ import {
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
-
 interface Job {
   id: string;
   kind: 'convert' | 'quantize' | 'lora_merge' | 'download' | 'upload';
@@ -61,7 +60,6 @@ interface Job {
     disk_io_mb: number;
   };
 }
-
 interface JobStats {
   total: number;
   queued: number;
@@ -70,7 +68,6 @@ interface JobStats {
   failed: number;
   active_jobs: Job[];
 }
-
 interface StorageInfo {
   total_space_gb: number;
   used_space_gb: number;
@@ -84,11 +81,9 @@ interface StorageInfo {
     type: 'temp' | 'cache' | 'old_model';
   }>;
 }
-
 interface JobManagerProps {
   onJobUpdate?: (job: Job) => void;
 }
-
 export default function JobManager({ onJobUpdate }: JobManagerProps) {
   // State
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -99,63 +94,51 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'storage'>('active');
   const [autoRefresh, setAutoRefresh] = useState(true);
-  
   const { toast } = useToast();
   const backend = getKarenBackend();
-
   // Load jobs and stats
   useEffect(() => {
     loadJobs();
     loadJobStats();
     loadStorageInfo();
   }, []);
-
   // Auto-refresh active jobs
   useEffect(() => {
     if (!autoRefresh) return;
-
     const interval = setInterval(() => {
       if (jobStats?.running || 0 > 0) {
         loadJobs();
         loadJobStats();
       }
     }, 2000);
-
     return () => clearInterval(interval);
   }, [autoRefresh, jobStats?.running]);
-
   const loadJobs = async () => {
     try {
       const response = await backend.makeRequestPublic<Job[]>('/api/models/jobs');
       setJobs(response || []);
     } catch (error) {
-      console.error('Failed to load jobs:', error);
       setJobs([]);
     }
   };
-
   const loadJobStats = async () => {
     try {
       const response = await backend.makeRequestPublic<JobStats>('/api/models/jobs/stats');
       setJobStats(response);
     } catch (error) {
-      console.error('Failed to load job stats:', error);
       setJobStats(null);
     } finally {
       setLoading(false);
     }
   };
-
   const loadStorageInfo = async () => {
     try {
       const response = await backend.makeRequestPublic<StorageInfo>('/api/models/storage');
       setStorageInfo(response);
     } catch (error) {
-      console.error('Failed to load storage info:', error);
       setStorageInfo(null);
     }
   };
-
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -178,22 +161,18 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       setRefreshing(false);
     }
   };
-
   const controlJob = async (jobId: string, action: 'pause' | 'resume' | 'cancel') => {
     try {
       await backend.makeRequestPublic(`/api/models/jobs/${jobId}/${action}`, {
         method: 'POST'
       });
-      
       toast({
         title: "Job Updated",
         description: `Job ${action}${action.endsWith('e') ? 'd' : action === 'cancel' ? 'led' : 'ed'}`,
       });
-      
       await loadJobs();
       await loadJobStats();
     } catch (error) {
-      console.error(`Failed to ${action} job:`, error);
       const info = handleApiError(error as any, `${action}Job`);
       toast({
         variant: 'destructive',
@@ -202,22 +181,18 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       });
     }
   };
-
   const deleteJob = async (jobId: string) => {
     try {
       await backend.makeRequestPublic(`/api/models/jobs/${jobId}`, {
         method: 'DELETE'
       });
-      
       toast({
         title: "Job Deleted",
         description: "Job removed from history",
       });
-      
       await loadJobs();
       await loadJobStats();
     } catch (error) {
-      console.error('Failed to delete job:', error);
       toast({
         variant: 'destructive',
         title: "Delete Failed",
@@ -225,22 +200,18 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       });
     }
   };
-
   const cleanupStorage = async (paths: string[]) => {
     try {
       await backend.makeRequestPublic('/api/models/storage/cleanup', {
         method: 'POST',
         body: JSON.stringify({ paths })
       });
-      
       toast({
         title: "Cleanup Started",
         description: `Cleaning up ${paths.length} item${paths.length !== 1 ? 's' : ''}`,
       });
-      
       await loadStorageInfo();
     } catch (error) {
-      console.error('Failed to cleanup storage:', error);
       toast({
         variant: 'destructive',
         title: "Cleanup Failed",
@@ -248,7 +219,6 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       });
     }
   };
-
   const toggleJobExpansion = (jobId: string) => {
     setExpandedJobs(prev => {
       const newSet = new Set(prev);
@@ -260,43 +230,40 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       return newSet;
     });
   };
-
   const getJobIcon = (job: Job) => {
     switch (job.kind) {
       case 'convert':
-        return <Settings className="h-4 w-4" />;
+        return <Settings className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'quantize':
-        return <Layers className="h-4 w-4" />;
+        return <Layers className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'lora_merge':
-        return <Merge className="h-4 w-4" />;
+        return <Merge className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'download':
-        return <Download className="h-4 w-4" />;
+        return <Download className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'upload':
-        return <HardDrive className="h-4 w-4" />;
+        return <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />;
       default:
-        return <Activity className="h-4 w-4" />;
+        return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
-
   const getStatusIcon = (status: Job['status']) => {
     switch (status) {
       case 'queued':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
+        return <Clock className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
       case 'running':
-        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />;
+        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin sm:w-auto md:w-full" />;
       case 'paused':
-        return <Pause className="h-4 w-4 text-orange-600" />;
+        return <Pause className="h-4 w-4 text-orange-600 sm:w-auto md:w-full" />;
       case 'completed':
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-600" />;
+        return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
       case 'cancelled':
-        return <Square className="h-4 w-4 text-gray-600" />;
+        return <Square className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-600" />;
+        return <AlertCircle className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
     }
   };
-
   const getStatusBadgeVariant = (status: Job['status']) => {
     switch (status) {
       case 'completed':
@@ -311,12 +278,10 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
         return 'secondary';
     }
   };
-
   const formatDuration = (ms: number) => {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
     if (hours > 0) {
       return `${hours}h ${minutes % 60}m`;
     } else if (minutes > 0) {
@@ -325,30 +290,27 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       return `${seconds}s`;
     }
   };
-
   const formatFileSize = (gb: number) => {
     if (gb < 1) {
       return `${(gb * 1024).toFixed(1)} MB`;
     }
     return `${gb.toFixed(1)} GB`;
   };
-
   const activeJobs = jobs.filter(job => ['queued', 'running', 'paused'].includes(job.status));
   const completedJobs = jobs.filter(job => ['completed', 'error', 'cancelled'].includes(job.status));
-
   if (loading) {
     return (
+    <ErrorBoundary fallback={<div>Something went wrong in JobManager</div>}>
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-sm text-muted-foreground">Loading job information...</p>
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+            <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading job information...</p>
           </div>
         </CardContent>
       </Card>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* Header with Stats */}
@@ -357,7 +319,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
+                <Activity className="h-5 w-5 sm:w-auto md:w-full" />
                 Job Center
               </CardTitle>
               <CardDescription>
@@ -365,80 +327,77 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setAutoRefresh(!autoRefresh)}
+                onClick={() = aria-label="Button"> setAutoRefresh(!autoRefresh)}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${autoRefresh ? 'animate-spin' : ''}`} />
                 Auto-refresh: {autoRefresh ? 'On' : 'Off'}
               </Button>
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={handleRefresh}
                 disabled={refreshing}
-              >
+               aria-label="Button">
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
             </div>
           </div>
         </CardHeader>
-        
         {jobStats && (
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold">{jobStats.total}</div>
-                <div className="text-xs text-muted-foreground">Total Jobs</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Total Jobs</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">{jobStats.running}</div>
-                <div className="text-xs text-muted-foreground">Running</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Running</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-600">{jobStats.queued}</div>
-                <div className="text-xs text-muted-foreground">Queued</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Queued</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">{jobStats.completed}</div>
-                <div className="text-xs text-muted-foreground">Completed</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Completed</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-red-600">{jobStats.failed}</div>
-                <div className="text-xs text-muted-foreground">Failed</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Failed</div>
               </div>
             </div>
           </CardContent>
         )}
       </Card>
-
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="active" className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
+            <Activity className="h-4 w-4 sm:w-auto md:w-full" />
             Active ({activeJobs.length})
           </TabsTrigger>
           <TabsTrigger value="completed" className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4" />
+            <CheckCircle2 className="h-4 w-4 sm:w-auto md:w-full" />
             History ({completedJobs.length})
           </TabsTrigger>
           <TabsTrigger value="storage" className="flex items-center gap-2">
-            <HardDrive className="h-4 w-4" />
+            <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />
             Storage
           </TabsTrigger>
         </TabsList>
-
         {/* Active Jobs Tab */}
         <TabsContent value="active" className="space-y-4">
           {activeJobs.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
-                <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
                 <p className="text-lg font-medium mb-2">No Active Jobs</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   All jobs are completed. Start a new operation to see it here.
                 </p>
               </CardContent>
@@ -447,11 +406,11 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
             <div className="space-y-4">
               {activeJobs.map((job) => (
                 <Card key={job.id} className="overflow-hidden">
-                  <CardContent className="p-0">
+                  <CardContent className="p-0 sm:p-4 md:p-6">
                     <div>
                       <button
-                        className="w-full p-6 text-left hover:bg-muted/50 transition-colors"
-                        onClick={() => toggleJobExpansion(job.id)}
+                        className="w-full p-6 text-left hover:bg-muted/50 transition-colors sm:p-4 md:p-6"
+                        onClick={() = aria-label="Button"> toggleJobExpansion(job.id)}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -459,7 +418,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                             <div>
                               <div className="font-medium">{job.title}</div>
                               {job.description && (
-                                <div className="text-sm text-muted-foreground">{job.description}</div>
+                                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">{job.description}</div>
                               )}
                             </div>
                           </div>
@@ -469,32 +428,30 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                               {job.status}
                             </Badge>
                             {expandedJobs.has(job.id) ? (
-                              <ChevronDown className="h-4 w-4" />
+                              <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
                             ) : (
-                              <ChevronRight className="h-4 w-4" />
+                              <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />
                             )}
                           </div>
                         </div>
-                        
                         {/* Progress Bar */}
                         {job.status === 'running' && (
                           <div className="mt-4">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm text-muted-foreground">Progress</span>
-                              <span className="text-sm font-medium">{job.progress.toFixed(1)}%</span>
+                              <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Progress</span>
+                              <span className="text-sm font-medium md:text-base lg:text-lg">{job.progress.toFixed(1)}%</span>
                             </div>
                             <Progress value={job.progress} className="h-2" />
                           </div>
                         )}
                       </button>
-                      
                       {expandedJobs.has(job.id) && (
                         <div className="px-6 pb-6 space-y-4 border-t bg-muted/20">
                           {/* Job Details */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                             <div>
                               <h5 className="font-medium mb-2">Job Information</h5>
-                              <div className="space-y-1 text-sm">
+                              <div className="space-y-1 text-sm md:text-base lg:text-lg">
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">ID:</span>
                                   <span className="font-mono">{job.id.slice(0, 8)}...</span>
@@ -521,7 +478,6 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                                 )}
                               </div>
                             </div>
-                            
                             {/* Resource Usage */}
                             {job.resource_usage && (
                               <div>
@@ -529,28 +485,28 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                      <Cpu className="h-4 w-4" />
-                                      <span className="text-sm">CPU</span>
+                                      <Cpu className="h-4 w-4 sm:w-auto md:w-full" />
+                                      <span className="text-sm md:text-base lg:text-lg">CPU</span>
                                     </div>
-                                    <span className="text-sm font-medium">
+                                    <span className="text-sm font-medium md:text-base lg:text-lg">
                                       {job.resource_usage.cpu_percent.toFixed(1)}%
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                      <MemoryStick className="h-4 w-4" />
-                                      <span className="text-sm">Memory</span>
+                                      <MemoryStick className="h-4 w-4 sm:w-auto md:w-full" />
+                                      <span className="text-sm md:text-base lg:text-lg">Memory</span>
                                     </div>
-                                    <span className="text-sm font-medium">
+                                    <span className="text-sm font-medium md:text-base lg:text-lg">
                                       {job.resource_usage.memory_mb.toFixed(0)} MB
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                      <HardDrive className="h-4 w-4" />
-                                      <span className="text-sm">Disk I/O</span>
+                                      <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />
+                                      <span className="text-sm md:text-base lg:text-lg">Disk I/O</span>
                                     </div>
-                                    <span className="text-sm font-medium">
+                                    <span className="text-sm font-medium md:text-base lg:text-lg">
                                       {job.resource_usage.disk_io_mb.toFixed(1)} MB/s
                                     </span>
                                   </div>
@@ -558,49 +514,47 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                               </div>
                             )}
                           </div>
-
                           {/* Job Controls */}
                           <div className="flex gap-2">
                             {job.status === 'running' && (
-                              <Button
+                              <button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => controlJob(job.id, 'pause')}
+                                onClick={() = aria-label="Button"> controlJob(job.id, 'pause')}
                               >
-                                <Pause className="h-4 w-4 mr-2" />
+                                <Pause className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                                 Pause
                               </Button>
                             )}
                             {job.status === 'paused' && (
-                              <Button
+                              <button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => controlJob(job.id, 'resume')}
+                                onClick={() = aria-label="Button"> controlJob(job.id, 'resume')}
                               >
-                                <Play className="h-4 w-4 mr-2" />
+                                <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                                 Resume
                               </Button>
                             )}
                             {['running', 'paused', 'queued'].includes(job.status) && (
-                              <Button
+                              <button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => controlJob(job.id, 'cancel')}
+                                onClick={() = aria-label="Button"> controlJob(job.id, 'cancel')}
                               >
-                                <Square className="h-4 w-4 mr-2" />
+                                <Square className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                                 Cancel
                               </Button>
                             )}
                           </div>
-
                           {/* Recent Logs */}
                           {job.logs.length > 0 && (
                             <div>
                               <h5 className="font-medium mb-2">Recent Logs</h5>
-                              <ScrollArea className="h-32 w-full border rounded-md p-3 bg-background">
+                              <ScrollArea className="h-32 w-full border rounded-md p-3 bg-background sm:p-4 md:p-6">
                                 <div className="space-y-1">
                                   {job.logs.slice(-10).map((log, index) => (
-                                    <div key={index} className="text-xs font-mono text-muted-foreground">
+                                    <div key={index} className="text-xs font-mono text-muted-foreground sm:text-sm md:text-base">
                                       {log}
                                     </div>
                                   ))}
@@ -617,15 +571,14 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
             </div>
           )}
         </TabsContent>
-
         {/* Completed Jobs Tab */}
         <TabsContent value="completed" className="space-y-4">
           {completedJobs.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
-                <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
                 <p className="text-lg font-medium mb-2">No Job History</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Completed jobs will appear here for review and cleanup.
                 </p>
               </CardContent>
@@ -634,23 +587,23 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
             <div className="space-y-4">
               {completedJobs.map((job) => (
                 <Card key={job.id}>
-                  <CardContent className="p-6">
+                  <CardContent className="p-6 sm:p-4 md:p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {getJobIcon(job)}
                         <div>
                           <div className="font-medium">{job.title}</div>
                           {job.description && (
-                            <div className="text-sm text-muted-foreground">{job.description}</div>
+                            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">{job.description}</div>
                           )}
-                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground sm:text-sm md:text-base">
                             <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
+                              <Calendar className="h-3 w-3 sm:w-auto md:w-full" />
                               {new Date(job.created_at).toLocaleDateString()}
                             </div>
                             {job.completed_at && job.started_at && (
                               <div className="flex items-center gap-1">
-                                <Timer className="h-3 w-3" />
+                                <Timer className="h-3 w-3 sm:w-auto md:w-full" />
                                 {formatDuration(job.completed_at - job.started_at)}
                               </div>
                             )}
@@ -662,19 +615,18 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                           {getStatusIcon(job.status)}
                           {job.status}
                         </Badge>
-                        <Button
+                        <button
                           variant="ghost"
                           size="sm"
-                          onClick={() => deleteJob(job.id)}
+                          onClick={() = aria-label="Button"> deleteJob(job.id)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
                         </Button>
                       </div>
                     </div>
-                    
                     {job.error_message && (
                       <Alert variant="destructive" className="mt-4">
-                        <AlertCircle className="h-4 w-4" />
+                        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
                         <AlertTitle>Error</AlertTitle>
                         <AlertDescription>{job.error_message}</AlertDescription>
                       </Alert>
@@ -685,7 +637,6 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
             </div>
           )}
         </TabsContent>
-
         {/* Storage Management Tab */}
         <TabsContent value="storage" className="space-y-4">
           {storageInfo ? (
@@ -703,8 +654,8 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                     {/* Storage Usage */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">Disk Usage</span>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-sm font-medium md:text-base lg:text-lg">Disk Usage</span>
+                        <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                           {formatFileSize(storageInfo.used_space_gb)} / {formatFileSize(storageInfo.total_space_gb)}
                         </span>
                       </div>
@@ -713,30 +664,28 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                         className="h-3"
                       />
                     </div>
-
                     {/* Storage Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="text-center p-3 border rounded-lg">
+                      <div className="text-center p-3 border rounded-lg sm:p-4 md:p-6">
                         <div className="text-lg font-bold">{formatFileSize(storageInfo.available_space_gb)}</div>
-                        <div className="text-xs text-muted-foreground">Available</div>
+                        <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Available</div>
                       </div>
-                      <div className="text-center p-3 border rounded-lg">
+                      <div className="text-center p-3 border rounded-lg sm:p-4 md:p-6">
                         <div className="text-lg font-bold">{storageInfo.model_count}</div>
-                        <div className="text-xs text-muted-foreground">Models</div>
+                        <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Models</div>
                       </div>
-                      <div className="text-center p-3 border rounded-lg">
+                      <div className="text-center p-3 border rounded-lg sm:p-4 md:p-6">
                         <div className="text-lg font-bold">{formatFileSize(storageInfo.largest_model_gb)}</div>
-                        <div className="text-xs text-muted-foreground">Largest Model</div>
+                        <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Largest Model</div>
                       </div>
-                      <div className="text-center p-3 border rounded-lg">
+                      <div className="text-center p-3 border rounded-lg sm:p-4 md:p-6">
                         <div className="text-lg font-bold">{storageInfo.cleanup_candidates.length}</div>
-                        <div className="text-xs text-muted-foreground">Cleanup Items</div>
+                        <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Cleanup Items</div>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-
               {/* Cleanup Candidates */}
               {storageInfo.cleanup_candidates.length > 0 && (
                 <Card>
@@ -749,35 +698,34 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                   <CardContent>
                     <div className="space-y-3">
                       {storageInfo.cleanup_candidates.map((candidate, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
                           <div className="flex items-center gap-3">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <FileText className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                             <div>
-                              <div className="font-medium text-sm">{candidate.path.split('/').pop()}</div>
-                              <div className="text-xs text-muted-foreground">
+                              <div className="font-medium text-sm md:text-base lg:text-lg">{candidate.path.split('/').pop()}</div>
+                              <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                                 {candidate.type} • {formatFileSize(candidate.size_gb)} • 
                                 Last accessed {new Date(candidate.last_accessed).toLocaleDateString()}
                               </div>
                             </div>
                           </div>
-                          <Button
+                          <button
                             variant="outline"
                             size="sm"
-                            onClick={() => cleanupStorage([candidate.path])}
+                            onClick={() = aria-label="Button"> cleanupStorage([candidate.path])}
                           >
-                            <Trash2 className="h-4 w-4 mr-2" />
+                            <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                             Remove
                           </Button>
                         </div>
                       ))}
-                      
                       {storageInfo.cleanup_candidates.length > 1 && (
-                        <Button
+                        <button
                           variant="outline"
                           className="w-full"
-                          onClick={() => cleanupStorage(storageInfo.cleanup_candidates.map(c => c.path))}
+                          onClick={() = aria-label="Button"> cleanupStorage(storageInfo.cleanup_candidates.map(c => c.path))}
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
+                          <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                           Clean All ({formatFileSize(storageInfo.cleanup_candidates.reduce((sum, c) => sum + c.size_gb, 0))})
                         </Button>
                       )}
@@ -789,9 +737,9 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
           ) : (
             <Card>
               <CardContent className="text-center py-12">
-                <HardDrive className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <HardDrive className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
                 <p className="text-lg font-medium mb-2">Storage Information Unavailable</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Could not load storage information. Try refreshing the page.
                 </p>
               </CardContent>
@@ -800,5 +748,6 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
         </TabsContent>
       </Tabs>
     </div>
+    </ErrorBoundary>
   );
 }

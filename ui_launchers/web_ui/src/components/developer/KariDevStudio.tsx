@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect, useCallback } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AgCharts } from "ag-charts-react";
@@ -7,19 +5,35 @@ import { ColDef } from "ag-grid-community";
 import { AgCartesianChartOptions } from "ag-charts-community";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import KnowledgePanel from "./KnowledgePanel";
 import CenterPanel from "./CenterPanel";
-import {
+import { useToast } from "@/hooks/use-toast";
+"use client";
+
+
+
+
+
+
+
+
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+
+
+
+
+
+
   Terminal,
   Code,
   Activity,
@@ -37,7 +51,7 @@ import {
   CheckCircle2,
   Clock,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+
 
 interface KariComponent {
   id: string;
@@ -191,8 +205,8 @@ export default function KariDevStudio() {
             {getComponentIcon(params.data.type)}
           </div>
           <div className="flex flex-col">
-            <span className="font-semibold text-sm">{params.value}</span>
-            <span className="text-xs text-muted-foreground capitalize">
+            <span className="font-semibold text-sm md:text-base lg:text-lg">{params.value}</span>
+            <span className="text-xs text-muted-foreground capitalize sm:text-sm md:text-base">
               {params.data.type}
             </span>
           </div>
@@ -208,7 +222,7 @@ export default function KariDevStudio() {
           <div
             className={`w-2 h-2 rounded-full ${getStatusColor(params.value)}`}
           />
-          <Badge variant={getStatusVariant(params.value)} className="text-xs">
+          <Badge variant={getStatusVariant(params.value)} className="text-xs sm:text-sm md:text-base">
             {params.value}
           </Badge>
         </div>
@@ -221,13 +235,13 @@ export default function KariDevStudio() {
       cellRenderer: (params: any) => (
         <div className="flex items-center gap-2">
           {params.value === "healthy" ? (
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
+            <CheckCircle2 className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
           ) : params.value === "warning" ? (
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            <AlertTriangle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />
           ) : (
-            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <AlertTriangle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
           )}
-          <span className="text-sm capitalize">{params.value}</span>
+          <span className="text-sm capitalize md:text-base lg:text-lg">{params.value}</span>
         </div>
       ),
     },
@@ -237,7 +251,7 @@ export default function KariDevStudio() {
       flex: 1,
       cellRenderer: (params: any) => (
         <div className="flex items-center gap-2">
-          <div className="w-16 bg-gray-200 rounded-full h-2">
+          <div className="w-16 bg-gray-200 rounded-full h-2 sm:w-auto md:w-full">
             <div
               className={`h-2 rounded-full ${
                 params.value > 0.95
@@ -249,7 +263,7 @@ export default function KariDevStudio() {
               style={{ width: `${params.value * 100}%` }}
             />
           </div>
-          <span className="text-xs font-medium">
+          <span className="text-xs font-medium sm:text-sm md:text-base">
             {(params.value * 100).toFixed(1)}%
           </span>
         </div>
@@ -268,7 +282,7 @@ export default function KariDevStudio() {
           />
           <Badge
             variant={params.value ? "default" : "secondary"}
-            className="text-xs"
+            className="text-xs sm:text-sm md:text-base"
           >
             {params.value ? "Integrated" : "Pending"}
           </Badge>
@@ -288,7 +302,7 @@ export default function KariDevStudio() {
           />
           <Badge
             variant={params.value ? "default" : "outline"}
-            className="text-xs"
+            className="text-xs sm:text-sm md:text-base"
           >
             {params.value ? "Enabled" : "Disabled"}
           </Badge>
@@ -413,15 +427,15 @@ export default function KariDevStudio() {
   const getComponentIcon = (type: string) => {
     switch (type) {
       case "plugin":
-        return <Zap className="h-5 w-5 text-blue-500" />;
+        return <Zap className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />;
       case "extension":
-        return <Code className="h-5 w-5 text-green-500" />;
+        return <Code className="h-5 w-5 text-green-500 sm:w-auto md:w-full" />;
       case "hook":
-        return <Activity className="h-5 w-5 text-purple-500" />;
+        return <Activity className="h-5 w-5 text-purple-500 sm:w-auto md:w-full" />;
       case "llm_provider":
-        return <Brain className="h-5 w-5 text-orange-500" />;
+        return <Brain className="h-5 w-5 text-orange-500 sm:w-auto md:w-full" />;
       default:
-        return <Settings className="h-5 w-5 text-gray-500" />;
+        return <Settings className="h-5 w-5 text-gray-500 sm:w-auto md:w-full" />;
     }
   };
 
@@ -532,7 +546,7 @@ export default function KariDevStudio() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <div className="flex h-screen">
         {/* Left Panel - Knowledge Search */}
-        <div className="w-80 border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="w-80 border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:w-auto md:w-full">
           <KnowledgePanel
             currentFile={selectedComponent?.name}
             currentOperation="development"
@@ -576,7 +590,7 @@ export default function KariDevStudio() {
 
         {/* Right Content Area */}
         <div className="flex-1 overflow-auto">
-          <div className="container mx-auto p-6 space-y-6">
+          <div className="container mx-auto p-6 space-y-6 sm:p-4 md:p-6">
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="space-y-1">
@@ -588,18 +602,18 @@ export default function KariDevStudio() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <Button
+                <button
                   onClick={fetchSystemData}
                   disabled={loading}
                   variant="outline"
-                >
+                 aria-label="Button">
                   <RefreshCw
                     className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
                   />
                   Refresh
                 </Button>
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  <Terminal className="h-4 w-4 mr-2" />
+                <button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" aria-label="Button">
+                  <Terminal className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Open Terminal
                 </Button>
               </div>
@@ -608,58 +622,58 @@ export default function KariDevStudio() {
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card className="border-l-4 border-l-blue-500">
-                <CardContent className="p-4">
+                <CardContent className="p-4 sm:p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
                         Active Components
                       </p>
                       <p className="text-2xl font-bold">
                         {components.filter((c) => c.status === "active").length}
                       </p>
                     </div>
-                    <Activity className="h-8 w-8 text-blue-500" />
+                    <Activity className="h-8 w-8 text-blue-500 sm:w-auto md:w-full" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-green-500">
-                <CardContent className="p-4">
+                <CardContent className="p-4 sm:p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
                         Chat Integrated
                       </p>
                       <p className="text-2xl font-bold">
                         {components.filter((c) => c.chat_integration).length}
                       </p>
                     </div>
-                    <MessageSquare className="h-8 w-8 text-green-500" />
+                    <MessageSquare className="h-8 w-8 text-green-500 sm:w-auto md:w-full" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-purple-500">
-                <CardContent className="p-4">
+                <CardContent className="p-4 sm:p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
                         AI Enabled
                       </p>
                       <p className="text-2xl font-bold">
                         {components.filter((c) => c.copilot_enabled).length}
                       </p>
                     </div>
-                    <Brain className="h-8 w-8 text-purple-500" />
+                    <Brain className="h-8 w-8 text-purple-500 sm:w-auto md:w-full" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-orange-500">
-                <CardContent className="p-4">
+                <CardContent className="p-4 sm:p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
                         Health Issues
                       </p>
                       <p className="text-2xl font-bold">
@@ -669,7 +683,7 @@ export default function KariDevStudio() {
                         }
                       </p>
                     </div>
-                    <AlertTriangle className="h-8 w-8 text-orange-500" />
+                    <AlertTriangle className="h-8 w-8 text-orange-500 sm:w-auto md:w-full" />
                   </div>
                 </CardContent>
               </Card>
@@ -682,21 +696,21 @@ export default function KariDevStudio() {
                   value="components"
                   className="flex items-center gap-2"
                 >
-                  <Code className="h-4 w-4" />
+                  <Code className="h-4 w-4 sm:w-auto md:w-full" />
                   Components
                 </TabsTrigger>
                 <TabsTrigger
                   value="chat-metrics"
                   className="flex items-center gap-2"
                 >
-                  <MessageSquare className="h-4 w-4" />
+                  <MessageSquare className="h-4 w-4 sm:w-auto md:w-full" />
                   Chat Metrics
                 </TabsTrigger>
                 <TabsTrigger
                   value="ai-assistant"
                   className="flex items-center gap-2"
                 >
-                  <Brain className="h-4 w-4" />
+                  <Brain className="h-4 w-4 sm:w-auto md:w-full" />
                   AI Assistant
                 </TabsTrigger>
               </TabsList>
@@ -707,7 +721,7 @@ export default function KariDevStudio() {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="flex items-center gap-2">
-                          <Code className="h-5 w-5" />
+                          <Code className="h-5 w-5 sm:w-auto md:w-full" />
                           System Components
                         </CardTitle>
                         <CardDescription>
@@ -715,11 +729,11 @@ export default function KariDevStudio() {
                           status
                         </CardDescription>
                       </div>
-                      <Input
+                      <input
                         placeholder="Search components..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-64"
+                        onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
+                        className="w-64 sm:w-auto md:w-full"
                       />
                     </div>
                   </CardHeader>
@@ -755,7 +769,7 @@ export default function KariDevStudio() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5" />
+                      <MessageSquare className="h-5 w-5 sm:w-auto md:w-full" />
                       Chat System Performance
                     </CardTitle>
                     <CardDescription>
@@ -775,7 +789,7 @@ export default function KariDevStudio() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Brain className="h-5 w-5" />
+                      <Brain className="h-5 w-5 sm:w-auto md:w-full" />
                       AI Development Assistant
                     </CardTitle>
                     <CardDescription>
@@ -785,7 +799,7 @@ export default function KariDevStudio() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 p-6 rounded-lg border">
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 p-6 rounded-lg border sm:p-4 md:p-6">
                         <h3 className="text-lg font-semibold mb-2">
                           AI Assistant Ready
                         </h3>
@@ -807,7 +821,7 @@ export default function KariDevStudio() {
                         <p>
                           Open the Kari Chat to interact with the AI assistant
                         </p>
-                        <p className="text-sm">
+                        <p className="text-sm md:text-base lg:text-lg">
                           Try: "Analyze my component health" or "Generate a new
                           plugin"
                         </p>

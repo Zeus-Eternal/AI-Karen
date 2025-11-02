@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AdminDetailsStep } from '../steps/AdminDetailsStep';
 import type { SetupStepProps } from '../SetupWizard';

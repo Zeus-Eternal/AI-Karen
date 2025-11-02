@@ -1,3 +1,5 @@
+import { 
+import { logger } from '@/lib/logger';
 /**
  * Authenticated Extension Service
  * 
@@ -12,19 +14,19 @@
  * - 9.2: User-friendly error messages and recovery suggestions
  */
 
-import { 
+
   getEnhancedKarenBackendService, 
   EnhancedKarenBackendService,
   ExtensionApiError 
 } from '@/lib/auth/enhanced-karen-backend-service';
-import { 
+
   getExtensionAuthErrorHandler,
   ExtensionAuthErrorHandler,
   ErrorClassification,
   RecoveryStrategy,
   ErrorContext
 } from '@/lib/auth/extension-auth-error-handler';
-import { logger } from '@/lib/logger';
+
 
 // Extension interfaces
 export interface ExtensionInfo {

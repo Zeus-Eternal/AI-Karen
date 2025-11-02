@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-
 import {
   makeBackendRequest,
   getTimeoutConfig,
@@ -9,14 +8,12 @@ import {
 } from "@/app/api/_utils/backend";
 import { isSimpleAuthEnabled } from "@/lib/auth/env";
 import { ConnectionError } from "@/lib/connection/connection-manager";
-
 interface DatabaseConnectivityResult {
   isConnected: boolean;
   responseTime: number;
   error?: string;
   timestamp: Date;
 }
-
 interface AuthenticationAttempt {
   timestamp: Date;
   email: string;
@@ -27,7 +24,6 @@ interface AuthenticationAttempt {
   userAgent?: string;
   ipAddress?: string;
 }
-
 interface ErrorResponse {
   error: string;
   errorType: string;
@@ -37,14 +33,11 @@ interface ErrorResponse {
   responseTime?: number;
   timestamp: string;
 }
-
 const SIMPLE_AUTH_ENABLED = isSimpleAuthEnabled();
 const timeoutConfig = getTimeoutConfig();
 const retryPolicy = getRetryPolicy();
-
 // Authentication attempt tracking (in-memory for now)
 const authAttempts = new Map<string, AuthenticationAttempt[]>();
-
 /**
  * Log authentication attempt for monitoring and security
  */
@@ -52,14 +45,11 @@ function logAuthenticationAttempt(attempt: AuthenticationAttempt): void {
   const key = `${attempt.email}:${attempt.ipAddress || "unknown"}`;
   const attempts = authAttempts.get(key) || [];
   attempts.push(attempt);
-
   // Keep only last 10 attempts per email/IP combination
   if (attempts.length > 10) {
     attempts.splice(0, attempts.length - 10);
   }
-
   authAttempts.set(key, attempts);
-
   // Log to console for monitoring (in production, this would go to a proper logging system)
   console.log(
     `[AUTH] ${attempt.success ? "SUCCESS" : "FAILED"} login attempt:`,
@@ -72,33 +62,27 @@ function logAuthenticationAttempt(attempt: AuthenticationAttempt): void {
     }
   );
 }
-
 /**
  * Check if IP/email combination has too many recent failed attempts
  */
 function isRateLimited(email: string, ipAddress: string): boolean {
   const key = `${email}:${ipAddress}`;
   const attempts = authAttempts.get(key) || [];
-
   // Check for more than 5 failed attempts in the last 15 minutes
   const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
   const recentFailedAttempts = attempts.filter(
     (attempt) => !attempt.success && attempt.timestamp > fifteenMinutesAgo
   );
-
   return recentFailedAttempts.length >= 5;
 }
-
 /**
  * Test database connectivity for authentication using enhanced backend utilities
  */
 async function testDatabaseConnectivity(): Promise<DatabaseConnectivityResult> {
   const startTime = Date.now();
-
   try {
     const isHealthy = await checkBackendHealth();
     const responseTime = Date.now() - startTime;
-
     if (isHealthy) {
       return {
         isConnected: true,
@@ -126,27 +110,22 @@ async function testDatabaseConnectivity(): Promise<DatabaseConnectivityResult> {
     };
   }
 }
-
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const DEBUG_AUTH = Boolean(
     process.env.DEBUG_AUTH || process.env.NEXT_PUBLIC_DEBUG_AUTH
   );
-
   // Extract request metadata for logging
   const userAgent = request.headers.get("user-agent") || "unknown";
   const ipAddress =
     request.headers.get("x-forwarded-for") ||
     request.headers.get("x-real-ip") ||
     "unknown";
-
   let email = "unknown";
   let retryCount = 0;
-
   try {
     const body = await request.json();
     email = body.email || "unknown";
-
     // Check rate limiting
     if (isRateLimited(email, ipAddress)) {
       const attempt: AuthenticationAttempt = {
@@ -160,7 +139,6 @@ export async function POST(request: NextRequest) {
         ipAddress,
       };
       logAuthenticationAttempt(attempt);
-
       return NextResponse.json(
         {
           error:
@@ -173,17 +151,14 @@ export async function POST(request: NextRequest) {
         { status: 429 }
       );
     }
-
     // Test database connectivity before attempting authentication
     const databaseConnectivity = await testDatabaseConnectivity();
-
     // Forward the request to the backend using enhanced backend utilities
     const headers: Record<string, string> = {
       "X-Request-ID": `auth-${Date.now()}-${Math.random()
         .toString(36)
         .substring(2, 11)}`,
     };
-
     const connectionOptions = {
       timeout: timeoutConfig.authentication,
       retryAttempts: retryPolicy.maxAttempts,
@@ -191,7 +166,6 @@ export async function POST(request: NextRequest) {
       exponentialBackoff: retryPolicy.jitterEnabled,
       headers,
     };
-
     let result;
     try {
       // Try primary authentication endpoint
@@ -234,11 +208,9 @@ export async function POST(request: NextRequest) {
         throw error;
       }
     }
-
     const totalResponseTime = Date.now() - startTime;
     retryCount = result.retryCount || 0;
     const data = result.data;
-
     // Log successful authentication attempt
     const successAttempt: AuthenticationAttempt = {
       timestamp: new Date(),
@@ -250,14 +222,12 @@ export async function POST(request: NextRequest) {
       ipAddress,
     };
     logAuthenticationAttempt(successAttempt);
-
     // Create the response with the data and database connectivity info
     const nextResponse = NextResponse.json({
       ...data,
       databaseConnectivity,
       responseTime: totalResponseTime,
     });
-
     // Forward any Set-Cookie headers from the backend
     try {
       const setCookieHeaders: string[] = [];
@@ -274,12 +244,7 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         // ignore; leave setCookieHeaders empty
       }
-
       if (DEBUG_AUTH)
-        console.log(
-          "Login proxy: backend Set-Cookie headers:",
-          setCookieHeaders
-        );
       for (const raw of setCookieHeaders) {
         if (!raw) continue;
         // Parse simple cookie string into name/value and attributes.
@@ -289,7 +254,6 @@ export async function POST(request: NextRequest) {
         if (eq === -1) continue;
         const name = nameValue.substring(0, eq);
         const value = nameValue.substring(eq + 1);
-
         const cookieOptions: any = { path: "/" };
         for (const attr of attrs) {
           const [k, v] = attr.split("=").map((s) => s.trim());
@@ -309,18 +273,12 @@ export async function POST(request: NextRequest) {
             }
           }
         }
-
         try {
           nextResponse.cookies.set(name, value, cookieOptions);
         } catch (e) {
           // If NextResponse.cookies.set fails for any cookie, fall back to
           // forwarding the raw header to ensure the cookie is sent.
           if (DEBUG_AUTH)
-            console.log(
-              "Login proxy: failed to set cookie via NextResponse.cookies.set, appending raw header",
-              name,
-              e
-            );
           nextResponse.headers.append("Set-Cookie", raw);
         }
       }
@@ -332,7 +290,6 @@ export async function POST(request: NextRequest) {
         if (single) nextResponse.headers.set("Set-Cookie", single);
       }
     }
-
     // Also set our own auth_token cookie for downstream proxying
     const token = data?.access_token;
     if (typeof token === "string" && token.length > 0) {
@@ -351,15 +308,11 @@ export async function POST(request: NextRequest) {
         // ignore cookie errors in dev
       }
     }
-
     return nextResponse;
   } catch (error) {
-    console.error("Login proxy error:", error);
     const totalResponseTime = Date.now() - startTime;
-
     // Test database connectivity even in error cases
     const databaseConnectivity = await testDatabaseConnectivity();
-
     // Extract error information from ConnectionError if available
     let errorType:
       | "timeout"
@@ -369,12 +322,10 @@ export async function POST(request: NextRequest) {
       | "server" = "server";
     let statusCode = 500;
     let retryable = true;
-
     if (error instanceof ConnectionError) {
       retryCount = error.retryCount || 0;
       statusCode = error.statusCode || 500;
       retryable = error.retryable;
-
       switch (error.category) {
         case "timeout_error":
           errorType = "timeout";
@@ -390,7 +341,6 @@ export async function POST(request: NextRequest) {
           errorType = "server";
       }
     }
-
     // Log failed authentication attempt
     const attempt: AuthenticationAttempt = {
       timestamp: new Date(),
@@ -403,7 +353,6 @@ export async function POST(request: NextRequest) {
       ipAddress,
     };
     logAuthenticationAttempt(attempt);
-
     const errorResponse: ErrorResponse = {
       error: getLoginErrorMessage(
         databaseConnectivity,
@@ -416,11 +365,9 @@ export async function POST(request: NextRequest) {
       responseTime: totalResponseTime,
       timestamp: new Date().toISOString(),
     };
-
     return NextResponse.json(errorResponse, { status: statusCode });
   }
 }
-
 /**
  * Get user-friendly error message based on database connectivity status and HTTP status
  */
@@ -441,7 +388,6 @@ function getLoginErrorMessage(
       return "Authentication database is temporarily unavailable. Please try again later.";
     }
   }
-
   // Database is connected but authentication failed
   switch (httpStatus) {
     case 401:

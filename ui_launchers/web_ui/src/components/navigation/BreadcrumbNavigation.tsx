@@ -245,7 +245,7 @@ export const BreadcrumbNavigation = React.forwardRef<HTMLElement, BreadcrumbNavi
                   className="mx-[var(--space-xs)] text-[var(--color-neutral-400)] dark:text-[var(--color-neutral-600)]"
                   aria-hidden="true"
                 >
-                  {separator || <ChevronRight className="h-4 w-4" />}
+                  {separator || <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />}
                 </span>
               )}
 
@@ -286,7 +286,7 @@ const BreadcrumbItem: React.FC<BreadcrumbItemProps> = ({ item, onClick }) => {
   const content = (
     <>
       {Icon && (
-        <Icon className="h-4 w-4 mr-[var(--space-xs)] flex-shrink-0" />
+        <Icon className="h-4 w-4 mr-[var(--space-xs)] flex-shrink-0 sm:w-auto md:w-full" />
       )}
       <span className="truncate max-w-[200px]">{item.label}</span>
     </>
@@ -305,7 +305,7 @@ const BreadcrumbItem: React.FC<BreadcrumbItemProps> = ({ item, onClick }) => {
         )}
         onClick={onClick}
         aria-current={item.current ? 'page' : undefined}
-      >
+       aria-label="Button">
         {content}
       </button>
     );

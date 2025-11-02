@@ -1,3 +1,16 @@
+import React, { useState, useEffect } from 'react';
+import { 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
+import {
+import { PluginInfo, PluginAuditEntry, PluginLogEntry } from '@/types/plugins';
 /**
  * Plugin Audit Logger Component
  * 
@@ -7,8 +20,8 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { 
+
+
   FileText, 
   Search, 
   Filter, 
@@ -40,23 +53,23 @@ import {
   PieChart,
 } from 'lucide-react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { 
+
+
+
+
+
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Label } from '@/components/ui/label';
-import { 
+
+
+
+
+
+
   Table,
   TableBody,
   TableCell,
@@ -64,13 +77,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { 
+
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
+
   Dialog,
   DialogContent,
   DialogDescription,
@@ -79,7 +92,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 
-import { PluginInfo, PluginAuditEntry, PluginLogEntry } from '@/types/plugins';
+
 
 interface AuditSummary {
   totalEvents: number;
@@ -400,7 +413,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
           </div>
         </TableCell>
         <TableCell>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
             {entry.ipAddress}
           </div>
         </TableCell>
@@ -430,10 +443,10 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Info className="w-4 h-4 text-muted-foreground" />
+                  <Info className="w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <pre className="text-xs max-w-xs overflow-auto">
+                  <pre className="text-xs max-w-xs overflow-auto sm:text-sm md:text-base">
                     {JSON.stringify(entry.context, null, 2)}
                   </pre>
                 </TooltipContent>
@@ -457,25 +470,25 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
         </div>
         
         <div className="flex items-center gap-2">
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
+          <select value={dateRange} onValueChange={setDateRange} aria-label="Select option">
+            <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+              <selectValue />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1d">Last 24h</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
+            <selectContent aria-label="Select option">
+              <selectItem value="1d" aria-label="Select option">Last 24h</SelectItem>
+              <selectItem value="7d" aria-label="Select option">Last 7 days</SelectItem>
+              <selectItem value="30d" aria-label="Select option">Last 30 days</SelectItem>
+              <selectItem value="90d" aria-label="Select option">Last 90 days</SelectItem>
             </SelectContent>
           </Select>
           
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+          <button variant="outline" size="sm" onClick={handleRefresh} disabled={loading} aria-label="Button">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           
-          <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>
-            <Download className="w-4 h-4 mr-2" />
+          <button variant="outline" size="sm" onClick={() = aria-label="Button"> handleExport('csv')}>
+            <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Export
           </Button>
         </div>
@@ -484,40 +497,40 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium">Total Events</span>
+              <Activity className="w-4 h-4 text-blue-600 sm:w-auto md:w-full" />
+              <span className="text-sm font-medium md:text-base lg:text-lg">Total Events</span>
             </div>
             <div className="text-2xl font-bold mt-2">{auditSummary.totalEvents}</div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-600" />
-              <span className="text-sm font-medium">Critical Events</span>
+              <AlertTriangle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />
+              <span className="text-sm font-medium md:text-base lg:text-lg">Critical Events</span>
             </div>
             <div className="text-2xl font-bold mt-2">{auditSummary.criticalEvents}</div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-medium">Security Events</span>
+              <Shield className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
+              <span className="text-sm font-medium md:text-base lg:text-lg">Security Events</span>
             </div>
             <div className="text-2xl font-bold mt-2">{auditSummary.securityEvents}</div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-orange-600" />
-              <span className="text-sm font-medium">Config Changes</span>
+              <Settings className="w-4 h-4 text-orange-600 sm:w-auto md:w-full" />
+              <span className="text-sm font-medium md:text-base lg:text-lg">Config Changes</span>
             </div>
             <div className="text-2xl font-bold mt-2">{auditSummary.configurationChanges}</div>
           </CardContent>
@@ -539,29 +552,29 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
               <div className="flex flex-col gap-4 md:flex-row md:items-center">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+                    <input
                       placeholder="Search audit entries..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
                       className="pl-10"
                     />
                   </div>
                 </div>
                 
-                <Select value={actionFilter} onValueChange={setActionFilter}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Filter by action" />
+                <select value={actionFilter} onValueChange={setActionFilter} aria-label="Select option">
+                  <selectTrigger className="w-48 sm:w-auto md:w-full" aria-label="Select option">
+                    <selectValue placeholder="Filter by action" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Actions</SelectItem>
-                    <SelectItem value="install">Install</SelectItem>
-                    <SelectItem value="uninstall">Uninstall</SelectItem>
-                    <SelectItem value="enable">Enable</SelectItem>
-                    <SelectItem value="disable">Disable</SelectItem>
-                    <SelectItem value="configure">Configure</SelectItem>
-                    <SelectItem value="permission_grant">Grant Permission</SelectItem>
-                    <SelectItem value="permission_revoke">Revoke Permission</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="all" aria-label="Select option">All Actions</SelectItem>
+                    <selectItem value="install" aria-label="Select option">Install</SelectItem>
+                    <selectItem value="uninstall" aria-label="Select option">Uninstall</SelectItem>
+                    <selectItem value="enable" aria-label="Select option">Enable</SelectItem>
+                    <selectItem value="disable" aria-label="Select option">Disable</SelectItem>
+                    <selectItem value="configure" aria-label="Select option">Configure</SelectItem>
+                    <selectItem value="permission_grant" aria-label="Select option">Grant Permission</SelectItem>
+                    <selectItem value="permission_revoke" aria-label="Select option">Revoke Permission</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -594,7 +607,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
               
               {filteredAuditEntries.length === 0 && (
                 <div className="text-center py-8">
-                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
                   <h3 className="text-lg font-medium mb-2">No Audit Entries</h3>
                   <p className="text-muted-foreground">
                     No audit entries match your current filters
@@ -612,26 +625,26 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
               <div className="flex flex-col gap-4 md:flex-row md:items-center">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+                    <input
                       placeholder="Search log entries..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
                       className="pl-10"
                     />
                   </div>
                 </div>
                 
-                <Select value={levelFilter} onValueChange={setLevelFilter}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder="Level" />
+                <select value={levelFilter} onValueChange={setLevelFilter} aria-label="Select option">
+                  <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+                    <selectValue placeholder="Level" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="debug">Debug</SelectItem>
-                    <SelectItem value="info">Info</SelectItem>
-                    <SelectItem value="warn">Warning</SelectItem>
-                    <SelectItem value="error">Error</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="all" aria-label="Select option">All Levels</SelectItem>
+                    <selectItem value="debug" aria-label="Select option">Debug</SelectItem>
+                    <selectItem value="info" aria-label="Select option">Info</SelectItem>
+                    <selectItem value="warn" aria-label="Select option">Warning</SelectItem>
+                    <selectItem value="error" aria-label="Select option">Error</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -685,7 +698,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                       Last checked: {report.lastCheck.toLocaleDateString()}
                     </div>
                     
@@ -693,16 +706,16 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
                       {report.requirements.map((req) => (
                         <div key={req.id} className="flex items-start gap-2">
                           {req.status === 'met' ? (
-                            <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
+                            <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 sm:w-auto md:w-full" />
                           ) : req.status === 'partial' ? (
-                            <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5" />
+                            <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 sm:w-auto md:w-full" />
                           ) : (
-                            <XCircle className="w-4 h-4 text-red-600 mt-0.5" />
+                            <XCircle className="w-4 h-4 text-red-600 mt-0.5 sm:w-auto md:w-full" />
                           )}
                           <div className="flex-1">
-                            <div className="text-sm font-medium">{req.description}</div>
+                            <div className="text-sm font-medium md:text-base lg:text-lg">{req.description}</div>
                             {req.evidence.length > 0 && (
-                              <div className="text-xs text-muted-foreground mt-1">
+                              <div className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                                 Evidence: {req.evidence.join(', ')}
                               </div>
                             )}
@@ -727,9 +740,9 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
                 <div className="space-y-3">
                   {Object.entries(auditSummary.eventsByType).map(([action, count]) => (
                     <div key={action} className="flex items-center justify-between">
-                      <span className="text-sm capitalize">{action.replace('_', ' ')}</span>
+                      <span className="text-sm capitalize md:text-base lg:text-lg">{action.replace('_', ' ')}</span>
                       <div className="flex items-center gap-2">
-                        <div className="w-24 bg-muted rounded-full h-2">
+                        <div className="w-24 bg-muted rounded-full h-2 sm:w-auto md:w-full">
                           <div 
                             className="bg-primary h-2 rounded-full"
                             style={{ 
@@ -737,7 +750,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
                             }}
                           />
                         </div>
-                        <span className="text-sm font-medium w-8 text-right">{count}</span>
+                        <span className="text-sm font-medium w-8 text-right sm:w-auto md:w-full">{count}</span>
                       </div>
                     </div>
                   ))}
@@ -754,10 +767,10 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
                   {auditSummary.topUsers.map((user, index) => (
                     <div key={user.userId} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs">
+                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs sm:w-auto md:w-full">
                           {index + 1}
                         </div>
-                        <span className="text-sm">{user.userId}</span>
+                        <span className="text-sm md:text-base lg:text-lg">{user.userId}</span>
                       </div>
                       <Badge variant="outline">{user.count} events</Badge>
                     </div>
@@ -771,7 +784,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
 
       {/* Audit Entry Detail Dialog */}
       <Dialog open={!!selectedEntry} onOpenChange={() => setSelectedEntry(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl sm:w-auto md:w-full">
           {selectedEntry && (
             <>
               <DialogHeader>
@@ -789,26 +802,26 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium">User</Label>
-                    <div className="text-sm">{selectedEntry.userId}</div>
+                    <Label className="text-sm font-medium md:text-base lg:text-lg">User</Label>
+                    <div className="text-sm md:text-base lg:text-lg">{selectedEntry.userId}</div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium">IP Address</Label>
-                    <div className="text-sm font-mono">{selectedEntry.ipAddress}</div>
+                    <Label className="text-sm font-medium md:text-base lg:text-lg">IP Address</Label>
+                    <div className="text-sm font-mono md:text-base lg:text-lg">{selectedEntry.ipAddress}</div>
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Details</Label>
-                  <pre className="text-xs bg-muted p-3 rounded mt-2 overflow-auto">
+                  <Label className="text-sm font-medium md:text-base lg:text-lg">Details</Label>
+                  <pre className="text-xs bg-muted p-3 rounded mt-2 overflow-auto sm:text-sm md:text-base">
                     {JSON.stringify(selectedEntry.details, null, 2)}
                   </pre>
                 </div>
 
                 {selectedEntry.userAgent && (
                   <div>
-                    <Label className="text-sm font-medium">User Agent</Label>
-                    <div className="text-xs text-muted-foreground mt-1 break-all">
+                    <Label className="text-sm font-medium md:text-base lg:text-lg">User Agent</Label>
+                    <div className="text-xs text-muted-foreground mt-1 break-all sm:text-sm md:text-base">
                       {selectedEntry.userAgent}
                     </div>
                   </div>

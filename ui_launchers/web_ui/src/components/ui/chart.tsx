@@ -62,7 +62,7 @@ const ChartContainer = React.forwardRef<
           className
         )}
         {...props}
-      >
+       role="tooltip">
         <ChartStyle id={chartId} config={config} />
         <RechartsPrimitive.ResponsiveContainer>
           {children}
@@ -313,7 +313,7 @@ const ChartLegendContent = React.forwardRef<
                 <itemConfig.icon />
               ) : (
                 <div
-                  className="h-2 w-2 shrink-0 rounded-[2px]"
+                  className="h-2 w-2 shrink-0 rounded-[2px] sm:w-auto md:w-full"
                   style={{
                     backgroundColor: item.color,
                   }}

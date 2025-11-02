@@ -1,14 +1,26 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
+import {
+import { PluginInfo, PluginLogEntry } from '@/types/plugins';
 /**
  * Plugin Log Analyzer Component
  * 
  * Aggregates and analyzes plugin logs with search and filtering capabilities.
  * Based on requirements: 5.4, 10.3
  */
-
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
+
   Search, 
   Filter, 
   Download, 
@@ -40,43 +52,40 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
+
+
+
+
+
+
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Progress } from '@/components/ui/progress';
-import { 
+
+
+
+
+
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
+
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import {
+
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-import { PluginInfo, PluginLogEntry } from '@/types/plugins';
 
 interface LogFilter {
   levels: string[];
@@ -87,7 +96,6 @@ interface LogFilter {
   searchQuery: string;
   userId?: string;
 }
-
 interface LogAnalytics {
   totalLogs: number;
   logsByLevel: Record<string, number>;
@@ -100,16 +108,14 @@ interface LogAnalytics {
     responseTime: { current: number; change: number };
   };
 }
-
 interface PluginLogAnalyzerProps {
   plugin: PluginInfo;
   onExportLogs?: (logs: PluginLogEntry[]) => void;
   onClearLogs?: () => void;
 }
-
 // Mock log data
 const generateMockLogs = (count: number): PluginLogEntry[] => {
-  const levels = ['debug', 'info', 'warn', 'error'];
+  const levels = ['', 'warn', 'error'];
   const sources = ['api', 'webhook', 'scheduler', 'auth', 'database'];
   const messages = {
     debug: [
@@ -141,13 +147,11 @@ const generateMockLogs = (count: number): PluginLogEntry[] => {
       'Webhook processing failed',
     ],
   };
-
   return Array.from({ length: count }, (_, i) => {
-    const level = levels[Math.floor(Math.random() * levels.length)] as 'debug' | 'info' | 'warn' | 'error';
+    const level = levels[Math.floor(Math.random() * levels.length)] as '' | 'warn' | 'error';
     const source = sources[Math.floor(Math.random() * sources.length)];
     const messageList = messages[level];
     const message = messageList[Math.floor(Math.random() * messageList.length)];
-    
     return {
       id: `log-${i}`,
       pluginId: 'test-plugin',
@@ -167,7 +171,6 @@ const generateMockLogs = (count: number): PluginLogEntry[] => {
     };
   }).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 };
-
 export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
   plugin,
   onExportLogs,
@@ -177,32 +180,26 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
-  
   const [filter, setFilter] = useState<LogFilter>({
     levels: ['info', 'warn', 'error'],
     sources: [],
     timeRange: '24h',
     searchQuery: '',
   });
-
   // Filter logs based on current filter settings
   const filteredLogs = useMemo(() => {
     let filtered = logs;
-
     // Filter by levels
     if (filter.levels.length > 0) {
       filtered = filtered.filter(log => filter.levels.includes(log.level));
     }
-
     // Filter by sources
     if (filter.sources.length > 0) {
       filtered = filtered.filter(log => filter.sources.includes(log.source));
     }
-
     // Filter by time range
     const now = new Date();
     let startTime: Date;
-    
     switch (filter.timeRange) {
       case '1h':
         startTime = new Date(now.getTime() - 60 * 60 * 1000);
@@ -222,12 +219,10 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
       default:
         startTime = new Date(0);
     }
-
     const endTime = filter.timeRange === 'custom' && filter.endDate ? filter.endDate : now;
     filtered = filtered.filter(log => 
       log.timestamp >= startTime && log.timestamp <= endTime
     );
-
     // Filter by search query
     if (filter.searchQuery) {
       const query = filter.searchQuery.toLowerCase();
@@ -237,34 +232,28 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
         (log.context && JSON.stringify(log.context).toLowerCase().includes(query))
       );
     }
-
     // Filter by user ID
     if (filter.userId) {
       filtered = filtered.filter(log => log.userId === filter.userId);
     }
-
     return filtered;
   }, [logs, filter]);
-
   // Calculate analytics
   const analytics = useMemo((): LogAnalytics => {
     const logsByLevel = filteredLogs.reduce((acc, log) => {
       acc[log.level] = (acc[log.level] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-
     const logsBySource = filteredLogs.reduce((acc, log) => {
       acc[log.source] = (acc[log.source] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-
     // Group logs by hour for trend analysis
     const logsByHour = Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 }));
     filteredLogs.forEach(log => {
       const hour = log.timestamp.getHours();
       logsByHour[hour].count++;
     });
-
     // Find top errors
     const errorMessages = filteredLogs
       .filter(log => log.level === 'error')
@@ -279,18 +268,15 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
         }
         return acc;
       }, {} as Record<string, { message: string; count: number; lastSeen: Date }>);
-
     const topErrors = Object.values(errorMessages)
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-
     // Calculate trends (mock data for demo)
     const trends = {
       errorRate: { current: (logsByLevel.error || 0) / filteredLogs.length * 100, change: -2.3 },
       logVolume: { current: filteredLogs.length, change: 15.7 },
       responseTime: { current: 245, change: 8.2 },
     };
-
     return {
       totalLogs: filteredLogs.length,
       logsByLevel,
@@ -300,7 +286,6 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
       trends,
     };
   }, [filteredLogs]);
-
   const handleRefresh = async () => {
     setLoading(true);
     try {
@@ -312,16 +297,13 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
       setLoading(false);
     }
   };
-
   const handleExport = () => {
     onExportLogs?.(filteredLogs);
   };
-
   const handleCopyLog = (log: PluginLogEntry) => {
     const logText = `[${log.timestamp.toISOString()}] ${log.level.toUpperCase()} ${log.source}: ${log.message}`;
     navigator.clipboard.writeText(logText);
   };
-
   const toggleLogExpansion = (logId: string) => {
     setExpandedLogs(prev => {
       const newSet = new Set(prev);
@@ -333,22 +315,20 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
       return newSet;
     });
   };
-
   const getLevelIcon = (level: string) => {
     switch (level) {
       case 'error':
-        return <XCircle className="w-4 h-4 text-red-600" />;
+        return <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />;
       case 'warn':
-        return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
+        return <AlertTriangle className="w-4 h-4 text-yellow-600 sm:w-auto md:w-full" />;
       case 'info':
-        return <Info className="w-4 h-4 text-blue-600" />;
+        return <Info className="w-4 h-4 text-blue-600 sm:w-auto md:w-full" />;
       case 'debug':
-        return <Bug className="w-4 h-4 text-gray-600" />;
+        return <Bug className="w-4 h-4 text-gray-600 sm:w-auto md:w-full" />;
       default:
-        return <FileText className="w-4 h-4 text-gray-400" />;
+        return <FileText className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />;
     }
   };
-
   const getLevelColor = (level: string) => {
     switch (level) {
       case 'error':
@@ -363,18 +343,14 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
         return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
-
   // Auto-refresh effect
   useEffect(() => {
     if (!autoRefresh) return;
-    
     const interval = setInterval(() => {
       handleRefresh();
     }, 30000); // Refresh every 30 seconds
-    
     return () => clearInterval(interval);
   }, [autoRefresh]);
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -385,38 +361,34 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
             Analyze logs and monitor activity for {plugin.name}
           </p>
         </div>
-        
         <div className="flex items-center gap-2">
-          <Button
+          <button
             variant="outline"
             size="sm"
-            onClick={() => setAutoRefresh(!autoRefresh)}
+            onClick={() = aria-label="Button"> setAutoRefresh(!autoRefresh)}
           >
             <Activity className={`w-4 h-4 mr-2 ${autoRefresh ? 'text-green-600' : ''}`} />
             {autoRefresh ? 'Live' : 'Paused'}
           </Button>
-          
-          <Button
+          <button
             variant="outline"
             size="sm"
             onClick={handleRefresh}
             disabled={loading}
-          >
+           aria-label="Button">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          
-          <Button
+          <button
             variant="outline"
             size="sm"
             onClick={handleExport}
-          >
-            <Download className="w-4 h-4 mr-2" />
+           aria-label="Button">
+            <Download className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Export
           </Button>
         </div>
       </div>
-
       <Tabs defaultValue="logs" className="space-y-4">
         <TabsList>
           <TabsTrigger value="logs">Logs</TabsTrigger>
@@ -424,7 +396,6 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
           <TabsTrigger value="errors">Errors</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
-
         <TabsContent value="logs" className="space-y-4">
           {/* Filters */}
           <Card>
@@ -433,39 +404,37 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                 <div className="space-y-2">
                   <Label>Search</Label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+                    <input
                       placeholder="Search logs..."
                       value={filter.searchQuery}
-                      onChange={(e) => setFilter(prev => ({ ...prev, searchQuery: e.target.value }))}
+                      onChange={(e) = aria-label="Input"> setFilter(prev => ({ ...prev, searchQuery: e.target.value }))}
                       className="pl-10"
                     />
                   </div>
                 </div>
-                
                 <div className="space-y-2">
                   <Label>Time Range</Label>
-                  <Select
+                  <select
                     value={filter.timeRange}
-                    onValueChange={(value: any) => setFilter(prev => ({ ...prev, timeRange: value }))}
+                    onValueChange={(value: any) = aria-label="Select option"> setFilter(prev => ({ ...prev, timeRange: value }))}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
+                    <selectTrigger aria-label="Select option">
+                      <selectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1h">Last Hour</SelectItem>
-                      <SelectItem value="24h">Last 24 Hours</SelectItem>
-                      <SelectItem value="7d">Last 7 Days</SelectItem>
-                      <SelectItem value="30d">Last 30 Days</SelectItem>
-                      <SelectItem value="custom">Custom Range</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="1h" aria-label="Select option">Last Hour</SelectItem>
+                      <selectItem value="24h" aria-label="Select option">Last 24 Hours</SelectItem>
+                      <selectItem value="7d" aria-label="Select option">Last 7 Days</SelectItem>
+                      <selectItem value="30d" aria-label="Select option">Last 30 Days</SelectItem>
+                      <selectItem value="custom" aria-label="Select option">Custom Range</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                
                 <div className="space-y-2">
                   <Label>Log Levels</Label>
                   <div className="flex flex-wrap gap-2">
-                    {['debug', 'info', 'warn', 'error'].map((level) => (
+                    {['', 'warn', 'error'].map((level) => (
                       <div key={level} className="flex items-center space-x-2">
                         <Checkbox
                           id={level}
@@ -484,19 +453,18 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                             }
                           }}
                         />
-                        <Label htmlFor={level} className="text-sm capitalize">
+                        <Label htmlFor={level} className="text-sm capitalize md:text-base lg:text-lg">
                           {level}
                         </Label>
                       </div>
                     ))}
                   </div>
                 </div>
-                
                 <div className="space-y-2">
                   <Label>Sources</Label>
-                  <Select
+                  <select
                     value={filter.sources[0] || 'all'}
-                    onValueChange={(value) => {
+                    onValueChange={(value) = aria-label="Select option"> {
                       if (value === 'all') {
                         setFilter(prev => ({ ...prev, sources: [] }));
                       } else {
@@ -504,86 +472,81 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                       }
                     }}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="All sources" />
+                    <selectTrigger aria-label="Select option">
+                      <selectValue placeholder="All sources" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Sources</SelectItem>
-                      <SelectItem value="api">API</SelectItem>
-                      <SelectItem value="webhook">Webhook</SelectItem>
-                      <SelectItem value="scheduler">Scheduler</SelectItem>
-                      <SelectItem value="auth">Auth</SelectItem>
-                      <SelectItem value="database">Database</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="all" aria-label="Select option">All Sources</SelectItem>
+                      <selectItem value="api" aria-label="Select option">API</SelectItem>
+                      <selectItem value="webhook" aria-label="Select option">Webhook</SelectItem>
+                      <selectItem value="scheduler" aria-label="Select option">Scheduler</SelectItem>
+                      <selectItem value="auth" aria-label="Select option">Auth</SelectItem>
+                      <selectItem value="database" aria-label="Select option">Database</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
             </CardContent>
           </Card>
-
           {/* Log Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Logs</p>
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Total Logs</p>
                     <p className="text-2xl font-bold">{analytics.totalLogs.toLocaleString()}</p>
                   </div>
-                  <FileText className="w-8 h-8 text-muted-foreground" />
+                  <FileText className="w-8 h-8 text-muted-foreground sm:w-auto md:w-full" />
                 </div>
               </CardContent>
             </Card>
-            
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Errors</p>
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Errors</p>
                     <p className="text-2xl font-bold text-red-600">
                       {analytics.logsByLevel.error || 0}
                     </p>
                   </div>
-                  <XCircle className="w-8 h-8 text-red-600" />
+                  <XCircle className="w-8 h-8 text-red-600 sm:w-auto md:w-full" />
                 </div>
               </CardContent>
             </Card>
-            
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Warnings</p>
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Warnings</p>
                     <p className="text-2xl font-bold text-yellow-600">
                       {analytics.logsByLevel.warn || 0}
                     </p>
                   </div>
-                  <AlertTriangle className="w-8 h-8 text-yellow-600" />
+                  <AlertTriangle className="w-8 h-8 text-yellow-600 sm:w-auto md:w-full" />
                 </div>
               </CardContent>
             </Card>
-            
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Error Rate</p>
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Error Rate</p>
                     <p className="text-2xl font-bold">
                       {analytics.trends.errorRate.current.toFixed(1)}%
                     </p>
                   </div>
-                  <div className="flex items-center text-sm">
+                  <div className="flex items-center text-sm md:text-base lg:text-lg">
                     {analytics.trends.errorRate.change > 0 ? (
-                      <TrendingUp className="w-4 h-4 text-red-600" />
+                      <TrendingUp className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />
                     ) : (
-                      <TrendingDown className="w-4 h-4 text-green-600" />
+                      <TrendingDown className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
                     )}
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
-
           {/* Log List */}
           <Card>
             <CardHeader>
@@ -592,9 +555,9 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                 <Badge variant="outline">{filteredLogs.length} entries</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 sm:p-4 md:p-6">
               <ScrollArea className="h-96">
-                <div className="space-y-1 p-4">
+                <div className="space-y-1 p-4 sm:p-4 md:p-6">
                   {filteredLogs.map((log) => (
                     <Collapsible key={log.id}>
                       <div className={`p-3 border rounded-lg ${getLevelColor(log.level)}`}>
@@ -605,24 +568,24 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                           <div className="flex items-start justify-between">
                             <div className="flex items-start gap-3 flex-1 text-left">
                               {getLevelIcon(log.level)}
-                              <div className="flex-1 min-w-0">
+                              <div className="flex-1 min-w-0 sm:w-auto md:w-full">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-xs font-mono text-muted-foreground">
+                                  <span className="text-xs font-mono text-muted-foreground sm:text-sm md:text-base">
                                     {log.timestamp.toLocaleString()}
                                   </span>
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                                     {log.source}
                                   </Badge>
-                                  <Badge variant="outline" className="text-xs uppercase">
+                                  <Badge variant="outline" className="text-xs uppercase sm:text-sm md:text-base">
                                     {log.level}
                                   </Badge>
                                   {log.userId && (
-                                    <Badge variant="secondary" className="text-xs">
+                                    <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                                       {log.userId}
                                     </Badge>
                                   )}
                                 </div>
-                                <p className="text-sm font-medium truncate">
+                                <p className="text-sm font-medium truncate md:text-base lg:text-lg">
                                   {log.message}
                                 </p>
                               </div>
@@ -630,40 +593,39 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                             <div className="flex items-center gap-1">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <Settings className="w-3 h-3" />
+                                  <button variant="ghost" size="sm" aria-label="Button">
+                                    <Settings className="w-3 h-3 sm:w-auto md:w-full" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
                                   <DropdownMenuItem onClick={() => handleCopyLog(log)}>
-                                    <Copy className="w-3 h-3 mr-2" />
+                                    <Copy className="w-3 h-3 mr-2 sm:w-auto md:w-full" />
                                     Copy
                                   </DropdownMenuItem>
                                   <DropdownMenuItem>
-                                    <Share className="w-3 h-3 mr-2" />
+                                    <Share className="w-3 h-3 mr-2 sm:w-auto md:w-full" />
                                     Share
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem>
-                                    <ExternalLink className="w-3 h-3 mr-2" />
+                                    <ExternalLink className="w-3 h-3 mr-2 sm:w-auto md:w-full" />
                                     View Details
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                               {expandedLogs.has(log.id) ? (
-                                <ChevronDown className="w-4 h-4" />
+                                <ChevronDown className="w-4 h-4 sm:w-auto md:w-full" />
                               ) : (
-                                <ChevronRight className="w-4 h-4" />
+                                <ChevronRight className="w-4 h-4 sm:w-auto md:w-full" />
                               )}
                             </div>
                           </div>
                         </CollapsibleTrigger>
-                        
                         <CollapsibleContent>
                           {log.context && (
-                            <div className="mt-3 p-3 bg-background/50 rounded border">
-                              <h5 className="text-xs font-medium mb-2">Context</h5>
-                              <pre className="text-xs text-muted-foreground overflow-x-auto">
+                            <div className="mt-3 p-3 bg-background/50 rounded border sm:p-4 md:p-6">
+                              <h5 className="text-xs font-medium mb-2 sm:text-sm md:text-base">Context</h5>
+                              <pre className="text-xs text-muted-foreground overflow-x-auto sm:text-sm md:text-base">
                                 {JSON.stringify(log.context, null, 2)}
                               </pre>
                             </div>
@@ -672,10 +634,9 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                       </div>
                     </Collapsible>
                   ))}
-                  
                   {filteredLogs.length === 0 && (
                     <div className="text-center py-8">
-                      <FileText className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                      <FileText className="w-8 h-8 mx-auto mb-2 text-muted-foreground sm:w-auto md:w-full" />
                       <p className="text-muted-foreground">No logs found matching your filters</p>
                     </div>
                   )}
@@ -684,7 +645,6 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="analytics" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
@@ -700,7 +660,7 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                         <span className="capitalize">{level}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-24 bg-muted rounded-full h-2">
+                        <div className="w-24 bg-muted rounded-full h-2 sm:w-auto md:w-full">
                           <div
                             className={`h-2 rounded-full ${
                               level === 'error' ? 'bg-red-600' :
@@ -711,14 +671,13 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                             style={{ width: `${(count / analytics.totalLogs) * 100}%` }}
                           />
                         </div>
-                        <span className="text-sm font-medium w-12 text-right">{count}</span>
+                        <span className="text-sm font-medium w-12 text-right sm:w-auto md:w-full">{count}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle>Log Distribution by Source</CardTitle>
@@ -729,20 +688,19 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                     <div key={source} className="flex items-center justify-between">
                       <span className="capitalize">{source}</span>
                       <div className="flex items-center gap-2">
-                        <div className="w-24 bg-muted rounded-full h-2">
+                        <div className="w-24 bg-muted rounded-full h-2 sm:w-auto md:w-full">
                           <div
                             className="h-2 rounded-full bg-blue-600"
                             style={{ width: `${(count / analytics.totalLogs) * 100}%` }}
                           />
                         </div>
-                        <span className="text-sm font-medium w-12 text-right">{count}</span>
+                        <span className="text-sm font-medium w-12 text-right sm:w-auto md:w-full">{count}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle>Trends</CardTitle>
@@ -750,7 +708,7 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Error Rate</span>
+                    <span className="text-sm md:text-base lg:text-lg">Error Rate</span>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">
                         {analytics.trends.errorRate.current.toFixed(1)}%
@@ -759,17 +717,16 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                         analytics.trends.errorRate.change > 0 ? 'text-red-600' : 'text-green-600'
                       }`}>
                         {analytics.trends.errorRate.change > 0 ? (
-                          <TrendingUp className="w-3 h-3 mr-1" />
+                          <TrendingUp className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                         ) : (
-                          <TrendingDown className="w-3 h-3 mr-1" />
+                          <TrendingDown className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                         )}
                         {Math.abs(analytics.trends.errorRate.change).toFixed(1)}%
                       </div>
                     </div>
                   </div>
-                  
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Log Volume</span>
+                    <span className="text-sm md:text-base lg:text-lg">Log Volume</span>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">
                         {analytics.trends.logVolume.current.toLocaleString()}
@@ -778,9 +735,9 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                         analytics.trends.logVolume.change > 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
                         {analytics.trends.logVolume.change > 0 ? (
-                          <TrendingUp className="w-3 h-3 mr-1" />
+                          <TrendingUp className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                         ) : (
-                          <TrendingDown className="w-3 h-3 mr-1" />
+                          <TrendingDown className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                         )}
                         {Math.abs(analytics.trends.logVolume.change).toFixed(1)}%
                       </div>
@@ -789,7 +746,6 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                 </div>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle>Activity by Hour</CardTitle>
@@ -798,7 +754,7 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                 <div className="space-y-2">
                   {analytics.logsByHour.map((item) => (
                     <div key={item.hour} className="flex items-center gap-2">
-                      <span className="text-xs w-8">{item.hour}:00</span>
+                      <span className="text-xs w-8 sm:w-auto md:w-full">{item.hour}:00</span>
                       <div className="flex-1 bg-muted rounded-full h-2">
                         <div
                           className="h-2 rounded-full bg-blue-600"
@@ -807,7 +763,7 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                           }}
                         />
                       </div>
-                      <span className="text-xs w-8 text-right">{item.count}</span>
+                      <span className="text-xs w-8 text-right sm:w-auto md:w-full">{item.count}</span>
                     </div>
                   ))}
                 </div>
@@ -815,7 +771,6 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
             </Card>
           </div>
         </TabsContent>
-
         <TabsContent value="errors" className="space-y-4">
           <Card>
             <CardHeader>
@@ -827,11 +782,11 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
             <CardContent>
               <div className="space-y-3">
                 {analytics.topErrors.map((error, index) => (
-                  <div key={index} className="p-3 border rounded-lg">
+                  <div key={index} className="p-3 border rounded-lg sm:p-4 md:p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{error.message}</p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                        <p className="font-medium text-sm md:text-base lg:text-lg">{error.message}</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground sm:text-sm md:text-base">
                           <span>Count: {error.count}</span>
                           <span>Last seen: {error.lastSeen.toLocaleString()}</span>
                         </div>
@@ -840,10 +795,9 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                     </div>
                   </div>
                 ))}
-                
                 {analytics.topErrors.length === 0 && (
                   <div className="text-center py-8">
-                    <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-600" />
+                    <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-600 sm:w-auto md:w-full" />
                     <p className="text-muted-foreground">No errors found in the selected time range</p>
                   </div>
                 )}
@@ -851,7 +805,6 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="settings" className="space-y-4">
           <Card>
             <CardHeader>
@@ -864,7 +817,7 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Auto Refresh</Label>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                     Automatically refresh logs every 30 seconds
                   </p>
                 </div>
@@ -873,49 +826,43 @@ export const PluginLogAnalyzer: React.FC<PluginLogAnalyzerProps> = ({
                   onCheckedChange={(checked) => setAutoRefresh(checked === true)}
                 />
               </div>
-              
               <Separator />
-              
               <div className="space-y-2">
                 <Label>Log Retention</Label>
-                <Select defaultValue="30d">
-                  <SelectTrigger>
-                    <SelectValue />
+                <select defaultValue="30d" aria-label="Select option">
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7d">7 days</SelectItem>
-                    <SelectItem value="30d">30 days</SelectItem>
-                    <SelectItem value="90d">90 days</SelectItem>
-                    <SelectItem value="1y">1 year</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="7d" aria-label="Select option">7 days</SelectItem>
+                    <selectItem value="30d" aria-label="Select option">30 days</SelectItem>
+                    <selectItem value="90d" aria-label="Select option">90 days</SelectItem>
+                    <selectItem value="1y" aria-label="Select option">1 year</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
               <div className="space-y-2">
                 <Label>Log Level</Label>
-                <Select defaultValue="info">
-                  <SelectTrigger>
-                    <SelectValue />
+                <select defaultValue="info" aria-label="Select option">
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="debug">Debug</SelectItem>
-                    <SelectItem value="info">Info</SelectItem>
-                    <SelectItem value="warn">Warning</SelectItem>
-                    <SelectItem value="error">Error</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="debug" aria-label="Select option">Debug</SelectItem>
+                    <selectItem value="info" aria-label="Select option">Info</SelectItem>
+                    <selectItem value="warn" aria-label="Select option">Warning</SelectItem>
+                    <selectItem value="error" aria-label="Select option">Error</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
               <Separator />
-              
               <div className="flex items-center justify-between">
-                <Button variant="outline" onClick={onClearLogs}>
-                  <Trash2 className="w-4 h-4 mr-2" />
+                <button variant="outline" onClick={onClearLogs} aria-label="Button">
+                  <Trash2 className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                   Clear All Logs
                 </Button>
-                
-                <Button variant="outline">
-                  <Archive className="w-4 h-4 mr-2" />
+                <button variant="outline" aria-label="Button">
+                  <Archive className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                   Archive Old Logs
                 </Button>
               </div>

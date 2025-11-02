@@ -40,7 +40,7 @@ export function MicroInteractionDemo() {
 
   return (
     <MicroInteractionProvider>
-      <div className="p-8 space-y-8 max-w-4xl mx-auto">
+      <div className="p-8 space-y-8 max-w-4xl mx-auto sm:w-auto md:w-full">
         <h1 className="text-3xl font-bold mb-8">Micro-Interactions Demo</h1>
         
         {/* Interactive Buttons */}
@@ -110,7 +110,7 @@ export function MicroInteractionDemo() {
             <InteractiveCard 
               interactive 
               hoverEffect="lift"
-              className="p-6"
+              className="p-6 sm:p-4 md:p-6"
             >
               <h3 className="text-lg font-semibold mb-2">Lift Effect</h3>
               <p className="text-muted-foreground">Hover to see the lift animation</p>
@@ -120,7 +120,7 @@ export function MicroInteractionDemo() {
               interactive 
               hoverEffect="glow"
               variant="elevated"
-              className="p-6"
+              className="p-6 sm:p-4 md:p-6"
             >
               <h3 className="text-lg font-semibold mb-2">Glow Effect</h3>
               <p className="text-muted-foreground">Hover to see the glow animation</p>
@@ -130,7 +130,7 @@ export function MicroInteractionDemo() {
               interactive 
               hoverEffect="scale"
               variant="outlined"
-              className="p-6"
+              className="p-6 sm:p-4 md:p-6"
             >
               <h3 className="text-lg font-semibold mb-2">Scale Effect</h3>
               <p className="text-muted-foreground">Hover to see the scale animation</p>
@@ -144,22 +144,22 @@ export function MicroInteractionDemo() {
           <div className="flex gap-8 items-center flex-wrap">
             <div className="text-center">
               <LoadingSpinner size="lg" />
-              <p className="mt-2 text-sm">Default</p>
+              <p className="mt-2 text-sm md:text-base lg:text-lg">Default</p>
             </div>
             
             <div className="text-center">
               <LoadingSpinner variant="dots" size="lg" />
-              <p className="mt-2 text-sm">Dots</p>
+              <p className="mt-2 text-sm md:text-base lg:text-lg">Dots</p>
             </div>
             
             <div className="text-center">
               <LoadingSpinner variant="pulse" size="lg" />
-              <p className="mt-2 text-sm">Pulse</p>
+              <p className="mt-2 text-sm md:text-base lg:text-lg">Pulse</p>
             </div>
             
             <div className="text-center">
               <LoadingSpinner variant="bars" size="lg" />
-              <p className="mt-2 text-sm">Bars</p>
+              <p className="mt-2 text-sm md:text-base lg:text-lg">Bars</p>
             </div>
           </div>
         </section>

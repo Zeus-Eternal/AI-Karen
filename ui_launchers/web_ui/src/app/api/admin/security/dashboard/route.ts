@@ -6,7 +6,6 @@
  * 
  * Requirements: 5.4, 5.5, 5.6
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { enhancedAuthMiddleware } from '@/lib/security/enhanced-auth-middleware';
 import { securityManager } from '@/lib/security/security-manager';
@@ -15,7 +14,6 @@ import { ipSecurityManager } from '@/lib/security/ip-security-manager';
 import { mfaManager } from '@/lib/security/mfa-manager';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { AdminApiResponse } from '@/types/admin';
-
 interface SecurityDashboardData {
   overview: {
     total_active_sessions: number;
@@ -101,7 +99,6 @@ interface SecurityDashboardData {
     details: any;
   }>;
 }
-
 export async function GET(request: NextRequest): Promise<NextResponse> {
   return enhancedAuthMiddleware.withEnhancedAuth(
     request,
@@ -117,12 +114,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             }
           } as AdminApiResponse<never>, { status: 403 });
         }
-
         const adminUtils = getAdminDatabaseUtils();
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-
         // Gather security statistics
         const dashboardData: SecurityDashboardData = {
           overview: await getSecurityOverview(adminUtils, todayStart, hourAgo),
@@ -132,7 +127,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           security_events: getRecentSecurityEvents(),
           recent_activities: await getRecentSecurityActivities(adminUtils, todayStart)
         };
-
         return NextResponse.json({
           success: true,
           data: dashboardData,
@@ -142,10 +136,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             data_freshness: 'real-time'
           }
         } as AdminApiResponse<SecurityDashboardData>);
-
       } catch (error) {
-        console.error('Security dashboard error:', error);
-        
         return NextResponse.json({
           success: false,
           error: {
@@ -159,7 +150,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     { requiredRole: 'super_admin' }
   );
 }
-
 /**
  * Get security overview statistics
  */
@@ -167,26 +157,21 @@ async function getSecurityOverview(adminUtils: any, todayStart: Date, hourAgo: D
   const sessionStats = sessionTimeoutManager.getSessionStatistics();
   const ipStats = ipSecurityManager.getIpStatistics();
   const blockedIps = ipSecurityManager.getBlockedIps();
-  
   // Get security events from today
   const securityEvents = securityManager.getSecurityEvents('system');
   const todayEvents = securityEvents.filter(event => event.created_at >= todayStart);
-  
   // Get failed login attempts from last hour (this would come from audit logs in production)
   const recentAuditLogs = await adminUtils.getAuditLogs({
     action: 'ip.failed_attempt',
     start_date: hourAgo
   }).catch(() => ({ data: [] }));
-  
   // Get MFA enabled users count
   const allUsers = await adminUtils.getUsers({}).catch(() => ({ data: [] }));
   const mfaEnabledCount = allUsers.data.filter((user: any) => user.two_factor_enabled).length;
-  
   // Get locked accounts count
   const lockedAccounts = allUsers.data.filter((user: any) => 
     user.locked_until && new Date(user.locked_until) > new Date()
   ).length;
-
   return {
     total_active_sessions: sessionStats.totalActiveSessions,
     failed_login_attempts_last_hour: recentAuditLogs.data.length,
@@ -196,13 +181,11 @@ async function getSecurityOverview(adminUtils: any, todayStart: Date, hourAgo: D
     locked_accounts: lockedAccounts
   };
 }
-
 /**
  * Get session statistics
  */
 function getSessionStatistics() {
   const stats = sessionTimeoutManager.getSessionStatistics();
-
   const concurrentSessions = sessionTimeoutManager.getConcurrentSessionsByUser(25).map(summary => ({
     user_id: summary.user_id,
     email: summary.email,
@@ -211,7 +194,6 @@ function getSessionStatistics() {
     last_activity: summary.last_activity,
     sessions: summary.active_sessions
   }));
-
   return {
     total_sessions: stats.totalActiveSessions,
     sessions_by_role: stats.sessionsByRole,
@@ -220,7 +202,6 @@ function getSessionStatistics() {
     concurrent_sessions_by_user: concurrentSessions
   };
 }
-
 /**
  * Get IP security data
  */
@@ -228,7 +209,6 @@ function getIpSecurityData() {
   const stats = ipSecurityManager.getIpStatistics();
   const blockedIps = ipSecurityManager.getBlockedIps();
   const whitelistEntries = ipSecurityManager.getWhitelistEntries();
-  
   // Get suspicious activities (from security events)
   const securityEvents = securityManager.getSecurityEvents('system');
   const suspiciousActivities = securityEvents
@@ -242,7 +222,6 @@ function getIpSecurityData() {
       timestamp: event.created_at.toISOString(),
       details: event.details
     }));
-
   return {
     unique_ips_today: stats.totalUniqueIps,
     whitelisted_ips: whitelistEntries.length,
@@ -260,7 +239,6 @@ function getIpSecurityData() {
     suspicious_activities: suspiciousActivities
   };
 }
-
 /**
  * Get MFA statistics
  */
@@ -269,24 +247,20 @@ async function getMfaStatistics(adminUtils: any) {
   const totalUsers = allUsers.data.length;
   const mfaEnabledUsers = allUsers.data.filter((user: any) => user.two_factor_enabled);
   const mfaEnabledCount = mfaEnabledUsers.length;
-  
   // Count users who should have MFA (admins and super admins)
   const adminUsers = allUsers.data.filter((user: any) => 
     user.role === 'admin' || user.role === 'super_admin'
   );
   const mfaRequiredCount = adminUsers.length;
-  
   const complianceRate = mfaRequiredCount > 0 
     ? (adminUsers.filter((user: any) => user.two_factor_enabled).length / mfaRequiredCount) * 100
     : 100;
-
   // Recent MFA setups (mock data - would come from audit logs)
   const recentSetups = mfaEnabledUsers.slice(0, 5).map((user: any) => ({
     user_id: user.user_id,
     email: user.email,
     enabled_at: user.updated_at || new Date().toISOString()
   }));
-
   return {
     total_users: totalUsers,
     mfa_enabled: mfaEnabledCount,
@@ -295,13 +269,11 @@ async function getMfaStatistics(adminUtils: any) {
     recent_mfa_setups: recentSetups
   };
 }
-
 /**
  * Get recent security events
  */
 function getRecentSecurityEvents() {
   const events = securityManager.getSecurityEvents('system');
-  
   return events
     .slice(0, 20)
     .map(event => ({
@@ -316,7 +288,6 @@ function getRecentSecurityEvents() {
       details: event.details
     }));
 }
-
 /**
  * Get recent security activities from audit logs
  */
@@ -332,9 +303,7 @@ async function getRecentSecurityActivities(adminUtils: any, todayStart: Date) {
     'ip.blocked',
     'ip.unblocked'
   ];
-
   const activities = [];
-  
   for (const action of securityActions) {
     try {
       const logs = await adminUtils.getAuditLogs({
@@ -342,7 +311,6 @@ async function getRecentSecurityActivities(adminUtils: any, todayStart: Date) {
         start_date: todayStart,
         limit: 5
       });
-      
       activities.push(...logs.data.map((log: any) => ({
         timestamp: log.timestamp,
         action: log.action,
@@ -356,13 +324,11 @@ async function getRecentSecurityActivities(adminUtils: any, todayStart: Date) {
       continue;
     }
   }
-
   // Sort by timestamp and return most recent
   return activities
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 20);
 }
-
 /**
  * Security event resolution endpoint
  */
@@ -380,10 +346,8 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             }
           } as AdminApiResponse<never>, { status: 403 });
         }
-
         const body = await req.json();
         const { event_id, resolution_notes } = body;
-
         if (!event_id) {
           return NextResponse.json({
             success: false,
@@ -393,9 +357,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             }
           } as AdminApiResponse<never>, { status: 400 });
         }
-
         await securityManager.resolveSecurityEvent(event_id, context.user.user_id);
-
         return NextResponse.json({
           success: true,
           data: {
@@ -405,10 +367,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             resolution_notes
           }
         } as AdminApiResponse<any>);
-
       } catch (error) {
-        console.error('Security event resolution error:', error);
-        
         return NextResponse.json({
           success: false,
           error: {

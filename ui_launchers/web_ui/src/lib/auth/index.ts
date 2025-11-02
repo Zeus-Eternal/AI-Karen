@@ -14,12 +14,10 @@
  * - 9.1: Graceful degradation when authentication fails
  * - 9.2: Fallback behavior for extension unavailability
  */
-
 import { extensionAuthRecoveryManager } from './extension-auth-recovery';
 import { extensionAuthDegradationManager, ExtensionFeatureLevel, getExtensionFallbackData, isExtensionFeatureAvailable } from './extension-auth-degradation';
 import { ExtensionAuthErrorHandler, extensionAuthErrorHandler, ExtensionAuthErrorFactory, ExtensionAuthError } from './extension-auth-errors';
 import { getExtensionAuthManager } from './extension-auth-manager';
-
 // Error types and factories
 export {
   ExtensionAuthErrorCategory,
@@ -34,7 +32,6 @@ export {
   isExtensionAuthErrorRetryable,
   type ExtensionAuthError
 } from './extension-auth-errors';
-
 // Graceful degradation
 export {
   ExtensionFeatureLevel,
@@ -49,7 +46,6 @@ export {
   type ExtensionFeatureConfig,
   type CachedExtensionData
 } from './extension-auth-degradation';
-
 // Error recovery
 export {
   ExtensionAuthRecoveryManager,
@@ -61,14 +57,12 @@ export {
   type RecoveryContext,
   type RecoveryStatistics
 } from './extension-auth-recovery';
-
 // Authentication manager
 export {
   ExtensionAuthManager,
   getExtensionAuthManager,
   initializeExtensionAuthManager
 } from './extension-auth-manager';
-
 // Development authentication
 export {
   DevelopmentAuthManager,
@@ -77,7 +71,6 @@ export {
   resetDevelopmentAuthManager,
   isDevelopmentFeaturesEnabled
 } from './development-auth';
-
 // Hot reload authentication
 export {
   HotReloadAuthManager,
@@ -85,7 +78,6 @@ export {
   initializeHotReloadAuthManager,
   resetHotReloadAuthManager
 } from './hot-reload-auth';
-
 /**
  * Convenience function to handle extension authentication errors with full recovery
  */
@@ -96,7 +88,6 @@ export async function handleExtensionAuthenticationError(
 ): Promise<any> {
   try {
     let authError: ExtensionAuthError;
-
     // Convert error to ExtensionAuthError
     if (error instanceof Response) {
       authError = ExtensionAuthErrorFactory.createFromHttpStatus(
@@ -110,36 +101,29 @@ export async function handleExtensionAuthenticationError(
         { endpoint, operation }
       );
     }
-
     // Handle the error through the error handler
     extensionAuthErrorHandler.handleError(authError);
-
     // Attempt recovery
     const recoveryResult = await extensionAuthRecoveryManager.attemptRecovery(
       authError,
       endpoint,
       operation || 'extension_operation'
     );
-
     // Return fallback data if available
     if (recoveryResult.fallbackData) {
       return recoveryResult.fallbackData;
     }
-
     // If recovery was successful but no fallback data, return null to indicate retry
     if (recoveryResult.success) {
       return null;
     }
-
     // If recovery failed, throw the original error
     throw authError;
   } catch (handlingError) {
     // If error handling itself fails, log and rethrow original error
-    console.error('Extension auth error handling failed:', handlingError);
     throw error;
   }
 }
-
 /**
  * Check if extension feature is currently available
  */
@@ -152,7 +136,6 @@ export function checkExtensionFeatureAvailability(featureName: string): {
   const available = isExtensionFeatureAvailable(featureName);
   const degradationState = extensionAuthDegradationManager.getDegradationState();
   const fallbackData = available ? null : getExtensionFallbackData(featureName);
-
   return {
     available,
     level: degradationState.level,
@@ -160,7 +143,6 @@ export function checkExtensionFeatureAvailability(featureName: string): {
     fallbackData
   };
 }
-
 /**
  * Get current extension authentication status
  */
@@ -182,7 +164,6 @@ export function getExtensionAuthStatus(): {
     recoveryEstimate: state.recoveryEstimate
   };
 }
-
 /**
  * Initialize extension authentication error handling system
  */
@@ -190,11 +171,8 @@ export function initializeExtensionAuthErrorHandling(): void {
   // Initialize all managers
   getExtensionAuthManager();
   ExtensionAuthErrorHandler.getInstance();
-  
   // Log initialization
-  console.log('Extension authentication error handling system initialized');
 }
-
 /**
  * Reset extension authentication error handling system
  */
@@ -206,6 +184,4 @@ export function resetExtensionAuthErrorHandling(): void {
   extensionAuthDegradationManager.clearCache();
   extensionAuthRecoveryManager.clearRecoveryHistory();
   extensionAuthRecoveryManager.cancelAllRecoveries();
-
-  console.log('Extension authentication error handling system reset');
 }

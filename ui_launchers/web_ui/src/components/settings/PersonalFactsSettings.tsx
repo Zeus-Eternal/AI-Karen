@@ -1,6 +1,4 @@
-
 "use client";
-
 import { useState, useEffect, FormEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,7 +11,6 @@ import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS, KAREN_SUGGESTED_FACTS_LS
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-
 /**
  * @file PersonalFactsSettings.tsx
  * @description Component for managing personal facts that Karen AI should remember.
@@ -26,7 +23,6 @@ export default function PersonalFactsSettings() {
   const [newFact, setNewFact] = useState('');
   const [suggestedFactsForReview, setSuggestedFactsForReview] = useState<string[]>([]);
   const { toast } = useToast();
-
   useEffect(() => {
     // Load manually managed personal facts
     try {
@@ -67,15 +63,12 @@ export default function PersonalFactsSettings() {
       }
       setPersonalFacts(fullSettings.personalFacts || []);
     } catch (error) {
-      console.error("Failed to load or parse personal facts from localStorage in PersonalFactsSettings:", error);
       setPersonalFacts(DEFAULT_KAREN_SETTINGS.personalFacts);
       try {
         localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
       } catch (lsError) {
-          console.error("Failed to save default settings to localStorage after error in PersonalFactsSettings:", lsError);
       }
     }
-
     // Load suggested facts for review
     try {
       const storedSuggestedFacts = localStorage.getItem(KAREN_SUGGESTED_FACTS_LS_KEY);
@@ -83,11 +76,9 @@ export default function PersonalFactsSettings() {
         setSuggestedFactsForReview(JSON.parse(storedSuggestedFacts));
       }
     } catch (error) {
-      console.error("Failed to load suggested facts from localStorage:", error);
       setSuggestedFactsForReview([]);
     }
   }, []);
-
   const getFullCurrentSettingsFromStorage = (): KarenSettings => {
     let currentFullSettings = { ...DEFAULT_KAREN_SETTINGS };
     try {
@@ -111,11 +102,9 @@ export default function PersonalFactsSettings() {
         };
       }
     } catch (e) {
-      console.error("Error parsing current settings from storage, falling back to defaults for merge", e);
     }
     return currentFullSettings;
   };
-
   const saveMainPersonalFactsToLocalStorage = (updatedFacts: string[]) => {
     try {
       const currentSettings = getFullCurrentSettingsFromStorage();
@@ -123,7 +112,6 @@ export default function PersonalFactsSettings() {
       localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(newSettings));
       setPersonalFacts(updatedFacts);
     } catch (error) {
-      console.error("Failed to save personal facts to localStorage:", error);
       toast({
           title: "Error Saving Facts",
           description: "Could not save personal facts. localStorage might be disabled or full.",
@@ -131,14 +119,12 @@ export default function PersonalFactsSettings() {
         });
     }
   };
-  
   const saveSuggestedFactsToLocalStorage = (updatedSuggestedFacts: string[]) => {
     try {
       localStorage.setItem(KAREN_SUGGESTED_FACTS_LS_KEY, JSON.stringify(updatedSuggestedFacts));
       setSuggestedFactsForReview(updatedSuggestedFacts);
       window.dispatchEvent(new CustomEvent('karen-suggested-facts-updated')); // Notify other components
     } catch (error) {
-      console.error("Failed to save suggested facts to localStorage:", error);
       toast({
         title: "Error Updating Suggested Facts",
         description: "Could not update the list of suggested facts.",
@@ -146,7 +132,6 @@ export default function PersonalFactsSettings() {
       });
     }
   };
-
   const handleAddFact = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (newFact.trim()) {
@@ -159,7 +144,6 @@ export default function PersonalFactsSettings() {
       });
     }
   };
-
   const handleDeleteFact = (indexToDelete: number) => {
     const updatedFacts = personalFacts.filter((_, index) => index !== indexToDelete);
     saveMainPersonalFactsToLocalStorage(updatedFacts);
@@ -168,7 +152,6 @@ export default function PersonalFactsSettings() {
       description: "Karen will no longer remember this fact.",
     });
   };
-
   const handleClearAllFacts = () => {
     saveMainPersonalFactsToLocalStorage([]);
      toast({
@@ -176,7 +159,6 @@ export default function PersonalFactsSettings() {
         description: "Karen has forgotten all facts you've manually added.",
       });
   };
-
   const handleConfirmSuggestedFact = (factToConfirm: string) => {
     if (!personalFacts.includes(factToConfirm)) {
       const updatedMainFacts = [...personalFacts, factToConfirm];
@@ -189,7 +171,6 @@ export default function PersonalFactsSettings() {
       description: `"${factToConfirm.substring(0,30)}..." is now part of Karen's long-term knowledge.`,
     });
   };
-
   const handleDismissSuggestedFact = (factToDismiss: string) => {
     const updatedSuggestedFacts = suggestedFactsForReview.filter(fact => fact !== factToDismiss);
     saveSuggestedFactsToLocalStorage(updatedSuggestedFacts);
@@ -198,8 +179,6 @@ export default function PersonalFactsSettings() {
       description: `Suggestion "${factToDismiss.substring(0,30)}..." was dismissed from review.`,
     });
   };
-
-
   return (
     <Card>
       <CardHeader>
@@ -211,41 +190,40 @@ export default function PersonalFactsSettings() {
       <CardContent className="space-y-6">
         <div>
           <h3 className="text-base font-semibold mb-2">My Saved Facts for Karen</h3>
-          <p className="text-xs text-muted-foreground mb-3">
+          <p className="text-xs text-muted-foreground mb-3 sm:text-sm md:text-base">
             These are facts you've explicitly told Karen to remember. She will use these to personalize interactions.
           </p>
           <form onSubmit={handleAddFact} className="space-y-2 mb-4">
             <Label htmlFor="newFact">Add a new fact for Karen</Label>
             <div className="flex space-x-2">
-              <Input
+              <input
                 id="newFact"
                 type="text"
                 value={newFact}
-                onChange={(e) => setNewFact(e.target.value)}
+                onChange={(e) = aria-label="Input"> setNewFact(e.target.value)}
                 placeholder="e.g., My favorite color is blue"
-                className="text-sm"
+                className="text-sm md:text-base lg:text-lg"
               />
               <Button type="submit" size="icon" aria-label="Add fact" disabled={!newFact.trim()}>
-                <PlusCircle className="h-5 w-5" />
+                <PlusCircle className="h-5 w-5 sm:w-auto md:w-full" />
               </Button>
             </div>
           </form>
-
           {personalFacts.length > 0 ? (
             <div className="space-y-3">
-              <ScrollArea className="h-[150px] w-full rounded-md border p-3 bg-muted/50">
+              <ScrollArea className="h-[150px] w-full rounded-md border p-3 bg-muted/50 sm:p-4 md:p-6">
                 <ul className="space-y-2">
                   {personalFacts.map((fact, index) => (
-                    <li key={index} className="flex justify-between items-center text-sm p-2 rounded-md bg-background hover:bg-accent/50 group">
+                    <li key={index} className="flex justify-between items-center text-sm p-2 rounded-md bg-background hover:bg-accent/50 group md:text-base lg:text-lg">
                       <span className="truncate pr-2">{fact}</span>
-                      <Button
+                      <button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDeleteFact(index)}
-                        className="h-6 w-6 opacity-50 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                        onClick={() = aria-label="Button"> handleDeleteFact(index)}
+                        className="h-6 w-6 opacity-50 group-hover:opacity-100 text-muted-foreground hover:text-destructive sm:w-auto md:w-full"
                         aria-label="Delete fact"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
                       </Button>
                     </li>
                   ))}
@@ -254,58 +232,54 @@ export default function PersonalFactsSettings() {
             </div>
           ) : (
              <Alert variant="default" className="bg-muted/30">
-              <Info className="h-4 w-4 !text-accent-foreground" />
-              <AlertTitle className="font-semibold text-accent-foreground text-sm">No Saved Facts Yet</AlertTitle>
-              <AlertDescription className="text-muted-foreground text-xs">
+              <Info className="h-4 w-4 !text-accent-foreground sm:w-auto md:w-full" />
+              <AlertTitle className="font-semibold text-accent-foreground text-sm md:text-base lg:text-lg">No Saved Facts Yet</AlertTitle>
+              <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
                 Teach Karen something new using the input above!
               </AlertDescription>
             </Alert>
           )}
         </div>
-        
         {personalFacts.length > 0 && (
             <div className="flex justify-end">
-                 <Button variant="outline" size="sm" onClick={handleClearAllFacts}>
-                    <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Clear All Saved Facts
+                 <button variant="outline" size="sm" onClick={handleClearAllFacts} aria-label="Button">
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5 sm:w-auto md:w-full" /> Clear All Saved Facts
                 </Button>
             </div>
         )}
-
-
         <Separator />
-
         <div className="space-y-3">
             <h3 className="text-base font-semibold mb-2 flex items-center">
-                <MessageSquarePlus className="h-5 w-5 mr-2 text-primary/80" />
+                <MessageSquarePlus className="h-5 w-5 mr-2 text-primary/80 sm:w-auto md:w-full" />
                 Karen's Suggested Facts (For Your Review)
             </h3>
-            <p className="text-xs text-muted-foreground mb-3">
+            <p className="text-xs text-muted-foreground mb-3 sm:text-sm md:text-base">
               During conversations, Karen might identify new information about you. Review her suggestions here and decide if you want her to remember them long-term.
             </p>
             {suggestedFactsForReview.length > 0 ? (
-                <ScrollArea className="h-[150px] w-full rounded-md border p-3 bg-muted/50">
+                <ScrollArea className="h-[150px] w-full rounded-md border p-3 bg-muted/50 sm:p-4 md:p-6">
                 <ul className="space-y-2">
                     {suggestedFactsForReview.map((fact, index) => (
-                    <li key={`suggested-${index}-${fact.slice(0,10)}`} className="flex justify-between items-center text-sm p-2 rounded-md bg-background group">
+                    <li key={`suggested-${index}-${fact.slice(0,10)}`} className="flex justify-between items-center text-sm p-2 rounded-md bg-background group md:text-base lg:text-lg">
                         <span className="truncate pr-2 flex-1">{fact}</span>
                         <div className="flex space-x-1 shrink-0">
-                        <Button
+                        <button
                             variant="outline"
                             size="sm" // Made button slightly larger for easier clicking
-                            onClick={() => handleConfirmSuggestedFact(fact)}
+                            onClick={() = aria-label="Button"> handleConfirmSuggestedFact(fact)}
                             className="border-green-500/50 hover:bg-green-500/10 text-green-600 hover:text-green-700 px-2 py-1 h-auto"
                             aria-label="Confirm and save fact"
                         >
-                            <ThumbsUp className="h-3.5 w-3.5 mr-1" /> Save
+                            <ThumbsUp className="h-3.5 w-3.5 mr-1 sm:w-auto md:w-full" /> Save
                         </Button>
-                        <Button
+                        <button
                             variant="outline"
                             size="sm" // Made button slightly larger
-                            onClick={() => handleDismissSuggestedFact(fact)}
+                            onClick={() = aria-label="Button"> handleDismissSuggestedFact(fact)}
                             className="border-red-500/50 hover:bg-red-500/10 text-red-600 hover:text-red-700 px-2 py-1 h-auto"
                             aria-label="Dismiss suggestion"
                         >
-                            <XCircle className="h-3.5 w-3.5 mr-1" /> Dismiss
+                            <XCircle className="h-3.5 w-3.5 mr-1 sm:w-auto md:w-full" /> Dismiss
                         </Button>
                         </div>
                     </li>
@@ -314,9 +288,9 @@ export default function PersonalFactsSettings() {
                 </ScrollArea>
             ) : (
                 <Alert variant="default" className="bg-muted/30">
-                    <Info className="h-4 w-4 !text-accent-foreground" />
-                    <AlertTitle className="font-semibold text-accent-foreground text-sm">No New Suggestions</AlertTitle>
-                    <AlertDescription className="text-muted-foreground text-xs">
+                    <Info className="h-4 w-4 !text-accent-foreground sm:w-auto md:w-full" />
+                    <AlertTitle className="font-semibold text-accent-foreground text-sm md:text-base lg:text-lg">No New Suggestions</AlertTitle>
+                    <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
                     Karen hasn't suggested any new facts to remember from recent conversations. As you chat, new suggestions may appear here.
                     </AlertDescription>
                 </Alert>
@@ -327,5 +301,3 @@ export default function PersonalFactsSettings() {
     </Card>
   );
 }
-
-

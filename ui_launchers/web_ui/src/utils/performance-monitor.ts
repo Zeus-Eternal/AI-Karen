@@ -1,11 +1,8 @@
 'use client';
-
 /**
  * Performance monitoring utilities for Web Vitals and custom metrics
  */
-
 import React from 'react';
-
 // Web Vitals types
 export interface WebVitalsMetric {
   name: 'CLS' | 'FID' | 'FCP' | 'LCP' | 'TTFB' | 'INP';
@@ -15,7 +12,6 @@ export interface WebVitalsMetric {
   id: string;
   navigationType: 'navigate' | 'reload' | 'back-forward' | 'back-forward-cache';
 }
-
 // Custom performance metrics
 export interface CustomMetric {
   name: string;
@@ -23,7 +19,6 @@ export interface CustomMetric {
   timestamp: number;
   metadata?: Record<string, any>;
 }
-
 // Performance budget thresholds
 export const PERFORMANCE_THRESHOLDS = {
   // Core Web Vitals thresholds
@@ -33,58 +28,45 @@ export const PERFORMANCE_THRESHOLDS = {
   LCP: { good: 2500, poor: 4000 },
   TTFB: { good: 800, poor: 1800 },
   INP: { good: 200, poor: 500 },
-  
   // Custom thresholds
   ANIMATION_FRAME_TIME: { good: 16, poor: 32 }, // 60fps = 16ms per frame
   BUNDLE_LOAD_TIME: { good: 1000, poor: 3000 },
   ROUTE_CHANGE_TIME: { good: 200, poor: 500 },
   COMPONENT_RENDER_TIME: { good: 10, poor: 50 },
 } as const;
-
 export class PerformanceMonitor {
   private metrics: Map<string, CustomMetric[]> = new Map();
   private observers: Map<string, PerformanceObserver> = new Map();
   private isMonitoring = false;
   private reportCallback?: (metric: WebVitalsMetric | CustomMetric) => void;
-
   constructor(reportCallback?: (metric: WebVitalsMetric | CustomMetric) => void) {
     this.reportCallback = reportCallback;
   }
-
   /**
    * Start monitoring performance metrics
    */
   startMonitoring(): void {
     if (this.isMonitoring || typeof window === 'undefined') return;
-
     this.isMonitoring = true;
-    
     // Monitor Web Vitals
     this.monitorWebVitals();
-    
     // Monitor custom metrics
     this.monitorCustomMetrics();
-    
     // Monitor resource loading
     this.monitorResourceLoading();
-    
     // Monitor navigation
     this.monitorNavigation();
   }
-
   /**
    * Stop monitoring performance metrics
    */
   stopMonitoring(): void {
     if (!this.isMonitoring) return;
-
     this.isMonitoring = false;
-    
     // Disconnect all observers
     this.observers.forEach(observer => observer.disconnect());
     this.observers.clear();
   }
-
   /**
    * Record a custom performance metric
    */
@@ -95,15 +77,12 @@ export class PerformanceMonitor {
       timestamp: performance.now(),
       metadata,
     };
-
     if (!this.metrics.has(name)) {
       this.metrics.set(name, []);
     }
-    
     this.metrics.get(name)!.push(metric);
     this.reportCallback?.(metric);
   }
-
   /**
    * Measure function execution time
    */
@@ -111,12 +90,9 @@ export class PerformanceMonitor {
     const start = performance.now();
     const result = fn();
     const duration = performance.now() - start;
-    
     this.recordMetric(name, duration, { type: 'function-execution' });
-    
     return result;
   }
-
   /**
    * Measure async function execution time
    */
@@ -124,54 +100,44 @@ export class PerformanceMonitor {
     const start = performance.now();
     const result = await fn();
     const duration = performance.now() - start;
-    
     this.recordMetric(name, duration, { type: 'async-function-execution' });
-    
     return result;
   }
-
   /**
    * Start measuring a custom metric
    */
   startMeasure(name: string): void {
     performance.mark(`${name}-start`);
   }
-
   /**
    * End measuring a custom metric
    */
   endMeasure(name: string, metadata?: Record<string, any>): void {
     const endMark = `${name}-end`;
     const measureName = `${name}-measure`;
-    
     performance.mark(endMark);
     performance.measure(measureName, `${name}-start`, endMark);
-    
     const measure = performance.getEntriesByName(measureName)[0];
     if (measure) {
       this.recordMetric(name, measure.duration, metadata);
     }
-    
     // Clean up marks and measures
     performance.clearMarks(`${name}-start`);
     performance.clearMarks(endMark);
     performance.clearMeasures(measureName);
   }
-
   /**
    * Get all recorded metrics
    */
   getMetrics(): Map<string, CustomMetric[]> {
     return new Map(this.metrics);
   }
-
   /**
    * Get metrics for a specific name
    */
   getMetricsByName(name: string): CustomMetric[] {
     return this.metrics.get(name) || [];
   }
-
   /**
    * Get performance summary
    */
@@ -182,7 +148,6 @@ export class PerformanceMonitor {
       resourceTiming: this.getResourceTimingSummary(),
       navigationTiming: this.getNavigationTimingSummary(),
     };
-
     // Summarize custom metrics
     this.metrics.forEach((metrics, name) => {
       if (metrics.length > 0) {
@@ -197,10 +162,8 @@ export class PerformanceMonitor {
         };
       }
     });
-
     return summary;
   }
-
   private monitorWebVitals(): void {
     // Use web-vitals library if available, otherwise implement basic monitoring
     if (typeof window !== 'undefined' && 'PerformanceObserver' in window) {
@@ -209,14 +172,12 @@ export class PerformanceMonitor {
         const lastEntry = entries[entries.length - 1];
         this.reportWebVital('LCP', lastEntry.startTime);
       });
-
       // Monitor FID
       this.observePerformanceEntry('first-input', (entries) => {
         const firstEntry = entries[0] as any;
         const fid = firstEntry.processingStart - firstEntry.startTime;
         this.reportWebVital('FID', fid);
       });
-
       // Monitor CLS
       let clsValue = 0;
       this.observePerformanceEntry('layout-shift', (entries) => {
@@ -227,7 +188,6 @@ export class PerformanceMonitor {
         });
         this.reportWebVital('CLS', clsValue);
       });
-
       // Monitor FCP
       this.observePerformanceEntry('paint', (entries) => {
         const fcpEntry = entries.find((entry: any) => entry.name === 'first-contentful-paint');
@@ -237,42 +197,33 @@ export class PerformanceMonitor {
       });
     }
   }
-
   private monitorCustomMetrics(): void {
     // Monitor animation frame timing
     let frameCount = 0;
     let lastFrameTime = performance.now();
-    
     const measureFrameTime = () => {
       const currentTime = performance.now();
       const frameTime = currentTime - lastFrameTime;
-      
       if (frameCount > 0) { // Skip first frame
         this.recordMetric('animation-frame-time', frameTime, { 
           type: 'animation-performance',
           frameCount 
         });
       }
-      
       lastFrameTime = currentTime;
       frameCount++;
-      
       if (this.isMonitoring) {
         requestAnimationFrame(measureFrameTime);
       }
     };
-    
     requestAnimationFrame(measureFrameTime);
   }
-
   private monitorResourceLoading(): void {
     if (typeof window === 'undefined' || !('PerformanceObserver' in window)) return;
-
     this.observePerformanceEntry('resource', (entries) => {
       entries.forEach((entry: any) => {
         const resourceType = entry.initiatorType;
         const loadTime = entry.responseEnd - entry.startTime;
-        
         this.recordMetric(`resource-load-${resourceType}`, loadTime, {
           type: 'resource-loading',
           url: entry.name,
@@ -282,10 +233,8 @@ export class PerformanceMonitor {
       });
     });
   }
-
   private monitorNavigation(): void {
     if (typeof window === 'undefined' || !('PerformanceObserver' in window)) return;
-
     this.observePerformanceEntry('navigation', (entries) => {
       const entry = entries[0] as any;
       if (entry) {
@@ -293,22 +242,18 @@ export class PerformanceMonitor {
           type: 'navigation',
           navigationType: entry.type,
         });
-        
         this.recordMetric('navigation-dns', entry.domainLookupEnd - entry.domainLookupStart, {
           type: 'navigation-timing',
         });
-        
         this.recordMetric('navigation-connect', entry.connectEnd - entry.connectStart, {
           type: 'navigation-timing',
         });
-        
         this.recordMetric('navigation-ttfb', entry.responseStart - entry.requestStart, {
           type: 'navigation-timing',
         });
       }
     });
   }
-
   private observePerformanceEntry(
     entryType: string, 
     callback: (entries: PerformanceEntry[]) => void
@@ -317,24 +262,19 @@ export class PerformanceMonitor {
       const observer = new PerformanceObserver((list) => {
         callback(list.getEntries());
       });
-      
       observer.observe({ entryTypes: [entryType] });
       this.observers.set(entryType, observer);
     } catch (error) {
-      console.warn(`Failed to observe ${entryType}:`, error);
     }
   }
-
   private reportWebVital(name: WebVitalsMetric['name'], value: number): void {
     const threshold = PERFORMANCE_THRESHOLDS[name];
     let rating: WebVitalsMetric['rating'] = 'good';
-    
     if (value > threshold.poor) {
       rating = 'poor';
     } else if (value > threshold.good) {
       rating = 'needs-improvement';
     }
-
     const metric: WebVitalsMetric = {
       name,
       value,
@@ -343,28 +283,22 @@ export class PerformanceMonitor {
       id: `${name}-${Date.now()}`,
       navigationType: 'navigate', // Simplified
     };
-
     this.reportCallback?.(metric);
   }
-
   private getResourceTimingSummary(): ResourceTimingSummary {
     const entries = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
-    
     const summary: ResourceTimingSummary = {
       totalResources: entries.length,
       totalSize: 0,
       totalLoadTime: 0,
       byType: {},
     };
-
     entries.forEach(entry => {
       const type = entry.initiatorType || 'other';
       const loadTime = entry.responseEnd - entry.startTime;
       const size = entry.transferSize || 0;
-
       summary.totalSize += size;
       summary.totalLoadTime += loadTime;
-
       if (!summary.byType[type]) {
         summary.byType[type] = {
           count: 0,
@@ -373,19 +307,15 @@ export class PerformanceMonitor {
           avgLoadTime: 0,
         };
       }
-
       summary.byType[type].count++;
       summary.byType[type].totalSize += size;
       summary.byType[type].totalLoadTime += loadTime;
       summary.byType[type].avgLoadTime = summary.byType[type].totalLoadTime / summary.byType[type].count;
     });
-
     return summary;
   }
-
   private getNavigationTimingSummary(): NavigationTimingSummary {
     const entry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-    
     if (!entry) {
       return {
         totalTime: 0,
@@ -396,7 +326,6 @@ export class PerformanceMonitor {
         loadComplete: 0,
       };
     }
-
     return {
       totalTime: entry.loadEventEnd - entry.startTime,
       dnsTime: entry.domainLookupEnd - entry.domainLookupStart,
@@ -406,14 +335,12 @@ export class PerformanceMonitor {
       loadComplete: entry.loadEventEnd - entry.startTime,
     };
   }
-
   private calculatePercentile(values: number[], percentile: number): number {
     const sorted = [...values].sort((a, b) => a - b);
     const index = Math.ceil((percentile / 100) * sorted.length) - 1;
     return sorted[index] || 0;
   }
 }
-
 // Types
 export interface PerformanceSummary {
   webVitals: Record<string, any>;
@@ -421,7 +348,6 @@ export interface PerformanceSummary {
   resourceTiming: ResourceTimingSummary;
   navigationTiming: NavigationTimingSummary;
 }
-
 export interface MetricSummary {
   count: number;
   min: number;
@@ -430,7 +356,6 @@ export interface MetricSummary {
   p95: number;
   latest: CustomMetric;
 }
-
 export interface ResourceTimingSummary {
   totalResources: number;
   totalSize: number;
@@ -442,7 +367,6 @@ export interface ResourceTimingSummary {
     avgLoadTime: number;
   }>;
 }
-
 export interface NavigationTimingSummary {
   totalTime: number;
   dnsTime: number;
@@ -451,43 +375,34 @@ export interface NavigationTimingSummary {
   domContentLoaded: number;
   loadComplete: number;
 }
-
 // Singleton instance
 export const performanceMonitor = new PerformanceMonitor();
-
 // React hook for performance monitoring
 export function usePerformanceMonitor() {
   const [isMonitoring, setIsMonitoring] = React.useState(false);
   const [metrics, setMetrics] = React.useState<Map<string, CustomMetric[]>>(new Map());
-
   React.useEffect(() => {
     const monitor = new PerformanceMonitor((metric) => {
       // Update metrics when new ones are recorded
       setMetrics(prev => new Map(prev));
     });
-
     monitor.startMonitoring();
     setIsMonitoring(true);
-
     return () => {
       monitor.stopMonitoring();
       setIsMonitoring(false);
     };
   }, []);
-
   const recordMetric = React.useCallback((name: string, value: number, metadata?: Record<string, any>) => {
     performanceMonitor.recordMetric(name, value, metadata);
     setMetrics(performanceMonitor.getMetrics());
   }, []);
-
   const measureFunction = React.useCallback(<T>(name: string, fn: () => T): T => {
     return performanceMonitor.measureFunction(name, fn);
   }, []);
-
   const measureAsyncFunction = React.useCallback(async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
     return performanceMonitor.measureAsyncFunction(name, fn);
   }, []);
-
   return {
     isMonitoring,
     metrics,
@@ -497,7 +412,6 @@ export function usePerformanceMonitor() {
     getPerformanceSummary: () => performanceMonitor.getPerformanceSummary(),
   };
 }
-
 // Performance budget checker
 export function checkPerformanceBudget(metric: WebVitalsMetric | CustomMetric): {
   withinBudget: boolean;
@@ -505,7 +419,6 @@ export function checkPerformanceBudget(metric: WebVitalsMetric | CustomMetric): 
   threshold: { good: number; poor: number } | null;
 } {
   const threshold = PERFORMANCE_THRESHOLDS[metric.name as keyof typeof PERFORMANCE_THRESHOLDS];
-  
   if (!threshold) {
     return {
       withinBudget: true,
@@ -513,15 +426,12 @@ export function checkPerformanceBudget(metric: WebVitalsMetric | CustomMetric): 
       threshold: null,
     };
   }
-
   let rating: 'good' | 'needs-improvement' | 'poor' = 'good';
-  
   if (metric.value > threshold.poor) {
     rating = 'poor';
   } else if (metric.value > threshold.good) {
     rating = 'needs-improvement';
   }
-
   return {
     withinBudget: rating === 'good',
     rating,

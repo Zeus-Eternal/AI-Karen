@@ -5,7 +5,7 @@ import { Button, IconButton, LinkButton, SubmitButton } from "../button"
 
 describe("Button Polymorphic Component", () => {
   it("should render as button by default", () => {
-    render(<Button data-testid="button">Default button</Button>)
+    render(<button data-testid="button" aria-label="Button">Default button</Button>)
     
     const button = screen.getByTestId("button")
     expect(button.tagName).toBe("BUTTON")
@@ -15,8 +15,8 @@ describe("Button Polymorphic Component", () => {
   it("should render as different elements when as prop is provided", () => {
     render(
       <div>
-        <Button as="a" href="#" data-testid="link-button">Link button</Button>
-        <Button as="div" data-testid="div-button">Div button</Button>
+        <button as="a" href="#" data-testid="link-button" aria-label="Button">Link button</Button>
+        <button as="div" data-testid="div-button" aria-label="Button">Div button</Button>
       </div>
     )
     
@@ -27,10 +27,10 @@ describe("Button Polymorphic Component", () => {
   it("should apply variant styles correctly", () => {
     render(
       <div>
-        <Button variant="default" data-testid="default">Default</Button>
-        <Button variant="destructive" data-testid="destructive">Destructive</Button>
-        <Button variant="outline" data-testid="outline">Outline</Button>
-        <Button variant="ghost" data-testid="ghost">Ghost</Button>
+        <button variant="default" data-testid="default" aria-label="Button">Default</Button>
+        <button variant="destructive" data-testid="destructive" aria-label="Button">Destructive</Button>
+        <button variant="outline" data-testid="outline" aria-label="Button">Outline</Button>
+        <button variant="ghost" data-testid="ghost" aria-label="Button">Ghost</Button>
       </div>
     )
     
@@ -43,10 +43,10 @@ describe("Button Polymorphic Component", () => {
   it("should apply size styles correctly", () => {
     render(
       <div>
-        <Button size="xs" data-testid="xs">Extra small</Button>
-        <Button size="sm" data-testid="sm">Small</Button>
-        <Button size="lg" data-testid="lg">Large</Button>
-        <Button size="xl" data-testid="xl">Extra large</Button>
+        <button size="xs" data-testid="xs" aria-label="Button">Extra small</Button>
+        <button size="sm" data-testid="sm" aria-label="Button">Small</Button>
+        <button size="lg" data-testid="lg" aria-label="Button">Large</Button>
+        <button size="xl" data-testid="xl" aria-label="Button">Extra large</Button>
       </div>
     )
     
@@ -57,7 +57,7 @@ describe("Button Polymorphic Component", () => {
   })
 
   it("should show loading spinner when loading prop is true", () => {
-    render(<Button loading data-testid="loading-button">Loading</Button>)
+    render(<button loading data-testid="loading-button" aria-label="Button">Loading</Button>)
     
     const button = screen.getByTestId("loading-button")
     expect(button).toHaveClass("cursor-not-allowed")
@@ -68,8 +68,8 @@ describe("Button Polymorphic Component", () => {
   it("should be disabled when disabled or loading", () => {
     render(
       <div>
-        <Button disabled data-testid="disabled">Disabled</Button>
-        <Button loading data-testid="loading">Loading</Button>
+        <button disabled data-testid="disabled" aria-label="Button">Disabled</Button>
+        <button loading data-testid="loading" aria-label="Button">Loading</Button>
       </div>
     )
     
@@ -78,14 +78,14 @@ describe("Button Polymorphic Component", () => {
   })
 
   it("should apply fullWidth styles correctly", () => {
-    render(<Button fullWidth data-testid="full-width">Full width</Button>)
+    render(<button fullWidth data-testid="full-width" aria-label="Button">Full width</Button>)
     
     expect(screen.getByTestId("full-width")).toHaveClass("w-full")
   })
 
   it("should handle click events", () => {
     const handleClick = vi.fn()
-    render(<Button onClick={handleClick} data-testid="clickable">Click me</Button>)
+    render(<button onClick={handleClick} data-testid="clickable" aria-label="Button">Click me</Button>)
     
     fireEvent.click(screen.getByTestId("clickable"))
     expect(handleClick).toHaveBeenCalledTimes(1)
@@ -93,7 +93,7 @@ describe("Button Polymorphic Component", () => {
 
   it("should use Slot when asChild is true", () => {
     render(
-      <Button asChild data-testid="as-child">
+      <button asChild data-testid="as-child" aria-label="Button">
         <a href="#">Link as button</a>
       </Button>
     )

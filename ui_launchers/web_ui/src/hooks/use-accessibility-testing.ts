@@ -3,10 +3,8 @@
  * 
  * React hook for running accessibility tests and monitoring compliance
  */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityTestSuiteImpl, type AccessibilityTestSuite, type AccessibilityReport } from '../lib/accessibility/accessibility-testing';
-
 export interface UseAccessibilityTestingOptions {
   /** Whether to run tests automatically */
   autoTest?: boolean;
@@ -21,7 +19,6 @@ export interface UseAccessibilityTestingOptions {
   /** Callback when test fails */
   onTestFail?: (report: AccessibilityReport) => void;
 }
-
 export interface AccessibilityTestingState {
   /** Current test report */
   report: AccessibilityReport | null;
@@ -36,7 +33,6 @@ export interface AccessibilityTestingState {
   /** Current accessibility score */
   score: number;
 }
-
 export function useAccessibilityTesting(
   elementRef: React.RefObject<HTMLElement>,
   options: UseAccessibilityTestingOptions = {}
@@ -49,7 +45,6 @@ export function useAccessibilityTesting(
     onTestComplete,
     onTestFail,
   } = options;
-
   const [state, setState] = useState<AccessibilityTestingState>({
     report: null,
     isRunning: false,
@@ -58,30 +53,23 @@ export function useAccessibilityTesting(
     passes: true,
     score: 100,
   });
-
   const testSuiteRef = useRef<AccessibilityTestSuite | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
   // Initialize test suite
   useEffect(() => {
     if (elementRef.current) {
       testSuiteRef.current = new AccessibilityTestSuiteImpl(elementRef.current);
     }
   }, [elementRef]);
-
   // Run accessibility test
   const runTest = useCallback(async (testType: 'basic' | 'comprehensive' = 'basic') => {
     if (!testSuiteRef.current || state.isRunning) return;
-
     setState(prev => ({ ...prev, isRunning: true }));
-
     try {
       const report = testType === 'comprehensive' 
         ? await testSuiteRef.current.comprehensive()
         : await testSuiteRef.current.basic();
-
       const passes = report.passed && report.score >= scoreThreshold;
-
       setState(prev => ({
         ...prev,
         report,
@@ -91,78 +79,60 @@ export function useAccessibilityTesting(
         passes,
         score: report.score,
       }));
-
       // Trigger callbacks
       onTestComplete?.(report);
       if (!passes) {
         onTestFail?.(report);
       }
-
       return report;
     } catch (error) {
-      console.error('Accessibility test failed:', error);
       setState(prev => ({ ...prev, isRunning: false }));
       throw error;
     }
   }, [state.isRunning, scoreThreshold, onTestComplete, onTestFail]);
-
   // Run keyboard accessibility test
   const runKeyboardTest = useCallback(async () => {
     if (!testSuiteRef.current || state.isRunning) return;
-
     setState(prev => ({ ...prev, isRunning: true }));
-
     try {
       const result = await testSuiteRef.current.keyboard();
       setState(prev => ({ ...prev, isRunning: false }));
       return result;
     } catch (error) {
-      console.error('Keyboard accessibility test failed:', error);
       setState(prev => ({ ...prev, isRunning: false }));
       throw error;
     }
   }, [state.isRunning]);
-
   // Run screen reader test
   const runScreenReaderTest = useCallback(async () => {
     if (!testSuiteRef.current || state.isRunning) return;
-
     setState(prev => ({ ...prev, isRunning: true }));
-
     try {
       const result = await testSuiteRef.current.screenReader();
       setState(prev => ({ ...prev, isRunning: false }));
       return result;
     } catch (error) {
-      console.error('Screen reader test failed:', error);
       setState(prev => ({ ...prev, isRunning: false }));
       throw error;
     }
   }, [state.isRunning]);
-
   // Run color contrast test
   const runColorContrastTest = useCallback(async () => {
     if (!testSuiteRef.current || state.isRunning) return;
-
     setState(prev => ({ ...prev, isRunning: true }));
-
     try {
       const result = await testSuiteRef.current.colorContrast();
       setState(prev => ({ ...prev, isRunning: false }));
       return result;
     } catch (error) {
-      console.error('Color contrast test failed:', error);
       setState(prev => ({ ...prev, isRunning: false }));
       throw error;
     }
   }, [state.isRunning]);
-
   // Run comprehensive test suite
   const runFullSuite = useCallback(async () => {
     if (!testSuiteRef.current || state.isRunning) return;
-
     setState(prev => ({ ...prev, isRunning: true }));
-
     try {
       const [basic, keyboard, screenReader, colorContrast, focusManagement, aria] = await Promise.all([
         testSuiteRef.current.basic(),
@@ -172,7 +142,6 @@ export function useAccessibilityTesting(
         testSuiteRef.current.focusManagement(),
         testSuiteRef.current.aria(),
       ]);
-
       const fullReport = {
         basic,
         keyboard,
@@ -183,26 +152,21 @@ export function useAccessibilityTesting(
         overallPassed: basic.passed && keyboard.passed && screenReader.passed && colorContrast.passed,
         overallScore: Math.round((basic.score + (keyboard.passed ? 100 : 0) + (screenReader.passed ? 100 : 0) + (colorContrast.passed ? 100 : 0)) / 4),
       };
-
       setState(prev => ({ ...prev, isRunning: false }));
       return fullReport;
     } catch (error) {
-      console.error('Full accessibility test suite failed:', error);
       setState(prev => ({ ...prev, isRunning: false }));
       throw error;
     }
   }, [state.isRunning]);
-
   // Set up automatic testing
   useEffect(() => {
     if (autoTest && testSuiteRef.current) {
       intervalRef.current = setInterval(() => {
         runTest('basic');
       }, testInterval);
-
       // Run initial test
       runTest('basic');
-
       return () => {
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
@@ -210,18 +174,15 @@ export function useAccessibilityTesting(
       };
     }
   }, [autoTest, testInterval, runTest]);
-
   // Test on component updates
   useEffect(() => {
     if (testOnUpdate && testSuiteRef.current && !state.isRunning) {
       const timeoutId = setTimeout(() => {
         runTest('basic');
       }, 1000); // Debounce updates
-
       return () => clearTimeout(timeoutId);
     }
   }, [testOnUpdate, runTest, state.isRunning]);
-
   // Cleanup
   useEffect(() => {
     return () => {
@@ -230,7 +191,6 @@ export function useAccessibilityTesting(
       }
     };
   }, []);
-
   return {
     ...state,
     runTest,
@@ -240,7 +200,6 @@ export function useAccessibilityTesting(
     runFullSuite,
   };
 }
-
 // Hook for monitoring accessibility in development
 export function useAccessibilityMonitor(
   elementRef: React.RefObject<HTMLElement>,
@@ -248,31 +207,25 @@ export function useAccessibilityMonitor(
 ) {
   const [violations, setViolations] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
-
   const { report, runTest } = useAccessibilityTesting(elementRef, {
     autoTest: enabled,
     testInterval: 10000, // 10 seconds in development
     onTestComplete: (report) => {
       const newViolations = report.violations.map(v => v.description);
       const newWarnings = report.warnings.map(w => w.description);
-      
       setViolations(newViolations);
       setWarnings(newWarnings);
-
       // Log to console in development
       if (enabled && (newViolations.length > 0 || newWarnings.length > 0)) {
         console.group('🔍 Accessibility Issues Detected');
         if (newViolations.length > 0) {
-          console.error('Violations:', newViolations);
         }
         if (newWarnings.length > 0) {
-          console.warn('Warnings:', newWarnings);
         }
         console.groupEnd();
       }
     },
   });
-
   return {
     violations,
     warnings,
@@ -281,29 +234,24 @@ export function useAccessibilityMonitor(
     hasIssues: violations.length > 0 || warnings.length > 0,
   };
 }
-
 // Hook for accessibility testing in tests
 export function useAccessibilityTestRunner() {
   const runAccessibilityTest = useCallback(async (element: HTMLElement) => {
     const testSuite = new AccessibilityTestSuiteImpl(element);
     return await testSuite.basic();
   }, []);
-
   const runKeyboardTest = useCallback(async (element: HTMLElement) => {
     const testSuite = new AccessibilityTestSuiteImpl(element);
     return await testSuite.keyboard();
   }, []);
-
   const runScreenReaderTest = useCallback(async (element: HTMLElement) => {
     const testSuite = new AccessibilityTestSuiteImpl(element);
     return await testSuite.screenReader();
   }, []);
-
   const runColorContrastTest = useCallback(async (element: HTMLElement) => {
     const testSuite = new AccessibilityTestSuiteImpl(element);
     return await testSuite.colorContrast();
   }, []);
-
   return {
     runAccessibilityTest,
     runKeyboardTest,
@@ -311,5 +259,4 @@ export function useAccessibilityTestRunner() {
     runColorContrastTest,
   };
 }
-
 export default useAccessibilityTesting;

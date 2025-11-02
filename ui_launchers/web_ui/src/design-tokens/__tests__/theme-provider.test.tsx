@@ -5,7 +5,7 @@
  * Based on requirements: 1.1, 1.2, 1.3, 11.4
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { act } from 'react-dom/test-utils';
 import { ThemeProvider, useTheme } from '../../providers/theme-provider';

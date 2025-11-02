@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +9,19 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
+'use client';
+
+
+
+
+
+
+
+
+
+
+
+
   Play, 
   Square, 
   RotateCcw, 
@@ -21,7 +32,7 @@ import {
   Download
 } from 'lucide-react';
 
-import { 
+
   WorkflowDefinition, 
   WorkflowTestResult, 
   ExecutionLog,
@@ -119,9 +130,9 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
     switch (input.type) {
       case 'string':
         return (
-          <Textarea
+          <textarea
             value={input.value}
-            onChange={(e) => handleInputChange(input.nodeId, input.inputId, e.target.value)}
+            onChange={(e) = aria-label="Textarea"> handleInputChange(input.nodeId, input.inputId, e.target.value)}
             placeholder={`Enter ${input.name.toLowerCase()}...`}
             className="min-h-[80px]"
           />
@@ -129,10 +140,10 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
       
       case 'number':
         return (
-          <Input
+          <input
             type="number"
             value={input.value}
-            onChange={(e) => handleInputChange(input.nodeId, input.inputId, parseFloat(e.target.value) || 0)}
+            onChange={(e) = aria-label="Input"> handleInputChange(input.nodeId, input.inputId, parseFloat(e.target.value) || 0)}
             placeholder="0"
           />
         );
@@ -141,8 +152,8 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
         return (
           <select
             value={input.value.toString()}
-            onChange={(e) => handleInputChange(input.nodeId, input.inputId, e.target.value === 'true')}
-            className="w-full p-2 border border-input rounded-md"
+            onChange={(e) = aria-label="Select option"> handleInputChange(input.nodeId, input.inputId, e.target.value === 'true')}
+            className="w-full p-2 border border-input rounded-md sm:p-4 md:p-6"
           >
             <option value="false">False</option>
             <option value="true">True</option>
@@ -152,9 +163,9 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
       case 'object':
       case 'array':
         return (
-          <Textarea
+          <textarea
             value={typeof input.value === 'string' ? input.value : JSON.stringify(input.value, null, 2)}
-            onChange={(e) => {
+            onChange={(e) = aria-label="Textarea"> {
               try {
                 const parsed = JSON.parse(e.target.value);
                 handleInputChange(input.nodeId, input.inputId, parsed);
@@ -163,15 +174,15 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
               }
             }}
             placeholder={input.type === 'array' ? '[]' : '{}'}
-            className="min-h-[100px] font-mono text-sm"
+            className="min-h-[100px] font-mono text-sm md:text-base lg:text-lg"
           />
         );
       
       default:
         return (
-          <Input
+          <input
             value={input.value}
-            onChange={(e) => handleInputChange(input.nodeId, input.inputId, e.target.value)}
+            onChange={(e) = aria-label="Input"> handleInputChange(input.nodeId, input.inputId, e.target.value)}
             placeholder={`Enter ${input.name.toLowerCase()}...`}
           />
         );
@@ -222,31 +233,31 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
             <CardTitle className="flex items-center justify-between">
               Test Configuration
               <div className="flex gap-2">
-                <Button
+                <button
                   variant="outline"
                   size="sm"
                   onClick={handleResetTest}
                   disabled={isRunning}
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
+                 aria-label="Button">
+                  <RotateCcw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Reset
                 </Button>
                 {isRunning ? (
-                  <Button
+                  <button
                     variant="destructive"
                     size="sm"
                     onClick={handleStopTest}
-                  >
-                    <Square className="h-4 w-4 mr-2" />
+                   aria-label="Button">
+                    <Square className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                     Stop
                   </Button>
                 ) : (
-                  <Button
+                  <button
                     size="sm"
                     onClick={handleRunTest}
                     disabled={!onTest}
-                  >
-                    <Play className="h-4 w-4 mr-2" />
+                   aria-label="Button">
+                    <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                     Run Test
                   </Button>
                 )}
@@ -256,7 +267,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
           <CardContent>
             {testInputFields.length === 0 ? (
               <Alert>
-                <AlertCircle className="h-4 w-4" />
+                <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
                 <AlertDescription>
                   No test inputs required. This workflow can be tested without input data.
                 </AlertDescription>
@@ -267,11 +278,11 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                   <div key={`${input.nodeId}.${input.inputId}`} className="space-y-2">
                     <Label className="flex items-center gap-2">
                       {input.name}
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                         {input.type}
                       </Badge>
                       {input.required && (
-                        <span className="text-red-500 text-xs">*</span>
+                        <span className="text-red-500 text-xs sm:text-sm md:text-base">*</span>
                       )}
                     </Label>
                     {renderInputField(input)}
@@ -289,17 +300,17 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
               <CardTitle className="flex items-center gap-2">
                 {isRunning ? (
                   <>
-                    <Clock className="h-4 w-4 animate-spin" />
+                    <Clock className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
                     Running Test...
                   </>
                 ) : testResult?.success ? (
                   <>
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                     Test Completed
                   </>
                 ) : (
                   <>
-                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                     Test Failed
                   </>
                 )}
@@ -308,11 +319,11 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
             <CardContent>
               {testResult && (
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm md:text-base lg:text-lg">
                     <span>Duration:</span>
                     <span>{testResult.duration}ms</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm md:text-base lg:text-lg">
                     <span>Status:</span>
                     <Badge variant={testResult.success ? 'default' : 'destructive'}>
                       {testResult.success ? 'Success' : 'Failed'}
@@ -320,17 +331,17 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                   </div>
                   {testResult.error && (
                     <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
+                      <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
                       <AlertDescription>{testResult.error}</AlertDescription>
                     </Alert>
                   )}
                   <div className="flex gap-2 pt-2">
-                    <Button
+                    <button
                       variant="outline"
                       size="sm"
                       onClick={exportTestResults}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
+                     aria-label="Button">
+                      <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                       Export Results
                     </Button>
                   </div>
@@ -358,21 +369,21 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                       className={`p-2 rounded text-sm ${getLogLevelColor(log.level)}`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                           {log.level.toUpperCase()}
                         </Badge>
-                        <span className="text-xs opacity-75">
+                        <span className="text-xs opacity-75 sm:text-sm md:text-base">
                           {log.timestamp.toLocaleTimeString()}
                         </span>
                       </div>
                       <p>{log.message}</p>
                       {log.nodeId && (
-                        <p className="text-xs opacity-75 mt-1">Node: {log.nodeId}</p>
+                        <p className="text-xs opacity-75 mt-1 sm:text-sm md:text-base">Node: {log.nodeId}</p>
                       )}
                       {log.data && (
                         <details className="mt-2">
-                          <summary className="text-xs cursor-pointer">View Data</summary>
-                          <pre className="text-xs mt-1 p-2 bg-black/5 rounded overflow-auto">
+                          <summary className="text-xs cursor-pointer sm:text-sm md:text-base">View Data</summary>
+                          <pre className="text-xs mt-1 p-2 bg-black/5 rounded overflow-auto sm:text-sm md:text-base">
                             {JSON.stringify(log.data, null, 2)}
                           </pre>
                         </details>
@@ -397,23 +408,23 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                   {Object.entries(testResult.nodeResults).map(([nodeId, result]) => {
                     const node = workflow.nodes.find(n => n.id === nodeId);
                     return (
-                      <div key={nodeId} className="border rounded p-3">
+                      <div key={nodeId} className="border rounded p-3 sm:p-4 md:p-6">
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-sm">
+                          <h4 className="font-medium text-sm md:text-base lg:text-lg">
                             {node?.data.label || nodeId}
                           </h4>
-                          <Button
+                          <button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setSelectedStep(selectedStep === nodeId ? null : nodeId)}
+                            onClick={() = aria-label="Button"> setSelectedStep(selectedStep === nodeId ? null : nodeId)}
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4 w-4 sm:w-auto md:w-full" />
                           </Button>
                         </div>
                         
                         {selectedStep === nodeId && (
-                          <div className="mt-2 p-2 bg-muted rounded">
-                            <pre className="text-xs overflow-auto">
+                          <div className="mt-2 p-2 bg-muted rounded sm:p-4 md:p-6">
+                            <pre className="text-xs overflow-auto sm:text-sm md:text-base">
                               {JSON.stringify(result, null, 2)}
                             </pre>
                           </div>
@@ -432,7 +443,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
           <Card>
             <CardContent className="flex items-center justify-center h-[200px] text-muted-foreground">
               <div className="text-center">
-                <Play className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <Play className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
                 <p>Run a test to see results here</p>
               </div>
             </CardContent>

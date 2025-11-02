@@ -7,7 +7,6 @@
  * 
  * Requirements: 1.1, 1.2
  */
-
 export interface BackendConfig {
   primaryUrl: string;
   fallbackUrls: string[];
@@ -15,14 +14,12 @@ export interface BackendConfig {
   retryAttempts: number;
   healthCheckInterval: number;
 }
-
 export interface TimeoutConfiguration {
   connection: number;
   authentication: number;
   sessionValidation: number;
   healthCheck: number;
 }
-
 export interface RetryPolicy {
   maxAttempts: number;
   baseDelay: number;
@@ -30,7 +27,6 @@ export interface RetryPolicy {
   exponentialBase: number;
   jitterEnabled: boolean;
 }
-
 export interface EnvironmentInfo {
   type: 'local' | 'docker' | 'production';
   networkMode: 'localhost' | 'container' | 'external';
@@ -39,7 +35,6 @@ export interface EnvironmentInfo {
   detectedHostname?: string;
   detectedPort?: string;
 }
-
 export interface ValidationResult {
   isValid: boolean;
   warnings: string[];
@@ -47,7 +42,6 @@ export interface ValidationResult {
   environment: EnvironmentInfo;
   config: BackendConfig;
 }
-
 /**
  * Environment Configuration Manager
  * 
@@ -61,17 +55,14 @@ export class EnvironmentConfigManager {
   private environment: EnvironmentInfo;
   private validationCache: Map<string, { result: ValidationResult; timestamp: number }> = new Map();
   private readonly VALIDATION_CACHE_TTL = 60000; // 1 minute
-
   constructor() {
     this.environment = this.detectEnvironment();
     this.config = this.loadBackendConfiguration();
     this.timeouts = this.loadTimeoutConfiguration();
     this.retryPolicy = this.loadRetryPolicy();
-    
     // Log configuration for debugging
     this.logConfiguration();
   }
-
   /**
    * Detect the current environment and network mode
    */
@@ -81,7 +72,6 @@ export class EnvironmentConfigManager {
     const dockerContainer = this.getEnvVar('DOCKER_CONTAINER', '');
     const hostname = this.getEnvVar('HOSTNAME', '');
     const containerMode = this.getEnvVar('KAREN_CONTAINER_MODE', '');
-    
     // Detect if running in Docker
     const isDocker = !!(
       dockerContainer ||
@@ -90,10 +80,8 @@ export class EnvironmentConfigManager {
       hostname.includes('container') ||
       (typeof process !== 'undefined' && process.env.DOCKER_CONTAINER)
     );
-
     // Detect if production environment
     const isProduction = nodeEnv === 'production' || karenEnv === 'production';
-
     // Determine environment type
     let type: 'local' | 'docker' | 'production';
     if (isProduction) {
@@ -103,7 +91,6 @@ export class EnvironmentConfigManager {
     } else {
       type = 'local';
     }
-
     // Determine network mode
     let networkMode: 'localhost' | 'container' | 'external';
     if (isDocker) {
@@ -113,16 +100,13 @@ export class EnvironmentConfigManager {
     } else {
       networkMode = 'localhost';
     }
-
     // Detect hostname and port from current environment
     let detectedHostname: string | undefined;
     let detectedPort: string | undefined;
-
     if (typeof window !== 'undefined') {
       detectedHostname = window.location.hostname;
       detectedPort = window.location.port;
     }
-
     return {
       type,
       networkMode,
@@ -132,31 +116,25 @@ export class EnvironmentConfigManager {
       detectedPort,
     };
   }
-
   /**
    * Check if accessing via external IP or hostname
    */
   private isExternalAccess(): boolean {
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname;
-      
       // Check if hostname is localhost or 127.0.0.1
       if (hostname === 'localhost' || hostname === '127.0.0.1') {
         return false;
       }
-
       // Check for IP address patterns
       if (hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
         return true;
       }
-
       // Check for non-localhost hostnames
       return hostname !== 'localhost' && hostname !== '127.0.0.1';
     }
-
     return false;
   }
-
   /**
    * Load backend configuration based on environment
    */
@@ -166,7 +144,6 @@ export class EnvironmentConfigManager {
     const timeout = this.getNumberEnv('AUTH_TIMEOUT_MS', 45000); // Increased from 15s to 45s
     const retryAttempts = this.getNumberEnv('MAX_RETRY_ATTEMPTS', 3);
     const healthCheckInterval = this.getNumberEnv('HEALTH_CHECK_INTERVAL_MS', 30000);
-
     return {
       primaryUrl,
       fallbackUrls,
@@ -175,14 +152,12 @@ export class EnvironmentConfigManager {
       healthCheckInterval,
     };
   }
-
   /**
    * Determine the primary backend URL based on environment
    */
   private determinePrimaryUrl(): string {
     // Determine if we're running server-side (Node.js) or client-side (browser)
     const isServerSide = typeof window === 'undefined';
-    
     // Standardized environment variable lookup with priority order
     // Server-side: prioritize KAREN_BACKEND_URL, Client-side: prioritize NEXT_PUBLIC_KAREN_BACKEND_URL
     const standardizedUrls = isServerSide ? [
@@ -192,87 +167,70 @@ export class EnvironmentConfigManager {
       this.getEnvVar('NEXT_PUBLIC_KAREN_BACKEND_URL', ''),
       this.getEnvVar('KAREN_BACKEND_URL', ''),
     ].filter(Boolean);
-
     // Legacy environment variables for backward compatibility (deprecated)
     const legacyUrls = [
       this.getEnvVar('API_BASE_URL', ''),
       this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', ''),
     ].filter(Boolean);
-
     // Log deprecation warnings for legacy variables
     if (legacyUrls.length > 0) {
-      console.warn('⚠️ Deprecated environment variables detected. Please migrate to standardized variables:');
       if (this.getEnvVar('API_BASE_URL', '')) {
-        console.warn('  - API_BASE_URL is deprecated, use KAREN_BACKEND_URL instead');
       }
       if (this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', '')) {
-        console.warn('  - NEXT_PUBLIC_API_BASE_URL is deprecated, use NEXT_PUBLIC_KAREN_BACKEND_URL instead');
       }
     }
-
     // Use standardized variables first, then fall back to legacy
     const allUrls = [...standardizedUrls, ...legacyUrls];
     if (allUrls.length > 0) {
       return this.normalizeUrl(allUrls[0]);
     }
-
     // Generate URL based on detected environment
     switch (this.environment.networkMode) {
       case 'container':
         const containerHost = this.getEnvVar('KAREN_CONTAINER_BACKEND_HOST', 'backend');
         const containerPort = this.getEnvVar('KAREN_CONTAINER_BACKEND_PORT', '8000');
         return `http://${containerHost}:${containerPort}`;
-
       case 'external':
         const externalHost = this.getEnvVar('KAREN_EXTERNAL_HOST', this.environment.detectedHostname || 'localhost');
         const externalPort = this.getEnvVar('KAREN_EXTERNAL_BACKEND_PORT', '8000');
         return `http://${externalHost}:${externalPort}`;
-
       case 'localhost':
       default:
         return 'http://localhost:8000';
     }
   }
-
   /**
    * Generate fallback URLs based on primary URL and environment
    */
   private generateFallbackUrls(primaryUrl: string): string[] {
     const fallbacks: string[] = [];
-    
     // Check for explicit fallback URLs
     const explicitFallbacks = this.getEnvVar('KAREN_FALLBACK_BACKEND_URLS', '');
     if (explicitFallbacks) {
       const urls = explicitFallbacks.split(',').map(url => this.normalizeUrl(url.trim())).filter(Boolean);
       fallbacks.push(...urls);
     }
-
     try {
       const primaryUrlObj = new URL(primaryUrl);
       const port = primaryUrlObj.port || '8000';
-
       // Add localhost variations if not already localhost
       if (primaryUrlObj.hostname !== 'localhost') {
         fallbacks.push(`http://localhost:${port}`);
       }
-
       // Add 127.0.0.1 variation
       if (primaryUrlObj.hostname !== '127.0.0.1') {
         fallbacks.push(`http://127.0.0.1:${port}`);
       }
-
       // Add container networking fallback for Docker environments
       if (this.environment.isDocker && !primaryUrlObj.hostname.includes('api') && !primaryUrlObj.hostname.includes('backend')) {
         fallbacks.push(`http://api:${port}`); // Primary Docker service name
         fallbacks.push(`http://ai-karen-api:${port}`);
         fallbacks.push(`http://backend:${port}`);
       }
-
       // Add host.docker.internal for Docker Desktop
       if (this.environment.isDocker) {
         fallbacks.push(`http://host.docker.internal:${port}`);
       }
-
       // Add high availability fallback URLs for production
       if (this.environment.isProduction) {
         const haUrls = this.getEnvVar('KAREN_HA_BACKEND_URLS', '');
@@ -281,16 +239,13 @@ export class EnvironmentConfigManager {
           fallbacks.push(...urls);
         }
       }
-
     } catch (error) {
       // If URL parsing fails, add sensible defaults
       fallbacks.push('http://localhost:8000', 'http://127.0.0.1:8000');
     }
-
     // Remove duplicates and the primary URL
     return Array.from(new Set(fallbacks)).filter(url => url !== primaryUrl);
   }
-
   /**
    * Load timeout configuration
    */
@@ -302,7 +257,6 @@ export class EnvironmentConfigManager {
       healthCheck: this.getNumberEnv('HEALTH_CHECK_TIMEOUT_MS', 10000),
     };
   }
-
   /**
    * Load retry policy configuration
    */
@@ -315,7 +269,6 @@ export class EnvironmentConfigManager {
       jitterEnabled: this.getBooleanEnv('ENABLE_EXPONENTIAL_BACKOFF', true),
     };
   }
-
   /**
    * Get environment variable with fallback
    */
@@ -325,7 +278,6 @@ export class EnvironmentConfigManager {
     }
     return defaultValue;
   }
-
   /**
    * Get boolean environment variable
    */
@@ -334,7 +286,6 @@ export class EnvironmentConfigManager {
     if (!value) return defaultValue;
     return value.toLowerCase() === 'true';
   }
-
   /**
    * Get number environment variable
    */
@@ -344,35 +295,29 @@ export class EnvironmentConfigManager {
     const parsed = parseInt(value, 10);
     return isNaN(parsed) ? defaultValue : parsed;
   }
-
   /**
    * Normalize URL by removing trailing slashes
    */
   private normalizeUrl(url: string): string {
     return url.replace(/\/+$/, '');
   }
-
   /**
    * Validate the current configuration
    */
   public validateConfiguration(): ValidationResult {
     const cacheKey = 'config-validation';
     const cached = this.validationCache.get(cacheKey);
-    
     if (cached && Date.now() - cached.timestamp < this.VALIDATION_CACHE_TTL) {
       return cached.result;
     }
-
     const warnings: string[] = [];
     const errors: string[] = [];
-
     // Validate primary URL
     try {
       new URL(this.config.primaryUrl);
     } catch {
       errors.push(`Invalid primary backend URL: ${this.config.primaryUrl}`);
     }
-
     // Validate fallback URLs
     this.config.fallbackUrls.forEach((url, index) => {
       try {
@@ -381,63 +326,50 @@ export class EnvironmentConfigManager {
         errors.push(`Invalid fallback URL[${index}]: ${url}`);
       }
     });
-
     // Validate timeout values
     if (this.timeouts.authentication < 1000) {
       warnings.push(`Authentication timeout is very low (${this.timeouts.authentication}ms), consider increasing it`);
     }
-
     if (this.timeouts.authentication > 120000) {
       warnings.push(`Authentication timeout is very high (${this.timeouts.authentication}ms), consider reducing it`);
     }
-
     // Validate retry configuration
     if (this.retryPolicy.maxAttempts > 10) {
       warnings.push(`Max retry attempts is very high (${this.retryPolicy.maxAttempts}), this may cause long delays`);
     }
-
     if (this.retryPolicy.baseDelay < 100) {
       warnings.push(`Retry base delay is very low (${this.retryPolicy.baseDelay}ms), this may overwhelm the server`);
     }
-
     // Environment-specific validations
     if (this.environment.type === 'docker' && this.environment.networkMode === 'localhost') {
       warnings.push('Docker environment with localhost network mode may cause connectivity issues');
     }
-
     // Check if Docker environment is using localhost URL (regardless of detected network mode)
     if (this.environment.isDocker && this.config.primaryUrl.includes('localhost')) {
       warnings.push('Docker environment with localhost network mode may cause connectivity issues');
     }
-
     if (this.environment.networkMode === 'external' && !this.getEnvVar('KAREN_EXTERNAL_HOST', '')) {
       warnings.push('External network mode detected but no external host configured');
     }
-
     // Validate environment variable consistency
     const karenBackendUrl = this.getEnvVar('KAREN_BACKEND_URL', '');
     const nextPublicKarenBackendUrl = this.getEnvVar('NEXT_PUBLIC_KAREN_BACKEND_URL', '');
     const legacyApiBaseUrl = this.getEnvVar('API_BASE_URL', '');
     const legacyNextPublicApiBaseUrl = this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', '');
-
     // Check for conflicting environment variables
     if (karenBackendUrl && legacyApiBaseUrl && karenBackendUrl !== legacyApiBaseUrl) {
       warnings.push('Conflicting backend URLs: KAREN_BACKEND_URL and API_BASE_URL have different values');
     }
-
     if (nextPublicKarenBackendUrl && legacyNextPublicApiBaseUrl && nextPublicKarenBackendUrl !== legacyNextPublicApiBaseUrl) {
       warnings.push('Conflicting public backend URLs: NEXT_PUBLIC_KAREN_BACKEND_URL and NEXT_PUBLIC_API_BASE_URL have different values');
     }
-
     // Check for missing standardized variables when legacy ones are present
     if (legacyApiBaseUrl && !karenBackendUrl) {
       warnings.push('Using deprecated API_BASE_URL. Please migrate to KAREN_BACKEND_URL');
     }
-
     if (legacyNextPublicApiBaseUrl && !nextPublicKarenBackendUrl) {
       warnings.push('Using deprecated NEXT_PUBLIC_API_BASE_URL. Please migrate to NEXT_PUBLIC_KAREN_BACKEND_URL');
     }
-
     // Validate fallback URL configuration
     const fallbackUrls = this.getEnvVar('KAREN_FALLBACK_BACKEND_URLS', '');
     if (fallbackUrls) {
@@ -446,18 +378,15 @@ export class EnvironmentConfigManager {
         warnings.push('Too many fallback URLs configured (>10), this may impact performance');
       }
     }
-
     // High availability configuration validation
     if (this.environment.isProduction) {
       const haUrls = this.getEnvVar('KAREN_HA_BACKEND_URLS', '');
       const explicitFallbacks = this.getEnvVar('KAREN_FALLBACK_BACKEND_URLS', '');
-      
       // Check if there are any explicitly configured high availability URLs
       if (!haUrls && !explicitFallbacks) {
         warnings.push('Production environment without high availability fallback URLs configured');
       }
     }
-
     const result: ValidationResult = {
       isValid: errors.length === 0,
       warnings,
@@ -465,58 +394,49 @@ export class EnvironmentConfigManager {
       environment: this.environment,
       config: this.config,
     };
-
     // Cache the result
     this.validationCache.set(cacheKey, {
       result,
       timestamp: Date.now(),
     });
-
     return result;
   }
-
   /**
    * Get the backend configuration
    */
   public getBackendConfig(): BackendConfig {
     return { ...this.config };
   }
-
   /**
    * Get timeout configuration
    */
   public getTimeoutConfig(): TimeoutConfiguration {
     return { ...this.timeouts };
   }
-
   /**
    * Get retry policy
    */
   public getRetryPolicy(): RetryPolicy {
     return { ...this.retryPolicy };
   }
-
   /**
    * Get environment information
    */
   public getEnvironmentInfo(): EnvironmentInfo {
     return { ...this.environment };
   }
-
   /**
    * Get health check URL
    */
   public getHealthCheckUrl(): string {
     return `${this.config.primaryUrl}/api/health`;
   }
-
   /**
    * Get all candidate URLs (primary + fallbacks)
    */
   public getAllCandidateUrls(): string[] {
     return [this.config.primaryUrl, ...this.config.fallbackUrls];
   }
-
   /**
    * Update configuration (for runtime changes)
    */
@@ -524,14 +444,12 @@ export class EnvironmentConfigManager {
     this.config = { ...this.config, ...updates };
     this.validationCache.clear();
   }
-
   /**
    * Clear validation cache
    */
   public clearValidationCache(): void {
     this.validationCache.clear();
   }
-
   /**
    * Get standardized environment variable mapping
    */
@@ -573,13 +491,11 @@ export class EnvironmentConfigManager {
       },
     };
   }
-
   /**
    * Get migration recommendations for deprecated environment variables
    */
   public getMigrationRecommendations(): Array<{ from: string; to: string; action: string }> {
     const recommendations: Array<{ from: string; to: string; action: string }> = [];
-
     if (this.getEnvVar('API_BASE_URL', '')) {
       recommendations.push({
         from: 'API_BASE_URL',
@@ -587,7 +503,6 @@ export class EnvironmentConfigManager {
         action: 'Rename environment variable for server-side backend URL',
       });
     }
-
     if (this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', '')) {
       recommendations.push({
         from: 'NEXT_PUBLIC_API_BASE_URL',
@@ -595,7 +510,6 @@ export class EnvironmentConfigManager {
         action: 'Rename environment variable for client-side backend URL',
       });
     }
-
     if (this.getEnvVar('BACKEND_PORT', '')) {
       recommendations.push({
         from: 'BACKEND_PORT',
@@ -603,35 +517,22 @@ export class EnvironmentConfigManager {
         action: 'Rename environment variable for backend port (optional, defaults to 8000)',
       });
     }
-
     return recommendations;
   }
-
   /**
    * Log configuration information for debugging
    */
   private logConfiguration(): void {
     const debugLogging = this.getBooleanEnv('KAREN_DEBUG_LOGGING', false);
-    
     if (!debugLogging) return;
-
     console.group('🔧 Environment Configuration Manager');
-    console.log('Environment:', this.environment);
-    console.log('Backend Config:', this.config);
-    console.log('Timeout Config:', this.timeouts);
-    console.log('Retry Policy:', this.retryPolicy);
-    
     // Log environment variable mapping
     console.log('Environment Variable Mapping:', this.getEnvironmentVariableMapping());
-    
     // Log migration recommendations
     const migrations = this.getMigrationRecommendations();
     if (migrations.length > 0) {
-      console.log('Migration Recommendations:', migrations);
     }
-    
     console.groupEnd();
-
     // Validate and show warnings/errors
     const validation = this.validateConfiguration();
     if (validation.warnings.length > 0) {
@@ -639,7 +540,6 @@ export class EnvironmentConfigManager {
       validation.warnings.forEach(warning => console.warn(warning));
       console.groupEnd();
     }
-
     if (validation.errors.length > 0) {
       console.group('❌ Configuration Errors');
       validation.errors.forEach(error => console.error(error));
@@ -647,10 +547,8 @@ export class EnvironmentConfigManager {
     }
   }
 }
-
 // Singleton instance
 let environmentConfigManager: EnvironmentConfigManager | null = null;
-
 /**
  * Get the global environment configuration manager instance
  */
@@ -660,7 +558,6 @@ export function getEnvironmentConfigManager(): EnvironmentConfigManager {
   }
   return environmentConfigManager;
 }
-
 /**
  * Initialize environment configuration manager
  */
@@ -668,7 +565,6 @@ export function initializeEnvironmentConfigManager(): EnvironmentConfigManager {
   environmentConfigManager = new EnvironmentConfigManager();
   return environmentConfigManager;
 }
-
 // Export types
 export type {
   BackendConfig as BackendConfigType,

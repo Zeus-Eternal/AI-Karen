@@ -35,13 +35,13 @@ export function SystemStatus() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
       case 'degraded':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
       case 'unavailable':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
       default:
-        return <AlertTriangle className="h-4 w-4 text-gray-500" />;
+        return <AlertTriangle className="h-4 w-4 text-gray-500 sm:w-auto md:w-full" />;
     }
   };
 
@@ -59,10 +59,10 @@ export function SystemStatus() {
   };
 
   return (
-    <Card className="w-full max-w-2xl">
+    <Card className="w-full max-w-2xl sm:w-auto md:w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Brain className="h-5 w-5" />
+          <Brain className="h-5 w-5 sm:w-auto md:w-full" />
           AI Karen System Status
         </CardTitle>
       </CardHeader>
@@ -71,9 +71,9 @@ export function SystemStatus() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isConnected ? (
-              <Wifi className="h-4 w-4 text-green-500" />
+              <Wifi className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
             ) : (
-              <WifiOff className="h-4 w-4 text-red-500" />
+              <WifiOff className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
             )}
             <span className="font-medium">Backend Connection</span>
           </div>
@@ -90,7 +90,7 @@ export function SystemStatus() {
             {/* Overall Status */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Cpu className="h-4 w-4" />
+                <Cpu className="h-4 w-4 sm:w-auto md:w-full" />
                 <span>Overall System</span>
               </div>
               <Badge className={getStatusColor(systemStatus.degraded ? 'degraded' : 'healthy')}>
@@ -101,7 +101,7 @@ export function SystemStatus() {
             {/* Component Details */}
             {systemStatus.components && systemStatus.components.length > 0 && (
               <div className="ml-6 space-y-1">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Components in degraded mode: {systemStatus.components.join(', ')}
                 </p>
               </div>
@@ -110,7 +110,7 @@ export function SystemStatus() {
             {/* Fallback Systems */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Database className="h-4 w-4" />
+                <Database className="h-4 w-4 sm:w-auto md:w-full" />
                 <span>Fallback Systems</span>
               </div>
               <Badge className="bg-blue-100 text-blue-800">
@@ -121,7 +121,7 @@ export function SystemStatus() {
             {/* Local Models */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Brain className="h-4 w-4" />
+                <Brain className="h-4 w-4 sm:w-auto md:w-full" />
                 <span>Local AI Models</span>
               </div>
               <Badge className={getStatusColor(systemStatus.local_models_available ? 'healthy' : 'unavailable')}>
@@ -135,14 +135,14 @@ export function SystemStatus() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="font-medium">Reasoning System Test</h4>
-            <Button 
+            <button 
               onClick={handleTestReasoning} 
               disabled={isLoading}
               size="sm"
               variant="outline"
-            >
+             aria-label="Button">
               {isLoading ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <RefreshCw className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
               ) : (
                 'Test System'
               )}
@@ -150,15 +150,15 @@ export function SystemStatus() {
           </div>
           
           {testResult && (
-            <div className="p-3 bg-gray-50 rounded-md">
-              <p className="text-sm">{testResult}</p>
+            <div className="p-3 bg-gray-50 rounded-md sm:p-4 md:p-6">
+              <p className="text-sm md:text-base lg:text-lg">{testResult}</p>
             </div>
           )}
         </div>
 
         {/* Status Summary */}
         <div className="pt-4 border-t">
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
             {isConnected ? (
               systemStatus?.degraded ? (
                 <p>✅ System operational with fallback systems active. Local AI models available for reasoning.</p>

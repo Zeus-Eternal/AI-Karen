@@ -19,7 +19,7 @@ export function SkeletonDemo() {
 
   return (
     <MicroInteractionProvider>
-      <div className="p-8 space-y-8 max-w-6xl mx-auto">
+      <div className="p-8 space-y-8 max-w-6xl mx-auto sm:w-auto md:w-full">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Skeleton Loading States Demo</h1>
           <InteractiveButton onClick={toggleSkeletons}>
@@ -125,7 +125,7 @@ export function SkeletonDemo() {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">Actual Content</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="rounded-lg border bg-card p-6 space-y-4">
+                <div className="rounded-lg border bg-card p-6 space-y-4 sm:p-4 md:p-6">
                   <img 
                     src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=200&fit=crop" 
                     alt="Sample" 
@@ -135,11 +135,11 @@ export function SkeletonDemo() {
                     <img 
                       src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop" 
                       alt="Avatar" 
-                      className="w-10 h-10 rounded-full"
+                      className="w-10 h-10 rounded-full sm:w-auto md:w-full"
                     />
                     <div>
                       <h3 className="text-lg font-semibold">Sample Card Title</h3>
-                      <p className="text-sm text-muted-foreground">By John Doe</p>
+                      <p className="text-sm text-muted-foreground md:text-base lg:text-lg">By John Doe</p>
                     </div>
                   </div>
                   <p className="text-muted-foreground">
@@ -147,27 +147,27 @@ export function SkeletonDemo() {
                   </p>
                   <div className="flex justify-between items-center pt-4">
                     <div className="flex space-x-2">
-                      <button className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm">
+                      <button className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm md:text-base lg:text-lg" aria-label="Button">
                         Action
                       </button>
-                      <button className="px-3 py-1 border border-input rounded-md text-sm">
+                      <button className="px-3 py-1 border border-input rounded-md text-sm md:text-base lg:text-lg" aria-label="Button">
                         Secondary
                       </button>
                     </div>
-                    <span className="text-sm text-muted-foreground">2 min read</span>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">2 min read</span>
                   </div>
                 </div>
                 
-                <div className="rounded-lg border bg-card p-6 space-y-4">
+                <div className="rounded-lg border bg-card p-6 space-y-4 sm:p-4 md:p-6">
                   <div className="flex items-start space-x-4">
                     <img 
                       src="https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop" 
                       alt="Avatar" 
-                      className="w-10 h-10 rounded-full"
+                      className="w-10 h-10 rounded-full sm:w-auto md:w-full"
                     />
                     <div>
                       <h3 className="text-lg font-semibold">Another Card</h3>
-                      <p className="text-sm text-muted-foreground">By Jane Smith</p>
+                      <p className="text-sm text-muted-foreground md:text-base lg:text-lg">By Jane Smith</p>
                     </div>
                   </div>
                   <p className="text-muted-foreground">
@@ -175,7 +175,7 @@ export function SkeletonDemo() {
                   </p>
                 </div>
                 
-                <div className="rounded-lg border bg-card p-6 space-y-4">
+                <div className="rounded-lg border bg-card p-6 space-y-4 sm:p-4 md:p-6">
                   <img 
                     src="https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=128&fit=crop" 
                     alt="Sample" 

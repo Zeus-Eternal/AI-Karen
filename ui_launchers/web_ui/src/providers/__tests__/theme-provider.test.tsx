@@ -7,7 +7,7 @@
  * Based on requirements: 1.1, 1.2, 1.3, 11.4
  */
 
-import React from "react";
+
 import {
   render,
   screen,
@@ -18,7 +18,6 @@ import {
 import { renderHook } from "@testing-library/react";
 import { ThemeProvider, useTheme } from "../theme-provider";
 import { useUIStore } from "../../store";
-
 import { vi } from "vitest";
 
 // Mock the UI store

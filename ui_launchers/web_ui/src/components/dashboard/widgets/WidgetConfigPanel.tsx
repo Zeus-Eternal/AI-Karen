@@ -1,33 +1,9 @@
-'use client';
-
 import React, { useState, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -36,6 +12,42 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import type { WidgetConfig, WidgetType } from '@/types/dashboard';
+'use client';
+
+
+
+
+
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+
+
+
+
+
+
 
 interface WidgetConfigPanelProps {
   isOpen: boolean;
@@ -44,7 +56,6 @@ interface WidgetConfigPanelProps {
   onSave: (config: WidgetConfig) => void;
   onPreview?: (config: WidgetConfig) => void;
 }
-
 // Base schema for all widgets
 const baseWidgetSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -52,7 +63,6 @@ const baseWidgetSchema = z.object({
   refreshInterval: z.number().min(1000).max(300000).optional(),
   enabled: z.boolean(),
 });
-
 // Widget-specific schemas
 const metricWidgetSchema = baseWidgetSchema.extend({
   config: z.object({
@@ -67,7 +77,6 @@ const metricWidgetSchema = baseWidgetSchema.extend({
     showTrend: z.boolean().default(true),
   }),
 });
-
 const statusWidgetSchema = baseWidgetSchema.extend({
   config: z.object({
     service: z.string().min(1, 'Service is required'),
@@ -77,7 +86,6 @@ const statusWidgetSchema = baseWidgetSchema.extend({
     showHistory: z.boolean().default(true),
   }),
 });
-
 const chartWidgetSchema = baseWidgetSchema.extend({
   config: z.object({
     dataSource: z.string().min(1, 'Data source is required'),
@@ -88,17 +96,15 @@ const chartWidgetSchema = baseWidgetSchema.extend({
     enableZoom: z.boolean().default(true),
   }),
 });
-
 const logWidgetSchema = baseWidgetSchema.extend({
   config: z.object({
     logSource: z.string().min(1, 'Log source is required'),
-    levels: z.array(z.enum(['debug', 'info', 'warn', 'error'])).default(['info', 'warn', 'error']),
+    levels: z.array(z.enum(['', 'warn', 'error']),
     maxEntries: z.number().min(50).max(1000).default(200),
     autoScroll: z.boolean().default(true),
     showMetadata: z.boolean().default(false),
   }),
 });
-
 const getSchemaForType = (type: WidgetType) => {
   switch (type) {
     case 'metric':
@@ -113,7 +119,6 @@ const getSchemaForType = (type: WidgetType) => {
       return baseWidgetSchema;
   }
 };
-
 export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
   isOpen,
   onClose,
@@ -122,19 +127,15 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
   onPreview,
 }) => {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
-  
   const schema = getSchemaForType(config.type);
-  
   const form = useForm<WidgetConfig>({
     resolver: zodResolver(schema) as any,
     defaultValues: config,
   });
-
   const handleSave = useCallback((data: WidgetConfig) => {
     onSave(data);
     onClose();
   }, [onSave, onClose]);
-
   const handlePreview = useCallback(() => {
     const formData = form.getValues();
     if (onPreview) {
@@ -142,10 +143,23 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       setIsPreviewMode(true);
     }
   }, [form, onPreview]);
-
   const renderTypeSpecificFields = () => {
     switch (config.type) {
       case 'metric':
+
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Handle escape key
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
         return (
           <>
             <FormField
@@ -154,23 +168,22 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Data Source</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <select onValueChange={field.onChange} defaultValue={field.value} aria-label="Select option">
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select data source" />
+                      <selectTrigger aria-label="Select option">
+                        <selectValue placeholder="Select data source" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="system-metrics">System Metrics</SelectItem>
-                      <SelectItem value="application-metrics">Application Metrics</SelectItem>
-                      <SelectItem value="custom-metrics">Custom Metrics</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="system-metrics" aria-label="Select option">System Metrics</SelectItem>
+                      <selectItem value="application-metrics" aria-label="Select option">Application Metrics</SelectItem>
+                      <selectItem value="custom-metrics" aria-label="Select option">Custom Metrics</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.metric"
@@ -178,7 +191,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 <FormItem>
                   <FormLabel>Metric</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., cpu_usage, memory_usage" {...field} />
+                    <input placeholder="e.g., cpu_usage, memory_usage" {...field} />
                   </FormControl>
                   <FormDescription>
                     The specific metric to display
@@ -187,31 +200,29 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.format"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Format</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <select onValueChange={field.onChange} defaultValue={field.value} aria-label="Select option">
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select format" />
+                      <selectTrigger aria-label="Select option">
+                        <selectValue placeholder="Select format" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="number">Number</SelectItem>
-                      <SelectItem value="percentage">Percentage</SelectItem>
-                      <SelectItem value="currency">Currency</SelectItem>
-                      <SelectItem value="bytes">Bytes</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="number" aria-label="Select option">Number</SelectItem>
+                      <selectItem value="percentage" aria-label="Select option">Percentage</SelectItem>
+                      <selectItem value="currency" aria-label="Select option">Currency</SelectItem>
+                      <selectItem value="bytes" aria-label="Select option">Bytes</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.unit"
@@ -219,13 +230,12 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 <FormItem>
                   <FormLabel>Unit (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., ms, req/s" {...field} />
+                    <input placeholder="e.g., ms, req/s" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <div className="space-y-4">
               <FormLabel>Thresholds</FormLabel>
               <div className="grid grid-cols-2 gap-4">
@@ -236,11 +246,11 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                     <FormItem>
                       <FormLabel>Warning</FormLabel>
                       <FormControl>
-                        <Input 
+                        <input 
                           type="number" 
                           placeholder="Warning threshold"
                           {...field}
-                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                          onChange={(e) = aria-label="Input"> field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -254,11 +264,11 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                     <FormItem>
                       <FormLabel>Critical</FormLabel>
                       <FormControl>
-                        <Input 
+                        <input 
                           type="number" 
                           placeholder="Critical threshold"
                           {...field}
-                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                          onChange={(e) = aria-label="Input"> field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -267,12 +277,11 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 />
               </div>
             </div>
-
             <FormField
               control={form.control}
               name="config.showTrend"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 sm:p-4 md:p-6">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Show Trend</FormLabel>
                     <FormDescription>
@@ -290,7 +299,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
             />
           </>
         );
-
       case 'status':
         return (
           <>
@@ -300,24 +308,23 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Service</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <select onValueChange={field.onChange} defaultValue={field.value} aria-label="Select option">
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select service" />
+                      <selectTrigger aria-label="Select option">
+                        <selectValue placeholder="Select service" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="api-server">API Server</SelectItem>
-                      <SelectItem value="database">Database</SelectItem>
-                      <SelectItem value="cache">Cache</SelectItem>
-                      <SelectItem value="message-queue">Message Queue</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="api-server" aria-label="Select option">API Server</SelectItem>
+                      <selectItem value="database" aria-label="Select option">Database</SelectItem>
+                      <selectItem value="cache" aria-label="Select option">Cache</SelectItem>
+                      <selectItem value="message-queue" aria-label="Select option">Message Queue</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.endpoint"
@@ -325,7 +332,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 <FormItem>
                   <FormLabel>Health Check Endpoint (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="https://api.example.com/health" {...field} />
+                    <input placeholder="https://api.example.com/health" {...field} />
                   </FormControl>
                   <FormDescription>
                     Custom endpoint for health checks
@@ -334,7 +341,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.checkInterval"
@@ -350,7 +356,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                         value={[field.value]}
                         onValueChange={(value) => field.onChange(value[0])}
                       />
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                         {(field.value / 1000).toFixed(0)} seconds
                       </div>
                     </div>
@@ -359,12 +365,11 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.showDetails"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 sm:p-4 md:p-6">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Show Details</FormLabel>
                     <FormDescription>
@@ -380,12 +385,11 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.showHistory"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 sm:p-4 md:p-6">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Show History</FormLabel>
                     <FormDescription>
@@ -403,7 +407,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
             />
           </>
         );
-
       case 'chart':
         return (
           <>
@@ -413,71 +416,68 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Data Source</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <select onValueChange={field.onChange} defaultValue={field.value} aria-label="Select option">
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select data source" />
+                      <selectTrigger aria-label="Select option">
+                        <selectValue placeholder="Select data source" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="metrics-api">Metrics API</SelectItem>
-                      <SelectItem value="logs-api">Logs API</SelectItem>
-                      <SelectItem value="custom-api">Custom API</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="metrics-api" aria-label="Select option">Metrics API</SelectItem>
+                      <selectItem value="logs-api" aria-label="Select option">Logs API</SelectItem>
+                      <selectItem value="custom-api" aria-label="Select option">Custom API</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.chartType"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Chart Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <select onValueChange={field.onChange} defaultValue={field.value} aria-label="Select option">
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select chart type" />
+                      <selectTrigger aria-label="Select option">
+                        <selectValue placeholder="Select chart type" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="line">Line Chart</SelectItem>
-                      <SelectItem value="bar">Bar Chart</SelectItem>
-                      <SelectItem value="area">Area Chart</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="line" aria-label="Select option">Line Chart</SelectItem>
+                      <selectItem value="bar" aria-label="Select option">Bar Chart</SelectItem>
+                      <selectItem value="area" aria-label="Select option">Area Chart</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.timeRange"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Time Range</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <select onValueChange={field.onChange} defaultValue={field.value} aria-label="Select option">
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select time range" />
+                      <selectTrigger aria-label="Select option">
+                        <selectValue placeholder="Select time range" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="1h">Last Hour</SelectItem>
-                      <SelectItem value="6h">Last 6 Hours</SelectItem>
-                      <SelectItem value="24h">Last 24 Hours</SelectItem>
-                      <SelectItem value="7d">Last 7 Days</SelectItem>
-                      <SelectItem value="30d">Last 30 Days</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="1h" aria-label="Select option">Last Hour</SelectItem>
+                      <selectItem value="6h" aria-label="Select option">Last 6 Hours</SelectItem>
+                      <selectItem value="24h" aria-label="Select option">Last 24 Hours</SelectItem>
+                      <selectItem value="7d" aria-label="Select option">Last 7 Days</SelectItem>
+                      <selectItem value="30d" aria-label="Select option">Last 30 Days</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.series"
@@ -485,10 +485,10 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 <FormItem>
                   <FormLabel>Data Series</FormLabel>
                   <FormControl>
-                    <Textarea
+                    <textarea
                       placeholder="Enter series names, one per line"
                       value={field.value?.join('\n') || ''}
-                      onChange={(e) => field.onChange(e.target.value.split('\n').filter(Boolean))}
+                      onChange={(e) = aria-label="Textarea"> field.onChange(e.target.value.split('\n').filter(Boolean))}
                     />
                   </FormControl>
                   <FormDescription>
@@ -498,12 +498,11 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.showLegend"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 sm:p-4 md:p-6">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Show Legend</FormLabel>
                     <FormDescription>
@@ -519,12 +518,11 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.enableZoom"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 sm:p-4 md:p-6">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Enable Zoom</FormLabel>
                     <FormDescription>
@@ -542,7 +540,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
             />
           </>
         );
-
       case 'log':
         return (
           <>
@@ -552,24 +549,23 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Log Source</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <select onValueChange={field.onChange} defaultValue={field.value} aria-label="Select option">
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select log source" />
+                      <selectTrigger aria-label="Select option">
+                        <selectValue placeholder="Select log source" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="application">Application Logs</SelectItem>
-                      <SelectItem value="system">System Logs</SelectItem>
-                      <SelectItem value="security">Security Logs</SelectItem>
-                      <SelectItem value="audit">Audit Logs</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="application" aria-label="Select option">Application Logs</SelectItem>
+                      <selectItem value="system" aria-label="Select option">System Logs</SelectItem>
+                      <selectItem value="security" aria-label="Select option">Security Logs</SelectItem>
+                      <selectItem value="audit" aria-label="Select option">Audit Logs</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.levels"
@@ -577,7 +573,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 <FormItem>
                   <FormLabel>Log Levels</FormLabel>
                   <div className="flex flex-wrap gap-2">
-                    {['debug', 'info', 'warn', 'error'].map((level) => (
+                    {['', 'warn', 'error'].map((level) => (
                       <Badge
                         key={level}
                         variant={field.value?.includes(level as any) ? 'default' : 'outline'}
@@ -602,7 +598,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.maxEntries"
@@ -618,7 +613,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                         value={[field.value]}
                         onValueChange={(value) => field.onChange(value[0])}
                       />
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                         {field.value} entries
                       </div>
                     </div>
@@ -627,12 +622,11 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.autoScroll"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 sm:p-4 md:p-6">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Auto Scroll</FormLabel>
                     <FormDescription>
@@ -648,12 +642,11 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="config.showMetadata"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 sm:p-4 md:p-6">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Show Metadata</FormLabel>
                     <FormDescription>
@@ -671,28 +664,24 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
             />
           </>
         );
-
       default:
         return null;
     }
   };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto sm:w-auto md:w-full">
         <DialogHeader>
           <DialogTitle>Configure Widget</DialogTitle>
           <DialogDescription>
             Customize the settings for your {config.type} widget.
           </DialogDescription>
         </DialogHeader>
-
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSave)} className="space-y-6">
             {/* Basic Settings */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Basic Settings</h3>
-              
               <FormField
                 control={form.control}
                 name="title"
@@ -706,31 +695,29 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="size"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Size</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <select onValueChange={field.onChange} defaultValue={field.value} aria-label="Select option">
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select size" />
+                        <selectTrigger aria-label="Select option">
+                          <selectValue placeholder="Select size" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="small">Small (1x1)</SelectItem>
-                        <SelectItem value="medium">Medium (2x1)</SelectItem>
-                        <SelectItem value="large">Large (2x2)</SelectItem>
-                        <SelectItem value="full">Full Width</SelectItem>
+                      <selectContent aria-label="Select option">
+                        <selectItem value="small" aria-label="Select option">Small (1x1)</SelectItem>
+                        <selectItem value="medium" aria-label="Select option">Medium (2x1)</SelectItem>
+                        <selectItem value="large" aria-label="Select option">Large (2x2)</SelectItem>
+                        <selectItem value="full" aria-label="Select option">Full Width</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="refreshInterval"
@@ -746,7 +733,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                           value={[field.value || 30000]}
                           onValueChange={(value) => field.onChange(value[0])}
                         />
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                           {((field.value || 30000) / 1000).toFixed(0)} seconds
                         </div>
                       </div>
@@ -755,12 +742,11 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="enabled"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 sm:p-4 md:p-6">
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">Enabled</FormLabel>
                       <FormDescription>
@@ -777,25 +763,22 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 )}
               />
             </div>
-
             <Separator />
-
             {/* Type-specific Settings */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Widget Settings</h3>
               {renderTypeSpecificFields()}
             </div>
-
             <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
+              <button type="button" variant="outline" onClick={onClose} aria-label="Button">
                 Cancel
               </Button>
               {onPreview && (
-                <Button type="button" variant="outline" onClick={handlePreview}>
+                <button type="button" variant="outline" onClick={handlePreview} aria-label="Button">
                   Preview
                 </Button>
               )}
-              <Button type="submit">
+              <button type="submit" aria-label="Submit form">
                 Save Changes
               </Button>
             </DialogFooter>
@@ -805,5 +788,4 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
     </Dialog>
   );
 };
-
 export default WidgetConfigPanel;

@@ -73,12 +73,12 @@ export const NavigationLayout: React.FC<NavigationLayoutProps> = ({
               <div className="flex items-center gap-2 px-4 py-2">
                 <h2 className="text-lg font-semibold">Karen AI</h2>
                 {hasRole('super_admin') && (
-                  <span className="text-xs bg-destructive text-destructive-foreground px-2 py-1 rounded">
+                  <span className="text-xs bg-destructive text-destructive-foreground px-2 py-1 rounded sm:text-sm md:text-base">
                     Super Admin
                   </span>
                 )}
                 {hasRole('admin') && !hasRole('super_admin') && (
-                  <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
+                  <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded sm:text-sm md:text-base">
                     Admin
                   </span>
                 )}
@@ -111,7 +111,7 @@ export const NavigationLayout: React.FC<NavigationLayoutProps> = ({
             </div>
           </header>
           
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-6 sm:p-4 md:p-6">
             {children}
           </main>
         </SidebarInset>

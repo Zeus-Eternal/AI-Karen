@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,7 +33,6 @@ import ModelDetailsDialog from '../settings/ModelDetailsDialog';
 import ModelPerformanceComparison from './ModelPerformanceComparison';
 import ModelStatusMonitor from './ModelStatusMonitor';
 import ModelConfigurationPanel from './ModelConfigurationPanel';
-
 interface ModelInfo {
   id: string;
   name: string;
@@ -74,14 +72,12 @@ interface ModelInfo {
   last_used?: number;
   download_date?: number;
 }
-
 interface ModelFilters {
   category: string;
   provider: string;
   status: string;
   modality: string;
 }
-
 interface ModelBrowserProps {
   className?: string;
   models?: ModelInfo[];
@@ -89,7 +85,6 @@ interface ModelBrowserProps {
   filters?: ModelFilters;
   onFiltersChange?: React.Dispatch<React.SetStateAction<ModelFilters>>;
 }
-
 // Transform ModelInfo from snake_case to camelCase for compatibility with ModelCard
 const transformModelForCard = (model: ModelInfo) => ({
   ...model,
@@ -102,7 +97,6 @@ const transformModelForCard = (model: ModelInfo) => ({
     tags: model.metadata.tags || []
   }
 });
-
 const ModelBrowser: React.FC<ModelBrowserProps> = ({ 
   className, 
   models: externalModels, 
@@ -120,7 +114,6 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
     status: 'all',
     modality: 'all'
   });
-
   // Use external props when provided, otherwise use internal state
   const models = externalModels || internalModels;
   const filters = externalFilters || internalFilters;
@@ -129,24 +122,19 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
   const selectedProvider = filters.provider;
   const selectedStatus = filters.status;
   const selectedModality = filters.modality;
-
   // Filter change handlers
   const handleCategoryChange = (value: string) => {
     onFiltersChange(prev => ({ ...prev, category: value }));
   };
-
   const handleProviderChange = (value: string) => {
     onFiltersChange(prev => ({ ...prev, provider: value }));
   };
-
   const handleStatusChange = (value: string) => {
     onFiltersChange(prev => ({ ...prev, status: value }));
   };
-
   const handleModalityChange = (value: string) => {
     onFiltersChange(prev => ({ ...prev, modality: value }));
   };
-
   const handleClearFilters = () => {
     setSearchQuery('');
     onFiltersChange({
@@ -162,18 +150,14 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
   const [showPerformanceComparison, setShowPerformanceComparison] = useState(false);
   const [showStatusMonitor, setShowStatusMonitor] = useState(false);
   const [showConfigurationPanel, setShowConfigurationPanel] = useState(false);
-
   const { toast } = useToast();
   const backend = getKarenBackend();
-
   // Load models from the discovery service (only when using internal state)
   const loadModels = async () => {
     if (externalModels) return; // Don't load if using external models
-    
     try {
       setLoading(true);
       setError(null);
-
       // Use the model discovery service endpoint
       const response = await backend.makeRequestPublic<{
         models: ModelInfo[];
@@ -182,7 +166,6 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
         providers: Record<string, number>;
         modalities: Record<string, number>;
       }>('/api/models/discovery/all');
-
       if (response?.models) {
         setInternalModels(response.models);
       } else {
@@ -191,13 +174,11 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
           models: ModelInfo[];
           total_count: number;
         }>('/api/models/library');
-        
         if (libraryResponse?.models) {
           setInternalModels(libraryResponse.models);
         }
       }
     } catch (err) {
-      console.error('Failed to load models:', err);
       setError('Failed to load models. Please try again.');
       toast({
         title: "Error Loading Models",
@@ -208,11 +189,9 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
       setLoading(false);
     }
   };
-
   useEffect(() => {
     loadModels();
   }, []);
-
   // Filter and search models
   const filteredModels = useMemo(() => {
     return models.filter(model => {
@@ -230,27 +209,22 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
           ...(model.metadata?.tags || []),
           ...(model.metadata?.specialization || [])
         ].join(' ').toLowerCase();
-        
         if (!searchableText.includes(query)) {
           return false;
         }
       }
-
       // Category filter
       if (selectedCategory !== 'all' && model.category !== selectedCategory) {
         return false;
       }
-
       // Provider filter
       if (selectedProvider !== 'all' && model.provider !== selectedProvider) {
         return false;
       }
-
       // Status filter
       if (selectedStatus !== 'all' && model.status !== selectedStatus) {
         return false;
       }
-
       // Modality filter
       if (selectedModality !== 'all') {
         const hasModality = model.modalities?.some(mod => 
@@ -260,22 +234,18 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
           return false;
         }
       }
-
       return true;
     });
   }, [models, searchQuery, selectedCategory, selectedProvider, selectedStatus, selectedModality]);
-
   // Get unique values for filters
   const categories = useMemo(() => {
     const cats = new Set(models.map(m => m.category).filter(Boolean));
     return Array.from(cats).sort();
   }, [models]);
-
   const providers = useMemo(() => {
     const provs = new Set(models.map(m => m.provider).filter(Boolean));
     return Array.from(provs).sort();
   }, [models]);
-
   const modalities = useMemo(() => {
     const mods = new Set<string>();
     models.forEach(model => {
@@ -285,7 +255,6 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
     });
     return Array.from(mods).sort();
   }, [models]);
-
   // Handle model actions
   const handleModelAction = async (modelId: string, action: 'download' | 'delete' | 'cancel' | 'pause' | 'resume') => {
     // Use external action handler if provided
@@ -295,7 +264,6 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
     try {
       let endpoint = '';
       let method = 'POST';
-      
       switch (action) {
         case 'download':
           endpoint = '/api/models/download';
@@ -311,7 +279,6 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
           endpoint = `/api/models/download/${modelId}/${action}`;
           break;
       }
-
       if (action === 'download') {
         await backend.makeRequestPublic(endpoint, {
           method,
@@ -320,16 +287,13 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
       } else {
         await backend.makeRequestPublic(endpoint, { method });
       }
-
       // Refresh models after action
       await loadModels();
-
       toast({
         title: "Action Completed",
         description: `Model ${action} completed successfully.`,
       });
     } catch (error) {
-      console.error(`Failed to ${action} model:`, error);
       toast({
         title: "Action Failed",
         description: `Failed to ${action} model. Please try again.`,
@@ -337,7 +301,6 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
       });
     }
   };
-
   // Wrapper for ModelDetailsDialog actions
   const handleDetailsDialogAction = async (modelId: string, action: 'delete' | 'validate' | 'refresh') => {
     switch (action) {
@@ -352,22 +315,20 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
         break;
     }
   };
-
   const getProviderIcon = (provider: string) => {
     switch (provider.toLowerCase()) {
       case 'llama-cpp':
       case 'local':
-        return <HardDrive className="h-4 w-4" />;
+        return <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'transformers':
       case 'huggingface':
-        return <Brain className="h-4 w-4" />;
+        return <Brain className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'openai':
-        return <Zap className="h-4 w-4" />;
+        return <Zap className="h-4 w-4 sm:w-auto md:w-full" />;
       default:
-        return <Cpu className="h-4 w-4" />;
+        return <Cpu className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
-
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'local':
@@ -382,36 +343,33 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
         return 'outline';
     }
   };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex items-center justify-center p-8 sm:p-4 md:p-6">
+        <Loader2 className="h-8 w-8 animate-spin sm:w-auto md:w-full" />
         <span className="ml-2">Loading models...</span>
       </div>
     );
   }
-
   if (error) {
     return (
       <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
+        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertDescription>
           {error}
-          <Button
+          <button
             variant="outline"
             size="sm"
             onClick={loadModels}
             className="ml-2"
-          >
-            <RefreshCw className="h-4 w-4 mr-1" />
+           aria-label="Button">
+            <RefreshCw className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
             Retry
           </Button>
         </AlertDescription>
       </Alert>
     );
   }
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
@@ -423,41 +381,40 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
+          <button
             variant="outline"
             size="sm"
-            onClick={() => setShowPerformanceComparison(true)}
+            onClick={() = aria-label="Button"> setShowPerformanceComparison(true)}
           >
-            <BarChart3 className="h-4 w-4 mr-1" />
+            <BarChart3 className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
             Compare
           </Button>
-          <Button
+          <button
             variant="outline"
             size="sm"
-            onClick={() => setShowStatusMonitor(true)}
+            onClick={() = aria-label="Button"> setShowStatusMonitor(true)}
           >
-            <Eye className="h-4 w-4 mr-1" />
+            <Eye className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
             Monitor
           </Button>
-          <Button
+          <button
             variant="outline"
             size="sm"
-            onClick={() => setShowConfigurationPanel(true)}
+            onClick={() = aria-label="Button"> setShowConfigurationPanel(true)}
           >
-            <Settings className="h-4 w-4 mr-1" />
+            <Settings className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
             Configure
           </Button>
-          <Button
+          <button
             variant="outline"
             size="sm"
             onClick={loadModels}
-          >
-            <RefreshCw className="h-4 w-4 mr-1" />
+           aria-label="Button">
+            <RefreshCw className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
             Refresh
           </Button>
         </div>
       </div>
-
       {/* Filters and Search */}
       <Card>
         <CardHeader>
@@ -466,39 +423,37 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
         <CardContent className="space-y-4">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <input
               placeholder="Search models by name, description, capabilities..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
-
           {/* Filter Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Category" />
+            <select value={selectedCategory} onValueChange={handleCategoryChange} aria-label="Select option">
+              <selectTrigger aria-label="Select option">
+                <selectValue placeholder="Category" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="all" aria-label="Select option">All Categories</SelectItem>
                 {categories.map(category => (
-                  <SelectItem key={category} value={category}>
+                  <selectItem key={category} value={category} aria-label="Select option">
                     {category}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-
-            <Select value={selectedProvider} onValueChange={handleProviderChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Provider" />
+            <select value={selectedProvider} onValueChange={handleProviderChange} aria-label="Select option">
+              <selectTrigger aria-label="Select option">
+                <selectValue placeholder="Provider" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Providers</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="all" aria-label="Select option">All Providers</SelectItem>
                 {providers.map(provider => (
-                  <SelectItem key={provider} value={provider}>
+                  <selectItem key={provider} value={provider} aria-label="Select option">
                     <div className="flex items-center gap-2">
                       {getProviderIcon(provider)}
                       {provider}
@@ -507,88 +462,83 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
                 ))}
               </SelectContent>
             </Select>
-
-            <Select value={selectedStatus} onValueChange={handleStatusChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
+            <select value={selectedStatus} onValueChange={handleStatusChange} aria-label="Select option">
+              <selectTrigger aria-label="Select option">
+                <selectValue placeholder="Status" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="local">
+              <selectContent aria-label="Select option">
+                <selectItem value="all" aria-label="Select option">All Status</SelectItem>
+                <selectItem value="local" aria-label="Select option">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                     Local
                   </div>
                 </SelectItem>
-                <SelectItem value="available">
+                <selectItem value="available" aria-label="Select option">
                   <div className="flex items-center gap-2">
-                    <Cloud className="h-4 w-4 text-blue-500" />
+                    <Cloud className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />
                     Available
                   </div>
                 </SelectItem>
-                <SelectItem value="downloading">
+                <selectItem value="downloading" aria-label="Select option">
                   <div className="flex items-center gap-2">
-                    <Download className="h-4 w-4 text-orange-500" />
+                    <Download className="h-4 w-4 text-orange-500 sm:w-auto md:w-full" />
                     Downloading
                   </div>
                 </SelectItem>
-                <SelectItem value="error">
+                <selectItem value="error" aria-label="Select option">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-red-500" />
+                    <AlertCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
                     Error
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
-
-            <Select value={selectedModality} onValueChange={handleModalityChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Modality" />
+            <select value={selectedModality} onValueChange={handleModalityChange} aria-label="Select option">
+              <selectTrigger aria-label="Select option">
+                <selectValue placeholder="Modality" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Modalities</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="all" aria-label="Select option">All Modalities</SelectItem>
                 {modalities.map(modality => (
-                  <SelectItem key={modality} value={modality}>
+                  <selectItem key={modality} value={modality} aria-label="Select option">
                     {modality}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant={viewMode === 'grid' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setViewMode('grid')}
+                onClick={() = aria-label="Button"> setViewMode('grid')}
               >
-                <Grid className="h-4 w-4" />
+                <Grid className="h-4 w-4 sm:w-auto md:w-full" />
               </Button>
-              <Button
+              <button
                 variant={viewMode === 'list' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setViewMode('list')}
+                onClick={() = aria-label="Button"> setViewMode('list')}
               >
-                <List className="h-4 w-4" />
+                <List className="h-4 w-4 sm:w-auto md:w-full" />
               </Button>
             </div>
-
-            <div className="text-sm text-muted-foreground flex items-center">
+            <div className="text-sm text-muted-foreground flex items-center md:text-base lg:text-lg">
               {filteredModels.length} of {models.length} models
             </div>
           </div>
         </CardContent>
       </Card>
-
       {/* Models Display */}
       {filteredModels.length === 0 ? (
         <Card>
           <CardContent className="text-center py-8">
             <p className="text-muted-foreground">No models found matching your criteria.</p>
-            <Button
+            <button
               variant="outline"
               onClick={handleClearFilters}
               className="mt-2"
-            >
+             aria-label="Button">
               Clear Filters
             </Button>
           </CardContent>
@@ -609,7 +559,6 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
           ))}
         </div>
       )}
-
       {/* Model Details Dialog */}
       <ModelDetailsDialog
         model={selectedModel ? transformModelForCard(selectedModel) : null}
@@ -617,21 +566,18 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
         onOpenChange={setShowDetailsDialog}
         onAction={handleDetailsDialogAction}
       />
-
       {/* Performance Comparison Dialog */}
       <ModelPerformanceComparison
         models={filteredModels}
         open={showPerformanceComparison}
         onOpenChange={setShowPerformanceComparison}
       />
-
       {/* Status Monitor Dialog */}
       <ModelStatusMonitor
         models={filteredModels}
         open={showStatusMonitor}
         onOpenChange={setShowStatusMonitor}
       />
-
       {/* Configuration Panel Dialog */}
       <ModelConfigurationPanel
         open={showConfigurationPanel}
@@ -640,5 +586,4 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
     </div>
   );
 };
-
 export default ModelBrowser;

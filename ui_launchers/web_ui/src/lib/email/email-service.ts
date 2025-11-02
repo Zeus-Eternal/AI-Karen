@@ -4,7 +4,6 @@
  * Core email service for sending emails, managing templates, and handling
  * different email providers (SMTP, SendGrid, SES, etc.).
  */
-
 import { 
   EmailMessage, 
   EmailServiceConfig, 
@@ -18,7 +17,6 @@ import {
 } from './types';
 import { TemplateEngine, EmailTemplateManager } from './template-engine';
 import { getEmailServiceConfig, testEmailService } from './config';
-
 /**
  * Email Service Provider Interface
  */
@@ -26,13 +24,11 @@ interface EmailProvider {
   send(message: EmailMessage): Promise<SendEmailResponse>;
   testConnection(): Promise<boolean>;
 }
-
 /**
  * SMTP Email Provider
  */
 class SMTPProvider implements EmailProvider {
   constructor(private config: EmailServiceConfig) {}
-  
   async send(message: EmailMessage): Promise<SendEmailResponse> {
     // In a real implementation, this would use nodemailer or similar
     // For now, return a mock response
@@ -42,13 +38,11 @@ class SMTPProvider implements EmailProvider {
         subject: message.subject,
         html: message.html_content.substring(0, 100) + '...',
       });
-      
       return {
         success: true,
         message_id: `smtp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       };
     }
-    
     // Simulate sending
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -59,50 +53,38 @@ class SMTPProvider implements EmailProvider {
       }, 100);
     });
   }
-  
   async testConnection(): Promise<boolean> {
     return this.config.enabled && !!this.config.smtp_host;
   }
 }
-
 /**
  * SendGrid Email Provider
  */
 class SendGridProvider implements EmailProvider {
   constructor(private config: EmailServiceConfig) {}
-  
   async send(message: EmailMessage): Promise<SendEmailResponse> {
     if (this.config.test_mode) {
-      console.log('SendGrid Test Mode - Email would be sent:', {
-        to: message.to,
-        subject: message.subject,
-      });
-      
       return {
         success: true,
         message_id: `sg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       };
     }
-    
     // In a real implementation, this would use @sendgrid/mail
     return {
       success: true,
       message_id: `sg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     };
   }
-  
   async testConnection(): Promise<boolean> {
     return this.config.enabled && !!this.config.api_key;
   }
 }
-
 /**
  * Main Email Service
  */
 export class EmailService {
   private provider: EmailProvider | null = null;
   private config: EmailServiceConfig | null = null;
-  
   /**
    * Initialize email service
    */
@@ -110,7 +92,6 @@ export class EmailService {
     this.config = await getEmailServiceConfig();
     this.provider = this.createProvider(this.config);
   }
-  
   /**
    * Create email provider based on configuration
    */
@@ -129,7 +110,6 @@ export class EmailService {
         throw new Error(`Unsupported email provider: ${config.provider}`);
     }
   }
-  
   /**
    * Send email using template
    */
@@ -146,19 +126,16 @@ export class EmailService {
     if (!this.provider || !this.config) {
       throw new Error('Email service not initialized');
     }
-    
     if (!this.config.enabled) {
       return {
         success: false,
         error: 'Email service is disabled',
       };
     }
-    
     // Render template
     const subject = TemplateEngine.render(template.subject, variables);
     const htmlContent = TemplateEngine.render(template.html_content, variables);
     const textContent = TemplateEngine.render(template.text_content, variables);
-    
     // Create email message
     const message: EmailMessage = {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -177,34 +154,28 @@ export class EmailService {
       created_at: new Date(),
       updated_at: new Date(),
     };
-    
     // Send email
     try {
       const result = await this.provider.send(message);
-      
       // Update message status
       message.status = result.success ? 'sent' : 'failed';
       message.sent_at = result.success ? new Date() : undefined;
       message.failed_at = result.success ? undefined : new Date();
       message.error_message = result.error;
       message.updated_at = new Date();
-      
       // In a real implementation, save message to database here
-      
       return result;
     } catch (error) {
       message.status = 'failed';
       message.failed_at = new Date();
       message.error_message = error instanceof Error ? error.message : 'Unknown error';
       message.updated_at = new Date();
-      
       return {
         success: false,
         error: message.error_message,
       };
     }
   }
-  
   /**
    * Send simple email without template
    */
@@ -222,14 +193,12 @@ export class EmailService {
     if (!this.provider || !this.config) {
       throw new Error('Email service not initialized');
     }
-    
     if (!this.config.enabled) {
       return {
         success: false,
         error: 'Email service is disabled',
       };
     }
-    
     const message: EmailMessage = {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       to,
@@ -245,30 +214,25 @@ export class EmailService {
       created_at: new Date(),
       updated_at: new Date(),
     };
-    
     try {
       const result = await this.provider.send(message);
-      
       message.status = result.success ? 'sent' : 'failed';
       message.sent_at = result.success ? new Date() : undefined;
       message.failed_at = result.success ? undefined : new Date();
       message.error_message = result.error;
       message.updated_at = new Date();
-      
       return result;
     } catch (error) {
       message.status = 'failed';
       message.failed_at = new Date();
       message.error_message = error instanceof Error ? error.message : 'Unknown error';
       message.updated_at = new Date();
-      
       return {
         success: false,
         error: message.error_message,
       };
     }
   }
-  
   /**
    * Send admin invitation email
    */
@@ -282,14 +246,12 @@ export class EmailService {
     // Get admin invitation template
     const templates = await EmailTemplateManager.createDefaultTemplates('system');
     const template = templates.find(t => t.template_type === 'admin_invitation');
-    
     if (!template) {
       return {
         success: false,
         error: 'Admin invitation template not found',
       };
     }
-    
     const variables = {
       full_name: fullName,
       system_name: 'AI Karen Admin System',
@@ -297,10 +259,8 @@ export class EmailService {
       invitation_link: invitationLink,
       expiry_date: expiryDate.toLocaleDateString(),
     };
-    
     return this.sendTemplateEmail(email, template, variables, { priority: 'high' });
   }
-  
   /**
    * Send user welcome email
    */
@@ -313,14 +273,12 @@ export class EmailService {
   ): Promise<SendEmailResponse> {
     const templates = await EmailTemplateManager.createDefaultTemplates('system');
     const template = templates.find(t => t.template_type === 'user_welcome');
-    
     if (!template) {
       return {
         success: false,
         error: 'User welcome template not found',
       };
     }
-    
     const variables = {
       full_name: fullName,
       system_name: 'AI Karen Admin System',
@@ -330,10 +288,8 @@ export class EmailService {
       created_date: new Date().toLocaleDateString(),
       setup_link: setupLink,
     };
-    
     return this.sendTemplateEmail(email, template, variables, { priority: 'normal' });
   }
-  
   /**
    * Send security alert email
    */
@@ -346,14 +302,12 @@ export class EmailService {
   ): Promise<SendEmailResponse> {
     const templates = await EmailTemplateManager.createDefaultTemplates('system');
     const template = templates.find(t => t.template_type === 'security_alert');
-    
     if (!template) {
       return {
         success: false,
         error: 'Security alert template not found',
       };
     }
-    
     const variables = {
       alert_type: alertType,
       alert_time: new Date().toLocaleString(),
@@ -363,10 +317,8 @@ export class EmailService {
       action_required: actionRequired || '',
       system_name: 'AI Karen Admin System',
     };
-    
     return this.sendTemplateEmail(email, template, variables, { priority: 'urgent' });
   }
-  
   /**
    * Test email service connection
    */
@@ -374,10 +326,8 @@ export class EmailService {
     if (!this.config) {
       await this.initialize();
     }
-    
     return testEmailService(this.config!);
   }
-  
   /**
    * Convert HTML to plain text (basic implementation)
    */
@@ -393,14 +343,12 @@ export class EmailService {
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
   }
-  
   /**
    * Get service configuration
    */
   getConfig(): EmailServiceConfig | null {
     return this.config;
   }
-  
   /**
    * Update service configuration
    */
@@ -411,13 +359,11 @@ export class EmailService {
     }
   }
 }
-
 /**
  * Notification Service for admin actions
  */
 export class NotificationService {
   constructor(private emailService: EmailService) {}
-  
   /**
    * Send notification for admin action
    */
@@ -435,7 +381,6 @@ export class NotificationService {
           data.invitationLink,
           data.expiryDate
         );
-        
       case 'user_welcome':
         return this.emailService.sendUserWelcome(
           recipientEmail,
@@ -444,7 +389,6 @@ export class NotificationService {
           data.createdByName,
           data.setupLink
         );
-        
       case 'security_alert':
         return this.emailService.sendSecurityAlert(
           recipientEmail,
@@ -453,7 +397,6 @@ export class NotificationService {
           data.ipAddress,
           data.actionRequired
         );
-        
       default:
         return {
           success: false,
@@ -461,7 +404,6 @@ export class NotificationService {
         };
     }
   }
-  
   /**
    * Send bulk notifications
    */
@@ -474,11 +416,9 @@ export class NotificationService {
       failed: 0,
       errors: [] as string[],
     };
-    
     for (const recipient of recipients) {
       try {
         const result = await this.sendAdminActionNotification(type, recipient.email, recipient.data);
-        
         if (result.success) {
           results.success++;
         } else {
@@ -490,11 +430,9 @@ export class NotificationService {
         results.errors.push(`${recipient.email}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
-    
     return results;
   }
 }
-
 // Singleton instances
 export const emailService = new EmailService();
 export const notificationService = new NotificationService(emailService);

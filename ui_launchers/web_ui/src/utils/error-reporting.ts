@@ -4,7 +4,6 @@
  * Provides comprehensive error reporting, logging, and monitoring capabilities
  * for the modern error boundary system.
  */
-
 export interface ErrorReport {
   id: string;
   message: string;
@@ -22,7 +21,6 @@ export interface ErrorReport {
   context?: Record<string, any>;
   breadcrumbs?: ErrorBreadcrumb[];
 }
-
 export interface ErrorBreadcrumb {
   timestamp: string;
   category: 'navigation' | 'user' | 'http' | 'console' | 'dom';
@@ -30,7 +28,6 @@ export interface ErrorBreadcrumb {
   level: 'info' | 'warning' | 'error';
   data?: Record<string, any>;
 }
-
 export interface ErrorReportingConfig {
   enabled: boolean;
   endpoint?: string;
@@ -42,12 +39,10 @@ export interface ErrorReportingConfig {
   sampleRate: number;
   beforeSend?: (report: ErrorReport) => ErrorReport | null;
 }
-
 class ErrorReportingService {
   private config: ErrorReportingConfig;
   private breadcrumbs: ErrorBreadcrumb[] = [];
   private sessionId: string;
-
   constructor(config: Partial<ErrorReportingConfig> = {}) {
     this.config = {
       enabled: true,
@@ -58,37 +53,29 @@ class ErrorReportingService {
       sampleRate: 1.0,
       ...config,
     };
-
     this.sessionId = this.generateSessionId();
     this.initializeBreadcrumbCapture();
   }
-
   private generateSessionId(): string {
     return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
-
   private initializeBreadcrumbCapture() {
     if (!this.config.enabled) return;
-
     // Capture console errors
     if (this.config.enableConsoleCapture) {
       this.captureConsoleErrors();
     }
-
     // Capture network errors
     if (this.config.enableNetworkCapture) {
       this.captureNetworkErrors();
     }
-
     // Capture user interactions
     if (this.config.enableUserInteractionCapture) {
       this.captureUserInteractions();
     }
-
     // Capture navigation events
     this.captureNavigationEvents();
   }
-
   private captureConsoleErrors() {
     const originalError = console.error;
     console.error = (...args) => {
@@ -100,7 +87,6 @@ class ErrorReportingService {
       });
       originalError.apply(console, args);
     };
-
     const originalWarn = console.warn;
     console.warn = (...args) => {
       this.addBreadcrumb({
@@ -112,7 +98,6 @@ class ErrorReportingService {
       originalWarn.apply(console, args);
     };
   }
-
   private captureNetworkErrors() {
     // Capture fetch errors
     const originalFetch = window.fetch;
@@ -121,7 +106,6 @@ class ErrorReportingService {
       try {
         const response = await originalFetch(...args);
         const duration = Date.now() - startTime;
-
         this.addBreadcrumb({
           category: 'http',
           message: `${response.status} ${args[0]}`,
@@ -133,7 +117,6 @@ class ErrorReportingService {
             method: args[1]?.method || 'GET',
           },
         });
-
         return response;
       } catch (error) {
         const duration = Date.now() - startTime;
@@ -151,20 +134,16 @@ class ErrorReportingService {
         throw error;
       }
     };
-
     // Capture XMLHttpRequest errors
     const originalXHROpen = XMLHttpRequest.prototype.open;
     const originalXHRSend = XMLHttpRequest.prototype.send;
-
     XMLHttpRequest.prototype.open = function(method: string, url: string | URL, async: boolean = true, username?: string | null, password?: string | null) {
       (this as any)._errorReportingData = { method, url, startTime: Date.now() };
       return originalXHROpen.call(this, method, url, async, username, password);
     };
-
     XMLHttpRequest.prototype.send = function(body?: Document | XMLHttpRequestBodyInit | null) {
       const xhr = this;
       const data = (xhr as any)._errorReportingData;
-
       xhr.addEventListener('load', () => {
         if (data) {
           const duration = Date.now() - data.startTime;
@@ -181,7 +160,6 @@ class ErrorReportingService {
           });
         }
       });
-
       xhr.addEventListener('error', () => {
         if (data) {
           const duration = Date.now() - data.startTime;
@@ -198,11 +176,9 @@ class ErrorReportingService {
           });
         }
       });
-
       return originalXHRSend.call(this, body);
     };
   }
-
   private captureUserInteractions() {
     // Capture click events
     document.addEventListener('click', (event) => {
@@ -210,7 +186,6 @@ class ErrorReportingService {
       const tagName = target.tagName.toLowerCase();
       const className = target.className;
       const id = target.id;
-
       this.addBreadcrumb({
         category: 'user',
         message: `Clicked ${tagName}${id ? `#${id}` : ''}${className ? `.${className}` : ''}`,
@@ -223,7 +198,6 @@ class ErrorReportingService {
         },
       });
     });
-
     // Capture form submissions
     document.addEventListener('submit', (event) => {
       const target = event.target as HTMLFormElement;
@@ -239,7 +213,6 @@ class ErrorReportingService {
       });
     });
   }
-
   private captureNavigationEvents() {
     // Capture page navigation
     window.addEventListener('popstate', () => {
@@ -254,7 +227,6 @@ class ErrorReportingService {
         },
       });
     });
-
     // Capture initial page load
     this.addBreadcrumb({
       category: 'navigation',
@@ -268,23 +240,18 @@ class ErrorReportingService {
       },
     });
   }
-
   public addBreadcrumb(breadcrumb: Omit<ErrorBreadcrumb, 'timestamp'>) {
     if (!this.config.enabled) return;
-
     const fullBreadcrumb: ErrorBreadcrumb = {
       ...breadcrumb,
       timestamp: new Date().toISOString(),
     };
-
     this.breadcrumbs.push(fullBreadcrumb);
-
     // Keep only the most recent breadcrumbs
     if (this.breadcrumbs.length > this.config.maxBreadcrumbs) {
       this.breadcrumbs = this.breadcrumbs.slice(-this.config.maxBreadcrumbs);
     }
   }
-
   public async reportError(
     error: Error,
     errorInfo?: React.ErrorInfo,
@@ -296,10 +263,8 @@ class ErrorReportingService {
     }
   ): Promise<void> {
     if (!this.config.enabled) return;
-
     // Apply sampling rate
     if (Math.random() > this.config.sampleRate) return;
-
     const errorReport: ErrorReport = {
       id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       message: error.message,
@@ -317,40 +282,25 @@ class ErrorReportingService {
       context: context ? { ...context } : undefined,
       breadcrumbs: [...this.breadcrumbs],
     };
-
     // Apply beforeSend hook
     const processedReport = this.config.beforeSend ? this.config.beforeSend(errorReport) : errorReport;
     if (!processedReport) return;
-
     try {
       // Log to console in development
-      if (process.env.NODE_ENV === 'development') {
-        console.group('🚨 Error Report');
-        console.error('Error:', error);
-        console.log('Report:', processedReport);
-        console.groupEnd();
-      }
-
       // Send to external service
       if (this.config.endpoint) {
         await this.sendToService(processedReport);
       }
-
       // Send to analytics
       this.sendToAnalytics(processedReport);
-
       // Store locally for offline support
       this.storeLocally(processedReport);
-
     } catch (reportingError) {
-      console.error('Failed to report error:', reportingError);
     }
   }
-
   private determineSeverity(error: Error, context?: any): ErrorReport['severity'] {
     const message = error.message.toLowerCase();
     const stack = error.stack?.toLowerCase() || '';
-
     // Critical errors
     if (
       message.includes('chunk') ||
@@ -360,7 +310,6 @@ class ErrorReportingService {
     ) {
       return 'critical';
     }
-
     // High severity errors
     if (
       message.includes('auth') ||
@@ -370,7 +319,6 @@ class ErrorReportingService {
     ) {
       return 'high';
     }
-
     // Medium severity errors
     if (
       message.includes('validation') ||
@@ -379,40 +327,30 @@ class ErrorReportingService {
     ) {
       return 'medium';
     }
-
     return 'low';
   }
-
   private categorizeError(error: Error): ErrorReport['category'] {
     const message = error.message.toLowerCase();
     const name = error.name.toLowerCase();
-
     if (message.includes('network') || message.includes('fetch') || name.includes('network')) {
       return 'network';
     }
-
     if (message.includes('server') || message.includes('500') || message.includes('502')) {
       return 'server';
     }
-
     if (message.includes('database') || message.includes('sql') || message.includes('query')) {
       return 'database';
     }
-
     if (message.includes('auth') || message.includes('token') || message.includes('401')) {
       return 'auth';
     }
-
     if (name.includes('type') || name.includes('reference') || name.includes('syntax')) {
       return 'ui';
     }
-
     return 'unknown';
   }
-
   private async sendToService(report: ErrorReport): Promise<void> {
     if (!this.config.endpoint || !this.config.apiKey) return;
-
     const response = await fetch(this.config.endpoint, {
       method: 'POST',
       headers: {
@@ -421,12 +359,10 @@ class ErrorReportingService {
       },
       body: JSON.stringify(report),
     });
-
     if (!response.ok) {
       throw new Error(`Failed to send error report: ${response.status}`);
     }
   }
-
   private sendToAnalytics(report: ErrorReport): void {
     // Send to Google Analytics if available
     if (typeof window !== 'undefined' && 'gtag' in window) {
@@ -442,50 +378,38 @@ class ErrorReportingService {
         },
       });
     }
-
     // Send to other analytics services as needed
   }
-
   private storeLocally(report: ErrorReport): void {
     try {
       const key = `error_reports`;
       const stored = localStorage.getItem(key);
       const reports = stored ? JSON.parse(stored) : [];
-      
       reports.push(report);
-      
       // Keep only the most recent 10 reports
       const recentReports = reports.slice(-10);
-      
       localStorage.setItem(key, JSON.stringify(recentReports));
     } catch (error) {
-      console.warn('Failed to store error report locally:', error);
     }
   }
-
   public getStoredReports(): ErrorReport[] {
     try {
       const stored = localStorage.getItem('error_reports');
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
-      console.warn('Failed to retrieve stored error reports:', error);
       return [];
     }
   }
-
   public clearStoredReports(): void {
     try {
       localStorage.removeItem('error_reports');
     } catch (error) {
-      console.warn('Failed to clear stored error reports:', error);
     }
   }
-
   public updateConfig(newConfig: Partial<ErrorReportingConfig>): void {
     this.config = { ...this.config, ...newConfig };
   }
 }
-
 // Create singleton instance
 export const errorReportingService = new ErrorReportingService({
   enabled: process.env.NODE_ENV === 'production',
@@ -500,7 +424,6 @@ export const errorReportingService = new ErrorReportingService({
     return report;
   },
 });
-
 // Initialize error reporting
 if (typeof window !== 'undefined') {
   // Capture unhandled promise rejections
@@ -511,7 +434,6 @@ if (typeof window !== 'undefined') {
       { section: 'global', category: 'promise' }
     );
   });
-
   // Capture global errors
   window.addEventListener('error', (event) => {
     errorReportingService.reportError(
@@ -527,5 +449,4 @@ if (typeof window !== 'undefined') {
     );
   });
 }
-
 export default errorReportingService;

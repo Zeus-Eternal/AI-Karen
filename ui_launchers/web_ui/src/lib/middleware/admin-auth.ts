@@ -4,14 +4,11 @@
  * Provides role-based permission checking and security measures for admin API endpoints.
  * Requirements: 2.5, 6.4
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { User, AdminApiResponse } from '@/types/admin';
-
 // Rate limiting storage (in-memory for simplicity, use Redis in production)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
 export interface AdminAuthContext {
   user: User;
   hasPermission: (permission: string) => boolean;
@@ -19,7 +16,6 @@ export interface AdminAuthContext {
   isAdmin: () => boolean;
   isSuperAdmin: () => boolean;
 }
-
 /**
  * Extract and validate session from request cookies
  */
@@ -33,23 +29,18 @@ async function validateAdminSession(request: NextRequest): Promise<User | null> 
         'Content-Type': 'application/json',
       },
     });
-
     if (!response.ok) {
       return null;
     }
-
     const data = await response.json();
     if (!data.valid || !data.user) {
       return null;
     }
-
     const userData = data.user;
-    
     // Ensure user has admin role
     if (!userData.role || !['admin', 'super_admin'].includes(userData.role)) {
       return null;
     }
-
     return {
       user_id: userData.user_id,
       email: userData.email,
@@ -69,11 +60,9 @@ async function validateAdminSession(request: NextRequest): Promise<User | null> 
       created_by: userData.created_by
     };
   } catch (error) {
-    console.error('Admin session validation error:', error);
     return null;
   }
 }
-
 /**
  * Rate limiting for admin endpoints
  */
@@ -81,23 +70,18 @@ function checkRateLimit(request: NextRequest, limit: number = 100, windowMs: num
   const clientIP = getClientIP(request);
   const key = `admin_rate_limit:${clientIP}`;
   const now = Date.now();
-  
   const current = rateLimitStore.get(key);
-  
   if (!current || now > current.resetTime) {
     // Reset or initialize rate limit
     rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
     return true;
   }
-  
   if (current.count >= limit) {
     return false;
   }
-  
   current.count++;
   return true;
 }
-
 /**
  * Extract client IP address from request
  */
@@ -105,14 +89,11 @@ function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
   const realIP = request.headers.get('x-real-ip');
   const remoteAddr = request.headers.get('remote-addr');
-  
   if (forwarded) {
     return forwarded.split(',')[0].trim();
   }
-  
   return realIP || remoteAddr || 'unknown';
 }
-
 /**
  * Create admin authentication context
  */
@@ -120,7 +101,6 @@ async function createAdminContext(user: User): Promise<AdminAuthContext> {
   const adminUtils = getAdminDatabaseUtils();
   const permissions = await adminUtils.getUserPermissions(user.user_id);
   const permissionNames = permissions.map(p => p.name);
-  
   return {
     user,
     hasPermission: (permission: string) => {
@@ -133,7 +113,6 @@ async function createAdminContext(user: User): Promise<AdminAuthContext> {
     isSuperAdmin: () => user.role === 'super_admin'
   };
 }
-
 /**
  * Admin authentication middleware
  */
@@ -159,7 +138,6 @@ export async function withAdminAuth<T>(
         }
       } as AdminApiResponse<never>, { status: 429 });
     }
-
     // Validate admin session
     const user = await validateAdminSession(request);
     if (!user) {
@@ -172,10 +150,8 @@ export async function withAdminAuth<T>(
         }
       } as AdminApiResponse<never>, { status: 401 });
     }
-
     // Create admin context
     const context = await createAdminContext(user);
-
     // Check required role
     if (options.requiredRole) {
       if (options.requiredRole === 'super_admin' && !context.isSuperAdmin()) {
@@ -188,7 +164,6 @@ export async function withAdminAuth<T>(
           }
         } as AdminApiResponse<never>, { status: 403 });
       }
-      
       if (options.requiredRole === 'admin' && !context.isAdmin()) {
         return NextResponse.json({
           success: false,
@@ -200,7 +175,6 @@ export async function withAdminAuth<T>(
         } as AdminApiResponse<never>, { status: 403 });
       }
     }
-
     // Check required permission
     if (options.requiredPermission && !context.hasPermission(options.requiredPermission)) {
       return NextResponse.json({
@@ -212,7 +186,6 @@ export async function withAdminAuth<T>(
         }
       } as AdminApiResponse<never>, { status: 403 });
     }
-
     // Log admin API access
     const adminUtils = getAdminDatabaseUtils();
     await adminUtils.createAuditLog({
@@ -230,13 +203,9 @@ export async function withAdminAuth<T>(
       ip_address: getClientIP(request),
       user_agent: request.headers.get('user-agent') || undefined
     });
-
     // Call the handler with admin context
     return await handler(request, context);
-
   } catch (error) {
-    console.error('Admin auth middleware error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {
@@ -247,7 +216,6 @@ export async function withAdminAuth<T>(
     } as AdminApiResponse<never>, { status: 500 });
   }
 }
-
 /**
  * Simplified admin auth wrapper for basic admin access
  */
@@ -256,7 +224,6 @@ export function requireAdmin<T>(
 ) {
   return (request: NextRequest) => withAdminAuth(request, handler, { requiredRole: 'admin' });
 }
-
 /**
  * Simplified admin auth wrapper for super admin access
  */
@@ -265,7 +232,6 @@ export function requireSuperAdmin<T>(
 ) {
   return (request: NextRequest) => withAdminAuth(request, handler, { requiredRole: 'super_admin' });
 }
-
 /**
  * Admin auth wrapper with custom permission requirement
  */
@@ -275,7 +241,6 @@ export function requirePermission<T>(
 ) {
   return (request: NextRequest) => withAdminAuth(request, handler, { requiredPermission: permission });
 }
-
 /**
  * Legacy admin auth middleware function for backward compatibility
  * Returns auth result object instead of NextResponse
@@ -294,10 +259,8 @@ export async function adminAuthMiddleware(
         status: 401
       };
     }
-
     // Create admin context for permission checking
     const context = await createAdminContext(user);
-
     // Handle different role requirement formats
     if (requiredRole) {
       if (typeof requiredRole === 'string') {
@@ -325,9 +288,7 @@ export async function adminAuthMiddleware(
         }
       }
     }
-
     return { success: true, user };
-
   } catch (error) {
     return {
       success: false,

@@ -1,5 +1,4 @@
 // Lightweight client for provider discovery and model listings
-
 export interface ProviderDiscoveryItem {
   id: string;
   title: string;
@@ -8,7 +7,6 @@ export interface ProviderDiscoveryItem {
   canInfer: boolean;
   available: boolean;
 }
-
 export interface ContractModelInfo {
   id: string;
   provider: string;
@@ -21,11 +19,9 @@ export interface ContractModelInfo {
   contextWindow?: number;
   tags?: string[];
 }
-
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   // Get auth headers from session
   const authHeaders: Record<string, string> = {};
-  
   // Try to get the access token from localStorage (set by AuthContext)
   if (typeof window !== 'undefined') {
     const accessToken = localStorage.getItem('karen_access_token');
@@ -33,7 +29,6 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
       authHeaders['Authorization'] = `Bearer ${accessToken}`;
     }
   }
-
   const res = await fetch(path, {
     method: 'GET',
     credentials: 'include',
@@ -49,7 +44,6 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return res.json() as Promise<T>;
 }
-
 export async function fetchProviderDiscovery(): Promise<ProviderDiscoveryItem[]> {
   try {
     const result = await getJson<ProviderDiscoveryItem[]>('/api/providers/discovery');
@@ -64,7 +58,6 @@ export async function fetchProviderDiscovery(): Promise<ProviderDiscoveryItem[]>
     }
   }
 }
-
 export async function listLlamaModels(): Promise<ContractModelInfo[]> {
   try {
     const result = await getJson<ContractModelInfo[]>('/api/providers/local/llama/models');
@@ -78,7 +71,6 @@ export async function listLlamaModels(): Promise<ContractModelInfo[]> {
     }
   }
 }
-
 export async function listTransformersModels(): Promise<ContractModelInfo[]> {
   try {
     const result = await getJson<ContractModelInfo[]>('/api/providers/local/transformers/models');
@@ -92,7 +84,6 @@ export async function listTransformersModels(): Promise<ContractModelInfo[]> {
     }
   }
 }
-
 export async function listSpacyPipelines(): Promise<string[]> {
   try {
     const result = await getJson<string[]>('/api/providers/local/spacy/pipelines');
@@ -101,11 +92,9 @@ export async function listSpacyPipelines(): Promise<string[]> {
     return await getJson<string[]>('/api/public/providers/local/spacy/pipelines');
   }
 }
-
 export async function openaiPing(): Promise<{ ok: boolean }> {
   return getJson<{ ok: boolean }>('/api/providers/cloud/openai/ping');
 }
-
 export async function listOpenaiModels(): Promise<ContractModelInfo[]> {
   try {
     const result = await getJson<ContractModelInfo[]>('/api/providers/cloud/openai/models');
@@ -114,18 +103,14 @@ export async function listOpenaiModels(): Promise<ContractModelInfo[]> {
     return [];
   }
 }
-
-
 // Filter providers to only show those with available models
 export async function getProvidersWithModels(): Promise<ProviderDiscoveryItem[]> {
   try {
     const allProviders = await fetchProviderDiscovery();
     const providersWithModels: ProviderDiscoveryItem[] = [];
-    
     for (const provider of allProviders) {
       try {
         let hasModels = false;
-        
         // Check for models based on provider type
         if (provider.id.includes('llama') || provider.id.includes('local')) {
           const models = await listLlamaModels();
@@ -137,44 +122,33 @@ export async function getProvidersWithModels(): Promise<ProviderDiscoveryItem[]>
           const models = await listOpenaiModels();
           hasModels = models.length > 0;
         }
-        
         if (hasModels) {
           providersWithModels.push(provider);
         }
       } catch (error) {
-        console.warn(`Failed to check models for provider ${provider.id}:`, error);
       }
     }
-    
     return providersWithModels;
   } catch (error) {
-    console.error('Failed to get providers with models:', error);
     return [];
   }
 }
-
 // Enhanced model listing with provider validation
 export async function listAllAvailableModels(): Promise<ContractModelInfo[]> {
   const allModels: ContractModelInfo[] = [];
-  
   try {
     // Get local models
     const llamaModels = await listLlamaModels();
     const transformersModels = await listTransformersModels();
-    
     allModels.push(...llamaModels, ...transformersModels);
-    
     // Try to get cloud models if configured
     try {
       const openaiModels = await listOpenaiModels();
       allModels.push(...openaiModels);
     } catch (error) {
-      console.debug('OpenAI models not available:', error);
     }
-    
     return allModels;
   } catch (error) {
-    console.error('Failed to list all models:', error);
     return [];
   }
 }

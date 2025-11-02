@@ -1,16 +1,14 @@
 /**
  * Email Template Preview API
  * 
- * API endpoint for generating email template previews with sample data
+ * API endpoint for generating email template previews with 
  * or custom variables for testing and validation.
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { EmailTemplateVariables } from '@/lib/email/types';
 import { EmailTemplateManager, TemplateEngine } from '@/lib/email/template-engine';
 import { auditLogger } from '@/lib/audit/audit-logger';
-
 /**
  * POST /api/admin/email/templates/[id]/preview
  * Generate email template preview
@@ -24,28 +22,22 @@ export async function POST(
     if (!authResult.success) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-
     const { id: templateId } = await params;
     const body = await request.json();
     const customVariables: EmailTemplateVariables | undefined = body.variables;
-
     // Get template
     const mockTemplates = await EmailTemplateManager.createDefaultTemplates('system');
     const template = mockTemplates.find(t => t.id === templateId);
-
     if (!template) {
       return NextResponse.json(
         { error: 'Email template not found' },
         { status: 404 }
       );
     }
-
     // Generate preview
     const preview = EmailTemplateManager.generatePreview(template, customVariables);
-
     // Validate template with provided variables
     const validation = TemplateEngine.validateTemplate(template, customVariables);
-
     // Log audit event
     await auditLogger.log(
       authResult.user?.user_id || 'unknown',
@@ -60,7 +52,6 @@ export async function POST(
         request: request
       }
     );
-
     return NextResponse.json({
       success: true,
       data: {
@@ -80,9 +71,7 @@ export async function POST(
         }
       }
     });
-
   } catch (error) {
-    console.error('Error generating template preview:', error);
     return NextResponse.json(
       { error: 'Failed to generate template preview' },
       { status: 500 }

@@ -1,0 +1,17 @@
+{
+  "plugin_api_version": "1.0",
+  "intent": "hf_generate",
+  "enable_external_workflow": false,
+  "required_roles": [
+    "user"
+  ],
+  "trusted_ui": false,
+  "module": "ai_karen_engine.plugins.hf_llm.handler",
+  "name": "hf-llm",
+  "version": "0.1.0",
+  "description": "Generates text using HuggingFace models.",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "run",
+  "plugin_type": "ai"
+}

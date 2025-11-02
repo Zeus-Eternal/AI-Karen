@@ -231,7 +231,7 @@ export const PanelSection = forwardRef<HTMLDivElement, PanelSectionProps>(
                 </div>
               )}
               {description && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   {description}
                 </p>
               )}

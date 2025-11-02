@@ -5,7 +5,7 @@
  * data loading, and user management functionality.
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { jest } from '@jest/globals';
 import { AdminDashboard } from '../AdminDashboard';
@@ -19,10 +19,10 @@ const mockUseRole = useRole as jest.MockedFunction<typeof useRole>;
 jest.mock('../UserManagementTable', () => ({
   UserManagementTable: ({ onSelectionChange, onUserUpdated }: any) => (
     <div data-testid="user-management-table">
-      <button onClick={() => onSelectionChange(['user1', 'user2'])}>
+      <button onClick={() = aria-label="Button"> onSelectionChange(['user1', 'user2'])}>
         Select Users
       </button>
-      <button onClick={onUserUpdated}>Update User</button>
+      <button onClick={onUserUpdated} aria-label="Button">Update User</button>
     </div>
   )
 }));
@@ -30,7 +30,7 @@ jest.mock('../UserManagementTable', () => ({
 jest.mock('../UserCreationForm', () => ({
   UserCreationForm: ({ onUserCreated }: any) => (
     <div data-testid="user-creation-form">
-      <button onClick={onUserCreated}>Create User</button>
+      <button onClick={onUserCreated} aria-label="Button">Create User</button>
     </div>
   )
 }));
@@ -43,8 +43,8 @@ jest.mock('../BulkUserOperations', () => ({
   BulkUserOperations: ({ selectedUserIds, onOperationComplete, onCancel }: any) => (
     <div data-testid="bulk-user-operations">
       <span>Selected: {selectedUserIds.length}</span>
-      <button onClick={onOperationComplete}>Complete Operation</button>
-      <button onClick={onCancel}>Cancel</button>
+      <button onClick={onOperationComplete} aria-label="Button">Complete Operation</button>
+      <button onClick={onCancel} aria-label="Button">Cancel</button>
     </div>
   )
 }));

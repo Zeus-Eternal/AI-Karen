@@ -41,24 +41,24 @@ export default function AgentList() {
       {agents.map(agent => (
         <Card key={agent.id}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">{agent.name}</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">{agent.name}</CardTitle>
             <Badge variant={agent.status === "running" ? "default" : agent.status === "stopped" ? "secondary" : "destructive"}>
               {agent.status}
             </Badge>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
+          <CardContent className="space-y-2 text-sm md:text-base lg:text-lg">
             <div className="flex items-center justify-between">
               <span>Trigger</span>
-              <Input className="w-40" value={agent.trigger} readOnly />
+              <input className="w-40 sm:w-auto md:w-full" value={agent.trigger} readOnly />
             </div>
             <div className="flex items-center justify-between">
               <span>Action</span>
-              <Input className="w-40" value={agent.action} readOnly />
+              <input className="w-40 sm:w-auto md:w-full" value={agent.action} readOnly />
             </div>
           </CardContent>
           <CardFooter className="flex items-center justify-between">
             <Switch checked={agent.status === "running"} onCheckedChange={(val) => toggleAgent(agent.id, val)} />
-            <Button size="sm" variant="outline">Configure</Button>
+            <button size="sm" variant="outline" aria-label="Button">Configure</Button>
           </CardFooter>
         </Card>
       ))}

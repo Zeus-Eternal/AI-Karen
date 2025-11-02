@@ -240,9 +240,9 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
           >
             <motion.div
               animate={{ rotate: refreshProgress * 360 }}
-              className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"
+              className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full sm:w-auto md:w-full"
             />
-            <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">
+            <span className="ml-2 text-sm text-blue-600 dark:text-blue-400 md:text-base lg:text-lg">
               {refreshProgress >= 1 ? 'Release to refresh' : 'Pull to refresh'}
             </span>
           </motion.div>
@@ -327,7 +327,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
-              className="ml-2 whitespace-nowrap text-sm font-medium"
+              className="ml-2 whitespace-nowrap text-sm font-medium md:text-base lg:text-lg"
             >
               {label}
             </motion.span>
@@ -419,7 +419,7 @@ const TouchSlider: React.FC<TouchSliderProps> = ({
       </div>
       
       {/* Value display */}
-      <div className="flex justify-between text-xs text-gray-500 mt-2">
+      <div className="flex justify-between text-xs text-gray-500 mt-2 sm:text-sm md:text-base">
         <span>{min}</span>
         <span className="font-medium">{value}</span>
         <span>{max}</span>

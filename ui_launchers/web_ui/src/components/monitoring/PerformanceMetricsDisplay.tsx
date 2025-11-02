@@ -53,7 +53,7 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <span className="text-lg font-semibold">Performance Metrics</span>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
             {metrics.timeRange}
           </Badge>
         </CardTitle>
@@ -63,16 +63,16 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
         {/* Response Time Metrics */}
         <div className={`p-3 rounded-lg ${performanceStatus.bg}`}>
           <div className="flex justify-between items-center mb-2">
-            <h4 className="font-medium text-sm">Response Times</h4>
+            <h4 className="font-medium text-sm md:text-base lg:text-lg">Response Times</h4>
             <Badge 
               variant={performanceStatus.status === 'excellent' ? 'default' : 'secondary'}
-              className="text-xs capitalize"
+              className="text-xs capitalize sm:text-sm md:text-base"
             >
               {performanceStatus.status}
             </Badge>
           </div>
           
-          <div className="grid grid-cols-3 gap-3 text-sm">
+          <div className="grid grid-cols-3 gap-3 text-sm md:text-base lg:text-lg">
             <div className="text-center">
               <div className={`font-bold text-lg ${performanceStatus.color}`}>
                 {formatTime(metrics.averageResponseTime)}
@@ -96,13 +96,13 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
 
         {/* Request Volume and Error Rate */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 bg-blue-50 rounded-lg">
+          <div className="p-3 bg-blue-50 rounded-lg sm:p-4 md:p-6">
             <div className="text-center">
               <div className="font-bold text-2xl text-blue-600">
                 {metrics.requestCount.toLocaleString()}
               </div>
-              <div className="text-sm text-muted-foreground">Total Requests</div>
-              <div className="text-xs text-blue-600 mt-1">
+              <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Total Requests</div>
+              <div className="text-xs text-blue-600 mt-1 sm:text-sm md:text-base">
                 {formatThroughput(metrics.throughput)}
               </div>
             </div>
@@ -117,7 +117,7 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
               <div className={`font-bold text-2xl ${errorStatus.color}`}>
                 {metrics.errorRate.toFixed(1)}%
               </div>
-              <div className="text-sm text-muted-foreground">Error Rate</div>
+              <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Error Rate</div>
               <div className={`text-xs mt-1 ${errorStatus.color}`}>
                 {errorStatus.status === 'excellent' ? 'Excellent' : 
                  errorStatus.status === 'good' ? 'Acceptable' : 'High'}
@@ -128,13 +128,13 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
 
         {/* Performance Indicators */}
         <div className="space-y-2">
-          <h4 className="font-medium text-sm">Performance Indicators</h4>
+          <h4 className="font-medium text-sm md:text-base lg:text-lg">Performance Indicators</h4>
           
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
               <span>Response Time</span>
               <div className="flex items-center space-x-2">
-                <div className="w-24 bg-gray-200 rounded-full h-2">
+                <div className="w-24 bg-gray-200 rounded-full h-2 sm:w-auto md:w-full">
                   <div 
                     className={`h-2 rounded-full ${
                       metrics.averageResponseTime < 1000 ? 'bg-green-500' :
@@ -146,16 +146,16 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
                     }}
                   />
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   {formatTime(metrics.averageResponseTime)}
                 </span>
               </div>
             </div>
             
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
               <span>Error Rate</span>
               <div className="flex items-center space-x-2">
-                <div className="w-24 bg-gray-200 rounded-full h-2">
+                <div className="w-24 bg-gray-200 rounded-full h-2 sm:w-auto md:w-full">
                   <div 
                     className={`h-2 rounded-full ${
                       metrics.errorRate < 1 ? 'bg-green-500' :
@@ -167,16 +167,16 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
                     }}
                   />
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   {metrics.errorRate.toFixed(1)}%
                 </span>
               </div>
             </div>
             
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
               <span>Throughput</span>
               <div className="flex items-center space-x-2">
-                <div className="w-24 bg-gray-200 rounded-full h-2">
+                <div className="w-24 bg-gray-200 rounded-full h-2 sm:w-auto md:w-full">
                   <div 
                     className="h-2 rounded-full bg-blue-500"
                     style={{ 
@@ -184,7 +184,7 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
                     }}
                   />
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   {formatThroughput(metrics.throughput)}
                 </span>
               </div>

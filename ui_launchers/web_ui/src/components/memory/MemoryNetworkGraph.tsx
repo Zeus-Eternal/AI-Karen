@@ -2,7 +2,6 @@
  * Memory Network Graph Component
  * Interactive network visualization using D3.js for memory relationships
  */
-
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as d3 from 'd3';
 import { Card } from '@/components/ui/card';
@@ -30,10 +29,8 @@ import type {
   NetworkStatistics,
   MemoryNetworkProps
 } from '@/types/memory';
-
 // Extend the base node type to be compatible with D3 simulation
 type MemoryNetworkNode = BaseMemoryNetworkNode & d3.SimulationNodeDatum;
-
 interface NetworkConfig {
   nodeSize: [number, number]; // [min, max]
   linkDistance: number;
@@ -45,13 +42,11 @@ interface NetworkConfig {
   animationSpeed: number;
   colorScheme: 'default' | 'confidence' | 'type' | 'cluster';
 }
-
 interface TooltipData {
   node: MemoryNetworkNode;
   x: number;
   y: number;
 }
-
 interface FilterOptions {
   minConfidence: number;
   maxConfidence: number;
@@ -60,7 +55,6 @@ interface FilterOptions {
   minConnections: number;
   searchQuery: string;
 }
-
 export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
   userId,
   tenantId,
@@ -73,7 +67,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<d3.Simulation<MemoryNetworkNode, MemoryNetworkEdge> | null>(null);
-  
   const [networkData, setNetworkData] = useState<MemoryNetworkData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +75,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
   const [showControls, setShowControls] = useState(true);
-  
   const [config, setConfig] = useState<NetworkConfig>({
     nodeSize: [5, 20],
     linkDistance: 50,
@@ -94,7 +86,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     animationSpeed: 1,
     colorScheme: 'cluster'
   });
-
   const [filters, setFilters] = useState<FilterOptions>({
     minConfidence: 0,
     maxConfidence: 1,
@@ -103,9 +94,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     minConnections: 0,
     searchQuery: ''
   });
-
   const memoryService = useMemo(() => getMemoryService(), []);
-
   // Color scales for different visualization modes
   const colorScales = useMemo(() => ({
     default: d3.scaleOrdinal(d3.schemeCategory10),
@@ -113,21 +102,17 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     type: d3.scaleOrdinal(d3.schemeSet2),
     cluster: d3.scaleOrdinal(d3.schemeTableau10)
   }), []);
-
   // Load network data
   const loadNetworkData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-
       // Get memory stats to generate network data
       const stats = await memoryService.getMemoryStats(userId);
-      
       // Generate mock network data based on memory stats
       const nodes: MemoryNetworkNode[] = [];
       const edges: MemoryNetworkEdge[] = [];
       const clusters: MemoryCluster[] = [];
-
       // Create nodes from memory data
       const nodeCount = Math.min(stats.totalMemories, 100); // Limit for performance
       for (let i = 0; i < nodeCount; i++) {
@@ -135,7 +120,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         const clusterNames = Object.keys(stats.memoriesByTag);
         const type = types[i % types.length];
         const cluster = clusterNames[i % clusterNames.length] || 'general';
-        
         nodes.push({
           id: `node-${i}`,
           label: `Memory ${i + 1}`,
@@ -152,22 +136,17 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           tags: [`tag-${i % 5}`, `category-${i % 3}`]
         });
       }
-
       // Create edges between related nodes
       const edgeCount = Math.floor(nodeCount * 1.5);
       const edgeSet = new Set<string>();
-      
       for (let i = 0; i < edgeCount; i++) {
         const sourceIdx = Math.floor(Math.random() * nodeCount);
         const targetIdx = Math.floor(Math.random() * nodeCount);
-        
         if (sourceIdx !== targetIdx) {
           const edgeId = `${sourceIdx}-${targetIdx}`;
           const reverseEdgeId = `${targetIdx}-${sourceIdx}`;
-          
           if (!edgeSet.has(edgeId) && !edgeSet.has(reverseEdgeId)) {
             edgeSet.add(edgeId);
-            
             const edgeTypes = ['semantic', 'temporal', 'explicit', 'inferred'];
             edges.push({
               id: edgeId,
@@ -180,7 +159,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           }
         }
       }
-
       // Create clusters
       const clusterNames = [...new Set(nodes.map(n => n.cluster))];
       clusterNames.forEach((clusterName, index) => {
@@ -197,7 +175,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           topics: [`topic-${index}-1`, `topic-${index}-2`]
         });
       });
-
       // Calculate network statistics
       const statistics: NetworkStatistics = {
         nodeCount: nodes.length,
@@ -208,44 +185,36 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         modularity: 0.3 + Math.random() * 0.4,
         smallWorldCoefficient: 0.1 + Math.random() * 0.2
       };
-
       const networkData: MemoryNetworkData = {
         nodes,
         edges,
         clusters,
         statistics
       };
-
       setNetworkData(networkData);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load network data';
       setError(errorMessage);
-      console.error('Network data loading error:', err);
     } finally {
       setLoading(false);
     }
   }, [userId, memoryService, colorScales]);
-
   // Filter network data based on current filters
   const filteredData = useMemo(() => {
     if (!networkData) return null;
-
     let filteredNodes = networkData.nodes.filter(node => {
       // Confidence filter
       if (node.confidence < filters.minConfidence || node.confidence > filters.maxConfidence) {
         return false;
       }
-
       // Type filter
       if (filters.selectedTypes.length > 0 && !filters.selectedTypes.includes(node.type)) {
         return false;
       }
-
       // Cluster filter
       if (filters.selectedClusters.length > 0 && !filters.selectedClusters.includes(node.cluster)) {
         return false;
       }
-
       // Search filter
       if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase();
@@ -255,16 +224,13 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           return false;
         }
       }
-
       return true;
     });
-
     // Filter edges to only include those between visible nodes
     const nodeIds = new Set(filteredNodes.map(n => n.id));
     const filteredEdges = networkData.edges.filter(edge => 
       nodeIds.has(edge.source as string) && nodeIds.has(edge.target as string)
     );
-
     // Apply minimum connections filter
     if (filters.minConnections > 0) {
       const connectionCounts = new Map<string, number>();
@@ -274,38 +240,30 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         connectionCounts.set(source, (connectionCounts.get(source) || 0) + 1);
         connectionCounts.set(target, (connectionCounts.get(target) || 0) + 1);
       });
-
       filteredNodes = filteredNodes.filter(node => 
         (connectionCounts.get(node.id) || 0) >= filters.minConnections
       );
     }
-
     return {
       ...networkData,
       nodes: filteredNodes,
       edges: filteredEdges
     };
   }, [networkData, filters]);
-
   // Initialize and update D3 visualization
   const updateVisualization = useCallback(() => {
     if (!filteredData || !svgRef.current) return;
-
     const svg = d3.select(svgRef.current);
     const container = svg.select('.network-container');
-    
     // Clear existing elements
     container.selectAll('*').remove();
-
     // Set up zoom behavior
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 10])
       .on('zoom', (event) => {
         container.attr('transform', event.transform);
       });
-
     svg.call(zoom);
-
     // Create simulation
     const simulation = d3.forceSimulation<MemoryNetworkNode>(filteredData.nodes)
       .force('link', d3.forceLink<MemoryNetworkNode, MemoryNetworkEdge>(filteredData.edges)
@@ -315,9 +273,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       .force('charge', d3.forceManyBody().strength(config.chargeStrength))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide().radius(d => (d as MemoryNetworkNode).size + 2));
-
     simulationRef.current = simulation;
-
     // Create cluster backgrounds if enabled
     if (config.showClusters) {
       const clusterGroups = container.selectAll('.cluster')
@@ -325,7 +281,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         .enter()
         .append('g')
         .attr('class', 'cluster');
-
       clusterGroups.append('circle')
         .attr('class', 'cluster-background')
         .attr('r', d => Math.sqrt(d.size) * 20)
@@ -335,7 +290,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         .attr('stroke-width', 2)
         .attr('stroke-dasharray', '5,5');
     }
-
     // Create links
     const links = container.selectAll('.link')
       .data(filteredData.edges)
@@ -353,7 +307,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       })
       .attr('stroke-width', d => Math.sqrt(d.weight) * 2)
       .attr('stroke-opacity', d => d.confidence * 0.8);
-
     // Create nodes
     const nodes = container.selectAll('.node')
       .data(filteredData.nodes)
@@ -361,7 +314,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       .append('g')
       .attr('class', 'node')
       .style('cursor', 'pointer');
-
     // Node circles
     nodes.append('circle')
       .attr('r', d => d.size)
@@ -379,7 +331,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       })
       .attr('stroke', '#fff')
       .attr('stroke-width', 2);
-
     // Node labels
     if (config.showLabels) {
       nodes.append('text')
@@ -390,7 +341,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         .style('fill', '#333')
         .text(d => d.label);
     }
-
     // Node interactions
     nodes
       .on('mouseover', (event, d) => {
@@ -399,14 +349,12 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           x: event.pageX,
           y: event.pageY
         });
-        
         // Highlight connected nodes and edges
         const connectedNodeIds = new Set<string>();
         links
           .style('stroke-opacity', edge => {
             const sourceId = typeof edge.source === 'string' ? edge.source : (edge.source as MemoryNetworkNode).id;
             const targetId = typeof edge.target === 'string' ? edge.target : (edge.target as MemoryNetworkNode).id;
-            
             if (sourceId === d.id || targetId === d.id) {
               connectedNodeIds.add(sourceId);
               connectedNodeIds.add(targetId);
@@ -414,7 +362,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
             }
             return 0.1;
           });
-        
         nodes.select('circle')
           .style('opacity', node => connectedNodeIds.has(node.id) || node.id === d.id ? 1 : 0.3);
       })
@@ -430,7 +377,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       .on('dblclick', (event, d) => {
         onNodeDoubleClick?.(d);
       });
-
     // Drag behavior
     const drag = d3.drag<SVGGElement, MemoryNetworkNode>()
       .on('start', (event, d) => {
@@ -447,9 +393,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         d.fx = null;
         d.fy = null;
       });
-
     nodes.call(drag);
-
     // Update positions on simulation tick
     simulation.on('tick', () => {
       links
@@ -469,9 +413,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           const target = d.target as any;
           return typeof target === 'object' ? target.y : 0;
         });
-
       nodes.attr('transform', d => `translate(${(d as any).x || 0},${(d as any).y || 0})`);
-
       // Update cluster positions
       if (config.showClusters) {
         filteredData.clusters.forEach(cluster => {
@@ -481,30 +423,24 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
             cluster.centroid.y = d3.mean(clusterNodes, n => (n as any).y || 0) || 0;
           }
         });
-
         container.selectAll('.cluster circle')
           .attr('cx', d => (d as MemoryCluster).centroid.x)
           .attr('cy', d => (d as MemoryCluster).centroid.y);
       }
     });
-
     // Control simulation playback
     if (!isPlaying) {
       simulation.stop();
     }
-
   }, [filteredData, config, width, height, colorScales, isPlaying, onNodeSelect, onNodeDoubleClick]);
-
   // Load data on mount
   useEffect(() => {
     loadNetworkData();
   }, [loadNetworkData]);
-
   // Update visualization when data or config changes
   useEffect(() => {
     updateVisualization();
   }, [updateVisualization]);
-
   // Cleanup simulation on unmount
   useEffect(() => {
     return () => {
@@ -513,7 +449,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       }
     };
   }, []);
-
   // Control functions
   const handleZoomIn = useCallback(() => {
     if (svgRef.current) {
@@ -522,7 +457,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       );
     }
   }, []);
-
   const handleZoomOut = useCallback(() => {
     if (svgRef.current) {
       d3.select(svgRef.current).transition().call(
@@ -530,7 +464,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       );
     }
   }, []);
-
   const handleReset = useCallback(() => {
     if (svgRef.current) {
       d3.select(svgRef.current).transition().call(
@@ -542,7 +475,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       simulationRef.current.alpha(1).restart();
     }
   }, []);
-
   const togglePlayPause = useCallback(() => {
     setIsPlaying(prev => {
       const newPlaying = !prev;
@@ -556,28 +488,25 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       return newPlaying;
     });
   }, []);
-
   const toggleFullscreen = useCallback(() => {
     setIsFullscreen(prev => !prev);
   }, []);
-
   if (error) {
     return (
-      <Card className="p-6">
+      <Card className="p-6 sm:p-4 md:p-6">
         <div className="text-center">
           <div className="text-red-600 mb-4">
-            <Settings className="w-12 h-12 mx-auto mb-2" />
+            <Settings className="w-12 h-12 mx-auto mb-2 sm:w-auto md:w-full" />
             <h3 className="text-lg font-semibold">Network Error</h3>
           </div>
           <p className="text-gray-600 mb-4">{error}</p>
-          <Button onClick={loadNetworkData} variant="outline">
+          <button onClick={loadNetworkData} variant="outline" aria-label="Button">
             Retry
           </Button>
         </div>
       </Card>
     );
   }
-
   return (
     <div 
       ref={containerRef}
@@ -587,68 +516,65 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       {/* Controls */}
       {showControls && (
         <div className="absolute top-4 left-4 z-10 space-y-2">
-          <Card className="p-2">
+          <Card className="p-2 sm:p-4 md:p-6">
             <div className="flex space-x-1">
-              <Button size="sm" variant="outline" onClick={handleZoomIn}>
-                <ZoomIn className="w-4 h-4" />
+              <button size="sm" variant="outline" onClick={handleZoomIn} aria-label="Button">
+                <ZoomIn className="w-4 h-4 sm:w-auto md:w-full" />
               </Button>
-              <Button size="sm" variant="outline" onClick={handleZoomOut}>
-                <ZoomOut className="w-4 h-4" />
+              <button size="sm" variant="outline" onClick={handleZoomOut} aria-label="Button">
+                <ZoomOut className="w-4 h-4 sm:w-auto md:w-full" />
               </Button>
-              <Button size="sm" variant="outline" onClick={handleReset}>
-                <RotateCcw className="w-4 h-4" />
+              <button size="sm" variant="outline" onClick={handleReset} aria-label="Button">
+                <RotateCcw className="w-4 h-4 sm:w-auto md:w-full" />
               </Button>
-              <Button size="sm" variant="outline" onClick={togglePlayPause}>
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              <button size="sm" variant="outline" onClick={togglePlayPause} aria-label="Button">
+                {isPlaying ? <Pause className="w-4 h-4 sm:w-auto md:w-full" /> : <Play className="w-4 h-4 sm:w-auto md:w-full" />}
               </Button>
-              <Button size="sm" variant="outline" onClick={toggleFullscreen}>
-                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              <button size="sm" variant="outline" onClick={toggleFullscreen} aria-label="Button">
+                {isFullscreen ? <Minimize2 className="w-4 h-4 sm:w-auto md:w-full" /> : <Maximize2 className="w-4 h-4 sm:w-auto md:w-full" />}
               </Button>
             </div>
           </Card>
-
           {/* Search and Filter */}
-          <Card className="p-3 w-64">
+          <Card className="p-3 w-64 sm:w-auto md:w-full">
             <div className="space-y-2">
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-auto md:w-full" />
+                <input
                   type="text"
                   placeholder="Search nodes..."
                   value={filters.searchQuery}
-                  onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
-                  className="pl-8 text-sm"
+                  onChange={(e) = aria-label="Input"> setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
+                  className="pl-8 text-sm md:text-base lg:text-lg"
                 />
               </div>
-              
               <div className="flex items-center space-x-2">
-                <label className="text-xs text-gray-600">Min Confidence:</label>
+                <label className="text-xs text-gray-600 sm:text-sm md:text-base">Min Confidence:</label>
                 <input
                   type="range"
                   min="0"
                   max="1"
                   step="0.1"
                   value={filters.minConfidence}
-                  onChange={(e) => setFilters(prev => ({ 
+                  onChange={(e) = aria-label="Input"> setFilters(prev => ({ 
                     ...prev, 
                     minConfidence: parseFloat(e.target.value) 
                   }))}
                   className="flex-1"
                 />
-                <span className="text-xs text-gray-600 w-8">
+                <span className="text-xs text-gray-600 w-8 sm:w-auto md:w-full">
                   {filters.minConfidence.toFixed(1)}
                 </span>
               </div>
-
               <div className="flex items-center space-x-2">
-                <label className="text-xs text-gray-600">Color by:</label>
+                <label className="text-xs text-gray-600 sm:text-sm md:text-base">Color by:</label>
                 <select
                   value={config.colorScheme}
-                  onChange={(e) => setConfig(prev => ({ 
+                  onChange={(e) = aria-label="Select option"> setConfig(prev => ({ 
                     ...prev, 
                     colorScheme: e.target.value as any 
                   }))}
-                  className="flex-1 text-xs border rounded px-1 py-1"
+                  className="flex-1 text-xs border rounded px-1 py-1 sm:text-sm md:text-base"
                 >
                   <option value="cluster">Cluster</option>
                   <option value="type">Type</option>
@@ -660,12 +586,11 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           </Card>
         </div>
       )}
-
       {/* Statistics */}
       {networkData && (
         <div className="absolute top-4 right-4 z-10">
-          <Card className="p-3">
-            <div className="text-xs space-y-1">
+          <Card className="p-3 sm:p-4 md:p-6">
+            <div className="text-xs space-y-1 sm:text-sm md:text-base">
               <div className="font-semibold">Network Statistics</div>
               <div>Nodes: {filteredData?.nodes.length || 0} / {networkData.statistics.nodeCount}</div>
               <div>Edges: {filteredData?.edges.length || 0} / {networkData.statistics.edgeCount}</div>
@@ -675,7 +600,6 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           </Card>
         </div>
       )}
-
       {/* Main SVG */}
       <svg
         ref={svgRef}
@@ -701,27 +625,25 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         </defs>
         <g className="network-container" />
       </svg>
-
       {/* Loading overlay */}
       {loading && (
         <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-            <div className="text-sm text-gray-600">Loading network...</div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2 sm:w-auto md:w-full"></div>
+            <div className="text-sm text-gray-600 md:text-base lg:text-lg">Loading network...</div>
           </div>
         </div>
       )}
-
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="absolute z-20 bg-black text-white text-xs rounded p-2 pointer-events-none max-w-xs"
+          className="absolute z-20 bg-black text-white text-xs rounded p-2 pointer-events-none max-w-xs sm:text-sm md:text-base"
           style={{
             left: tooltip.x + 10,
             top: tooltip.y - 10,
             transform: 'translateY(-100%)'
           }}
-        >
+         role="tooltip">
           <div className="font-semibold">{tooltip.node.label}</div>
           <div className="text-gray-300">Type: {tooltip.node.type}</div>
           <div className="text-gray-300">Cluster: {tooltip.node.cluster}</div>
@@ -733,39 +655,38 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           </div>
           <div className="flex flex-wrap gap-1 mt-1">
             {tooltip.node.tags.slice(0, 3).map(tag => (
-              <Badge key={tag} variant="secondary" className="text-xs">
+              <Badge key={tag} variant="secondary" className="text-xs sm:text-sm md:text-base">
                 {tag}
               </Badge>
             ))}
           </div>
         </div>
       )}
-
       {/* Selected node details */}
       {selectedNode && (
         <div className="absolute bottom-4 left-4 z-10">
-          <Card className="p-3 max-w-sm">
+          <Card className="p-3 max-w-sm sm:p-4 md:p-6">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-sm">{selectedNode.label}</h4>
+                <h4 className="font-semibold text-sm md:text-base lg:text-lg">{selectedNode.label}</h4>
                 <button
-                  onClick={() => setSelectedNode(null)}
+                  onClick={() = aria-label="Button"> setSelectedNode(null)}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   ×
                 </button>
               </div>
-              <div className="text-xs text-gray-600">
-                <div>Type: <Badge variant="outline" className="text-xs">{selectedNode.type}</Badge></div>
-                <div>Cluster: <Badge variant="outline" className="text-xs">{selectedNode.cluster}</Badge></div>
+              <div className="text-xs text-gray-600 sm:text-sm md:text-base">
+                <div>Type: <Badge variant="outline" className="text-xs sm:text-sm md:text-base">{selectedNode.type}</Badge></div>
+                <div>Cluster: <Badge variant="outline" className="text-xs sm:text-sm md:text-base">{selectedNode.cluster}</Badge></div>
                 <div>Confidence: {(selectedNode.confidence * 100).toFixed(0)}%</div>
               </div>
-              <div className="text-xs">
+              <div className="text-xs sm:text-sm md:text-base">
                 {selectedNode.content}
               </div>
               <div className="flex flex-wrap gap-1">
                 {selectedNode.tags.map(tag => (
-                  <Badge key={tag} variant="secondary" className="text-xs">
+                  <Badge key={tag} variant="secondary" className="text-xs sm:text-sm md:text-base">
                     {tag}
                   </Badge>
                 ))}
@@ -777,5 +698,4 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     </div>
   );
 };
-
 export default MemoryNetworkGraph;

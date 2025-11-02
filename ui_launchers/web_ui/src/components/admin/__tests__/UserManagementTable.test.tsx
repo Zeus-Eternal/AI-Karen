@@ -5,7 +5,7 @@
  * pagination, and user operations.
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { jest } from '@jest/globals';
 import { UserManagementTable } from '../UserManagementTable';
@@ -21,8 +21,8 @@ jest.mock('../UserEditModal', () => ({
   UserEditModal: ({ user, onClose, onUserUpdated }: any) => (
     <div data-testid="user-edit-modal">
       <span>Editing: {user.email}</span>
-      <button onClick={onUserUpdated}>Update</button>
-      <button onClick={onClose}>Close</button>
+      <button onClick={onUserUpdated} aria-label="Button">Update</button>
+      <button onClick={onClose} aria-label="Button">Close</button>
     </div>
   )
 }));
@@ -33,9 +33,9 @@ jest.mock('../UserSearchFilters', () => ({
       <input
         data-testid="search-input"
         value={filters.search || ''}
-        onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
+        onChange={(e) = aria-label="Input"> onFiltersChange({ ...filters, search: e.target.value })}
       />
-      <button onClick={onRefresh}>Refresh</button>
+      <button onClick={onRefresh} aria-label="Button">Refresh</button>
     </div>
   )
 }));

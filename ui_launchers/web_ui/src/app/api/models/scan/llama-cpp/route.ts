@@ -1,25 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
-
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const directory = searchParams.get('directory') || 'models/llama-cpp';
-    
-    console.log('🦙 LlamaCpp Scanner: Scanning directory', { directory });
-    
     // Resolve the directory path relative to the project root
     const projectRoot = process.cwd();
     const fullPath = path.resolve(projectRoot, directory);
-    
-    console.log('🦙 LlamaCpp Scanner: Full path resolved', { fullPath });
-    
     // Check if directory exists
     try {
       await fs.access(fullPath);
     } catch (error) {
-      console.log('🦙 LlamaCpp Scanner: Directory not found, creating mock response');
       return NextResponse.json({
         models: [],
         directory,
@@ -27,31 +19,21 @@ export async function GET(request: NextRequest) {
         scan_time: new Date().toISOString()
       });
     }
-    
     // Read directory contents
     const files = await fs.readdir(fullPath, { withFileTypes: true });
-    
     // Filter for GGUF files
     const ggufFiles = files.filter(file => 
       file.isFile() && file.name.toLowerCase().endsWith('.gguf')
     );
-    
-    console.log('🦙 LlamaCpp Scanner: Found GGUF files', { 
-      totalFiles: files.length, 
-      ggufFiles: ggufFiles.length,
-      fileNames: ggufFiles.map(f => f.name)
     });
-    
     // Process each GGUF file
     const models = [];
     for (const file of ggufFiles) {
       try {
         const filePath = path.join(fullPath, file.name);
         const stats = await fs.stat(filePath);
-        
         // Extract basic metadata from filename
         const metadata = extractGGUFMetadataFromFilename(file.name);
-        
         models.push({
           filename: file.name,
           path: path.join(directory, file.name),
@@ -59,21 +41,9 @@ export async function GET(request: NextRequest) {
           modified: stats.mtime.toISOString(),
           metadata
         });
-        
-        console.log('🦙 LlamaCpp Scanner: Processed file', {
-          filename: file.name,
-          size: stats.size,
-          metadata
-        });
-        
       } catch (fileError) {
-        console.error('🦙 LlamaCpp Scanner: Error processing file', {
-          filename: file.name,
-          error: fileError
-        });
       }
     }
-    
     const response = {
       models,
       directory,
@@ -81,17 +51,8 @@ export async function GET(request: NextRequest) {
       gguf_files: ggufFiles.length,
       scan_time: new Date().toISOString()
     };
-    
-    console.log('🦙 LlamaCpp Scanner: Scan completed', {
-      modelsFound: models.length,
-      directory
-    });
-    
     return NextResponse.json(response);
-    
   } catch (error) {
-    console.error('🦙 LlamaCpp Scanner: Scan failed', error);
-    
     return NextResponse.json({
       models: [],
       directory: 'models/llama-cpp',
@@ -100,26 +61,22 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
-
 /**
  * Extract GGUF metadata from filename patterns
  */
 function extractGGUFMetadataFromFilename(filename: string): Record<string, any> {
   const metadata: Record<string, any> = {};
   const lowerFilename = filename.toLowerCase();
-  
   // Extract quantization (Q4_K_M, Q5_K_S, etc.)
   const quantMatch = filename.match(/[._-](Q\d+_[KM]_[MS]|Q\d+_[KM]|Q\d+)[._-]/i);
   if (quantMatch) {
     metadata.quantization = quantMatch[1].toUpperCase();
   }
-  
   // Extract parameter count
   const paramMatch = filename.match(/(\d+\.?\d*)[Bb]/);
   if (paramMatch) {
     metadata.parameter_count = paramMatch[1] + 'B';
   }
-  
   // Extract architecture from filename
   if (lowerFilename.includes('phi')) {
     metadata.architecture = 'phi3';
@@ -135,7 +92,6 @@ function extractGGUFMetadataFromFilename(filename: string): Record<string, any> 
     metadata.architecture = 'llama';
     metadata.model_family = 'tinyllama';
   }
-  
   // Extract context length
   if (lowerFilename.includes('4k')) {
     metadata.context_length = 4096;
@@ -148,7 +104,6 @@ function extractGGUFMetadataFromFilename(filename: string): Record<string, any> 
   } else {
     metadata.context_length = 2048; // Default
   }
-  
   // Infer model type
   if (lowerFilename.includes('chat') || lowerFilename.includes('instruct')) {
     metadata.model_type = 'chat';
@@ -157,9 +112,7 @@ function extractGGUFMetadataFromFilename(filename: string): Record<string, any> 
   } else {
     metadata.model_type = 'base';
   }
-  
   // Set tokenizer type
   metadata.tokenizer_type = metadata.architecture === 'phi3' ? 'phi3' : 'llama';
-  
   return metadata;
 }

@@ -6,8 +6,6 @@
 
 import { renderHook, act } from '@testing-library/react';
 import { useDashboardStore } from '../dashboard-store';
-import type { DashboardConfig, DashboardFilter } from '@/types/dashboard';
-
 import { vi } from 'vitest';
 
 // Mock localStorage

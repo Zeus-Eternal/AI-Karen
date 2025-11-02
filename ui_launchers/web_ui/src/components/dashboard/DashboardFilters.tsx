@@ -1,6 +1,6 @@
-'use client';
-
 import React, { useState } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
+import { useEffect } from 'react';
 import { Filter, X, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,29 +8,42 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
+import type { DashboardFilter } from '@/types/dashboard';
+'use client';
+
+
+
+
+
+
+
+
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
+
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
+
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
-import type { DashboardFilter } from '@/types/dashboard';
+
+
+
 
 interface DashboardFiltersProps {
   filters: DashboardFilter[];
@@ -148,14 +161,29 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   ) => {
     switch (config.valueType) {
       case 'select':
+
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Handle escape key
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
         return (
-          <Select value={value?.toString()} onValueChange={onChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select value..." />
+    <ErrorBoundary fallback={<div>Something went wrong in DashboardFilters</div>}>
+      <select value={value?.toString()} onValueChange={onChange} aria-label="Select option">
+            <selectTrigger aria-label="Select option">
+              <selectValue placeholder="Select value..." />
             </SelectTrigger>
-            <SelectContent>
+            <selectContent aria-label="Select option">
               {config.options?.map(option => (
-                <SelectItem key={option.value} value={option.value}>
+                <selectItem key={option.value} value={option.value} aria-label="Select option">
                   {option.label}
                 </SelectItem>
               ))}
@@ -165,28 +193,28 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
       
       case 'number':
         return (
-          <Input
+          <input
             type="number"
             value={value || ''}
-            onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+            onChange={(e) = aria-label="Input"> onChange(parseFloat(e.target.value) || 0)}
             placeholder="Enter number..."
           />
         );
       
       case 'date':
         return (
-          <Input
+          <input
             type="date"
             value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) = aria-label="Input"> onChange(e.target.value)}
           />
         );
       
       default:
         return (
-          <Input
+          <input
             value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) = aria-label="Input"> onChange(e.target.value)}
             placeholder="Enter value..."
           />
         );
@@ -201,10 +229,10 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
       {/* Filter Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Filters</span>
+          <Filter className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+          <span className="text-sm font-medium md:text-base lg:text-lg">Filters</span>
           {activeFilters.length > 0 && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
               {activeFilters.length} active
             </Badge>
           )}
@@ -212,8 +240,8 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Plus className="h-3 w-3 mr-1" />
+            <button variant="outline" size="sm" aria-label="Button">
+              <Plus className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
               Add Filter
             </Button>
           </DialogTrigger>
@@ -224,31 +252,31 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="filter-name">Filter Name</Label>
-                <Input
+                <input
                   id="filter-name"
                   value={newFilter.name || ''}
-                  onChange={(e) => setNewFilter({ ...newFilter, name: e.target.value })}
+                  onChange={(e) = aria-label="Input"> setNewFilter({ ...newFilter, name: e.target.value })}
                   placeholder="Enter filter name..."
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="filter-type">Filter Type</Label>
-                <Select
+                <select
                   value={newFilter.type}
-                  onValueChange={(type: DashboardFilter['type']) => 
+                  onValueChange={(type: DashboardFilter['type']) = aria-label="Select option"> 
                     setNewFilter({ ...newFilter, type, value: '' })
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <selectContent aria-label="Select option">
                     {availableFilterTypes.map(config => (
-                      <SelectItem key={config.type} value={config.type}>
+                      <selectItem key={config.type} value={config.type} aria-label="Select option">
                         <div>
                           <div className="font-medium">{config.label}</div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                             {config.description}
                           </div>
                         </div>
@@ -279,16 +307,16 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
               </div>
 
               <div className="flex justify-end gap-2">
-                <Button
+                <button
                   variant="outline"
-                  onClick={() => setIsAddDialogOpen(false)}
+                  onClick={() = aria-label="Button"> setIsAddDialogOpen(false)}
                 >
                   Cancel
                 </Button>
-                <Button
+                <button
                   onClick={handleAddFilter}
                   disabled={!newFilter.name || !newFilter.type}
-                >
+                 aria-label="Button">
                   Add Filter
                 </Button>
               </div>
@@ -306,17 +334,17 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
               variant="default"
               className="flex items-center gap-1 px-2 py-1"
             >
-              <span className="text-xs">
+              <span className="text-xs sm:text-sm md:text-base">
                 {filter.name}: {renderFilterValue(filter)}
               </span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 hover:bg-transparent"
-                  >
-                    <Search className="h-3 w-3" />
+                    className="h-4 w-4 p-0 hover:bg-transparent sm:w-auto md:w-full"
+                   aria-label="Button">
+                    <Search className="h-3 w-3 sm:w-auto md:w-full" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -342,7 +370,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
       {/* Inactive Filters */}
       {inactiveFilters.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs text-muted-foreground">Inactive Filters</div>
+          <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Inactive Filters</div>
           <div className="flex flex-wrap gap-2">
             {inactiveFilters.map(filter => (
               <Badge
@@ -350,24 +378,24 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                 variant="outline"
                 className="flex items-center gap-1 px-2 py-1 opacity-60"
               >
-                <span className="text-xs">
+                <span className="text-xs sm:text-sm md:text-base">
                   {filter.name}: {renderFilterValue(filter)}
                 </span>
-                <Button
+                <button
                   variant="ghost"
                   size="sm"
-                  className="h-4 w-4 p-0 hover:bg-transparent"
-                  onClick={() => handleToggleFilter(filter.id)}
+                  className="h-4 w-4 p-0 hover:bg-transparent sm:w-auto md:w-full"
+                  onClick={() = aria-label="Button"> handleToggleFilter(filter.id)}
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-3 w-3 sm:w-auto md:w-full" />
                 </Button>
-                <Button
+                <button
                   variant="ghost"
                   size="sm"
-                  className="h-4 w-4 p-0 hover:bg-transparent"
-                  onClick={() => handleRemoveFilter(filter.id)}
+                  className="h-4 w-4 p-0 hover:bg-transparent sm:w-auto md:w-full"
+                  onClick={() = aria-label="Button"> handleRemoveFilter(filter.id)}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3 w-3 sm:w-auto md:w-full" />
                 </Button>
               </Badge>
             ))}
@@ -377,11 +405,12 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
       {/* No Filters State */}
       {filters.length === 0 && (
-        <div className="text-center py-4 text-sm text-muted-foreground">
+        <div className="text-center py-4 text-sm text-muted-foreground md:text-base lg:text-lg">
           No filters applied. Add filters to refine your dashboard data.
         </div>
       )}
     </div>
+    </ErrorBoundary>
   );
 };
 

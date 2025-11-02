@@ -3,7 +3,7 @@
  * Tests the integration between LoginForm, AuthContext, ProtectedRoute, and authService
  */
 
-import React from 'react';
+
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
@@ -51,7 +51,7 @@ vi.mock('@/components/ui/form-field', () => ({
         id={name}
         name={name}
         value={value}
-        onChange={(e) => onValueChange(e.target.value)}
+        onChange={(e) = aria-label="Input"> onValueChange(e.target.value)}
         {...props}
       />
     </div>

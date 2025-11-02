@@ -1,7 +1,6 @@
 /**
  * Custom error classes for model selection services
  */
-
 /**
  * Base error class for all model selection related errors
  */
@@ -10,7 +9,6 @@ export class ModelSelectionError extends Error {
   public readonly service: string;
   public readonly timestamp: string;
   public readonly context?: Record<string, any>;
-
   constructor(
     message: string, 
     code: string, 
@@ -23,11 +21,9 @@ export class ModelSelectionError extends Error {
     this.service = service;
     this.timestamp = new Date().toISOString();
     this.context = context;
-
     // Ensure proper prototype chain for instanceof checks
     Object.setPrototypeOf(this, ModelSelectionError.prototype);
   }
-
   /**
    * Convert error to a serializable object
    */
@@ -42,7 +38,6 @@ export class ModelSelectionError extends Error {
       stack: this.stack
     };
   }
-
   /**
    * Create a user-friendly error message
    */
@@ -50,14 +45,12 @@ export class ModelSelectionError extends Error {
     return this.message;
   }
 }
-
 /**
  * Error thrown when model scanning operations fail
  */
 export class ModelScanError extends ModelSelectionError {
   public readonly directory?: string;
   public readonly scanType?: string;
-
   constructor(
     message: string, 
     directory?: string, 
@@ -68,10 +61,8 @@ export class ModelScanError extends ModelSelectionError {
     this.name = 'ModelScanError';
     this.directory = directory;
     this.scanType = scanType;
-
     Object.setPrototypeOf(this, ModelScanError.prototype);
   }
-
   getUserMessage(): string {
     if (this.directory) {
       return `Failed to scan directory "${this.directory}": ${this.message}`;
@@ -79,7 +70,6 @@ export class ModelScanError extends ModelSelectionError {
     return `Model scanning failed: ${this.message}`;
   }
 }
-
 /**
  * Error thrown when resource operations fail
  */
@@ -87,7 +77,6 @@ export class ResourceError extends ModelSelectionError {
   public readonly resourceType?: string;
   public readonly requiredAmount?: number;
   public readonly availableAmount?: number;
-
   constructor(
     message: string, 
     resourceType?: string,
@@ -100,10 +89,8 @@ export class ResourceError extends ModelSelectionError {
     this.resourceType = resourceType;
     this.requiredAmount = requiredAmount;
     this.availableAmount = availableAmount;
-
     Object.setPrototypeOf(this, ResourceError.prototype);
   }
-
   getUserMessage(): string {
     if (this.resourceType && this.requiredAmount && this.availableAmount) {
       return `Insufficient ${this.resourceType}: need ${this.requiredAmount}, have ${this.availableAmount}`;
@@ -111,14 +98,12 @@ export class ResourceError extends ModelSelectionError {
     return `Resource error: ${this.message}`;
   }
 }
-
 /**
  * Error thrown when model health checks fail
  */
 export class ModelHealthError extends ModelSelectionError {
   public readonly modelId?: string;
   public readonly healthIssue?: string;
-
   constructor(
     message: string, 
     modelId?: string, 
@@ -129,10 +114,8 @@ export class ModelHealthError extends ModelSelectionError {
     this.name = 'ModelHealthError';
     this.modelId = modelId;
     this.healthIssue = healthIssue;
-
     Object.setPrototypeOf(this, ModelHealthError.prototype);
   }
-
   getUserMessage(): string {
     if (this.modelId) {
       return `Health check failed for model "${this.modelId}": ${this.message}`;
@@ -140,14 +123,12 @@ export class ModelHealthError extends ModelSelectionError {
     return `Model health check failed: ${this.message}`;
   }
 }
-
 /**
  * Error thrown when performance monitoring fails
  */
 export class PerformanceError extends ModelSelectionError {
   public readonly modelId?: string;
   public readonly metricType?: string;
-
   constructor(
     message: string, 
     modelId?: string, 
@@ -158,10 +139,8 @@ export class PerformanceError extends ModelSelectionError {
     this.name = 'PerformanceError';
     this.modelId = modelId;
     this.metricType = metricType;
-
     Object.setPrototypeOf(this, PerformanceError.prototype);
   }
-
   getUserMessage(): string {
     if (this.modelId && this.metricType) {
       return `Performance monitoring failed for model "${this.modelId}" (${this.metricType}): ${this.message}`;
@@ -169,14 +148,12 @@ export class PerformanceError extends ModelSelectionError {
     return `Performance monitoring failed: ${this.message}`;
   }
 }
-
 /**
  * Error thrown when preferences operations fail
  */
 export class PreferencesError extends ModelSelectionError {
   public readonly preferenceKey?: string;
   public readonly operation?: string;
-
   constructor(
     message: string, 
     preferenceKey?: string, 
@@ -187,10 +164,8 @@ export class PreferencesError extends ModelSelectionError {
     this.name = 'PreferencesError';
     this.preferenceKey = preferenceKey;
     this.operation = operation;
-
     Object.setPrototypeOf(this, PreferencesError.prototype);
   }
-
   getUserMessage(): string {
     if (this.preferenceKey && this.operation) {
       return `Failed to ${this.operation} preference "${this.preferenceKey}": ${this.message}`;
@@ -198,14 +173,12 @@ export class PreferencesError extends ModelSelectionError {
     return `Preferences operation failed: ${this.message}`;
   }
 }
-
 /**
  * Error thrown when directory watching fails
  */
 export class DirectoryWatchError extends ModelSelectionError {
   public readonly directory?: string;
   public readonly watchOperation?: string;
-
   constructor(
     message: string, 
     directory?: string, 
@@ -216,10 +189,8 @@ export class DirectoryWatchError extends ModelSelectionError {
     this.name = 'DirectoryWatchError';
     this.directory = directory;
     this.watchOperation = watchOperation;
-
     Object.setPrototypeOf(this, DirectoryWatchError.prototype);
   }
-
   getUserMessage(): string {
     if (this.directory) {
       return `Directory watching failed for "${this.directory}": ${this.message}`;
@@ -227,14 +198,12 @@ export class DirectoryWatchError extends ModelSelectionError {
     return `Directory watching failed: ${this.message}`;
   }
 }
-
 /**
  * Error thrown when model registry operations fail
  */
 export class ModelRegistryError extends ModelSelectionError {
   public readonly registryOperation?: string;
   public readonly modelId?: string;
-
   constructor(
     message: string, 
     registryOperation?: string, 
@@ -245,10 +214,8 @@ export class ModelRegistryError extends ModelSelectionError {
     this.name = 'ModelRegistryError';
     this.registryOperation = registryOperation;
     this.modelId = modelId;
-
     Object.setPrototypeOf(this, ModelRegistryError.prototype);
   }
-
   getUserMessage(): string {
     if (this.registryOperation && this.modelId) {
       return `Model registry ${this.registryOperation} failed for "${this.modelId}": ${this.message}`;
@@ -256,7 +223,6 @@ export class ModelRegistryError extends ModelSelectionError {
     return `Model registry operation failed: ${this.message}`;
   }
 }
-
 /**
  * Error thrown when configuration is invalid
  */
@@ -264,7 +230,6 @@ export class ConfigurationError extends ModelSelectionError {
   public readonly configKey?: string;
   public readonly expectedType?: string;
   public readonly actualValue?: any;
-
   constructor(
     message: string, 
     configKey?: string, 
@@ -277,10 +242,8 @@ export class ConfigurationError extends ModelSelectionError {
     this.configKey = configKey;
     this.expectedType = expectedType;
     this.actualValue = actualValue;
-
     Object.setPrototypeOf(this, ConfigurationError.prototype);
   }
-
   getUserMessage(): string {
     if (this.configKey && this.expectedType) {
       return `Invalid configuration for "${this.configKey}": expected ${this.expectedType}, got ${typeof this.actualValue}`;
@@ -288,14 +251,12 @@ export class ConfigurationError extends ModelSelectionError {
     return `Configuration error: ${this.message}`;
   }
 }
-
 /**
  * Error thrown when operations timeout
  */
 export class TimeoutError extends ModelSelectionError {
   public readonly operation?: string;
   public readonly timeoutMs?: number;
-
   constructor(
     message: string, 
     operation?: string, 
@@ -306,10 +267,8 @@ export class TimeoutError extends ModelSelectionError {
     this.name = 'TimeoutError';
     this.operation = operation;
     this.timeoutMs = timeoutMs;
-
     Object.setPrototypeOf(this, TimeoutError.prototype);
   }
-
   getUserMessage(): string {
     if (this.operation && this.timeoutMs) {
       return `Operation "${this.operation}" timed out after ${this.timeoutMs}ms`;
@@ -317,7 +276,6 @@ export class TimeoutError extends ModelSelectionError {
     return `Operation timed out: ${this.message}`;
   }
 }
-
 /**
  * Utility functions for error handling
  */
@@ -328,7 +286,6 @@ export class ErrorUtils {
   static isModelSelectionError(error: any): error is ModelSelectionError {
     return error instanceof ModelSelectionError;
   }
-
   /**
    * Extract error code from any error
    */
@@ -338,7 +295,6 @@ export class ErrorUtils {
     }
     return 'UNKNOWN_ERROR';
   }
-
   /**
    * Extract service name from any error
    */
@@ -348,7 +304,6 @@ export class ErrorUtils {
     }
     return 'Unknown';
   }
-
   /**
    * Get user-friendly error message
    */
@@ -358,7 +313,6 @@ export class ErrorUtils {
     }
     return error.message || 'An unknown error occurred';
   }
-
   /**
    * Create error context from additional information
    */
@@ -369,7 +323,6 @@ export class ErrorUtils {
       ...additionalInfo
     };
   }
-
   /**
    * Wrap a non-model-selection error
    */
@@ -382,7 +335,6 @@ export class ErrorUtils {
     if (this.isModelSelectionError(error)) {
       return error;
     }
-
     return new ModelSelectionError(
       `${operation} failed: ${error.message || error}`,
       'WRAPPED_ERROR',
@@ -390,7 +342,6 @@ export class ErrorUtils {
       { ...context, originalError: error.toString() }
     );
   }
-
   /**
    * Log error with appropriate level
    */
@@ -398,11 +349,9 @@ export class ErrorUtils {
     const message = this.getUserMessage(error);
     const code = this.getErrorCode(error);
     const service = this.getServiceName(error);
-
     if (logger) {
       logger.error(`[${service}:${code}] ${message}`, error);
     } else {
-      console.error(`[${service}:${code}] ${message}`, error);
     }
   }
 }

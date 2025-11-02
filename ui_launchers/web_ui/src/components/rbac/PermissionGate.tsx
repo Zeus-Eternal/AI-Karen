@@ -73,12 +73,12 @@ interface PermissionDeniedFallbackProps {
 function PermissionDeniedFallback({ permissionResult }: PermissionDeniedFallbackProps) {
   const getIcon = () => {
     if (permissionResult.requiresElevation) {
-      return <AlertTriangle className="h-4 w-4" />;
+      return <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />;
     }
     if (permissionResult.restrictions?.length > 0) {
-      return <Lock className="h-4 w-4" />;
+      return <Lock className="h-4 w-4 sm:w-auto md:w-full" />;
     }
-    return <ShieldX className="h-4 w-4" />;
+    return <ShieldX className="h-4 w-4 sm:w-auto md:w-full" />;
   };
 
   const getVariant = () => {
@@ -94,7 +94,7 @@ function PermissionDeniedFallback({ permissionResult }: PermissionDeniedFallback
       <AlertDescription>
         {permissionResult.reason}
         {permissionResult.elevationReason && (
-          <div className="mt-1 text-sm text-muted-foreground">
+          <div className="mt-1 text-sm text-muted-foreground md:text-base lg:text-lg">
             {permissionResult.elevationReason}
           </div>
         )}

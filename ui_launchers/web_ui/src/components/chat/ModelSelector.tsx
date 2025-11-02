@@ -1,13 +1,21 @@
+import React, {
+import {
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { getKarenBackend } from "@/lib/karen-backend";
+import { safeError, safeWarn, safeDebug } from "@/lib/safe-console";
+import { modelSelectionService } from "@/lib/model-selection-service";
 "use client";
 
-import React, {
+
   useState,
   useEffect,
   useMemo,
   useCallback,
   useRef,
 } from "react";
-import {
+
   Select,
   SelectContent,
   SelectItem,
@@ -17,15 +25,15 @@ import {
   SelectLabel,
   SelectSeparator,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
+
+
+
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
+
   Brain,
   Cpu,
   Download,
@@ -41,10 +49,10 @@ import {
   AudioWaveform,
   Sparkles,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { getKarenBackend } from "@/lib/karen-backend";
-import { safeError, safeWarn, safeDebug } from "@/lib/safe-console";
-import {
+
+
+
+
   Model,
   formatFileSize,
   getStatusBadgeVariant,
@@ -52,27 +60,19 @@ import {
   getModelSelectorValue,
   doesModelMatchValue,
 } from "@/lib/model-utils";
-import { modelSelectionService } from "@/lib/model-selection-service";
+
 
 type ModelSelectorTask = "chat" | "image" | "code" | "embedding" | "any";
 
+// Production-ready blocked model names - only essential system directories
 const BLOCKED_MODEL_NAMES = new Set([
   "",
   "metadata_cache",
   "downloads",
-  "download",
   "configs",
-  "config",
-  "llama-cpp",
-  "transformers",
-  "stable-diffusion",
-  "stable_diffusion",
-  "models",
-  "hf_cache",
   "cache",
   "tmp",
   "temp",
-  "basic_cls",
 ]);
 
 const TASK_CAPABILITY_KEYWORDS: Record<ModelSelectorTask, string[]> = {
@@ -270,14 +270,14 @@ interface ModelSelectorProps {
 
 // formatFileSize is now imported from model-utils
 
-type TaskGroupKey = "chat" | "image" | "audio" | "embedding" | "other";
+type TaskGroupKey = "chat" | "image" | "audio" | "embedding" | "production";
 
 const TASK_GROUP_ORDER: TaskGroupKey[] = [
   "chat",
   "image",
   "audio",
   "embedding",
-  "other",
+  "production",
 ];
 
 const TASK_GROUP_METADATA: Record<
@@ -286,23 +286,23 @@ const TASK_GROUP_METADATA: Record<
 > = {
   chat: {
     label: "Chat & Text",
-    icon: <MessageSquare className="h-3 w-3" />,
+    icon: <MessageSquare className="h-3 w-3 sm:w-auto md:w-full" />,
   },
   image: {
     label: "Image Generation",
-    icon: <Image className="h-3 w-3" />,
+    icon: <Image className="h-3 w-3 sm:w-auto md:w-full" />,
   },
   audio: {
     label: "Audio & Speech",
-    icon: <AudioWaveform className="h-3 w-3" />,
+    icon: <AudioWaveform className="h-3 w-3 sm:w-auto md:w-full" />,
   },
   embedding: {
     label: "Embeddings & Search",
-    icon: <Brain className="h-3 w-3" />,
+    icon: <Brain className="h-3 w-3 sm:w-auto md:w-full" />,
   },
-  other: {
-    label: "Other Models",
-    icon: <Sparkles className="h-3 w-3" />,
+  production: {
+    label: "Production Models",
+    icon: <Sparkles className="h-3 w-3 sm:w-auto md:w-full" />,
   },
 };
 
@@ -410,40 +410,40 @@ const inferPrimaryCapability = (model: ModelInfo): TaskGroupKey => {
     return "chat";
   }
 
-  return "other";
+  return "production";
 };
 
 const getProviderIcon = (provider: string) => {
   if (!provider) {
-    return <Cpu className="h-3 w-3" />; // Default icon for undefined provider
+    return <Cpu className="h-3 w-3 sm:w-auto md:w-full" />; // Default icon for undefined provider
   }
   switch (provider.toLowerCase()) {
     case "llama-cpp":
     case "local":
-      return <HardDrive className="h-3 w-3" />;
+      return <HardDrive className="h-3 w-3 sm:w-auto md:w-full" />;
     case "transformers":
-      return <Brain className="h-3 w-3" />;
+      return <Brain className="h-3 w-3 sm:w-auto md:w-full" />;
     case "openai":
-      return <Zap className="h-3 w-3" />;
+      return <Zap className="h-3 w-3 sm:w-auto md:w-full" />;
     default:
-      return <Cpu className="h-3 w-3" />;
+      return <Cpu className="h-3 w-3 sm:w-auto md:w-full" />;
   }
 };
 
 const getStatusIcon = (status: string) => {
   switch (status) {
     case "local":
-      return <CheckCircle className="h-3 w-3 text-green-500" />;
+      return <CheckCircle className="h-3 w-3 text-green-500 sm:w-auto md:w-full" />;
     case "downloading":
-      return <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />;
+      return <Loader2 className="h-3 w-3 text-blue-500 animate-spin sm:w-auto md:w-full" />;
     case "available":
-      return <Download className="h-3 w-3 text-gray-500" />;
+      return <Download className="h-3 w-3 text-gray-500 sm:w-auto md:w-full" />;
     case "incompatible":
-      return <AlertCircle className="h-3 w-3 text-yellow-500" />;
+      return <AlertCircle className="h-3 w-3 text-yellow-500 sm:w-auto md:w-full" />;
     case "error":
-      return <AlertCircle className="h-3 w-3 text-red-500" />;
+      return <AlertCircle className="h-3 w-3 text-red-500 sm:w-auto md:w-full" />;
     default:
-      return <Clock className="h-3 w-3 text-gray-400" />;
+      return <Clock className="h-3 w-3 text-gray-400 sm:w-auto md:w-full" />;
   }
 };
 
@@ -467,113 +467,36 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const autoSelectRef = useRef(false);
   const backend = getKarenBackend();
 
-  const loadModels = async () => {
+  const loadModels = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      safeDebug(
-        "🔍 ModelSelector: Starting model loading from /api/models/library?quick=true"
-      );
+      safeDebug("ModelSelector: Loading production models");
 
-      // First, quick list for fast paint
-      const quick = await backend.makeRequestPublic<{
+      // Use optimized production endpoint
+      const response = await backend.makeRequestPublic<{
         models: ModelInfo[];
         total_count: number;
         local_count: number;
         available_count: number;
-      }>("/api/models/library?quick=true");
+      }>("/api/models/library?production=true");
 
-      safeDebug("🔍 ModelSelector: Quick response received:", {
-        hasModels: !!quick?.models,
-        modelsCount: quick?.models?.length || 0,
-        modelsType: typeof quick?.models,
-        isArray: Array.isArray(quick?.models),
-        fullResponse: quick,
-      });
+      const loadedModels = response?.models || [];
+      setModels(loadedModels);
 
-      setModels(quick?.models || []);
-
-      // Then, schedule a full refresh in background (non-blocking)
-      setTimeout(async () => {
-        try {
-          safeDebug(
-            "🔍 ModelSelector: Starting full model refresh from /api/models/library"
-          );
-          const full = await backend.makeRequestPublic<{
-            models: ModelInfo[];
-            total_count: number;
-            local_count: number;
-            available_count: number;
-          }>("/api/models/library");
-
-          safeDebug("🔍 ModelSelector: Full response received:", {
-            hasModels: !!full?.models,
-            modelsCount: full?.models?.length || 0,
-            modelsType: typeof full?.models,
-            isArray: Array.isArray(full?.models),
-            fullResponse: full,
-          });
-
-          if (
-            full?.models &&
-            full.models.length >= (quick?.models?.length || 0)
-          ) {
-            setModels(full.models);
-            safeDebug(
-              "🔍 ModelSelector: Updated models with full response, count:",
-              full.models.length
-            );
-          }
-        } catch (e) {
-          safeWarn("🔍 ModelSelector: Background full refresh failed:", e);
-          // ignore background errors
-        }
-      }, 2000);
+      safeDebug(`ModelSelector: Loaded ${loadedModels.length} production models`);
     } catch (err) {
-      safeError("🔍 ModelSelector: Failed to load models:", err);
-      // Retry with quick mode and longer TTL if initial failed completely
-      try {
-        safeDebug("🔍 ModelSelector: Retrying with fallback mode");
-        const fallback = await backend.makeRequestPublic<{
-          models: ModelInfo[];
-          total_count: number;
-          local_count: number;
-          available_count: number;
-        }>("/api/models/library?quick=true&ttl=60");
-
-        safeDebug("🔍 ModelSelector: Fallback response received:", {
-          hasModels: !!fallback?.models,
-          modelsCount: fallback?.models?.length || 0,
-          modelsType: typeof fallback?.models,
-          isArray: Array.isArray(fallback?.models),
-        });
-
-        setModels(fallback?.models || []);
-      } catch (e2) {
-        safeError("🔍 ModelSelector: Fallback also failed:", e2);
-        setError("Failed to load models");
-      }
+      safeError("ModelSelector: Failed to load models:", err);
+      setError("Failed to load models");
     } finally {
       setLoading(false);
-      safeDebug(
-        "🔍 ModelSelector: Model loading completed, final models count:",
-        models.length
-      );
-      safeDebug(
-        "🔍 ModelSelector: All models received:",
-        models.map((m) => ({
-          name: m.name,
-          provider: m.provider,
-          status: m.status,
-        }))
-      );
     }
-  };
+  }, [backend]);
 
   useEffect(() => {
     loadModels();
-  }, []);
+  }, [loadModels]);
 
   const controlledValue = value ?? "";
 
@@ -589,11 +512,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         return;
       }
 
-      if (
-        !["local", "downloading", "available", "incompatible"].includes(
-          model.status
-        )
-      ) {
+      // Only include production-ready statuses
+      if (!["local", "downloading", "available"].includes(model.status)) {
         return;
       }
 
@@ -663,16 +583,11 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       return (a.name || "").localeCompare(b.name || "");
     });
 
-    safeDebug("🔍 ModelSelector: Filtered models for task", {
+    safeDebug("ModelSelector: Filtered models for task", {
       task,
       count: result.length,
       includeDownloadable,
       includeDownloading,
-      models: result.map((m) => ({
-        name: m.name,
-        provider: m.provider,
-        status: m.status,
-      })),
     });
 
     return result;
@@ -783,7 +698,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           .updateLastSelectedModel(matched.id)
           .catch((err) => {
             safeWarn(
-              "🔍 ModelSelector: Failed to persist last selected model",
+              "ModelSelector: Failed to persist last selected model",
               err
             );
           });
@@ -824,7 +739,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       const defaultValue = getModelSelectorValue(
         defaultModel as unknown as Model
       );
-      safeDebug("🔍 ModelSelector: Auto-selecting model", {
+      safeDebug("ModelSelector: Auto-selecting model", {
         model: defaultModel.name,
         provider: defaultModel.provider,
         status: defaultModel.status,
@@ -851,7 +766,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       image: [],
       audio: [],
       embedding: [],
-      other: [],
+      production: [],
     };
 
     filteredModels.forEach((model) => {
@@ -872,10 +787,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     return filteredModels.filter((model) => model.status === "available");
   }, [filteredModels]);
 
-  // Compute experimental models
-  const experimentalModels = useMemo(() => {
-    return filteredModels.filter((model) => model.status === "error");
-  }, [filteredModels]);
+
 
   const renderModelItem = (
     model: ModelInfo,
@@ -909,33 +821,33 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     ].join("|");
 
     return (
-      <SelectItem
+      <selectItem
         key={uniqueKey}
         value={modelValue}
         className="py-3"
         disabled={disabled || itemDisabled}
-      >
+       aria-label="Select option">
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center space-x-3 flex-1 min-w-0">
+          <div className="flex items-center space-x-3 flex-1 min-w-0 sm:w-auto md:w-full">
             <div className="flex items-center space-x-1">
               {getProviderIcon(provider)}
               {getStatusIcon(model.status)}
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 sm:w-auto md:w-full">
               <div className="flex items-center space-x-2">
                 <span className="font-medium truncate">{name}</span>
                 <div className="flex items-center space-x-2">
                   <Badge
                     variant={getStatusBadgeVariant(model.status)}
-                    className="text-xs"
+                    className="text-xs sm:text-sm md:text-base"
                   >
                     {model.status}
                   </Badge>
                   {isRecommended && (
                     <Badge
                       variant="outline"
-                      className="text-xs text-purple-600 border-purple-200 bg-purple-50"
+                      className="text-xs text-purple-600 border-purple-200 bg-purple-50 sm:text-sm md:text-base"
                     >
                       Recommended
                     </Badge>
@@ -943,7 +855,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                   {(disabled || itemDisabled) && disabledReason && (
                     <Badge
                       variant="outline"
-                      className="text-xs text-muted-foreground"
+                      className="text-xs text-muted-foreground sm:text-sm md:text-base"
                     >
                       {disabledReason}
                     </Badge>
@@ -952,7 +864,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               </div>
 
               {showDetails && (
-                <div className="flex items-center space-x-2 mt-1 text-xs text-muted-foreground">
+                <div className="flex items-center space-x-2 mt-1 text-xs text-muted-foreground sm:text-sm md:text-base">
                   <span className="capitalize">{provider || "unknown"}</span>
                   {model.size && (
                     <>
@@ -979,7 +891,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
           {model.download_progress !== undefined &&
             model.status === "downloading" && (
-              <div className="text-xs text-blue-600 ml-2">
+              <div className="text-xs text-blue-600 ml-2 sm:text-sm md:text-base">
                 {Math.round(model.download_progress)}%
               </div>
             )}
@@ -1000,8 +912,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   if (loading) {
     return (
       <div className={cn("flex items-center space-x-2", className)}>
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm text-muted-foreground">Loading models...</span>
+        <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+        <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading models...</span>
       </div>
     );
   }
@@ -1009,15 +921,15 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   if (error) {
     return (
       <div className={cn("flex items-center space-x-2", className)}>
-        <AlertCircle className="h-4 w-4 text-red-500" />
-        <span className="text-sm text-red-600">{error}</span>
-        <Button
+        <AlertCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
+        <span className="text-sm text-red-600 md:text-base lg:text-lg">{error}</span>
+        <button
           variant="ghost"
           size="sm"
           onClick={loadModels}
-          className="h-6 w-6 p-0"
-        >
-          <RefreshCw className="h-3 w-3" />
+          className="h-6 w-6 p-0 sm:w-auto md:w-full"
+         aria-label="Button">
+          <RefreshCw className="h-3 w-3 sm:w-auto md:w-full" />
         </Button>
       </div>
     );
@@ -1025,15 +937,15 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   return (
     <TooltipProvider>
-      <Select
+      <select
         value={controlledValue}
         onValueChange={handleModelValueChange}
         disabled={disabled}
-      >
+       aria-label="Select option">
         <Tooltip>
           <TooltipTrigger asChild>
-            <SelectTrigger className={cn("w-full", className)}>
-              <SelectValue placeholder={placeholder}>
+            <selectTrigger className={cn("w-full", className)} aria-label="Select option">
+              <selectValue placeholder={placeholder} aria-label="Select option">
                 {selectedModel && (
                   <div className="flex items-center space-x-2">
                     <div className="flex items-center space-x-1">
@@ -1045,7 +957,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                     </span>
                     <Badge
                       variant={getStatusBadgeVariant(selectedModel.status)}
-                      className="text-xs"
+                      className="text-xs sm:text-sm md:text-base"
                     >
                       {selectedModel.status}
                     </Badge>
@@ -1059,12 +971,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             <TooltipContent side="bottom" className="max-w-sm">
               <div className="space-y-1">
                 <div className="font-medium">{selectedModel.name}</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   {selectedModel.description ||
                     `${selectedModel.provider || "Unknown"} model`}
                 </div>
                 {selectedModel.metadata?.memory_requirement && (
-                  <div className="text-xs">
+                  <div className="text-xs sm:text-sm md:text-base">
                     Memory: {selectedModel.metadata.memory_requirement}
                   </div>
                 )}
@@ -1072,7 +984,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                   selectedModel.capabilities.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {selectedModel.capabilities.slice(0, 3).map((cap) => (
-                        <Badge key={cap} variant="outline" className="text-xs">
+                        <Badge key={cap} variant="outline" className="text-xs sm:text-sm md:text-base">
                           {cap}
                         </Badge>
                       ))}
@@ -1083,12 +995,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           )}
         </Tooltip>
 
-        <SelectContent className="max-h-96 bg-popover border border-border shadow-md">
+        <selectContent className="max-h-96 bg-popover border border-border shadow-md" aria-label="Select option">
           {taskGroups.map((group, index) => (
             <React.Fragment key={group.key}>
-              {index > 0 && <SelectSeparator />}
-              <SelectGroup>
-                <SelectLabel className="flex items-center space-x-2">
+              {index > 0 && <selectSeparator />}
+              <selectGroup aria-label="Select option">
+                <selectLabel className="flex items-center space-x-2" aria-label="Select option">
                   {TASK_GROUP_METADATA[group.key].icon}
                   <span>
                     {TASK_GROUP_METADATA[group.key].label} (
@@ -1110,15 +1022,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           {/* Available Models */}
           {includeDownloadable && groupedModels.available.length > 0 && (
             <>
-              {taskGroups.length > 0 && <SelectSeparator />}
-              <SelectGroup>
-                <SelectLabel className="flex items-center space-x-2">
-                  <Download className="h-3 w-3 text-gray-500" />
+              {taskGroups.length > 0 && <selectSeparator />}
+              <selectGroup aria-label="Select option">
+                <selectLabel className="flex items-center space-x-2" aria-label="Select option">
+                  <Download className="h-3 w-3 text-gray-500 sm:w-auto md:w-full" />
                   <span>Downloadable Models ({downloadableModels.length})</span>
                 </SelectLabel>
-                <div className="px-3 pb-1 text-xs text-muted-foreground">
-                  Download these models from the Model Library before selecting
-                  them for chat or other tasks.
+                <div className="px-3 pb-1 text-xs text-muted-foreground sm:text-sm md:text-base">
+                  Download these models from the Model Library to use them.
                 </div>
                 {downloadableModels.map((model) =>
                   renderModelItem(model, {
@@ -1130,38 +1041,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             </>
           )}
 
-          {experimentalModels.length > 0 && (
-            <>
-              {(taskGroups.length > 0 || downloadableModels.length > 0) && (
-                <SelectSeparator />
-              )}
-              <SelectGroup>
-                <SelectLabel className="flex items-center space-x-2">
-                  <AlertCircle className="h-3 w-3 text-yellow-500" />
-                  <span>Experimental Models ({experimentalModels.length})</span>
-                </SelectLabel>
-                <div className="px-3 pb-1 text-xs text-muted-foreground">
-                  These models were detected but may be incompatible with the
-                  current runtime.
-                </div>
-                {experimentalModels.map((model) =>
-                  renderModelItem(model, {
-                    disabled: true,
-                    disabledReason: "Not compatible",
-                  })
-                )}
-              </SelectGroup>
-            </>
+          {taskGroups.length === 0 && downloadableModels.length === 0 && (
+            <div className="p-4 text-center text-sm text-muted-foreground md:text-base lg:text-lg">
+              No {TASK_FRIENDLY_NAME[task]} models are ready to use.
+              <br />
+              Install a compatible model to continue.
+            </div>
           )}
-
-          {taskGroups.length === 0 &&
-            downloadableModels.length === 0 &&
-            experimentalModels.length === 0 && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                No {TASK_FRIENDLY_NAME[task]} models are ready to use yet.
-                Install or enable a compatible model to continue.
-              </div>
-            )}
         </SelectContent>
       </Select>
     </TooltipProvider>

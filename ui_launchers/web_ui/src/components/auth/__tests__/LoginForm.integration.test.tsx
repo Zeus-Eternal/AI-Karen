@@ -50,7 +50,7 @@ vi.mock('@/components/ui/form-field', () => ({
         id={name}
         name={name}
         value={value}
-        onChange={(e) => onValueChange(e.target.value)}
+        onChange={(e) = aria-label="Input"> onValueChange(e.target.value)}
         {...props}
       />
     </div>

@@ -48,21 +48,21 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     <CardHeader className="pb-3">
       <div className="flex items-center justify-between">
         <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5" />
+          <Sparkles className="h-5 w-5 sm:w-auto md:w-full" />
           AI Assistant
           {useCopilotKit && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
               CopilotKit Enhanced
             </Badge>
           )}
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
             Production Ready
           </Badge>
         </CardTitle>
 
         <div className="flex items-center gap-2">
           {selectedMessages.size > 0 && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
               {selectedMessages.size} selected
             </Badge>
           )}
@@ -79,7 +79,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           <ModelSelector
             value={settings.model}
             onValueChange={(value: string) => onSettingsChange({ model: value })}
-            className="w-48"
+            className="w-48 sm:w-auto md:w-full"
             placeholder="Select model..."
             showDetails={true}
             task="chat"
@@ -90,23 +90,23 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             variant="ghost"
             size="sm"
             onClick={onShowRoutingHistory}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 sm:w-auto md:w-full"
             title="Routing History"
           >
-            <Activity className="h-4 w-4" />
+            <Activity className="h-4 w-4 sm:w-auto md:w-full" />
           </Button>
 
           <Button
             variant="ghost"
             size="sm"
             onClick={onToggleFullscreen}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 sm:w-auto md:w-full"
             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           >
             {isFullscreen ? (
-              <Minimize2 className="h-4 w-4" />
+              <Minimize2 className="h-4 w-4 sm:w-auto md:w-full" />
             ) : (
-              <Maximize2 className="h-4 w-4" />
+              <Maximize2 className="h-4 w-4 sm:w-auto md:w-full" />
             )}
           </Button>
 
@@ -114,10 +114,10 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 sm:w-auto md:w-full"
               title="Settings"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4 sm:w-auto md:w-full" />
             </Button>
           )}
         </div>

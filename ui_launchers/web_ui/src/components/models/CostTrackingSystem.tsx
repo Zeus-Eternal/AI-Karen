@@ -2,7 +2,6 @@
  * Cost Tracking System
  * Budget alerts and usage optimization recommendations
  */
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,11 +33,9 @@ import {
 } from 'lucide-react';
 import { BudgetAlert } from '@/types/providers';
 import { useToast } from '@/hooks/use-toast';
-
 interface CostTrackingSystemProps {
   className?: string;
 }
-
 interface BudgetConfig {
   id: string;
   name: string;
@@ -50,7 +47,6 @@ interface BudgetConfig {
   enabled: boolean;
   createdAt: Date;
 }
-
 interface CostBreakdown {
   provider: string;
   model: string;
@@ -59,7 +55,6 @@ interface CostBreakdown {
   percentage: number;
   trend: 'up' | 'down' | 'stable';
 }
-
 interface OptimizationSuggestion {
   id: string;
   type: 'model_switch' | 'usage_reduction' | 'batch_optimization' | 'provider_switch';
@@ -70,7 +65,6 @@ interface OptimizationSuggestion {
   implementation: string[];
   impact: 'low' | 'medium' | 'high';
 }
-
 interface CostData {
   totalSpend: number;
   budgetUtilization: number;
@@ -87,7 +81,6 @@ interface CostData {
     percentage: number;
   }[];
 }
-
 const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) => {
   const { toast } = useToast();
   const [costData, setCostData] = useState<CostData | null>(null);
@@ -98,24 +91,20 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
   const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [editingBudget, setEditingBudget] = useState<BudgetConfig | null>(null);
   const [showBudgetDialog, setShowBudgetDialog] = useState(false);
-
   useEffect(() => {
     loadCostData();
     loadBudgets();
     loadAlerts();
     loadOptimizationSuggestions();
   }, [selectedPeriod]);
-
   const loadCostData = async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/costs/data?period=${selectedPeriod}`);
       if (!response.ok) throw new Error('Failed to load cost data');
-      
       const data = await response.json();
       setCostData(data);
     } catch (error) {
-      console.error('Error loading cost data:', error);
       toast({
         title: 'Error',
         description: 'Failed to load cost data',
@@ -125,43 +114,33 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
       setLoading(false);
     }
   };
-
   const loadBudgets = async () => {
     try {
       const response = await fetch('/api/costs/budgets');
       if (!response.ok) throw new Error('Failed to load budgets');
-      
       const data = await response.json();
       setBudgets(data.budgets || []);
     } catch (error) {
-      console.error('Error loading budgets:', error);
     }
   };
-
   const loadAlerts = async () => {
     try {
       const response = await fetch('/api/costs/alerts');
       if (!response.ok) throw new Error('Failed to load alerts');
-      
       const data = await response.json();
       setAlerts(data.alerts || []);
     } catch (error) {
-      console.error('Error loading alerts:', error);
     }
   };
-
   const loadOptimizationSuggestions = async () => {
     try {
       const response = await fetch('/api/costs/optimization-suggestions');
       if (!response.ok) throw new Error('Failed to load suggestions');
-      
       const data = await response.json();
       setSuggestions(data.suggestions || []);
     } catch (error) {
-      console.error('Error loading optimization suggestions:', error);
     }
   };
-
   const saveBudget = async (budget: Omit<BudgetConfig, 'id' | 'createdAt'>) => {
     try {
       const response = await fetch('/api/costs/budgets', {
@@ -172,26 +151,20 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
           ...(editingBudget && { id: editingBudget.id })
         })
       });
-
       if (!response.ok) throw new Error('Failed to save budget');
-
       const savedBudget = await response.json();
-      
       if (editingBudget) {
         setBudgets(prev => prev.map(b => b.id === editingBudget.id ? savedBudget : b));
       } else {
         setBudgets(prev => [...prev, savedBudget]);
       }
-
       setShowBudgetDialog(false);
       setEditingBudget(null);
-      
       toast({
         title: 'Budget Saved',
         description: `Budget "${budget.name}" has been saved successfully`
       });
     } catch (error) {
-      console.error('Error saving budget:', error);
       toast({
         title: 'Save Error',
         description: 'Failed to save budget configuration',
@@ -199,25 +172,19 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
       });
     }
   };
-
   const deleteBudget = async (budgetId: string) => {
     if (!confirm('Are you sure you want to delete this budget?')) return;
-
     try {
       const response = await fetch(`/api/costs/budgets/${budgetId}`, {
         method: 'DELETE'
       });
-
       if (!response.ok) throw new Error('Failed to delete budget');
-
       setBudgets(prev => prev.filter(b => b.id !== budgetId));
-      
       toast({
         title: 'Budget Deleted',
         description: 'Budget has been deleted successfully'
       });
     } catch (error) {
-      console.error('Error deleting budget:', error);
       toast({
         title: 'Delete Error',
         description: 'Failed to delete budget',
@@ -225,23 +192,18 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
       });
     }
   };
-
   const dismissAlert = async (alertId: string) => {
     try {
       const response = await fetch(`/api/costs/alerts/${alertId}/dismiss`, {
         method: 'POST'
       });
-
       if (!response.ok) throw new Error('Failed to dismiss alert');
-
       setAlerts(prev => prev.filter(a => a.id !== alertId));
-      
       toast({
         title: 'Alert Dismissed',
         description: 'Alert has been dismissed'
       });
     } catch (error) {
-      console.error('Error dismissing alert:', error);
       toast({
         title: 'Error',
         description: 'Failed to dismiss alert',
@@ -249,7 +211,6 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
       });
     }
   };
-
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -258,18 +219,16 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
       maximumFractionDigits: 2
     }).format(amount);
   };
-
   const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
     switch (trend) {
       case 'up':
-        return <TrendingUp className="w-4 h-4 text-red-600" />;
+        return <TrendingUp className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />;
       case 'down':
-        return <TrendingDown className="w-4 h-4 text-green-600" />;
+        return <TrendingDown className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />;
       default:
-        return <BarChart3 className="w-4 h-4 text-gray-600" />;
+        return <BarChart3 className="w-4 h-4 text-gray-600 sm:w-auto md:w-full" />;
     }
   };
-
   const getAlertSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical':
@@ -280,7 +239,6 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
         return 'border-blue-500 bg-blue-50';
     }
   };
-
   const BudgetDialog: React.FC<{ budget?: BudgetConfig; onSave: (budget: any) => void }> = ({ 
     budget, 
     onSave 
@@ -294,7 +252,6 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
       alertThresholds: budget?.alertThresholds || [80, 90, 100],
       enabled: budget?.enabled !== false
     });
-
     const handleSave = () => {
       if (!formData.name || formData.amount <= 0) {
         toast({
@@ -304,10 +261,8 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
         });
         return;
       }
-
       onSave(formData);
     };
-
     return (
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -316,54 +271,51 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
             Set up budget limits and alert thresholds for cost monitoring
           </DialogDescription>
         </DialogHeader>
-        
         <div className="space-y-4">
           <div>
             <Label htmlFor="name">Budget Name</Label>
-            <Input
+            <input
               id="name"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) = aria-label="Input"> setFormData(prev => ({ ...prev, name: e.target.value }))}
               placeholder="e.g., Monthly AI Budget"
             />
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="amount">Amount</Label>
-              <Input
+              <input
                 id="amount"
                 type="number"
                 value={formData.amount}
-                onChange={(e) => setFormData(prev => ({ ...prev, amount: Number(e.target.value) }))}
+                onChange={(e) = aria-label="Input"> setFormData(prev => ({ ...prev, amount: Number(e.target.value) }))}
                 placeholder="0.00"
               />
             </div>
             <div>
               <Label htmlFor="period">Period</Label>
-              <Select value={formData.period} onValueChange={(value: any) => setFormData(prev => ({ ...prev, period: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
+              <select value={formData.period} onValueChange={(value: any) = aria-label="Select option"> setFormData(prev => ({ ...prev, period: value }))}>
+                <selectTrigger aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="daily" aria-label="Select option">Daily</SelectItem>
+                  <selectItem value="weekly" aria-label="Select option">Weekly</SelectItem>
+                  <selectItem value="monthly" aria-label="Select option">Monthly</SelectItem>
+                  <selectItem value="yearly" aria-label="Select option">Yearly</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-
           <div>
             <Label>Alert Thresholds (%)</Label>
             <div className="grid grid-cols-3 gap-2 mt-1">
               {formData.alertThresholds.map((threshold, idx) => (
-                <Input
+                <input
                   key={idx}
                   type="number"
                   value={threshold}
-                  onChange={(e) => {
+                  onChange={(e) = aria-label="Input"> {
                     const newThresholds = [...formData.alertThresholds];
                     newThresholds[idx] = Number(e.target.value);
                     setFormData(prev => ({ ...prev, alertThresholds: newThresholds }));
@@ -373,13 +325,12 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
               ))}
             </div>
           </div>
-
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowBudgetDialog(false)}>
+            <button variant="outline" onClick={() = aria-label="Button"> setShowBudgetDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
-              <Save className="w-4 h-4 mr-2" />
+            <button onClick={handleSave} aria-label="Button">
+              <Save className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
               Save Budget
             </Button>
           </div>
@@ -387,20 +338,18 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
       </DialogContent>
     );
   };
-
   if (loading) {
     return (
       <Card className={className}>
-        <CardContent className="flex items-center justify-center p-8">
+        <CardContent className="flex items-center justify-center p-8 sm:p-4 md:p-6">
           <div className="text-center space-y-2">
-            <DollarSign className="w-8 h-8 animate-pulse mx-auto text-green-500" />
+            <DollarSign className="w-8 h-8 animate-pulse mx-auto text-green-500 sm:w-auto md:w-full" />
             <div>Loading cost data...</div>
           </div>
         </CardContent>
       </Card>
     );
   }
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
@@ -409,7 +358,7 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
+                <DollarSign className="w-5 h-5 sm:w-auto md:w-full" />
                 Cost Tracking & Budget Management
               </CardTitle>
               <CardDescription>
@@ -417,21 +366,20 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
+              <select value={selectedPeriod} onValueChange={(value: any) = aria-label="Select option"> setSelectedPeriod(value)}>
+                <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="daily" aria-label="Select option">Daily</SelectItem>
+                  <selectItem value="weekly" aria-label="Select option">Weekly</SelectItem>
+                  <selectItem value="monthly" aria-label="Select option">Monthly</SelectItem>
                 </SelectContent>
               </Select>
-
               <Dialog open={showBudgetDialog} onOpenChange={setShowBudgetDialog}>
                 <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
+                  <button aria-label="Button">
+                    <Plus className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                     Add Budget
                   </Button>
                 </DialogTrigger>
@@ -441,33 +389,32 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
           </div>
         </CardHeader>
       </Card>
-
       {/* Active Alerts */}
       {alerts.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-lg font-medium flex items-center gap-2">
-            <Bell className="w-5 h-5" />
+            <Bell className="w-5 h-5 sm:w-auto md:w-full" />
             Budget Alerts ({alerts.length})
           </h3>
           {alerts.map(alert => (
             <Alert key={alert.id} className={getAlertSeverityColor(alert.severity)}>
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 mt-0.5" />
+                  <AlertTriangle className="w-5 h-5 mt-0.5 sm:w-auto md:w-full" />
                   <div>
                     <div className="font-medium">{alert.title}</div>
                     <AlertDescription className="mt-1">
                       {alert.message}
                     </AlertDescription>
-                    <div className="mt-2 flex items-center gap-4 text-sm">
+                    <div className="mt-2 flex items-center gap-4 text-sm md:text-base lg:text-lg">
                       <span>Current: {formatCurrency(alert.currentSpend)}</span>
                       <span>Threshold: {formatCurrency(alert.threshold)}</span>
                       <span>Timeframe: {alert.timeframe}</span>
                     </div>
                     {alert.recommendations.length > 0 && (
                       <div className="mt-2">
-                        <div className="text-sm font-medium">Recommendations:</div>
-                        <ul className="text-sm text-gray-600 list-disc list-inside">
+                        <div className="text-sm font-medium md:text-base lg:text-lg">Recommendations:</div>
+                        <ul className="text-sm text-gray-600 list-disc list-inside md:text-base lg:text-lg">
                           {alert.recommendations.slice(0, 2).map((rec, idx) => (
                             <li key={idx}>{rec}</li>
                           ))}
@@ -480,10 +427,10 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
                   <Badge variant={alert.severity === 'critical' ? 'destructive' : 'secondary'}>
                     {alert.severity}
                   </Badge>
-                  <Button
+                  <button
                     size="sm"
                     variant="ghost"
-                    onClick={() => dismissAlert(alert.id)}
+                    onClick={() = aria-label="Button"> dismissAlert(alert.id)}
                   >
                     Dismiss
                   </Button>
@@ -493,81 +440,76 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
           ))}
         </div>
       )}
-
       {/* Cost Overview */}
       {costData && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Spend</p>
+                  <p className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Total Spend</p>
                   <p className="text-2xl font-bold">{formatCurrency(costData.totalSpend)}</p>
                 </div>
-                <DollarSign className="w-8 h-8 text-green-500" />
+                <DollarSign className="w-8 h-8 text-green-500 sm:w-auto md:w-full" />
               </div>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Budget Used</p>
+                  <p className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Budget Used</p>
                   <p className="text-2xl font-bold">{(costData.budgetUtilization * 100).toFixed(1)}%</p>
                 </div>
-                <Target className="w-8 h-8 text-blue-500" />
+                <Target className="w-8 h-8 text-blue-500 sm:w-auto md:w-full" />
               </div>
               <Progress value={costData.budgetUtilization * 100} className="mt-2 h-2" />
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Projected</p>
+                  <p className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Projected</p>
                   <p className="text-2xl font-bold">{formatCurrency(costData.projectedSpend)}</p>
                 </div>
-                <TrendingUp className="w-8 h-8 text-orange-500" />
+                <TrendingUp className="w-8 h-8 text-orange-500 sm:w-auto md:w-full" />
               </div>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Top Provider</p>
+                  <p className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Top Provider</p>
                   <p className="text-lg font-bold">{costData.topSpenders[0]?.provider || 'N/A'}</p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 md:text-base lg:text-lg">
                     {costData.topSpenders[0] ? formatCurrency(costData.topSpenders[0].cost) : ''}
                   </p>
                 </div>
-                <PieChart className="w-8 h-8 text-purple-500" />
+                <PieChart className="w-8 h-8 text-purple-500 sm:w-auto md:w-full" />
               </div>
             </CardContent>
           </Card>
         </div>
       )}
-
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Budget Management */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Target className="w-5 h-5" />
+              <Target className="w-5 h-5 sm:w-auto md:w-full" />
               Budget Management
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {budgets.map(budget => (
-                <div key={budget.id} className="p-4 border rounded-lg">
+                <div key={budget.id} className="p-4 border rounded-lg sm:p-4 md:p-6">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <h4 className="font-medium">{budget.name}</h4>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 md:text-base lg:text-lg">
                         {formatCurrency(budget.amount)} / {budget.period}
                       </p>
                     </div>
@@ -575,33 +517,32 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
                       <Badge variant={budget.enabled ? 'default' : 'secondary'}>
                         {budget.enabled ? 'Active' : 'Inactive'}
                       </Badge>
-                      <Button
+                      <button
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
+                        onClick={() = aria-label="Button"> {
                           setEditingBudget(budget);
                           setShowBudgetDialog(true);
                         }}
                       >
-                        <Edit className="w-3 h-3" />
+                        <Edit className="w-3 h-3 sm:w-auto md:w-full" />
                       </Button>
-                      <Button
+                      <button
                         size="sm"
                         variant="ghost"
-                        onClick={() => deleteBudget(budget.id)}
+                        onClick={() = aria-label="Button"> deleteBudget(budget.id)}
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3 h-3 sm:w-auto md:w-full" />
                       </Button>
                     </div>
                   </div>
-                  
                   <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-sm md:text-base lg:text-lg">
                       <span>Alert Thresholds</span>
                       <span>{budget.alertThresholds.join('%, ')}%</span>
                     </div>
                     {budget.providers.length > 0 && (
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-sm md:text-base lg:text-lg">
                         <span>Providers</span>
                         <span>{budget.providers.length} selected</span>
                       </div>
@@ -609,24 +550,22 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
                   </div>
                 </div>
               ))}
-
               {budgets.length === 0 && (
                 <div className="text-center py-6 text-gray-500">
-                  <Target className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <Target className="w-8 h-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
                   <div>No budgets configured</div>
-                  <div className="text-xs">Create a budget to start monitoring costs</div>
+                  <div className="text-xs sm:text-sm md:text-base">Create a budget to start monitoring costs</div>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
-
         {/* Cost Breakdown */}
         {costData && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <PieChart className="w-5 h-5" />
+                <PieChart className="w-5 h-5 sm:w-auto md:w-full" />
                 Cost Breakdown
               </CardTitle>
             </CardHeader>
@@ -639,13 +578,13 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
                         {getTrendIcon(item.trend)}
                         <span className="font-medium">{item.provider}</span>
                       </div>
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                         {item.model}
                       </Badge>
                     </div>
                     <div className="text-right">
                       <div className="font-medium">{formatCurrency(item.cost)}</div>
-                      <div className="text-xs text-gray-600">
+                      <div className="text-xs text-gray-600 sm:text-sm md:text-base">
                         {item.requests} requests ({item.percentage.toFixed(1)}%)
                       </div>
                     </div>
@@ -656,13 +595,12 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
           </Card>
         )}
       </div>
-
       {/* Optimization Suggestions */}
       {suggestions.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="w-5 h-5" />
+              <Lightbulb className="w-5 h-5 sm:w-auto md:w-full" />
               Cost Optimization Suggestions
             </CardTitle>
             <CardDescription>
@@ -672,19 +610,18 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2">
               {suggestions.slice(0, 4).map(suggestion => (
-                <div key={suggestion.id} className="p-4 border rounded-lg">
+                <div key={suggestion.id} className="p-4 border rounded-lg sm:p-4 md:p-6">
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <h4 className="font-medium">{suggestion.title}</h4>
-                      <p className="text-sm text-gray-600 mt-1">{suggestion.description}</p>
+                      <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">{suggestion.description}</p>
                     </div>
                     <Badge variant={suggestion.impact === 'high' ? 'default' : 'secondary'}>
                       {suggestion.impact} impact
                     </Badge>
                   </div>
-                  
                   <div className="flex items-center justify-between mt-3">
-                    <div className="text-sm">
+                    <div className="text-sm md:text-base lg:text-lg">
                       <span className="font-medium text-green-600">
                         Save {formatCurrency(suggestion.potentialSavings)}
                       </span>
@@ -692,7 +629,7 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
                         ({suggestion.confidence}% confidence)
                       </span>
                     </div>
-                    <Button size="sm" variant="outline">
+                    <button size="sm" variant="outline" aria-label="Button">
                       View Details
                     </Button>
                   </div>
@@ -702,7 +639,6 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
           </CardContent>
         </Card>
       )}
-
       {/* Edit Budget Dialog */}
       {editingBudget && (
         <Dialog open={showBudgetDialog} onOpenChange={setShowBudgetDialog}>
@@ -712,5 +648,4 @@ const CostTrackingSystem: React.FC<CostTrackingSystemProps> = ({ className }) =>
     </div>
   );
 };
-
 export default CostTrackingSystem;

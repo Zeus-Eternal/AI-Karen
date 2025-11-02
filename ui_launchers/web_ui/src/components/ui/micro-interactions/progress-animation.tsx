@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+
 import { motion } from 'framer-motion';
 import { ProgressAnimationProps } from './types';
 import { useMicroInteractions } from './micro-interaction-provider';
@@ -75,7 +75,7 @@ export function ProgressAnimation({
         </svg>
         {showPercentage && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs font-medium">
+            <span className="text-xs font-medium sm:text-sm md:text-base">
               {Math.round(clampedProgress)}%
             </span>
           </div>
@@ -112,7 +112,7 @@ export function ProgressAnimation({
           />
         ))}
         {showPercentage && (
-          <span className="ml-2 text-sm font-medium">
+          <span className="ml-2 text-sm font-medium md:text-base lg:text-lg">
             {Math.round(clampedProgress)}%
           </span>
         )}
@@ -136,7 +136,7 @@ export function ProgressAnimation({
       </div>
       {showPercentage && (
         <div className="mt-1 text-right">
-          <span className="text-sm font-medium text-muted-foreground">
+          <span className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
             {Math.round(clampedProgress)}%
           </span>
         </div>

@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import type { PolymorphicComponentPropWithRef, PolymorphicRef } from "../compound/types"
 
 // Text component variants and sizes
 type TextVariant = "default" | "muted" | "accent" | "destructive" | "success" | "warning"

@@ -1,12 +1,22 @@
-"use client";
-
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+import { cn } from '@/lib/utils';
+import ModelCompatibilityBadge from './ModelCompatibilityBadge';
+import ModelDetailModal from './ModelDetailModal';
+"use client";
+
+
+
+
+
+
+
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -16,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
+
   Download,
   Trash2,
   HardDrive,
@@ -36,9 +46,8 @@ import {
   MemoryStick,
   Zap
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import ModelCompatibilityBadge from './ModelCompatibilityBadge';
-import ModelDetailModal from './ModelDetailModal';
+
+
 
 interface ModelInfo {
   id: string;
@@ -64,20 +73,17 @@ interface ModelInfo {
   downloadDate?: number;
   pinned?: boolean;
 }
-
 interface FileInfo {
   path: string;
   size: number;
   sha256?: string;
 }
-
 interface CompatibilityInfo {
   cpu_features: string[];
   gpu_required: boolean;
   min_ram_gb: number;
   min_vram_gb: number;
 }
-
 interface ModelMetadata {
   parameters: string;
   quantization: string;
@@ -86,13 +92,11 @@ interface ModelMetadata {
   license: string;
   tags: string[];
 }
-
 interface ModelCardProps {
   model: ModelInfo;
   onAction: (modelId: string, action: 'download' | 'delete' | 'cancel' | 'pause' | 'resume') => Promise<void>;
   searchQuery?: string;
 }
-
 /**
  * Individual model display component using Card structure
  * Shows model metadata, status, and provides download/delete actions
@@ -102,34 +106,43 @@ export default function ModelCard({ model, onAction, searchQuery = '' }: ModelCa
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-
   const formatSize = (bytes: number): string => {
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     if (bytes === 0) return '0 B';
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
-
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
+
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Handle escape key
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
       return (num / 1000000).toFixed(1) + 'M';
     } else if (num >= 1000) {
       return (num / 1000).toFixed(1) + 'K';
     }
     return num.toString();
   };
-
   const formatDate = (timestamp?: number): string => {
     if (!timestamp) return 'Never';
     return new Date(timestamp * 1000).toLocaleDateString();
   };
-
   const formatRelativeTime = (timestamp?: number): string => {
     if (!timestamp) return 'Never';
     const now = Date.now();
     const diff = now - (timestamp * 1000);
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
     if (days === 0) return 'Today';
     if (days === 1) return 'Yesterday';
     if (days < 7) return `${days} days ago`;
@@ -137,13 +150,10 @@ export default function ModelCard({ model, onAction, searchQuery = '' }: ModelCa
     if (days < 365) return `${Math.floor(days / 30)} months ago`;
     return `${Math.floor(days / 365)} years ago`;
   };
-
   const highlightText = (text: string, query: string) => {
     if (!query) return text;
-    
     const regex = new RegExp(`(${query})`, 'gi');
     const parts = text.split(regex);
-    
     return parts.map((part, index) => 
       regex.test(part) ? (
         <mark key={index} className="bg-yellow-200 dark:bg-yellow-800 px-0.5 rounded">
@@ -152,206 +162,193 @@ export default function ModelCard({ model, onAction, searchQuery = '' }: ModelCa
       ) : part
     );
   };
-
   const getStatusIcon = () => {
     switch (model.status) {
       case 'local':
-        return <HardDrive className="h-4 w-4" />;
+        return <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'available':
-        return <Cloud className="h-4 w-4" />;
+        return <Cloud className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'downloading':
-        return <Loader2 className="h-4 w-4 animate-spin" />;
+        return <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />;
       case 'error':
-        return <AlertCircle className="h-4 w-4" />;
+        return <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />;
       default:
-        return <Info className="h-4 w-4" />;
+        return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
-
   const getStatusBadge = () => {
     switch (model.status) {
       case 'local':
         return <Badge variant="default" className="gap-1">
-          <CheckCircle className="h-3 w-3" />
+          <CheckCircle className="h-3 w-3 sm:w-auto md:w-full" />
           Local
         </Badge>;
       case 'available':
         return <Badge variant="outline" className="gap-1">
-          <Cloud className="h-3 w-3" />
+          <Cloud className="h-3 w-3 sm:w-auto md:w-full" />
           Available
         </Badge>;
       case 'downloading':
         return <Badge variant="secondary" className="gap-1">
-          <Loader2 className="h-3 w-3 animate-spin" />
+          <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
           Downloading
         </Badge>;
       case 'error':
         return <Badge variant="destructive" className="gap-1">
-          <AlertCircle className="h-3 w-3" />
+          <AlertCircle className="h-3 w-3 sm:w-auto md:w-full" />
           Error
         </Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
     }
   };
-
   const handleAction = async (action: 'download' | 'delete' | 'cancel' | 'pause' | 'resume') => {
     if (action === 'delete') {
       setShowDeleteDialog(true);
       return;
     }
-
     setActionLoading(action);
     try {
       await onAction(model.id, action);
     } catch (error) {
-      console.error(`Failed to ${action} model:`, error);
     } finally {
       setActionLoading(null);
     }
   };
-
   const handleConfirmDelete = async () => {
     setShowDeleteDialog(false);
     setActionLoading('delete');
     try {
       await onAction(model.id, 'delete');
     } catch (error) {
-      console.error('Failed to delete model:', error);
     } finally {
       setActionLoading(null);
     }
   };
-
   const renderActions = () => {
     switch (model.status) {
       case 'local':
         return (
           <div className="flex gap-2">
-            <Button
+            <button
               variant="outline"
               size="sm"
-              onClick={() => setShowDetailsDialog(true)}
+              onClick={() = aria-label="Button"> setShowDetailsDialog(true)}
               className="gap-1"
             >
-              <Info className="h-3 w-3" />
+              <Info className="h-3 w-3 sm:w-auto md:w-full" />
               Details
             </Button>
-            <Button
+            <button
               variant="destructive"
               size="sm"
-              onClick={() => handleAction('delete')}
+              onClick={() = aria-label="Button"> handleAction('delete')}
               disabled={actionLoading === 'delete'}
               className="gap-1"
             >
               {actionLoading === 'delete' ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
               ) : (
-                <Trash2 className="h-3 w-3" />
+                <Trash2 className="h-3 w-3 sm:w-auto md:w-full" />
               )}
               Delete
             </Button>
           </div>
         );
-      
       case 'available':
         return (
-          <Button
+          <button
             variant="default"
             size="sm"
-            onClick={() => handleAction('download')}
+            onClick={() = aria-label="Button"> handleAction('download')}
             disabled={actionLoading === 'download'}
             className="gap-1"
           >
             {actionLoading === 'download' ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
             ) : (
-              <Download className="h-3 w-3" />
+              <Download className="h-3 w-3 sm:w-auto md:w-full" />
             )}
             Download
           </Button>
         );
-      
       case 'downloading':
         return (
           <div className="flex gap-2">
-            <Button
+            <button
               variant="outline"
               size="sm"
-              onClick={() => handleAction('pause')}
+              onClick={() = aria-label="Button"> handleAction('pause')}
               disabled={actionLoading === 'pause'}
               className="gap-1"
             >
               {actionLoading === 'pause' ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
               ) : (
-                <Pause className="h-3 w-3" />
+                <Pause className="h-3 w-3 sm:w-auto md:w-full" />
               )}
               Pause
             </Button>
-            <Button
+            <button
               variant="destructive"
               size="sm"
-              onClick={() => handleAction('cancel')}
+              onClick={() = aria-label="Button"> handleAction('cancel')}
               disabled={actionLoading === 'cancel'}
               className="gap-1"
             >
               {actionLoading === 'cancel' ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
               ) : (
-                <X className="h-3 w-3" />
+                <X className="h-3 w-3 sm:w-auto md:w-full" />
               )}
               Cancel
             </Button>
           </div>
         );
-      
       case 'error':
         return (
-          <Button
+          <button
             variant="outline"
             size="sm"
-            onClick={() => handleAction('download')}
+            onClick={() = aria-label="Button"> handleAction('download')}
             disabled={actionLoading === 'download'}
             className="gap-1"
           >
             {actionLoading === 'download' ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" />
             ) : (
-              <Download className="h-3 w-3" />
+              <Download className="h-3 w-3 sm:w-auto md:w-full" />
             )}
             Retry
           </Button>
         );
-      
       default:
         return null;
     }
   };
-
   return (
     <>
       <Card className="h-full flex flex-col hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 sm:w-auto md:w-full">
               <CardTitle className="text-base leading-tight flex items-center gap-2">
-                <Package className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <Package className="h-4 w-4 text-muted-foreground flex-shrink-0 sm:w-auto md:w-full" />
                 <span className="truncate">
                   {highlightText(model.name, searchQuery)}
                 </span>
                 {model.pinned && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                     Pinned
                   </Badge>
                 )}
               </CardTitle>
-              <CardDescription className="text-sm mt-1 flex items-center gap-2">
-                <User className="h-3 w-3" />
+              <CardDescription className="text-sm mt-1 flex items-center gap-2 md:text-base lg:text-lg">
+                <User className="h-3 w-3 sm:w-auto md:w-full" />
                 <span>{highlightText(model.owner, searchQuery)}</span>
               </CardDescription>
               {model.description && (
-                <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                <p className="text-xs text-muted-foreground mt-2 line-clamp-2 sm:text-sm md:text-base">
                   {highlightText(model.description, searchQuery)}
                 </p>
               )}
@@ -362,148 +359,138 @@ export default function ModelCard({ model, onAction, searchQuery = '' }: ModelCa
             </div>
           </div>
         </CardHeader>
-
         <CardContent className="flex-1 flex flex-col gap-4">
           {/* Download Progress */}
           {model.status === 'downloading' && model.downloadProgress !== undefined && (
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm md:text-base lg:text-lg">
                 <span>Downloading...</span>
                 <span>{Math.round(model.downloadProgress)}%</span>
               </div>
               <Progress value={model.downloadProgress} className="h-2" />
             </div>
           )}
-
           {/* Error Alert */}
           {model.status === 'error' && (
             <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>
                 Download failed. Check your connection and try again.
               </AlertDescription>
             </Alert>
           )}
-
           {/* Model Stats */}
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-2 gap-3 text-sm md:text-base lg:text-lg">
             <div className="flex items-center gap-2">
-              <Download className="h-3 w-3 text-muted-foreground" />
+              <Download className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
               <span className="text-muted-foreground">Downloads:</span>
               <span className="font-medium">{formatNumber(model.downloads)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Star className="h-3 w-3 text-muted-foreground" />
+              <Star className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
               <span className="text-muted-foreground">Likes:</span>
               <span className="font-medium">{formatNumber(model.likes)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <HardDrive className="h-3 w-3 text-muted-foreground" />
+              <HardDrive className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
               <span className="text-muted-foreground">Size:</span>
               <span className="font-medium">{formatSize(model.total_size)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Package className="h-3 w-3 text-muted-foreground" />
+              <Package className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
               <span className="text-muted-foreground">Library:</span>
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                 {model.library}
               </Badge>
             </div>
           </div>
-
           {/* Technical Specs */}
           <div className="space-y-2">
-            <div className="text-sm font-medium text-muted-foreground">Technical Specifications</div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Technical Specifications</div>
+            <div className="grid grid-cols-2 gap-2 text-sm md:text-base lg:text-lg">
               <div className="flex items-center gap-2">
-                <Cpu className="h-3 w-3 text-muted-foreground" />
+                <Cpu className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
                 <span className="text-muted-foreground">Params:</span>
                 <span className="font-medium">{model.metadata.parameters}</span>
               </div>
               <div className="flex items-center gap-2">
-                <MemoryStick className="h-3 w-3 text-muted-foreground" />
+                <MemoryStick className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
                 <span className="text-muted-foreground">Memory:</span>
                 <span className="font-medium">{model.metadata.memoryRequirement}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Zap className="h-3 w-3 text-muted-foreground" />
+                <Zap className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
                 <span className="text-muted-foreground">Quant:</span>
                 <span className="font-medium">{model.metadata.quantization}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Info className="h-3 w-3 text-muted-foreground" />
+                <Info className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
                 <span className="text-muted-foreground">Context:</span>
                 <span className="font-medium">{model.metadata.contextLength.toLocaleString()}</span>
               </div>
             </div>
           </div>
-
           {/* Usage Information (for local models) */}
           {model.status === 'local' && (
-            <div className="space-y-1 text-sm">
+            <div className="space-y-1 text-sm md:text-base lg:text-lg">
               {model.lastUsed && (
                 <div className="flex items-center gap-2">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <Clock className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
                   <span className="text-muted-foreground">Last used:</span>
                   <span className="font-medium">{formatRelativeTime(model.lastUsed)}</span>
                 </div>
               )}
               {model.downloadDate && (
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-3 w-3 text-muted-foreground" />
+                  <Calendar className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
                   <span className="text-muted-foreground">Downloaded:</span>
                   <span className="font-medium">{formatDate(model.downloadDate)}</span>
                 </div>
               )}
             </div>
           )}
-
           {/* License */}
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
             <span className="text-muted-foreground">License:</span>
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
               {model.metadata.license}
             </Badge>
           </div>
-
           {/* Tags */}
           {model.tags.length > 0 && (
             <div className="space-y-2">
-              <span className="text-sm text-muted-foreground">Tags:</span>
+              <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Tags:</span>
               <div className="flex flex-wrap gap-1">
                 {model.tags.slice(0, 6).map(tag => (
-                  <Badge key={tag} variant="secondary" className="text-xs">
+                  <Badge key={tag} variant="secondary" className="text-xs sm:text-sm md:text-base">
                     {highlightText(tag, searchQuery)}
                   </Badge>
                 ))}
                 {model.tags.length > 6 && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                     +{model.tags.length - 6} more
                   </Badge>
                 )}
               </div>
             </div>
           )}
-
           {/* Actions */}
           <div className="mt-auto pt-4">
             {renderActions()}
           </div>
         </CardContent>
       </Card>
-
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Trash2 className="h-5 w-5 text-destructive" />
+              <Trash2 className="h-5 w-5 text-destructive sm:w-auto md:w-full" />
               Delete Model
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>Are you sure you want to delete <strong>{model.name}</strong>?</p>
-              
-              <div className="bg-muted/50 p-3 rounded-lg space-y-2 text-sm">
+              <div className="bg-muted/50 p-3 rounded-lg space-y-2 text-sm md:text-base lg:text-lg">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Owner:</span>
                   <span className="font-medium">{model.owner}</span>
@@ -519,7 +506,6 @@ export default function ModelCard({ model, onAction, searchQuery = '' }: ModelCa
                   </div>
                 )}
               </div>
-              
               <p className="text-destructive font-medium text-center">
                 This action cannot be undone.
               </p>
@@ -531,13 +517,12 @@ export default function ModelCard({ model, onAction, searchQuery = '' }: ModelCa
               onClick={handleConfirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              <Trash2 className="h-4 w-4 mr-2" />
+              <Trash2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Delete Model
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       {/* Model Details Dialog */}
       <ModelDetailModal
         model={model}

@@ -21,7 +21,7 @@ vi.mock('lucide-react', () => ({
     <div className={className} data-testid="image-icon">Image</div>
   ),
   AlertCircle: ({ className }: { className?: string }) => (
-    <div className={className} data-testid="alert-circle">Error</div>
+    <div className={className} data-testid="alert-circle" role="alert">Error</div>
   ),
 }));
 
@@ -56,7 +56,7 @@ describe('LazyImage', () => {
       <LazyImage
         src="test-image.jpg"
         alt="Test image"
-        className="w-32 h-32"
+        className="w-32 h-32 sm:w-auto md:w-full"
       />
     );
 

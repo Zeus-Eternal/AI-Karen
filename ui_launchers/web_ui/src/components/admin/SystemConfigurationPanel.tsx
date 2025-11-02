@@ -175,7 +175,7 @@ export default function SystemConfigurationPanel() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
         <span className="ml-2">Loading configuration...</span>
       </div>
     );
@@ -187,33 +187,33 @@ export default function SystemConfigurationPanel() {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">System Configuration</h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             Manage system-wide settings and policies
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
+          <button
             variant="outline"
             onClick={handleResetToDefaults}
             disabled={saving}
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
+           aria-label="Button">
+            <RotateCcw className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
             Reset to Defaults
           </Button>
-          <Button
+          <button
             onClick={handleSaveConfiguration}
             disabled={!hasChanges || saving}
-          >
-            <Save className="mr-2 h-4 w-4" />
+           aria-label="Button">
+            <Save className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </div>
 
       {hasChanges && (
-        <div className="flex items-center gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          <span className="text-sm text-yellow-800">
+        <div className="flex items-center gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg sm:p-4 md:p-6">
+          <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
+          <span className="text-sm text-yellow-800 md:text-base lg:text-lg">
             You have unsaved changes. Don't forget to save your configuration.
           </span>
         </div>
@@ -224,7 +224,7 @@ export default function SystemConfigurationPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
+              <Key className="h-5 w-5 sm:w-auto md:w-full" />
               Password Policy
             </CardTitle>
             <CardDescription>
@@ -234,13 +234,13 @@ export default function SystemConfigurationPanel() {
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="passwordMinLength">Minimum Password Length</Label>
-              <Input
+              <input
                 id="passwordMinLength"
                 type="number"
                 min="8"
                 max="128"
                 value={config.passwordMinLength}
-                onChange={(e) => handleConfigChange('passwordMinLength', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleConfigChange('passwordMinLength', parseInt(e.target.value))}
               />
             </div>
 
@@ -286,30 +286,30 @@ export default function SystemConfigurationPanel() {
 
             <div>
               <Label htmlFor="passwordExpirationDays">Password Expiration (Days)</Label>
-              <Input
+              <input
                 id="passwordExpirationDays"
                 type="number"
                 min="0"
                 max="365"
                 value={config.passwordExpirationDays}
-                onChange={(e) => handleConfigChange('passwordExpirationDays', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleConfigChange('passwordExpirationDays', parseInt(e.target.value))}
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                 Set to 0 to disable password expiration
               </p>
             </div>
 
             <div>
               <Label htmlFor="passwordHistoryCount">Password History Count</Label>
-              <Input
+              <input
                 id="passwordHistoryCount"
                 type="number"
                 min="0"
                 max="24"
                 value={config.passwordHistoryCount}
-                onChange={(e) => handleConfigChange('passwordHistoryCount', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleConfigChange('passwordHistoryCount', parseInt(e.target.value))}
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                 Number of previous passwords to remember
               </p>
             </div>
@@ -320,7 +320,7 @@ export default function SystemConfigurationPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+              <Clock className="h-5 w-5 sm:w-auto md:w-full" />
               Session Settings
             </CardTitle>
             <CardDescription>
@@ -330,37 +330,37 @@ export default function SystemConfigurationPanel() {
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="sessionTimeout">User Session Timeout (Minutes)</Label>
-              <Input
+              <input
                 id="sessionTimeout"
                 type="number"
                 min="5"
                 max="1440"
                 value={config.sessionTimeoutMinutes}
-                onChange={(e) => handleConfigChange('sessionTimeoutMinutes', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleConfigChange('sessionTimeoutMinutes', parseInt(e.target.value))}
               />
             </div>
 
             <div>
               <Label htmlFor="adminSessionTimeout">Admin Session Timeout (Minutes)</Label>
-              <Input
+              <input
                 id="adminSessionTimeout"
                 type="number"
                 min="5"
                 max="480"
                 value={config.adminSessionTimeoutMinutes}
-                onChange={(e) => handleConfigChange('adminSessionTimeoutMinutes', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleConfigChange('adminSessionTimeoutMinutes', parseInt(e.target.value))}
               />
             </div>
 
             <div>
               <Label htmlFor="maxConcurrentSessions">Max Concurrent Sessions</Label>
-              <Input
+              <input
                 id="maxConcurrentSessions"
                 type="number"
                 min="1"
                 max="10"
                 value={config.maxConcurrentSessions}
-                onChange={(e) => handleConfigChange('maxConcurrentSessions', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleConfigChange('maxConcurrentSessions', parseInt(e.target.value))}
               />
             </div>
 
@@ -379,7 +379,7 @@ export default function SystemConfigurationPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
+              <Shield className="h-5 w-5 sm:w-auto md:w-full" />
               Security Settings
             </CardTitle>
             <CardDescription>
@@ -389,25 +389,25 @@ export default function SystemConfigurationPanel() {
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="maxLoginAttempts">Max Login Attempts</Label>
-              <Input
+              <input
                 id="maxLoginAttempts"
                 type="number"
                 min="3"
                 max="10"
                 value={config.maxLoginAttempts}
-                onChange={(e) => handleConfigChange('maxLoginAttempts', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleConfigChange('maxLoginAttempts', parseInt(e.target.value))}
               />
             </div>
 
             <div>
               <Label htmlFor="lockoutDuration">Lockout Duration (Minutes)</Label>
-              <Input
+              <input
                 id="lockoutDuration"
                 type="number"
                 min="1"
                 max="1440"
                 value={config.lockoutDurationMinutes}
-                onChange={(e) => handleConfigChange('lockoutDurationMinutes', parseInt(e.target.value))}
+                onChange={(e) = aria-label="Input"> handleConfigChange('lockoutDurationMinutes', parseInt(e.target.value))}
               />
             </div>
 
@@ -431,14 +431,14 @@ export default function SystemConfigurationPanel() {
 
             <div>
               <Label htmlFor="allowedIpRanges">Allowed IP Ranges (Optional)</Label>
-              <Textarea
+              <textarea
                 id="allowedIpRanges"
                 placeholder="192.168.1.0/24&#10;10.0.0.0/8"
                 value={config.allowedIpRanges}
-                onChange={(e) => handleConfigChange('allowedIpRanges', e.target.value)}
+                onChange={(e) = aria-label="Textarea"> handleConfigChange('allowedIpRanges', e.target.value)}
                 rows={3}
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                 One IP range per line. Leave empty to allow all IPs.
               </p>
             </div>
@@ -449,7 +449,7 @@ export default function SystemConfigurationPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
+              <Mail className="h-5 w-5 sm:w-auto md:w-full" />
               Email Settings
             </CardTitle>
             <CardDescription>
@@ -468,32 +468,32 @@ export default function SystemConfigurationPanel() {
 
             <div>
               <Label htmlFor="emailFromAddress">From Email Address</Label>
-              <Input
+              <input
                 id="emailFromAddress"
                 type="email"
                 placeholder="noreply@example.com"
                 value={config.emailFromAddress}
-                onChange={(e) => handleConfigChange('emailFromAddress', e.target.value)}
+                onChange={(e) = aria-label="Input"> handleConfigChange('emailFromAddress', e.target.value)}
               />
             </div>
 
             <div>
               <Label htmlFor="emailFromName">From Name</Label>
-              <Input
+              <input
                 id="emailFromName"
                 placeholder="System Administrator"
                 value={config.emailFromName}
-                onChange={(e) => handleConfigChange('emailFromName', e.target.value)}
+                onChange={(e) = aria-label="Input"> handleConfigChange('emailFromName', e.target.value)}
               />
             </div>
 
             <div>
               <Label htmlFor="emailSignature">Email Signature</Label>
-              <Textarea
+              <textarea
                 id="emailSignature"
                 placeholder="Best regards,&#10;The Admin Team"
                 value={config.emailSignature}
-                onChange={(e) => handleConfigChange('emailSignature', e.target.value)}
+                onChange={(e) = aria-label="Textarea"> handleConfigChange('emailSignature', e.target.value)}
                 rows={3}
               />
             </div>
@@ -504,7 +504,7 @@ export default function SystemConfigurationPanel() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5" />
+              <Info className="h-5 w-5 sm:w-auto md:w-full" />
               General Settings
             </CardTitle>
             <CardDescription>
@@ -515,21 +515,21 @@ export default function SystemConfigurationPanel() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="systemName">System Name</Label>
-                <Input
+                <input
                   id="systemName"
                   placeholder="Admin Management System"
                   value={config.systemName}
-                  onChange={(e) => handleConfigChange('systemName', e.target.value)}
+                  onChange={(e) = aria-label="Input"> handleConfigChange('systemName', e.target.value)}
                 />
               </div>
 
               <div>
                 <Label htmlFor="systemDescription">System Description</Label>
-                <Input
+                <input
                   id="systemDescription"
                   placeholder="Secure administrative interface"
                   value={config.systemDescription}
-                  onChange={(e) => handleConfigChange('systemDescription', e.target.value)}
+                  onChange={(e) = aria-label="Input"> handleConfigChange('systemDescription', e.target.value)}
                 />
               </div>
             </div>
@@ -566,11 +566,11 @@ export default function SystemConfigurationPanel() {
             {config.maintenanceMode && (
               <div>
                 <Label htmlFor="maintenanceMessage">Maintenance Message</Label>
-                <Textarea
+                <textarea
                   id="maintenanceMessage"
                   placeholder="System is currently under maintenance..."
                   value={config.maintenanceMessage}
-                  onChange={(e) => handleConfigChange('maintenanceMessage', e.target.value)}
+                  onChange={(e) = aria-label="Textarea"> handleConfigChange('maintenanceMessage', e.target.value)}
                   rows={2}
                 />
               </div>

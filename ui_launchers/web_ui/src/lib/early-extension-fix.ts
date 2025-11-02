@@ -4,16 +4,13 @@
  * This runs as early as possible to patch console and fetch
  * before any other code can log extension errors.
  */
-
 // Immediate execution - no delays, no conditions
 (function() {
   if (typeof window === 'undefined') return;
-
   // 1. Patch console.error immediately
   const originalConsoleError = console.error;
   console.error = function(...args: any[]) {
     const firstArg = args[0];
-    
     // Suppress specific extension error patterns
     if (typeof firstArg === 'string') {
       if (firstArg.includes('[ERROR] "KarenBackendService 4xx/5xx"') ||
@@ -24,29 +21,21 @@
              arg.endpoint?.includes('/api/extensions'))
           ))) {
         // Convert to info log
-        console.info('[EXTENSION-HANDLED]', ...args);
         return;
       }
     }
-    
     // Call original for other errors
     originalConsoleError.apply(console, args);
   };
-
   // 2. Patch fetch immediately
   const originalFetch = window.fetch;
   window.fetch = async function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const url = typeof input === 'string' ? input : input.toString();
-    
     try {
       const response = await originalFetch(input, init);
-      
       // Handle extension API errors immediately
       if (!response.ok && url.includes('/api/extensions') && 
           (response.status === 403 || response.status === 401 || response.status === 504)) {
-        
-        console.info(`[EARLY-FIX] Handled ${response.status} for ${url}`);
-        
         const fallbackData = {
           extensions: {
             'readonly-mode': {
@@ -69,7 +58,6 @@
           access_level: 'readonly',
           fallback_mode: true
         };
-        
         return new Response(JSON.stringify(fallbackData), {
           status: 200,
           statusText: 'OK',
@@ -79,13 +67,10 @@
           }
         });
       }
-      
       return response;
     } catch (error) {
       // Handle network errors for extension endpoints
       if (url.includes('/api/extensions')) {
-        console.info(`[EARLY-FIX] Network error handled for ${url}`);
-        
         return new Response(JSON.stringify({
           extensions: {},
           message: 'Extension service temporarily unavailable',
@@ -99,12 +84,8 @@
           }
         });
       }
-      
       throw error;
     }
   };
-
-  console.info('[EARLY-EXTENSION-FIX] Early extension error fix applied');
 })();
-
 export {}; // Make this a module

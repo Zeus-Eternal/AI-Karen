@@ -1,9 +1,26 @@
-'use client';
-
 import React, { useState, useMemo, useCallback } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
+import { useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-community';
 import {
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
+'use client';
+
+
+
+
+
   Shield,
   Users,
   User,
@@ -19,10 +36,10 @@ import {
   X,
   AlertTriangle
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
+
+
+
+
   Dialog,
   DialogContent,
   DialogHeader,
@@ -30,23 +47,23 @@ import {
   DialogTrigger,
   DialogFooter
 } from '@/components/ui/dialog';
-import {
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
+
+
+
+
+
+
 
 // AG-Grid theme imports
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+
+
 
 export interface FilePermission {
   id: string;
@@ -116,9 +133,24 @@ const PermissionTypeRenderer = ({ value }: { value: string }) => {
   if (!permission) return <span>{value}</span>;
 
   const Icon = permission.icon;
+
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Handle escape key
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="flex items-center gap-2">
-      <Icon className="h-4 w-4" />
+    <ErrorBoundary fallback={<div>Something went wrong in FilePermissionManager</div>}>
+      <div className="flex items-center gap-2">
+      <Icon className="h-4 w-4 sm:w-auto md:w-full" />
       <span>{permission.label}</span>
     </div>
   );
@@ -128,14 +160,14 @@ const UserRenderer = ({ data }: { data: FilePermission }) => {
   if (data.user_id) {
     return (
       <div className="flex items-center gap-2">
-        <User className="h-4 w-4" />
+        <User className="h-4 w-4 sm:w-auto md:w-full" />
         <span>{data.user_id}</span>
       </div>
     );
   } else if (data.role) {
     return (
       <div className="flex items-center gap-2">
-        <Users className="h-4 w-4" />
+        <Users className="h-4 w-4 sm:w-auto md:w-full" />
         <Badge variant="outline">{data.role}</Badge>
       </div>
     );
@@ -151,12 +183,12 @@ const StatusRenderer = ({ data }: { data: FilePermission }) => {
     <div className="flex items-center gap-2">
       {isActive ? (
         <Badge variant="secondary" className="bg-green-100 text-green-800">
-          <Check className="mr-1 h-3 w-3" />
+          <Check className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
           Active
         </Badge>
       ) : (
         <Badge variant="secondary" className="bg-red-100 text-red-800">
-          <X className="mr-1 h-3 w-3" />
+          <X className="mr-1 h-3 w-3 sm:w-auto md:w-full" />
           {isExpired ? 'Expired' : 'Inactive'}
         </Badge>
       )}
@@ -179,21 +211,21 @@ const ActionsRenderer = ({
 
   return (
     <div className="flex items-center gap-1">
-      <Button
+      <button
         variant="ghost"
         size="sm"
-        onClick={() => onEdit(data)}
-        className="h-8 w-8 p-0"
+        onClick={() = aria-label="Button"> onEdit(data)}
+        className="h-8 w-8 p-0 sm:w-auto md:w-full"
       >
-        <Edit className="h-4 w-4" />
+        <Edit className="h-4 w-4 sm:w-auto md:w-full" />
       </Button>
-      <Button
+      <button
         variant="ghost"
         size="sm"
-        onClick={() => onDelete(data.id)}
-        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+        onClick={() = aria-label="Button"> onDelete(data.id)}
+        className="h-8 w-8 p-0 text-destructive hover:text-destructive sm:w-auto md:w-full"
       >
-        <Trash2 className="h-4 w-4" />
+        <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
       </Button>
     </div>
   );
@@ -365,18 +397,18 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
+                <Shield className="h-5 w-5 sm:w-auto md:w-full" />
                 File Permissions: {fileName}
               </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                 Manage access permissions for this file
               </p>
             </div>
             {!readOnly && (
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
+                  <button aria-label="Button">
+                    <Plus className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                     Add Permission
                   </Button>
                 </DialogTrigger>
@@ -393,20 +425,20 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                           <TabsTrigger value="role">Role</TabsTrigger>
                         </TabsList>
                         <TabsContent value="user" className="space-y-2">
-                          <Select
+                          <select
                             value={newPermission.user_id}
-                            onValueChange={(value) => setNewPermission({
+                            onValueChange={(value) = aria-label="Select option"> setNewPermission({
                               ...newPermission,
                               user_id: value,
                               role: undefined
                             })}
                           >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select user" />
+                            <selectTrigger aria-label="Select option">
+                              <selectValue placeholder="Select user" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <selectContent aria-label="Select option">
                               {availableUsers.map(user => (
-                                <SelectItem key={user.id} value={user.id}>
+                                <selectItem key={user.id} value={user.id} aria-label="Select option">
                                   {user.name} ({user.email ?? 'Unknown'})
                                 </SelectItem>
                               ))}
@@ -414,20 +446,20 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                           </Select>
                         </TabsContent>
                         <TabsContent value="role" className="space-y-2">
-                          <Select
+                          <select
                             value={newPermission.role}
-                            onValueChange={(value) => setNewPermission({
+                            onValueChange={(value) = aria-label="Select option"> setNewPermission({
                               ...newPermission,
                               role: value,
                               user_id: undefined
                             })}
                           >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select role" />
+                            <selectTrigger aria-label="Select option">
+                              <selectValue placeholder="Select role" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <selectContent aria-label="Select option">
                               {availableRoles.map(role => (
-                                <SelectItem key={role.id} value={role.id}>
+                                <selectItem key={role.id} value={role.id} aria-label="Select option">
                                   {role.name}
                                 </SelectItem>
                               ))}
@@ -439,26 +471,26 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
 
                     <div className="space-y-2">
                       <Label>Permission Type</Label>
-                      <Select
+                      <select
                         value={newPermission.permission_type}
-                        onValueChange={(value) => setNewPermission({
+                        onValueChange={(value) = aria-label="Select option"> setNewPermission({
                           ...newPermission,
                           permission_type: value as any
                         })}
                       >
-                        <SelectTrigger>
-                          <SelectValue />
+                        <selectTrigger aria-label="Select option">
+                          <selectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <selectContent aria-label="Select option">
                           {PERMISSION_TYPES.map(permission => {
                             const Icon = permission.icon;
                             return (
-                              <SelectItem key={permission.value} value={permission.value}>
+                              <selectItem key={permission.value} value={permission.value} aria-label="Select option">
                                 <div className="flex items-center gap-2">
-                                  <Icon className="h-4 w-4" />
+                                  <Icon className="h-4 w-4 sm:w-auto md:w-full" />
                                   <div>
                                     <div>{permission.label}</div>
-                                    <div className="text-xs text-muted-foreground">
+                                    <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                                       {permission.description}
                                     </div>
                                   </div>
@@ -472,10 +504,10 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
 
                     <div className="space-y-2">
                       <Label>Expires At (Optional)</Label>
-                      <Input
+                      <input
                         type="datetime-local"
                         value={newPermission.expires_at?.slice(0, 16) || ''}
-                        onChange={(e) => setNewPermission({
+                        onChange={(e) = aria-label="Input"> setNewPermission({
                           ...newPermission,
                           expires_at: e.target.value ? new Date(e.target.value).toISOString() : undefined
                         })}
@@ -495,10 +527,10 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    <button variant="outline" onClick={() = aria-label="Button"> setIsAddDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button onClick={handleAddPermission}>
+                    <button onClick={handleAddPermission} aria-label="Button">
                       Add Permission
                     </Button>
                   </DialogFooter>
@@ -512,11 +544,11 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-muted-foreground" />
+              <Shield className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
               <div>
-                <p className="text-sm font-medium">Total Permissions</p>
+                <p className="text-sm font-medium md:text-base lg:text-lg">Total Permissions</p>
                 <p className="text-2xl font-bold">{permissionStats.total}</p>
               </div>
             </div>
@@ -524,11 +556,11 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Check className="h-4 w-4 text-green-600" />
+              <Check className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
               <div>
-                <p className="text-sm font-medium">Active</p>
+                <p className="text-sm font-medium md:text-base lg:text-lg">Active</p>
                 <p className="text-2xl font-bold text-green-600">{permissionStats.active}</p>
               </div>
             </div>
@@ -536,11 +568,11 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />
               <div>
-                <p className="text-sm font-medium">Expired</p>
+                <p className="text-sm font-medium md:text-base lg:text-lg">Expired</p>
                 <p className="text-2xl font-bold text-yellow-600">{permissionStats.expired}</p>
               </div>
             </div>
@@ -548,11 +580,11 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <Users className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
               <div>
-                <p className="text-sm font-medium">Selected</p>
+                <p className="text-sm font-medium md:text-base lg:text-lg">Selected</p>
                 <p className="text-2xl font-bold">{selectedPermissions.length}</p>
               </div>
             </div>
@@ -565,7 +597,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
         <CardHeader>
           <CardTitle>Current Permissions</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 sm:p-4 md:p-6">
           <div
             className="ag-theme-alpine w-full"
             style={{ height: '400px' }}
@@ -591,7 +623,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
               }}
               noRowsOverlayComponent={() => (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <Shield className="h-12 w-12 mb-2" />
+                  <Shield className="h-12 w-12 mb-2 sm:w-auto md:w-full" />
                   <p>No permissions configured</p>
                 </div>
               )}
@@ -603,16 +635,16 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
       {/* Bulk Actions */}
       {selectedPermissions.length > 0 && !readOnly && (
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium md:text-base lg:text-lg">
                 {selectedPermissions.length} permission{selectedPermissions.length !== 1 ? 's' : ''} selected
               </span>
               <div className="flex items-center gap-2">
-                <Button
+                <button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
+                  onClick={() = aria-label="Button"> {
                     const updatedPermissions = currentPermissions.map(p =>
                       selectedPermissions.find(sp => sp.id === p.id)
                         ? { ...p, is_active: true }
@@ -621,13 +653,13 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                     onPermissionUpdate(updatedPermissions);
                   }}
                 >
-                  <Unlock className="mr-2 h-4 w-4" />
+                  <Unlock className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                   Activate
                 </Button>
-                <Button
+                <button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
+                  onClick={() = aria-label="Button"> {
                     const updatedPermissions = currentPermissions.map(p =>
                       selectedPermissions.find(sp => sp.id === p.id)
                         ? { ...p, is_active: false }
@@ -636,19 +668,19 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                     onPermissionUpdate(updatedPermissions);
                   }}
                 >
-                  <Lock className="mr-2 h-4 w-4" />
+                  <Lock className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                   Deactivate
                 </Button>
-                <Button
+                <button
                   variant="destructive"
                   size="sm"
-                  onClick={() => {
+                  onClick={() = aria-label="Button"> {
                     const selectedIds = selectedPermissions.map(p => p.id);
                     const updatedPermissions = currentPermissions.filter(p => !selectedIds.includes(p.id));
                     onPermissionUpdate(updatedPermissions);
                   }}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                   Delete
                 </Button>
               </div>
@@ -667,23 +699,23 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Permission Type</Label>
-                <Select
+                <select
                   value={editingPermission.permission_type}
-                  onValueChange={(value) => setEditingPermission({
+                  onValueChange={(value) = aria-label="Select option"> setEditingPermission({
                     ...editingPermission,
                     permission_type: value as any
                   })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <selectContent aria-label="Select option">
                     {PERMISSION_TYPES.map(permission => {
                       const Icon = permission.icon;
                       return (
-                        <SelectItem key={permission.value} value={permission.value}>
+                        <selectItem key={permission.value} value={permission.value} aria-label="Select option">
                           <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
+                            <Icon className="h-4 w-4 sm:w-auto md:w-full" />
                             {permission.label}
                           </div>
                         </SelectItem>
@@ -695,10 +727,10 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
 
               <div className="space-y-2">
                 <Label>Expires At</Label>
-                <Input
+                <input
                   type="datetime-local"
                   value={editingPermission.expires_at?.slice(0, 16) || ''}
-                  onChange={(e) => setEditingPermission({
+                  onChange={(e) = aria-label="Input"> setEditingPermission({
                     ...editingPermission,
                     expires_at: e.target.value ? new Date(e.target.value).toISOString() : undefined
                   })}
@@ -719,16 +751,17 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <button variant="outline" onClick={() = aria-label="Button"> setIsEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdatePermission}>
+            <button onClick={handleUpdatePermission} aria-label="Button">
               Update Permission
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
+    </ErrorBoundary>
   );
 };
 

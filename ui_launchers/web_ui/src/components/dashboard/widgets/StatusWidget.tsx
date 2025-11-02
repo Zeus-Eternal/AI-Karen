@@ -146,12 +146,12 @@ export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
 
             {/* Status Message */}
             <div className="mt-3">
-              <p className="text-sm font-medium text-foreground mb-1">
+              <p className="text-sm font-medium text-foreground mb-1 md:text-base lg:text-lg">
                 {status.message}
               </p>
               
               {/* Last Check Time */}
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 Last checked: {new Date(status.lastCheck).toLocaleString()}
               </p>
             </div>
@@ -162,7 +162,7 @@ export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
         {status.details && Object.keys(status.details).length > 0 && (
           <div className="mt-4 pt-4 border-t">
             <div className="space-y-2">
-              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide sm:text-sm md:text-base">
                 Details
               </h4>
               
@@ -171,9 +171,9 @@ export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
                   const IconComponent = getDetailIcon(key);
                   
                   return (
-                    <div key={key} className="flex items-center justify-between text-sm">
+                    <div key={key} className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                       <div className="flex items-center gap-2 text-muted-foreground">
-                        <IconComponent className="h-3 w-3" />
+                        <IconComponent className="h-3 w-3 sm:w-auto md:w-full" />
                         <span className="capitalize">
                           {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
                         </span>
@@ -188,7 +188,7 @@ export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
 
               {/* Show more indicator if there are additional details */}
               {Object.keys(status.details).length > 4 && (
-                <div className="text-xs text-muted-foreground text-center pt-2">
+                <div className="text-xs text-muted-foreground text-center pt-2 sm:text-sm md:text-base">
                   +{Object.keys(status.details).length - 4} more details
                 </div>
               )}
@@ -198,7 +198,7 @@ export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
 
         {/* Status History Indicator */}
         <div className="mt-3 pt-2 border-t">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
             <span>Status History</span>
             <div className="flex gap-1">
               {/* Mock status history - in real implementation, this would come from data */}

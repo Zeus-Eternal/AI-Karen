@@ -2,13 +2,11 @@
  * AG-UI Memory Grid Component
  * Displays memory data in an interactive grid with filtering and sorting
  */
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridReadyEvent, FilterChangedEvent } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
-
 interface MemoryGridRow {
   id: string;
   content: string;
@@ -23,7 +21,6 @@ interface MemoryGridRow {
   session_id?: string;
   tenant_id?: string;
 }
-
 interface MemoryGridProps {
   userId: string;
   tenantId?: string;
@@ -32,13 +29,11 @@ interface MemoryGridProps {
   filters?: Record<string, any>;
   height?: number;
 }
-
 // Custom cell renderers
 const ConfidenceCellRenderer = (params: any) => {
   const confidence = params.value;
   const percentage = Math.round(confidence * 100);
   const color = confidence > 0.8 ? '#4CAF50' : confidence > 0.6 ? '#FF9800' : '#F44336';
-  
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
       <div 
@@ -63,7 +58,6 @@ const ConfidenceCellRenderer = (params: any) => {
     </div>
   );
 };
-
 const TypeCellRenderer = (params: any) => {
   const type = params.value;
   const colors = {
@@ -71,7 +65,6 @@ const TypeCellRenderer = (params: any) => {
     preference: '#9C27B0',
     context: '#FF9800'
   };
-  
   return (
     <span 
       style={{
@@ -87,7 +80,6 @@ const TypeCellRenderer = (params: any) => {
     </span>
   );
 };
-
 const RelationshipsCellRenderer = (params: any) => {
   const relationships = params.value || [];
   return (
@@ -108,20 +100,17 @@ const RelationshipsCellRenderer = (params: any) => {
     </div>
   );
 };
-
 const ContentCellRenderer = (params: any) => {
   const content = params.value;
   const [expanded, setExpanded] = useState(false);
-  
   if (content.length <= 100) {
     return <span>{content}</span>;
   }
-  
   return (
     <div>
       <span>{expanded ? content : `${content.substring(0, 100)}...`}</span>
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={() = aria-label="Button"> setExpanded(!expanded)}
         style={{
           marginLeft: '8px',
           padding: '2px 6px',
@@ -137,7 +126,6 @@ const ContentCellRenderer = (params: any) => {
     </div>
   );
 };
-
 export const MemoryGrid: React.FC<MemoryGridProps> = ({
   userId,
   tenantId,
@@ -149,7 +137,6 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
   const [rowData, setRowData] = useState<MemoryGridRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   // Column definitions for AG-Grid
   const columnDefs: ColDef[] = useMemo(() => [
     {
@@ -213,7 +200,6 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       valueFormatter: (params) => `${Math.round(params.value * 100)}%`
     }
   ], []);
-
   // Default column properties
   const defaultColDef = useMemo(() => ({
     sortable: true,
@@ -221,13 +207,11 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
     resizable: true,
     minWidth: 80
   }), []);
-
   // Fetch memory data
   const fetchMemoryData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-
       const response = await fetch('/api/memory/grid', {
         method: 'POST',
         headers: {
@@ -239,48 +223,39 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
           filters: filters || {}
         })
       });
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
       const data = await response.json();
       setRowData(data.memories || []);
     } catch (err) {
-      console.error('Error fetching memory data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load memory data');
     } finally {
       setLoading(false);
     }
   }, [userId, tenantId, filters]);
-
   // Load data on mount and when dependencies change
   useEffect(() => {
     fetchMemoryData();
   }, [fetchMemoryData]);
-
   // Handle grid events
   const onGridReady = (params: GridReadyEvent) => {
     params.api.sizeColumnsToFit();
   };
-
   const onFilterChanged = (event: FilterChangedEvent) => {
     // Optional: Handle filter changes for analytics
     console.log('Filters changed:', event.api.getFilterModel());
   };
-
   const onRowClicked = (event: any) => {
     if (onMemorySelect) {
       onMemorySelect(event.data);
     }
   };
-
   const onRowDoubleClicked = (event: any) => {
     if (onMemoryEdit) {
       onMemoryEdit(event.data);
     }
   };
-
   // Grid options
   const gridOptions = {
     pagination: true,
@@ -292,7 +267,6 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
     rowHeight: 60,
     headerHeight: 40
   };
-
   if (error) {
     return (
       <div className="memory-grid-error" style={{ 
@@ -315,13 +289,12 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
             borderRadius: '4px',
             cursor: 'pointer'
           }}
-        >
+         aria-label="Button">
           Retry
         </button>
       </div>
     );
   }
-
   return (
     <div className="memory-grid-container" style={{ height: `${height}px` }}>
       {loading && (
@@ -338,7 +311,6 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
           Loading memory data...
         </div>
       )}
-      
       <div className="ag-theme-alpine" style={{ height: '100%', width: '100%' }}>
         <AgGridReact
           rowData={rowData}
@@ -356,5 +328,4 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
     </div>
   );
 };
-
 export default MemoryGrid;

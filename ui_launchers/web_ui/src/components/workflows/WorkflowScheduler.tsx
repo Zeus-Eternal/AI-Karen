@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +10,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
+'use client';
+
+
+
+
+
+
+
+
+
+
+
+
+
   Calendar, 
   Clock, 
   Play, 
@@ -30,7 +42,7 @@ import {
   BarChart3
 } from 'lucide-react';
 
-import { 
+
   WorkflowTrigger, 
   CronSchedule, 
   WorkflowQueue, 
@@ -132,17 +144,17 @@ export function WorkflowScheduler({
         </div>
         
         <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setShowCreateQueue(true)}
+          <button
+            onClick={() = aria-label="Button"> setShowCreateQueue(true)}
             variant="outline"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             New Queue
           </Button>
-          <Button
-            onClick={() => setShowCreateTrigger(true)}
+          <button
+            onClick={() = aria-label="Button"> setShowCreateTrigger(true)}
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             New Trigger
           </Button>
         </div>
@@ -151,54 +163,54 @@ export function WorkflowScheduler({
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Active Triggers</p>
+                <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Active Triggers</p>
                 <p className="text-2xl font-bold">{schedulerStats.activeTriggers}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   of {schedulerStats.totalTriggers} total
                 </p>
               </div>
-              <Timer className="h-8 w-8 text-blue-600" />
+              <Timer className="h-8 w-8 text-blue-600 sm:w-auto md:w-full" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Queued Tasks</p>
+                <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Queued Tasks</p>
                 <p className="text-2xl font-bold">{schedulerStats.totalQueued}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   {schedulerStats.totalProcessing} processing
                 </p>
               </div>
-              <Activity className="h-8 w-8 text-orange-600" />
+              <Activity className="h-8 w-8 text-orange-600 sm:w-auto md:w-full" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Success Rate</p>
+                <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Success Rate</p>
                 <p className="text-2xl font-bold text-green-600">
                   {(schedulerStats.successRate * 100).toFixed(1)}%
                 </p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-600" />
+              <TrendingUp className="h-8 w-8 text-green-600 sm:w-auto md:w-full" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Avg Duration</p>
+                <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Avg Duration</p>
                 <p className="text-2xl font-bold">
                   {schedulerStats.avgExecutionTime < 1000 
                     ? `${schedulerStats.avgExecutionTime}ms`
@@ -206,7 +218,7 @@ export function WorkflowScheduler({
                   }
                 </p>
               </div>
-              <Clock className="h-8 w-8 text-muted-foreground" />
+              <Clock className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
             </div>
           </CardContent>
         </Card>
@@ -233,11 +245,11 @@ export function WorkflowScheduler({
                     const IconComponent = triggerTypeIcons[trigger.type];
                     
                     return (
-                      <Card key={trigger.id} className="p-4">
+                      <Card key={trigger.id} className="p-4 sm:p-4 md:p-6">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                              <IconComponent className="h-5 w-5" />
+                              <IconComponent className="h-5 w-5 sm:w-auto md:w-full" />
                               <h3 className="font-semibold">{trigger.name}</h3>
                               <Badge className={triggerTypeColors[trigger.type]}>
                                 {trigger.type}
@@ -253,7 +265,7 @@ export function WorkflowScheduler({
                               )}
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                            <div className="grid grid-cols-2 gap-4 text-sm mb-3 md:text-base lg:text-lg">
                               <div>
                                 <span className="text-muted-foreground">Workflow:</span>
                                 <span className="ml-2 font-medium">{trigger.workflowId}</span>
@@ -281,9 +293,9 @@ export function WorkflowScheduler({
                             
                             {/* Trigger-specific details */}
                             {trigger.type === 'schedule' && trigger.config.schedule && (
-                              <div className="text-sm">
+                              <div className="text-sm md:text-base lg:text-lg">
                                 <span className="text-muted-foreground">Schedule:</span>
-                                <code className="ml-2 px-2 py-1 bg-muted rounded text-xs">
+                                <code className="ml-2 px-2 py-1 bg-muted rounded text-xs sm:text-sm md:text-base">
                                   {trigger.config.schedule.expression}
                                 </code>
                                 <span className="ml-2 text-muted-foreground">
@@ -293,9 +305,9 @@ export function WorkflowScheduler({
                             )}
                             
                             {trigger.type === 'webhook' && trigger.config.webhook && (
-                              <div className="text-sm">
+                              <div className="text-sm md:text-base lg:text-lg">
                                 <span className="text-muted-foreground">URL:</span>
-                                <code className="ml-2 px-2 py-1 bg-muted rounded text-xs">
+                                <code className="ml-2 px-2 py-1 bg-muted rounded text-xs sm:text-sm md:text-base">
                                   {trigger.config.webhook.method} {trigger.config.webhook.url}
                                 </code>
                               </div>
@@ -310,19 +322,19 @@ export function WorkflowScheduler({
                                 onToggleTrigger?.(trigger.id, enabled)
                               }
                             />
-                            <Button
+                            <button
                               size="sm"
                               variant="outline"
-                              onClick={() => setEditingTrigger(trigger)}
+                              onClick={() = aria-label="Button"> setEditingTrigger(trigger)}
                             >
-                              <Settings className="h-4 w-4" />
+                              <Settings className="h-4 w-4 sm:w-auto md:w-full" />
                             </Button>
-                            <Button
+                            <button
                               size="sm"
                               variant="outline"
-                              onClick={() => onDeleteTrigger?.(trigger.id)}
+                              onClick={() = aria-label="Button"> onDeleteTrigger?.(trigger.id)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
                             </Button>
                           </div>
                         </div>
@@ -332,11 +344,11 @@ export function WorkflowScheduler({
                   
                   {triggers.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                      <Timer className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <Timer className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
                       <p>No triggers configured.</p>
-                      <Button 
+                      <button 
                         className="mt-2" 
-                        onClick={() => setShowCreateTrigger(true)}
+                        onClick={() = aria-label="Button"> setShowCreateTrigger(true)}
                       >
                         Create your first trigger
                       </Button>
@@ -355,7 +367,7 @@ export function WorkflowScheduler({
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
-                      <Activity className="h-5 w-5" />
+                      <Activity className="h-5 w-5 sm:w-auto md:w-full" />
                       {queue.name}
                     </CardTitle>
                     <Badge variant="outline">
@@ -365,7 +377,7 @@ export function WorkflowScheduler({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                       <div>
                         <span className="text-muted-foreground">Max Concurrency:</span>
                         <span className="ml-2 font-medium">{queue.maxConcurrency}</span>
@@ -390,7 +402,7 @@ export function WorkflowScheduler({
                     
                     {/* Queue Progress */}
                     <div>
-                      <div className="flex justify-between text-sm mb-1">
+                      <div className="flex justify-between text-sm mb-1 md:text-base lg:text-lg">
                         <span>Capacity Usage</span>
                         <span>{Math.round((queue.currentLoad / queue.maxConcurrency) * 100)}%</span>
                       </div>
@@ -403,7 +415,7 @@ export function WorkflowScheduler({
                     </div>
                     
                     {/* Queue Metrics */}
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                       <div>
                         <span className="text-muted-foreground">Avg Wait Time:</span>
                         <span className="ml-2 font-medium">
@@ -424,18 +436,18 @@ export function WorkflowScheduler({
                     {/* Recent Tasks */}
                     {queue.tasks.length > 0 && (
                       <div>
-                        <Label className="text-sm font-medium">Recent Tasks</Label>
+                        <Label className="text-sm font-medium md:text-base lg:text-lg">Recent Tasks</Label>
                         <div className="mt-2 space-y-1">
                           {queue.tasks.slice(0, 3).map((task) => (
-                            <div key={task.id} className="flex items-center justify-between text-xs p-2 bg-muted rounded">
+                            <div key={task.id} className="flex items-center justify-between text-xs p-2 bg-muted rounded sm:text-sm md:text-base">
                               <span>{task.workflowId}</span>
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                                 Priority {task.priority}
                               </Badge>
                             </div>
                           ))}
                           {queue.tasks.length > 3 && (
-                            <div className="text-xs text-muted-foreground text-center">
+                            <div className="text-xs text-muted-foreground text-center sm:text-sm md:text-base">
                               +{queue.tasks.length - 3} more tasks
                             </div>
                           )}
@@ -451,11 +463,11 @@ export function WorkflowScheduler({
               <Card className="col-span-full">
                 <CardContent className="flex items-center justify-center h-[300px] text-muted-foreground">
                   <div className="text-center">
-                    <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <Activity className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
                     <p>No queues configured.</p>
-                    <Button 
+                    <button 
                       className="mt-2" 
-                      onClick={() => setShowCreateQueue(true)}
+                      onClick={() = aria-label="Button"> setShowCreateQueue(true)}
                     >
                       Create your first queue
                     </Button>
@@ -479,13 +491,13 @@ export function WorkflowScheduler({
                       <p className="text-2xl font-bold text-green-600">
                         {(analytics.successRate * 100).toFixed(1)}%
                       </p>
-                      <p className="text-sm text-muted-foreground">Success Rate</p>
+                      <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Success Rate</p>
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-red-600">
                         {(analytics.failureRate * 100).toFixed(1)}%
                       </p>
-                      <p className="text-sm text-muted-foreground">Failure Rate</p>
+                      <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Failure Rate</p>
                     </div>
                     <div>
                       <p className="text-2xl font-bold">
@@ -494,13 +506,13 @@ export function WorkflowScheduler({
                           : `${(analytics.averageExecutionTime / 1000).toFixed(1)}s`
                         }
                       </p>
-                      <p className="text-sm text-muted-foreground">Avg Duration</p>
+                      <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Avg Duration</p>
                     </div>
                   </div>
                   
                   {/* Placeholder for chart */}
                   <div className="h-[200px] bg-muted rounded flex items-center justify-center">
-                    <BarChart3 className="h-8 w-8 text-muted-foreground" />
+                    <BarChart3 className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
                     <span className="ml-2 text-muted-foreground">Execution Trends Chart</span>
                   </div>
                 </div>
@@ -514,7 +526,7 @@ export function WorkflowScheduler({
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <div className="flex justify-between text-sm mb-1">
+                    <div className="flex justify-between text-sm mb-1 md:text-base lg:text-lg">
                       <span>CPU Usage</span>
                       <span>{(analytics.resourceUtilization.cpu * 100).toFixed(1)}%</span>
                     </div>
@@ -527,7 +539,7 @@ export function WorkflowScheduler({
                   </div>
                   
                   <div>
-                    <div className="flex justify-between text-sm mb-1">
+                    <div className="flex justify-between text-sm mb-1 md:text-base lg:text-lg">
                       <span>Memory Usage</span>
                       <span>{(analytics.resourceUtilization.memory * 100).toFixed(1)}%</span>
                     </div>
@@ -541,7 +553,7 @@ export function WorkflowScheduler({
                   
                   {analytics.resourceUtilization.gpu && (
                     <div>
-                      <div className="flex justify-between text-sm mb-1">
+                      <div className="flex justify-between text-sm mb-1 md:text-base lg:text-lg">
                         <span>GPU Usage</span>
                         <span>{(analytics.resourceUtilization.gpu * 100).toFixed(1)}%</span>
                       </div>
@@ -556,7 +568,7 @@ export function WorkflowScheduler({
                   
                   <div className="pt-4">
                     <h4 className="font-medium mb-2">Cost Analysis</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                       <div>
                         <span className="text-muted-foreground">Total Cost:</span>
                         <span className="ml-2 font-medium">
@@ -592,17 +604,17 @@ export function WorkflowScheduler({
                         bottleneck.impact === 'medium' ? 'border-yellow-200 bg-yellow-50' :
                         'border-blue-200 bg-blue-50'
                       }>
-                        <AlertCircle className="h-4 w-4" />
+                        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
                         <AlertDescription>
                           <div className="font-medium">{bottleneck.nodeName}</div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             Avg execution: {bottleneck.averageExecutionTime}ms
                           </div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             Impact: {bottleneck.impact} • Frequency: {bottleneck.frequency}
                           </div>
                           {bottleneck.suggestions.length > 0 && (
-                            <ul className="text-sm mt-2 list-disc list-inside">
+                            <ul className="text-sm mt-2 list-disc list-inside md:text-base lg:text-lg">
                               {bottleneck.suggestions.map((suggestion, i) => (
                                 <li key={i}>{suggestion}</li>
                               ))}
@@ -614,7 +626,7 @@ export function WorkflowScheduler({
                     
                     {analytics.bottlenecks.length === 0 && (
                       <div className="text-center py-8 text-muted-foreground">
-                        <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
                         <p>No performance bottlenecks detected.</p>
                       </div>
                     )}
@@ -636,16 +648,16 @@ export function WorkflowScheduler({
                         suggestion.priority === 'medium' ? 'border-yellow-200 bg-yellow-50' :
                         'border-green-200 bg-green-50'
                       }>
-                        <TrendingUp className="h-4 w-4" />
+                        <TrendingUp className="h-4 w-4 sm:w-auto md:w-full" />
                         <AlertDescription>
                           <div className="font-medium">{suggestion.title}</div>
-                          <div className="text-sm text-muted-foreground mt-1">
+                          <div className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                             {suggestion.description}
                           </div>
-                          <div className="text-sm mt-2">
+                          <div className="text-sm mt-2 md:text-base lg:text-lg">
                             <strong>Impact:</strong> {suggestion.estimatedImpact}
                           </div>
-                          <div className="text-sm">
+                          <div className="text-sm md:text-base lg:text-lg">
                             <strong>Implementation:</strong> {suggestion.implementation}
                           </div>
                           <Badge 
@@ -664,7 +676,7 @@ export function WorkflowScheduler({
                     
                     {analytics.optimizationSuggestions.length === 0 && (
                       <div className="text-center py-8 text-muted-foreground">
-                        <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
                         <p>No optimization suggestions available.</p>
                       </div>
                     )}

@@ -1,8 +1,11 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
+'use client';
+
+
+
+
   Activity, 
   Zap, 
   Clock, 
@@ -12,7 +15,7 @@ import {
   CheckCircle,
   Info
 } from 'lucide-react';
-import { 
+
   usePerformanceMonitor, 
   PerformanceSummary, 
   WebVitalsMetric,
@@ -55,7 +58,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
     return (
       <div className={`p-4 bg-muted rounded-lg ${className}`}>
         <div className="flex items-center space-x-2 text-muted-foreground">
-          <Activity className="h-4 w-4" />
+          <Activity className="h-4 w-4 sm:w-auto md:w-full" />
           <span>Performance monitoring not available</span>
         </div>
       </div>
@@ -67,12 +70,12 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Activity className="h-5 w-5 text-primary" />
+          <Activity className="h-5 w-5 text-primary sm:w-auto md:w-full" />
           <h2 className="text-lg font-semibold">Performance Dashboard</h2>
         </div>
-        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+        <div className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg">
           <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse sm:w-auto md:w-full" />
             <span>Monitoring Active</span>
           </div>
         </div>
@@ -133,8 +136,8 @@ const WebVitalsOverview: React.FC<{ summary: PerformanceSummary }> = ({ summary 
             transition={{ duration: 0.3 }}
           >
             <div className="flex items-center justify-between mb-2">
-              <Icon className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wide">
+              <Icon className="h-4 w-4 sm:w-auto md:w-full" />
+              <span className="text-xs font-medium uppercase tracking-wide sm:text-sm md:text-base">
                 {metric.name}
               </span>
             </div>
@@ -142,7 +145,7 @@ const WebVitalsOverview: React.FC<{ summary: PerformanceSummary }> = ({ summary 
               <div className="text-2xl font-bold">
                 {value ? `${Math.round(value)}${metric.unit}` : 'N/A'}
               </div>
-              <div className="text-xs opacity-75">
+              <div className="text-xs opacity-75 sm:text-sm md:text-base">
                 {metric.label}
               </div>
             </div>
@@ -165,7 +168,7 @@ const CustomMetricsSection: React.FC<{
   return (
     <div className="space-y-4">
       <h3 className="text-md font-semibold flex items-center space-x-2">
-        <TrendingUp className="h-4 w-4" />
+        <TrendingUp className="h-4 w-4 sm:w-auto md:w-full" />
         <span>Custom Metrics</span>
       </h3>
       
@@ -173,23 +176,23 @@ const CustomMetricsSection: React.FC<{
         {metricEntries.map(([name, data]) => (
           <motion.div
             key={name}
-            className="p-4 bg-card rounded-lg border"
+            className="p-4 bg-card rounded-lg border sm:p-4 md:p-6"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
           >
             <div className="space-y-2">
-              <div className="text-sm font-medium text-muted-foreground">
+              <div className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
                 {name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
               </div>
               <div className="text-xl font-bold">
                 {Math.round(data.avg)}ms
               </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
+              <div className="flex justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
                 <span>Min: {Math.round(data.min)}ms</span>
                 <span>Max: {Math.round(data.max)}ms</span>
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 P95: {Math.round(data.p95)}ms ({data.count} samples)
               </div>
             </div>
@@ -210,37 +213,37 @@ const ResourceTimingSection: React.FC<{
   return (
     <div className="space-y-4">
       <h3 className="text-md font-semibold flex items-center space-x-2">
-        <Activity className="h-4 w-4" />
+        <Activity className="h-4 w-4 sm:w-auto md:w-full" />
         <span>Resource Loading</span>
       </h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-4 bg-card rounded-lg border">
+        <div className="p-4 bg-card rounded-lg border sm:p-4 md:p-6">
           <div className="space-y-2">
-            <div className="text-sm font-medium text-muted-foreground">Overview</div>
+            <div className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Overview</div>
             <div className="space-y-1">
               <div className="flex justify-between">
-                <span className="text-sm">Total Resources:</span>
+                <span className="text-sm md:text-base lg:text-lg">Total Resources:</span>
                 <span className="font-medium">{resourceTiming.totalResources}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm">Total Size:</span>
+                <span className="text-sm md:text-base lg:text-lg">Total Size:</span>
                 <span className="font-medium">{formatBytes(resourceTiming.totalSize)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm">Total Load Time:</span>
+                <span className="text-sm md:text-base lg:text-lg">Total Load Time:</span>
                 <span className="font-medium">{Math.round(resourceTiming.totalLoadTime)}ms</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="p-4 bg-card rounded-lg border">
+        <div className="p-4 bg-card rounded-lg border sm:p-4 md:p-6">
           <div className="space-y-2">
-            <div className="text-sm font-medium text-muted-foreground">By Resource Type</div>
+            <div className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">By Resource Type</div>
             <div className="space-y-1">
               {resourceTypes.map(([type, data]) => (
-                <div key={type} className="flex justify-between text-sm">
+                <div key={type} className="flex justify-between text-sm md:text-base lg:text-lg">
                   <span className="capitalize">{type}:</span>
                   <span>{data.count} ({formatBytes(data.totalSize)})</span>
                 </div>
@@ -267,15 +270,15 @@ const NavigationTimingSection: React.FC<{
   return (
     <div className="space-y-4">
       <h3 className="text-md font-semibold flex items-center space-x-2">
-        <Clock className="h-4 w-4" />
+        <Clock className="h-4 w-4 sm:w-auto md:w-full" />
         <span>Navigation Timing</span>
       </h3>
       
-      <div className="p-4 bg-card rounded-lg border">
+      <div className="p-4 bg-card rounded-lg border sm:p-4 md:p-6">
         <div className="space-y-2">
           {timingMetrics.map((metric) => (
             <div key={metric.label} className="flex justify-between">
-              <span className="text-sm text-muted-foreground">{metric.label}:</span>
+              <span className="text-sm text-muted-foreground md:text-base lg:text-lg">{metric.label}:</span>
               <span className="font-medium">{Math.round(metric.value)}ms</span>
             </div>
           ))}
@@ -298,10 +301,10 @@ const PerformanceAlerts: React.FC<{
 
   if (alerts.length === 0) {
     return (
-      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+      <div className="p-4 bg-green-50 border border-green-200 rounded-lg sm:p-4 md:p-6">
         <div className="flex items-center space-x-2 text-green-700">
-          <CheckCircle className="h-4 w-4" />
-          <span className="text-sm font-medium">All performance metrics are within budget</span>
+          <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
+          <span className="text-sm font-medium md:text-base lg:text-lg">All performance metrics are within budget</span>
         </div>
       </div>
     );
@@ -310,7 +313,7 @@ const PerformanceAlerts: React.FC<{
   return (
     <div className="space-y-4">
       <h3 className="text-md font-semibold flex items-center space-x-2">
-        <AlertTriangle className="h-4 w-4" />
+        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
         <span>Performance Alerts</span>
       </h3>
       
@@ -334,10 +337,10 @@ const PerformanceAlerts: React.FC<{
                   <Info className={`h-4 w-4 text-${alertColor}-600 mt-0.5`} />
                 )}
                 <div className="flex-1">
-                  <div className={`text-sm font-medium text-${alertColor}-800`}>
+                  <div className={`text-sm font-medium text-${alertColor}-800`} role="alert">
                     {metric.name}: {Math.round(metric.value)}ms
                   </div>
-                  <div className={`text-xs text-${alertColor}-700`}>
+                  <div className={`text-xs text-${alertColor}-700`} role="alert">
                     {isError ? 'Exceeds' : 'Approaching'} performance budget
                     {budget.threshold && (
                       <span> (target: {budget.threshold.good}ms)</span>

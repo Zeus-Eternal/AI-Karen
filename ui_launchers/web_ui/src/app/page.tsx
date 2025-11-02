@@ -1,9 +1,31 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
+import SettingsDialogComponent from "@/components/settings/SettingsDialog";
+import DatabaseConnectorPluginPage from "@/components/plugins/DatabaseConnectorPluginPage";
+import FacebookPluginPage from "@/components/plugins/FacebookPluginPage";
+import GmailPluginPage from "@/components/plugins/GmailPluginPage";
+import DateTimePluginPage from "@/components/plugins/DateTimePluginPage";
+import WeatherPluginPage from "@/components/plugins/WeatherPluginPage";
+import PluginOverviewPage from "@/components/plugins/PluginOverviewPage"; // Ensure this is imported
+import { Button, IconButton } from "@/components/ui/polymorphic/button";
+import { GridContainer } from "@/components/ui/layout/grid-container";
+import { FlexContainer } from "@/components/ui/layout/flex-container";
+import { Separator } from "@/components/ui/separator";
+import NotificationsSection from "@/components/sidebar/NotificationsSection";
+import Dashboard from "@/components/dashboard/Dashboard";
+import { webUIConfig } from "@/lib/config";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
+import dynamic from "next/dynamic";
+import { TextSelectionProvider } from "@/components/ui/text-selection-provider";
+"use client";
+
+
+
+
+
   Brain,
   MessageSquare,
   SettingsIcon as SettingsIconLucide,
@@ -18,24 +40,24 @@ import {
   CloudSun,
   PlugZap,
 } from "lucide-react";
-import SettingsDialogComponent from "@/components/settings/SettingsDialog";
-import DatabaseConnectorPluginPage from "@/components/plugins/DatabaseConnectorPluginPage";
-import FacebookPluginPage from "@/components/plugins/FacebookPluginPage";
-import GmailPluginPage from "@/components/plugins/GmailPluginPage";
-import DateTimePluginPage from "@/components/plugins/DateTimePluginPage";
-import WeatherPluginPage from "@/components/plugins/WeatherPluginPage";
-import PluginOverviewPage from "@/components/plugins/PluginOverviewPage"; // Ensure this is imported
-import { Button, IconButton } from "@/components/ui/polymorphic/button";
-import { GridContainer } from "@/components/ui/layout/grid-container";
-import { FlexContainer } from "@/components/ui/layout/flex-container";
-import {
+
+
+
+
+
+
+
+
+
+
+
   Sheet,
   SheetTrigger,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
+
   Sidebar,
   SidebarProvider,
   SidebarTrigger as AppSidebarTrigger,
@@ -49,14 +71,14 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
-import NotificationsSection from "@/components/sidebar/NotificationsSection";
-import Dashboard from "@/components/dashboard/Dashboard";
-import { webUIConfig } from "@/lib/config";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
-import dynamic from "next/dynamic";
-import { TextSelectionProvider } from "@/components/ui/text-selection-provider";
+
+
+
+
+
+
+
+
 
 const ExtensionSidebar = dynamic(
   () => import("@/components/extensions/ExtensionSidebar")

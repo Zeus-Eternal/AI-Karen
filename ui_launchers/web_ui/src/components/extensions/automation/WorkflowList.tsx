@@ -53,22 +53,22 @@ export default function WorkflowList() {
       {workflows.map(wf => (
         <Card key={wf.id}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">{wf.name}</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">{wf.name}</CardTitle>
             <Badge variant={wf.status === "failed" ? "destructive" : wf.status === "running" ? "default" : "secondary"}>
               {wf.status}
             </Badge>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
+          <CardContent className="space-y-2 text-sm md:text-base lg:text-lg">
             {wf.steps.map((step, idx) => (
               <div key={idx} className="flex items-center justify-between">
                 <span>{step.name}</span>
-                <Input className="w-40" value={step.action} readOnly />
+                <input className="w-40 sm:w-auto md:w-full" value={step.action} readOnly />
               </div>
             ))}
           </CardContent>
           <CardFooter className="flex items-center justify-between">
-            <Textarea className="w-full" placeholder="Variables (JSON)" />
-            <Button size="sm" onClick={() => executeWorkflow(wf.id)}>Execute</Button>
+            <textarea className="w-full" placeholder="Variables (JSON)" />
+            <button size="sm" onClick={() = aria-label="Button"> executeWorkflow(wf.id)}>Execute</Button>
           </CardFooter>
         </Card>
       ))}

@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 
 export default function TextSelectionTest() {
   const testTexts = [
@@ -23,7 +22,7 @@ export default function TextSelectionTest() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-6 max-w-2xl mx-auto sm:w-auto md:w-full">
       <h2 className="text-2xl font-bold mb-4">Text Selection Test</h2>
       <p className="mb-4 text-gray-600">
         This component tests text selection functionality. Try selecting text below:
@@ -31,7 +30,7 @@ export default function TextSelectionTest() {
       
       <div className="space-y-4">
         {testTexts.map((text, index) => (
-          <div key={index} className="border rounded-lg p-4 bg-gray-50">
+          <div key={index} className="border rounded-lg p-4 bg-gray-50 sm:p-4 md:p-6">
             <p 
               id={`text-${index}`}
               className="debug-text-selection cursor-text"
@@ -40,8 +39,8 @@ export default function TextSelectionTest() {
               {text}
             </p>
             <button 
-              className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm"
-              onClick={() => handleTextClick(text)}
+              className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm md:text-base lg:text-lg"
+              onClick={() = aria-label="Button"> handleTextClick(text)}
             >
               Select This Text
             </button>
@@ -49,9 +48,9 @@ export default function TextSelectionTest() {
         ))}
       </div>
       
-      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
+      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded sm:p-4 md:p-6">
         <h3 className="font-semibold text-yellow-800">Testing Instructions:</h3>
-        <ul className="mt-2 text-sm text-yellow-700 space-y-1">
+        <ul className="mt-2 text-sm text-yellow-700 space-y-1 md:text-base lg:text-lg">
           <li>• Try selecting text with your mouse</li>
           <li>• Use Ctrl+A (Cmd+A) to select all</li>
           <li>• Try copying with Ctrl+C (Cmd+C)</li>

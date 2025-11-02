@@ -13,7 +13,7 @@ import { MicroInteractionProvider } from '../micro-interaction-provider';
 vi.mock('framer-motion', () => ({
   motion: {
     button: React.forwardRef<HTMLButtonElement, any>(({ children, ...props }, ref) => (
-      <button ref={ref} {...props}>{children}</button>
+      <button ref={ref} {...props} aria-label="Button">{children}</button>
     )),
     input: React.forwardRef<HTMLInputElement, any>((props, ref) => (
       <input ref={ref} {...props} />

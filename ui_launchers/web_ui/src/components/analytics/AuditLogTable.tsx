@@ -30,9 +30,9 @@ export default function AuditLogTable() {
         <CardTitle>Recent Audit Logs</CardTitle>
       </CardHeader>
       <CardContent>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && <p className="text-sm text-destructive md:text-base lg:text-lg">{error}</p>}
         {logs.length === 0 && !error ? (
-          <p className="text-sm text-muted-foreground">No logs</p>
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">No logs</p>
         ) : (
           <Table>
             <TableHeader>

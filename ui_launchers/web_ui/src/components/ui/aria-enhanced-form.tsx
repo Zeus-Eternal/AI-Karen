@@ -345,7 +345,7 @@ const AriaFormFieldset = React.forwardRef<HTMLFieldSetElement, AriaFormFieldsetP
         {description && (
           <p 
             id={descriptionId}
-            className="text-sm text-muted-foreground -mt-2"
+            className="text-sm text-muted-foreground -mt-2 md:text-base lg:text-lg"
           >
             {description}
           </p>
@@ -394,7 +394,7 @@ const AriaFormSection = React.forwardRef<HTMLElement, AriaFormSectionProps>(
         {description && (
           <p 
             id={descriptionId}
-            className="text-sm text-muted-foreground"
+            className="text-sm text-muted-foreground md:text-base lg:text-lg"
           >
             {description}
           </p>

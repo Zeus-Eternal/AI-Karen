@@ -71,12 +71,12 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
             }
           </p>
         </div>
-        <Button
+        <button
           variant="outline"
-          onClick={() => window.location.reload()}
+          onClick={() = aria-label="Button"> window.location.reload()}
           className="flex items-center gap-2"
         >
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
           Refresh
         </Button>
       </div>
@@ -85,12 +85,12 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Active Tasks</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{taskData.totalActiveTasks}</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {taskData.totalTasks} total tasks
             </p>
           </CardContent>
@@ -98,8 +98,8 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Success Rate</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -108,7 +108,7 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
                 : 0
               }%
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {taskStats.completed}/{taskStats.total} completed
             </p>
           </CardContent>
@@ -116,12 +116,12 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Duration</CardTitle>
-            <Timer className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Avg Duration</CardTitle>
+            <Timer className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{taskStats.avgDuration}s</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               Average execution time
             </p>
           </CardContent>
@@ -129,12 +129,12 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Extensions</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Extensions</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{taskData.extensionsWithTasks}</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               With background tasks
             </p>
           </CardContent>
@@ -214,7 +214,7 @@ function TaskOverview({ taskData }: { taskData: any }) {
         <CardContent>
           <div className="space-y-4">
             <div>
-              <div className="flex justify-between text-sm mb-2">
+              <div className="flex justify-between text-sm mb-2 md:text-base lg:text-lg">
                 <span>Active Tasks</span>
                 <span>{taskData.taskUtilization}%</span>
               </div>
@@ -229,11 +229,11 @@ function TaskOverview({ taskData }: { taskData: any }) {
             <div className="grid grid-cols-2 gap-4 pt-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">{taskData.totalActiveTasks}</div>
-                <div className="text-sm text-gray-500">Active</div>
+                <div className="text-sm text-gray-500 md:text-base lg:text-lg">Active</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-gray-600">{taskData.totalTasks}</div>
-                <div className="text-sm text-gray-500">Total</div>
+                <div className="text-sm text-gray-500 md:text-base lg:text-lg">Total</div>
               </div>
             </div>
           </div>
@@ -276,21 +276,21 @@ function ExtensionTaskList({
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Active Tasks</span>
+                <span className="text-sm text-gray-600 md:text-base lg:text-lg">Active Tasks</span>
                 <Badge variant="default">
                   {extension.backgroundTasks?.active || 0}
                 </Badge>
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Tasks</span>
+                <span className="text-sm text-gray-600 md:text-base lg:text-lg">Total Tasks</span>
                 <Badge variant="secondary">
                   {extension.backgroundTasks?.total || 0}
                 </Badge>
               </div>
               
               {extension.backgroundTasks?.lastExecution && (
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-500 sm:text-sm md:text-base">
                   Last run: {new Date(extension.backgroundTasks.lastExecution).toLocaleString()}
                 </div>
               )}
@@ -314,7 +314,7 @@ function TaskExecutionHistory({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <RefreshCw className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+        <RefreshCw className="h-6 w-6 animate-spin text-blue-600 mr-2 sm:w-auto md:w-full" />
         <span>Loading task history...</span>
       </div>
     );
@@ -324,7 +324,7 @@ function TaskExecutionHistory({
     return (
       <Card>
         <CardContent className="text-center py-8">
-          <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4 sm:w-auto md:w-full" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Task History</h3>
           <p className="text-gray-600">
             {extensionId 
@@ -345,7 +345,7 @@ function TaskExecutionHistory({
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="font-semibold text-lg">{execution.task_name}</h3>
-                <p className="text-sm text-gray-500">ID: {execution.execution_id}</p>
+                <p className="text-sm text-gray-500 md:text-base lg:text-lg">ID: {execution.execution_id}</p>
               </div>
               
               <Badge 
@@ -356,9 +356,9 @@ function TaskExecutionHistory({
                 }
                 className="flex items-center gap-1"
               >
-                {execution.status === 'completed' && <CheckCircle className="h-3 w-3" />}
-                {execution.status === 'failed' && <XCircle className="h-3 w-3" />}
-                {execution.status === 'running' && <RefreshCw className="h-3 w-3 animate-spin" />}
+                {execution.status === 'completed' && <CheckCircle className="h-3 w-3 sm:w-auto md:w-full" />}
+                {execution.status === 'failed' && <XCircle className="h-3 w-3 sm:w-auto md:w-full" />}
+                {execution.status === 'running' && <RefreshCw className="h-3 w-3 animate-spin sm:w-auto md:w-full" />}
                 {execution.status}
               </Badge>
             </div>
@@ -396,19 +396,19 @@ function TaskExecutionHistory({
             </div>
             
             {execution.error && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md sm:p-4 md:p-6">
                 <div className="flex items-center gap-2 text-red-800 font-medium mb-1">
-                  <AlertCircle className="h-4 w-4" />
+                  <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
                   Error
                 </div>
-                <p className="text-red-700 text-sm">{execution.error}</p>
+                <p className="text-red-700 text-sm md:text-base lg:text-lg">{execution.error}</p>
               </div>
             )}
             
             {execution.result && (
-              <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
+              <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md sm:p-4 md:p-6">
                 <div className="text-gray-700 font-medium mb-2">Result:</div>
-                <pre className="text-xs text-gray-600 whitespace-pre-wrap overflow-x-auto">
+                <pre className="text-xs text-gray-600 whitespace-pre-wrap overflow-x-auto sm:text-sm md:text-base">
                   {JSON.stringify(execution.result, null, 2)}
                 </pre>
               </div>

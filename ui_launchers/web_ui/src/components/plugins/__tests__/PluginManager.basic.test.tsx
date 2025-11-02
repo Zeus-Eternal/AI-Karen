@@ -5,7 +5,7 @@
  * Based on requirements: 5.1, 5.4
  */
 
-import React from 'react';
+
 import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { PluginManager } from '../PluginManager';
@@ -49,7 +49,7 @@ vi.mock('@/store/plugin-store', () => ({
 
 // Mock UI components
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  Button: ({ children, ...props }: any) => <button {...props} aria-label="Button">{children}</button>,
 }));
 
 vi.mock('@/components/ui/input', () => ({

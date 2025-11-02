@@ -56,16 +56,16 @@ export const ChatTabs: React.FC<ChatTabsProps> = ({
     <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as ChatTabsProps["activeTab"])} className="flex-1 flex flex-col">
       <TabsList className={`grid w-full ${tabColumns} mx-4 mt-4`}>
         <TabsTrigger value="chat" className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" />
+          <MessageSquare className="h-4 w-4 sm:w-auto md:w-full" />
           Chat
         </TabsTrigger>
         <TabsTrigger value="code" className="flex items-center gap-2">
-          <Code className="h-4 w-4" />
+          <Code className="h-4 w-4 sm:w-auto md:w-full" />
           Code
         </TabsTrigger>
         {enableAnalytics && (
           <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
+            <BarChart3 className="h-4 w-4 sm:w-auto md:w-full" />
             Analytics
           </TabsTrigger>
         )}

@@ -1,15 +1,12 @@
 #!/usr/bin/env node
-
 /**
  * Accessibility CI/CD Integration Script
  * 
  * Automated accessibility testing for continuous integration
  */
-
 import { execSync } from 'child_process';
 import { writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
-
 interface CIConfig {
   /** Minimum accessibility score required to pass */
   minScore: number;
@@ -26,7 +23,6 @@ interface CIConfig {
   /** Playwright browser to use */
   browser: 'chromium' | 'firefox' | 'webkit';
 }
-
 const defaultConfig: CIConfig = {
   minScore: 80,
   maxViolations: 0,
@@ -41,57 +37,40 @@ const defaultConfig: CIConfig = {
   ],
   browser: 'chromium',
 };
-
 class AccessibilityCIRunner {
   private config: CIConfig;
-
   constructor(config: Partial<CIConfig> = {}) {
     this.config = { ...defaultConfig, ...config };
   }
-
   async run(): Promise<void> {
-    console.log('🔍 Starting Accessibility CI Tests...\n');
-
     try {
       // Ensure output directory exists
       this.ensureOutputDir();
-
       // Run tests for each URL
       const results = await this.runTests();
-
       // Generate reports
       await this.generateReports(results);
-
       // Check if tests passed
       const passed = this.evaluateResults(results);
-
       if (passed) {
-        console.log('✅ All accessibility tests passed!');
         process.exit(0);
       } else {
-        console.log('❌ Accessibility tests failed!');
         if (this.config.failOnViolations) {
           process.exit(1);
         }
       }
     } catch (error) {
-      console.error('❌ Accessibility CI failed:', error);
       process.exit(1);
     }
   }
-
   private ensureOutputDir(): void {
     if (!existsSync(this.config.outputDir)) {
       execSync(`mkdir -p ${this.config.outputDir}`);
     }
   }
-
   private async runTests(): Promise<any[]> {
     const results = [];
-
     for (const url of this.config.testUrls) {
-      console.log(`Testing: ${url}`);
-      
       try {
         // Run Playwright with axe-core
         const result = await this.runPlaywrightTest(url);
@@ -100,10 +79,7 @@ class AccessibilityCIRunner {
           success: true,
           ...result,
         });
-        
-        console.log(`  ✅ Score: ${result.score}/100, Violations: ${result.violations}`);
       } catch (error) {
-        console.log(`  ❌ Failed: ${error}`);
         results.push({
           url,
           success: false,
@@ -111,10 +87,8 @@ class AccessibilityCIRunner {
         });
       }
     }
-
     return results;
   }
-
   private async runPlaywrightTest(url: string): Promise<any> {
     // This would typically use Playwright with axe-core
     // For now, return mock results
@@ -127,10 +101,8 @@ class AccessibilityCIRunner {
       timestamp: new Date().toISOString(),
     };
   }
-
   private async generateReports(results: any[]): Promise<void> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    
     // Generate JSON report
     const jsonReport = {
       timestamp: new Date().toISOString(),
@@ -138,33 +110,24 @@ class AccessibilityCIRunner {
       results,
       summary: this.generateSummary(results),
     };
-    
     const jsonPath = join(this.config.outputDir, `accessibility-report-${timestamp}.json`);
     writeFileSync(jsonPath, JSON.stringify(jsonReport, null, 2));
-    console.log(`📄 JSON report saved: ${jsonPath}`);
-
     // Generate HTML report
     const htmlReport = this.generateHtmlReport(jsonReport);
     const htmlPath = join(this.config.outputDir, `accessibility-report-${timestamp}.html`);
     writeFileSync(htmlPath, htmlReport);
-    console.log(`📄 HTML report saved: ${htmlPath}`);
-
     // Generate JUnit XML for CI systems
     const junitReport = this.generateJUnitReport(results);
     const junitPath = join(this.config.outputDir, `accessibility-junit-${timestamp}.xml`);
     writeFileSync(junitPath, junitReport);
-    console.log(`📄 JUnit report saved: ${junitPath}`);
   }
-
   private generateSummary(results: any[]): any {
     const successful = results.filter(r => r.success);
     const failed = results.filter(r => !r.success);
-    
     const totalViolations = successful.reduce((sum, r) => sum + (r.violations || 0), 0);
     const averageScore = successful.length > 0 
       ? successful.reduce((sum, r) => sum + (r.score || 0), 0) / successful.length 
       : 0;
-
     return {
       total: results.length,
       successful: successful.length,
@@ -174,7 +137,6 @@ class AccessibilityCIRunner {
       passed: failed.length === 0 && totalViolations <= this.config.maxViolations && averageScore >= this.config.minScore,
     };
   }
-
   private generateHtmlReport(report: any): string {
     return `
 <!DOCTYPE html>
@@ -206,7 +168,6 @@ class AccessibilityCIRunner {
             <h1>Accessibility Test Report</h1>
             <p>Generated on ${new Date(report.timestamp).toLocaleString()}</p>
         </div>
-        
         <div class="summary">
             <div class="metric">
                 <div class="metric-value ${report.summary.passed ? 'pass' : 'fail'}">
@@ -227,7 +188,6 @@ class AccessibilityCIRunner {
                 <div class="metric-label">Tests Passed</div>
             </div>
         </div>
-        
         <div class="results">
             <h2>Test Results</h2>
             ${report.results.map((result: any) => `
@@ -249,11 +209,9 @@ class AccessibilityCIRunner {
 </body>
 </html>`;
   }
-
   private generateJUnitReport(results: any[]): string {
     const testSuites = results.map(result => {
       const testName = `accessibility-${result.url.replace(/[^a-zA-Z0-9]/g, '-')}`;
-      
       if (result.success) {
         return `
     <testcase name="${testName}" classname="accessibility" time="1">
@@ -265,7 +223,6 @@ class AccessibilityCIRunner {
     </testcase>`;
       }
     }).join('');
-
     return `<?xml version="1.0" encoding="UTF-8"?>
 <testsuites name="accessibility" tests="${results.length}" failures="${results.filter(r => !r.success).length}" time="1">
     <testsuite name="accessibility" tests="${results.length}" failures="${results.filter(r => !r.success).length}" time="1">
@@ -273,45 +230,36 @@ class AccessibilityCIRunner {
     </testsuite>
 </testsuites>`;
   }
-
   private evaluateResults(results: any[]): boolean {
     const failed = results.filter(r => !r.success);
     const successful = results.filter(r => r.success);
-    
     if (failed.length > 0) {
       console.log(`❌ ${failed.length} test(s) failed`);
       return false;
     }
-    
     const totalViolations = successful.reduce((sum, r) => sum + (r.violations || 0), 0);
     if (totalViolations > this.config.maxViolations) {
       console.log(`❌ Too many violations: ${totalViolations} (max: ${this.config.maxViolations})`);
       return false;
     }
-    
     const averageScore = successful.length > 0 
       ? successful.reduce((sum, r) => sum + (r.score || 0), 0) / successful.length 
       : 0;
-    
     if (averageScore < this.config.minScore) {
       console.log(`❌ Score too low: ${Math.round(averageScore)} (min: ${this.config.minScore})`);
       return false;
     }
-    
     return true;
   }
 }
-
 // CLI interface
 if (require.main === module) {
   const args = process.argv.slice(2);
   const config: Partial<CIConfig> = {};
-  
   // Parse command line arguments
   for (let i = 0; i < args.length; i += 2) {
     const key = args[i]?.replace('--', '');
     const value = args[i + 1];
-    
     switch (key) {
       case 'min-score':
         config.minScore = parseInt(value);
@@ -333,10 +281,8 @@ if (require.main === module) {
         break;
     }
   }
-  
   const runner = new AccessibilityCIRunner(config);
   runner.run().catch(console.error);
 }
-
 export { AccessibilityCIRunner };
 export default AccessibilityCIRunner;

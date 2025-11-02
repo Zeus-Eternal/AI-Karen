@@ -109,13 +109,13 @@ const ChangePasswordSection: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Security</h3>
-        <Button
+        <button
           variant={isChangingPassword ? "outline" : "default"}
           size="sm"
-          onClick={() => isChangingPassword ? resetPasswordForm() : setIsChangingPassword(true)}
+          onClick={() = aria-label="Button"> isChangingPassword ? resetPasswordForm() : setIsChangingPassword(true)}
           className="flex items-center gap-2"
         >
-          <Key className="h-4 w-4" />
+          <Key className="h-4 w-4 sm:w-auto md:w-full" />
           {isChangingPassword ? 'Cancel' : 'Change Password'}
         </Button>
       </div>
@@ -127,31 +127,31 @@ const ChangePasswordSection: React.FC = () => {
       )}
 
       {isChangingPassword ? (
-        <form onSubmit={handlePasswordChange} className="space-y-4 p-4 bg-muted/50 rounded-lg">
+        <form onSubmit={handlePasswordChange} className="space-y-4 p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
           {/* Current Password */}
           <div>
             <Label htmlFor="currentPassword">Current Password</Label>
             <div className="relative">
-              <Input
+              <input
                 id="currentPassword"
                 type={showPasswords.current ? "text" : "password"}
                 value={passwordData.currentPassword}
-                onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                onChange={(e) = aria-label="Input"> setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
                 placeholder="Enter your current password"
                 className="pr-10"
                 required
               />
-              <Button
+              <button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => togglePasswordVisibility('current')}
+                onClick={() = aria-label="Button"> togglePasswordVisibility('current')}
               >
                 {showPasswords.current ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  <EyeOff className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <Eye className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 )}
               </Button>
             </div>
@@ -161,33 +161,33 @@ const ChangePasswordSection: React.FC = () => {
           <div>
             <Label htmlFor="newPassword">New Password</Label>
             <div className="relative">
-              <Input
+              <input
                 id="newPassword"
                 type={showPasswords.new ? "text" : "password"}
                 value={passwordData.newPassword}
-                onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                onChange={(e) = aria-label="Input"> setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
                 placeholder="Enter your new password"
                 className="pr-10"
                 required
               />
-              <Button
+              <button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => togglePasswordVisibility('new')}
+                onClick={() = aria-label="Button"> togglePasswordVisibility('new')}
               >
                 {showPasswords.new ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  <EyeOff className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <Eye className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 )}
               </Button>
             </div>
             {passwordData.newPassword && (
               <div className="mt-2">
-                <div className="text-xs text-muted-foreground mb-1">Password requirements:</div>
-                <div className="grid grid-cols-2 gap-1 text-xs">
+                <div className="text-xs text-muted-foreground mb-1 sm:text-sm md:text-base">Password requirements:</div>
+                <div className="grid grid-cols-2 gap-1 text-xs sm:text-sm md:text-base">
                   {validatePassword(passwordData.newPassword).map((error, index) => (
                     <div key={index} className="text-red-500">• {error}</div>
                   ))}
@@ -203,31 +203,31 @@ const ChangePasswordSection: React.FC = () => {
           <div>
             <Label htmlFor="confirmPassword">Confirm New Password</Label>
             <div className="relative">
-              <Input
+              <input
                 id="confirmPassword"
                 type={showPasswords.confirm ? "text" : "password"}
                 value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                onChange={(e) = aria-label="Input"> setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                 placeholder="Confirm your new password"
                 className="pr-10"
                 required
               />
-              <Button
+              <button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => togglePasswordVisibility('confirm')}
+                onClick={() = aria-label="Button"> togglePasswordVisibility('confirm')}
               >
                 {showPasswords.confirm ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  <EyeOff className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <Eye className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 )}
               </Button>
             </div>
             {passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
-              <div className="text-xs text-red-500 mt-1">Passwords do not match</div>
+              <div className="text-xs text-red-500 mt-1 sm:text-sm md:text-base">Passwords do not match</div>
             )}
           </div>
 
@@ -238,30 +238,30 @@ const ChangePasswordSection: React.FC = () => {
           )}
 
           <div className="flex gap-3 pt-2">
-            <Button
+            <button
               type="submit"
-              disabled={isUpdating || validatePassword(passwordData.newPassword).length > 0 || passwordData.newPassword !== passwordData.confirmPassword}
+              disabled={isUpdating || validatePassword(passwordData.newPassword).length  aria-label="Submit form"> 0 || passwordData.newPassword !== passwordData.confirmPassword}
               className="flex items-center gap-2"
             >
               {isUpdating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
               ) : (
-                <Key className="h-4 w-4" />
+                <Key className="h-4 w-4 sm:w-auto md:w-full" />
               )}
               {isUpdating ? 'Updating...' : 'Update Password'}
             </Button>
-            <Button
+            <button
               type="button"
               variant="outline"
               onClick={resetPasswordForm}
-            >
+             aria-label="Button">
               Cancel
             </Button>
           </div>
         </form>
       ) : (
-        <div className="p-4 bg-muted/50 rounded-lg">
-          <p className="text-sm text-muted-foreground">
+        <div className="p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             Keep your account secure by regularly updating your password.
           </p>
         </div>
@@ -317,7 +317,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <Card className="w-full max-w-4xl mx-auto sm:w-auto md:w-full">
       <CardHeader>
         <div className="flex justify-between items-center">
           <div>
@@ -325,8 +325,8 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <CardDescription>Manage your account and AI preferences</CardDescription>
           </div>
           {onClose && (
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
+            <button variant="ghost" size="icon" onClick={onClose} aria-label="Button">
+              <X className="h-4 w-4 sm:w-auto md:w-full" />
             </Button>
           )}
         </div>
@@ -337,15 +337,15 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
           <h3 className="text-lg font-semibold mb-4">Account Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">Email</Label>
+              <Label className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Email</Label>
               <p className="font-medium">{user.email ?? 'N/A'}</p>
             </div>
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">User ID</Label>
-              <p className="font-mono text-sm">{user.userId}</p>
+              <Label className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">User ID</Label>
+              <p className="font-mono text-sm md:text-base lg:text-lg">{user.userId}</p>
             </div>
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">Roles</Label>
+              <Label className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Roles</Label>
               <div className="flex flex-wrap gap-1 mt-1">
                 {toArray(user.roles).map((role) => (
                   <Badge key={role} variant="secondary">
@@ -355,8 +355,8 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
               </div>
             </div>
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">Tenant ID</Label>
-              <p className="font-mono text-sm">{user.tenantId}</p>
+              <Label className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Tenant ID</Label>
+              <p className="font-mono text-sm md:text-base lg:text-lg">{user.tenantId}</p>
             </div>
           </div>
         </div>
@@ -372,10 +372,10 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
         <div>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">AI Preferences</h3>
-            <Button
+            <button
               variant={isEditing ? "outline" : "default"}
               size="sm"
-              onClick={() => setIsEditing(!isEditing)}
+              onClick={() = aria-label="Button"> setIsEditing(!isEditing)}
             >
               {isEditing ? 'Cancel' : 'Edit'}
             </Button>
@@ -391,152 +391,152 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <div>
               <Label>Personality Tone</Label>
               {isEditing ? (
-                <Select
+                <select
                   value={preferences.personalityTone}
-                  onValueChange={(value) => setPreferences(prev => ({ ...prev, personalityTone: value }))}
+                  onValueChange={(value) = aria-label="Select option"> setPreferences(prev => ({ ...prev, personalityTone: value }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="friendly">Friendly</SelectItem>
-                    <SelectItem value="professional">Professional</SelectItem>
-                    <SelectItem value="casual">Casual</SelectItem>
-                    <SelectItem value="formal">Formal</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="friendly" aria-label="Select option">Friendly</SelectItem>
+                    <selectItem value="professional" aria-label="Select option">Professional</SelectItem>
+                    <selectItem value="casual" aria-label="Select option">Casual</SelectItem>
+                    <selectItem value="formal" aria-label="Select option">Formal</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="capitalize p-2 bg-muted/50 rounded">{preferences.personalityTone}</p>
+                <p className="capitalize p-2 bg-muted/50 rounded sm:p-4 md:p-6">{preferences.personalityTone}</p>
               )}
             </div>
 
             <div>
               <Label>Verbosity</Label>
               {isEditing ? (
-                <Select
+                <select
                   value={preferences.personalityVerbosity}
-                  onValueChange={(value) => setPreferences(prev => ({ ...prev, personalityVerbosity: value }))}
+                  onValueChange={(value) = aria-label="Select option"> setPreferences(prev => ({ ...prev, personalityVerbosity: value }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="concise">Concise</SelectItem>
-                    <SelectItem value="balanced">Balanced</SelectItem>
-                    <SelectItem value="detailed">Detailed</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="concise" aria-label="Select option">Concise</SelectItem>
+                    <selectItem value="balanced" aria-label="Select option">Balanced</SelectItem>
+                    <selectItem value="detailed" aria-label="Select option">Detailed</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="capitalize p-2 bg-muted/50 rounded">{preferences.personalityVerbosity}</p>
+                <p className="capitalize p-2 bg-muted/50 rounded sm:p-4 md:p-6">{preferences.personalityVerbosity}</p>
               )}
             </div>
 
             <div>
               <Label>Memory Depth</Label>
               {isEditing ? (
-                <Select
+                <select
                   value={preferences.memoryDepth}
-                  onValueChange={(value) => setPreferences(prev => ({ ...prev, memoryDepth: value }))}
+                  onValueChange={(value) = aria-label="Select option"> setPreferences(prev => ({ ...prev, memoryDepth: value }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="shallow">Shallow</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="deep">Deep</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="shallow" aria-label="Select option">Shallow</SelectItem>
+                    <selectItem value="medium" aria-label="Select option">Medium</SelectItem>
+                    <selectItem value="deep" aria-label="Select option">Deep</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="capitalize p-2 bg-muted/50 rounded">{preferences.memoryDepth}</p>
+                <p className="capitalize p-2 bg-muted/50 rounded sm:p-4 md:p-6">{preferences.memoryDepth}</p>
               )}
             </div>
 
             <div>
               <Label>Preferred LLM Provider</Label>
               {isEditing ? (
-                <Select
+                <select
                   value={preferences.preferredLLMProvider}
-                  onValueChange={(value) => setPreferences(prev => ({ ...prev, preferredLLMProvider: value }))}
+                  onValueChange={(value) = aria-label="Select option"> setPreferences(prev => ({ ...prev, preferredLLMProvider: value }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="llama-cpp">LlamaCpp (Local)</SelectItem>
-                    <SelectItem value="openai">OpenAI</SelectItem>
-                    <SelectItem value="gemini">Google Gemini</SelectItem>
-                    <SelectItem value="deepseek">Deepseek</SelectItem>
-                    <SelectItem value="huggingface">HuggingFace</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="llama-cpp" aria-label="Select option">LlamaCpp (Local)</SelectItem>
+                    <selectItem value="openai" aria-label="Select option">OpenAI</SelectItem>
+                    <selectItem value="gemini" aria-label="Select option">Google Gemini</SelectItem>
+                    <selectItem value="deepseek" aria-label="Select option">Deepseek</SelectItem>
+                    <selectItem value="huggingface" aria-label="Select option">HuggingFace</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="p-2 bg-muted/50 rounded">{preferences.preferredLLMProvider}</p>
+                <p className="p-2 bg-muted/50 rounded sm:p-4 md:p-6">{preferences.preferredLLMProvider}</p>
               )}
             </div>
 
             <div>
               <Label>Temperature</Label>
               {isEditing ? (
-                <Input
+                <input
                   type="number"
                   min="0"
                   max="2"
                   step="0.1"
                   value={preferences.temperature}
-                  onChange={(e) => setPreferences(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                  onChange={(e) = aria-label="Input"> setPreferences(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
                 />
               ) : (
-                <p className="p-2 bg-muted/50 rounded">{preferences.temperature}</p>
+                <p className="p-2 bg-muted/50 rounded sm:p-4 md:p-6">{preferences.temperature}</p>
               )}
             </div>
 
             <div>
               <Label>Max Tokens</Label>
               {isEditing ? (
-                <Input
+                <input
                   type="number"
                   min="100"
                   max="4000"
                   step="100"
                   value={preferences.maxTokens}
-                  onChange={(e) => setPreferences(prev => ({ ...prev, maxTokens: parseInt(e.target.value) }))}
+                  onChange={(e) = aria-label="Input"> setPreferences(prev => ({ ...prev, maxTokens: parseInt(e.target.value) }))}
                 />
               ) : (
-                <p className="p-2 bg-muted/50 rounded">{preferences.maxTokens}</p>
+                <p className="p-2 bg-muted/50 rounded sm:p-4 md:p-6">{preferences.maxTokens}</p>
               )}
             </div>
 
             <div>
               <Label>UI Theme</Label>
               {isEditing ? (
-                <Select
+                <select
                   value={preferences.ui.theme}
-                  onValueChange={(value) => setPreferences(prev => ({
+                  onValueChange={(value) = aria-label="Select option"> setPreferences(prev => ({
                     ...prev,
                     ui: { ...(prev as any).ui, theme: value },
                   }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <selectTrigger aria-label="Select option">
+                    <selectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
+                  <selectContent aria-label="Select option">
+                    <selectItem value="light" aria-label="Select option">Light</SelectItem>
+                    <selectItem value="dark" aria-label="Select option">Dark</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="capitalize p-2 bg-muted/50 rounded">{preferences.ui.theme}</p>
+                <p className="capitalize p-2 bg-muted/50 rounded sm:p-4 md:p-6">{preferences.ui.theme}</p>
               )}
             </div>
 
             <div>
               <Label>Avatar</Label>
               {isEditing ? (
-                <Input type="file" accept="image/*" onChange={handleAvatarChange} />
+                <input type="file" accept="image/*" onChange={handleAvatarChange} />
               ) : (
                 preferences.ui.avatarUrl && (
-                  <img src={preferences.ui.avatarUrl} className="h-12 w-12 rounded-full" alt="avatar" />
+                  <img src={preferences.ui.avatarUrl} className="h-12 w-12 rounded-full sm:w-auto md:w-full" alt="avatar" />
                 )
               )}
             </div>
@@ -545,9 +545,9 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
           {isEditing && (
             <div className="mt-4">
               <Label>Custom Persona Instructions</Label>
-              <Textarea
+              <textarea
                 value={preferences.customPersonaInstructions}
-                onChange={(e) => setPreferences(prev => ({ ...prev, customPersonaInstructions: e.target.value }))}
+                onChange={(e) = aria-label="Textarea"> setPreferences(prev => ({ ...prev, customPersonaInstructions: e.target.value }))}
                 rows={3}
                 placeholder="Enter custom instructions for the AI's personality and behavior..."
               />
@@ -556,21 +556,21 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
 
           {isEditing && (
             <div className="flex gap-3 mt-6">
-              <Button
+              <button
                 onClick={handleSavePreferences}
                 disabled={isSaving}
                 className="flex items-center gap-2"
-              >
+               aria-label="Button">
                 {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
                 ) : (
-                  <Save className="h-4 w-4" />
+                  <Save className="h-4 w-4 sm:w-auto md:w-full" />
                 )}
                 {isSaving ? 'Saving...' : 'Save Preferences'}
               </Button>
-              <Button
+              <button
                 variant="outline"
-                onClick={() => {
+                onClick={() = aria-label="Button"> {
                   setIsEditing(false);
                   // Reset preferences - not available in simplified mode
                 }}
@@ -585,12 +585,12 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
 
         {/* Actions */}
         <div className="flex justify-end">
-          <Button
+          <button
             variant="destructive"
             onClick={handleLogout}
             className="flex items-center gap-2"
-          >
-            <LogOut className="h-4 w-4" />
+           aria-label="Button">
+            <LogOut className="h-4 w-4 sm:w-auto md:w-full" />
             Sign Out
           </Button>
         </div>

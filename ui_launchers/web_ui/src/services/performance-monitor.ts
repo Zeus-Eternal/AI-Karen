@@ -2,9 +2,7 @@
  * Comprehensive Performance Monitoring Service
  * Tracks page load times, interaction latency, resource usage, and Web Vitals
  */
-
 import { getCLS, getFCP, getFID, getLCP, getTTFB } from 'web-vitals';
-
 export interface WebVitalsMetrics {
   cls: number;
   fcp: number;
@@ -12,14 +10,12 @@ export interface WebVitalsMetrics {
   lcp: number;
   ttfb: number;
 }
-
 export interface PerformanceMetric {
   name: string;
   value: number;
   timestamp: number;
   metadata?: Record<string, any>;
 }
-
 export interface ResourceUsage {
   memory: {
     used: number;
@@ -36,7 +32,6 @@ export interface ResourceUsage {
     rtt: number;
   };
 }
-
 export interface PerformanceAlert {
   id: string;
   type: 'warning' | 'critical';
@@ -46,7 +41,6 @@ export interface PerformanceAlert {
   timestamp: number;
   message: string;
 }
-
 export interface PerformanceThresholds {
   lcp: { warning: number; critical: number };
   fid: { warning: number; critical: number };
@@ -57,14 +51,12 @@ export interface PerformanceThresholds {
   interaction: { warning: number; critical: number };
   memoryUsage: { warning: number; critical: number };
 }
-
 export class PerformanceMonitor {
   private metrics: PerformanceMetric[] = [];
   private alerts: PerformanceAlert[] = [];
   private observers: PerformanceObserver[] = [];
   private thresholds: PerformanceThresholds;
   private alertCallbacks: ((alert: PerformanceAlert) => void)[] = [];
-
   constructor(thresholds?: Partial<PerformanceThresholds>) {
     this.thresholds = {
       lcp: { warning: 2500, critical: 4000 },
@@ -77,12 +69,10 @@ export class PerformanceMonitor {
       memoryUsage: { warning: 80, critical: 95 },
       ...thresholds,
     };
-
     this.initializeWebVitalsTracking();
     this.initializeResourceMonitoring();
     this.initializeInteractionTracking();
   }
-
   /**
    * Initialize Web Vitals tracking
    */
@@ -91,28 +81,23 @@ export class PerformanceMonitor {
       this.recordMetric('cls', metric.value, { id: metric.id });
       this.checkThreshold('cls', metric.value);
     });
-
     getFCP((metric) => {
       this.recordMetric('fcp', metric.value, { id: metric.id });
       this.checkThreshold('fcp', metric.value);
     });
-
     getFID((metric) => {
       this.recordMetric('fid', metric.value, { id: metric.id });
       this.checkThreshold('fid', metric.value);
     });
-
     getLCP((metric) => {
       this.recordMetric('lcp', metric.value, { id: metric.id });
       this.checkThreshold('lcp', metric.value);
     });
-
     getTTFB((metric) => {
       this.recordMetric('ttfb', metric.value, { id: metric.id });
       this.checkThreshold('ttfb', metric.value);
     });
   }
-
   /**
    * Initialize resource monitoring
    */
@@ -126,16 +111,13 @@ export class PerformanceMonitor {
           total: memory.totalJSHeapSize,
           percentage: (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100,
         };
-
         this.recordMetric('memory-usage', memoryUsage.percentage, {
           used: memoryUsage.used,
           total: memoryUsage.total,
         });
-
         this.checkThreshold('memoryUsage', memoryUsage.percentage);
       }, 5000);
     }
-
     // Monitor network information
     if ('connection' in navigator) {
       const connection = (navigator as any).connection;
@@ -145,7 +127,6 @@ export class PerformanceMonitor {
       });
     }
   }
-
   /**
    * Initialize interaction tracking
    */
@@ -158,7 +139,6 @@ export class PerformanceMonitor {
             startTime: entry.startTime,
             name: entry.name,
           });
-
           if (entry.duration > this.thresholds.interaction.warning) {
             this.createAlert(
               'warning',
@@ -170,41 +150,33 @@ export class PerformanceMonitor {
           }
         }
       });
-
       try {
         longTaskObserver.observe({ entryTypes: ['longtask'] });
         this.observers.push(longTaskObserver);
       } catch (error) {
-        console.warn('Long task observer not supported:', error);
       }
     }
-
     // Track navigation timing
     if ('PerformanceObserver' in window) {
       const navigationObserver = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
           const navEntry = entry as PerformanceNavigationTiming;
           const pageLoadTime = navEntry.loadEventEnd - navEntry.navigationStart;
-
           this.recordMetric('page-load', pageLoadTime, {
             domContentLoaded: navEntry.domContentLoadedEventEnd - navEntry.navigationStart,
             firstByte: navEntry.responseStart - navEntry.navigationStart,
             domComplete: navEntry.domComplete - navEntry.navigationStart,
           });
-
           this.checkThreshold('pageLoad', pageLoadTime);
         }
       });
-
       try {
         navigationObserver.observe({ entryTypes: ['navigation'] });
         this.observers.push(navigationObserver);
       } catch (error) {
-        console.warn('Navigation observer not supported:', error);
       }
     }
   }
-
   /**
    * Track page load time for specific routes
    */
@@ -213,7 +185,6 @@ export class PerformanceMonitor {
     this.recordMetric('route-load', loadTime, { route });
     this.checkThreshold('pageLoad', loadTime);
   }
-
   /**
    * Track user interaction latency
    */
@@ -221,7 +192,6 @@ export class PerformanceMonitor {
     this.recordMetric('user-interaction', duration, { action, ...metadata });
     this.checkThreshold('interaction', duration);
   }
-
   /**
    * Track API call performance
    */
@@ -232,7 +202,6 @@ export class PerformanceMonitor {
       success: status >= 200 && status < 300,
       ...metadata,
     });
-
     // Alert on slow API calls
     if (duration > 2000) {
       this.createAlert(
@@ -244,14 +213,12 @@ export class PerformanceMonitor {
       );
     }
   }
-
   /**
    * Get current resource usage
    */
   getCurrentResourceUsage(): ResourceUsage {
     const memory = (performance as any).memory;
     const connection = (navigator as any).connection;
-
     return {
       memory: memory
         ? {
@@ -269,34 +236,27 @@ export class PerformanceMonitor {
         : { downlink: 0, effectiveType: 'unknown', rtt: 0 },
     };
   }
-
   /**
    * Get Web Vitals metrics
    */
   getWebVitalsMetrics(): Partial<WebVitalsMetrics> {
     const vitals: Partial<WebVitalsMetrics> = {};
     const latestMetrics = this.getLatestMetrics(['cls', 'fcp', 'fid', 'lcp', 'ttfb']);
-
     latestMetrics.forEach((metric) => {
       (vitals as any)[metric.name] = metric.value;
     });
-
     return vitals;
   }
-
   /**
    * Get performance metrics by type
    */
   getMetrics(type?: string, limit?: number): PerformanceMetric[] {
     let filtered = type ? this.metrics.filter((m) => m.name === type) : this.metrics;
-    
     if (limit) {
       filtered = filtered.slice(-limit);
     }
-
     return filtered.sort((a, b) => b.timestamp - a.timestamp);
   }
-
   /**
    * Get latest metrics for specified types
    */
@@ -305,7 +265,6 @@ export class PerformanceMonitor {
       .map((type) => this.metrics.filter((m) => m.name === type).pop())
       .filter(Boolean) as PerformanceMetric[];
   }
-
   /**
    * Get performance alerts
    */
@@ -313,7 +272,6 @@ export class PerformanceMonitor {
     const sorted = this.alerts.sort((a, b) => b.timestamp - a.timestamp);
     return limit ? sorted.slice(0, limit) : sorted;
   }
-
   /**
    * Subscribe to performance alerts
    */
@@ -326,36 +284,28 @@ export class PerformanceMonitor {
       }
     };
   }
-
   /**
    * Get performance recommendations
    */
   getOptimizationRecommendations(): string[] {
     const recommendations: string[] = [];
     const vitals = this.getWebVitalsMetrics();
-
     if (vitals.lcp && vitals.lcp > this.thresholds.lcp.warning) {
       recommendations.push('Consider optimizing images and reducing server response times to improve LCP');
     }
-
     if (vitals.fid && vitals.fid > this.thresholds.fid.warning) {
       recommendations.push('Reduce JavaScript execution time and break up long tasks to improve FID');
     }
-
     if (vitals.cls && vitals.cls > this.thresholds.cls.warning) {
       recommendations.push('Add size attributes to images and avoid inserting content above existing content to improve CLS');
     }
-
     const memoryMetrics = this.getMetrics('memory-usage', 10);
     const avgMemoryUsage = memoryMetrics.reduce((sum, m) => sum + m.value, 0) / memoryMetrics.length;
-    
     if (avgMemoryUsage > this.thresholds.memoryUsage.warning) {
       recommendations.push('Consider implementing memory optimization strategies and garbage collection');
     }
-
     return recommendations;
   }
-
   /**
    * Clear old metrics to prevent memory leaks
    */
@@ -364,7 +314,6 @@ export class PerformanceMonitor {
     this.metrics = this.metrics.filter((m) => m.timestamp > cutoff);
     this.alerts = this.alerts.filter((a) => a.timestamp > cutoff);
   }
-
   /**
    * Record a performance metric
    */
@@ -375,19 +324,16 @@ export class PerformanceMonitor {
       timestamp: Date.now(),
       metadata,
     });
-
     // Prevent memory leaks by limiting metrics
     if (this.metrics.length >= 5000) {
       this.metrics = this.metrics.slice(-2500);
     }
   }
-
   /**
    * Check if a metric exceeds thresholds and create alerts
    */
   private checkThreshold(metricType: keyof PerformanceThresholds, value: number): void {
     const threshold = this.thresholds[metricType];
-    
     if (value > threshold.critical) {
       this.createAlert('critical', metricType, value, threshold.critical, 
         `Critical performance issue: ${metricType} is ${value.toFixed(2)}`);
@@ -396,7 +342,6 @@ export class PerformanceMonitor {
         `Performance warning: ${metricType} is ${value.toFixed(2)}`);
     }
   }
-
   /**
    * Create a performance alert
    */
@@ -416,16 +361,13 @@ export class PerformanceMonitor {
       timestamp: Date.now(),
       message,
     };
-
     this.alerts.push(alert);
     this.alertCallbacks.forEach((callback) => callback(alert));
-
     // Prevent memory leaks
     if (this.alerts.length >= 1000) {
       this.alerts = this.alerts.slice(-500);
     }
   }
-
   /**
    * Cleanup observers and intervals
    */
@@ -435,6 +377,5 @@ export class PerformanceMonitor {
     this.alertCallbacks = [];
   }
 }
-
 // Singleton instance
 export const performanceMonitor = new PerformanceMonitor();

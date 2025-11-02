@@ -2,7 +2,7 @@
  * Tests for ARIA Live Region components
  */
 
-import React from 'react';
+
 import { render, screen, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
@@ -19,13 +19,13 @@ const TestAnnouncementComponent = () => {
 
   return (
     <div>
-      <button onClick={() => announce('Polite message', 'polite')}>
+      <button onClick={() = aria-label="Button"> announce('Polite message', 'polite')}>
         Announce Polite
       </button>
-      <button onClick={() => announce('Assertive message', 'assertive')}>
+      <button onClick={() = aria-label="Button"> announce('Assertive message', 'assertive')}>
         Announce Assertive
       </button>
-      <button onClick={clearAnnouncements}>
+      <button onClick={clearAnnouncements} aria-label="Button">
         Clear
       </button>
       <div data-testid="polite-message">{politeMessage}</div>
@@ -142,7 +142,7 @@ describe('useAriaAnnouncements', () => {
 ribe('AriaAnnouncer', () => {
   it('should provide announce function to children', () => {
     const TestChild = ({ announce }: { announce: (message: string) => void }) => (
-      <button onClick={() => announce('Test announcement')}>
+      <button onClick={() = aria-label="Button"> announce('Test announcement')}>
         Announce
       </button>
     );

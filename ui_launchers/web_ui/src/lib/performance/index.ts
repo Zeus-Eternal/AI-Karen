@@ -6,7 +6,6 @@
  * 
  * Requirements: 1.4, 4.4
  */
-
 // HTTP Connection Pool
 export {
   HttpConnectionPool,
@@ -18,7 +17,6 @@ export {
   type PooledConnection,
   type QueuedRequest,
 } from './http-connection-pool';
-
 // Request/Response Cache
 export {
   RequestResponseCache,
@@ -30,7 +28,6 @@ export {
   type CacheMetrics,
   type CacheOptions,
 } from './request-response-cache';
-
 // Database Query Optimizer
 export {
   DatabaseQueryOptimizer,
@@ -43,7 +40,6 @@ export {
   type PreparedStatement,
   type QueryPlan,
 } from './database-query-optimizer';
-
 // Performance Optimizer (Main Integration)
 export {
   PerformanceOptimizer,
@@ -54,7 +50,6 @@ export {
   type PerformanceMetrics,
   type OptimizedRequestOptions,
 } from './performance-optimizer';
-
 // Utility functions for performance optimization
 export const PerformanceUtils = {
   /**
@@ -69,20 +64,16 @@ export const PerformanceUtils = {
     const { initializeRequestResponseCache } = await import('./request-response-cache');
     const { initializeDatabaseQueryOptimizer } = await import('./database-query-optimizer');
     const { initializePerformanceOptimizer } = await import('./performance-optimizer');
-
     // Initialize individual components
     if (config?.connectionPool) {
       initializeHttpConnectionPool(config.connectionPool);
     }
-    
     if (config?.responseCache) {
       initializeRequestResponseCache(config.responseCache);
     }
-    
     if (config?.queryOptimizer) {
       initializeDatabaseQueryOptimizer(config.queryOptimizer);
     }
-
     // Initialize main performance optimizer
     return initializePerformanceOptimizer({
       connectionPool: config?.connectionPool || {},
@@ -91,7 +82,6 @@ export const PerformanceUtils = {
       enableMetrics: true,
     });
   },
-
   /**
    * Shutdown all performance optimization components
    */
@@ -100,16 +90,13 @@ export const PerformanceUtils = {
     const { shutdownRequestResponseCache } = await import('./request-response-cache');
     const { shutdownDatabaseQueryOptimizer } = await import('./database-query-optimizer');
     const { shutdownPerformanceOptimizer } = await import('./performance-optimizer');
-
     await Promise.all([
       shutdownHttpConnectionPool(),
       shutdownPerformanceOptimizer(),
     ]);
-
     shutdownRequestResponseCache();
     shutdownDatabaseQueryOptimizer();
   },
-
   /**
    * Get comprehensive performance metrics from all components
    */
@@ -118,13 +105,11 @@ export const PerformanceUtils = {
     const { getRequestResponseCache } = require('./request-response-cache');
     const { getDatabaseQueryOptimizer } = require('./database-query-optimizer');
     const { getPerformanceOptimizer } = require('./performance-optimizer');
-
     try {
       const connectionPool = getHttpConnectionPool();
       const responseCache = getRequestResponseCache();
       const queryOptimizer = getDatabaseQueryOptimizer();
       const performanceOptimizer = getPerformanceOptimizer();
-
       return {
         connectionPool: connectionPool.getMetrics(),
         responseCache: responseCache.getMetrics(),
@@ -133,14 +118,12 @@ export const PerformanceUtils = {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      console.warn('Failed to get comprehensive metrics:', error);
       return {
         error: 'Failed to collect metrics',
         timestamp: new Date().toISOString(),
       };
     }
   },
-
   /**
    * Get performance recommendations from all components
    */
@@ -150,11 +133,9 @@ export const PerformanceUtils = {
       const performanceOptimizer = getPerformanceOptimizer();
       return performanceOptimizer.getPerformanceRecommendations();
     } catch (error) {
-      console.warn('Failed to get performance recommendations:', error);
       return ['Performance optimization not initialized'];
     }
   },
-
   /**
    * Auto-optimize all components based on current metrics
    */
@@ -164,10 +145,8 @@ export const PerformanceUtils = {
       const performanceOptimizer = getPerformanceOptimizer();
       performanceOptimizer.autoOptimize();
     } catch (error) {
-      console.warn('Failed to auto-optimize:', error);
     }
   },
-
   /**
    * Clear all caches
    */
@@ -175,20 +154,15 @@ export const PerformanceUtils = {
     try {
       const { getRequestResponseCache } = require('./request-response-cache');
       const { getDatabaseQueryOptimizer } = require('./database-query-optimizer');
-      
       const responseCache = getRequestResponseCache();
       const queryOptimizer = getDatabaseQueryOptimizer();
-      
       responseCache.clear();
       queryOptimizer.clearCache();
-      
       return true;
     } catch (error) {
-      console.warn('Failed to clear caches:', error);
       return false;
     }
   },
-
   /**
    * Invalidate caches for a specific user
    */
@@ -199,12 +173,10 @@ export const PerformanceUtils = {
       performanceOptimizer.invalidateUserCache(userId);
       return true;
     } catch (error) {
-      console.warn('Failed to invalidate user caches:', error);
       return false;
     }
   },
 };
-
 // Default export for convenience
 export default {
   PerformanceUtils,

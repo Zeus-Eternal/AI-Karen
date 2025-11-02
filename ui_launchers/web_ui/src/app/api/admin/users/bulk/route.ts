@@ -4,19 +4,16 @@
  * 
  * Requirements: 4.5
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { AdminApiResponse, BulkUserOperation } from '@/types/admin';
-
 /**
  * POST /api/admin/users/bulk - Perform bulk operations on users
  */
 export const POST = requireAdmin(async (request: NextRequest, context) => {
   try {
     const body: BulkUserOperation = await request.json();
-    
     // Validate request
     if (!body.operation || !body.user_ids || !Array.isArray(body.user_ids)) {
       return NextResponse.json({
@@ -28,7 +25,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     if (body.user_ids.length === 0) {
       return NextResponse.json({
         success: false,
@@ -39,7 +35,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Limit bulk operations to reasonable size
     if (body.user_ids.length > 100) {
       return NextResponse.json({
@@ -51,14 +46,11 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     const adminUtils = getAdminDatabaseUtils();
-    
     // Validate all users exist and check permissions
     const users = await Promise.all(
       body.user_ids.map(id => adminUtils.getUserWithRole(id))
     );
-    
     const notFoundUsers = body.user_ids.filter((id, index) => !users[index]);
     if (notFoundUsers.length > 0) {
       return NextResponse.json({
@@ -70,7 +62,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 404 });
     }
-
     // Check for super admin users if current user is not super admin
     const superAdminUsers = users.filter(user => user?.role === 'super_admin');
     if (superAdminUsers.length > 0 && !context.isSuperAdmin()) {
@@ -86,7 +77,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 403 });
     }
-
     // Prevent operations on self
     if (body.user_ids.includes(context.user.user_id)) {
       return NextResponse.json({
@@ -98,11 +88,9 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     let result: any = {};
     let auditAction = '';
     let auditDetails: any = {};
-
     switch (body.operation) {
       case 'activate':
         await adminUtils.bulkUpdateUserStatus(body.user_ids, true, context.user.user_id);
@@ -110,14 +98,12 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         auditAction = 'user.bulk_activate';
         auditDetails = { user_ids: body.user_ids, count: body.user_ids.length };
         break;
-
       case 'deactivate':
         await adminUtils.bulkUpdateUserStatus(body.user_ids, false, context.user.user_id);
         result = { deactivated_count: body.user_ids.length };
         auditAction = 'user.bulk_deactivate';
         auditDetails = { user_ids: body.user_ids, count: body.user_ids.length };
         break;
-
       case 'delete':
         // Soft delete by deactivating
         await adminUtils.bulkUpdateUserStatus(body.user_ids, false, context.user.user_id);
@@ -129,7 +115,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           deletion_type: 'soft_delete'
         };
         break;
-
       case 'role_change':
         if (!body.parameters?.new_role) {
           return NextResponse.json({
@@ -141,9 +126,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           } as AdminApiResponse<never>, { status: 400 });
         }
-
         const newRole = body.parameters.new_role as 'admin' | 'user';
-        
         // Validate role
         if (!['admin', 'user'].includes(newRole)) {
           return NextResponse.json({
@@ -155,7 +138,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           } as AdminApiResponse<never>, { status: 400 });
         }
-
         // Check permissions for admin role assignment
         if (newRole === 'admin' && !context.isSuperAdmin()) {
           return NextResponse.json({
@@ -167,12 +149,10 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             }
           } as AdminApiResponse<never>, { status: 403 });
         }
-
         // Update roles individually for proper audit logging
         for (const userId of body.user_ids) {
           await adminUtils.updateUserRole(userId, newRole, context.user.user_id);
         }
-
         result = { role_changed_count: body.user_ids.length, new_role: newRole };
         auditAction = 'user.bulk_role_change';
         auditDetails = { 
@@ -181,7 +161,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           new_role: newRole
         };
         break;
-
       case 'export':
         // Generate export data
         const exportUsers = users.filter(Boolean).map(user => ({
@@ -195,7 +174,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           last_login_at: user!.last_login_at,
           two_factor_enabled: user!.two_factor_enabled
         }));
-
         result = { 
           export_data: exportUsers,
           export_count: exportUsers.length,
@@ -208,7 +186,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           export_format: 'json'
         };
         break;
-
       default:
         return NextResponse.json({
           success: false,
@@ -222,7 +199,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           }
         } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Log the bulk operation
     await adminUtils.createAuditLog({
       user_id: context.user.user_id,
@@ -232,7 +208,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
     });
-
     const response: AdminApiResponse<typeof result> = {
       success: true,
       data: result,
@@ -242,12 +217,8 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         message: `Bulk ${body.operation} operation completed successfully`
       }
     };
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('Bulk user operation error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {

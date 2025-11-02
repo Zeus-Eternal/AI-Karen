@@ -4,10 +4,8 @@
  * Type definitions for the plugin and extension management system.
  * Based on requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 9.1, 9.2
  */
-
 // Plugin Status Types
 export type PluginStatus = 'active' | 'inactive' | 'error' | 'installing' | 'updating' | 'uninstalling';
-
 // Plugin Permission Types
 export interface Permission {
   id: string;
@@ -17,7 +15,6 @@ export interface Permission {
   level: 'read' | 'write' | 'admin';
   required: boolean;
 }
-
 // Plugin Dependency Types
 export interface PluginDependency {
   id: string;
@@ -28,7 +25,6 @@ export interface PluginDependency {
   installed: boolean;
   compatible: boolean;
 }
-
 // Plugin Metrics Types
 export interface PluginMetrics {
   performance: {
@@ -50,7 +46,6 @@ export interface PluginMetrics {
     issues: string[];
   };
 }
-
 // Plugin Configuration Types
 export interface PluginConfigField {
   key: string;
@@ -67,11 +62,9 @@ export interface PluginConfigField {
     custom?: (value: any) => string | null;
   };
 }
-
 export interface PluginConfig {
   [key: string]: any;
 }
-
 // Plugin Manifest Types
 export interface PluginManifest {
   id: string;
@@ -88,14 +81,12 @@ export interface PluginManifest {
   repository?: string;
   keywords: string[];
   category: 'ai' | 'integration' | 'utility' | 'analytics' | 'security' | 'workflow';
-  
   // Technical specifications
   runtime: {
     platform: string[];
     nodeVersion?: string;
     pythonVersion?: string;
   };
-  
   // Dependencies and requirements
   dependencies: PluginDependency[];
   systemRequirements: {
@@ -103,7 +94,6 @@ export interface PluginManifest {
     minDisk?: number;
     requiredServices?: string[];
   };
-  
   // Permissions and security
   permissions: Permission[];
   sandboxed: boolean;
@@ -113,10 +103,8 @@ export interface PluginManifest {
     allowSystemCalls: boolean;
     trustedDomains?: string[];
   };
-  
   // Configuration schema
   configSchema: PluginConfigField[];
-  
   // API and integration points
   apiVersion: string;
   endpoints?: Array<{
@@ -129,7 +117,6 @@ export interface PluginManifest {
     handler: string;
     priority: number;
   }>;
-  
   // UI components
   ui?: {
     hasSettings: boolean;
@@ -142,7 +129,6 @@ export interface PluginManifest {
     }>;
   };
 }
-
 // Plugin Information Types
 export interface PluginInfo {
   id: string;
@@ -153,12 +139,10 @@ export interface PluginInfo {
   config: PluginConfig;
   permissions: Permission[];
   metrics: PluginMetrics;
-  
   // Installation metadata
   installedAt: Date;
   updatedAt: Date;
   installedBy: string;
-  
   // Runtime information
   enabled: boolean;
   autoStart: boolean;
@@ -168,7 +152,6 @@ export interface PluginInfo {
     timestamp: Date;
     stack?: string;
   };
-  
   // Dependency status
   dependencyStatus: {
     satisfied: boolean;
@@ -180,7 +163,6 @@ export interface PluginInfo {
     }>;
   };
 }
-
 // Plugin Installation Types
 export interface PluginInstallationRequest {
   source: 'marketplace' | 'file' | 'url' | 'git';
@@ -190,7 +172,6 @@ export interface PluginInstallationRequest {
   permissions?: string[]; // Permission IDs to grant
   autoStart?: boolean;
 }
-
 export interface PluginInstallationProgress {
   stage: 'downloading' | 'validating' | 'resolving' | 'installing' | 'configuring' | 'starting' | 'complete' | 'error';
   progress: number; // 0-100
@@ -202,7 +183,6 @@ export interface PluginInstallationProgress {
     details?: any;
   };
 }
-
 // Plugin Marketplace Types
 export interface PluginMarketplaceEntry {
   id: string;
@@ -215,49 +195,42 @@ export interface PluginMarketplaceEntry {
   };
   category: string;
   tags: string[];
-  
   // Marketplace metadata
   downloads: number;
   rating: number;
   reviewCount: number;
   featured: boolean;
   verified: boolean;
-  
   // Compatibility
   compatibility: {
     minVersion: string;
     maxVersion?: string;
     platforms: string[];
   };
-  
   // Media
   icon?: string;
   screenshots: string[];
-  
   // Pricing (for future commercial plugins)
   pricing: {
     type: 'free' | 'paid' | 'freemium';
     price?: number;
     currency?: string;
   };
-  
   // Installation info
   installUrl: string;
   manifest: PluginManifest;
 }
-
 // Plugin Log Types
 export interface PluginLogEntry {
   id: string;
   pluginId: string;
   timestamp: Date;
-  level: 'debug' | 'info' | 'warn' | 'error';
+  level: '' | 'warn' | 'error';
   message: string;
   context?: Record<string, any>;
   source: string;
   userId?: string;
 }
-
 // Plugin Audit Types
 export interface PluginAuditEntry {
   id: string;
@@ -269,7 +242,6 @@ export interface PluginAuditEntry {
   ipAddress?: string;
   userAgent?: string;
 }
-
 // Plugin Filter and Search Types
 export interface PluginFilter {
   status?: PluginStatus[];
@@ -279,7 +251,6 @@ export interface PluginFilter {
   enabled?: boolean;
   hasErrors?: boolean;
 }
-
 export interface PluginSearchOptions {
   query?: string;
   filter?: PluginFilter;
@@ -288,7 +259,6 @@ export interface PluginSearchOptions {
   limit?: number;
   offset?: number;
 }
-
 // Plugin Management API Types
 export interface PluginManagementAPI {
   // Plugin CRUD operations
@@ -297,43 +267,35 @@ export interface PluginManagementAPI {
   installPlugin(request: PluginInstallationRequest): Promise<string>; // Returns installation ID
   uninstallPlugin(id: string): Promise<void>;
   updatePlugin(id: string, version?: string): Promise<string>; // Returns installation ID
-  
   // Plugin control operations
   enablePlugin(id: string): Promise<void>;
   disablePlugin(id: string): Promise<void>;
   restartPlugin(id: string): Promise<void>;
   configurePlugin(id: string, config: PluginConfig): Promise<void>;
-  
   // Plugin monitoring
   getPluginMetrics(id: string): Promise<PluginMetrics>;
   getPluginLogs(id: string, options?: { limit?: number; level?: string; since?: Date }): Promise<PluginLogEntry[]>;
   getPluginAuditLog(id: string, options?: { limit?: number; since?: Date }): Promise<PluginAuditEntry[]>;
-  
   // Installation tracking
   getInstallationProgress(installationId: string): Promise<PluginInstallationProgress>;
   cancelInstallation(installationId: string): Promise<void>;
-  
   // Marketplace operations
   searchMarketplace(query: string, options?: { category?: string; limit?: number }): Promise<PluginMarketplaceEntry[]>;
   getMarketplacePlugin(id: string): Promise<PluginMarketplaceEntry>;
-  
   // Dependency management
   checkDependencies(pluginId: string): Promise<PluginDependency[]>;
   resolveDependencies(pluginId: string): Promise<PluginDependency[]>;
-  
   // Permission management
   grantPermission(pluginId: string, permissionId: string): Promise<void>;
   revokePermission(pluginId: string, permissionId: string): Promise<void>;
   checkPermission(pluginId: string, permissionId: string): Promise<boolean>;
 }
-
 // Plugin Store State Types
 export interface PluginStoreState {
   plugins: PluginInfo[];
   selectedPlugin: PluginInfo | null;
   installations: Record<string, PluginInstallationProgress>;
   marketplacePlugins: PluginMarketplaceEntry[];
-  
   // UI state
   loading: {
     plugins: boolean;
@@ -341,26 +303,22 @@ export interface PluginStoreState {
     marketplace: boolean;
     [key: string]: boolean;
   };
-  
   errors: {
     plugins: string | null;
     installation: string | null;
     marketplace: string | null;
     [key: string]: string | null;
   };
-  
   // Filters and search
   searchQuery: string;
   filters: PluginFilter;
   sortBy: 'name' | 'status' | 'version' | 'installedAt' | 'lastUsed' | 'performance';
   sortOrder: 'asc' | 'desc';
-  
   // View state
   view: 'list' | 'grid' | 'details';
   showInstallationWizard: boolean;
   showMarketplace: boolean;
 }
-
 export interface PluginStoreActions {
   // Plugin operations
   loadPlugins: () => Promise<void>;
@@ -370,10 +328,8 @@ export interface PluginStoreActions {
   enablePlugin: (id: string) => Promise<void>;
   disablePlugin: (id: string) => Promise<void>;
   configurePlugin: (id: string, config: PluginConfig) => Promise<void>;
-  
   // Marketplace operations
   loadMarketplacePlugins: (query?: string) => Promise<void>;
-  
   // UI operations
   setSearchQuery: (query: string) => void;
   setFilters: (filters: Partial<PluginFilter>) => void;
@@ -381,10 +337,8 @@ export interface PluginStoreActions {
   setView: (view: 'list' | 'grid' | 'details') => void;
   setShowInstallationWizard: (show: boolean) => void;
   setShowMarketplace: (show: boolean) => void;
-  
   // Error handling
   setError: (key: string, error: string | null) => void;
   clearErrors: () => void;
 }
-
 export type PluginStore = PluginStoreState & PluginStoreActions;

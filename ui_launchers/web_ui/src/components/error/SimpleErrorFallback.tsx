@@ -39,7 +39,7 @@ export const SimpleErrorFallback: React.FC<SimpleErrorFallbackProps> = ({
       <Card className="w-full max-w-md border-destructive/50">
         <CardHeader>
           <div className="flex items-center space-x-3">
-            <AlertTriangle className="h-8 w-8 text-destructive" />
+            <AlertTriangle className="h-8 w-8 text-destructive sm:w-auto md:w-full" />
             <div>
               <CardTitle className="text-xl">Something went wrong</CardTitle>
               <CardDescription className="mt-1">
@@ -49,30 +49,30 @@ export const SimpleErrorFallback: React.FC<SimpleErrorFallbackProps> = ({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="bg-muted/50 rounded-lg p-3">
-            <p className="text-sm font-medium text-destructive">
+          <div className="bg-muted/50 rounded-lg p-3 sm:p-4 md:p-6">
+            <p className="text-sm font-medium text-destructive md:text-base lg:text-lg">
               {error.message || 'Unknown error'}
             </p>
           </div>
 
           <div className="flex flex-col gap-2">
-            <Button onClick={resetError} className="w-full">
-              <RefreshCw className="h-4 w-4 mr-2" />
+            <button onClick={resetError} className="w-full" aria-label="Button">
+              <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Try Again
             </Button>
             
-            <Button variant="outline" onClick={handleReload} className="w-full">
-              <RefreshCw className="h-4 w-4 mr-2" />
+            <button variant="outline" onClick={handleReload} className="w-full" aria-label="Button">
+              <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Reload Page
             </Button>
             
-            <Button variant="outline" onClick={handleGoHome} className="w-full">
-              <Home className="h-4 w-4 mr-2" />
+            <button variant="outline" onClick={handleGoHome} className="w-full" aria-label="Button">
+              <Home className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Go Home
             </Button>
           </div>
 
-          <div className="text-center text-sm text-muted-foreground">
+          <div className="text-center text-sm text-muted-foreground md:text-base lg:text-lg">
             <p>If this error persists, please contact support.</p>
           </div>
         </CardContent>

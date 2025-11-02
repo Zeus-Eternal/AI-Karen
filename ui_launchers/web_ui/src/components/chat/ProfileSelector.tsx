@@ -122,14 +122,14 @@ export const ProfileSelector: React.FC = () => {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Profile</span>
-        <Select value={active} onValueChange={onChangeProfile} disabled={loading}>
-          <SelectTrigger className="h-8 w-56">
-            <SelectValue placeholder={loading ? "Loading..." : active || "Select profile"} />
+        <span className="text-xs text-muted-foreground sm:text-sm md:text-base">Profile</span>
+        <select value={active} onValueChange={onChangeProfile} disabled={loading} aria-label="Select option">
+          <selectTrigger className="h-8 w-56 sm:w-auto md:w-full" aria-label="Select option">
+            <selectValue placeholder={loading ? "Loading..." : active || "Select profile"} />
           </SelectTrigger>
-          <SelectContent>
+          <selectContent aria-label="Select option">
             {profiles.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
+              <selectItem key={p.id} value={p.id} aria-label="Select option">
                 <div className="flex items-center gap-2">
                   <span>{p.name}</span>
                   {p.is_active && <Badge variant="secondary">active</Badge>}
@@ -138,19 +138,19 @@ export const ProfileSelector: React.FC = () => {
             ))}
           </SelectContent>
         </Select>
-        <Button size="sm" variant="outline" onClick={() => validateProfile(active || undefined)} disabled={validating}>
+        <button size="sm" variant="outline" onClick={() = aria-label="Button"> validateProfile(active || undefined)} disabled={validating}>
           Validate
         </Button>
       </div>
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="ghost" onClick={exportProfiles}>Export</Button>
-        <label className="text-xs cursor-pointer">
-          <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files && e.target.files[0] && importProfiles(e.target.files[0])} />
+        <button size="sm" variant="ghost" onClick={exportProfiles} aria-label="Button">Export</Button>
+        <label className="text-xs cursor-pointer sm:text-sm md:text-base">
+          <input type="file" accept="application/json" className="hidden" onChange={(e) = aria-label="Input"> e.target.files && e.target.files[0] && importProfiles(e.target.files[0])} />
           <span className="underline">Import</span>
         </label>
       </div>
       {validationErrors.length > 0 && (
-        <div className="text-xs text-red-500">
+        <div className="text-xs text-red-500 sm:text-sm md:text-base">
           {validationErrors.join("; ")}
         </div>
       )}

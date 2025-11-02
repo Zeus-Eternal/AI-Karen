@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Enhanced core tool functions for AI Karen integration.
@@ -6,7 +5,6 @@
  */
 import type { TemperatureUnit, WeatherServiceOption } from '@/lib/types';
 import { getKarenBackend } from '@/lib/karen-backend';
-
 export async function getCurrentDate(): Promise<string> {
   return new Date().toLocaleDateString(undefined, {
     weekday: 'long',
@@ -15,12 +13,10 @@ export async function getCurrentDate(): Promise<string> {
     day: 'numeric',
   });
 }
-
 export async function getCurrentTime(location?: string): Promise<string> {
   const originalLocation = location?.trim();
   let logs: string[] = [];
   logs.push(`getCurrentTime called with location: "${originalLocation || 'none'}"`);
-
   if (originalLocation) {
     // Attempt 1: timeapi.io (Primary Source)
     const timeApiLocation = originalLocation.replace(/, /g, '/').replace(/ /g, '_');
@@ -30,7 +26,6 @@ export async function getCurrentTime(location?: string): Promise<string> {
       const response = await fetch(timeApiUrl);
       const responseText = await response.text(); 
       logs.push(`getCurrentTime: timeapi.io response status: ${response.status}, body: ${responseText.substring(0, 200)}`);
-
       if (!response.ok) {
         let errorDetail = `TimeAPI.io error: Status ${response.status}.`;
         try {
@@ -61,7 +56,6 @@ export async function getCurrentTime(location?: string): Promise<string> {
       logs.push(`getCurrentTime: TimeAPI.io Error: ${error.message}`);
       // Fall through to WorldTimeAPI
     }
-
     // Attempt 2: WorldTimeAPI (Fallback Source) with original location
     const worldTimeApiUrlOriginal = `https://worldtimeapi.org/api/timezone/${encodeURIComponent(originalLocation)}`;
     logs.push(`getCurrentTime: Attempt 2 (WorldTimeAPI original): ${worldTimeApiUrlOriginal}`);
@@ -98,7 +92,6 @@ export async function getCurrentTime(location?: string): Promise<string> {
     } catch (error: any) {
       logs.push(`getCurrentTime: WorldTimeAPI (original) Error: ${error.message}`);
     }
-    
     // Attempt 3: Simplified location (city part) if original had comma and Attempt 2 failed
     if (originalLocation.includes(',')) {
       const cityPart = originalLocation.split(',')[0].trim();
@@ -140,7 +133,6 @@ export async function getCurrentTime(location?: string): Promise<string> {
         }
       }
     }
-
     // Attempt 4: Suffix-removed location if original ended with " City" (case-insensitive) and previous attempts failed
     const lowerCaseLocation = originalLocation.toLowerCase();
     if (lowerCaseLocation.endsWith(" city") && lowerCaseLocation.length > " city".length) {
@@ -183,12 +175,10 @@ export async function getCurrentTime(location?: string): Promise<string> {
             }
         }
     }
-    
     const errorMessage = `I couldn't get the time for "${originalLocation}". All attempts failed. Please check the location name and format or try a nearby major city. Summary of attempts: ${logs.filter(l => l.includes("Error:") || l.includes("failed") || l.includes("Couldn't find")).join(' || ')}`;
     logs.push(`getCurrentTime: All attempts failed for "${originalLocation}". Final log: ${logs.join(' --- ')}`);
     console.warn(logs.join('\n')); 
     return errorMessage;
-
   } else {
     const serverTime = new Date().toLocaleTimeString(undefined, {
       hour: 'numeric',
@@ -200,7 +190,6 @@ export async function getCurrentTime(location?: string): Promise<string> {
     return msg;
   }
 }
-
 export async function getWeather(
   locationFromPrompt?: string, 
   temperatureUnit: TemperatureUnit = 'C',
@@ -210,16 +199,13 @@ export async function getWeather(
 ): Promise<string> {
   const logs: string[] = [];
   let locationToUse = locationFromPrompt?.trim() || defaultLocationFromSettings?.trim();
-  
   logs.push(`getWeather called with: locationFromPrompt="${locationFromPrompt}", temperatureUnit="${temperatureUnit}", service="${service}", defaultLocationFromSettings="${defaultLocationFromSettings}"`);
   logs.push(`Effective locationToUse: "${locationToUse}"`);
-
   if (!locationToUse || locationToUse.trim() === "") {
     logs.push("getWeather: No location specified (neither in prompt nor as default).");
     console.log(logs.join('\n'));
     return "Please specify a location for the weather. For example, you can ask 'what's the weather in London?'.";
   }
-
   if (service === 'openweather') {
     if (!apiKey) {
       logs.push("getWeather: 'openweather' selected but no API key provided.");
@@ -263,7 +249,6 @@ export async function getWeather(
       return `Sorry, I encountered an error while trying to fetch the weather for "${locationToUse}".`;
     }
   }
-
   if (service === 'custom_api') {
     logs.push("getWeather: 'custom_api' service selected. This is conceptual and not yet implemented.");
     if (!apiKey) {
@@ -271,15 +256,12 @@ export async function getWeather(
     }
     logs.push("getWeather: For demonstration, falling back to wttr.in from conceptual 'custom_api'.");
   }
-
   const wttrUrl = `https://wttr.in/${encodeURIComponent(locationToUse)}?format=j1`;
   logs.push(`getWeather: Attempting to fetch weather from wttr.in: ${wttrUrl}`);
-
   try {
     const response = await fetch(wttrUrl);
     const responseText = await response.text(); 
     logs.push(`getWeather: wttr.in response status: ${response.status}, body: ${responseText.substring(0, 300)}`);
-
     if (!response.ok) {
       let errorInfo = `HTTP error ${response.status}`;
       if (responseText.includes("Unknown location")) {
@@ -289,29 +271,22 @@ export async function getWeather(
       }
       throw new Error(`Failed to fetch weather for "${locationToUse}". ${errorInfo}`);
     }
-
     const data = JSON.parse(responseText); 
-
     if (data && data.current_condition && data.current_condition[0]) {
       const currentCondition = data.current_condition[0];
       const description = currentCondition.weatherDesc && currentCondition.weatherDesc[0] ? currentCondition.weatherDesc[0].value : "Not available";
-      
       let temp = parseFloat(currentCondition.temp_C);
       let feelsLike = parseFloat(currentCondition.FeelsLikeC);
       let unitSymbol = '°C';
-
       if (temperatureUnit === 'F') {
         temp = (temp * 9/5) + 32;
         feelsLike = (feelsLike * 9/5) + 32;
         unitSymbol = '°F';
       }
-      
       const tempStr = temp.toFixed(0);
       const feelsLikeStr = feelsLike.toFixed(0);
-
       const humidity = currentCondition.humidity;
       const windSpeedKmph = currentCondition.windspeedKmph;
-
       let weatherString = `Currently in ${locationToUse}: ${description}. The temperature is ${tempStr}${unitSymbol} (feels like ${feelsLikeStr}${unitSymbol}).`;
       if (humidity) {
         weatherString += ` Humidity is at ${humidity}%.`;
@@ -322,7 +297,6 @@ export async function getWeather(
       logs.push(`getWeather: Success for "${locationToUse}": ${weatherString}`);
       console.log(logs.join('\n'));
       return weatherString;
-
     } else if (data && data.nearest_area && data.nearest_area[0] && data.nearest_area[0].areaName && data.nearest_area[0].areaName[0].value.toLowerCase().includes("unknown")) {
       logs.push(`getWeather: Unknown location indicated by nearest_area for "${locationToUse}"`);
       throw new Error(`Sorry, I couldn't find weather data for "${locationToUse}". Please ensure the location is correct.`);
@@ -342,21 +316,14 @@ export async function getWeather(
     return baseErrorMessage;
   }
 }
-
-
 export async function mockQueryBookDatabase(bookTitle?: string): Promise<string> {
-  console.log(`mockQueryBookDatabase: Called for bookTitle="${bookTitle || 'none'}"`);
-
   if (!bookTitle || bookTitle.trim() === "") {
-    console.log("mockQueryBookDatabase: No book title provided.");
     return JSON.stringify({
       error: "Missing book title",
       message: "I need a book title to look up details. Which book are you interested in?"
     });
   }
-
   await new Promise(resolve => setTimeout(resolve, 500)); 
-
   if (bookTitle.toLowerCase().includes("dune")) {
     return JSON.stringify({
       title: bookTitle,
@@ -381,10 +348,8 @@ export async function mockQueryBookDatabase(bookTitle?: string): Promise<string>
     });
   }
 }
-
 // Mocked Gmail Tools
 export async function mockCheckGmailUnread(): Promise<string> {
-  console.log("mockCheckGmailUnread: Called");
   await new Promise(resolve => setTimeout(resolve, 700)); 
   return JSON.stringify({
     unreadCount: 2,
@@ -394,15 +359,12 @@ export async function mockCheckGmailUnread(): Promise<string> {
     ]
   });
 }
-
 export async function mockComposeGmail(input: {
   gmailRecipient?: string;
   gmailSubject?: string;
   gmailBody?: string;
 }): Promise<string> {
-  console.log("mockComposeGmail: Called with input:", input);
   await new Promise(resolve => setTimeout(resolve, 600)); 
-
   if (!input.gmailRecipient || !input.gmailSubject || !input.gmailBody) {
     const missing: string[] = [];
     if (!input.gmailRecipient) missing.push("recipient");
@@ -413,21 +375,17 @@ export async function mockComposeGmail(input: {
       message: `I'm missing some details to compose the email. I still need the ${missing.join(', ')}. Could you provide them?`
     });
   }
-
   return JSON.stringify({
     success: true,
     message: `Okay, I've "sent" an email to ${input.gmailRecipient} with the subject "${input.gmailSubject}".`
   });
 }
-
-
 // Note: Enhanced AI Karen backend integration functions have been moved to dedicated services
 // These functions are now available through:
 // - getPluginService().executePlugin() for plugin execution
 // - getMemoryService().queryMemories() and storeMemory() for memory operations
 // - getKarenBackend().healthCheck() and getSystemMetrics() for system status
 // - getKarenBackend().getUsageAnalytics() for analytics
-
 // Legacy functions kept for backward compatibility - these now delegate to services
 export async function executeKarenPlugin(
   pluginName: string,
@@ -435,13 +393,11 @@ export async function executeKarenPlugin(
   userId?: string
 ): Promise<string> {
   console.warn('executeKarenPlugin: This function is deprecated. Use getPluginService().executePlugin() instead.');
-  
   try {
     // Import here to avoid circular dependencies
     const { getPluginService } = await import('@/services/pluginService');
     const pluginService = getPluginService();
     const result = await pluginService.executePlugin(pluginName, parameters, { userId });
-    
     return JSON.stringify({
       success: result.success,
       plugin: pluginName,
@@ -453,7 +409,6 @@ export async function executeKarenPlugin(
       timestamp: result.timestamp
     });
   } catch (error) {
-    console.error(`executeKarenPlugin: Error executing ${pluginName}:`, error);
     return JSON.stringify({
       success: false,
       plugin: pluginName,
@@ -462,7 +417,6 @@ export async function executeKarenPlugin(
     });
   }
 }
-
 export async function queryKarenMemory(
   queryText: string,
   userId?: string,
@@ -475,7 +429,6 @@ export async function queryKarenMemory(
   } = {}
 ): Promise<string> {
   console.warn('queryKarenMemory: This function is deprecated. Use getMemoryService().queryMemories() instead.');
-  
   try {
     // Import here to avoid circular dependencies
     const { getMemoryService } = await import('@/services/memoryService');
@@ -488,7 +441,6 @@ export async function queryKarenMemory(
       tags: options.tags,
       timeRange: options.timeRange,
     });
-    
     if (memories.length > 0) {
       const formattedMemories = memories.map(mem => ({
         content: mem.content,
@@ -496,7 +448,6 @@ export async function queryKarenMemory(
         tags: mem.tags,
         timestamp: new Date(mem.timestamp * 1000).toLocaleString()
       }));
-      
       return JSON.stringify({
         success: true,
         query: queryText,
@@ -514,7 +465,6 @@ export async function queryKarenMemory(
       });
     }
   } catch (error) {
-    console.error('queryKarenMemory: Error querying memories:', error);
     return JSON.stringify({
       success: false,
       query: queryText,
@@ -523,7 +473,6 @@ export async function queryKarenMemory(
     });
   }
 }
-
 export async function storeKarenMemory(
   content: string,
   userId?: string,
@@ -534,7 +483,6 @@ export async function storeKarenMemory(
   } = {}
 ): Promise<string> {
   console.warn('storeKarenMemory: This function is deprecated. Use getMemoryService().storeMemory() instead.');
-  
   try {
     // Import here to avoid circular dependencies
     const { getMemoryService } = await import('@/services/memoryService');
@@ -545,7 +493,6 @@ export async function storeKarenMemory(
       userId,
       sessionId,
     });
-    
     if (memoryId) {
       return JSON.stringify({
         success: true,
@@ -561,7 +508,6 @@ export async function storeKarenMemory(
       });
     }
   } catch (error) {
-    console.error('storeKarenMemory: Error storing memory:', error);
     return JSON.stringify({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -569,17 +515,14 @@ export async function storeKarenMemory(
     });
   }
 }
-
 export async function getKarenSystemStatus(): Promise<string> {
   console.warn('getKarenSystemStatus: This function is deprecated. Use getKarenBackend().healthCheck() instead.');
-  
   try {
     const backend = getKarenBackend();
     const [health, metrics] = await Promise.all([
       backend.healthCheck(),
       backend.getSystemMetrics()
     ]);
-    
     return JSON.stringify({
       success: true,
       health: {
@@ -597,7 +540,6 @@ export async function getKarenSystemStatus(): Promise<string> {
       message: `System is ${health.status}. CPU: ${metrics.cpu_usage}%, Memory: ${metrics.memory_usage}%, Uptime: ${metrics.uptime_hours}h`
     });
   } catch (error) {
-    console.error('getKarenSystemStatus: Error getting system status:', error);
     return JSON.stringify({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -605,14 +547,11 @@ export async function getKarenSystemStatus(): Promise<string> {
     });
   }
 }
-
 export async function getKarenAnalytics(timeRange: string = '24h'): Promise<string> {
   console.warn('getKarenAnalytics: This function is deprecated. Use getKarenBackend().getUsageAnalytics() instead.');
-  
   try {
     const backend = getKarenBackend();
     const analytics = await backend.getUsageAnalytics(timeRange);
-    
     return JSON.stringify({
       success: true,
       timeRange,
@@ -626,7 +565,6 @@ export async function getKarenAnalytics(timeRange: string = '24h'): Promise<stri
       message: `In the last ${timeRange}: ${analytics.total_interactions} interactions from ${analytics.unique_users} users. Satisfaction: ${analytics.user_satisfaction}/5.0`
     });
   } catch (error) {
-    console.error('getKarenAnalytics: Error getting analytics:', error);
     return JSON.stringify({
       success: false,
       timeRange,

@@ -5,7 +5,7 @@
  * Based on requirements: 2.1, 2.2, 2.3, 2.4, 11.1, 11.2
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';

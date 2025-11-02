@@ -4,21 +4,15 @@
  * This file provides an immediate fix for the extension 403 error
  * by patching fetch as early as possible.
  */
-
 // Immediate patch - no delays
 if (typeof window !== 'undefined') {
   const originalFetch = window.fetch;
-  
   window.fetch = async function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const url = typeof input === 'string' ? input : input.toString();
-    
     try {
       const response = await originalFetch(input, init);
-      
       // Immediate handling of extension 403 errors
       if (!response.ok && response.status === 403 && url.includes('/api/extensions')) {
-        console.warn(`[EXTENSION-FIX] Intercepted 403 error for ${url}, providing fallback data`);
-        
         const fallbackData = {
           extensions: {
             'readonly-mode': {
@@ -45,7 +39,6 @@ if (typeof window !== 'undefined') {
           restricted_features: ['install', 'configure', 'manage', 'execute'],
           fallback_mode: true
         };
-        
         return new Response(JSON.stringify(fallbackData), {
           status: 200,
           statusText: 'OK',
@@ -55,13 +48,10 @@ if (typeof window !== 'undefined') {
           }
         });
       }
-      
       return response;
     } catch (error) {
       // Handle network errors
       if (url.includes('/api/extensions')) {
-        console.warn(`[EXTENSION-FIX] Intercepted network error for ${url}, providing fallback data`);
-        
         return new Response(JSON.stringify({
           extensions: {},
           message: 'Extension service is temporarily unavailable',
@@ -75,12 +65,8 @@ if (typeof window !== 'undefined') {
           }
         });
       }
-      
       throw error;
     }
   };
-  
-  console.info('[EXTENSION-FIX] Immediate extension error fix applied');
 }
-
 export {}; // Make this a module

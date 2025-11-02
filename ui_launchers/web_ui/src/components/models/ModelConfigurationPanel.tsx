@@ -1,13 +1,5 @@
-"use client";
-
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +11,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
-import {
+import { getKarenBackend } from '@/lib/karen-backend';
+import { useToast } from '@/hooks/use-toast';
+"use client";
+
+
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+
+
+
+
+
+
+
+
+
+
+
   Settings,
   Save,
   RotateCcw,
@@ -33,8 +47,7 @@ import {
   Brain,
   Sliders
 } from 'lucide-react';
-import { getKarenBackend } from '@/lib/karen-backend';
-import { useToast } from '@/hooks/use-toast';
+
 
 interface OptimizationSettings {
   // Response Optimization
@@ -42,36 +55,30 @@ interface OptimizationSettings {
   enable_progressive_streaming: boolean;
   enable_smart_caching: boolean;
   enable_cuda_acceleration: boolean;
-  
   // Performance Settings
   max_cpu_usage_percent: number;
   max_memory_usage_gb: number;
   response_timeout_seconds: number;
   cache_ttl_minutes: number;
-  
   // Quality Settings
   content_relevance_threshold: number;
   response_quality_threshold: number;
   enable_redundancy_elimination: boolean;
   enable_format_optimization: boolean;
-  
   // Routing Settings
   routing_strategy: 'performance' | 'quality' | 'balanced' | 'custom';
   enable_fallback_routing: boolean;
   fallback_timeout_ms: number;
-  
   // Advanced Settings
   enable_reasoning_preservation: boolean;
   enable_performance_monitoring: boolean;
   enable_ab_testing: boolean;
-  log_level: 'debug' | 'info' | 'warning' | 'error';
+  log_level: '' | 'warning' | 'error';
 }
-
 interface ModelConfigurationPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
 const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
   open,
   onOpenChange
@@ -82,84 +89,69 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
     enable_progressive_streaming: true,
     enable_smart_caching: true,
     enable_cuda_acceleration: false,
-    
     // Performance Settings
     max_cpu_usage_percent: 5,
     max_memory_usage_gb: 8,
     response_timeout_seconds: 30,
     cache_ttl_minutes: 60,
-    
     // Quality Settings
     content_relevance_threshold: 0.7,
     response_quality_threshold: 0.8,
     enable_redundancy_elimination: true,
     enable_format_optimization: true,
-    
     // Routing Settings
     routing_strategy: 'balanced',
     enable_fallback_routing: true,
     fallback_timeout_ms: 5000,
-    
     // Advanced Settings
     enable_reasoning_preservation: true,
     enable_performance_monitoring: true,
     enable_ab_testing: false,
     log_level: 'info'
   });
-
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [originalSettings, setOriginalSettings] = useState<OptimizationSettings | null>(null);
-
   const { toast } = useToast();
   const backend = getKarenBackend();
-
   // Load current configuration
   const loadConfiguration = async () => {
     try {
       setLoading(true);
       setError(null);
-
       // Try to load configuration from the intelligent routing system
       const response = await backend.makeRequestPublic<{
         configuration: OptimizationSettings;
       }>('/api/intelligent-models/configuration');
-
       if (response?.configuration) {
         setSettings(response.configuration);
         setOriginalSettings(response.configuration);
       }
     } catch (err) {
-      console.error('Failed to load configuration:', err);
       // Use default settings if loading fails
       setOriginalSettings(settings);
     } finally {
       setLoading(false);
     }
   };
-
   // Save configuration
   const saveConfiguration = async () => {
     try {
       setSaving(true);
       setError(null);
-
       await backend.makeRequestPublic('/api/intelligent-models/configure', {
         method: 'POST',
         body: JSON.stringify(settings)
       });
-
       setOriginalSettings(settings);
       setHasChanges(false);
-
       toast({
         title: "Configuration Saved",
         description: "Model optimization settings have been updated successfully.",
       });
     } catch (err) {
-      console.error('Failed to save configuration:', err);
       setError('Failed to save configuration. Please try again.');
       toast({
         title: "Save Failed",
@@ -170,7 +162,6 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
       setSaving(false);
     }
   };
-
   // Reset to original settings
   const resetSettings = () => {
     if (originalSettings) {
@@ -178,7 +169,6 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
       setHasChanges(false);
     }
   };
-
   // Reset to defaults
   const resetToDefaults = () => {
     const defaultSettings: OptimizationSettings = {
@@ -202,11 +192,9 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
       enable_ab_testing: false,
       log_level: 'info'
     };
-    
     setSettings(defaultSettings);
     setHasChanges(true);
   };
-
   // Update setting and mark as changed
   const updateSetting = <K extends keyof OptimizationSettings>(
     key: K,
@@ -215,81 +203,76 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
     setSettings(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
   };
-
   // Load configuration when dialog opens
   useEffect(() => {
     if (open) {
       loadConfiguration();
     }
   }, [open]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:w-auto md:w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
+            <Settings className="h-5 w-5 sm:w-auto md:w-full" />
             Model Optimization Configuration
           </DialogTitle>
           <DialogDescription>
             Configure intelligent response optimization settings and model routing behavior
           </DialogDescription>
         </DialogHeader>
-
         <div className="space-y-6">
           {/* Action Buttons */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {hasChanges && (
                 <Badge variant="secondary">
-                  <AlertCircle className="h-3 w-3 mr-1" />
+                  <AlertCircle className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                   Unsaved Changes
                 </Badge>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={resetToDefaults}
-              >
-                <RotateCcw className="h-4 w-4 mr-1" />
+               aria-label="Button">
+                <RotateCcw className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                 Reset to Defaults
               </Button>
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={resetSettings}
                 disabled={!hasChanges}
-              >
+               aria-label="Button">
                 Cancel Changes
               </Button>
-              <Button
+              <button
                 onClick={saveConfiguration}
                 disabled={saving || !hasChanges}
                 size="sm"
-              >
+               aria-label="Button">
                 {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  <Loader2 className="h-4 w-4 animate-spin mr-1 sm:w-auto md:w-full" />
                 ) : (
-                  <Save className="h-4 w-4 mr-1" />
+                  <Save className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                 )}
                 Save Configuration
               </Button>
             </div>
           </div>
-
           {error && (
             <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-
           {loading ? (
             <Card>
               <CardContent className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <Loader2 className="h-6 w-6 animate-spin mr-2 sm:w-auto md:w-full" />
                 Loading configuration...
               </CardContent>
             </Card>
@@ -301,13 +284,12 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                 <TabsTrigger value="routing">Routing</TabsTrigger>
                 <TabsTrigger value="advanced">Advanced</TabsTrigger>
               </TabsList>
-
               {/* Optimization Settings */}
               <TabsContent value="optimization" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-5 w-5" />
+                      <Zap className="h-5 w-5 sm:w-auto md:w-full" />
                       Response Optimization
                     </CardTitle>
                     <CardDescription>
@@ -319,7 +301,7 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label>Content Optimization</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             Enable intelligent content optimization and redundancy elimination
                           </p>
                         </div>
@@ -330,11 +312,10 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                           }
                         />
                       </div>
-
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label>Progressive Streaming</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             Stream responses with priority-based content ordering
                           </p>
                         </div>
@@ -345,11 +326,10 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                           }
                         />
                       </div>
-
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label>Smart Caching</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             Enable intelligent caching and computation reuse
                           </p>
                         </div>
@@ -360,11 +340,10 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                           }
                         />
                       </div>
-
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label>CUDA Acceleration</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             Enable GPU acceleration for model inference
                           </p>
                         </div>
@@ -376,11 +355,10 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                         />
                       </div>
                     </div>
-
                     <div className="space-y-4">
                       <div>
                         <Label>Content Relevance Threshold</Label>
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                           Minimum relevance score for content inclusion (0.0 - 1.0)
                         </p>
                         <Slider
@@ -393,14 +371,13 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                           step={0.1}
                           className="w-full"
                         />
-                        <div className="text-sm text-muted-foreground mt-1">
+                        <div className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                           Current: {settings.content_relevance_threshold.toFixed(1)}
                         </div>
                       </div>
-
                       <div>
                         <Label>Response Quality Threshold</Label>
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                           Minimum quality score for response acceptance (0.0 - 1.0)
                         </p>
                         <Slider
@@ -413,7 +390,7 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                           step={0.1}
                           className="w-full"
                         />
-                        <div className="text-sm text-muted-foreground mt-1">
+                        <div className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                           Current: {settings.response_quality_threshold.toFixed(1)}
                         </div>
                       </div>
@@ -421,13 +398,12 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                   </CardContent>
                 </Card>
               </TabsContent>
-
               {/* Performance Settings */}
               <TabsContent value="performance" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Cpu className="h-5 w-5" />
+                      <Cpu className="h-5 w-5 sm:w-auto md:w-full" />
                       Performance Limits
                     </CardTitle>
                     <CardDescription>
@@ -438,7 +414,7 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <Label>Max CPU Usage (%)</Label>
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                           Maximum CPU usage per response generation
                         </p>
                         <Slider
@@ -451,14 +427,13 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                           step={1}
                           className="w-full"
                         />
-                        <div className="text-sm text-muted-foreground mt-1">
+                        <div className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                           Current: {settings.max_cpu_usage_percent}%
                         </div>
                       </div>
-
                       <div>
                         <Label>Max Memory Usage (GB)</Label>
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                           Maximum memory allocation for response processing
                         </p>
                         <Slider
@@ -471,36 +446,34 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                           step={1}
                           className="w-full"
                         />
-                        <div className="text-sm text-muted-foreground mt-1">
+                        <div className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                           Current: {settings.max_memory_usage_gb}GB
                         </div>
                       </div>
-
                       <div>
                         <Label>Response Timeout (seconds)</Label>
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                           Maximum time to wait for response generation
                         </p>
-                        <Input
+                        <input
                           type="number"
                           value={settings.response_timeout_seconds}
-                          onChange={(e) => 
+                          onChange={(e) = aria-label="Input"> 
                             updateSetting('response_timeout_seconds', parseInt(e.target.value) || 30)
                           }
                           min={5}
                           max={300}
                         />
                       </div>
-
                       <div>
                         <Label>Cache TTL (minutes)</Label>
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                           Time-to-live for cached responses
                         </p>
-                        <Input
+                        <input
                           type="number"
                           value={settings.cache_ttl_minutes}
-                          onChange={(e) => 
+                          onChange={(e) = aria-label="Input"> 
                             updateSetting('cache_ttl_minutes', parseInt(e.target.value) || 60)
                           }
                           min={1}
@@ -511,13 +484,12 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                   </CardContent>
                 </Card>
               </TabsContent>
-
               {/* Routing Settings */}
               <TabsContent value="routing" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Brain className="h-5 w-5" />
+                      <Brain className="h-5 w-5 sm:w-auto md:w-full" />
                       Model Routing
                     </CardTitle>
                     <CardDescription>
@@ -528,36 +500,35 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <Label>Routing Strategy</Label>
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                           Strategy for selecting optimal models
                         </p>
-                        <Select
+                        <select
                           value={settings.routing_strategy}
-                          onValueChange={(value: any) => 
+                          onValueChange={(value: any) = aria-label="Select option"> 
                             updateSetting('routing_strategy', value)
                           }
                         >
-                          <SelectTrigger>
-                            <SelectValue />
+                          <selectTrigger aria-label="Select option">
+                            <selectValue />
                           </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="performance">Performance First</SelectItem>
-                            <SelectItem value="quality">Quality First</SelectItem>
-                            <SelectItem value="balanced">Balanced</SelectItem>
-                            <SelectItem value="custom">Custom</SelectItem>
+                          <selectContent aria-label="Select option">
+                            <selectItem value="performance" aria-label="Select option">Performance First</SelectItem>
+                            <selectItem value="quality" aria-label="Select option">Quality First</SelectItem>
+                            <selectItem value="balanced" aria-label="Select option">Balanced</SelectItem>
+                            <selectItem value="custom" aria-label="Select option">Custom</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-
                       <div>
                         <Label>Fallback Timeout (ms)</Label>
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                           Time to wait before falling back to alternative model
                         </p>
-                        <Input
+                        <input
                           type="number"
                           value={settings.fallback_timeout_ms}
-                          onChange={(e) => 
+                          onChange={(e) = aria-label="Input"> 
                             updateSetting('fallback_timeout_ms', parseInt(e.target.value) || 5000)
                           }
                           min={1000}
@@ -565,11 +536,10 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                         />
                       </div>
                     </div>
-
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Enable Fallback Routing</Label>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                           Automatically switch to backup models when primary fails
                         </p>
                       </div>
@@ -583,13 +553,12 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                   </CardContent>
                 </Card>
               </TabsContent>
-
               {/* Advanced Settings */}
               <TabsContent value="advanced" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Sliders className="h-5 w-5" />
+                      <Sliders className="h-5 w-5 sm:w-auto md:w-full" />
                       Advanced Configuration
                     </CardTitle>
                     <CardDescription>
@@ -601,7 +570,7 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label>Reasoning Preservation</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             Preserve existing reasoning logic during optimization
                           </p>
                         </div>
@@ -612,11 +581,10 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                           }
                         />
                       </div>
-
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label>Performance Monitoring</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             Enable detailed performance metrics collection
                           </p>
                         </div>
@@ -627,11 +595,10 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                           }
                         />
                       </div>
-
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label>A/B Testing</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             Enable experimental A/B testing for optimization strategies
                           </p>
                         </div>
@@ -642,36 +609,34 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                           }
                         />
                       </div>
-
                       <div>
                         <Label>Log Level</Label>
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                           Logging verbosity level
                         </p>
-                        <Select
+                        <select
                           value={settings.log_level}
-                          onValueChange={(value: any) => 
+                          onValueChange={(value: any) = aria-label="Select option"> 
                             updateSetting('log_level', value)
                           }
                         >
-                          <SelectTrigger>
-                            <SelectValue />
+                          <selectTrigger aria-label="Select option">
+                            <selectValue />
                           </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="debug">Debug</SelectItem>
-                            <SelectItem value="info">Info</SelectItem>
-                            <SelectItem value="warning">Warning</SelectItem>
-                            <SelectItem value="error">Error</SelectItem>
+                          <selectContent aria-label="Select option">
+                            <selectItem value="debug" aria-label="Select option">Debug</SelectItem>
+                            <selectItem value="info" aria-label="Select option">Info</SelectItem>
+                            <selectItem value="warning" aria-label="Select option">Warning</SelectItem>
+                            <selectItem value="error" aria-label="Select option">Error</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label>Redundancy Elimination</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             Remove redundant content from responses
                           </p>
                         </div>
@@ -682,11 +647,10 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                           }
                         />
                       </div>
-
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label>Format Optimization</Label>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             Automatically optimize response formatting
                           </p>
                         </div>
@@ -708,5 +672,4 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
     </Dialog>
   );
 };
-
 export default ModelConfigurationPanel;

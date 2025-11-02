@@ -1,8 +1,6 @@
 'use client';
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { useUIStore } from '../../store';
-
 interface OptimisticErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
@@ -10,7 +8,6 @@ interface OptimisticErrorBoundaryState {
   retryCount: number;
   errorId: string;
 }
-
 interface OptimisticErrorBoundaryProps {
   children: ReactNode;
   fallback?: (props: {
@@ -28,14 +25,12 @@ interface OptimisticErrorBoundaryProps {
   resetKeys?: Array<string | number>;
   resetOnPropsChange?: boolean;
 }
-
 class OptimisticErrorBoundaryClass extends Component<
   OptimisticErrorBoundaryProps,
   OptimisticErrorBoundaryState
 > {
   private resetTimeoutId: number | null = null;
   private maxRetries: number;
-
   constructor(props: OptimisticErrorBoundaryProps) {
     super(props);
     this.maxRetries = props.maxRetries || 3;
@@ -47,7 +42,6 @@ class OptimisticErrorBoundaryClass extends Component<
       errorId: '',
     };
   }
-
   static getDerivedStateFromError(error: Error): Partial<OptimisticErrorBoundaryState> {
     return {
       hasError: true,
@@ -55,65 +49,49 @@ class OptimisticErrorBoundaryClass extends Component<
       errorId: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     };
   }
-
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
-    
     // Log error to UI store
     const { setError } = useUIStore.getState();
     setError(this.state.errorId, error.message);
-    
     // Call onError callback
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
-    
     // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('OptimisticErrorBoundary caught an error:', error, errorInfo);
-    }
   }
-
   componentDidUpdate(prevProps: OptimisticErrorBoundaryProps) {
     const { resetKeys, resetOnPropsChange } = this.props;
     const { hasError } = this.state;
-    
     // Reset on props change if enabled
     if (hasError && resetOnPropsChange && prevProps.children !== this.props.children) {
       this.resetErrorBoundary();
     }
-    
     // Reset on resetKeys change
     if (hasError && resetKeys && prevProps.resetKeys) {
       const hasResetKeyChanged = resetKeys.some(
         (key, index) => key !== prevProps.resetKeys![index]
       );
-      
       if (hasResetKeyChanged) {
         this.resetErrorBoundary();
       }
     }
   }
-
   componentWillUnmount() {
     if (this.resetTimeoutId) {
       clearTimeout(this.resetTimeoutId);
     }
-    
     // Clear error from store
     const { clearError } = useUIStore.getState();
     clearError(this.state.errorId);
   }
-
   resetErrorBoundary = () => {
     if (this.resetTimeoutId) {
       clearTimeout(this.resetTimeoutId);
     }
-    
     // Clear error from store
     const { clearError } = useUIStore.getState();
     clearError(this.state.errorId);
-    
     this.setState({
       hasError: false,
       error: null,
@@ -121,35 +99,28 @@ class OptimisticErrorBoundaryClass extends Component<
       retryCount: 0,
       errorId: '',
     });
-    
     if (this.props.onReset) {
       this.props.onReset();
     }
   };
-
   retryRender = () => {
     const { retryCount } = this.state;
     const newRetryCount = retryCount + 1;
-    
     if (newRetryCount <= this.maxRetries) {
       this.setState({ retryCount: newRetryCount });
-      
       if (this.props.onRetry) {
         this.props.onRetry(newRetryCount);
       }
-      
       // Reset after a short delay to allow for state updates
       this.resetTimeoutId = window.setTimeout(() => {
         this.resetErrorBoundary();
       }, 100);
     }
   };
-
   render() {
     const { hasError, error, errorInfo, retryCount } = this.state;
     const { fallback, children } = this.props;
     const canRetry = retryCount < this.maxRetries;
-
     if (hasError) {
       if (fallback) {
         return fallback({
@@ -161,7 +132,6 @@ class OptimisticErrorBoundaryClass extends Component<
           canRetry,
         });
       }
-
       return (
         <DefaultErrorFallback
           error={error}
@@ -173,11 +143,9 @@ class OptimisticErrorBoundaryClass extends Component<
         />
       );
     }
-
     return children;
   }
 }
-
 // Default error fallback component
 function DefaultErrorFallback({
   error,
@@ -194,9 +162,9 @@ function DefaultErrorFallback({
   canRetry: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center p-8 bg-red-50 border border-red-200 rounded-lg">
+    <div className="flex flex-col items-center justify-center p-8 bg-red-50 border border-red-200 rounded-lg sm:p-4 md:p-6">
       <div className="text-red-600 mb-4">
-        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-12 h-12 sm:w-auto md:w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -205,45 +173,39 @@ function DefaultErrorFallback({
           />
         </svg>
       </div>
-      
       <h3 className="text-lg font-semibold text-red-800 mb-2">
         Something went wrong
       </h3>
-      
       <p className="text-red-600 text-center mb-4 max-w-md">
         {error?.message || 'An unexpected error occurred'}
       </p>
-      
       {retryCount > 0 && (
-        <p className="text-sm text-red-500 mb-4">
+        <p className="text-sm text-red-500 mb-4 md:text-base lg:text-lg">
           Retry attempt: {retryCount}
         </p>
       )}
-      
       <div className="flex gap-2">
         {canRetry && (
           <button
             onClick={retry}
             className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-          >
+           aria-label="Button">
             Try Again
           </button>
         )}
-        
         <button
           onClick={reset}
           className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-        >
+         aria-label="Button">
           Reset
         </button>
       </div>
-      
       {process.env.NODE_ENV === 'development' && error && (
-        <details className="mt-4 w-full max-w-2xl">
-          <summary className="cursor-pointer text-sm text-red-600 hover:text-red-800">
+        <details className="mt-4 w-full max-w-2xl sm:w-auto md:w-full">
+          <summary className="cursor-pointer text-sm text-red-600 hover:text-red-800 md:text-base lg:text-lg">
             Error Details (Development)
           </summary>
-          <pre className="mt-2 p-4 bg-red-100 rounded text-xs overflow-auto">
+          <pre className="mt-2 p-4 bg-red-100 rounded text-xs overflow-auto sm:text-sm md:text-base">
             {error.stack}
           </pre>
         </details>
@@ -251,12 +213,10 @@ function DefaultErrorFallback({
     </div>
   );
 }
-
 // Wrapper component with hooks support
 export function OptimisticErrorBoundary(props: OptimisticErrorBoundaryProps) {
   return <OptimisticErrorBoundaryClass {...props} />;
 }
-
 // Higher-order component for wrapping components with error boundary
 export function withOptimisticErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
@@ -267,8 +227,6 @@ export function withOptimisticErrorBoundary<P extends object>(
       <Component {...props} />
     </OptimisticErrorBoundary>
   );
-  
   WrappedComponent.displayName = `withOptimisticErrorBoundary(${Component.displayName || Component.name})`;
-  
   return WrappedComponent;
 }

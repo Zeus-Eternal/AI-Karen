@@ -1,9 +1,5 @@
-/**
- * Comprehensive Provider Configuration Interface
- * Supporting local, cloud, and custom provider types with secure credential management
- */
-
 import React, { useState, useEffect } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +12,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
+import { useToast } from '@/hooks/use-toast';
+/**
+ * Comprehensive Provider Configuration Interface
+ * Supporting local, cloud, and custom provider types with secure credential management
+ */
+
+
+
+
+
+
+
+
+
+
+
+
+
   Plus, 
   Settings, 
   Shield, 
@@ -37,30 +51,26 @@ import {
   Unlock,
   Info
 } from 'lucide-react';
-import { 
+
   ProviderConfig, 
   ProviderType, 
   ProviderHealth, 
   ProviderConfigField,
   ValidationRule 
 } from '@/types/providers';
-import { useToast } from '@/hooks/use-toast';
 
 interface ProviderConfigInterfaceProps {
   onProviderSaved?: (provider: ProviderConfig) => void;
   onProviderDeleted?: (providerId: string) => void;
   className?: string;
 }
-
 interface FormData {
   [key: string]: any;
 }
-
 interface ValidationError {
   field: string;
   message: string;
 }
-
 const PROVIDER_TYPES: ProviderType[] = [
   {
     id: 'openai',
@@ -193,7 +203,6 @@ const PROVIDER_TYPES: ProviderType[] = [
     capabilities: ['text-generation', 'code', 'chat']
   }
 ];
-
 const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
   onProviderSaved,
   onProviderDeleted,
@@ -211,22 +220,18 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
   const [providerHealth, setProviderHealth] = useState<Record<string, ProviderHealth>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   useEffect(() => {
     loadProviders();
     loadProviderHealth();
   }, []);
-
   const loadProviders = async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/providers');
       if (!response.ok) throw new Error('Failed to load providers');
-      
       const data = await response.json();
       setProviders(data.providers || []);
     } catch (error) {
-      console.error('Error loading providers:', error);
       toast({
         title: 'Error',
         description: 'Failed to load provider configurations',
@@ -236,26 +241,20 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       setLoading(false);
     }
   };
-
   const loadProviderHealth = async () => {
     try {
       const response = await fetch('/api/providers/health');
       if (!response.ok) throw new Error('Failed to load provider health');
-      
       const data = await response.json();
       setProviderHealth(data.health || {});
     } catch (error) {
-      console.error('Error loading provider health:', error);
     }
   };
-
   const validateForm = (type: ProviderType, data: FormData): ValidationError[] => {
     const errors: ValidationError[] = [];
-
     // Field-level validation
     type.configSchema.fields.forEach(field => {
       const value = data[field.name];
-
       // Required field validation
       if (field.required && (!value || value === '')) {
         errors.push({
@@ -264,7 +263,6 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         });
         return;
       }
-
       // Type-specific validation
       if (value !== undefined && value !== '') {
         switch (field.type) {
@@ -290,7 +288,6 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
               }
             }
             break;
-
           case 'url':
             try {
               new URL(value);
@@ -301,7 +298,6 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
               });
             }
             break;
-
           case 'string':
             if (field.validation) {
               if (field.validation.minLength && value.length < field.validation.minLength) {
@@ -327,11 +323,9 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         }
       }
     });
-
     // Custom validation rules
     type.configSchema.validation.forEach(rule => {
       const value = data[rule.field];
-      
       switch (rule.rule) {
         case 'required':
           if (!value || value === '') {
@@ -351,23 +345,18 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           break;
       }
     });
-
     return errors;
   };
-
   const handleFieldChange = (fieldName: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [fieldName]: value
     }));
-
     // Clear validation error for this field
     setValidationErrors(prev => prev.filter(error => error.field !== fieldName));
   };
-
   const handleTestConnection = async () => {
     if (!selectedType) return;
-
     const errors = validateForm(selectedType, formData);
     if (errors.length > 0) {
       setValidationErrors(errors);
@@ -378,10 +367,8 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       });
       return;
     }
-
     setTesting(true);
     setTestResult(null);
-
     try {
       const response = await fetch('/api/providers/test', {
         method: 'POST',
@@ -391,14 +378,11 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           configuration: formData
         })
       });
-
       const result = await response.json();
-      
       setTestResult({
         success: response.ok,
         message: result.message || (response.ok ? 'Connection successful' : 'Connection failed')
       });
-
       if (response.ok) {
         toast({
           title: 'Test Successful',
@@ -425,10 +409,8 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       setTesting(false);
     }
   };
-
   const handleSave = async () => {
     if (!selectedType) return;
-
     const errors = validateForm(selectedType, formData);
     if (errors.length > 0) {
       setValidationErrors(errors);
@@ -439,7 +421,6 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       });
       return;
     }
-
     setSaving(true);
     try {
       const providerData = {
@@ -463,30 +444,23 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         createdAt: selectedProvider?.createdAt || new Date(),
         updatedAt: new Date()
       };
-
       const response = await fetch(`/api/providers${selectedProvider ? `/${selectedProvider.id}` : ''}`, {
         method: selectedProvider ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(providerData)
       });
-
       if (!response.ok) throw new Error('Failed to save provider');
-
       const savedProvider = await response.json();
-      
       if (selectedProvider) {
         setProviders(prev => prev.map(p => p.id === selectedProvider.id ? savedProvider : p));
       } else {
         setProviders(prev => [...prev, savedProvider]);
       }
-
       onProviderSaved?.(savedProvider);
-      
       toast({
         title: 'Provider Saved',
         description: `${savedProvider.name} has been saved successfully`
       });
-
       // Reset form
       setSelectedProvider(null);
       setSelectedType(null);
@@ -494,7 +468,6 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       setValidationErrors([]);
       setTestResult(null);
     } catch (error) {
-      console.error('Error saving provider:', error);
       toast({
         title: 'Save Error',
         description: 'Failed to save provider configuration',
@@ -504,32 +477,25 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       setSaving(false);
     }
   };
-
   const handleDelete = async (provider: ProviderConfig) => {
     if (!confirm(`Are you sure you want to delete ${provider.name}?`)) return;
-
     try {
       const response = await fetch(`/api/providers/${provider.id}`, {
         method: 'DELETE'
       });
-
       if (!response.ok) throw new Error('Failed to delete provider');
-
       setProviders(prev => prev.filter(p => p.id !== provider.id));
       onProviderDeleted?.(provider.id);
-
       if (selectedProvider?.id === provider.id) {
         setSelectedProvider(null);
         setSelectedType(null);
         setFormData({});
       }
-
       toast({
         title: 'Provider Deleted',
         description: `${provider.name} has been deleted`
       });
     } catch (error) {
-      console.error('Error deleting provider:', error);
       toast({
         title: 'Delete Error',
         description: 'Failed to delete provider',
@@ -537,11 +503,9 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       });
     }
   };
-
   const handleEdit = (provider: ProviderConfig) => {
     const type = PROVIDER_TYPES.find(t => t.id === provider.type);
     if (!type) return;
-
     setSelectedProvider(provider);
     setSelectedType(type);
     setFormData({
@@ -553,64 +517,58 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     setValidationErrors([]);
     setTestResult(null);
   };
-
   const handleNewProvider = (type: ProviderType) => {
     setSelectedProvider(null);
     setSelectedType(type);
-    
     // Initialize form with default values
     const defaultData: FormData = {
       name: `${type.name} Provider`,
       enabled: true
     };
-    
     type.configSchema.fields.forEach(field => {
       if (field.default !== undefined) {
         defaultData[field.name] = field.default;
       }
     });
-    
     setFormData(defaultData);
     setValidationErrors([]);
     setTestResult(null);
   };
-
   const renderField = (field: ProviderConfigField) => {
     const value = formData[field.name] || '';
     const error = validationErrors.find(e => e.field === field.name);
     const isVisible = showSensitive[field.name] || !field.sensitive;
-
     return (
+    <ErrorBoundary fallback={<div>Something went wrong in ProviderConfigInterface</div>}>
       <div key={field.name} className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor={field.name} className="flex items-center gap-2">
             {field.label}
             {field.required && <span className="text-red-500">*</span>}
-            {field.sensitive && <Lock className="w-3 h-3" />}
+            {field.sensitive && <Lock className="w-3 h-3 sm:w-auto md:w-full" />}
           </Label>
           {field.sensitive && (
-            <Button
+            <button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setShowSensitive(prev => ({
+              onClick={() = aria-label="Button"> setShowSensitive(prev => ({
                 ...prev,
                 [field.name]: !prev[field.name]
               }))}
             >
-              {isVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {isVisible ? <EyeOff className="w-4 h-4 sm:w-auto md:w-full" /> : <Eye className="w-4 h-4 sm:w-auto md:w-full" />}
             </Button>
           )}
         </div>
-
         {field.type === 'select' ? (
-          <Select value={value} onValueChange={(val) => handleFieldChange(field.name, val)}>
-            <SelectTrigger>
-              <SelectValue placeholder={`Select ${field.label}`} />
+          <select value={value} onValueChange={(val) = aria-label="Select option"> handleFieldChange(field.name, val)}>
+            <selectTrigger aria-label="Select option">
+              <selectValue placeholder={`Select ${field.label}`} />
             </SelectTrigger>
-            <SelectContent>
+            <selectContent aria-label="Select option">
               {field.options?.map(option => (
-                <SelectItem key={option.value} value={option.value}>
+                <selectItem key={option.value} value={option.value} aria-label="Select option">
                   {option.label}
                 </SelectItem>
               ))}
@@ -623,95 +581,86 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
               checked={value}
               onCheckedChange={(checked) => handleFieldChange(field.name, checked)}
             />
-            <Label htmlFor={field.name} className="text-sm text-gray-600">
+            <Label htmlFor={field.name} className="text-sm text-gray-600 md:text-base lg:text-lg">
               {field.description}
             </Label>
           </div>
         ) : field.type === 'textarea' ? (
-          <Textarea
+          <textarea
             id={field.name}
             value={value}
-            onChange={(e) => handleFieldChange(field.name, e.target.value)}
+            onChange={(e) = aria-label="Textarea"> handleFieldChange(field.name, e.target.value)}
             placeholder={field.description}
             className={error ? 'border-red-500' : ''}
           />
         ) : (
-          <Input
+          <input
             id={field.name}
             type={field.sensitive && !isVisible ? 'password' : field.type === 'number' ? 'number' : 'text'}
             value={value}
-            onChange={(e) => handleFieldChange(field.name, e.target.value)}
+            onChange={(e) = aria-label="Input"> handleFieldChange(field.name, e.target.value)}
             placeholder={field.description}
             className={error ? 'border-red-500' : ''}
           />
         )}
-
         {field.description && field.type !== 'boolean' && (
-          <p className="text-xs text-gray-600">{field.description}</p>
+          <p className="text-xs text-gray-600 sm:text-sm md:text-base">{field.description}</p>
         )}
-
         {error && (
-          <p className="text-xs text-red-600 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
+          <p className="text-xs text-red-600 flex items-center gap-1 sm:text-sm md:text-base">
+            <AlertTriangle className="w-3 h-3 sm:w-auto md:w-full" />
             {error.message}
           </p>
         )}
       </div>
     );
   };
-
   const getHealthIcon = (health?: ProviderHealth) => {
-    if (!health) return <Activity className="w-4 h-4 text-gray-400" />;
-    
+    if (!health) return <Activity className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />;
     switch (health.status) {
       case 'healthy':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
+        return <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />;
       case 'degraded':
-        return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
+        return <AlertTriangle className="w-4 h-4 text-yellow-600 sm:w-auto md:w-full" />;
       case 'unhealthy':
-        return <XCircle className="w-4 h-4 text-red-600" />;
+        return <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />;
       default:
-        return <Activity className="w-4 h-4 text-gray-400" />;
+        return <Activity className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />;
     }
   };
-
   const getHealthBadge = (health?: ProviderHealth) => {
     if (!health) return <Badge variant="secondary">Unknown</Badge>;
-    
     const colors = {
       healthy: 'bg-green-100 text-green-800',
       degraded: 'bg-yellow-100 text-yellow-800',
       unhealthy: 'bg-red-100 text-red-800',
       unknown: 'bg-gray-100 text-gray-800'
     };
-
     return (
       <Badge className={colors[health.status]}>
         {health.status.charAt(0).toUpperCase() + health.status.slice(1)}
       </Badge>
     );
   };
-
   if (loading) {
     return (
       <Card className={className}>
-        <CardContent className="flex items-center justify-center p-8">
+        <CardContent className="flex items-center justify-center p-8 sm:p-4 md:p-6">
           <div className="text-center space-y-2">
-            <Settings className="w-8 h-8 animate-spin mx-auto text-blue-500" />
+            <Settings className="w-8 h-8 animate-spin mx-auto text-blue-500 sm:w-auto md:w-full" />
             <div>Loading provider configurations...</div>
           </div>
         </CardContent>
       </Card>
     );
   }
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5" />
+            <Settings className="w-5 h-5 sm:w-auto md:w-full" />
             Provider Configuration
           </CardTitle>
           <CardDescription>
@@ -719,7 +668,6 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           </CardDescription>
         </CardHeader>
       </Card>
-
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Provider List */}
         <div className="lg:col-span-1 space-y-4">
@@ -734,7 +682,6 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
               {providers.map(provider => {
                 const health = providerHealth[provider.id];
                 const type = PROVIDER_TYPES.find(t => t.id === provider.type);
-                
                 return (
                   <div
                     key={provider.id}
@@ -753,19 +700,17 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                         <Switch checked={provider.enabled} disabled />
                       </div>
                     </div>
-                    
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {type?.category === 'cloud' && <Cloud className="w-3 h-3" />}
-                        {type?.category === 'local' && <Server className="w-3 h-3" />}
-                        {type?.category === 'custom' && <Cpu className="w-3 h-3" />}
-                        <span className="text-xs text-gray-600">{type?.name}</span>
+                        {type?.category === 'cloud' && <Cloud className="w-3 h-3 sm:w-auto md:w-full" />}
+                        {type?.category === 'local' && <Server className="w-3 h-3 sm:w-auto md:w-full" />}
+                        {type?.category === 'custom' && <Cpu className="w-3 h-3 sm:w-auto md:w-full" />}
+                        <span className="text-xs text-gray-600 sm:text-sm md:text-base">{type?.name}</span>
                       </div>
                       {getHealthBadge(health)}
                     </div>
-
                     {health && (
-                      <div className="mt-2 text-xs text-gray-600">
+                      <div className="mt-2 text-xs text-gray-600 sm:text-sm md:text-base">
                         <div className="flex justify-between">
                           <span>Response Time</span>
                           <span>{health.responseTime.toFixed(0)}ms</span>
@@ -779,37 +724,35 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                   </div>
                 );
               })}
-
               {providers.length === 0 && (
                 <div className="text-center py-6 text-gray-500">
-                  <Settings className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <Settings className="w-8 h-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
                   <div>No providers configured</div>
-                  <div className="text-xs">Add a provider to get started</div>
+                  <div className="text-xs sm:text-sm md:text-base">Add a provider to get started</div>
                 </div>
               )}
             </CardContent>
           </Card>
-
           {/* Add New Provider */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 sm:w-auto md:w-full" />
                 Add Provider
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {PROVIDER_TYPES.map(type => (
-                <Button
+                <button
                   key={type.id}
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => handleNewProvider(type)}
+                  onClick={() = aria-label="Button"> handleNewProvider(type)}
                 >
                   <span className="mr-2 text-lg">{type.icon}</span>
                   <div className="text-left">
                     <div className="font-medium">{type.name}</div>
-                    <div className="text-xs text-gray-600">{type.description}</div>
+                    <div className="text-xs text-gray-600 sm:text-sm md:text-base">{type.description}</div>
                   </div>
                   <Badge variant="outline" className="ml-auto">
                     {type.category}
@@ -819,7 +762,6 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
             </CardContent>
           </Card>
         </div>
-
         {/* Configuration Form */}
         <div className="lg:col-span-2">
           {selectedType ? (
@@ -834,12 +776,12 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                     <CardDescription>{selectedType.description}</CardDescription>
                   </div>
                   {selectedProvider && (
-                    <Button
+                    <button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleDelete(selectedProvider)}
+                      onClick={() = aria-label="Button"> handleDelete(selectedProvider)}
                     >
-                      <Trash2 className="w-4 h-4 mr-2" />
+                      <Trash2 className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                       Delete
                     </Button>
                   )}
@@ -852,20 +794,18 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                     <TabsTrigger value="health">Health & Metrics</TabsTrigger>
                     <TabsTrigger value="models">Supported Models</TabsTrigger>
                   </TabsList>
-
                   <TabsContent value="configuration" className="space-y-6">
                     {/* Basic Settings */}
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Provider Name *</Label>
-                        <Input
+                        <input
                           id="name"
                           value={formData.name || ''}
-                          onChange={(e) => handleFieldChange('name', e.target.value)}
+                          onChange={(e) = aria-label="Input"> handleFieldChange('name', e.target.value)}
                           placeholder="Enter a name for this provider"
                         />
                       </div>
-
                       <div className="flex items-center space-x-2">
                         <Switch
                           id="enabled"
@@ -875,49 +815,45 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                         <Label htmlFor="enabled">Enable this provider</Label>
                       </div>
                     </div>
-
                     {/* Provider-specific Configuration */}
                     <div className="space-y-4">
                       <h4 className="font-medium">Provider Settings</h4>
                       {selectedType.configSchema.fields.map(renderField)}
                     </div>
-
                     {/* Test Connection */}
                     <div className="space-y-4">
                       <div className="flex items-center gap-2">
-                        <Button
+                        <button
                           onClick={handleTestConnection}
                           disabled={testing}
                           variant="outline"
-                        >
+                         aria-label="Button">
                           {testing ? (
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin sm:w-auto md:w-full" />
                           ) : (
-                            <TestTube className="w-4 h-4 mr-2" />
+                            <TestTube className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                           )}
                           Test Connection
                         </Button>
                       </div>
-
                       {testResult && (
                         <Alert className={testResult.success ? 'border-green-500' : 'border-red-500'}>
                           <div className="flex items-center gap-2">
                             {testResult.success ? (
-                              <CheckCircle className="w-4 h-4 text-green-600" />
+                              <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
                             ) : (
-                              <XCircle className="w-4 h-4 text-red-600" />
+                              <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />
                             )}
                             <AlertDescription>{testResult.message}</AlertDescription>
                           </div>
                         </Alert>
                       )}
                     </div>
-
                     {/* Save Button */}
                     <div className="flex justify-end gap-2">
-                      <Button
+                      <button
                         variant="outline"
-                        onClick={() => {
+                        onClick={() = aria-label="Button"> {
                           setSelectedProvider(null);
                           setSelectedType(null);
                           setFormData({});
@@ -925,42 +861,39 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                       >
                         Cancel
                       </Button>
-                      <Button onClick={handleSave} disabled={saving}>
+                      <button onClick={handleSave} disabled={saving} aria-label="Button">
                         {saving ? (
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin sm:w-auto md:w-full" />
                         ) : (
-                          <Save className="w-4 h-4 mr-2" />
+                          <Save className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                         )}
                         {selectedProvider ? 'Update' : 'Save'} Provider
                       </Button>
                     </div>
                   </TabsContent>
-
                   <TabsContent value="health" className="space-y-4">
                     {selectedProvider && providerHealth[selectedProvider.id] ? (
                       <ProviderHealthDisplay health={providerHealth[selectedProvider.id]} />
                     ) : (
                       <div className="text-center py-8 text-gray-500">
-                        <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <Activity className="w-8 h-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
                         <div>No health data available</div>
-                        <div className="text-xs">Save the provider to see health metrics</div>
+                        <div className="text-xs sm:text-sm md:text-base">Save the provider to see health metrics</div>
                       </div>
                     )}
                   </TabsContent>
-
                   <TabsContent value="models" className="space-y-4">
                     <div>
                       <h4 className="font-medium mb-3">Supported Models</h4>
                       <div className="grid gap-2 sm:grid-cols-2">
                         {selectedType.supportedModels.map(model => (
-                          <div key={model} className="p-2 border rounded flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                            <span className="font-mono text-sm">{model}</span>
+                          <div key={model} className="p-2 border rounded flex items-center gap-2 sm:p-4 md:p-6">
+                            <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
+                            <span className="font-mono text-sm md:text-base lg:text-lg">{model}</span>
                           </div>
                         ))}
                       </div>
                     </div>
-
                     <div>
                       <h4 className="font-medium mb-3">Capabilities</h4>
                       <div className="flex flex-wrap gap-2">
@@ -978,7 +911,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           ) : (
             <Card>
               <CardContent className="text-center py-12">
-                <Settings className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <Settings className="w-12 h-12 mx-auto mb-4 text-gray-400 sm:w-auto md:w-full" />
                 <h3 className="text-lg font-medium mb-2">Select a Provider</h3>
                 <p className="text-gray-600 mb-4">
                   Choose a provider from the list to configure or add a new one
@@ -991,53 +924,50 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     </div>
   );
 };
-
 const ProviderHealthDisplay: React.FC<{ health: ProviderHealth }> = ({ health }) => {
   return (
     <div className="space-y-4">
       {/* Status Overview */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm font-medium text-gray-600">Status</div>
+        <div className="p-3 bg-gray-50 rounded-lg sm:p-4 md:p-6">
+          <div className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Status</div>
           <div className="text-xl font-bold capitalize">{health.status}</div>
         </div>
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm font-medium text-gray-600">Response Time</div>
+        <div className="p-3 bg-gray-50 rounded-lg sm:p-4 md:p-6">
+          <div className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Response Time</div>
           <div className="text-xl font-bold">{health.responseTime.toFixed(0)}ms</div>
         </div>
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm font-medium text-gray-600">Uptime</div>
+        <div className="p-3 bg-gray-50 rounded-lg sm:p-4 md:p-6">
+          <div className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Uptime</div>
           <div className="text-xl font-bold">{(health.uptime * 100).toFixed(2)}%</div>
         </div>
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm font-medium text-gray-600">Error Rate</div>
+        <div className="p-3 bg-gray-50 rounded-lg sm:p-4 md:p-6">
+          <div className="text-sm font-medium text-gray-600 md:text-base lg:text-lg">Error Rate</div>
           <div className="text-xl font-bold">{(health.errorRate * 100).toFixed(2)}%</div>
         </div>
       </div>
-
       {/* Metrics */}
       <div className="space-y-3">
         <h4 className="font-medium">Performance Metrics</h4>
         <div className="space-y-2">
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-sm md:text-base lg:text-lg">
             <span>Request Count</span>
             <span className="font-medium">{health.metrics.requestCount}</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-sm md:text-base lg:text-lg">
             <span>Success Rate</span>
             <span className="font-medium">{(health.metrics.successRate * 100).toFixed(1)}%</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-sm md:text-base lg:text-lg">
             <span>Average Latency</span>
             <span className="font-medium">{health.metrics.averageLatency.toFixed(0)}ms</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-sm md:text-base lg:text-lg">
             <span>Throughput</span>
             <span className="font-medium">{health.metrics.throughput.toFixed(1)} req/s</span>
           </div>
         </div>
       </div>
-
       {/* Issues */}
       {health.issues.length > 0 && (
         <div className="space-y-3">
@@ -1045,7 +975,7 @@ const ProviderHealthDisplay: React.FC<{ health: ProviderHealth }> = ({ health })
           <div className="space-y-2">
             {health.issues.map(issue => (
               <Alert key={issue.id} className="border-red-200">
-                <AlertTriangle className="w-4 h-4" />
+                <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
                 <AlertDescription>
                   <div className="flex items-center justify-between">
                     <span>{issue.message}</span>
@@ -1054,7 +984,7 @@ const ProviderHealthDisplay: React.FC<{ health: ProviderHealth }> = ({ health })
                     </Badge>
                   </div>
                   {issue.details && (
-                    <div className="text-xs text-gray-600 mt-1">{issue.details}</div>
+                    <div className="text-xs text-gray-600 mt-1 sm:text-sm md:text-base">{issue.details}</div>
                   )}
                 </AlertDescription>
               </Alert>
@@ -1062,13 +992,12 @@ const ProviderHealthDisplay: React.FC<{ health: ProviderHealth }> = ({ health })
           </div>
         </div>
       )}
-
       {/* Last Check */}
-      <div className="text-xs text-gray-600">
+      <div className="text-xs text-gray-600 sm:text-sm md:text-base">
         Last checked: {new Date(health.lastCheck).toLocaleString()}
       </div>
     </div>
+    </ErrorBoundary>
   );
 };
-
 export default ProviderConfigInterface;

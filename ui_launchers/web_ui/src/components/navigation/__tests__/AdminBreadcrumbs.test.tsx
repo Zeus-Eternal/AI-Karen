@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { render, screen } from '@testing-library/react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';

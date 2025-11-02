@@ -57,7 +57,7 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
       {/* Toolbar */}
       <div className="px-3 py-2 border-b flex items-center justify-between bg-background/50">
         <div className="flex items-center gap-2">
-          <Code className="h-4 w-4" />
+          <Code className="h-4 w-4 sm:w-auto md:w-full" />
           <span className="font-medium">Code Assistant</span>
           {useCopilotKit && <span className="inline-flex items-center rounded-full border border-transparent bg-secondary text-secondary-foreground px-2 py-0.5 text-[10px] font-semibold">AI</span>}
           <span className="inline-flex items-center rounded-full border border-transparent bg-secondary text-secondary-foreground px-2 py-0.5 text-[10px] font-semibold">{settings.model || 'model'}</span>
@@ -65,8 +65,8 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
         <div className="flex items-center gap-2">
           <select
             value={settings.language}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onSettingsChange({ language: e.target.value })}
-            className="px-2 py-1 border rounded-md text-xs"
+            onChange={(e: React.ChangeEvent<HTMLSelectElement aria-label="Select option">) => onSettingsChange({ language: e.target.value })}
+            className="px-2 py-1 border rounded-md text-xs sm:text-sm md:text-base"
           >
             <option value="javascript">JavaScript</option>
             <option value="typescript">TypeScript</option>
@@ -80,7 +80,7 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
             <option value="ruby">Ruby</option>
           </select>
           <Button variant="ghost" size="sm" className="h-8 px-2" onClick={onPreviewToggle} title={showCodePreview ? 'Hide Preview' : 'Show Preview'}>
-            {showCodePreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showCodePreview ? <EyeOff className="h-4 w-4 sm:w-auto md:w-full" /> : <Eye className="h-4 w-4 sm:w-auto md:w-full" />}
           </Button>
         </div>
       </div>
@@ -91,51 +91,51 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
           {useCopilotKit ? (
             <div className="flex-1">
               {/* CopilotTextarea placeholder - will be implemented when available */}
-              <Textarea
+              <textarea
                 ref={codeTextareaRef}
                 value={codeValue}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onCodeChange(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement aria-label="Textarea">) => onCodeChange(e.target.value)}
                 placeholder="Write your code here... AI will provide suggestions as you type."
-                className="flex-1 font-mono text-sm resize-none"
+                className="flex-1 font-mono text-sm resize-none md:text-base lg:text-lg"
                 rows={18}
                 disabled={isTyping}
               />
             </div>
           ) : (
-            <Textarea
+            <textarea
               ref={codeTextareaRef}
               value={codeValue}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onCodeChange(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement aria-label="Textarea">) => onCodeChange(e.target.value)}
               placeholder="Write your code here..."
-              className="flex-1 font-mono text-sm resize-none"
+              className="flex-1 font-mono text-sm resize-none md:text-base lg:text-lg"
               rows={18}
               disabled={isTyping}
             />
           )}
           {/* Actions */}
           <div className="flex flex-wrap gap-2 mt-3">
-            <Button onClick={onCodeSubmit} disabled={!codeValue.trim() || isTyping}>
-              {isTyping ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+            <button onClick={onCodeSubmit} disabled={!codeValue.trim() || isTyping} aria-label="Button">
+              {isTyping ? <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" /> : <Send className="h-4 w-4 mr-2 sm:w-auto md:w-full" />}
               Send Code
             </Button>
-            <Button variant="outline" onClick={handleCodeAnalysis} disabled={!codeValue.trim() || isTyping || isAnalyzing}>
-              {isAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <AlertCircle className="h-4 w-4 mr-2" />}
+            <button variant="outline" onClick={handleCodeAnalysis} disabled={!codeValue.trim() || isTyping || isAnalyzing} aria-label="Button">
+              {isAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" /> : <AlertCircle className="h-4 w-4 mr-2 sm:w-auto md:w-full" />}
               Analyze
             </Button>
-            <Button variant="outline" onClick={() => onQuickAction?.("optimize", `Optimize this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``, "code")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
-              <Zap className="h-4 w-4 mr-2" />
+            <button variant="outline" onClick={() = aria-label="Button"> onQuickAction?.("optimize", `Optimize this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``, "code")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
+              <Zap className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Optimize
             </Button>
-            <Button variant="outline" onClick={() => onQuickAction?.("docs", `Generate documentation for this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``, "documentation")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
-              <FileText className="h-4 w-4 mr-2" />
+            <button variant="outline" onClick={() = aria-label="Button"> onQuickAction?.("docs", `Generate documentation for this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``, "documentation")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
+              <FileText className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Document
             </Button>
           </div>
         </div>
 
         {showCodePreview && (
-          <div className="min-h-[300px] border rounded-md p-3 bg-muted/30">
-            <div className="text-xs text-muted-foreground mb-2">Preview</div>
+          <div className="min-h-[300px] border rounded-md p-3 bg-muted/30 sm:p-4 md:p-6">
+            <div className="text-xs text-muted-foreground mb-2 sm:text-sm md:text-base">Preview</div>
             <pre className="text-xs md:text-sm whitespace-pre-wrap font-mono overflow-auto max-h-[60vh]">{codeValue || '// Start typing code to preview here'}</pre>
           </div>
         )}
@@ -147,7 +147,7 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
         <span>Model: {settings.model}</span>
         {isTyping && (
           <span className="inline-flex items-center gap-1">
-            <Loader2 className="h-3 w-3 animate-spin" /> generating…
+            <Loader2 className="h-3 w-3 animate-spin sm:w-auto md:w-full" /> generating…
           </span>
         )}
       </div>

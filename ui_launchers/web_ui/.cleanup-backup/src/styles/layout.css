@@ -1,0 +1,289 @@
+/**
+ * Modern Layout System CSS
+ * 
+ * CSS utilities and container queries for the layout system components
+ * 
+ * Based on requirements: 1.4, 3.2, 8.3
+ */
+main {
+  display: block;
+}
+/* ============================================================================
+   CONTAINER QUERIES SUPPORT
+   ============================================================================ */
+
+/* Container query utilities */
+.container-grid {
+  container-type: inline-size;
+}
+
+.container-flex {
+  container-type: inline-size;
+}
+
+.container-responsive {
+  container-type: inline-size;
+}
+
+/* Container query breakpoints */
+@container (min-width: 320px) {
+  .container-xs\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  .container-xs\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .container-xs\:flex-row { flex-direction: row; }
+  .container-xs\:flex-col { flex-direction: column; }
+}
+
+@container (min-width: 640px) {
+  .container-sm\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  .container-sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .container-sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .container-sm\:flex-row { flex-direction: row; }
+  .container-sm\:flex-col { flex-direction: column; }
+}
+
+@container (min-width: 768px) {
+  .container-md\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  .container-md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .container-md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .container-md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .container-md\:flex-row { flex-direction: row; }
+  .container-md\:flex-col { flex-direction: column; }
+}
+
+@container (min-width: 1024px) {
+  .container-lg\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  .container-lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .container-lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .container-lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .container-lg\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .container-lg\:flex-row { flex-direction: row; }
+  .container-lg\:flex-col { flex-direction: column; }
+}
+
+@container (min-width: 1280px) {
+  .container-xl\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  .container-xl\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .container-xl\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .container-xl\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .container-xl\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .container-xl\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .container-xl\:flex-row { flex-direction: row; }
+  .container-xl\:flex-col { flex-direction: column; }
+}
+
+/* ============================================================================
+   RESPONSIVE GRID UTILITIES
+   ============================================================================ */
+
+.responsive-grid {
+  display: grid;
+}
+
+/* Auto-fit and auto-fill utilities */
+.grid-auto-fit {
+  grid-template-columns: repeat(auto-fit, minmax(var(--min-column-width, 250px), 1fr));
+}
+
+.grid-auto-fill {
+  grid-template-columns: repeat(auto-fill, minmax(var(--min-column-width, 250px), 1fr));
+}
+
+/* Grid area utilities */
+.grid-area-header { grid-area: header; }
+.grid-area-main { grid-area: main; }
+.grid-area-sidebar { grid-area: sidebar; }
+.grid-area-footer { grid-area: footer; }
+
+/* ============================================================================
+   RESPONSIVE FLEX UTILITIES
+   ============================================================================ */
+
+.responsive-flex {
+  display: flex;
+}
+
+/* Flex gap utilities using CSS custom properties */
+.flex-gap-xs { gap: var(--space-xs); }
+.flex-gap-sm { gap: var(--space-sm); }
+.flex-gap-md { gap: var(--space-md); }
+.flex-gap-lg { gap: var(--space-lg); }
+.flex-gap-xl { gap: var(--space-xl); }
+
+.grid-gap-xs { gap: var(--space-xs); }
+.grid-gap-sm { gap: var(--space-sm); }
+.grid-gap-md { gap: var(--space-md); }
+.grid-gap-lg { gap: var(--space-lg); }
+.grid-gap-xl { gap: var(--space-xl); }
+
+/* ============================================================================
+   LAYOUT PATTERNS
+   ============================================================================ */
+
+/* Holy Grail Layout */
+.layout-holy-grail {
+  display: grid;
+  grid-template-areas: 
+    "header header header"
+    "nav main aside"
+    "footer footer footer";
+  grid-template-columns: 200px 1fr 200px;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  gap: var(--space-md);
+}
+
+.layout-holy-grail > .header { grid-area: header; }
+.layout-holy-grail > .nav { grid-area: nav; }
+.layout-holy-grail > .main { grid-area: main; }
+.layout-holy-grail > .aside { grid-area: aside; }
+.layout-holy-grail > .footer { grid-area: footer; }
+
+/* Sidebar Layout */
+.layout-sidebar {
+  display: grid;
+  grid-template-areas: 
+    "sidebar main";
+  grid-template-columns: 250px 1fr;
+  min-height: 100vh;
+  gap: var(--space-lg);
+}
+
+.layout-sidebar > .sidebar { grid-area: sidebar; }
+.layout-sidebar > .main { grid-area: main; }
+
+/* Dashboard Layout */
+.layout-dashboard {
+  display: grid;
+  grid-template-areas: 
+    "header header"
+    "sidebar main"
+    "footer footer";
+  grid-template-columns: 250px 1fr;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  gap: var(--space-md);
+}
+
+.layout-dashboard > .header { grid-area: header; }
+.layout-dashboard > .sidebar { grid-area: sidebar; }
+.layout-dashboard > .main { grid-area: main; }
+.layout-dashboard > .footer { grid-area: footer; }
+
+/* ============================================================================
+   RESPONSIVE LAYOUT PATTERNS
+   ============================================================================ */
+
+/* Responsive Holy Grail */
+@media (max-width: 768px) {
+  .layout-holy-grail {
+    grid-template-areas: 
+      "header"
+      "nav"
+      "main"
+      "aside"
+      "footer";
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr auto auto;
+  }
+}
+
+/* Responsive Sidebar */
+@media (max-width: 768px) {
+  .layout-sidebar {
+    grid-template-areas: 
+      "sidebar"
+      "main";
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+}
+
+/* Responsive Dashboard */
+@media (max-width: 768px) {
+  .layout-dashboard {
+    grid-template-areas: 
+      "header"
+      "sidebar"
+      "main"
+      "footer";
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr auto;
+  }
+}
+
+/* ============================================================================
+   CONTAINER QUERY FALLBACKS
+   ============================================================================ */
+
+/* Fallback for browsers without container query support */
+@supports not (container-type: inline-size) {
+  .container-grid,
+  .container-flex,
+  .container-responsive {
+    /* Use regular media queries as fallback */
+  }
+  
+  @media (min-width: 640px) {
+    .container-sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .container-sm\:flex-row { flex-direction: row; }
+  }
+  
+  @media (min-width: 768px) {
+    .container-md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .container-md\:flex-row { flex-direction: row; }
+  }
+  
+  @media (min-width: 1024px) {
+    .container-lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .container-lg\:flex-row { flex-direction: row; }
+  }
+}
+
+/* ============================================================================
+   ACCESSIBILITY IMPROVEMENTS
+   ============================================================================ */
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .responsive-grid,
+  .responsive-flex,
+  .container-responsive {
+    transition: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .responsive-grid,
+  .responsive-flex,
+  .container-responsive {
+    border: 1px solid;
+  }
+}
+
+/* Focus visible improvements */
+.responsive-grid:focus-visible,
+.responsive-flex:focus-visible,
+.container-responsive:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   PERFORMANCE OPTIMIZATIONS
+   ============================================================================ */
+
+/* GPU acceleration for transforms */
+.responsive-grid,
+.responsive-flex,
+.container-responsive {
+  transform: translateZ(0);
+  will-change: auto;
+}
+
+/* Contain layout for better performance */
+.container-grid,
+.container-flex,
+.container-responsive {
+  contain: layout style;
+}

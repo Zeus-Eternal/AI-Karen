@@ -1,0 +1,42 @@
+{
+  "plugin_api_version": "1.0",
+  "intent": "llama_chat",
+  "enable_external_workflow": false,
+  "required_roles": [
+    "admin"
+  ],
+  "trusted_ui": false,
+  "name": "LlamaCppLocal",
+  "provider_id": "llama_cpp",
+  "type": "llm_provider",
+  "description": "Pure in-process LLM using llama-cpp-python. No REST, no server. Hot-reload, async, and streaming.",
+  "runtimes": [
+    "python3.10+",
+    "llama-cpp-python>=0.2.60"
+  ],
+  "tags": [
+    "local",
+    "llm",
+    "plugin",
+    "production"
+  ],
+  "capabilities": {
+    "memory": {
+      "read": true,
+      "write": true
+    }
+  },
+  "config": {
+    "model_path": "./models/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+    "n_ctx": 2048,
+    "n_gpu_layers": 30,
+    "max_tokens": 1024,
+    "temperature": 0.7
+  },
+  "module": "ai_karen_engine.plugins.llm_services.llama.handler",
+  "version": "0.1.0",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "llama.handler:router",
+  "plugin_type": "ai"
+}

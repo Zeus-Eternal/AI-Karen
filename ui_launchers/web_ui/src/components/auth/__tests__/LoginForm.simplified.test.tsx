@@ -2,7 +2,7 @@
  * Simplified test for LoginForm component to verify task 5 implementation
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -27,7 +27,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 // Mock UI components to avoid dependency issues
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, disabled, onClick, type, ...props }: any) => (
-    <button disabled={disabled} onClick={onClick} type={type} {...props}>
+    <button disabled={disabled} onClick={onClick} type={type} {...props} aria-label="Button">
       {children}
     </button>
   ),

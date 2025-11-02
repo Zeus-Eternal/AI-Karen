@@ -5,7 +5,6 @@
  * and other hooks used throughout the application. This ensures proper test isolation
  * and compatibility with the actual AuthContext implementation.
  */
-
 import { vi, beforeEach, afterEach } from 'vitest';
 import type { AuthContextType, User, LoginCredentials } from '@/contexts/AuthContext';
 import type { UseRoleReturn } from '@/hooks/useRole';
@@ -15,36 +14,26 @@ import {
   mockRegularUser,
   createMockAuthContext 
 } from './test-providers';
-
 // Global mock registry to track active mocks for cleanup
 const activeMocks = new Set<string>();
-
 /**
  * Mock setup for useAuth hook with proper cleanup tracking
  */
 export const setupUseAuthMock = (mockImplementation?: () => AuthContextType) => {
   const mockId = 'useAuth';
   activeMocks.add(mockId);
-
   // Note: vi.mock calls should be done in individual test files, not in utilities
-  console.warn('setupUseAuthMock should be replaced with vi.mock calls in individual test files');
-
   return mockId;
 };
-
 /**
  * Mock setup for useRole hook with proper cleanup tracking
  */
 export const setupUseRoleMock = (mockImplementation?: () => UseRoleReturn) => {
   const mockId = 'useRole';
   activeMocks.add(mockId);
-
   // Note: vi.mock calls should be done in individual test files, not in utilities
-  console.warn('setupUseRoleMock should be replaced with vi.mock calls in individual test files');
-
   return mockId;
 };
-
 /**
  * Setup both useAuth and useRole mocks with compatible implementations
  */
@@ -54,19 +43,15 @@ export const setupAuthAndRoleMocks = (
 ) => {
   const resolvedAuthContext = authContext || createMockAuthContext();
   const resolvedRoleReturn = roleReturn || createUseRoleReturnFromAuth(resolvedAuthContext);
-
   const authMockId = setupUseAuthMock(() => resolvedAuthContext);
   const roleMockId = setupUseRoleMock(() => resolvedRoleReturn);
-
   return { authMockId, roleMockId, authContext: resolvedAuthContext, roleReturn: resolvedRoleReturn };
 };
-
 /**
  * Create UseRoleReturn from AuthContextType to ensure compatibility
  */
 export const createUseRoleReturnFromAuth = (authContext: AuthContextType): UseRoleReturn => {
   const role = authContext.user?.role || null;
-  
   return {
     role,
     hasRole: authContext.hasRole,
@@ -80,7 +65,6 @@ export const createUseRoleReturnFromAuth = (authContext: AuthContextType): UseRo
     canViewAuditLogs: authContext.hasPermission('audit_logs'),
   };
 };
-
 /**
  * Predefined mock scenarios for common test cases
  */
@@ -90,25 +74,21 @@ export const mockScenarios = {
     const roleReturn = createUseRoleReturnFromAuth(authContext);
     return setupAuthAndRoleMocks(authContext, roleReturn);
   },
-
   admin: () => {
     const authContext = createMockAuthContext(mockAdminUser, true);
     const roleReturn = createUseRoleReturnFromAuth(authContext);
     return setupAuthAndRoleMocks(authContext, roleReturn);
   },
-
   user: () => {
     const authContext = createMockAuthContext(mockRegularUser, true);
     const roleReturn = createUseRoleReturnFromAuth(authContext);
     return setupAuthAndRoleMocks(authContext, roleReturn);
   },
-
   unauthenticated: () => {
     const authContext = createMockAuthContext(null, false);
     const roleReturn = createUseRoleReturnFromAuth(authContext);
     return setupAuthAndRoleMocks(authContext, roleReturn);
   },
-
   authError: () => {
     const authContext = createMockAuthContext(null, false, {
       login: vi.fn().mockRejectedValue(new Error('Authentication failed')),
@@ -117,7 +97,6 @@ export const mockScenarios = {
     const roleReturn = createUseRoleReturnFromAuth(authContext);
     return setupAuthAndRoleMocks(authContext, roleReturn);
   },
-
   sessionExpired: () => {
     const authContext = createMockAuthContext(null, false, {
       checkAuth: vi.fn().mockResolvedValue(false),
@@ -127,7 +106,6 @@ export const mockScenarios = {
     return setupAuthAndRoleMocks(authContext, roleReturn);
   }
 };
-
 /**
  * Mock implementations for specific hook methods
  */
@@ -138,7 +116,6 @@ export const createMockUseAuth = (
 ): AuthContextType => {
   return createMockAuthContext(user, isAuthenticated, overrides);
 };
-
 export const createMockUseRole = (
   user: User | null = null,
   overrides: Partial<UseRoleReturn> = {}
@@ -156,27 +133,21 @@ export const createMockUseRole = (
     canManageSystem: user?.permissions?.includes('system_config') || false,
     canViewAuditLogs: user?.permissions?.includes('audit_logs') || false,
   };
-
   return { ...baseReturn, ...overrides };
 };
-
 /**
  * Advanced mock setup with custom implementations
  */
 export const setupCustomAuthMock = (customImplementation: Partial<AuthContextType>) => {
   const defaultAuth = createMockAuthContext();
   const mergedAuth = { ...defaultAuth, ...customImplementation };
-  
   return setupUseAuthMock(() => mergedAuth);
 };
-
 export const setupCustomRoleMock = (customImplementation: Partial<UseRoleReturn>) => {
   const defaultRole = createMockUseRole();
   const mergedRole = { ...defaultRole, ...customImplementation };
-  
   return setupUseRoleMock(() => mergedRole);
 };
-
 /**
  * Mock cleanup utilities
  */
@@ -184,12 +155,10 @@ export const resetHookMocks = () => {
   vi.clearAllMocks();
   vi.resetAllMocks();
 };
-
 export const cleanupHookMocks = () => {
   activeMocks.clear();
   resetHookMocks();
 };
-
 /**
  * Test isolation utilities - use in beforeEach/afterEach
  */
@@ -197,19 +166,16 @@ export const setupTestIsolation = () => {
   beforeEach(() => {
     resetHookMocks();
   });
-
   afterEach(() => {
     cleanupHookMocks();
   });
 };
-
 /**
  * Batch mock setup for multiple hooks with consistent state
  */
 export const setupConsistentMocks = (scenario: keyof typeof mockScenarios) => {
   return mockScenarios[scenario]();
 };
-
 /**
  * Mock validation utilities to ensure mocks are working correctly
  */
@@ -217,68 +183,48 @@ export const validateMockSetup = (authContext: AuthContextType, roleReturn: UseR
   // Validate that auth context and role return are consistent
   const authUser = authContext.user;
   const roleUser = roleReturn.role;
-  
   if (authUser && roleUser) {
     return authUser.role === roleUser;
   }
-  
   if (!authUser && !roleUser) {
     return true;
   }
-  
   return false;
 };
-
 /**
  * Debug utilities for troubleshooting mock issues
  */
 export const debugMockState = (authContext: AuthContextType, roleReturn: UseRoleReturn) => {
-  console.log('Mock Debug Info:', {
-    authUser: authContext.user,
-    authIsAuthenticated: authContext.isAuthenticated,
-    roleRole: roleReturn.role,
-    roleIsAdmin: roleReturn.isAdmin,
-    roleIsSuperAdmin: roleReturn.isSuperAdmin,
-    mockValidation: validateMockSetup(authContext, roleReturn)
   });
 };
-
 /**
  * Helper to create mock implementations that match actual hook behavior
  */
 export const createRealisticMockAuth = (user: User | null, isAuthenticated: boolean): AuthContextType => {
   const hasRole = vi.fn((role: 'super_admin' | 'admin' | 'user'): boolean => {
     if (!user) return false;
-    
     // Match actual implementation logic
     if (user.role) {
       return user.role === role;
     }
-    
     return user.roles.includes(role);
   });
-
   const hasPermission = vi.fn((permission: string): boolean => {
     if (!user) return false;
-    
     // Match actual implementation logic
     if (user.permissions) {
       return user.permissions.includes(permission);
     }
-    
     // Default permissions based on role (matches actual implementation)
     const rolePermissions = getRolePermissions(user.role || (user.roles[0] as 'super_admin' | 'admin' | 'user'));
     return rolePermissions.includes(permission);
   });
-
   const isAdmin = vi.fn((): boolean => {
     return hasRole('admin') || hasRole('super_admin');
   });
-
   const isSuperAdmin = vi.fn((): boolean => {
     return hasRole('super_admin');
   });
-
   return {
     user,
     isAuthenticated,
@@ -309,7 +255,6 @@ export const createRealisticMockAuth = (user: User | null, isAuthenticated: bool
     isSuperAdmin,
   };
 };
-
 // Helper function to get default permissions for a role (matches actual implementation)
 const getRolePermissions = (role: 'super_admin' | 'admin' | 'user'): string[] => {
   switch (role) {
@@ -339,7 +284,6 @@ const getRolePermissions = (role: 'super_admin' | 'admin' | 'user'): string[] =>
       return [];
   }
 };
-
 /**
  * Convenience functions for common test patterns
  */
@@ -347,13 +291,11 @@ export const mockAuthForTest = (scenario: keyof typeof mockScenarios) => {
   const { authContext, roleReturn } = mockScenarios[scenario]();
   return { authContext, roleReturn };
 };
-
 export const mockAuthWithUser = (user: User | null, isAuthenticated: boolean = !!user) => {
   const authContext = createRealisticMockAuth(user, isAuthenticated);
   const roleReturn = createUseRoleReturnFromAuth(authContext);
   return setupAuthAndRoleMocks(authContext, roleReturn);
 };
-
 /**
  * Mock factory for creating test-specific implementations
  */
@@ -364,16 +306,12 @@ export const createTestMocks = (options: {
   roleOverrides?: Partial<UseRoleReturn>;
 }) => {
   const { user = null, isAuthenticated = false, authOverrides = {}, roleOverrides = {} } = options;
-  
   const baseAuth = createRealisticMockAuth(user, isAuthenticated);
   const authContext = { ...baseAuth, ...authOverrides };
-  
   const baseRole = createUseRoleReturnFromAuth(authContext);
   const roleReturn = { ...baseRole, ...roleOverrides };
-  
   return setupAuthAndRoleMocks(authContext, roleReturn);
 };
-
 /**
  * Export commonly used mock implementations for direct use
  */
@@ -383,15 +321,12 @@ export const commonMocks = {
   userAuth: () => createRealisticMockAuth(mockRegularUser, true),
   unauthenticatedAuth: () => createRealisticMockAuth(null, false),
 };
-
 /**
  * Global test setup utilities for consistent mock behavior across tests
  */
 export const setupGlobalMocks = () => {
   // Note: vi.mock calls should be done in individual test files, not in utilities
-  console.warn('setupGlobalMocks should be replaced with vi.mock calls in individual test files');
 };
-
 /**
  * Reset all mocks to default state
  */
@@ -399,7 +334,6 @@ export const resetToDefaultMocks = () => {
   try {
     const { useAuth } = require('@/contexts/AuthContext');
     const { useRole } = require('@/hooks/useRole');
-    
     if (vi.isMockFunction(useAuth)) {
       useAuth.mockReturnValue({
         user: null,
@@ -413,7 +347,6 @@ export const resetToDefaultMocks = () => {
         isSuperAdmin: vi.fn(() => false),
       });
     }
-    
     if (vi.isMockFunction(useRole)) {
       useRole.mockReturnValue({
         role: null,

@@ -2,7 +2,6 @@
  * Workflow and Agent Orchestration Types
  * Defines interfaces for workflow management, agent orchestration, and execution monitoring
  */
-
 export interface WorkflowNode {
   id: string;
   type: 'input' | 'output' | 'llm' | 'memory' | 'plugin' | 'condition' | 'loop' | 'custom';
@@ -16,7 +15,6 @@ export interface WorkflowNode {
   };
   style?: Record<string, any>;
 }
-
 export interface NodePort {
   id: string;
   name: string;
@@ -24,7 +22,6 @@ export interface NodePort {
   required?: boolean;
   description?: string;
 }
-
 export interface WorkflowEdge {
   id: string;
   source: string;
@@ -39,7 +36,6 @@ export interface WorkflowEdge {
     transform?: string;
   };
 }
-
 export interface WorkflowVariable {
   id: string;
   name: string;
@@ -48,7 +44,6 @@ export interface WorkflowVariable {
   description?: string;
   scope: 'global' | 'local';
 }
-
 export interface CronSchedule {
   expression: string;
   timezone: string;
@@ -56,7 +51,6 @@ export interface CronSchedule {
   nextRun?: Date;
   lastRun?: Date;
 }
-
 export interface WorkflowDefinition {
   id: string;
   name: string;
@@ -74,7 +68,6 @@ export interface WorkflowDefinition {
     status: 'draft' | 'active' | 'paused' | 'archived';
   };
 }
-
 export interface WorkflowExecution {
   id: string;
   workflowId: string;
@@ -92,16 +85,14 @@ export interface WorkflowExecution {
     trigger?: string;
   };
 }
-
 export interface ExecutionLog {
   id: string;
   timestamp: Date;
-  level: 'debug' | 'info' | 'warn' | 'error';
+  level: '' | 'warn' | 'error';
   nodeId?: string;
   message: string;
   data?: any;
 }
-
 export interface NodeTemplate {
   id: string;
   name: string;
@@ -116,13 +107,11 @@ export interface NodeTemplate {
   };
   implementation?: string;
 }
-
 export interface WorkflowValidationResult {
   valid: boolean;
   errors: ValidationError[];
   warnings: ValidationWarning[];
 }
-
 export interface ValidationError {
   id: string;
   type: 'missing_connection' | 'invalid_config' | 'circular_dependency' | 'type_mismatch';
@@ -131,7 +120,6 @@ export interface ValidationError {
   message: string;
   severity: 'error' | 'warning';
 }
-
 export interface ValidationWarning {
   id: string;
   type: 'performance' | 'best_practice' | 'deprecated';
@@ -139,7 +127,6 @@ export interface ValidationWarning {
   message: string;
   suggestion?: string;
 }
-
 export interface WorkflowTestResult {
   success: boolean;
   duration: number;
@@ -147,7 +134,6 @@ export interface WorkflowTestResult {
   logs: ExecutionLog[];
   error?: string;
 }
-
 // Agent Management Types
 export interface Agent {
   id: string;
@@ -161,7 +147,6 @@ export interface Agent {
   lastActivity?: Date;
   health: AgentHealth;
 }
-
 export interface AgentConfig {
   maxConcurrentTasks: number;
   timeout: number;
@@ -174,7 +159,6 @@ export interface AgentConfig {
   permissions: string[];
   environment: Record<string, string>;
 }
-
 export interface AgentMetrics {
   tasksCompleted: number;
   tasksInProgress: number;
@@ -188,7 +172,6 @@ export interface AgentMetrics {
   };
   uptime: number;
 }
-
 export interface AgentTask {
   id: string;
   type: string;
@@ -201,14 +184,12 @@ export interface AgentTask {
   result?: any;
   error?: string;
 }
-
 export interface AgentHealth {
   status: 'healthy' | 'warning' | 'critical' | 'unknown';
   lastCheck: Date;
   checks: HealthCheck[];
   issues: HealthIssue[];
 }
-
 export interface HealthCheck {
   name: string;
   status: 'pass' | 'fail' | 'warn';
@@ -216,7 +197,6 @@ export interface HealthCheck {
   timestamp: Date;
   duration: number;
 }
-
 export interface HealthIssue {
   id: string;
   type: 'performance' | 'resource' | 'connectivity' | 'configuration';
@@ -226,7 +206,6 @@ export interface HealthIssue {
   resolved: boolean;
   resolution?: string;
 }
-
 // Workflow Scheduler Types
 export interface WorkflowTrigger {
   id: string;
@@ -238,7 +217,6 @@ export interface WorkflowTrigger {
   lastTriggered?: Date;
   nextTrigger?: Date;
 }
-
 export interface TriggerConfig {
   schedule?: CronSchedule;
   event?: {
@@ -265,7 +243,6 @@ export interface TriggerConfig {
     checkInterval: number;
   };
 }
-
 export interface WorkflowQueue {
   id: string;
   name: string;
@@ -275,7 +252,6 @@ export interface WorkflowQueue {
   tasks: QueuedWorkflow[];
   metrics: QueueMetrics;
 }
-
 export interface QueuedWorkflow {
   id: string;
   workflowId: string;
@@ -285,7 +261,6 @@ export interface QueuedWorkflow {
   dependencies: string[];
   payload: any;
 }
-
 export interface QueueMetrics {
   totalProcessed: number;
   averageWaitTime: number;
@@ -293,7 +268,6 @@ export interface QueueMetrics {
   throughput: number;
   errorRate: number;
 }
-
 export interface WorkflowAutomationAnalytics {
   successRate: number;
   failureRate: number;
@@ -316,13 +290,11 @@ export interface WorkflowAutomationAnalytics {
   bottlenecks: BottleneckAnalysis[];
   optimizationSuggestions: OptimizationSuggestion[];
 }
-
 export interface TimeSeriesData {
   timestamp: Date;
   value: number;
   metadata?: Record<string, any>;
 }
-
 export interface BottleneckAnalysis {
   nodeId: string;
   nodeName: string;
@@ -331,7 +303,6 @@ export interface BottleneckAnalysis {
   impact: 'low' | 'medium' | 'high';
   suggestions: string[];
 }
-
 export interface OptimizationSuggestion {
   id: string;
   type: 'performance' | 'cost' | 'reliability' | 'maintainability';

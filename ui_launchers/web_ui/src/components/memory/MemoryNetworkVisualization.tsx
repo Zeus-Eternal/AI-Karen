@@ -2,11 +2,9 @@
  * AG-UI Memory Network Visualization Component
  * Displays memory relationships as an interactive network graph
  */
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AgCharts } from 'ag-charts-react';
 import { AgChartOptions } from 'ag-charts-community';
-
 interface MemoryNetworkNode {
   id: string;
   label: string;
@@ -16,7 +14,6 @@ interface MemoryNetworkNode {
   size: number;
   color: string;
 }
-
 interface MemoryNetworkEdge {
   source: string;
   target: string;
@@ -24,12 +21,10 @@ interface MemoryNetworkEdge {
   type: string;
   label: string;
 }
-
 interface MemoryNetworkData {
   nodes: MemoryNetworkNode[];
   edges: MemoryNetworkEdge[];
 }
-
 interface MemoryNetworkVisualizationProps {
   userId: string;
   tenantId?: string;
@@ -39,7 +34,6 @@ interface MemoryNetworkVisualizationProps {
   height?: number;
   width?: number;
 }
-
 // Custom network chart component using AG-Charts
 const NetworkChart: React.FC<{
   data: MemoryNetworkData;
@@ -50,11 +44,9 @@ const NetworkChart: React.FC<{
 }> = ({ data, onNodeSelect, onNodeDoubleClick, height, width }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-
   // Simple force-directed layout calculation
   const calculateLayout = useCallback((nodes: MemoryNetworkNode[], edges: MemoryNetworkEdge[]) => {
     const positions = new Map<string, { x: number; y: number }>();
-    
     // Initialize random positions
     nodes.forEach(node => {
       positions.set(node.id, {
@@ -62,16 +54,13 @@ const NetworkChart: React.FC<{
         y: Math.random() * (height - 100) + 50
       });
     });
-
     // Simple force simulation (simplified)
     for (let iteration = 0; iteration < 50; iteration++) {
       const forces = new Map<string, { fx: number; fy: number }>();
-      
       // Initialize forces
       nodes.forEach(node => {
         forces.set(node.id, { fx: 0, fy: 0 });
       });
-
       // Repulsion between all nodes
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
@@ -79,42 +68,33 @@ const NetworkChart: React.FC<{
           const node2 = nodes[j];
           const pos1 = positions.get(node1.id)!;
           const pos2 = positions.get(node2.id)!;
-          
           const dx = pos1.x - pos2.x;
           const dy = pos1.y - pos2.y;
           const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-          
           const repulsion = 1000 / (distance * distance);
           const fx = (dx / distance) * repulsion;
           const fy = (dy / distance) * repulsion;
-          
           const force1 = forces.get(node1.id)!;
           const force2 = forces.get(node2.id)!;
-          
           force1.fx += fx;
           force1.fy += fy;
           force2.fx -= fx;
           force2.fy -= fy;
         }
       }
-
       // Attraction along edges
       edges.forEach(edge => {
         const pos1 = positions.get(edge.source);
         const pos2 = positions.get(edge.target);
-        
         if (pos1 && pos2) {
           const dx = pos2.x - pos1.x;
           const dy = pos2.y - pos1.y;
           const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-          
           const attraction = distance * 0.01 * edge.weight;
           const fx = (dx / distance) * attraction;
           const fy = (dy / distance) * attraction;
-          
           const force1 = forces.get(edge.source);
           const force2 = forces.get(edge.target);
-          
           if (force1) {
             force1.fx += fx;
             force1.fy += fy;
@@ -125,35 +105,27 @@ const NetworkChart: React.FC<{
           }
         }
       });
-
       // Apply forces
       nodes.forEach(node => {
         const pos = positions.get(node.id)!;
         const force = forces.get(node.id)!;
-        
         pos.x += force.fx * 0.1;
         pos.y += force.fy * 0.1;
-        
         // Keep within bounds
         pos.x = Math.max(node.size, Math.min(width - node.size, pos.x));
         pos.y = Math.max(node.size, Math.min(height - node.size, pos.y));
       });
     }
-
     return positions;
   }, [width, height]);
-
   // Draw the network
   const drawNetwork = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
-
     if (data.nodes.length === 0) {
       // Draw empty state
       ctx.fillStyle = '#666';
@@ -162,22 +134,18 @@ const NetworkChart: React.FC<{
       ctx.fillText('No memory relationships to display', width / 2, height / 2);
       return;
     }
-
     const positions = calculateLayout(data.nodes, data.edges);
-
     // Draw edges first
     ctx.strokeStyle = '#ccc';
     ctx.lineWidth = 1;
     data.edges.forEach(edge => {
       const pos1 = positions.get(edge.source);
       const pos2 = positions.get(edge.target);
-      
       if (pos1 && pos2) {
         ctx.beginPath();
         ctx.moveTo(pos1.x, pos1.y);
         ctx.lineTo(pos2.x, pos2.y);
         ctx.stroke();
-        
         // Draw edge label
         const midX = (pos1.x + pos2.x) / 2;
         const midY = (pos1.y + pos2.y) / 2;
@@ -187,52 +155,42 @@ const NetworkChart: React.FC<{
         ctx.fillText(edge.label, midX, midY);
       }
     });
-
     // Draw nodes
     data.nodes.forEach(node => {
       const pos = positions.get(node.id);
       if (!pos) return;
-
       // Draw node circle
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, node.size, 0, 2 * Math.PI);
       ctx.fillStyle = selectedNode === node.id ? '#ff6b6b' : node.color;
       ctx.fill();
-      
       // Draw node border
       ctx.strokeStyle = selectedNode === node.id ? '#ff0000' : '#333';
       ctx.lineWidth = selectedNode === node.id ? 3 : 1;
       ctx.stroke();
-
       // Draw node label
       ctx.fillStyle = '#333';
       ctx.font = '12px Arial';
       ctx.textAlign = 'center';
       ctx.fillText(node.label, pos.x, pos.y + node.size + 15);
-      
       // Draw confidence indicator
       ctx.fillStyle = '#666';
       ctx.font = '10px Arial';
       ctx.fillText(`${Math.round(node.confidence * 100)}%`, pos.x, pos.y + node.size + 28);
     });
   }, [data, selectedNode, calculateLayout, width, height]);
-
   // Handle canvas clicks
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-
     const positions = calculateLayout(data.nodes, data.edges);
-    
     // Find clicked node
     for (const node of data.nodes) {
       const pos = positions.get(node.id);
       if (!pos) continue;
-
       const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
       if (distance <= node.size) {
         setSelectedNode(node.id);
@@ -242,26 +200,20 @@ const NetworkChart: React.FC<{
         return;
       }
     }
-
     // No node clicked, clear selection
     setSelectedNode(null);
   }, [data, calculateLayout, onNodeSelect]);
-
   const handleCanvasDoubleClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-
     const positions = calculateLayout(data.nodes, data.edges);
-    
     // Find double-clicked node
     for (const node of data.nodes) {
       const pos = positions.get(node.id);
       if (!pos) continue;
-
       const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
       if (distance <= node.size) {
         if (onNodeDoubleClick) {
@@ -271,12 +223,10 @@ const NetworkChart: React.FC<{
       }
     }
   }, [data, calculateLayout, onNodeDoubleClick]);
-
   // Redraw when data changes
   useEffect(() => {
     drawNetwork();
   }, [drawNetwork]);
-
   return (
     <canvas
       ref={canvasRef}
@@ -292,7 +242,6 @@ const NetworkChart: React.FC<{
     />
   );
 };
-
 export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProps> = ({
   userId,
   tenantId,
@@ -306,13 +255,11 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
-
   // Fetch network data
   const fetchNetworkData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-
       const response = await fetch('/api/memory/network', {
         method: 'POST',
         headers: {
@@ -324,47 +271,38 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
           max_nodes: maxNodes
         })
       });
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
       const data = await response.json();
       setNetworkData(data);
     } catch (err) {
-      console.error('Error fetching network data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load network data');
     } finally {
       setLoading(false);
     }
   }, [userId, tenantId, maxNodes]);
-
   // Load data on mount
   useEffect(() => {
     fetchNetworkData();
   }, [fetchNetworkData]);
-
   // Filter data by cluster
   const filteredData = React.useMemo(() => {
     if (!networkData?.nodes || !networkData?.edges) return { nodes: [], edges: [] };
     if (!selectedCluster) return networkData;
-
     const filteredNodes = networkData.nodes.filter(node => node.cluster === selectedCluster);
     const nodeIds = new Set(filteredNodes.map(node => node.id));
     const filteredEdges = networkData.edges.filter(edge => 
       nodeIds.has(edge.source) && nodeIds.has(edge.target)
     );
-
     return { nodes: filteredNodes, edges: filteredEdges };
   }, [networkData, selectedCluster]);
-
   // Get unique clusters for filter
   const clusters = React.useMemo(() => {
     if (!networkData?.nodes) return [];
     const clusterSet = new Set(networkData.nodes.map(node => node.cluster));
     return Array.from(clusterSet).sort();
   }, [networkData?.nodes]);
-
   if (error) {
     return (
       <div className="network-error" style={{ 
@@ -387,13 +325,12 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             borderRadius: '4px',
             cursor: 'pointer'
           }}
-        >
+         aria-label="Button">
           Retry
         </button>
       </div>
     );
   }
-
   return (
     <div className="memory-network-container">
       {/* Controls */}
@@ -409,7 +346,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         <label style={{ fontWeight: 'bold' }}>Filter by Cluster:</label>
         <select
           value={selectedCluster || ''}
-          onChange={(e) => setSelectedCluster(e.target.value || null)}
+          onChange={(e) = aria-label="Select option"> setSelectedCluster(e.target.value || null)}
           style={{
             padding: '4px 8px',
             borderRadius: '4px',
@@ -423,11 +360,9 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             </option>
           ))}
         </select>
-        
         <div style={{ marginLeft: 'auto', fontSize: '14px', color: '#666' }}>
           Nodes: {filteredData.nodes.length} | Edges: {filteredData.edges.length}
         </div>
-        
         <button
           onClick={fetchNetworkData}
           disabled={loading}
@@ -440,11 +375,10 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.6 : 1
           }}
-        >
+         aria-label="Button">
           {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
-
       {/* Network Visualization */}
       <div style={{ position: 'relative' }}>
         {loading && (
@@ -461,7 +395,6 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             Loading network visualization...
           </div>
         )}
-        
         <NetworkChart
           data={filteredData}
           onNodeSelect={onNodeSelect}
@@ -470,7 +403,6 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
           width={width}
         />
       </div>
-
       {/* Legend */}
       <div style={{ 
         marginTop: '16px', 
@@ -505,5 +437,4 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
     </div>
   );
 };
-
 export default MemoryNetworkVisualization;

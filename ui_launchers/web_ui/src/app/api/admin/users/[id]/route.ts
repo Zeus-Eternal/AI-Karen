@@ -6,21 +6,18 @@
  * 
  * Requirements: 4.2, 4.5
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import { getDatabaseClient } from '@/lib/database/client';
 import { validateEmail } from '@/lib/auth/setup-validation';
 import type { AdminApiResponse, UpdateUserRequest, User } from '@/types/admin';
-
 /**
  * GET /api/admin/users/[id] - Get user details
  */
 export const GET = requireAdmin(async (request: NextRequest, context) => {
   try {
     const userId = request.nextUrl.pathname.split('/').pop();
-    
     if (!userId) {
       return NextResponse.json({
         success: false,
@@ -31,10 +28,8 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     const adminUtils = getAdminDatabaseUtils();
     const user = await adminUtils.getUserWithRole(userId);
-    
     if (!user) {
       return NextResponse.json({
         success: false,
@@ -45,7 +40,6 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 404 });
     }
-
     // Non-super admins cannot view super admin users
     if (user.role === 'super_admin' && !context.isSuperAdmin()) {
       return NextResponse.json({
@@ -57,7 +51,6 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 403 });
     }
-
     // Remove sensitive information from response
     const responseUser = {
       user_id: user.user_id,
@@ -74,17 +67,12 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       locked_until: user.locked_until,
       preferences: user.preferences
     };
-
     const response: AdminApiResponse<{ user: typeof responseUser }> = {
       success: true,
       data: { user: responseUser }
     };
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('Get user error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {
@@ -95,14 +83,12 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
     } as AdminApiResponse<never>, { status: 500 });
   }
 });
-
 /**
  * PUT /api/admin/users/[id] - Update user
  */
 export const PUT = requireAdmin(async (request: NextRequest, context) => {
   try {
     const userId = request.nextUrl.pathname.split('/').pop();
-    
     if (!userId) {
       return NextResponse.json({
         success: false,
@@ -113,10 +99,8 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     const body: UpdateUserRequest = await request.json();
     const adminUtils = getAdminDatabaseUtils();
-    
     // Get current user data
     const currentUser = await adminUtils.getUserWithRole(userId);
     if (!currentUser) {
@@ -129,7 +113,6 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 404 });
     }
-
     // Permission checks
     if (currentUser.role === 'super_admin' && !context.isSuperAdmin()) {
       return NextResponse.json({
@@ -141,7 +124,6 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 403 });
     }
-
     // Prevent self-modification of critical fields
     if (userId === context.user.user_id) {
       if (body.role || body.is_active === false) {
@@ -155,7 +137,6 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
         } as AdminApiResponse<never>, { status: 400 });
       }
     }
-
     // Role change validation
     if (body.role) {
       // Only super admins can assign super_admin role
@@ -169,7 +150,6 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
           }
         } as AdminApiResponse<never>, { status: 403 });
       }
-
       // Non-super admins cannot create admin users
       if (body.role === 'admin' && !context.isSuperAdmin()) {
         return NextResponse.json({
@@ -181,7 +161,6 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
           }
         } as AdminApiResponse<never>, { status: 403 });
       }
-
       // Cannot demote the last super admin
       if (currentUser.role === 'super_admin' && body.role !== 'super_admin') {
         const isLastSuperAdmin = await adminUtils.isLastSuperAdmin(userId);
@@ -197,40 +176,32 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
         }
       }
     }
-
     // Build update query dynamically
     const updateFields: string[] = [];
     const updateValues: any[] = [];
     let paramIndex = 1;
-
     if (body.full_name !== undefined) {
       updateFields.push(`full_name = $${paramIndex++}`);
       updateValues.push(body.full_name);
     }
-
     if (body.is_active !== undefined) {
       updateFields.push(`is_active = $${paramIndex++}`);
       updateValues.push(body.is_active);
     }
-
     if (body.is_verified !== undefined) {
       updateFields.push(`is_verified = $${paramIndex++}`);
       updateValues.push(body.is_verified);
     }
-
     if (body.preferences !== undefined) {
       updateFields.push(`preferences = $${paramIndex++}`);
       updateValues.push(JSON.stringify(body.preferences));
     }
-
     if (body.two_factor_enabled !== undefined) {
       updateFields.push(`two_factor_enabled = $${paramIndex++}`);
       updateValues.push(body.two_factor_enabled);
     }
-
     // Always update the updated_at timestamp
     updateFields.push(`updated_at = NOW()`);
-
     if (updateFields.length > 1) { // More than just updated_at
       updateValues.push(userId); // For WHERE clause
       const query = `
@@ -238,17 +209,14 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
         SET ${updateFields.join(', ')}
         WHERE user_id = $${paramIndex}
       `;
-      
       // Use direct database query for complex updates
       const db = getDatabaseClient();
       await db.query(query, updateValues);
     }
-
     // Handle role change separately for audit logging
     if (body.role && body.role !== currentUser.role) {
       await adminUtils.updateUserRole(userId, body.role, context.user.user_id);
     }
-
     // Log the update
     await adminUtils.createAuditLog({
       user_id: context.user.user_id,
@@ -269,13 +237,11 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
     });
-
     // Get updated user for response
     const updatedUser = await adminUtils.getUserWithRole(userId);
     if (!updatedUser) {
       throw new Error('Failed to retrieve updated user');
     }
-
     // Remove sensitive information from response
     const responseUser = {
       user_id: updatedUser.user_id,
@@ -290,7 +256,6 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
       two_factor_enabled: updatedUser.two_factor_enabled,
       preferences: updatedUser.preferences
     };
-
     const response: AdminApiResponse<{ user: typeof responseUser }> = {
       success: true,
       data: { user: responseUser },
@@ -299,12 +264,8 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
         changes_applied: Object.keys(body)
       }
     };
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('Update user error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {
@@ -315,14 +276,12 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
     } as AdminApiResponse<never>, { status: 500 });
   }
 });
-
 /**
  * DELETE /api/admin/users/[id] - Delete user
  */
 export const DELETE = requireAdmin(async (request: NextRequest, context) => {
   try {
     const userId = request.nextUrl.pathname.split('/').pop();
-    
     if (!userId) {
       return NextResponse.json({
         success: false,
@@ -333,9 +292,7 @@ export const DELETE = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     const adminUtils = getAdminDatabaseUtils();
-    
     // Get current user data
     const currentUser = await adminUtils.getUserWithRole(userId);
     if (!currentUser) {
@@ -348,7 +305,6 @@ export const DELETE = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 404 });
     }
-
     // Permission checks
     if (currentUser.role === 'super_admin' && !context.isSuperAdmin()) {
       return NextResponse.json({
@@ -360,7 +316,6 @@ export const DELETE = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 403 });
     }
-
     // Prevent self-deletion
     if (userId === context.user.user_id) {
       return NextResponse.json({
@@ -372,7 +327,6 @@ export const DELETE = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Cannot delete the last super admin
     if (currentUser.role === 'super_admin') {
       const isLastSuperAdmin = await adminUtils.isLastSuperAdmin(userId);
@@ -387,17 +341,14 @@ export const DELETE = requireAdmin(async (request: NextRequest, context) => {
         } as AdminApiResponse<never>, { status: 400 });
       }
     }
-
     // Soft delete by setting is_active to false
     const query = `
       UPDATE auth_users 
       SET is_active = false, updated_at = NOW()
       WHERE user_id = $1
     `;
-    
     const db = getDatabaseClient();
     await db.query(query, [userId]);
-
     // Log the deletion
     await adminUtils.createAuditLog({
       user_id: context.user.user_id,
@@ -413,7 +364,6 @@ export const DELETE = requireAdmin(async (request: NextRequest, context) => {
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
     });
-
     const response: AdminApiResponse<{ deleted_user_id: string }> = {
       success: true,
       data: { deleted_user_id: userId },
@@ -423,12 +373,8 @@ export const DELETE = requireAdmin(async (request: NextRequest, context) => {
         note: 'User account has been deactivated but data is retained for audit purposes'
       }
     };
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('Delete user error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {

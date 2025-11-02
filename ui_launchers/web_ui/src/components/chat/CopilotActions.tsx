@@ -1,9 +1,15 @@
-'use client';
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+'use client';
+
+
+
+
+
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -12,7 +18,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuShortcut
 } from '@/components/ui/dropdown-menu';
-import { 
+
   Brain, 
   Code, 
   Bug, 
@@ -30,8 +36,8 @@ import {
   ChevronDown,
   Keyboard
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+
+
 
 // Types for copilot actions and context
 export interface CopilotAction {
@@ -401,29 +407,29 @@ export const CopilotActions: React.FC<CopilotActionsProps> = ({
     <div className={`copilot-actions ${className}`}>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
-          <Button 
+          <button 
             variant="ghost" 
             size="sm" 
             disabled={disabled}
-            className="h-8 px-3 text-sm font-medium"
-          >
-            <Brain className="h-4 w-4 mr-2" />
+            className="h-8 px-3 text-sm font-medium md:text-base lg:text-lg"
+           aria-label="Button">
+            <Brain className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Copilot Actions
-            <ChevronDown className="h-3 w-3 ml-1" />
+            <ChevronDown className="h-3 w-3 ml-1 sm:w-auto md:w-full" />
           </Button>
         </DropdownMenuTrigger>
         
         <DropdownMenuContent 
-          className="w-80 max-h-96 overflow-y-auto"
+          className="w-80 max-h-96 overflow-y-auto sm:w-auto md:w-full"
           align="start"
           sideOffset={4}
         >
           <DropdownMenuLabel className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
+            <Brain className="h-4 w-4 sm:w-auto md:w-full" />
             AI Copilot Actions
             {showShortcuts && (
-              <Badge variant="secondary" className="text-xs">
-                <Keyboard className="h-3 w-3 mr-1" />
+              <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
+                <Keyboard className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                 Shortcuts enabled
               </Badge>
             )}
@@ -433,15 +439,15 @@ export const CopilotActions: React.FC<CopilotActionsProps> = ({
           
           {/* Context indicator */}
           {context.selectedText && (
-            <div className="px-2 py-1 text-xs text-muted-foreground">
-              <MessageSquare className="h-3 w-3 inline mr-1" />
+            <div className="px-2 py-1 text-xs text-muted-foreground sm:text-sm md:text-base">
+              <MessageSquare className="h-3 w-3 inline mr-1 sm:w-auto md:w-full" />
               Text selected ({context.selectedText.length} chars)
             </div>
           )}
           
           {context.codeContext?.hasCode && (
-            <div className="px-2 py-1 text-xs text-muted-foreground">
-              <Code className="h-3 w-3 inline mr-1" />
+            <div className="px-2 py-1 text-xs text-muted-foreground sm:text-sm md:text-base">
+              <Code className="h-3 w-3 inline mr-1 sm:w-auto md:w-full" />
               Code context detected
               {context.language && ` (${context.language})`}
             </div>
@@ -453,8 +459,8 @@ export const CopilotActions: React.FC<CopilotActionsProps> = ({
               
               return (
                 <div key={category}>
-                  <DropdownMenuLabel className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                    <CategoryIcon className="h-3 w-3" />
+                  <DropdownMenuLabel className="flex items-center gap-2 text-xs font-medium text-muted-foreground sm:text-sm md:text-base">
+                    <CategoryIcon className="h-3 w-3 sm:w-auto md:w-full" />
                     {categoryLabels[category as keyof typeof categoryLabels]}
                   </DropdownMenuLabel>
                   
@@ -465,15 +471,15 @@ export const CopilotActions: React.FC<CopilotActionsProps> = ({
                       className="flex items-center gap-3 py-2 cursor-pointer"
                       disabled={action.requiresSelection && !context.selectedText}
                     >
-                      <action.icon className="h-4 w-4 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm">{action.label}</div>
-                        <div className="text-xs text-muted-foreground truncate">
+                      <action.icon className="h-4 w-4 flex-shrink-0 sm:w-auto md:w-full" />
+                      <div className="flex-1 min-w-0 sm:w-auto md:w-full">
+                        <div className="font-medium text-sm md:text-base lg:text-lg">{action.label}</div>
+                        <div className="text-xs text-muted-foreground truncate sm:text-sm md:text-base">
                           {action.description}
                         </div>
                       </div>
                       {showShortcuts && action.shortcut && (
-                        <DropdownMenuShortcut className="text-xs">
+                        <DropdownMenuShortcut className="text-xs sm:text-sm md:text-base">
                           {action.shortcut.replace('Ctrl+Shift+', '⌃⇧')}
                         </DropdownMenuShortcut>
                       )}
@@ -485,13 +491,13 @@ export const CopilotActions: React.FC<CopilotActionsProps> = ({
               );
             })
           ) : (
-            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+            <div className="px-2 py-4 text-center text-sm text-muted-foreground md:text-base lg:text-lg">
               No actions available for current context
             </div>
           )}
           
           {/* Quick help */}
-          <DropdownMenuLabel className="text-xs text-muted-foreground">
+          <DropdownMenuLabel className="text-xs text-muted-foreground sm:text-sm md:text-base">
             💡 Tip: Type slash commands like <code>/copilot review</code> in chat
           </DropdownMenuLabel>
         </DropdownMenuContent>

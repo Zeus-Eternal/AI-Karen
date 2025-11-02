@@ -2,11 +2,9 @@
  * Integration example showing how to fix the ModelProviderIntegration 4xx/5xx errors
  * This demonstrates the practical application of the graceful degradation system
  */
-
 import React from 'react';
 import { useModelProviders, useGracefulDegradation } from './use-graceful-backend';
 import { DegradedModeBanner, ServiceUnavailable } from './fallback-ui';
-
 // Example of how to fix the existing ModelProviderIntegration component
 export function FixedModelProviderIntegration() {
   const {
@@ -22,17 +20,14 @@ export function FixedModelProviderIntegration() {
     useStaleOnError: true,
     maxStaleAge: 60 * 60 * 1000 // 1 hour
   });
-
   const {
     isEnabled,
     showDegradedBanner,
     dismissBanner,
     forceRetry
   } = useGracefulDegradation('modelProviderIntegration');
-
   // Show degraded mode banner when appropriate
   const shouldShowBanner = showDegradedBanner || isStale || isFromCache || error;
-
   return (
     <div className="model-provider-integration">
       {shouldShowBanner && (
@@ -42,14 +37,12 @@ export function FixedModelProviderIntegration() {
           showDetails={true}
         />
       )}
-
       {isLoading && !providers && (
         <div className="flex items-center justify-center p-4">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
           <span className="ml-2">Loading model providers...</span>
         </div>
       )}
-
       {error && !providers && (
         <ServiceUnavailable
           serviceName="Model Provider Integration"
@@ -67,7 +60,6 @@ export function FixedModelProviderIntegration() {
           </div>
         </ServiceUnavailable>
       )}
-
       {providers && providers.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -91,7 +83,6 @@ export function FixedModelProviderIntegration() {
               Refresh
             </button>
           </div>
-
           <div className="grid gap-4">
             {providers.map((provider: any) => (
               <div
@@ -118,7 +109,6 @@ export function FixedModelProviderIntegration() {
           </div>
         </div>
       )}
-
       {providers && providers.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           No model providers available
@@ -127,7 +117,6 @@ export function FixedModelProviderIntegration() {
     </div>
   );
 }
-
 // Example of how to wrap any existing component with graceful degradation
 export function withGracefulDegradation<P extends object>(
   WrappedComponent: React.ComponentType<P>,
@@ -140,12 +129,10 @@ export function withGracefulDegradation<P extends object>(
       showDegradedBanner,
       dismissBanner
     } = useGracefulDegradation(featureName);
-
     if (!isEnabled) {
       switch (fallbackBehavior) {
         case 'hide':
           return null;
-        
         case 'disable':
           return (
             <div className="p-4 bg-gray-100 rounded-lg">
@@ -154,7 +141,6 @@ export function withGracefulDegradation<P extends object>(
               </p>
             </div>
           );
-        
         case 'cache':
         case 'mock':
           // Show the component but with degraded functionality
@@ -169,24 +155,19 @@ export function withGracefulDegradation<P extends object>(
               <WrappedComponent {...props} />
             </div>
           );
-        
         default:
           return null;
       }
     }
-
     return <WrappedComponent {...props} />;
   };
 }
-
 // Example usage of the wrapper
 const GracefulModelProviderIntegration = withGracefulDegradation(
   FixedModelProviderIntegration,
   'modelProviderIntegration'
 );
-
 export { GracefulModelProviderIntegration };
-
 // Hook for handling the specific error you're experiencing
 export function useModelProviderSuggestions() {
   const {
@@ -195,19 +176,16 @@ export function useModelProviderSuggestions() {
     error,
     retry
   } = useModelProviders();
-
   // This is the specific function that was causing the 4xx/5xx error
   const loadProviderModelSuggestions = React.useCallback(async () => {
     try {
       // The graceful degradation system will handle errors automatically
       return suggestions || [];
     } catch (err) {
-      console.warn('Failed to load provider model suggestions, using fallback:', err);
       // Return empty array as fallback instead of throwing
       return [];
     }
   }, [suggestions]);
-
   return {
     loadProviderModelSuggestions,
     suggestions: suggestions || [],
@@ -216,7 +194,6 @@ export function useModelProviderSuggestions() {
     retry
   };
 }
-
 // Example of how to initialize the system in your app
 export function initializeGracefulDegradationInApp() {
   // Import the init function

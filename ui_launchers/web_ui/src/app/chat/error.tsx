@@ -1,10 +1,8 @@
 'use client';
-
 import { useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
 export default function ChatError({
   error,
   reset,
@@ -13,17 +11,13 @@ export default function ChatError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Chat page error:', error);
   }, [error]);
-
   const handleGoHome = () => {
     window.location.href = '/';
   };
-
   const handleReload = () => {
     window.location.reload();
   };
-
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-destructive/50">
@@ -47,24 +41,20 @@ export default function ChatError({
               }
             </p>
           </div>
-
           <div className="flex flex-col gap-2">
             <Button onClick={reset} className="w-full">
               <RefreshCw className="h-4 w-4 mr-2" />
               Try Again
             </Button>
-            
             <Button variant="outline" onClick={handleReload} className="w-full">
               <RefreshCw className="h-4 w-4 mr-2" />
               Reload Page
             </Button>
-            
             <Button variant="outline" onClick={handleGoHome} className="w-full">
               <Home className="h-4 w-4 mr-2" />
               Go Home
             </Button>
           </div>
-
           <div className="text-center text-sm text-muted-foreground">
             <p>
               If this error persists, try restarting the development server.

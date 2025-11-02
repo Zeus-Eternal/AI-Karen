@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 // Force this route to be dynamic
 export const dynamic = 'force-dynamic';
-
 // IMPORTANT: Do not default to the web UI port; that creates a proxy loop.
 const BACKEND_URL =
   process.env.KAREN_BACKEND_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   'http://127.0.0.1:8000';
-
 async function handleRequest(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   try {
     // Safely resolve params with error handling
@@ -16,7 +13,6 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     try {
       resolvedParams = await params;
     } catch (error) {
-      console.error('Failed to resolve params:', error);
       return NextResponse.json(
         {
           error: 'Invalid request parameters',
@@ -25,16 +21,13 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
         { status: 400 }
       );
     }
-    
     const path = resolvedParams.path?.join('/') || '';
-    
     // Skip Next.js static files and other assets that should be handled by Next.js
     // Return early with proper 404 to let Next.js handle these
     if (path.startsWith('_next/') || path.startsWith('static/') || path.includes('.css') || path.includes('.js') || path.includes('.map') || path.includes('.woff') || path.includes('.woff2') || path.includes('.ttf') || path.includes('.eot') || path.includes('.svg') || path.includes('.png') || path.includes('.jpg') || path.includes('.jpeg') || path.includes('.gif') || path.includes('.ico')) {
       // Return 404 for static assets that should be handled by Next.js
       return NextResponse.json({ error: 'Not Found' }, { status: 404 });
     }
-
     // Skip page routes that should be handled by Next.js (not API calls)
     // These are requests for actual pages, not API endpoints
     // Note: 'models' is removed from here since /api/models/* are API endpoints, not pages
@@ -45,13 +38,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     const url = new URL(request.url);
     const searchParams = url.searchParams.toString();
     const backendUrl = `${BACKEND_URL}/api/${path}${searchParams ? `?${searchParams}` : ''}`;
-    
     // Log the request for debugging
-    console.log(`[API Proxy] ${request.method} ${backendUrl}`, {
-      path: resolvedParams.path,
-      resolvedParams
-    });
-    
     // Get request body if it exists
     let body = undefined;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -61,13 +48,11 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
         // Body might be empty
       }
     }
-    
     // Forward headers (excluding host and other problematic headers)
     const headers: Record<string, string> = {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     };
-    
     // Copy authorization header if present, else use auth_token cookie (set by our login route)
     const authHeader = request.headers.get('authorization');
     const authCookie = request.cookies.get('auth_token')?.value;
@@ -76,26 +61,22 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     } else if (authCookie) {
       headers['Authorization'] = `Bearer ${authCookie}`;
     }
-
     // Forward cookies for HttpOnly session/refresh flows
     const cookieHeader = request.headers.get('cookie');
     if (cookieHeader) {
       headers['Cookie'] = cookieHeader;
     }
-
     // Forward CSRF/XSRF tokens if your backend uses them
     const csrf = request.headers.get('x-csrf-token') || request.headers.get('x-xsrf-token');
     if (csrf) {
       headers['X-CSRF-Token'] = csrf;
       headers['X-XSRF-Token'] = csrf;
     }
-
     // Add user agent for better backend logging
     const userAgent = request.headers.get('user-agent');
     if (userAgent) {
       headers['User-Agent'] = userAgent;
     }
-    
     // Add a conservative timeout to avoid hanging requests in dev
     // Increase timeout for provider endpoints, auth endpoints, model endpoints, and health checks that may take longer
     // Treat any '/providers/' '/models/' or '/health' path as potentially long-running (profiles, stats, suggestions, models, health)
@@ -165,10 +146,8 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
         // ignore, will continue with original response
       }
     }
-    
     let data;
     const contentType = response.headers.get('content-type');
-    
     if (contentType?.includes('application/json')) {
       try {
         const text = await response.text();
@@ -179,19 +158,16 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
           data = JSON.parse(text);
         }
       } catch (error) {
-        console.error(`JSON parsing error for ${response.url}:`, error);
         data = { error: 'Invalid JSON response from server' };
       }
     } else {
       data = await response.text();
     }
-    
     // Create the response with proper status
     const nextResponse = NextResponse.json(
       typeof data === 'string' ? { error: data } : data, 
       { status: response.status }
     );
-    
     // Forward important headers
     const headersToForward = ['set-cookie', 'cache-control', 'content-type', 'www-authenticate'];
     headersToForward.forEach(headerName => {
@@ -200,17 +176,12 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
         nextResponse.headers.set(headerName, headerValue);
       }
     });
-    
     // Add CORS headers for better browser compatibility
     nextResponse.headers.set('Access-Control-Allow-Credentials', 'true');
-    
     return nextResponse;
-    
   } catch (error) {
     const resolvedParams = await params;
     console.error(`API proxy error for ${resolvedParams.path.join('/')}:`, error);
-    console.error(`Backend URL: ${BACKEND_URL}`);
-    
     // Provide more specific error information
     let status = 500;
     let errorMessage = 'Internal server error';
@@ -226,7 +197,6 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
         errorMessage = error.message;
       }
     }
-    
     return NextResponse.json(
       { 
         error: errorMessage,
@@ -236,23 +206,18 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     );
   }
 }
-
 export async function GET(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   return handleRequest(request, context);
 }
-
 export async function POST(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   return handleRequest(request, context);
 }
-
 export async function PUT(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   return handleRequest(request, context);
 }
-
 export async function DELETE(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   return handleRequest(request, context);
 }
-
 export async function PATCH(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   return handleRequest(request, context);
 }

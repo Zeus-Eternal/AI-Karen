@@ -9,9 +9,7 @@
  * - Loading state management
  * - Retry logic coordination
  */
-
 import { toast } from "@/hooks/use-toast";
-
 export interface ErrorInfo {
   category: string;
   severity: string;
@@ -24,7 +22,6 @@ export interface ErrorInfo {
   error_code?: string;
   context?: Record<string, any>;
 }
-
 export interface ApiErrorResponse {
   error: boolean;
   error_code?: string;
@@ -38,23 +35,19 @@ export interface ApiErrorResponse {
   user_action_required?: boolean;
   context?: Record<string, any>;
 }
-
 export class ErrorHandler {
   private static instance: ErrorHandler;
-  
   public static getInstance(): ErrorHandler {
     if (!ErrorHandler.instance) {
       ErrorHandler.instance = new ErrorHandler();
     }
     return ErrorHandler.instance;
   }
-
   /**
    * Handle API errors and show appropriate user feedback
    */
   public handleApiError(error: any, operation: string = 'operation'): ErrorInfo {
     let errorInfo: ErrorInfo;
-
     // Check if it's a structured API error response
     if (error?.detail && typeof error.detail === 'object' && error.detail.error) {
       errorInfo = this.parseApiErrorResponse(error.detail);
@@ -64,13 +57,10 @@ export class ErrorHandler {
       // Handle generic errors
       errorInfo = this.createGenericErrorInfo(error, operation);
     }
-
     // Show toast notification
     this.showErrorToast(errorInfo);
-
     return errorInfo;
   }
-
   /**
    * Parse structured API error response
    */
@@ -88,7 +78,6 @@ export class ErrorHandler {
       context: apiError.context || {}
     };
   }
-
   /**
    * Create error info for generic errors
    */
@@ -98,7 +87,6 @@ export class ErrorHandler {
     let category = 'system';
     let severity = 'medium';
     let retryPossible = true;
-
     // Handle specific error types
     if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('network')) {
       title = 'Network Error';
@@ -134,7 +122,6 @@ export class ErrorHandler {
       category = 'system';
       severity = 'high';
     }
-
     return {
       category,
       severity,
@@ -148,7 +135,6 @@ export class ErrorHandler {
       context: { operation, originalError: error }
     };
   }
-
   /**
    * Get default resolution steps for error categories
    */
@@ -186,19 +172,15 @@ export class ErrorHandler {
         ];
     }
   }
-
   /**
    * Show error toast notification (client-side only)
    */
   private showErrorToast(errorInfo: ErrorInfo) {
     // Only show toast on client side
     if (typeof window === 'undefined') {
-      console.warn('Attempted to show toast on server side, skipping');
       return;
     }
-    
     const variant = this.getToastVariant(errorInfo.severity);
-    
     toast({
       title: errorInfo.title,
       description: errorInfo.message,
@@ -206,14 +188,12 @@ export class ErrorHandler {
       duration: this.getToastDuration(errorInfo.severity),
     });
   }
-
   /**
    * Get toast variant based on severity
    */
   private getToastVariant(severity: string): "default" | "destructive" {
     return severity === 'high' || severity === 'critical' ? 'destructive' : 'default';
   }
-
   /**
    * Get toast duration based on severity
    */
@@ -231,7 +211,6 @@ export class ErrorHandler {
         return 5000;
     }
   }
-
   /**
    * Show success notification
    */
@@ -243,7 +222,6 @@ export class ErrorHandler {
       duration,
     });
   }
-
   /**
    * Show info notification
    */
@@ -255,7 +233,6 @@ export class ErrorHandler {
       duration,
     });
   }
-
   /**
    * Show warning notification
    */
@@ -267,39 +244,32 @@ export class ErrorHandler {
       duration,
     });
   }
-
   /**
    * Handle download-specific errors
    */
   public handleDownloadError(error: any, modelName: string): ErrorInfo {
     const errorInfo = this.handleApiError(error, `download of ${modelName}`);
-    
     // Add download-specific context
     errorInfo.context = {
       ...errorInfo.context,
       modelName,
       operation: 'download'
     };
-
     return errorInfo;
   }
-
   /**
    * Handle model management errors
    */
   public handleModelManagementError(error: any, operation: string, modelName: string): ErrorInfo {
     const errorInfo = this.handleApiError(error, `${operation} of ${modelName}`);
-    
     // Add model management context
     errorInfo.context = {
       ...errorInfo.context,
       modelName,
       operation
     };
-
     return errorInfo;
   }
-
   /**
    * Create confirmation dialog data for destructive operations
    */
@@ -320,7 +290,6 @@ export class ErrorHandler {
         variant: 'destructive' as const
       }
     };
-
     return confirmations[operation as keyof typeof confirmations] || {
       title: 'Confirm Action',
       message: `Are you sure you want to ${operation} "${modelName}"?`,
@@ -329,7 +298,6 @@ export class ErrorHandler {
       variant: 'default' as const
     };
   }
-
   /**
    * Format file size for user display
    */
@@ -339,14 +307,12 @@ export class ErrorHandler {
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   }
-
   /**
    * Format download speed
    */
   public formatSpeed(bytesPerSecond: number): string {
     return `${this.formatFileSize(bytesPerSecond)}/s`;
   }
-
   /**
    * Format time duration
    */
@@ -355,21 +321,18 @@ export class ErrorHandler {
     if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
     return `${Math.round(seconds / 3600)}h`;
   }
-
   /**
    * Check if error is retryable
    */
   public isRetryable(errorInfo: ErrorInfo): boolean {
     return errorInfo.retry_possible === true;
   }
-
   /**
    * Check if user action is required
    */
   public requiresUserAction(errorInfo: ErrorInfo): boolean {
     return errorInfo.user_action_required === true;
   }
-
   /**
    * Get resolution steps as formatted string
    */
@@ -377,38 +340,28 @@ export class ErrorHandler {
     if (!errorInfo.resolution_steps || errorInfo.resolution_steps.length === 0) {
       return '';
     }
-    
     return errorInfo.resolution_steps
       .map((step, index) => `${index + 1}. ${step}`)
       .join('\n');
   }
 }
-
 // Export singleton instance
 export const errorHandler = ErrorHandler.getInstance();
-
 // Export convenience functions
 export const handleApiError = (error: any, operation?: string) => 
   errorHandler.handleApiError(error, operation);
-
 export const showSuccess = (title: string, message: string, duration?: number) => 
   errorHandler.showSuccess(title, message, duration);
-
 export const showInfo = (title: string, message: string, duration?: number) => 
   errorHandler.showInfo(title, message, duration);
-
 export const showWarning = (title: string, message: string, duration?: number) => 
   errorHandler.showWarning(title, message, duration);
-
 export const handleDownloadError = (error: any, modelName: string) => 
   errorHandler.handleDownloadError(error, modelName);
-
 export const handleModelManagementError = (error: any, operation: string, modelName: string) => 
   errorHandler.handleModelManagementError(error, operation, modelName);
-
 export const createConfirmationDialog = (operation: string, modelName: string) => 
   errorHandler.createConfirmationDialog(operation, modelName);
-
 export const formatFileSize = (bytes: number) => errorHandler.formatFileSize(bytes);
 export const formatSpeed = (bytesPerSecond: number) => errorHandler.formatSpeed(bytesPerSecond);
 export const formatDuration = (seconds: number) => errorHandler.formatDuration(seconds);

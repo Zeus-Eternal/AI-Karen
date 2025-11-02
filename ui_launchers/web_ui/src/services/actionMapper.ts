@@ -8,11 +8,9 @@
  * - Extensible action registration system
  * - Type-safe action handling
  */
-
 import { useToast } from '@/hooks/use-toast';
 import { getMemoryService } from '@/services/memoryService';
 import { getChatService } from '@/services/chatService';
-
 export interface SuggestedAction {
   type: 'add_task' | 'pin_memory' | 'open_doc' | 'export_note' | 'search_memory' | 'create_conversation';
   params?: Record<string, any>;
@@ -21,14 +19,12 @@ export interface SuggestedAction {
   icon?: string;
   priority?: 'low' | 'medium' | 'high';
 }
-
 export interface ActionResult {
   success: boolean;
   message?: string;
   data?: any;
   error?: string;
 }
-
 export interface ActionHandler {
   type: string;
   handler: (params: Record<string, any>) => Promise<ActionResult>;
@@ -36,7 +32,6 @@ export interface ActionHandler {
   requiredParams?: string[];
   optionalParams?: string[];
 }
-
 /**
  * Action Registry for managing suggested actions
  */
@@ -45,12 +40,10 @@ export class ActionRegistry {
   private eventListeners = new Map<string, Set<(event: CustomEvent) => void>>();
   private memoryService = getMemoryService();
   private chatService = getChatService();
-
   constructor() {
     this.registerDefaultHandlers();
     this.setupEventListeners();
   }
-
   /**
    * Register default action handlers
    */
@@ -60,11 +53,9 @@ export class ActionRegistry {
       type: 'add_task',
       handler: async (params) => {
         const { title, description, priority = 'medium', dueDate, tags = [] } = params;
-        
         if (!title) {
           return { success: false, error: 'Task title is required' };
         }
-
         try {
           // Store task in memory with appropriate tags
           const taskMemoryId = await this.memoryService.storeMemory(
@@ -82,7 +73,6 @@ export class ActionRegistry {
               }
             }
           );
-
           // Dispatch custom event for UI components
           this.dispatchEvent('kari:task_added', {
             taskId: taskMemoryId,
@@ -92,7 +82,6 @@ export class ActionRegistry {
             dueDate,
             tags
           });
-
           return {
             success: true,
             message: `Task "${title}" added successfully`,
@@ -109,17 +98,14 @@ export class ActionRegistry {
       requiredParams: ['title'],
       optionalParams: ['description', 'priority', 'dueDate', 'tags']
     });
-
     // Pin Memory Action
     this.registerHandler({
       type: 'pin_memory',
       handler: async (params) => {
         const { content, title, tags = [], importance = 8 } = params;
-        
         if (!content) {
           return { success: false, error: 'Memory content is required' };
         }
-
         try {
           // Store memory with high importance and pinned tag
           const memoryId = await this.memoryService.storeMemory(
@@ -134,7 +120,6 @@ export class ActionRegistry {
               }
             }
           );
-
           // Dispatch custom event
           this.dispatchEvent('kari:memory_pinned', {
             memoryId,
@@ -142,7 +127,6 @@ export class ActionRegistry {
             title,
             importance
           });
-
           return {
             success: true,
             message: 'Memory pinned successfully',
@@ -159,17 +143,14 @@ export class ActionRegistry {
       requiredParams: ['content'],
       optionalParams: ['title', 'tags', 'importance']
     });
-
     // Open Document Action
     this.registerHandler({
       type: 'open_doc',
       handler: async (params) => {
         const { url, title, type = 'external' } = params;
-        
         if (!url) {
           return { success: false, error: 'Document URL is required' };
         }
-
         try {
           // Dispatch event to open document
           this.dispatchEvent('kari:document_open', {
@@ -178,7 +159,6 @@ export class ActionRegistry {
             type,
             openedAt: new Date().toISOString()
           });
-
           // Store reference in memory
           await this.memoryService.storeMemory(
             `Opened document: ${title || url}`,
@@ -193,7 +173,6 @@ export class ActionRegistry {
               }
             }
           );
-
           return {
             success: true,
             message: `Document "${title || 'Document'}" opened`,
@@ -210,21 +189,17 @@ export class ActionRegistry {
       requiredParams: ['url'],
       optionalParams: ['title', 'type']
     });
-
     // Export Note Action
     this.registerHandler({
       type: 'export_note',
       handler: async (params) => {
         const { content, title, format = 'markdown', filename } = params;
-        
         if (!content) {
           return { success: false, error: 'Note content is required' };
         }
-
         try {
           const noteTitle = title || 'Exported Note';
           const noteFilename = filename || `${noteTitle.replace(/[^a-zA-Z0-9]/g, '_')}.${format}`;
-          
           // Create downloadable content
           let exportContent = content;
           if (format === 'markdown') {
@@ -232,7 +207,6 @@ export class ActionRegistry {
           } else if (format === 'txt') {
             exportContent = `${noteTitle}\n${'='.repeat(noteTitle.length)}\n\n${content}\n\n---\nExported from AI Assistant on ${new Date().toLocaleString()}`;
           }
-
           // Create and trigger download
           const blob = new Blob([exportContent], { type: 'text/plain' });
           const url = URL.createObjectURL(blob);
@@ -243,7 +217,6 @@ export class ActionRegistry {
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
-
           // Dispatch event
           this.dispatchEvent('kari:note_exported', {
             title: noteTitle,
@@ -251,7 +224,6 @@ export class ActionRegistry {
             filename: noteFilename,
             exportedAt: new Date().toISOString()
           });
-
           // Store export reference in memory
           await this.memoryService.storeMemory(
             `Exported note: ${noteTitle}`,
@@ -266,7 +238,6 @@ export class ActionRegistry {
               }
             }
           );
-
           return {
             success: true,
             message: `Note "${noteTitle}" exported as ${format.toUpperCase()}`,
@@ -283,31 +254,26 @@ export class ActionRegistry {
       requiredParams: ['content'],
       optionalParams: ['title', 'format', 'filename']
     });
-
     // Search Memory Action
     this.registerHandler({
       type: 'search_memory',
       handler: async (params) => {
         const { query, maxResults = 10, tags, timeRange } = params;
-        
         if (!query) {
           return { success: false, error: 'Search query is required' };
         }
-
         try {
           const searchResults = await this.memoryService.searchMemories(query, {
             tags,
             dateRange: timeRange,
             maxResults
           });
-
           // Dispatch event with search results
           this.dispatchEvent('kari:memory_searched', {
             query,
             results: searchResults.memories.length,
             searchTime: searchResults.searchTime
           });
-
           return {
             success: true,
             message: `Found ${searchResults.memories.length} memories`,
@@ -328,13 +294,11 @@ export class ActionRegistry {
       requiredParams: ['query'],
       optionalParams: ['maxResults', 'tags', 'timeRange']
     });
-
     // Create Conversation Action
     this.registerHandler({
       type: 'create_conversation',
       handler: async (params) => {
         const { title, initialMessage, tags = [] } = params;
-        
         try {
           // This would typically create a new conversation
           // For now, we'll dispatch an event for the UI to handle
@@ -344,7 +308,6 @@ export class ActionRegistry {
             tags,
             createdAt: new Date().toISOString()
           });
-
           return {
             success: true,
             message: 'New conversation created',
@@ -362,7 +325,6 @@ export class ActionRegistry {
       optionalParams: ['title', 'initialMessage', 'tags']
     });
   }
-
   /**
    * Setup event listeners for legacy event names
    */
@@ -374,55 +336,47 @@ export class ActionRegistry {
       'kari:open_doc': 'open_doc',
       'kari:export_note': 'export_note'
     };
-
     Object.entries(legacyEventMap).forEach(([legacyEvent, actionType]) => {
       window.addEventListener(legacyEvent, (event: any) => {
         this.performAction(actionType, event.detail || {});
       });
     });
   }
-
   /**
    * Register a new action handler
    */
   registerHandler(handler: ActionHandler): void {
     this.handlers.set(handler.type, handler);
   }
-
   /**
    * Unregister an action handler
    */
   unregisterHandler(type: string): void {
     this.handlers.delete(type);
   }
-
   /**
    * Get all registered handlers
    */
   getHandlers(): ActionHandler[] {
     return Array.from(this.handlers.values());
   }
-
   /**
    * Get handler by type
    */
   getHandler(type: string): ActionHandler | undefined {
     return this.handlers.get(type);
   }
-
   /**
    * Perform a suggested action
    */
   async performAction(type: string, params: Record<string, any> = {}): Promise<ActionResult> {
     const handler = this.handlers.get(type);
-    
     if (!handler) {
       return {
         success: false,
         error: `Unknown action type: ${type}`
       };
     }
-
     // Validate required parameters
     if (handler.requiredParams) {
       const missingParams = handler.requiredParams.filter(param => !(param in params));
@@ -433,68 +387,55 @@ export class ActionRegistry {
         };
       }
     }
-
     try {
       const result = await handler.handler(params);
-      
       // Log action performance
       console.log(`Action performed: ${type}`, {
         success: result.success,
         params: Object.keys(params),
         message: result.message
       });
-
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`Action failed: ${type}`, error);
-      
       return {
         success: false,
         error: `Action execution failed: ${errorMessage}`
       };
     }
   }
-
   /**
    * Perform multiple suggested actions
    */
   async performActions(actions: SuggestedAction[]): Promise<ActionResult[]> {
     const results: ActionResult[] = [];
-    
     // Sort actions by priority
     const sortedActions = actions.sort((a, b) => {
       const priorityOrder = { high: 3, medium: 2, low: 1 };
       return (priorityOrder[b.priority || 'medium'] || 2) - (priorityOrder[a.priority || 'medium'] || 2);
     });
-
     for (const action of sortedActions) {
       const result = await this.performAction(action.type, action.params || {});
       results.push(result);
-      
       // Stop on first failure if it's a high priority action
       if (!result.success && action.priority === 'high') {
         break;
       }
     }
-
     return results;
   }
-
   /**
    * Dispatch custom event
    */
   private dispatchEvent(eventName: string, detail: any): void {
     const event = new CustomEvent(eventName, { detail });
     window.dispatchEvent(event);
-    
     // Also trigger any registered listeners
     const listeners = this.eventListeners.get(eventName);
     if (listeners) {
       listeners.forEach(listener => listener(event));
     }
   }
-
   /**
    * Add event listener for action events
    */
@@ -504,7 +445,6 @@ export class ActionRegistry {
     }
     this.eventListeners.get(eventName)!.add(listener);
   }
-
   /**
    * Remove event listener
    */
@@ -514,16 +454,13 @@ export class ActionRegistry {
       listeners.delete(listener);
     }
   }
-
   /**
    * Get action suggestions based on context
    */
   getSuggestedActions(context: string, userIntent?: string): SuggestedAction[] {
     const suggestions: SuggestedAction[] = [];
-    
     // Simple context-based suggestions
     const lowerContext = context.toLowerCase();
-    
     if (lowerContext.includes('task') || lowerContext.includes('todo') || lowerContext.includes('remind')) {
       suggestions.push({
         type: 'add_task',
@@ -534,7 +471,6 @@ export class ActionRegistry {
         priority: 'medium'
       });
     }
-
     if (lowerContext.includes('remember') || lowerContext.includes('important') || lowerContext.includes('note')) {
       suggestions.push({
         type: 'pin_memory',
@@ -545,7 +481,6 @@ export class ActionRegistry {
         priority: 'medium'
       });
     }
-
     if (lowerContext.includes('export') || lowerContext.includes('save') || lowerContext.includes('download')) {
       suggestions.push({
         type: 'export_note',
@@ -556,7 +491,6 @@ export class ActionRegistry {
         priority: 'low'
       });
     }
-
     if (lowerContext.includes('search') || lowerContext.includes('find') || lowerContext.includes('look for')) {
       const query = this.extractSearchQuery(context);
       if (query) {
@@ -570,10 +504,8 @@ export class ActionRegistry {
         });
       }
     }
-
     return suggestions;
   }
-
   /**
    * Extract task title from context
    */
@@ -584,17 +516,14 @@ export class ActionRegistry {
       /(?:i need to|should)\s+(.+)/i,
       /(.+)(?:\s+task|\s+todo)/i
     ];
-
     for (const pattern of taskPatterns) {
       const match = context.match(pattern);
       if (match && match[1]) {
         return match[1].trim();
       }
     }
-
     return context.substring(0, 50) + (context.length > 50 ? '...' : '');
   }
-
   /**
    * Extract search query from context
    */
@@ -603,21 +532,17 @@ export class ActionRegistry {
       /(?:search for|find|look for)\s+(.+)/i,
       /(.+)(?:\s+search|\s+find)/i
     ];
-
     for (const pattern of searchPatterns) {
       const match = context.match(pattern);
       if (match && match[1]) {
         return match[1].trim();
       }
     }
-
     return null;
   }
 }
-
 // Global instance
 let actionRegistry: ActionRegistry | null = null;
-
 /**
  * Get the global action registry instance
  */
@@ -627,22 +552,18 @@ export function getActionRegistry(): ActionRegistry {
   }
   return actionRegistry;
 }
-
 /**
  * Initialize action registry with custom handlers
  */
 export function initializeActionRegistry(customHandlers?: ActionHandler[]): ActionRegistry {
   actionRegistry = new ActionRegistry();
-  
   if (customHandlers) {
     customHandlers.forEach(handler => {
       actionRegistry!.registerHandler(handler);
     });
   }
-  
   return actionRegistry;
 }
-
 /**
  * Convenience function to perform a suggested action
  */
@@ -650,7 +571,6 @@ export async function performSuggestedAction(action: SuggestedAction): Promise<A
   const registry = getActionRegistry();
   return registry.performAction(action.type, action.params || {});
 }
-
 /**
  * Convenience function to get action suggestions
  */
@@ -658,5 +578,4 @@ export function getActionSuggestions(context: string, userIntent?: string): Sugg
   const registry = getActionRegistry();
   return registry.getSuggestedActions(context, userIntent);
 }
-
 // Types are already exported via export interface declarations above

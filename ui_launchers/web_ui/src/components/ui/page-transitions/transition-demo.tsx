@@ -69,7 +69,7 @@ export function TransitionDemo() {
   return (
     <MicroInteractionProvider>
       <TransitionProvider>
-        <div className="p-8 space-y-8 max-w-6xl mx-auto">
+        <div className="p-8 space-y-8 max-w-6xl mx-auto sm:w-auto md:w-full">
           <h1 className="text-3xl font-bold">Page Transitions Demo</h1>
           
           {/* Transition Variant Selector */}
@@ -121,18 +121,18 @@ export function TransitionDemo() {
                   
                   <div className="mt-8 space-y-4">
                     <div className="flex justify-center space-x-4">
-                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center">
+                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center sm:w-auto md:w-full">
                         <span className="text-2xl">📄</span>
                       </div>
-                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center">
+                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center sm:w-auto md:w-full">
                         <span className="text-2xl">🎨</span>
                       </div>
-                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center">
+                      <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center sm:w-auto md:w-full">
                         <span className="text-2xl">⚡</span>
                       </div>
                     </div>
                     
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 md:text-base lg:text-lg">
                       Current transition: <strong>{currentVariant}</strong>
                     </div>
                   </div>
@@ -145,9 +145,9 @@ export function TransitionDemo() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold">Transition Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 border rounded-lg">
+              <div className="p-4 border rounded-lg sm:p-4 md:p-6">
                 <h3 className="font-semibold mb-2">Current Settings</h3>
-                <ul className="space-y-1 text-sm">
+                <ul className="space-y-1 text-sm md:text-base lg:text-lg">
                   <li><strong>Variant:</strong> {currentVariant}</li>
                   <li><strong>Duration:</strong> 0.5s</li>
                   <li><strong>Easing:</strong> cubic-bezier(0.4, 0, 0.2, 1)</li>
@@ -155,9 +155,9 @@ export function TransitionDemo() {
                 </ul>
               </div>
               
-              <div className="p-4 border rounded-lg">
+              <div className="p-4 border rounded-lg sm:p-4 md:p-6">
                 <h3 className="font-semibold mb-2">Features</h3>
-                <ul className="space-y-1 text-sm">
+                <ul className="space-y-1 text-sm md:text-base lg:text-lg">
                   <li>✅ Smooth animations</li>
                   <li>✅ Reduced motion support</li>
                   <li>✅ Multiple transition variants</li>

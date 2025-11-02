@@ -2,10 +2,8 @@
  * Simplified Performance Provider
  * Provides performance monitoring without complex generics
  */
-
 import React, { createContext, useContext, useCallback, useEffect } from 'react';
 import { performanceMonitor } from '@/utils/performance-monitor';
-
 interface PerformanceContextValue {
   recordMetric: (metric: {
     name: string;
@@ -19,14 +17,11 @@ interface PerformanceContextValue {
   endMeasure: (name: string, metadata?: Record<string, any>) => void;
   monitor: typeof performanceMonitor;
 }
-
 const PerformanceContext = createContext<PerformanceContextValue | null>(null);
-
 interface PerformanceProviderProps {
   children: React.ReactNode;
   enableReporting?: boolean;
 }
-
 export function PerformanceProvider({ 
   children, 
   enableReporting = true 
@@ -38,29 +33,23 @@ export function PerformanceProvider({
     metadata?: Record<string, any>;
   }) => {
     performanceMonitor.recordMetric(metric.name, metric.value, metric.metadata);
-    
     if (enableReporting) {
       // Report to analytics if enabled
       reportToAnalytics(metric);
     }
   }, [enableReporting]);
-
   const measureFunction = useCallback((name: string, fn: () => any): any => {
     return performanceMonitor.measureFunction(name, fn);
   }, []);
-
   const measureAsyncFunction = useCallback(async (name: string, fn: () => Promise<any>): Promise<any> => {
     return performanceMonitor.measureAsyncFunction(name, fn);
   }, []);
-
   const startMeasure = useCallback((name: string) => {
     performanceMonitor.startMeasure(name);
   }, []);
-
   const endMeasure = useCallback((name: string, metadata?: Record<string, any>) => {
     performanceMonitor.endMeasure(name, metadata);
   }, []);
-
   const value: PerformanceContextValue = {
     recordMetric,
     measureFunction,
@@ -69,14 +58,12 @@ export function PerformanceProvider({
     endMeasure,
     monitor: performanceMonitor,
   };
-
   return (
     <PerformanceContext.Provider value={value}>
       {children}
     </PerformanceContext.Provider>
   );
 }
-
 export const usePerformanceContext = (): PerformanceContextValue => {
   const context = useContext(PerformanceContext);
   if (!context) {
@@ -84,7 +71,6 @@ export const usePerformanceContext = (): PerformanceContextValue => {
   }
   return context;
 };
-
 // Higher-order component for measuring component render time
 export function withPerformanceMeasurement(
   Component: React.ComponentType<any>,
@@ -93,25 +79,19 @@ export function withPerformanceMeasurement(
   const WrappedComponent = React.forwardRef<any, any>((props, ref) => {
     const { measureFunction } = usePerformanceContext();
     const componentName = measurementName || Component.displayName || Component.name || 'Component';
-
     return measureFunction(`${componentName}-render`, () =>
       React.createElement(Component, { ...props, ref })
     );
   });
-
   WrappedComponent.displayName = `withPerformanceMeasurement(${Component.displayName || Component.name})`;
-
   return WrappedComponent;
 }
-
 // Hook for measuring component lifecycle
 export function useComponentPerformance(componentName: string) {
   const { recordMetric, startMeasure, endMeasure } = usePerformanceContext();
-
   // Measure component mount/unmount time
   useEffect(() => {
     const mountStart = performance.now();
-    
     return () => {
       const mountEnd = performance.now();
       recordMetric({
@@ -122,37 +102,30 @@ export function useComponentPerformance(componentName: string) {
       });
     };
   }, [componentName, recordMetric]);
-
   const measureRender = useCallback((fn: () => any): any => {
     const start = performance.now();
     const result = fn();
     const end = performance.now();
-    
     recordMetric({
       name: `${componentName}-render`,
       value: end - start,
       type: 'component-lifecycle',
       metadata: { componentName }
     });
-    
     return result;
   }, [componentName, recordMetric]);
-
   const measureAsync = useCallback(async (name: string, fn: () => Promise<any>): Promise<any> => {
     const start = performance.now();
     const result = await fn();
     const end = performance.now();
-    
     recordMetric({
       name: `${componentName}-${name}`,
       value: end - start,
       type: 'component-async',
       metadata: { componentName, operation: name }
     });
-    
     return result;
   }, [componentName, recordMetric]);
-
   return {
     measureRender,
     measureAsync,
@@ -160,17 +133,14 @@ export function useComponentPerformance(componentName: string) {
     endMeasure: (name: string, metadata?: Record<string, any>) => endMeasure(`${componentName}-${name}`, metadata),
   };
 }
-
 // Hook for measuring user interactions
 export function useInteractionPerformance() {
   const { recordMetric } = usePerformanceContext();
-
   const measureClick = useCallback((elementName: string, handler: () => void) => {
     return () => {
       const start = performance.now();
       handler();
       const end = performance.now();
-      
       recordMetric({
         name: `click-${elementName}`,
         value: end - start,
@@ -179,13 +149,11 @@ export function useInteractionPerformance() {
       });
     };
   }, [recordMetric]);
-
   const measureAsyncClick = useCallback((elementName: string, handler: () => Promise<void>) => {
     return async () => {
       const start = performance.now();
       await handler();
       const end = performance.now();
-      
       recordMetric({
         name: `async-click-${elementName}`,
         value: end - start,
@@ -194,13 +162,11 @@ export function useInteractionPerformance() {
       });
     };
   }, [recordMetric]);
-
   const measureFormSubmit = useCallback((formName: string, handler: () => void | Promise<void>) => {
     return async () => {
       const start = performance.now();
       await handler();
       const end = performance.now();
-      
       recordMetric({
         name: `form-submit-${formName}`,
         value: end - start,
@@ -209,14 +175,12 @@ export function useInteractionPerformance() {
       });
     };
   }, [recordMetric]);
-
   return {
     measureClick,
     measureAsyncClick,
     measureFormSubmit,
   };
 }
-
 // Helper function to report metrics to analytics
 async function reportToAnalytics(metric: {
   name: string;
@@ -227,18 +191,13 @@ async function reportToAnalytics(metric: {
   try {
     // This would integrate with your analytics service
     // For now, we'll just log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Performance Metric:', {
-        name: metric.name,
-        value: `${metric.value.toFixed(2)}ms`,
+    ms`,
         type: metric.type,
         metadata: metric.metadata,
         timestamp: new Date().toISOString(),
       });
     }
   } catch (error) {
-    console.warn('Failed to report performance metric to analytics:', error);
   }
 }
-
 export default PerformanceProvider;

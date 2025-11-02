@@ -4,13 +4,11 @@
  * Provides comprehensive error handling with graceful degradation,
  * intelligent recovery mechanisms, and detailed error analytics.
  */
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { errorReportingService, ErrorReport } from '../../utils/error-reporting';
 import { ErrorRecoveryManager } from '../../lib/error-handling/error-recovery-manager';
 import { ErrorAnalytics } from '../../lib/error-handling/error-analytics';
 import { ProductionErrorFallback } from './ProductionErrorFallback';
-
 interface Props {
   children: ReactNode;
   fallbackComponent?: React.ComponentType<ErrorFallbackProps>;
@@ -20,7 +18,6 @@ interface Props {
   section?: string;
   level?: 'global' | 'feature' | 'component';
 }
-
 interface State {
   hasError: boolean;
   error: Error | null;
@@ -30,7 +27,6 @@ interface State {
   isRecovering: boolean;
   fallbackMode: 'full' | 'degraded' | 'minimal';
 }
-
 export interface ErrorFallbackProps {
   error: Error | null;
   errorInfo: ErrorInfo | null;
@@ -43,16 +39,13 @@ export interface ErrorFallbackProps {
   fallbackMode: 'full' | 'degraded' | 'minimal';
   isRecovering: boolean;
 }
-
 export class GlobalErrorBoundary extends Component<Props, State> {
   private recoveryManager: ErrorRecoveryManager;
   private analytics: ErrorAnalytics;
   private maxRecoveryAttempts = 3;
   private recoveryTimeout: NodeJS.Timeout | null = null;
-
   constructor(props: Props) {
     super(props);
-    
     this.state = {
       hasError: false,
       error: null,
@@ -62,20 +55,17 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       isRecovering: false,
       fallbackMode: 'full'
     };
-
     this.recoveryManager = new ErrorRecoveryManager({
       maxAttempts: this.maxRecoveryAttempts,
       retryDelay: 1000,
       exponentialBackoff: true,
       section: props.section || 'unknown'
     });
-
     this.analytics = new ErrorAnalytics({
       enabled: props.enableAnalytics !== false,
       section: props.section || 'unknown'
     });
   }
-
   static getDerivedStateFromError(error: Error): Partial<State> {
     return {
       hasError: true,
@@ -83,41 +73,32 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       fallbackMode: 'full'
     };
   }
-
   async componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('GlobalErrorBoundary caught an error:', error, errorInfo);
-
     // Generate comprehensive error report
     const errorReport = await this.generateErrorReport(error, errorInfo);
-
     // Update state with error details
     this.setState({
       errorInfo,
       errorReport,
       fallbackMode: this.determineFallbackMode(error, errorInfo)
     });
-
     // Report error to monitoring services
     await this.reportError(error, errorInfo, errorReport);
-
     // Track error analytics
     this.analytics.trackError(error, errorInfo, {
       section: this.props.section,
       level: this.props.level || 'component',
       recoveryAttempts: this.state.recoveryAttempts
     });
-
     // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo, errorReport);
     }
-
     // Attempt automatic recovery if enabled
     if (this.props.enableRecovery !== false) {
       this.attemptRecovery();
     }
   }
-
   private async generateErrorReport(error: Error, errorInfo: ErrorInfo): Promise<ErrorReport> {
     const report: ErrorReport = {
       id: `global-error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -147,14 +128,11 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       },
       breadcrumbs: [] // TODO: Implement proper breadcrumbs
     };
-
     return report;
   }
-
   private determineSeverity(error: Error): ErrorReport['severity'] {
     const message = error.message.toLowerCase();
     const name = error.name.toLowerCase();
-
     // Critical errors that break the entire application
     if (
       this.props.level === 'global' ||
@@ -164,7 +142,6 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     ) {
       return 'critical';
     }
-
     // High severity errors that break major features
     if (
       this.props.level === 'feature' ||
@@ -174,7 +151,6 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     ) {
       return 'high';
     }
-
     // Medium severity errors that break components
     if (
       message.includes('render') ||
@@ -183,37 +159,28 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     ) {
       return 'medium';
     }
-
     return 'low';
   }
-
   private categorizeError(error: Error): ErrorReport['category'] {
     const message = error.message.toLowerCase();
     const name = error.name.toLowerCase();
-
     if (message.includes('network') || message.includes('fetch')) return 'network';
     if (message.includes('auth') || message.includes('token')) return 'auth';
     if (message.includes('chunk') || message.includes('loading')) return 'ui';
     if (name.includes('type') || name.includes('reference')) return 'ui';
-    
     return 'unknown';
   }
-
   private determineFallbackMode(error: Error, errorInfo: ErrorInfo): 'full' | 'degraded' | 'minimal' {
     const severity = this.determineSeverity(error);
     const recoveryAttempts = this.state.recoveryAttempts;
-
     if (severity === 'critical' || recoveryAttempts >= this.maxRecoveryAttempts) {
       return 'minimal';
     }
-
     if (severity === 'high' || recoveryAttempts >= 2) {
       return 'degraded';
     }
-
     return 'full';
   }
-
   private async reportError(error: Error, errorInfo: ErrorInfo, errorReport: ErrorReport) {
     try {
       // Report to error reporting service
@@ -222,18 +189,13 @@ export class GlobalErrorBoundary extends Component<Props, State> {
         retryCount: this.state.recoveryAttempts,
         level: this.props.level
       });
-
       // Report to external monitoring services
       await this.reportToMonitoringServices(errorReport);
-
       // Store for offline analysis
       this.storeErrorForAnalysis(errorReport);
-
     } catch (reportingError) {
-      console.error('Failed to report error:', reportingError);
     }
   }
-
   private async reportToMonitoringServices(errorReport: ErrorReport) {
     // Report to Sentry if configured
     if (typeof window !== 'undefined' && (window as any).Sentry) {
@@ -247,7 +209,6 @@ export class GlobalErrorBoundary extends Component<Props, State> {
         fingerprint: [errorReport.message, errorReport.section]
       });
     }
-
     // Report to custom monitoring endpoint
     const monitoringEndpoint = process.env.NEXT_PUBLIC_ERROR_MONITORING_ENDPOINT;
     if (monitoringEndpoint) {
@@ -261,57 +222,42 @@ export class GlobalErrorBoundary extends Component<Props, State> {
           body: JSON.stringify(errorReport)
         });
       } catch (error) {
-        console.warn('Failed to send error to monitoring service:', error);
       }
     }
   }
-
   private storeErrorForAnalysis(errorReport: ErrorReport) {
     try {
       const key = `error_analysis_${this.props.section || 'global'}`;
       const stored = localStorage.getItem(key);
       const reports = stored ? JSON.parse(stored) : [];
-      
       reports.push(errorReport);
-      
       // Keep only the most recent 50 reports per section
       const recentReports = reports.slice(-50);
-      
       localStorage.setItem(key, JSON.stringify(recentReports));
     } catch (error) {
-      console.warn('Failed to store error for analysis:', error);
     }
   }
-
   private attemptRecovery = async () => {
     if (this.state.recoveryAttempts >= this.maxRecoveryAttempts) {
-      console.warn('Maximum recovery attempts reached');
       return;
     }
-
     this.setState({ isRecovering: true });
-
     try {
       const recoveryStrategy = await this.recoveryManager.getRecoveryStrategy(
         this.state.error!,
         this.state.errorInfo!,
         this.state.recoveryAttempts
       );
-
       await this.executeRecoveryStrategy(recoveryStrategy);
-
     } catch (recoveryError) {
-      console.error('Recovery attempt failed:', recoveryError);
       this.setState({ 
         isRecovering: false,
         fallbackMode: 'minimal'
       });
     }
   };
-
   private async executeRecoveryStrategy(strategy: any) {
     const delay = strategy.delay || 1000;
-    
     this.recoveryTimeout = setTimeout(() => {
       this.setState(prevState => ({
         hasError: false,
@@ -324,7 +270,6 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       }));
     }, delay);
   }
-
   private handleRetry = () => {
     this.setState({
       hasError: false,
@@ -335,17 +280,14 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       fallbackMode: 'full'
     });
   };
-
   private handleRecover = async () => {
     await this.attemptRecovery();
   };
-
   private handleReport = async () => {
     if (this.state.error && this.state.errorInfo && this.state.errorReport) {
       await this.reportError(this.state.error, this.state.errorInfo, this.state.errorReport);
     }
   };
-
   private getSessionId(): string {
     let sessionId = sessionStorage.getItem('error_session_id');
     if (!sessionId) {
@@ -354,7 +296,6 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     }
     return sessionId;
   }
-
   private getMemoryInfo(): any {
     if ('memory' in performance) {
       return {
@@ -365,7 +306,6 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     }
     return null;
   }
-
   private getPerformanceInfo(): any {
     if ('getEntriesByType' in performance) {
       const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
@@ -378,17 +318,14 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     }
     return null;
   }
-
   componentWillUnmount() {
     if (this.recoveryTimeout) {
       clearTimeout(this.recoveryTimeout);
     }
   }
-
   render() {
     if (this.state.hasError) {
       const FallbackComponent = this.props.fallbackComponent || ProductionErrorFallback;
-
       return (
         <FallbackComponent
           error={this.state.error}
@@ -404,11 +341,9 @@ export class GlobalErrorBoundary extends Component<Props, State> {
         />
       );
     }
-
     return this.props.children;
   }
 }
-
 // Higher-order component for easy wrapping
 export function withGlobalErrorBoundary<P extends object>(
   WrappedComponent: React.ComponentType<P>,
@@ -419,11 +354,8 @@ export function withGlobalErrorBoundary<P extends object>(
       <WrappedComponent {...props} />
     </GlobalErrorBoundary>
   );
-
   WithGlobalErrorBoundaryComponent.displayName = 
     `withGlobalErrorBoundary(${WrappedComponent.displayName || WrappedComponent.name})`;
-
   return WithGlobalErrorBoundaryComponent;
 }
-
 export default GlobalErrorBoundary;

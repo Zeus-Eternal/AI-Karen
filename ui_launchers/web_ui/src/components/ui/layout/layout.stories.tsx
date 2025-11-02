@@ -45,7 +45,7 @@ const SampleCard = ({
  */
 export const GridLayouts: Story = {
   render: () => (
-    <div className="p-8 space-y-12">
+    <div className="p-8 space-y-12 sm:p-4 md:p-6">
       <h1 className="text-3xl font-bold mb-8">Grid Container Examples</h1>
       
       {/* Basic Grid */}
@@ -121,7 +121,7 @@ export const GridLayouts: Story = {
  */
 export const FlexLayouts: Story = {
   render: () => (
-    <div className="p-8 space-y-12">
+    <div className="p-8 space-y-12 sm:p-4 md:p-6">
       <h1 className="text-3xl font-bold mb-8">Flex Container Examples</h1>
       
       {/* Basic Flex Row */}
@@ -158,7 +158,7 @@ export const FlexLayouts: Story = {
 
           <div>
             <h3 className="text-lg font-medium mb-2">Space Between</h3>
-            <FlexContainer justify="between" gap="1rem" className="bg-gray-50 rounded p-4">
+            <FlexContainer justify="between" gap="1rem" className="bg-gray-50 rounded p-4 sm:p-4 md:p-6">
               <SampleCard color="bg-purple-100">Start</SampleCard>
               <SampleCard color="bg-purple-100">Middle</SampleCard>
               <SampleCard color="bg-purple-100">End</SampleCard>
@@ -167,7 +167,7 @@ export const FlexLayouts: Story = {
 
           <div>
             <h3 className="text-lg font-medium mb-2">Flex Wrap</h3>
-            <FlexContainer wrap gap="1rem" className="bg-gray-50 rounded p-4">
+            <FlexContainer wrap gap="1rem" className="bg-gray-50 rounded p-4 sm:p-4 md:p-6">
               {Array.from({ length: 8 }, (_, i) => (
                 <SampleCard key={i} color="bg-yellow-100" style={{ minWidth: '120px' }}>
                   Item {i + 1}
@@ -186,13 +186,13 @@ export const FlexLayouts: Story = {
  */
 export const ResponsiveContainers: Story = {
   render: () => (
-    <div className="p-8 space-y-12">
+    <div className="p-8 space-y-12 sm:p-4 md:p-6">
       <h1 className="text-3xl font-bold mb-8">Responsive Container Examples</h1>
       
       {/* Basic Container */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Basic Container</h2>
-        <ResponsiveContainer className="bg-gray-50 rounded p-4">
+        <ResponsiveContainer className="bg-gray-50 rounded p-4 sm:p-4 md:p-6">
           <SampleCard>Full Width Container</SampleCard>
         </ResponsiveContainer>
       </div>
@@ -200,7 +200,7 @@ export const ResponsiveContainers: Story = {
       {/* Centered Container */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Centered Container</h2>
-        <ResponsiveContainer size="lg" center className="bg-gray-50 rounded p-4">
+        <ResponsiveContainer size="lg" center className="bg-gray-50 rounded p-4 sm:p-4 md:p-6">
           <SampleCard color="bg-green-100">Centered Large Container</SampleCard>
         </ResponsiveContainer>
       </div>
@@ -222,11 +222,11 @@ export const ResponsiveContainers: Story = {
         <ResponsiveContainer 
           containerQueries
           containerName="demo"
-          className="bg-gray-50 rounded p-4"
+          className="bg-gray-50 rounded p-4 sm:p-4 md:p-6"
           style={{ resize: 'horizontal', overflow: 'auto', minWidth: '300px' }}
         >
-          <div className="bg-white p-4 rounded">
-            <p className="text-sm text-gray-600 mb-2">Resize this container horizontally →</p>
+          <div className="bg-white p-4 rounded sm:p-4 md:p-6">
+            <p className="text-sm text-gray-600 mb-2 md:text-base lg:text-lg">Resize this container horizontally →</p>
             <SampleCard color="bg-pink-100">Container Query Responsive</SampleCard>
           </div>
         </ResponsiveContainer>
@@ -240,7 +240,7 @@ export const ResponsiveContainers: Story = {
  */
 export const ComplexLayouts: Story = {
   render: () => (
-    <div className="p-8 space-y-12">
+    <div className="p-8 space-y-12 sm:p-4 md:p-6">
       <h1 className="text-3xl font-bold mb-8">Complex Layout Combinations</h1>
       
       {/* Dashboard Layout */}
@@ -287,14 +287,14 @@ export const ComplexLayouts: Story = {
             {Array.from({ length: 6 }, (_, i) => (
               <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="h-32 bg-gradient-to-r from-blue-400 to-purple-500"></div>
-                <div className="p-4">
+                <div className="p-4 sm:p-4 md:p-6">
                   <h3 className="font-semibold text-lg mb-2">Card Title {i + 1}</h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-gray-600 text-sm md:text-base lg:text-lg">
                     This is a sample card with some content to demonstrate the responsive grid layout.
                   </p>
                   <FlexContainer justify="between" align="center" className="mt-4">
-                    <span className="text-xs text-gray-500">Category</span>
-                    <button className="px-3 py-1 bg-blue-500 text-white text-xs rounded">
+                    <span className="text-xs text-gray-500 sm:text-sm md:text-base">Category</span>
+                    <button className="px-3 py-1 bg-blue-500 text-white text-xs rounded sm:text-sm md:text-base" aria-label="Button">
                       Action
                     </button>
                   </FlexContainer>
@@ -315,7 +315,7 @@ export const ComplexLayouts: Story = {
             className="min-h-96"
           >
             <article className="prose max-w-none">
-              <SampleCard color="bg-white" className="text-left p-6 h-full">
+              <SampleCard color="bg-white" className="text-left p-6 h-full sm:p-4 md:p-6">
                 <h1 className="text-2xl font-bold mb-4">Article Title</h1>
                 <p className="mb-4">
                   This is the main article content area. It would contain the full article text,
@@ -346,10 +346,10 @@ export const ComplexLayouts: Story = {
  */
 export const Overview: Story = {
   render: () => (
-    <div className="p-8 space-y-12">
+    <div className="p-8 space-y-12 sm:p-4 md:p-6">
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-4">Modern Layout System</h1>
-        <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+        <p className="text-lg text-gray-600 max-w-3xl mx-auto sm:w-auto md:w-full">
           A comprehensive layout system built with CSS Grid, Flexbox, and container queries 
           for creating responsive, flexible, and maintainable layouts.
         </p>
@@ -357,7 +357,7 @@ export const Overview: Story = {
 
       {/* Feature Grid */}
       <GridContainer columns="repeat(auto-fit, minmax(300px, 1fr))" gap="2rem">
-        <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="bg-white p-6 rounded-lg shadow-md sm:p-4 md:p-6">
           <h3 className="text-xl font-semibold mb-3">CSS Grid Container</h3>
           <p className="text-gray-600 mb-4">
             Powerful grid layouts with named areas, responsive columns, and auto-fit capabilities.
@@ -369,19 +369,19 @@ export const Overview: Story = {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="bg-white p-6 rounded-lg shadow-md sm:p-4 md:p-6">
           <h3 className="text-xl font-semibold mb-3">Flex Container</h3>
           <p className="text-gray-600 mb-4">
             Flexible layouts with alignment, distribution, and wrapping options.
           </p>
           <FlexContainer gap="0.5rem" justify="between">
-            <div className="h-8 w-16 bg-green-200 rounded"></div>
-            <div className="h-8 w-16 bg-green-200 rounded"></div>
-            <div className="h-8 w-16 bg-green-200 rounded"></div>
+            <div className="h-8 w-16 bg-green-200 rounded sm:w-auto md:w-full"></div>
+            <div className="h-8 w-16 bg-green-200 rounded sm:w-auto md:w-full"></div>
+            <div className="h-8 w-16 bg-green-200 rounded sm:w-auto md:w-full"></div>
           </FlexContainer>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="bg-white p-6 rounded-lg shadow-md sm:p-4 md:p-6">
           <h3 className="text-xl font-semibold mb-3">Responsive Container</h3>
           <p className="text-gray-600 mb-4">
             Smart containers with container queries and responsive sizing.
@@ -391,36 +391,36 @@ export const Overview: Story = {
       </GridContainer>
 
       {/* Benefits */}
-      <div className="bg-gray-50 rounded-lg p-8">
+      <div className="bg-gray-50 rounded-lg p-8 sm:p-4 md:p-6">
         <h2 className="text-2xl font-bold mb-6 text-center">Key Benefits</h2>
         <FlexContainer wrap gap="2rem" justify="center">
           <div className="text-center">
-            <div className="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-3 flex items-center justify-center">
+            <div className="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
               <span className="text-white font-bold">📱</span>
             </div>
             <h4 className="font-semibold">Responsive</h4>
-            <p className="text-sm text-gray-600">Adapts to all screen sizes</p>
+            <p className="text-sm text-gray-600 md:text-base lg:text-lg">Adapts to all screen sizes</p>
           </div>
           <div className="text-center">
-            <div className="w-16 h-16 bg-green-500 rounded-full mx-auto mb-3 flex items-center justify-center">
+            <div className="w-16 h-16 bg-green-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
               <span className="text-white font-bold">⚡</span>
             </div>
             <h4 className="font-semibold">Performance</h4>
-            <p className="text-sm text-gray-600">Optimized CSS layouts</p>
+            <p className="text-sm text-gray-600 md:text-base lg:text-lg">Optimized CSS layouts</p>
           </div>
           <div className="text-center">
-            <div className="w-16 h-16 bg-purple-500 rounded-full mx-auto mb-3 flex items-center justify-center">
+            <div className="w-16 h-16 bg-purple-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
               <span className="text-white font-bold">🎨</span>
             </div>
             <h4 className="font-semibold">Flexible</h4>
-            <p className="text-sm text-gray-600">Customizable and extensible</p>
+            <p className="text-sm text-gray-600 md:text-base lg:text-lg">Customizable and extensible</p>
           </div>
           <div className="text-center">
-            <div className="w-16 h-16 bg-orange-500 rounded-full mx-auto mb-3 flex items-center justify-center">
+            <div className="w-16 h-16 bg-orange-500 rounded-full mx-auto mb-3 flex items-center justify-center sm:w-auto md:w-full">
               <span className="text-white font-bold">🔧</span>
             </div>
             <h4 className="font-semibold">Developer Friendly</h4>
-            <p className="text-sm text-gray-600">TypeScript support</p>
+            <p className="text-sm text-gray-600 md:text-base lg:text-lg">TypeScript support</p>
           </div>
         </FlexContainer>
       </div>

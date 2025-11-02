@@ -5,7 +5,7 @@
  * Based on requirements: 1.1, 1.2, 1.3, 11.4
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import { EnhancedBadge, EnhancedBadgeGroup } from '../badge';

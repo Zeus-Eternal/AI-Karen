@@ -6,12 +6,10 @@
  * 
  * Requirements: 1.4, 4.4
  */
-
 import { HttpConnectionPool, getHttpConnectionPool, ConnectionPoolConfig } from './http-connection-pool';
 import { RequestResponseCache, getRequestResponseCache, CacheConfig } from './request-response-cache';
 import { DatabaseQueryOptimizer, getDatabaseQueryOptimizer, QueryOptimizationConfig } from './database-query-optimizer';
 import { getConnectionManager } from '../connection/connection-manager';
-
 export interface PerformanceConfig {
   connectionPool: Partial<ConnectionPoolConfig>;
   responseCache: Partial<CacheConfig>;
@@ -19,7 +17,6 @@ export interface PerformanceConfig {
   enableMetrics: boolean;
   metricsInterval: number;
 }
-
 export interface PerformanceMetrics {
   connectionPool: {
     totalConnections: number;
@@ -46,7 +43,6 @@ export interface PerformanceMetrics {
     uptime: number;
   };
 }
-
 export interface OptimizedRequestOptions {
   useConnectionPool?: boolean;
   enableCaching?: boolean;
@@ -58,7 +54,6 @@ export interface OptimizedRequestOptions {
   timeout?: number;
   retryAttempts?: number;
 }
-
 /**
  * Performance Optimizer
  * 
@@ -75,7 +70,6 @@ export class PerformanceOptimizer {
   private requestCount = 0;
   private errorCount = 0;
   private totalResponseTime = 0;
-
   constructor(config?: Partial<PerformanceConfig>) {
     this.config = {
       connectionPool: {},
@@ -85,17 +79,14 @@ export class PerformanceOptimizer {
       metricsInterval: 60000, // 1 minute
       ...config,
     };
-
     this.startTime = Date.now();
     this.connectionPool = getHttpConnectionPool();
     this.responseCache = getRequestResponseCache();
     this.queryOptimizer = getDatabaseQueryOptimizer();
-
     if (this.config.enableMetrics) {
       this.startMetricsCollection();
     }
   }
-
   /**
    * Make an optimized HTTP request with connection pooling and caching
    */
@@ -106,22 +97,18 @@ export class PerformanceOptimizer {
   ): Promise<T> {
     const startTime = Date.now();
     this.requestCount++;
-
     try {
       // Generate cache key
       const cacheKey = this.generateRequestCacheKey(url, options);
-      
       // Check cache first (if enabled)
       if (optimizationOptions.enableCaching !== false) {
         const cachedResponse = await this.responseCache.get(cacheKey, {
           skipCache: false,
         });
-        
         if (cachedResponse) {
           return cachedResponse.data;
         }
       }
-
       // Make request using connection pool (if enabled)
       let response: Response;
       if (optimizationOptions.useConnectionPool !== false) {
@@ -139,7 +126,6 @@ export class PerformanceOptimizer {
           headers: result.headers,
         });
       }
-
       // Parse response
       let data: T;
       const contentType = response.headers.get('content-type');
@@ -148,14 +134,12 @@ export class PerformanceOptimizer {
       } else {
         data = await response.text() as unknown as T;
       }
-
       // Cache the response (if enabled and successful)
       if (optimizationOptions.enableCaching !== false && response.ok) {
         const headers: Record<string, string> = {};
         response.headers.forEach((value, key) => {
           headers[key] = value;
         });
-
         await this.responseCache.set(
           cacheKey,
           data,
@@ -168,13 +152,10 @@ export class PerformanceOptimizer {
           }
         );
       }
-
       // Update metrics
       const responseTime = Date.now() - startTime;
       this.totalResponseTime += responseTime;
-
       return data;
-
     } catch (error) {
       this.errorCount++;
       const responseTime = Date.now() - startTime;
@@ -182,7 +163,6 @@ export class PerformanceOptimizer {
       throw error;
     }
   }
-
   /**
    * Optimized authentication request
    */
@@ -203,7 +183,6 @@ export class PerformanceOptimizer {
       useConnectionPool: true,
     });
   }
-
   /**
    * Optimized session validation request
    */
@@ -224,7 +203,6 @@ export class PerformanceOptimizer {
       useConnectionPool: true,
     });
   }
-
   /**
    * Optimized user data request
    */
@@ -241,7 +219,6 @@ export class PerformanceOptimizer {
       useConnectionPool: true,
     });
   }
-
   /**
    * Optimized health check request
    */
@@ -259,14 +236,12 @@ export class PerformanceOptimizer {
       timeout: 5000, // Short timeout for health checks
     });
   }
-
   /**
    * Invalidate cache by tags
    */
   invalidateCache(tags: string[]): number {
     return this.responseCache.clearByTags(tags);
   }
-
   /**
    * Invalidate user-specific cache
    */
@@ -274,7 +249,6 @@ export class PerformanceOptimizer {
     this.responseCache.clearByTags([`user:${userId}`]);
     this.queryOptimizer.invalidateUserCache(userId);
   }
-
   /**
    * Get comprehensive performance metrics
    */
@@ -282,12 +256,10 @@ export class PerformanceOptimizer {
     const connectionPoolMetrics = this.connectionPool.getMetrics();
     const cacheMetrics = this.responseCache.getMetrics();
     const queryMetrics = this.queryOptimizer.getMetrics();
-    
     const uptime = Date.now() - this.startTime;
     const averageResponseTime = this.requestCount > 0 ? this.totalResponseTime / this.requestCount : 0;
     const errorRate = this.requestCount > 0 ? this.errorCount / this.requestCount : 0;
     const requestThroughput = this.requestCount / (uptime / 1000); // requests per second
-
     return {
       connectionPool: {
         totalConnections: connectionPoolMetrics.totalConnections,
@@ -315,73 +287,56 @@ export class PerformanceOptimizer {
       },
     };
   }
-
   /**
    * Get performance recommendations based on metrics
    */
   getPerformanceRecommendations(): string[] {
     const metrics = this.getMetrics();
     const recommendations: string[] = [];
-
     // Connection pool recommendations
     if (metrics.connectionPool.connectionReuse < 2) {
       recommendations.push('Consider increasing connection pool size for better connection reuse');
     }
-
     // Cache recommendations
     if (metrics.responseCache.hitRate < 0.5) {
       recommendations.push('Cache hit rate is low - consider increasing cache TTL or size');
     }
-
     if (metrics.responseCache.memoryUsage > 40 * 1024 * 1024) { // 40MB
       recommendations.push('Cache memory usage is high - consider enabling compression or reducing cache size');
     }
-
     // Query optimizer recommendations
     if (metrics.queryOptimizer.averageQueryTime > 500) {
       recommendations.push('Average query time is high - consider optimizing database queries or adding indexes');
     }
-
     if (metrics.queryOptimizer.slowQueries > 10) {
       recommendations.push('Multiple slow queries detected - review query performance and database configuration');
     }
-
     // Overall performance recommendations
     if (metrics.overall.errorRate > 0.05) { // 5%
       recommendations.push('Error rate is high - investigate connection stability and error handling');
     }
-
     if (metrics.overall.averageResponseTime > 2000) {
       recommendations.push('Average response time is high - consider optimizing request handling and caching');
     }
-
     return recommendations;
   }
-
   /**
    * Optimize system configuration based on current metrics
    */
   autoOptimize(): void {
     const metrics = this.getMetrics();
-    
     // Auto-adjust connection pool size based on usage
     if (metrics.connectionPool.activeConnections / metrics.connectionPool.totalConnections > 0.8) {
-      console.log('High connection pool utilization detected - consider increasing pool size');
     }
-
     // Auto-adjust cache size based on hit rate
     if (metrics.responseCache.hitRate < 0.3) {
-      console.log('Low cache hit rate - consider increasing cache TTL or reviewing caching strategy');
     }
-
     // Auto-clear cache if memory usage is too high
     if (metrics.responseCache.memoryUsage > 50 * 1024 * 1024) { // 50MB
-      console.log('High cache memory usage - clearing old entries');
       // Clear entries older than 1 hour
       this.responseCache.clear();
     }
   }
-
   /**
    * Shutdown the performance optimizer
    */
@@ -390,14 +345,10 @@ export class PerformanceOptimizer {
       clearInterval(this.metricsInterval);
       this.metricsInterval = null;
     }
-
     await this.connectionPool.shutdown();
     this.responseCache.shutdown();
     this.queryOptimizer.shutdown();
-
-    console.log('Performance Optimizer shutdown completed');
   }
-
   /**
    * Generate cache key for request
    */
@@ -405,17 +356,14 @@ export class PerformanceOptimizer {
     const method = options.method || 'GET';
     const body = options.body ? JSON.stringify(options.body) : '';
     const headers = JSON.stringify(options.headers || {});
-    
     return `${method}:${url}:${body}:${headers}`;
   }
-
   /**
    * Start metrics collection
    */
   private startMetricsCollection(): void {
     this.metricsInterval = setInterval(() => {
       const metrics = this.getMetrics();
-      
       // Log performance metrics
       console.log('Performance Metrics:', {
         requestThroughput: metrics.overall.requestThroughput.toFixed(2),
@@ -424,17 +372,13 @@ export class PerformanceOptimizer {
         connectionReuse: metrics.connectionPool.connectionReuse,
         errorRate: (metrics.overall.errorRate * 100).toFixed(2) + '%',
       });
-
       // Auto-optimize if enabled
       this.autoOptimize();
-      
     }, this.config.metricsInterval);
   }
 }
-
 // Global performance optimizer instance
 let performanceOptimizer: PerformanceOptimizer | null = null;
-
 /**
  * Get the global performance optimizer instance
  */
@@ -444,7 +388,6 @@ export function getPerformanceOptimizer(): PerformanceOptimizer {
   }
   return performanceOptimizer;
 }
-
 /**
  * Initialize performance optimizer with custom configuration
  */
@@ -452,11 +395,9 @@ export function initializePerformanceOptimizer(config?: Partial<PerformanceConfi
   if (performanceOptimizer) {
     performanceOptimizer.shutdown();
   }
-  
   performanceOptimizer = new PerformanceOptimizer(config);
   return performanceOptimizer;
 }
-
 /**
  * Shutdown the global performance optimizer
  */

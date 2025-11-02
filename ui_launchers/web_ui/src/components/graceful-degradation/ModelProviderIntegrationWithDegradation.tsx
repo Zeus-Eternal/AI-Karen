@@ -173,7 +173,7 @@ function ModelProviderFallback({
         fallbackData={providers}
       >
         <div className="mt-4">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 md:text-base lg:text-lg">
             Available Providers (Cached):
           </h4>
           <ModelProviderList
@@ -194,14 +194,14 @@ function ModelProviderSkeleton({ className }: { className?: string }) {
   return (
     <div className={`model-provider-skeleton ${className}`}>
       <div className="animate-pulse space-y-3">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 sm:w-auto md:w-full"></div>
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex items-center space-x-3">
-              <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded sm:w-auto md:w-full"></div>
               <div className="flex-1 space-y-1">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 sm:w-auto md:w-full"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 sm:w-auto md:w-full"></div>
               </div>
             </div>
           ))}
@@ -233,7 +233,7 @@ function ModelProviderList({
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
           Model Providers
           {isStale && (
-            <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+            <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded sm:text-sm md:text-base">
               Cached Data
             </span>
           )}
@@ -241,9 +241,9 @@ function ModelProviderList({
         {onRefresh && (
           <button
             onClick={onRefresh}
-            className="text-sm text-blue-600 hover:text-blue-700 underline"
+            className="text-sm text-blue-600 hover:text-blue-700 underline md:text-base lg:text-lg"
             disabled={disabled}
-          >
+           aria-label="Button">
             Refresh
           </button>
         )}
@@ -273,12 +273,12 @@ function ModelProviderList({
                 <div className="font-medium text-gray-900 dark:text-gray-100">
                   {provider.name}
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
+                <div className="text-sm text-gray-500 dark:text-gray-400 md:text-base lg:text-lg">
                   {provider.type} • {provider.models?.length || 0} models
                 </div>
               </div>
             </div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-gray-400 md:text-base lg:text-lg">
               {provider.status}
             </div>
           </div>

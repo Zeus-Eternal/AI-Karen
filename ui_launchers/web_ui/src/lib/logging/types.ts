@@ -1,7 +1,6 @@
 /**
  * Types for structured logging system
  */
-
 export interface LogContext {
   correlationId: string;
   userId?: string;
@@ -11,7 +10,6 @@ export interface LogContext {
   userAgent?: string;
   ipAddress?: string;
 }
-
 export interface PerformanceMetrics {
   startTime: number;
   endTime?: number;
@@ -21,9 +19,8 @@ export interface PerformanceMetrics {
   errorCount?: number;
   metadata?: Record<string, any>;
 }
-
 export interface BaseLogEntry {
-  level: 'debug' | 'info' | 'warn' | 'error';
+  level: '' | 'warn' | 'error';
   message: string;
   context: LogContext;
   category: 'connectivity' | 'authentication' | 'performance' | 'error';
@@ -45,7 +42,6 @@ export interface BaseLogEntry {
   };
   metadata?: Record<string, any>;
 }
-
 export interface ConnectivityLogEntry extends BaseLogEntry {
   category: 'connectivity';
   subcategory: 'request' | 'retry' | 'timeout' | 'circuit_breaker';
@@ -58,7 +54,6 @@ export interface ConnectivityLogEntry extends BaseLogEntry {
     timeoutMs?: number;
   };
 }
-
 export interface AuthenticationLogEntry extends BaseLogEntry {
   category: 'authentication';
   subcategory: 'login' | 'logout' | 'session_validation' | 'token_refresh';
@@ -78,7 +73,6 @@ export interface AuthenticationLogEntry extends BaseLogEntry {
     maxAttempts?: number;
   };
 }
-
 export interface PerformanceLogEntry extends BaseLogEntry {
   category: 'performance';
   subcategory: 'response_time' | 'database_query' | 'api_call' | 'render_time';
@@ -101,11 +95,10 @@ export interface PerformanceLogEntry extends BaseLogEntry {
     };
   };
 }
-
 export interface LoggerConfig {
   enableConsoleLogging: boolean;
   enableRemoteLogging: boolean;
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  logLevel: '' | 'warn' | 'error';
   remoteEndpoint?: string;
   batchSize?: number;
   flushInterval?: number;

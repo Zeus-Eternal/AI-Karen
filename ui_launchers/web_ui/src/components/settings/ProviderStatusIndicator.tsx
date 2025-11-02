@@ -127,15 +127,15 @@ export function ProviderStatusIndicator({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
       case 'unhealthy':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
+        return <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
       case 'degraded':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
       case 'testing':
-        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />;
+        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin sm:w-auto md:w-full" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-400" />;
+        return <Clock className="h-4 w-4 text-gray-400 sm:w-auto md:w-full" />;
     }
   };
 
@@ -157,26 +157,26 @@ export function ProviderStatusIndicator({
   const getConnectivityIcon = (status: string) => {
     switch (status) {
       case 'connected':
-        return <Wifi className="h-3 w-3 text-green-600" />;
+        return <Wifi className="h-3 w-3 text-green-600 sm:w-auto md:w-full" />;
       case 'disconnected':
-        return <WifiOff className="h-3 w-3 text-red-600" />;
+        return <WifiOff className="h-3 w-3 text-red-600 sm:w-auto md:w-full" />;
       case 'timeout':
-        return <Clock className="h-3 w-3 text-yellow-600" />;
+        return <Clock className="h-3 w-3 text-yellow-600 sm:w-auto md:w-full" />;
       default:
-        return <AlertCircle className="h-3 w-3 text-gray-400" />;
+        return <AlertCircle className="h-3 w-3 text-gray-400 sm:w-auto md:w-full" />;
     }
   };
 
   const getProviderTypeIcon = (type: string) => {
     switch (type) {
       case 'local':
-        return <HardDrive className="h-4 w-4 text-blue-600" />;
+        return <HardDrive className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />;
       case 'remote':
-        return <Cloud className="h-4 w-4 text-green-600" />;
+        return <Cloud className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
       case 'hybrid':
-        return <Globe className="h-4 w-4 text-purple-600" />;
+        return <Globe className="h-4 w-4 text-purple-600 sm:w-auto md:w-full" />;
       default:
-        return <Database className="h-4 w-4 text-gray-600" />;
+        return <Database className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
     }
   };
 
@@ -191,7 +191,7 @@ export function ProviderStatusIndicator({
     return (
       <div className="flex items-center gap-2">
         {getStatusIcon(provider.status)}
-        <span className="text-sm font-medium">{provider.name}</span>
+        <span className="text-sm font-medium md:text-base lg:text-lg">{provider.name}</span>
         <Badge className={`text-xs ${getStatusColor(provider.status)}`}>
           {provider.status}
         </Badge>
@@ -235,28 +235,28 @@ export function ProviderStatusIndicator({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
+            <button
               variant="outline"
               size="sm"
               onClick={handleTest}
               disabled={testing}
-            >
+             aria-label="Button">
               {testing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
               ) : (
-                <Zap className="h-4 w-4" />
+                <Zap className="h-4 w-4 sm:w-auto md:w-full" />
               )}
             </Button>
-            <Button
+            <button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={refreshing}
-            >
+             aria-label="Button">
               {refreshing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
               ) : (
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
               )}
             </Button>
           </div>
@@ -266,37 +266,37 @@ export function ProviderStatusIndicator({
       <CardContent className="space-y-4">
         {/* Performance Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-muted/30 rounded-lg">
+          <div className="text-center p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
             <div className="text-lg font-semibold">
               {provider.performance_metrics.average_response_time.toFixed(0)}ms
             </div>
-            <div className="text-xs text-muted-foreground">Avg Response</div>
+            <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Avg Response</div>
           </div>
-          <div className="text-center p-3 bg-muted/30 rounded-lg">
+          <div className="text-center p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
             <div className="text-lg font-semibold text-green-600">
               {(provider.performance_metrics.success_rate * 100).toFixed(1)}%
             </div>
-            <div className="text-xs text-muted-foreground">Success Rate</div>
+            <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Success Rate</div>
           </div>
-          <div className="text-center p-3 bg-muted/30 rounded-lg">
+          <div className="text-center p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
             <div className="text-lg font-semibold text-red-600">
               {(provider.performance_metrics.error_rate * 100).toFixed(1)}%
             </div>
-            <div className="text-xs text-muted-foreground">Error Rate</div>
+            <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Error Rate</div>
           </div>
-          <div className="text-center p-3 bg-muted/30 rounded-lg">
+          <div className="text-center p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
             <div className="text-lg font-semibold">
               {provider.performance_metrics.requests_per_minute.toFixed(1)}
             </div>
-            <div className="text-xs text-muted-foreground">Req/Min</div>
+            <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Req/Min</div>
           </div>
         </div>
 
         {/* Model Availability */}
         {Object.keys(provider.model_availability).length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-medium flex items-center gap-2">
-              <Database className="h-4 w-4" />
+            <h4 className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
+              <Database className="h-4 w-4 sm:w-auto md:w-full" />
               Model Availability
             </h4>
             <div className="flex flex-wrap gap-1">
@@ -304,7 +304,7 @@ export function ProviderStatusIndicator({
                 <Badge
                   key={model}
                   variant={available ? "default" : "destructive"}
-                  className="text-xs"
+                  className="text-xs sm:text-sm md:text-base"
                 >
                   {model}
                 </Badge>
@@ -316,8 +316,8 @@ export function ProviderStatusIndicator({
         {/* Capability Status */}
         {Object.keys(provider.capability_status).length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-medium flex items-center gap-2">
-              <Shield className="h-4 w-4" />
+            <h4 className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
+              <Shield className="h-4 w-4 sm:w-auto md:w-full" />
               Capabilities
             </h4>
             <div className="flex flex-wrap gap-1">
@@ -325,7 +325,7 @@ export function ProviderStatusIndicator({
                 <Badge
                   key={capability}
                   variant={available ? "default" : "outline"}
-                  className="text-xs"
+                  className="text-xs sm:text-sm md:text-base"
                 >
                   {capability}
                 </Badge>
@@ -337,15 +337,15 @@ export function ProviderStatusIndicator({
         {/* Dependencies Status */}
         {Object.keys(provider.dependencies).length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-medium">Dependencies</h4>
+            <h4 className="text-sm font-medium md:text-base lg:text-lg">Dependencies</h4>
             <div className="space-y-1">
               {Object.entries(provider.dependencies).map(([dep, available]) => (
-                <div key={dep} className="flex items-center justify-between text-sm">
+                <div key={dep} className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                   <span>{dep}</span>
                   {available ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                   )}
                 </div>
               ))}
@@ -356,12 +356,12 @@ export function ProviderStatusIndicator({
         {/* Configuration Issues */}
         {provider.configuration_issues.length > 0 && (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
             <AlertTitle>Configuration Issues</AlertTitle>
             <AlertDescription>
               <ul className="list-disc list-inside space-y-1">
                 {provider.configuration_issues.map((issue, index) => (
-                  <li key={index} className="text-sm">{issue}</li>
+                  <li key={index} className="text-sm md:text-base lg:text-lg">{issue}</li>
                 ))}
               </ul>
             </AlertDescription>
@@ -371,9 +371,9 @@ export function ProviderStatusIndicator({
         {/* Last Error */}
         {provider.last_error && (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
             <AlertTitle>Last Error</AlertTitle>
-            <AlertDescription className="text-sm">
+            <AlertDescription className="text-sm md:text-base lg:text-lg">
               {provider.last_error}
             </AlertDescription>
           </Alert>
@@ -382,12 +382,12 @@ export function ProviderStatusIndicator({
         {/* Recovery Suggestions */}
         {provider.recovery_suggestions.length > 0 && (
           <Alert>
-            <Activity className="h-4 w-4" />
+            <Activity className="h-4 w-4 sm:w-auto md:w-full" />
             <AlertTitle>Recovery Suggestions</AlertTitle>
             <AlertDescription>
               <ul className="list-disc list-inside space-y-1">
                 {provider.recovery_suggestions.map((suggestion, index) => (
-                  <li key={index} className="text-sm">{suggestion}</li>
+                  <li key={index} className="text-sm md:text-base lg:text-lg">{suggestion}</li>
                 ))}
               </ul>
             </AlertDescription>
@@ -395,7 +395,7 @@ export function ProviderStatusIndicator({
         )}
 
         {/* Status Details */}
-        <div className="text-xs text-muted-foreground space-y-1">
+        <div className="text-xs text-muted-foreground space-y-1 sm:text-sm md:text-base">
           {provider.last_successful_request && (
             <div>Last successful request: {new Date(provider.last_successful_request).toLocaleString()}</div>
           )}

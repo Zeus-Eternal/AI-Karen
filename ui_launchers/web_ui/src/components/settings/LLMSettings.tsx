@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +6,27 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import {
+import { getKarenBackend } from '@/lib/karen-backend';
+import { useAuth } from '@/contexts/AuthContext';
+import { handleApiError } from '@/lib/error-handler';
+import ProviderManagement from './ProviderManagement';
+import ModelBrowser from './ModelBrowser';
+import ProfileManager from './ProfileManager';
+import ModelProviderIntegration from './ModelProviderIntegration';
+import ModelWorkflowTest from './ModelWorkflowTest';
+import ModelLibraryIntegrationTest from './ModelLibraryIntegrationTest';
+import { HelpTooltip, HelpSection, QuickHelp } from '@/components/ui/help-tooltip';
+import ProviderNotificationSystem from './ProviderNotificationSystem';
+import { useProviderNotifications } from '@/hooks/useProviderNotifications';
+"use client";
+
+
+
+
+
+
+
+
   Brain,
   AlertCircle,
   Loader2,
@@ -21,9 +40,9 @@ import {
   HardDrive,
   CheckCircle
 } from 'lucide-react';
-import { getKarenBackend } from '@/lib/karen-backend';
-import { useAuth } from '@/contexts/AuthContext';
-import {
+
+
+
   fetchProviderDiscovery,
   listLlamaModels,
   listTransformersModels,
@@ -31,16 +50,15 @@ import {
   type ProviderDiscoveryItem,
   type ContractModelInfo,
 } from '@/lib/providers-api';
-import { handleApiError } from '@/lib/error-handler';
-import ProviderManagement from './ProviderManagement';
-import ModelBrowser from './ModelBrowser';
-import ProfileManager from './ProfileManager';
-import ModelProviderIntegration from './ModelProviderIntegration';
-import ModelWorkflowTest from './ModelWorkflowTest';
-import ModelLibraryIntegrationTest from './ModelLibraryIntegrationTest';
-import { HelpTooltip, HelpSection, QuickHelp } from '@/components/ui/help-tooltip';
-import ProviderNotificationSystem from './ProviderNotificationSystem';
-import { useProviderNotifications } from '@/hooks/useProviderNotifications';
+
+
+
+
+
+
+
+
+
 
 interface LLMProvider {
   name: string;
@@ -64,7 +82,6 @@ interface LLMProvider {
     currency?: string;
   };
 }
-
 interface ModelInfo {
   id: string;
   name: string;
@@ -87,7 +104,6 @@ interface ModelInfo {
   created_at?: string;
   updated_at?: string;
 }
-
 interface LLMProfile {
   id: string;
   name: string;
@@ -115,7 +131,6 @@ interface LLMProfile {
     presence_penalty?: number;
   };
 }
-
 interface ProviderStats {
   total_models: number;
   healthy_providers: number;
@@ -123,12 +138,10 @@ interface ProviderStats {
   last_sync: number;
   degraded_mode: boolean;
 }
-
 const LOCAL_STORAGE_KEYS = {
   selectedProfile: 'llm_selected_profile',
   tabPreference: 'llm_settings_tab',
 };
-
 /**
  * @file LLMSettings.tsx
  * @description Enhanced LLM Settings component with tabbed interface, real-time validation,
@@ -141,17 +154,14 @@ export default function LLMSettings() {
   const [activeProfile, setActiveProfile] = useState<LLMProfile | null>(null);
   const [allModels, setAllModels] = useState<ModelInfo[]>([]);
   const [providerStats, setProviderStats] = useState<ProviderStats | null>(null);
-  
   // UI state
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('providers');
   const [degradedMode, setDegradedMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
   const { toast } = useToast();
   const backend = getKarenBackend();
   const { isAuthenticated } = useAuth();
-  
   // Provider notifications
   const {
     notifications,
@@ -165,7 +175,6 @@ export default function LLMSettings() {
     realTimeUpdates: true,
     autoToast: true
   });
-
   // Load settings and preferences on mount, but wait for auth
   useEffect(() => {
     // Only load settings if authenticated or in development mode
@@ -174,28 +183,22 @@ export default function LLMSettings() {
       loadSavedPreferences();
     } else if (!isAuthenticated) {
       // If not authenticated and not in development, show a message
-      console.log('Not authenticated, skipping settings load');
       setLoading(false);
     }
   }, [isAuthenticated]);
-
   // Set a timeout to prevent infinite loading
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (loading) {
-        console.warn('LLM Settings loading timeout - using fallback data');
         setLoading(false);
       }
     }, 10000); // 10 second timeout
-    
     return () => clearTimeout(timeout);
   }, [loading]);
-
   // Auto-save tab preference when it changes
   useEffect(() => {
     saveTabPreference();
   }, [activeTab]);
-
   const loadSavedPreferences = () => {
     try {
       const savedTab = localStorage.getItem(LOCAL_STORAGE_KEYS.tabPreference);
@@ -203,22 +206,17 @@ export default function LLMSettings() {
         setActiveTab(savedTab);
       }
     } catch (error) {
-      console.warn('Failed to load saved preferences:', error);
     }
   };
-
   const saveTabPreference = useCallback(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEYS.tabPreference, activeTab);
     } catch (error) {
-      console.warn('Failed to save tab preference:', error);
     }
   }, [activeTab]);
-
   const loadSettings = async () => {
     try {
       setLoading(true);
-
       // Load all data from backend in parallel
       await Promise.all([
         loadProviders(),
@@ -227,13 +225,9 @@ export default function LLMSettings() {
         loadProviderStats(),
         checkDegradedMode()
       ]);
-
     } catch (error) {
-      console.error('Failed to load LLM settings:', error);
-      
       // Check if it's an authentication error
       if ((error as any)?.status === 401 || (error as any)?.message?.includes('401')) {
-        console.log('Authentication required for LLM settings, waiting for login...');
         // Don't show error toast for auth errors in development mode
         if (process.env.NODE_ENV !== 'development') {
           toast({
@@ -254,59 +248,47 @@ export default function LLMSettings() {
       setLoading(false);
     }
   };
-
   const loadProviders = async () => {
     try {
       const discovery = await fetchProviderDiscovery();
       const mapped: LLMProvider[] = discovery.map(mapDiscoveryToLLMProvider);
       setProviders(mapped.length ? mapped : getFallbackProviders());
     } catch (error) {
-      console.error('Failed to load providers:', error);
       setProviders(getFallbackProviders());
     }
   };
-
   const loadProfiles = async () => {
     try {
       // Try to load profiles with individual error handling
       let profilesResponse: LLMProfile[] | null = null;
       let activeProfileResponse: LLMProfile | null = null;
-      
       try {
         profilesResponse = await backend.makeRequestPublic<LLMProfile[]>('/api/providers/profiles');
       } catch (error) {
-        console.warn('Profiles endpoint not available:', error);
         try {
           profilesResponse = await backend.makeRequestPublic<LLMProfile[]>('/api/profiles');
         } catch (fallbackErr) {
-          console.warn('Fallback /api/profiles endpoint not available:', fallbackErr);
         }
       }
-      
       try {
         activeProfileResponse = await backend.makeRequestPublic<LLMProfile | null>('/api/providers/profiles/active');
       } catch (error) {
-        console.warn('Active profile endpoint not available:', error);
         try {
           activeProfileResponse = await backend.makeRequestPublic<LLMProfile | null>('/api/profiles/active');
         } catch (fallbackErr) {
-          console.warn('Fallback /api/profiles/active endpoint not available:', fallbackErr);
         }
       }
-      
       const fallbackProfiles = getFallbackProfiles();
       // Ensure profilesResponse is an array before setting
       const validProfiles = Array.isArray(profilesResponse) ? profilesResponse : fallbackProfiles;
       setProfiles(validProfiles);
       setActiveProfile(activeProfileResponse || validProfiles[0]);
     } catch (error) {
-      console.warn('Provider profiles endpoints not available, using fallback data:', error);
       const fallbackProfiles = getFallbackProfiles();
       setProfiles(fallbackProfiles);
       setActiveProfile(fallbackProfiles[0]);
     }
   };
-
   const loadAllModels = async () => {
     try {
       // Fetch in parallel from new endpoints with better error handling
@@ -333,18 +315,15 @@ export default function LLMSettings() {
           }
         })(),
       ]);
-      
       // Ensure all results are arrays before spreading
       const safeResults = [llama, tf, openai, spacy].map(result => Array.isArray(result) ? result : []);
       const merged = safeResults.flat();
       const mapped = merged.map(mapContractModelToModelInfo);
       setAllModels(mapped);
     } catch (error) {
-      console.error('Failed to load all models:', error);
       setAllModels([]);
     }
   };
-
   const mapDiscoveryToLLMProvider = (p: ProviderDiscoveryItem): LLMProvider => {
     const isCloud = p.group === 'cloud';
     return {
@@ -361,7 +340,6 @@ export default function LLMSettings() {
       api_base_url: undefined,
     } as LLMProvider;
   };
-
   const mapContractModelToModelInfo = (m: ContractModelInfo): ModelInfo => ({
     id: m.id,
     name: m.displayName,
@@ -384,13 +362,11 @@ export default function LLMSettings() {
     created_at: undefined,
     updated_at: undefined,
   });
-
   const loadProviderStats = async () => {
     try {
       const response = await backend.makeRequestPublic<ProviderStats>('/api/providers/stats');
       setProviderStats(response);
     } catch (error) {
-      console.warn('Provider stats endpoint not available, using fallback data:', error);
       // Create fallback stats based on available providers
       const fallbackStats = {
         total_models: providers.length * 2, // Estimate 2 models per provider
@@ -402,17 +378,14 @@ export default function LLMSettings() {
       setProviderStats(fallbackStats);
     }
   };
-
   const checkDegradedMode = async () => {
     try {
       const response = await backend.makeRequestPublic<{ degraded_mode: boolean }>('/api/health/degraded-mode');
       setDegradedMode(response?.degraded_mode || false);
     } catch (error) {
-      console.error('Failed to check degraded mode:', error);
       setDegradedMode(false);
     }
   };
-
   const getFallbackProviders = (): LLMProvider[] => [
     {
       name: 'openai',
@@ -466,7 +439,6 @@ export default function LLMSettings() {
       cached_models_count: 0
     }
   ];
-
   const getFallbackProfiles = (): LLMProfile[] => [
     {
       id: 'balanced',
@@ -505,7 +477,6 @@ export default function LLMSettings() {
       }
     }
   ];
-
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -524,7 +495,6 @@ export default function LLMSettings() {
       setRefreshing(false);
     }
   };
-
   const handleRetryFullMode = async () => {
     try {
       await backend.makeRequestPublic('/api/health/retry-full-mode', {
@@ -543,16 +513,15 @@ export default function LLMSettings() {
       });
     }
   };
-
   if (loading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
             <div className="space-y-2">
               <p className="text-lg font-medium">Loading LLM Settings</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Discovering providers, models, and profiles...
               </p>
             </div>
@@ -561,7 +530,6 @@ export default function LLMSettings() {
       </Card>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -576,78 +544,75 @@ export default function LLMSettings() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
+          <button
             variant="outline"
             size="sm"
             onClick={handleRefresh}
             disabled={refreshing}
-          >
+           aria-label="Button">
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           {providerStats && (
             <Badge variant="outline" className="gap-1">
-              <Activity className="h-3 w-3" />
+              <Activity className="h-3 w-3 sm:w-auto md:w-full" />
               {providerStats.healthy_providers}/{providerStats.total_providers} healthy
             </Badge>
           )}
           {activeProfile && (
             <Badge variant="secondary" className="gap-1">
-              <Brain className="h-3 w-3" />
+              <Brain className="h-3 w-3 sm:w-auto md:w-full" />
               {activeProfile.name}
             </Badge>
           )}
         </div>
       </div>
-
       {/* System Status Alerts */}
       {degradedMode && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
           <AlertTitle>Degraded Mode Active</AlertTitle>
           <AlertDescription>
             System is running with limited functionality. Core helper models are being used as fallback.
-            <Button 
+            <button 
               variant="outline" 
               size="sm" 
               className="ml-2"
               onClick={handleRetryFullMode}
-            >
+             aria-label="Button">
               Retry Full Mode
             </Button>
           </AlertDescription>
         </Alert>
       )}
-
       {/* Main Tabbed Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="providers" className="flex items-center gap-2">
-            <Cloud className="h-4 w-4" />
+            <Cloud className="h-4 w-4 sm:w-auto md:w-full" />
             Providers
             <HelpTooltip helpKey="providerManagement" category="llmSettings" variant="inline" size="sm" />
           </TabsTrigger>
           <TabsTrigger value="models" className="flex items-center gap-2">
-            <Database className="h-4 w-4" />
+            <Database className="h-4 w-4 sm:w-auto md:w-full" />
             Model Library
             <HelpTooltip helpKey="modelBrowser" category="llmSettings" variant="inline" size="sm" />
           </TabsTrigger>
           <TabsTrigger value="profiles" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
+            <Users className="h-4 w-4 sm:w-auto md:w-full" />
             Profiles
             <HelpTooltip helpKey="profileManagement" category="llmSettings" variant="inline" size="sm" />
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
+            <Activity className="h-4 w-4 sm:w-auto md:w-full" />
             Notifications
             {(unreadCount > 0 || criticalCount > 0) && (
-              <Badge variant="destructive" className="text-xs ml-1">
+              <Badge variant="destructive" className="text-xs ml-1 sm:text-sm md:text-base">
                 {criticalCount > 0 ? criticalCount : unreadCount}
               </Badge>
             )}
           </TabsTrigger>
         </TabsList>
-
         <TabsContent value="providers" className="space-y-6">
           <ProviderManagement
             providers={providers}
@@ -656,7 +621,6 @@ export default function LLMSettings() {
             setProviderStats={setProviderStats}
           />
         </TabsContent>
-
         <TabsContent value="models" className="space-y-6">
           <div className="space-y-6">
             {/* Model Library Integration Card */}
@@ -665,65 +629,63 @@ export default function LLMSettings() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      <Library className="h-5 w-5" />
+                      <Library className="h-5 w-5 sm:w-auto md:w-full" />
                       Model Library Integration
                     </CardTitle>
                     <CardDescription>
                       Discover, download, and manage models for your configured providers
                     </CardDescription>
                   </div>
-                  <Button
-                    onClick={() => {
+                  <button
+                    onClick={() = aria-label="Button"> {
                       window.dispatchEvent(new CustomEvent('navigate-to-model-library'));
                     }}
                     className="gap-2"
                   >
-                    <Library className="h-4 w-4" />
+                    <Library className="h-4 w-4 sm:w-auto md:w-full" />
                     Open Model Library
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 border rounded-lg">
-                    <Download className="h-8 w-8 mx-auto mb-2 text-primary" />
+                  <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
+                    <Download className="h-8 w-8 mx-auto mb-2 text-primary sm:w-auto md:w-full" />
                     <h3 className="font-medium">Discover Models</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                       Browse available models from various providers
                     </p>
                   </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <HardDrive className="h-8 w-8 mx-auto mb-2 text-primary" />
+                  <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
+                    <HardDrive className="h-8 w-8 mx-auto mb-2 text-primary sm:w-auto md:w-full" />
                     <h3 className="font-medium">Download & Manage</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                       Download models locally and manage storage
                     </p>
                   </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <CheckCircle className="h-8 w-8 mx-auto mb-2 text-primary" />
+                  <div className="text-center p-4 border rounded-lg sm:p-4 md:p-6">
+                    <CheckCircle className="h-8 w-8 mx-auto mb-2 text-primary sm:w-auto md:w-full" />
                     <h3 className="font-medium">Auto-Configure</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                       Automatically configure providers with compatible models
                     </p>
                   </div>
                 </div>
-                
                 {/* Quick Stats */}
                 {providerStats && (
                   <div className="flex items-center justify-between pt-4 border-t">
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground md:text-base lg:text-lg">
                       <span>Total Models: {providerStats.total_models}</span>
                       <span>Healthy Providers: {providerStats.healthy_providers}/{providerStats.total_providers}</span>
                     </div>
                     <Badge variant="outline" className="gap-1">
-                      <Activity className="h-3 w-3" />
+                      <Activity className="h-3 w-3 sm:w-auto md:w-full" />
                       {providerStats.degraded_mode ? 'Degraded Mode' : 'Full Mode'}
                     </Badge>
                   </div>
                 )}
               </CardContent>
             </Card>
-            
             {/* Integration Workflow Test */}
             <ModelWorkflowTest
               onNavigateToModelLibrary={() => {
@@ -731,7 +693,6 @@ export default function LLMSettings() {
               }}
               onNavigateToProviders={() => setActiveTab('providers')}
             />
-            
             {/* Comprehensive Integration Test */}
             <ModelLibraryIntegrationTest
               onNavigateToModelLibrary={() => {
@@ -739,7 +700,6 @@ export default function LLMSettings() {
               }}
               onNavigateToLLMSettings={() => setActiveTab('providers')}
             />
-            
             {/* Model-Provider Integration */}
             <ModelProviderIntegration
               providers={providers}
@@ -748,7 +708,6 @@ export default function LLMSettings() {
                 window.dispatchEvent(new CustomEvent('navigate-to-model-library'));
               }}
             />
-            
             {/* Existing Model Browser */}
             <ModelBrowser
               models={allModels as any}
@@ -757,7 +716,6 @@ export default function LLMSettings() {
             />
           </div>
         </TabsContent>
-
         <TabsContent value="profiles" className="space-y-6">
           <ProfileManager
             profiles={profiles as any}
@@ -767,19 +725,15 @@ export default function LLMSettings() {
             providers={providers}
           />
         </TabsContent>
-
         <TabsContent value="notifications" className="space-y-6">
           <ProviderNotificationSystem
             onNotificationAction={(notificationId, actionId) => {
               // Handle notification actions
-              console.log(`Notification action: ${actionId} for ${notificationId}`);
-              
               // Example: Handle retry action
               if (actionId === 'retry') {
                 // Trigger provider health check or retry operation
                 handleRefresh();
               }
-              
               // Example: Handle configure action
               if (actionId === 'configure') {
                 // Switch to providers tab
@@ -790,7 +744,6 @@ export default function LLMSettings() {
           />
         </TabsContent>
       </Tabs>
-
       {/* Quick Help Section */}
       <QuickHelp
         helpKeys={[

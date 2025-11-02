@@ -6,10 +6,9 @@
  * 
  * Requirements: 7.3, 7.5
  */
-
 'use client';
-
 import React, { useState, useEffect } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { useRole } from '@/hooks/useRole';
 import { AdminCacheManager } from '@/lib/cache/admin-cache';
 import { 
@@ -17,11 +16,9 @@ import {
   PerformanceReporter 
 } from '@/lib/performance/admin-performance-monitor';
 import type { PerformanceReport, CacheStats } from '@/types/admin';
-
 interface PerformanceDashboardProps {
   className?: string;
 }
-
 export function PerformanceDashboard({ className = '' }: PerformanceDashboardProps) {
   const { hasPermission } = useRole();
   const [report, setReport] = useState<PerformanceReport | null>(null);
@@ -29,20 +26,16 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-
   // Load performance data
   const loadPerformanceData = async () => {
     try {
       setError(null);
-      
       // Get local performance report
       const localReport = PerformanceReporter.generateReport();
       setReport(localReport);
-      
       // Get cache statistics
       const stats = AdminCacheManager.getAllStats();
       setCacheStats(stats);
-      
       // Try to get server-side performance data
       try {
         const response = await fetch('/api/admin/performance/report?include_db_stats=true');
@@ -53,27 +46,21 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
           }
         }
       } catch (serverError) {
-        console.warn('Failed to fetch server performance data:', serverError);
       }
-      
     } catch (err) {
-      console.error('Performance data loading error:', err);
       setError(err instanceof Error ? err.message : 'Failed to load performance data');
     } finally {
       setLoading(false);
     }
   };
-
   // Auto-refresh effect
   useEffect(() => {
     loadPerformanceData();
-    
     if (autoRefresh) {
       const interval = setInterval(loadPerformanceData, 30000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
   }, [autoRefresh]);
-
   const clearMetrics = async () => {
     try {
       await fetch('/api/admin/performance/report', { method: 'DELETE' });
@@ -84,7 +71,6 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
       setError('Failed to clear metrics');
     }
   };
-
   const exportReport = async (format: 'json' | 'csv') => {
     try {
       const response = await fetch(`/api/admin/performance/report?format=${format}`);
@@ -103,20 +89,19 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
       setError('Failed to export report');
     }
   };
-
   if (!hasPermission('system.config.read')) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+    <ErrorBoundary fallback={<div>Something went wrong in PerformanceDashboard</div>}>
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6 sm:p-4 md:p-6">
         <p className="text-red-800">You don't have permission to view performance data.</p>
       </div>
     );
   }
-
   if (loading) {
     return (
       <div className={`bg-white shadow rounded-lg p-6 ${className}`}>
         <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4 sm:w-auto md:w-full"></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="h-24 bg-gray-200 rounded"></div>
@@ -127,24 +112,22 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
       </div>
     );
   }
-
   if (error) {
     return (
       <div className={`bg-white shadow rounded-lg p-6 ${className}`}>
         <div className="text-red-600 text-center">
           <p className="font-medium">Error loading performance data</p>
-          <p className="text-sm mt-1">{error}</p>
+          <p className="text-sm mt-1 md:text-base lg:text-lg">{error}</p>
           <button
             onClick={loadPerformanceData}
             className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-          >
+           aria-label="Button">
             Retry
           </button>
         </div>
       </div>
     );
   }
-
   return (
     <div className={`bg-white shadow rounded-lg ${className}`}>
       {/* Header */}
@@ -152,73 +135,71 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-medium text-gray-900">Performance Dashboard</h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 md:text-base lg:text-lg">
               {report ? `Last updated: ${new Date(report.timestamp).toLocaleString()}` : 'No data available'}
             </p>
           </div>
           <div className="flex items-center space-x-3">
-            <label className="flex items-center text-sm text-gray-600">
+            <label className="flex items-center text-sm text-gray-600 md:text-base lg:text-lg">
               <input
                 type="checkbox"
                 checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
+                onChange={(e) = aria-label="Input"> setAutoRefresh(e.target.checked)}
                 className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               Auto-refresh
             </label>
             <button
               onClick={loadPerformanceData}
-              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
+              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 md:text-base lg:text-lg"
+             aria-label="Button">
               Refresh
             </button>
             <button
               onClick={clearMetrics}
-              className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-            >
+              className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 md:text-base lg:text-lg"
+             aria-label="Button">
               Clear Metrics
             </button>
           </div>
         </div>
       </div>
-
-      <div className="p-6">
+      <div className="p-6 sm:p-4 md:p-6">
         {report ? (
           <>
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="bg-blue-50 p-4 rounded-lg sm:p-4 md:p-6">
                 <div className="text-2xl font-bold text-blue-600">
                   {report.summary.totalMetrics}
                 </div>
-                <div className="text-sm text-blue-800">Total Metrics</div>
+                <div className="text-sm text-blue-800 md:text-base lg:text-lg">Total Metrics</div>
               </div>
-              <div className="bg-green-50 p-4 rounded-lg">
+              <div className="bg-green-50 p-4 rounded-lg sm:p-4 md:p-6">
                 <div className="text-2xl font-bold text-green-600">
                   {report.summary.avgResponseTime.toFixed(0)}ms
                 </div>
-                <div className="text-sm text-green-800">Avg Response Time</div>
+                <div className="text-sm text-green-800 md:text-base lg:text-lg">Avg Response Time</div>
               </div>
-              <div className="bg-yellow-50 p-4 rounded-lg">
+              <div className="bg-yellow-50 p-4 rounded-lg sm:p-4 md:p-6">
                 <div className="text-2xl font-bold text-yellow-600">
                   {report.database.slowQueries + report.api.slowRequests}
                 </div>
-                <div className="text-sm text-yellow-800">Slow Operations</div>
+                <div className="text-sm text-yellow-800 md:text-base lg:text-lg">Slow Operations</div>
               </div>
-              <div className="bg-purple-50 p-4 rounded-lg">
+              <div className="bg-purple-50 p-4 rounded-lg sm:p-4 md:p-6">
                 <div className="text-2xl font-bold text-purple-600">
                   {Object.values(cacheStats).reduce((sum, stat) => sum + stat.size, 0)}
                 </div>
-                <div className="text-sm text-purple-800">Cached Items</div>
+                <div className="text-sm text-purple-800 md:text-base lg:text-lg">Cached Items</div>
               </div>
             </div>
-
             {/* Performance Metrics */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               {/* Database Performance */}
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-gray-50 p-4 rounded-lg sm:p-4 md:p-6">
                 <h4 className="font-medium text-gray-900 mb-3">Database Performance</h4>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-sm md:text-base lg:text-lg">
                   <div className="flex justify-between">
                     <span>Query Count:</span>
                     <span className="font-medium">{report.database.queryCount}</span>
@@ -239,11 +220,10 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
                   </div>
                 </div>
               </div>
-
               {/* API Performance */}
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-gray-50 p-4 rounded-lg sm:p-4 md:p-6">
                 <h4 className="font-medium text-gray-900 mb-3">API Performance</h4>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-sm md:text-base lg:text-lg">
                   <div className="flex justify-between">
                     <span>Request Count:</span>
                     <span className="font-medium">{report.api.requestCount}</span>
@@ -264,11 +244,10 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
                   </div>
                 </div>
               </div>
-
               {/* Component Performance */}
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-gray-50 p-4 rounded-lg sm:p-4 md:p-6">
                 <h4 className="font-medium text-gray-900 mb-3">Component Performance</h4>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-sm md:text-base lg:text-lg">
                   <div className="flex justify-between">
                     <span>Render Count:</span>
                     <span className="font-medium">{report.components.renderCount}</span>
@@ -290,17 +269,16 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
                 </div>
               </div>
             </div>
-
             {/* Cache Statistics */}
             <div className="mb-6">
               <h4 className="font-medium text-gray-900 mb-3">Cache Statistics</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 {Object.entries(cacheStats).map(([cacheType, stats]) => (
-                  <div key={cacheType} className="bg-gray-50 p-3 rounded-lg">
-                    <div className="text-sm font-medium text-gray-900 capitalize mb-2">
+                  <div key={cacheType} className="bg-gray-50 p-3 rounded-lg sm:p-4 md:p-6">
+                    <div className="text-sm font-medium text-gray-900 capitalize mb-2 md:text-base lg:text-lg">
                       {cacheType.replace(/([A-Z])/g, ' $1').trim()}
                     </div>
-                    <div className="space-y-1 text-xs text-gray-600">
+                    <div className="space-y-1 text-xs text-gray-600 sm:text-sm md:text-base">
                       <div className="flex justify-between">
                         <span>Size:</span>
                         <span>{stats.size}/{stats.maxSize}</span>
@@ -318,39 +296,37 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
                 ))}
               </div>
             </div>
-
             {/* Recommendations */}
             {report.recommendations.length > 0 && (
               <div className="mb-6">
                 <h4 className="font-medium text-gray-900 mb-3">Performance Recommendations</h4>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-4 md:p-6">
                   <ul className="space-y-2">
                     {report.recommendations.map((recommendation, index) => (
                       <li key={index} className="flex items-start">
                         <span className="text-yellow-600 mr-2">•</span>
-                        <span className="text-yellow-800 text-sm">{recommendation}</span>
+                        <span className="text-yellow-800 text-sm md:text-base lg:text-lg">{recommendation}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               </div>
             )}
-
             {/* Export Options */}
             <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-500 md:text-base lg:text-lg">
                 Performance monitoring is active
               </div>
               <div className="flex space-x-2">
                 <button
-                  onClick={() => exportReport('json')}
-                  className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+                  onClick={() = aria-label="Button"> exportReport('json')}
+                  className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 md:text-base lg:text-lg"
                 >
                   Export JSON
                 </button>
                 <button
-                  onClick={() => exportReport('csv')}
-                  className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+                  onClick={() = aria-label="Button"> exportReport('csv')}
+                  className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 md:text-base lg:text-lg"
                 >
                   Export CSV
                 </button>
@@ -363,12 +339,13 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
             <button
               onClick={loadPerformanceData}
               className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
+             aria-label="Button">
               Load Data
             </button>
           </div>
         )}
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

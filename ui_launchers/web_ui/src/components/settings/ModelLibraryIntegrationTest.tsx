@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,6 @@ import {
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
-
 interface IntegrationTestStep {
   id: string;
   name: string;
@@ -31,7 +29,6 @@ interface IntegrationTestStep {
   result?: any;
   duration?: number;
 }
-
 interface IntegrationStatus {
   providers: Record<string, {
     name: string;
@@ -51,12 +48,10 @@ interface IntegrationStatus {
   total_compatible_models: number;
   recommendations?: string[]; // Make optional to handle undefined cases
 }
-
 interface ModelLibraryIntegrationTestProps {
   onNavigateToModelLibrary?: () => void;
   onNavigateToLLMSettings?: () => void;
 }
-
 /**
  * Comprehensive integration test component that validates the complete workflow
  * from model discovery to provider configuration and usage.
@@ -105,15 +100,12 @@ export default function ModelLibraryIntegrationTest({
       status: 'pending'
     }
   ]);
-
   const { toast } = useToast();
   const backend = getKarenBackend();
-
   useEffect(() => {
     // Load integration status on mount
     loadIntegrationStatus();
   }, []);
-
   const loadIntegrationStatus = async () => {
     try {
       const status = await backend.makeRequestPublic<IntegrationStatus>('/api/providers/integration/status');
@@ -129,10 +121,8 @@ export default function ModelLibraryIntegrationTest({
       };
       setIntegrationStatus(safeStatus);
     } catch (error) {
-      console.error('Failed to load integration status:', error);
     }
   };
-
   const updateStepStatus = (stepId: string, status: IntegrationTestStep['status'], error?: string, result?: any, duration?: number) => {
     setSteps(prev => prev.map(step => 
       step.id === stepId 
@@ -140,22 +130,18 @@ export default function ModelLibraryIntegrationTest({
         : step
     ));
   };
-
   const runIntegrationTest = async () => {
     setIsRunning(true);
     const startTime = Date.now();
-    
     try {
       // Step 1: API Connectivity
       updateStepStatus('api_connectivity', 'running');
       const apiStartTime = Date.now();
-      
       try {
         const [modelLibraryResponse, providersResponse] = await Promise.all([
           backend.makeRequestPublic('/api/models/library'),
           backend.makeRequestPublic('/api/providers/')
         ]);
-        
         updateStepStatus('api_connectivity', 'completed', undefined, {
           model_library_available: !!modelLibraryResponse,
           providers_api_available: !!providersResponse,
@@ -166,17 +152,14 @@ export default function ModelLibraryIntegrationTest({
         updateStepStatus('api_connectivity', 'failed', `API connectivity failed: ${error}`);
         throw error;
       }
-
       // Step 2: Model Discovery
       updateStepStatus('model_discovery', 'running');
       const discoveryStartTime = Date.now();
-      
       try {
         const models = await backend.makeRequestPublic('/api/models/library');
         const modelsArray = Array.isArray(models) ? models : [];
         const localModels = modelsArray.filter((m: any) => m.status === 'local') || [];
         const availableModels = modelsArray.filter((m: any) => m.status === 'available') || [];
-        
         updateStepStatus('model_discovery', 'completed', undefined, {
           total_models: modelsArray.length || 0,
           local_models: localModels.length,
@@ -187,15 +170,12 @@ export default function ModelLibraryIntegrationTest({
         updateStepStatus('model_discovery', 'failed', `Model discovery failed: ${error}`);
         throw error;
       }
-
       // Step 3: Provider Health Check
       updateStepStatus('provider_health', 'running');
       const healthStartTime = Date.now();
-      
       try {
         const healthResults = await backend.makeRequestPublic('/api/providers/health-check-all');
         const healthyProviders = Object.values(healthResults || {}).filter((h: any) => h.status === 'healthy');
-        
         updateStepStatus('provider_health', 'completed', undefined, {
           total_providers: Object.keys(healthResults || {}).length,
           healthy_providers: healthyProviders.length,
@@ -205,16 +185,13 @@ export default function ModelLibraryIntegrationTest({
         updateStepStatus('provider_health', 'failed', `Provider health check failed: ${error}`);
         throw error;
       }
-
       // Step 4: Compatibility Check
       updateStepStatus('compatibility_check', 'running');
       const compatibilityStartTime = Date.now();
-      
       try {
         const providers = await backend.makeRequestPublic('/api/providers/llm');
         const providersArray = Array.isArray(providers) ? providers : [];
         const compatibilityResults = [];
-        
         for (const provider of providersArray) {
           try {
             const suggestions = await backend.makeRequestPublic(`/api/providers/${provider.name}/suggestions`);
@@ -229,10 +206,8 @@ export default function ModelLibraryIntegrationTest({
               });
             }
           } catch (error) {
-            console.warn(`Failed to check compatibility for ${provider.name}:`, error);
           }
         }
-        
         updateStepStatus('compatibility_check', 'completed', undefined, {
           providers_checked: compatibilityResults.length,
           total_compatible_models: compatibilityResults.reduce((sum, r) => sum + r.total_compatible, 0),
@@ -242,11 +217,9 @@ export default function ModelLibraryIntegrationTest({
         updateStepStatus('compatibility_check', 'failed', `Compatibility check failed: ${error}`);
         throw error;
       }
-
       // Step 5: Integration Status
       updateStepStatus('integration_status', 'running');
       const integrationStartTime = Date.now();
-      
       try {
         const integrationStatus = await backend.makeRequestPublic<IntegrationStatus>('/api/providers/integration/status');
         // Ensure recommendations is always an array
@@ -260,7 +233,6 @@ export default function ModelLibraryIntegrationTest({
           overall_status: integrationStatus?.overall_status || 'unknown'
         };
         setIntegrationStatus(safeStatus);
-        
         updateStepStatus('integration_status', 'completed', undefined, {
           overall_status: safeStatus.overall_status,
           healthy_providers: safeStatus.healthy_providers,
@@ -272,11 +244,9 @@ export default function ModelLibraryIntegrationTest({
         updateStepStatus('integration_status', 'failed', `Integration status check failed: ${error}`);
         throw error;
       }
-
       // Step 6: Workflow Validation
       updateStepStatus('workflow_validation', 'running');
       const workflowStartTime = Date.now();
-      
       try {
         // Validate that the complete workflow is functional
         const validationChecks = [
@@ -286,15 +256,12 @@ export default function ModelLibraryIntegrationTest({
           { name: 'Integration Status API', status: true },
           { name: 'Cross-navigation Events', status: typeof window !== 'undefined' }
         ];
-        
         const allPassed = validationChecks.every(check => check.status);
-        
         updateStepStatus('workflow_validation', 'completed', undefined, {
           checks: validationChecks,
           all_passed: allPassed,
           workflow_status: allPassed ? 'fully_functional' : 'partially_functional'
         }, Date.now() - workflowStartTime);
-        
         if (allPassed) {
           toast({
             title: "Integration Test Completed",
@@ -307,14 +274,11 @@ export default function ModelLibraryIntegrationTest({
             variant: "destructive",
           });
         }
-        
       } catch (error) {
         updateStepStatus('workflow_validation', 'failed', `Workflow validation failed: ${error}`);
         throw error;
       }
-
     } catch (error) {
-      console.error('Integration test failed:', error);
       toast({
         title: "Integration Test Failed",
         description: "Some integration tests failed. Check the details below for troubleshooting.",
@@ -324,22 +288,20 @@ export default function ModelLibraryIntegrationTest({
       setIsRunning(false);
     }
   };
-
   const getStepIcon = (step: IntegrationTestStep) => {
     switch (step.status) {
       case 'running':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500 sm:w-auto md:w-full" />;
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />;
       case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
+        return <AlertCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />;
       case 'skipped':
-        return <Info className="h-4 w-4 text-yellow-500" />;
+        return <Info className="h-4 w-4 text-yellow-500 sm:w-auto md:w-full" />;
       default:
-        return <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />;
+        return <div className="h-4 w-4 rounded-full border-2 border-muted-foreground sm:w-auto md:w-full" />;
     }
   };
-
   const getStepBadgeVariant = (status: IntegrationTestStep['status']) => {
     switch (status) {
       case 'completed':
@@ -354,11 +316,9 @@ export default function ModelLibraryIntegrationTest({
         return 'outline';
     }
   };
-
   const completedSteps = steps.filter(s => s.status === 'completed').length;
   const failedSteps = steps.filter(s => s.status === 'failed').length;
   const totalDuration = steps.reduce((sum, step) => sum + (step.duration || 0), 0);
-
   return (
     <div className="space-y-6">
       {/* Header Card */}
@@ -367,7 +327,7 @@ export default function ModelLibraryIntegrationTest({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <PlayCircle className="h-5 w-5" />
+                <PlayCircle className="h-5 w-5 sm:w-auto md:w-full" />
                 Model Library Integration Test
               </CardTitle>
               <CardDescription>
@@ -394,59 +354,55 @@ export default function ModelLibraryIntegrationTest({
         <CardContent className="space-y-4">
           {/* Test Controls */}
           <div className="flex items-center gap-2">
-            <Button
+            <button
               onClick={runIntegrationTest}
               disabled={isRunning}
               className="gap-2"
-            >
+             aria-label="Button">
               {isRunning ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
               ) : (
-                <PlayCircle className="h-4 w-4" />
+                <PlayCircle className="h-4 w-4 sm:w-auto md:w-full" />
               )}
               {isRunning ? 'Running Test...' : 'Run Integration Test'}
             </Button>
-            
-            <Button
+            <button
               variant="outline"
               onClick={loadIntegrationStatus}
               disabled={isRunning}
               className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
+             aria-label="Button">
+              <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
               Refresh Status
             </Button>
-            
             {onNavigateToModelLibrary && (
-              <Button
+              <button
                 variant="outline"
                 onClick={onNavigateToModelLibrary}
                 className="gap-2"
-              >
-                <Library className="h-4 w-4" />
+               aria-label="Button">
+                <Library className="h-4 w-4 sm:w-auto md:w-full" />
                 Model Library
               </Button>
             )}
-            
             {onNavigateToLLMSettings && (
-              <Button
+              <button
                 variant="outline"
                 onClick={onNavigateToLLMSettings}
                 className="gap-2"
-              >
-                <Settings className="h-4 w-4" />
+               aria-label="Button">
+                <Settings className="h-4 w-4 sm:w-auto md:w-full" />
                 LLM Settings
               </Button>
             )}
           </div>
-
           {/* Integration Status Overview */}
           {integrationStatus && (
             <Alert variant={integrationStatus.overall_status === 'healthy' ? 'default' : 'destructive'}>
               {integrationStatus.overall_status === 'healthy' ? (
-                <CheckCircle className="h-4 w-4" />
+                <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
               ) : (
-                <AlertCircle className="h-4 w-4" />
+                <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
               )}
               <AlertTitle>
                 Integration Status: {integrationStatus?.overall_status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
@@ -460,7 +416,7 @@ export default function ModelLibraryIntegrationTest({
                     <strong>Recommendations:</strong>
                     <ul className="list-disc list-inside mt-1">
                       {integrationStatus.recommendations.map((rec, idx) => (
-                        <li key={idx} className="text-sm">{rec}</li>
+                        <li key={idx} className="text-sm md:text-base lg:text-lg">{rec}</li>
                       ))}
                     </ul>
                   </div>
@@ -470,7 +426,6 @@ export default function ModelLibraryIntegrationTest({
           )}
         </CardContent>
       </Card>
-
       {/* Test Steps */}
       <Card>
         <CardHeader>
@@ -488,35 +443,31 @@ export default function ModelLibraryIntegrationTest({
                   <div className="w-px h-8 bg-border mt-2" />
                 )}
               </div>
-              
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 sm:w-auto md:w-full">
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-medium text-sm">{step.name}</h4>
-                  <Badge variant={getStepBadgeVariant(step.status)} className="text-xs">
+                  <h4 className="font-medium text-sm md:text-base lg:text-lg">{step.name}</h4>
+                  <Badge variant={getStepBadgeVariant(step.status)} className="text-xs sm:text-sm md:text-base">
                     {step.status}
                   </Badge>
                   {step.duration && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                       {Math.round(step.duration / 1000)}s
                     </Badge>
                   )}
                 </div>
-                
-                <p className="text-sm text-muted-foreground mb-2">
+                <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                   {step.description}
                 </p>
-                
                 {step.error && (
                   <Alert variant="destructive" className="mb-2">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="text-xs">
+                    <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                    <AlertDescription className="text-xs sm:text-sm md:text-base">
                       {step.error}
                     </AlertDescription>
                   </Alert>
                 )}
-                
                 {step.result && (
-                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded sm:text-sm md:text-base">
                     <pre className="whitespace-pre-wrap">
                       {JSON.stringify(step.result, null, 2)}
                     </pre>
@@ -527,7 +478,6 @@ export default function ModelLibraryIntegrationTest({
           ))}
         </CardContent>
       </Card>
-
       {/* Integration Workflow Guide */}
       <Card>
         <CardHeader>
@@ -540,17 +490,17 @@ export default function ModelLibraryIntegrationTest({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 text-sm">
-            <Library className="h-4 w-4 text-primary" />
+          <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
+            <Library className="h-4 w-4 text-primary sm:w-auto md:w-full" />
             <span>Discover Models</span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-            <Download className="h-4 w-4 text-primary" />
+            <ArrowRight className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
+            <Download className="h-4 w-4 text-primary sm:w-auto md:w-full" />
             <span>Download Locally</span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-            <Settings className="h-4 w-4 text-primary" />
+            <ArrowRight className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
+            <Settings className="h-4 w-4 text-primary sm:w-auto md:w-full" />
             <span>Configure Provider</span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-            <CheckCircle className="h-4 w-4 text-primary" />
+            <ArrowRight className="h-3 w-3 text-muted-foreground sm:w-auto md:w-full" />
+            <CheckCircle className="h-4 w-4 text-primary sm:w-auto md:w-full" />
             <span>Ready for Use</span>
           </div>
         </CardContent>

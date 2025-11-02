@@ -1,11 +1,19 @@
-'use client';
-
 import React, { useState, useCallback, useRef } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
+import { useToast } from '@/hooks/use-toast';
+'use client';
+
+
+
+
+
+
+
   Upload,
   File,
   Image,
@@ -19,8 +27,8 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import {
+
+
   Attachment,
   AttachmentMetadata,
   AttachmentAnalysis
@@ -336,6 +344,20 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Handle escape key
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Upload Area */}
@@ -352,19 +374,19 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
               : 'border-muted-foreground/25 hover:border-primary/50'
           }`}
         >
-        <CardContent className="p-6 text-center">
-          <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-sm font-medium mb-2">
+        <CardContent className="p-6 text-center sm:p-4 md:p-6">
+          <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
+          <p className="text-sm font-medium mb-2 md:text-base lg:text-lg">
             Drop files here or click to upload
           </p>
-          <p className="text-xs text-muted-foreground mb-4">
+          <p className="text-xs text-muted-foreground mb-4 sm:text-sm md:text-base">
             Support for images, documents, code files, and more
           </p>
           <div className="flex flex-wrap gap-2 justify-center">
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
               Max {maxFileSize}MB
             </Badge>
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
               Up to {maxFiles} files
             </Badge>
           </div>
@@ -379,29 +401,28 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
         multiple
         accept={acceptedTypes.join(',')}
         onChange={handleFileInputChange}
-        className="hidden"
-      />
+        className="hidden" />
 
       {/* Upload Progress */}
       {uploadProgress.length > 0 && (
         <div className="space-y-2">
           {uploadProgress.map((progress) => (
             <Card key={progress.fileId}>
-              <CardContent className="p-3">
+              <CardContent className="p-3 sm:p-4 md:p-6">
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">
+                      <span className="text-sm font-medium md:text-base lg:text-lg">
                         {progress.fileId.split('-')[0]}
                       </span>
                       <div className="flex items-center gap-2">
                         {progress.status === 'completed' && (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
                         )}
                         {progress.status === 'error' && (
-                          <AlertCircle className="h-4 w-4 text-red-600" />
+                          <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />
                         )}
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                           {progress.status === 'uploading' && 'Uploading...'}
                           {progress.status === 'analyzing' && 'Analyzing...'}
                           {progress.status === 'completed' && 'Complete'}
@@ -423,26 +444,26 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
       {/* Uploaded Files */}
       {attachments.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">Attached Files ({attachments.length})</h4>
+          <h4 className="text-sm font-medium md:text-base lg:text-lg">Attached Files ({attachments.length})</h4>
           {attachments.map((attachment) => {
             const IconComponent = getFileIcon(attachment.type);
             return (
               <Card key={attachment.id}>
-                <CardContent className="p-3">
+                <CardContent className="p-3 sm:p-4 md:p-6">
                   <div className="flex items-center gap-3">
-                    <IconComponent className="h-8 w-8 text-muted-foreground flex-shrink-0" />
+                    <IconComponent className="h-8 w-8 text-muted-foreground flex-shrink-0 sm:w-auto md:w-full" />
                     
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 sm:w-auto md:w-full">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium truncate">
+                        <span className="text-sm font-medium truncate md:text-base lg:text-lg">
                           {attachment.name}
                         </span>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                           {attachment.type}
                         </Badge>
                       </div>
                       
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground sm:text-sm md:text-base">
                         <span>{formatFileSize(attachment.size)}</span>
                         {attachment.metadata?.dimensions && (
                           <span>
@@ -450,14 +471,14 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
                           </span>
                         )}
                         {attachment.analysis && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                             Analyzed
                           </Badge>
                         )}
                       </div>
 
                       {attachment.analysis?.summary && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1 sm:text-sm md:text-base">
                           {attachment.analysis.summary}
                         </p>
                       )}
@@ -465,34 +486,34 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
 
                     <div className="flex items-center gap-1">
                       {attachment.type === 'image' && (
-                        <Button
+                        <button
                           variant="ghost"
                           size="sm"
-                          onClick={() => window.open(attachment.url, '_blank')}
+                          onClick={() = aria-label="Button"> window.open(attachment.url, '_blank')}
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-4 w-4 sm:w-auto md:w-full" />
                         </Button>
                       )}
                       
-                      <Button
+                      <button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
+                        onClick={() = aria-label="Button"> {
                           const a = document.createElement('a');
                           a.href = attachment.url;
                           a.download = attachment.name;
                           a.click();
                         }}
                       >
-                        <Download className="h-4 w-4" />
+                        <Download className="h-4 w-4 sm:w-auto md:w-full" />
                       </Button>
                       
-                      <Button
+                      <button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleRemoveFile(attachment.id)}
+                        onClick={() = aria-label="Button"> handleRemoveFile(attachment.id)}
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4 sm:w-auto md:w-full" />
                       </Button>
                     </div>
                   </div>

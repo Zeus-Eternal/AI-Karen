@@ -477,7 +477,7 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
             // Collapsed state
             "justify-center": isCollapsed,
             // Nested items
-            "ml-[var(--space-lg)]": level > 0 && !isCollapsed,
+            "ml-[var(--space-lg)]": level  aria-label="Button"> 0 && !isCollapsed,
           }
         )}
         onClick={hasChildren ? onToggle : onClick}
@@ -504,7 +504,7 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
 
             {/* Badge */}
             {item.badge && (
-              <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-medium bg-[var(--color-primary-100)] text-[var(--color-primary-800)] rounded-full dark:bg-[var(--color-primary-900)] dark:text-[var(--color-primary-200)]">
+              <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-medium bg-[var(--color-primary-100)] text-[var(--color-primary-800)] rounded-full dark:bg-[var(--color-primary-900)] dark:text-[var(--color-primary-200)] sm:text-sm md:text-base">
                 {item.badge}
               </span>
             )}
@@ -513,9 +513,9 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
             {hasChildren && (
               <span className="flex-shrink-0">
                 {isExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
                 ) : (
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />
                 )}
               </span>
             )}
@@ -572,12 +572,12 @@ const SidebarToggle: React.FC = () => {
     >
       {isMobile ? (
         sidebarOpen ? (
-          <X className="h-5 w-5" />
+          <X className="h-5 w-5 sm:w-auto md:w-full" />
         ) : (
-          <Menu className="h-5 w-5" />
+          <Menu className="h-5 w-5 sm:w-auto md:w-full" />
         )
       ) : (
-        <Menu className="h-5 w-5" />
+        <Menu className="h-5 w-5 sm:w-auto md:w-full" />
       )}
     </button>
   );

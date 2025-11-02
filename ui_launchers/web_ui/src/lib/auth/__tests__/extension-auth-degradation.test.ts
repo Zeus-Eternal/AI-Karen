@@ -1,13 +1,14 @@
+import {
 /**
  * Tests for Extension Authentication Graceful Degradation
  */
 
-import {
+
   ExtensionAuthDegradationManager,
   ExtensionFeatureLevel,
   extensionAuthDegradationManager
 } from '../extension-auth-degradation';
-import {
+
   ExtensionAuthErrorFactory,
   ExtensionAuthRecoveryStrategy
 } from '../extension-auth-errors';

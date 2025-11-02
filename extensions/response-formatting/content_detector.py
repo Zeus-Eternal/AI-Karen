@@ -204,7 +204,7 @@ class ContentTypeDetector:
             best_score = scores[best_type]
             
             # If no strong match, use default
-            if best_score < 0.25:  # Lowered threshold slightly
+            if best_score < 0.15:  # Lowered threshold for better detection
                 best_type = ContentType.DEFAULT
                 best_score = 0.1
             

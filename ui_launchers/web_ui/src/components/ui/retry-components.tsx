@@ -32,13 +32,13 @@ function RetryButton({
   children = 'Retry',
 }: RetryButtonProps) {
   return (
-    <Button
+    <button
       onClick={onRetry}
       disabled={disabled || isRetrying}
       size={size}
       variant={variant}
       className={className}
-    >
+     aria-label="Button">
       <RefreshCw className={`h-4 w-4 mr-2 ${isRetrying ? 'animate-spin' : ''}`} />
       {isRetrying ? 'Retrying...' : children}
     </Button>
@@ -105,13 +105,13 @@ function RetryCard({
   const getErrorIcon = (errorType: string) => {
     switch (errorType) {
       case 'network':
-        return <WifiOff className="h-5 w-5 text-orange-500" />;
+        return <WifiOff className="h-5 w-5 text-orange-500 sm:w-auto md:w-full" />;
       case 'timeout':
-        return <Clock className="h-5 w-5 text-yellow-500" />;
+        return <Clock className="h-5 w-5 text-yellow-500 sm:w-auto md:w-full" />;
       case 'server':
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
+        return <AlertCircle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />;
       default:
-        return <AlertCircle className="h-5 w-5 text-destructive" />;
+        return <AlertCircle className="h-5 w-5 text-destructive sm:w-auto md:w-full" />;
     }
   };
 
@@ -128,7 +128,7 @@ function RetryCard({
             <CardDescription className="flex items-center space-x-2 mt-1">
               <span>{description}</span>
               {attempt > 0 && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                   Attempt {attempt}/{maxAttempts}
                 </Badge>
               )}
@@ -139,9 +139,9 @@ function RetryCard({
       <CardContent className="space-y-4">
         {error && (
           <Alert>
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
             <AlertTitle>Error Details</AlertTitle>
-            <AlertDescription className="text-sm">
+            <AlertDescription className="text-sm md:text-base lg:text-lg">
               {error.message}
             </AlertDescription>
           </Alert>
@@ -149,7 +149,7 @@ function RetryCard({
 
         {isRetrying && nextRetryIn > 0 && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center justify-between text-sm text-muted-foreground md:text-base lg:text-lg">
               <span>Retrying automatically...</span>
               <span>{Math.ceil(countdown / 1000)}s</span>
             </div>
@@ -166,19 +166,19 @@ function RetryCard({
           />
           
           {!canRetry && (
-            <Button
+            <button
               variant="outline"
-              onClick={() => window.location.reload()}
+              onClick={() = aria-label="Button"> window.location.reload()}
               className="flex-1"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Reload Page
             </Button>
           )}
         </div>
 
         {errorType === 'network' && (
-          <div className="text-xs text-muted-foreground text-center">
+          <div className="text-xs text-muted-foreground text-center sm:text-sm md:text-base">
             Check your internet connection and try again
           </div>
         )}
@@ -252,7 +252,7 @@ function InlineRetry({
 }: InlineRetryProps) {
   return (
     <div className={`flex items-center space-x-2 text-sm ${className}`}>
-      <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+      <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 sm:w-auto md:w-full" />
       <span className="text-destructive flex-1">
         {error?.message || 'Failed to load'}
       </span>
@@ -261,7 +261,7 @@ function InlineRetry({
           onClick={onRetry}
           disabled={isRetrying}
           className="text-primary hover:text-primary/80 underline disabled:opacity-50"
-        >
+         aria-label="Button">
           {isRetrying ? 'Retrying...' : 'Retry'}
         </button>
       )}
@@ -306,31 +306,31 @@ function RetryBanner({
     <div className={`border rounded-lg p-4 ${getVariantStyles()} ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <AlertCircle className="h-5 w-5 flex-shrink-0" />
-          <span className="text-sm font-medium">{message}</span>
+          <AlertCircle className="h-5 w-5 flex-shrink-0 sm:w-auto md:w-full" />
+          <span className="text-sm font-medium md:text-base lg:text-lg">{message}</span>
         </div>
         
         <div className="flex items-center space-x-2">
           {canRetry && (
-            <Button
+            <button
               size="sm"
               variant="outline"
               onClick={onRetry}
               disabled={isRetrying}
               className="h-8"
-            >
+             aria-label="Button">
               <RefreshCw className={`h-3 w-3 mr-1 ${isRetrying ? 'animate-spin' : ''}`} />
               {isRetrying ? 'Retrying' : 'Retry'}
             </Button>
           )}
           
           {onDismiss && (
-            <Button
+            <button
               size="sm"
               variant="ghost"
               onClick={onDismiss}
-              className="h-8 w-8 p-0"
-            >
+              className="h-8 w-8 p-0 sm:w-auto md:w-full"
+             aria-label="Button">
               ×
             </Button>
           )}
@@ -368,8 +368,8 @@ function LoadingRetry({
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center space-y-3">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">{loadingText}</p>
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground sm:w-auto md:w-full" />
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">{loadingText}</p>
         </div>
       </div>
     );
@@ -379,8 +379,8 @@ function LoadingRetry({
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center space-y-3">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-sm text-muted-foreground">{retryingText}</p>
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">{retryingText}</p>
         </div>
       </div>
     );

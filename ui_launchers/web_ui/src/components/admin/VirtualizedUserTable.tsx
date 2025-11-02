@@ -6,9 +6,7 @@
  * 
  * Requirements: 7.3, 7.5
  */
-
 'use client';
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { useRole } from '@/hooks/useRole';
@@ -20,7 +18,6 @@ import type {
   PaginatedResponse,
   AdminApiResponse 
 } from '@/types/admin';
-
 interface VirtualizedUserTableProps {
   selectedUsers: string[];
   onSelectionChange: (userIds: string[]) => void;
@@ -30,7 +27,6 @@ interface VirtualizedUserTableProps {
   itemHeight?: number;
   overscan?: number;
 }
-
 interface TableColumn {
   key: keyof User | 'actions' | 'select';
   label: string;
@@ -47,7 +43,6 @@ interface TableColumn {
     }
   ) => React.ReactNode;
 }
-
 const columns: TableColumn[] = [
   { 
     key: 'select', 
@@ -58,7 +53,7 @@ const columns: TableColumn[] = [
       <input
         type="checkbox"
         checked={value}
-        onChange={(e) => helpers.onSelect?.(user.user_id, e.target.checked)}
+        onChange={(e) = aria-label="Input"> helpers.onSelect?.(user.user_id, e.target.checked)}
         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
       />
     )
@@ -124,13 +119,13 @@ const columns: TableColumn[] = [
     render: (user, value, helpers) => (
       <div className="flex space-x-2">
         <button
-          onClick={() => helpers.onEdit?.(user)}
-          className="text-blue-600 hover:text-blue-800 text-sm"
+          onClick={() = aria-label="Button"> helpers.onEdit?.(user)}
+          className="text-blue-600 hover:text-blue-800 text-sm md:text-base lg:text-lg"
         >
           Edit
         </button>
         <button
-          onClick={() => helpers.onToggleStatus?.(user)}
+          onClick={() = aria-label="Button"> helpers.onToggleStatus?.(user)}
           className={`text-sm ${
             user.is_active ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'
           }`}
@@ -141,7 +136,6 @@ const columns: TableColumn[] = [
     )
   }
 ];
-
 function getRoleColor(role: string): string {
   switch (role) {
     case 'super_admin': return 'bg-purple-100 text-purple-800';
@@ -150,13 +144,11 @@ function getRoleColor(role: string): string {
     default: return 'bg-gray-100 text-gray-800';
   }
 }
-
 function formatDate(date: Date | string | null | undefined): string {
   if (!date) return 'Never';
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
-
 // Row component for virtual list
 interface RowProps {
   index: number;
@@ -170,11 +162,9 @@ interface RowProps {
     columns: TableColumn[];
   };
 }
-
 const Row: React.FC<RowProps> = ({ index, style, data }) => {
   const { users, selectedUsers, onSelectionChange, onEditUser, onToggleStatus, columns } = data;
   const user = users[index];
-  
   if (!user) {
     return (
       <div style={style} className="flex items-center px-4 py-2 border-b border-gray-200">
@@ -182,9 +172,7 @@ const Row: React.FC<RowProps> = ({ index, style, data }) => {
       </div>
     );
   }
-
   const isSelected = selectedUsers.includes(user.user_id);
-
   return (
     <div 
       style={style} 
@@ -198,12 +186,11 @@ const Row: React.FC<RowProps> = ({ index, style, data }) => {
           : column.key === 'actions' 
             ? null 
             : user[column.key as keyof User];
-
         return (
           <div
             key={column.key}
             style={{ width: column.width, minWidth: column.minWidth || column.width }}
-            className="flex-shrink-0 px-2 text-sm text-gray-900 truncate"
+            className="flex-shrink-0 px-2 text-sm text-gray-900 truncate md:text-base lg:text-lg"
           >
             {column.render 
               ? column.render(user, value, {
@@ -219,7 +206,6 @@ const Row: React.FC<RowProps> = ({ index, style, data }) => {
     </div>
   );
 };
-
 export function VirtualizedUserTable({
   selectedUsers,
   onSelectionChange,
@@ -234,7 +220,6 @@ export function VirtualizedUserTable({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  
   // Filter and pagination state
   const [filters, setFilters] = useState<UserListFilter>({});
   const [pagination, setPagination] = useState<PaginationParams>({
@@ -246,11 +231,9 @@ export function VirtualizedUserTable({
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(false);
-
   // Virtual scrolling state
   const listRef = useRef<List>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-
   // Memoized row data for virtual list
   const rowData = useMemo(() => ({
     users,
@@ -266,7 +249,6 @@ export function VirtualizedUserTable({
     onToggleStatus: handleToggleUserStatus,
     columns
   }), [users, selectedUsers, onSelectionChange]);
-
   // Load users with caching
   const loadUsers = useCallback(async (append = false) => {
     try {
@@ -276,7 +258,6 @@ export function VirtualizedUserTable({
         setIsLoadingMore(true);
       }
       setError(null);
-
       // Try cache first
       const cachedData = await UserListCache.get(
         filters, 
@@ -285,7 +266,6 @@ export function VirtualizedUserTable({
         pagination.sort_by, 
         pagination.sort_order
       );
-
       if (cachedData && !append) {
         setUsers(cachedData.data);
         setTotalPages(cachedData.pagination.total_pages);
@@ -294,14 +274,12 @@ export function VirtualizedUserTable({
         setLoading(false);
         return;
       }
-
       // Fetch from API
       const params = new URLSearchParams();
       params.append('page', pagination.page.toString());
       params.append('limit', pagination.limit.toString());
       params.append('sort_by', pagination.sort_by || 'created_at');
       params.append('sort_order', pagination.sort_order || 'desc');
-
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
           if (value instanceof Date) {
@@ -311,17 +289,14 @@ export function VirtualizedUserTable({
           }
         }
       });
-
       const response = await fetch(`/api/admin/users?${params.toString()}`);
       if (!response.ok) {
         throw new Error(`Failed to load users: ${response.statusText}`);
       }
-
       const data: AdminApiResponse<PaginatedResponse<User>> = await response.json();
       if (!data.success || !data.data) {
         throw new Error(data.error?.message || 'Failed to load users');
       }
-
       // Cache the result
       UserListCache.set(
         filters, 
@@ -331,61 +306,48 @@ export function VirtualizedUserTable({
         pagination.sort_by, 
         pagination.sort_order
       );
-
       if (append) {
         setUsers(prev => [...prev, ...(data.data?.data || [])]);
       } else {
         setUsers(data.data?.data || []);
       }
-      
       setTotalPages(data.data?.pagination.total_pages || 1);
       setTotalUsers(data.data?.pagination.total || 0);
       setHasNextPage(data.data?.pagination.has_next || false);
-
     } catch (err) {
-      console.error('User loading error:', err);
       setError(err instanceof Error ? err.message : 'Failed to load users');
     } finally {
       setLoading(false);
       setIsLoadingMore(false);
     }
   }, [filters, pagination]);
-
   // Load more users for infinite scrolling
   const loadMoreUsers = useCallback(async () => {
     if (isLoadingMore || !hasNextPage) return;
-
     const nextPage = pagination.page + 1;
     setPagination(prev => ({ ...prev, page: nextPage }));
-    
     // Load more users and append to existing list
     await loadUsers(true);
   }, [pagination.page, hasNextPage, isLoadingMore, loadUsers]);
-
   // Handle scroll to load more
   const handleScroll = useCallback(({ scrollOffset, scrollUpdateWasRequested }: any) => {
     if (scrollUpdateWasRequested) return;
-
     const scrollPercentage = scrollOffset / ((users.length * itemHeight) - height);
-    
     // Load more when scrolled 80% down
     if (scrollPercentage > 0.8 && hasNextPage && !isLoadingMore) {
       loadMoreUsers();
     }
   }, [users.length, itemHeight, height, hasNextPage, isLoadingMore, loadMoreUsers]);
-
   // Load users when filters change
   useEffect(() => {
     setPagination(prev => ({ ...prev, page: 1 }));
     setUsers([]);
     loadUsers();
   }, [filters]);
-
   // Initial load
   useEffect(() => {
     loadUsers();
   }, []);
-
   const handleSort = (column: keyof User) => {
     setPagination(prev => ({
       ...prev,
@@ -395,11 +357,9 @@ export function VirtualizedUserTable({
     }));
     setUsers([]);
   };
-
   const handleFilterChange = (newFilters: UserListFilter) => {
     setFilters(newFilters);
   };
-
   const handleSelectAll = (selected: boolean) => {
     if (selected) {
       onSelectionChange(users.map(user => user.user_id));
@@ -407,7 +367,6 @@ export function VirtualizedUserTable({
       onSelectionChange([]);
     }
   };
-
   async function handleToggleUserStatus(user: User) {
     try {
       const response = await fetch(`/api/admin/users/${user.user_id}`, {
@@ -415,44 +374,37 @@ export function VirtualizedUserTable({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !user.is_active })
       });
-
       if (!response.ok) {
         throw new Error('Failed to update user status');
       }
-
       // Invalidate caches
       AdminCacheManager.invalidateUserCaches(user.user_id, user.email);
-      
       // Reload users
       setUsers([]);
       setPagination(prev => ({ ...prev, page: 1 }));
       await loadUsers();
       onUserUpdated();
     } catch (err) {
-      console.error('Status update error:', err);
       setError(err instanceof Error ? err.message : 'Failed to update user status');
     }
   }
-
   const handleUserUpdated = () => {
     setEditingUser(null);
     // Invalidate all user-related caches
     UserListCache.invalidateAll();
     AdminCacheManager.clearAll();
-    
     // Reload users
     setUsers([]);
     setPagination(prev => ({ ...prev, page: 1 }));
     loadUsers();
     onUserUpdated();
   };
-
   if (loading && users.length === 0) {
     return (
       <div className={`bg-white shadow rounded-lg ${className}`}>
-        <div className="p-6">
+        <div className="p-6 sm:p-4 md:p-6">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/4 mb-4 sm:w-auto md:w-full"></div>
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="h-4 bg-gray-200 rounded"></div>
@@ -463,16 +415,15 @@ export function VirtualizedUserTable({
       </div>
     );
   }
-
   if (error) {
     return (
       <div className={`bg-white shadow rounded-lg ${className}`}>
-        <div className="p-6">
+        <div className="p-6 sm:p-4 md:p-6">
           <div className="text-red-600 text-center">
             <p className="font-medium">Error loading users</p>
-            <p className="text-sm mt-1">{error}</p>
+            <p className="text-sm mt-1 md:text-base lg:text-lg">{error}</p>
             <button
-              onClick={() => loadUsers()}
+              onClick={() = aria-label="Button"> loadUsers()}
               className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
             >
               Retry
@@ -482,7 +433,6 @@ export function VirtualizedUserTable({
       </div>
     );
   }
-
   return (
     <div className={`bg-white shadow rounded-lg ${className}`}>
       {/* Header */}
@@ -492,31 +442,30 @@ export function VirtualizedUserTable({
             <h3 className="text-lg font-medium text-gray-900">
               Users ({totalUsers.toLocaleString()})
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 md:text-base lg:text-lg">
               Showing {users.length} of {totalUsers} users
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <label className="flex items-center text-sm text-gray-600">
+            <label className="flex items-center text-sm text-gray-600 md:text-base lg:text-lg">
               <input
                 type="checkbox"
-                checked={selectedUsers.length === users.length && users.length > 0}
+                checked={selectedUsers.length === users.length && users.length  aria-label="Input"> 0}
                 onChange={(e) => handleSelectAll(e.target.checked)}
                 className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               Select All
             </label>
             {selectedUsers.length > 0 && (
-              <span className="text-sm text-blue-600 font-medium">
+              <span className="text-sm text-blue-600 font-medium md:text-base lg:text-lg">
                 {selectedUsers.length} selected
               </span>
             )}
           </div>
         </div>
       </div>
-
       {/* Column Headers */}
-      <div className="flex items-center px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <div className="flex items-center px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase tracking-wider sm:text-sm md:text-base">
         {columns.map((column) => (
           <div
             key={column.key}
@@ -525,7 +474,7 @@ export function VirtualizedUserTable({
           >
             {column.sortable ? (
               <button
-                onClick={() => handleSort(column.key as keyof User)}
+                onClick={() = aria-label="Button"> handleSort(column.key as keyof User)}
                 className="flex items-center space-x-1 hover:text-gray-700"
               >
                 <span>{column.label}</span>
@@ -541,7 +490,6 @@ export function VirtualizedUserTable({
           </div>
         ))}
       </div>
-
       {/* Virtual List */}
       <div style={{ height }}>
         <List
@@ -557,34 +505,31 @@ export function VirtualizedUserTable({
           {Row}
         </List>
       </div>
-
       {/* Loading More Indicator */}
       {isLoadingMore && (
         <div className="px-6 py-4 border-t border-gray-200 text-center">
-          <div className="animate-pulse text-sm text-gray-500">
+          <div className="animate-pulse text-sm text-gray-500 md:text-base lg:text-lg">
             Loading more users...
           </div>
         </div>
       )}
-
       {/* No More Data Indicator */}
       {!hasNextPage && users.length > 0 && (
-        <div className="px-6 py-4 border-t border-gray-200 text-center text-sm text-gray-500">
+        <div className="px-6 py-4 border-t border-gray-200 text-center text-sm text-gray-500 md:text-base lg:text-lg">
           All users loaded
         </div>
       )}
-
       {/* Edit User Modal */}
       {editingUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md sm:p-4 md:p-6">
             <h3 className="text-lg font-medium mb-4">Edit User</h3>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-gray-600 mb-4 md:text-base lg:text-lg">
               Editing: {editingUser.email}
             </p>
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setEditingUser(null)}
+                onClick={() = aria-label="Button"> setEditingUser(null)}
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
               >
                 Cancel
@@ -592,7 +537,7 @@ export function VirtualizedUserTable({
               <button
                 onClick={handleUserUpdated}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
+               aria-label="Button">
                 Save Changes
               </button>
             </div>

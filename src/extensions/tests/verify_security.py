@@ -16,20 +16,20 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.extensions.security import (
+from src.extensions.core.security import (
     ExtensionSecurityManager,
     ExtensionPermissionManager,
     ResourceLimitEnforcer,
     ExtensionSandbox,
     NetworkAccessController
 )
-from src.extensions.security_decorators import (
+from src.extensions.core.security_decorators import (
     require_permission,
     SecurityContext,
     set_security_manager,
     check_extension_permission
 )
-from src.extensions.models import (
+from src.extensions.core.models import (
     ExtensionManifest,
     ExtensionPermissions,
     ExtensionResources,
@@ -314,7 +314,7 @@ class SecurityVerificationTests:
         assert not check_extension_permission('utility-test', 'data:admin')
         
         # Test get_extension_permissions
-        from src.extensions.security_decorators import get_extension_permissions
+        from src.extensions.core.security_decorators import get_extension_permissions
         perms = get_extension_permissions('utility-test')
         assert 'data:read' in perms
         assert 'data:write' in perms

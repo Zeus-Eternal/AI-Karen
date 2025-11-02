@@ -1,12 +1,10 @@
 "use client"
-
 import React, { useState, useEffect } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, RefreshCw, X, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
 interface DegradedModeStatus {
   is_active: boolean
   reason?: string
@@ -16,7 +14,6 @@ interface DegradedModeStatus {
   last_recovery_attempt?: string
   core_helpers_available: Record<string, boolean>
 }
-
 interface DegradedModeBannerProps {
   className?: string
   onRetry?: () => void
@@ -24,7 +21,6 @@ interface DegradedModeBannerProps {
   autoRefresh?: boolean
   refreshInterval?: number
 }
-
 export function DegradedModeBanner({ 
   className, 
   onRetry, 
@@ -36,7 +32,6 @@ export function DegradedModeBanner({
   const [isLoading, setIsLoading] = useState(false)
   const [isDismissed, setIsDismissed] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
-
   const fetchStatus = async () => {
     try {
       // Use the Next.js proxy route for degraded-mode health check
@@ -50,11 +45,9 @@ export function DegradedModeBanner({
       }
     } catch (error: any) {
       if (error?.name !== 'AbortError') {
-        console.error('Failed to fetch degraded mode status:', error)
       }
     }
   }
-
   const handleRetry = async () => {
     setIsLoading(true)
     try {
@@ -66,39 +59,32 @@ export function DegradedModeBanner({
         signal: controller.signal,
       })
       clearTimeout(t)
-      
       if (response.ok) {
         await fetchStatus()
         onRetry?.()
       }
     } catch (error: any) {
       if (error?.name !== 'AbortError') {
-        console.error('Failed to attempt recovery:', error)
       }
     } finally {
       setIsLoading(false)
     }
   }
-
   const handleDismiss = () => {
     setIsDismissed(true)
     onDismiss?.()
   }
-
   useEffect(() => {
     fetchStatus()
-    
     if (autoRefresh) {
       const interval = setInterval(fetchStatus, refreshInterval)
       return () => clearInterval(interval)
     }
   }, [autoRefresh, refreshInterval])
-
   // Don't show banner if dismissed or degraded mode is not active
   if (isDismissed || !status?.is_active) {
     return null
   }
-
   const getReasonDisplay = (reason?: string) => {
     const reasonMap: Record<string, string> = {
       'all_providers_failed': 'All LLM providers failed',
@@ -109,16 +95,13 @@ export function DegradedModeBanner({
     }
     return reasonMap[reason || ''] || 'Unknown reason'
   }
-
   const getAvailableHelpers = () => {
     return Object.entries(status.core_helpers_available)
       .filter(([_, available]) => available)
       .map(([name, _]) => name)
   }
-
   const availableHelpers = getAvailableHelpers()
   const activatedTime = status.activated_at ? new Date(status.activated_at).toLocaleTimeString() : 'Unknown'
-
   return (
     <Alert 
       variant="destructive" 
@@ -128,11 +111,11 @@ export function DegradedModeBanner({
         className
       )}
     >
-      <AlertTriangle className="h-4 w-4" />
+      <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
       <div className="flex-1">
         <AlertTitle className="flex items-center gap-2">
           Degraded Mode Active
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
             Limited Functionality
           </Badge>
         </AlertTitle>
@@ -141,19 +124,17 @@ export function DegradedModeBanner({
             <p>
               I'm currently operating with reduced capabilities due to: <strong>{getReasonDisplay(status.reason)}</strong>
             </p>
-            
             {availableHelpers.length > 0 && (
-              <div className="text-sm">
+              <div className="text-sm md:text-base lg:text-lg">
                 Available helpers: {availableHelpers.map(helper => (
-                  <Badge key={helper} variant="secondary" className="mx-1 text-xs">
+                  <Badge key={helper} variant="secondary" className="mx-1 text-xs sm:text-sm md:text-base">
                     {helper}
                   </Badge>
                 ))}
               </div>
             )}
-
             {showDetails && (
-              <div className="mt-3 p-3 bg-orange-100/50 dark:bg-orange-900/20 rounded-md text-sm space-y-1">
+              <div className="mt-3 p-3 bg-orange-100/50 dark:bg-orange-900/20 rounded-md text-sm space-y-1 md:text-base lg:text-lg">
                 <p><strong>Activated:</strong> {activatedTime}</p>
                 <p><strong>Recovery attempts:</strong> {status.recovery_attempts}</p>
                 {status.failed_providers.length > 0 && (
@@ -167,40 +148,36 @@ export function DegradedModeBanner({
           </div>
         </AlertDescription>
       </div>
-      
       <div className="flex items-center gap-2 ml-4">
-        <Button
+        <button
           variant="outline"
           size="sm"
-          onClick={() => setShowDetails(!showDetails)}
+          onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
           className="text-orange-700 border-orange-300 hover:bg-orange-100 dark:text-orange-200 dark:border-orange-700 dark:hover:bg-orange-900/30"
         >
-          <Info className="h-3 w-3 mr-1" />
+          <Info className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
           {showDetails ? 'Less' : 'Details'}
         </Button>
-        
-        <Button
+        <button
           variant="outline"
           size="sm"
           onClick={handleRetry}
           disabled={isLoading}
           className="text-orange-700 border-orange-300 hover:bg-orange-100 dark:text-orange-200 dark:border-orange-700 dark:hover:bg-orange-900/30"
-        >
+         aria-label="Button">
           <RefreshCw className={cn("h-3 w-3 mr-1", isLoading && "animate-spin")} />
           {isLoading ? 'Retrying...' : 'Retry'}
         </Button>
-        
-        <Button
+        <button
           variant="ghost"
           size="sm"
           onClick={handleDismiss}
           className="text-orange-700 hover:bg-orange-100 dark:text-orange-200 dark:hover:bg-orange-900/30"
-        >
-          <X className="h-3 w-3" />
+         aria-label="Button">
+          <X className="h-3 w-3 sm:w-auto md:w-full" />
         </Button>
       </div>
     </Alert>
   )
 }
-
 export default DegradedModeBanner

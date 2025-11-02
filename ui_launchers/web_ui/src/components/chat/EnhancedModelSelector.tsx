@@ -1,7 +1,16 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import {
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { getKarenBackend } from "@/lib/karen-backend";
+import { useToast } from "@/hooks/use-toast";
+import { safeError, safeWarn } from "@/lib/safe-console";
+"use client";
+
+
+
   Select,
   SelectContent,
   SelectItem,
@@ -11,24 +20,24 @@ import {
   SelectLabel,
   SelectSeparator,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import {
+
+
+
+
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
+
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
+
   Brain,
   Cpu,
   Download,
@@ -44,10 +53,10 @@ import {
   Info,
   ExternalLink,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { getKarenBackend } from "@/lib/karen-backend";
-import { useToast } from "@/hooks/use-toast";
-import { safeError, safeWarn } from "@/lib/safe-console";
+
+
+
+
 
 interface ModelInfo {
   id: string;
@@ -96,30 +105,30 @@ const getProviderIcon = (provider: string) => {
   switch (provider.toLowerCase()) {
     case "llama-cpp":
     case "local":
-      return <HardDrive className="h-3 w-3" />;
+      return <HardDrive className="h-3 w-3 sm:w-auto md:w-full" />;
     case "transformers":
-      return <Brain className="h-3 w-3" />;
+      return <Brain className="h-3 w-3 sm:w-auto md:w-full" />;
     case "openai":
     case "anthropic":
     case "gemini":
-      return <Zap className="h-3 w-3" />;
+      return <Zap className="h-3 w-3 sm:w-auto md:w-full" />;
     default:
-      return <Cpu className="h-3 w-3" />;
+      return <Cpu className="h-3 w-3 sm:w-auto md:w-full" />;
   }
 };
 
 const getStatusIcon = (status: string) => {
   switch (status) {
     case "local":
-      return <CheckCircle className="h-3 w-3 text-green-500" />;
+      return <CheckCircle className="h-3 w-3 text-green-500 sm:w-auto md:w-full" />;
     case "downloading":
-      return <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />;
+      return <Loader2 className="h-3 w-3 text-blue-500 animate-spin sm:w-auto md:w-full" />;
     case "available":
-      return <Download className="h-3 w-3 text-gray-500" />;
+      return <Download className="h-3 w-3 text-gray-500 sm:w-auto md:w-full" />;
     case "error":
-      return <AlertCircle className="h-3 w-3 text-red-500" />;
+      return <AlertCircle className="h-3 w-3 text-red-500 sm:w-auto md:w-full" />;
     default:
-      return <Clock className="h-3 w-3 text-gray-400" />;
+      return <Clock className="h-3 w-3 text-gray-400 sm:w-auto md:w-full" />;
   }
 };
 
@@ -335,24 +344,24 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
     const modelValue = model.provider === 'local' ? `local:${model.name}` : `${model.provider}:${model.name}`;
     
     return (
-      <SelectItem key={model.id} value={modelValue} className="py-3">
+      <selectItem key={model.id} value={modelValue} className="py-3" aria-label="Select option">
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center space-x-3 flex-1 min-w-0">
+          <div className="flex items-center space-x-3 flex-1 min-w-0 sm:w-auto md:w-full">
             <div className="flex items-center space-x-1">
               {getProviderIcon(model.provider)}
               {getStatusIcon(model.status)}
             </div>
             
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 sm:w-auto md:w-full">
               <div className="flex items-center space-x-2">
                 <span className="font-medium truncate">{model.name}</span>
-                <Badge variant={getStatusBadgeVariant(model.status)} className="text-xs">
+                <Badge variant={getStatusBadgeVariant(model.status)} className="text-xs sm:text-sm md:text-base">
                   {model.status}
                 </Badge>
               </div>
               
               {showDetails && (
-                <div className="flex items-center space-x-2 mt-1 text-xs text-muted-foreground">
+                <div className="flex items-center space-x-2 mt-1 text-xs text-muted-foreground sm:text-sm md:text-base">
                   <span className="capitalize">{model.provider}</span>
                   {model.size && (
                     <>
@@ -379,7 +388,7 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
           
           <div className="flex items-center space-x-2">
             {model.download_progress !== undefined && model.status === "downloading" && (
-              <div className="text-xs text-blue-600">
+              <div className="text-xs text-blue-600 sm:text-sm md:text-base">
                 {Math.round(model.download_progress)}%
               </div>
             )}
@@ -387,19 +396,19 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
             {showActions && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                    <MoreVertical className="h-3 w-3" />
+                  <button variant="ghost" size="sm" className="h-6 w-6 p-0 sm:w-auto md:w-full" aria-label="Button">
+                    <MoreVertical className="h-3 w-3 sm:w-auto md:w-full" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => handleModelAction('info', model)}>
-                    <Info className="h-3 w-3 mr-2" />
+                    <Info className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
                     Details
                   </DropdownMenuItem>
                   
                   {model.status === 'available' && (
                     <DropdownMenuItem onClick={() => handleModelAction('download', model)}>
-                      <Download className="h-3 w-3 mr-2" />
+                      <Download className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
                       Download
                     </DropdownMenuItem>
                   )}
@@ -411,7 +420,7 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
                         onClick={() => handleModelAction('delete', model)}
                         className="text-red-600"
                       >
-                        <Trash2 className="h-3 w-3 mr-2" />
+                        <Trash2 className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
                         Delete
                       </DropdownMenuItem>
                     </>
@@ -422,7 +431,7 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
                         <a href={model.download_url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-3 w-3 mr-2" />
+                          <ExternalLink className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
                           View Source
                         </a>
                       </DropdownMenuItem>
@@ -440,8 +449,8 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
   if (loading) {
     return (
       <div className={cn("flex items-center space-x-2", className)}>
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm text-muted-foreground">Loading models...</span>
+        <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
+        <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading models...</span>
       </div>
     );
   }
@@ -449,15 +458,15 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
   if (error) {
     return (
       <div className={cn("flex items-center space-x-2", className)}>
-        <AlertCircle className="h-4 w-4 text-red-500" />
-        <span className="text-sm text-red-600">{error}</span>
-        <Button
+        <AlertCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
+        <span className="text-sm text-red-600 md:text-base lg:text-lg">{error}</span>
+        <button
           variant="ghost"
           size="sm"
           onClick={loadModels}
-          className="h-6 w-6 p-0"
-        >
-          <RefreshCw className="h-3 w-3" />
+          className="h-6 w-6 p-0 sm:w-auto md:w-full"
+         aria-label="Button">
+          <RefreshCw className="h-3 w-3 sm:w-auto md:w-full" />
         </Button>
       </div>
     );
@@ -466,11 +475,11 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
   return (
     <TooltipProvider>
       <div className="flex items-center space-x-2">
-        <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+        <select value={value} onValueChange={onValueChange} disabled={disabled} aria-label="Select option">
           <Tooltip>
             <TooltipTrigger asChild>
-              <SelectTrigger className={cn("flex-1", className)}>
-                <SelectValue placeholder={placeholder}>
+              <selectTrigger className={cn("flex-1", className)} aria-label="Select option">
+                <selectValue placeholder={placeholder} aria-label="Select option">
                   {selectedModel && (
                     <div className="flex items-center space-x-2">
                       <div className="flex items-center space-x-1">
@@ -478,7 +487,7 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
                         {getStatusIcon(selectedModel.status)}
                       </div>
                       <span className="truncate">{selectedModel.name}</span>
-                      <Badge variant={getStatusBadgeVariant(selectedModel.status)} className="text-xs">
+                      <Badge variant={getStatusBadgeVariant(selectedModel.status)} className="text-xs sm:text-sm md:text-base">
                         {selectedModel.status}
                       </Badge>
                     </div>
@@ -491,18 +500,18 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
               <TooltipContent side="bottom" className="max-w-sm">
                 <div className="space-y-1">
                   <div className="font-medium">{selectedModel.name}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     {selectedModel.description || `${selectedModel.provider} model`}
                   </div>
                   {selectedModel.metadata?.memory_requirement && (
-                    <div className="text-xs">
+                    <div className="text-xs sm:text-sm md:text-base">
                       Memory: {selectedModel.metadata.memory_requirement}
                     </div>
                   )}
                   {selectedModel.capabilities && selectedModel.capabilities.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {selectedModel.capabilities.slice(0, 3).map((cap) => (
-                        <Badge key={cap} variant="outline" className="text-xs">
+                        <Badge key={cap} variant="outline" className="text-xs sm:text-sm md:text-base">
                           {cap}
                         </Badge>
                       ))}
@@ -513,12 +522,12 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
             )}
           </Tooltip>
 
-          <SelectContent className="max-h-96 bg-popover border border-border shadow-md">
+          <selectContent className="max-h-96 bg-popover border border-border shadow-md" aria-label="Select option">
             {/* Local Models */}
             {groupedModels.local.length > 0 && (
-              <SelectGroup>
-                <SelectLabel className="flex items-center space-x-2">
-                  <CheckCircle className="h-3 w-3 text-green-500" />
+              <selectGroup aria-label="Select option">
+                <selectLabel className="flex items-center space-x-2" aria-label="Select option">
+                  <CheckCircle className="h-3 w-3 text-green-500 sm:w-auto md:w-full" />
                   <span>Available Models ({groupedModels.local.length})</span>
                 </SelectLabel>
                 {groupedModels.local.map(renderModelItem)}
@@ -528,10 +537,10 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
             {/* Downloading Models */}
             {groupedModels.downloading.length > 0 && (
               <>
-                {groupedModels.local.length > 0 && <SelectSeparator />}
-                <SelectGroup>
-                  <SelectLabel className="flex items-center space-x-2">
-                    <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />
+                {groupedModels.local.length > 0 && <selectSeparator />}
+                <selectGroup aria-label="Select option">
+                  <selectLabel className="flex items-center space-x-2" aria-label="Select option">
+                    <Loader2 className="h-3 w-3 text-blue-500 animate-spin sm:w-auto md:w-full" />
                     <span>Downloading ({groupedModels.downloading.length})</span>
                   </SelectLabel>
                   {groupedModels.downloading.map(renderModelItem)}
@@ -540,7 +549,7 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
             )}
 
             {(groupedModels.local.length === 0 && groupedModels.downloading.length === 0) && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
+              <div className="p-4 text-center text-sm text-muted-foreground md:text-base lg:text-lg">
                 No chat models available. Download models from the settings page.
               </div>
             )}
@@ -552,16 +561,16 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
           variant="ghost"
           size="sm"
           onClick={loadModels}
-          className="h-8 w-8 p-0"
+          className="h-8 w-8 p-0 sm:w-auto md:w-full"
           title="Refresh models"
         >
-          <RefreshCw className="h-3 w-3" />
+          <RefreshCw className="h-3 w-3 sm:w-auto md:w-full" />
         </Button>
       </div>
 
       {/* Model Details Dialog */}
       <Dialog open={!!selectedModelDetails} onOpenChange={() => setSelectedModelDetails(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl sm:w-auto md:w-full">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               {selectedModelDetails && getProviderIcon(selectedModelDetails.provider)}
@@ -582,7 +591,7 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="font-medium mb-2">Basic Information</h4>
-                  <div className="space-y-1 text-sm">
+                  <div className="space-y-1 text-sm md:text-base lg:text-lg">
                     <div>Provider: {selectedModelDetails.provider}</div>
                     <div>Size: {formatFileSize(selectedModelDetails.size)}</div>
                     {selectedModelDetails.metadata?.parameters && (
@@ -596,7 +605,7 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
                 
                 <div>
                   <h4 className="font-medium mb-2">Performance</h4>
-                  <div className="space-y-1 text-sm">
+                  <div className="space-y-1 text-sm md:text-base lg:text-lg">
                     {selectedModelDetails.metadata?.memory_requirement && (
                       <div>Memory: {selectedModelDetails.metadata.memory_requirement}</div>
                     )}

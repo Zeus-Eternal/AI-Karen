@@ -1,7 +1,6 @@
 /**
  * React components for extension management
  */
-
 import React, { useState, useCallback } from 'react';
 import { 
   useExtensionStatuses, 
@@ -13,7 +12,6 @@ import {
 } from './hooks';
 import { formatResourceUsage, formatUptime, getStatusColorClass } from './extensionUtils';
 import type { ExtensionStatus } from './extension-integration';
-
 /**
  * Extension status dashboard component
  */
@@ -22,7 +20,6 @@ export function ExtensionStatusDashboard() {
   const healthData = useExtensionHealth();
   const performanceData = useExtensionPerformance();
   const taskData = useExtensionTaskMonitoring();
-
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -31,7 +28,6 @@ export function ExtensionStatusDashboard() {
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -49,7 +45,6 @@ export function ExtensionStatusDashboard() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
@@ -69,7 +64,6 @@ export function ExtensionStatusDashboard() {
             </div>
           </div>
         </div>
-
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -86,7 +80,6 @@ export function ExtensionStatusDashboard() {
             </div>
           </div>
         </div>
-
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -103,7 +96,6 @@ export function ExtensionStatusDashboard() {
             </div>
           </div>
         </div>
-
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -120,7 +112,6 @@ export function ExtensionStatusDashboard() {
           </div>
         </div>
       </div>
-
       {/* Extension List */}
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
@@ -135,24 +126,19 @@ export function ExtensionStatusDashboard() {
     </div>
   );
 }
-
 /**
  * Individual extension status card
  */
 export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
   const [expanded, setExpanded] = useState(false);
   const { executeTask, executing, history } = useExtensionTasks(status.id);
-
   const handleExecuteTask = useCallback(async (taskName: string) => {
     try {
       await executeTask(taskName);
     } catch (error) {
-      console.error('Failed to execute task:', error);
     }
   }, [executeTask]);
-
   const resourceUsage = formatResourceUsage(status.resources);
-
   return (
     <div className="p-6">
       <div className="flex items-center justify-between">
@@ -169,12 +155,10 @@ export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
             <p className="text-sm text-gray-500">ID: {status.id}</p>
           </div>
         </div>
-        
         <div className="flex items-center space-x-4">
           <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(status.status)}`}>
             {status.status}
           </div>
-          
           <button
             onClick={() => setExpanded(!expanded)}
             className="text-gray-400 hover:text-gray-600"
@@ -185,7 +169,6 @@ export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
           </button>
         </div>
       </div>
-
       {expanded && (
         <div className="mt-4 space-y-4">
           {/* Resource Usage */}
@@ -207,7 +190,6 @@ export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
               <p className="text-sm font-semibold text-gray-900">{resourceUsage.storage}</p>
             </div>
           </div>
-
           {/* Background Tasks */}
           {status.backgroundTasks && (
             <div className="bg-gray-50 rounded-lg p-4">
@@ -233,7 +215,6 @@ export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
               </div>
             </div>
           )}
-
           {/* Health Status */}
           <div className="bg-gray-50 rounded-lg p-4">
             <h5 className="text-sm font-medium text-gray-900 mb-2">Health Status</h5>
@@ -258,13 +239,11 @@ export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
     </div>
   );
 }
-
 /**
  * Extension widgets dashboard
  */
 export function ExtensionWidgetsDashboard() {
   const { widgets } = useExtensionWidgets();
-
   if (widgets.length === 0) {
     return (
       <div className="text-center py-8">
@@ -276,7 +255,6 @@ export function ExtensionWidgetsDashboard() {
       </div>
     );
   }
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {widgets.map((widget) => (
@@ -297,13 +275,11 @@ export function ExtensionWidgetsDashboard() {
     </div>
   );
 }
-
 /**
  * Extension task execution history component
  */
 export function ExtensionTaskHistory({ extensionId }: { extensionId: string }) {
   const { history, loading } = useExtensionTasks(extensionId);
-
   if (loading) {
     return (
       <div className="animate-pulse space-y-4">
@@ -313,7 +289,6 @@ export function ExtensionTaskHistory({ extensionId }: { extensionId: string }) {
       </div>
     );
   }
-
   if (history.length === 0) {
     return (
       <div className="text-center py-8">
@@ -325,7 +300,6 @@ export function ExtensionTaskHistory({ extensionId }: { extensionId: string }) {
       </div>
     );
   }
-
   return (
     <div className="space-y-4">
       {history.map((execution, index) => (
@@ -341,7 +315,6 @@ export function ExtensionTaskHistory({ extensionId }: { extensionId: string }) {
               {execution.status}
             </div>
           </div>
-          
           <div className="text-sm text-gray-600 space-y-1">
             <p>Execution ID: {execution.execution_id}</p>
             {execution.started_at && (
@@ -357,7 +330,6 @@ export function ExtensionTaskHistory({ extensionId }: { extensionId: string }) {
               <p className="text-red-600">Error: {execution.error}</p>
             )}
           </div>
-          
           {execution.result && (
             <div className="mt-3 p-3 bg-gray-50 rounded text-sm">
               <pre className="whitespace-pre-wrap text-xs">

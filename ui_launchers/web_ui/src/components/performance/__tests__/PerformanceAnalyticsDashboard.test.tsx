@@ -3,7 +3,7 @@
  * Tests for the comprehensive performance analytics dashboard component
  */
 
-import React from 'react';
+
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import { PerformanceAnalyticsDashboard } from '../PerformanceAnalyticsDashboard';

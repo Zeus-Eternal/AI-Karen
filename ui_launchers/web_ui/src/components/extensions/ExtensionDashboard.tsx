@@ -1,3 +1,10 @@
+import React, { useState, useMemo } from 'react';
+import { 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { RefreshCw, Activity, Zap, AlertTriangle, CheckCircle } from 'lucide-react';
 /**
  * Extension Dashboard Component
  * 
@@ -6,23 +13,23 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { 
+
+
   ExtensionStatusDashboard, 
   ExtensionWidgetsDashboard,
   ExtensionTaskHistory 
 } from '../../lib/extensions/components';
-import { 
+
   useExtensionStatuses, 
   useExtensionHealth, 
   useExtensionPerformance,
   useExtensionTaskMonitoring 
 } from '../../lib/extensions/hooks';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { RefreshCw, Activity, Zap, AlertTriangle, CheckCircle } from 'lucide-react';
+
+
+
+
+
 
 interface ExtensionDashboardProps {
   className?: string;
@@ -59,7 +66,7 @@ export default function ExtensionDashboard({ className }: ExtensionDashboardProp
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4 sm:w-auto md:w-full" />
           <p className="text-gray-600">Loading extension dashboard...</p>
         </div>
       </div>
@@ -70,7 +77,7 @@ export default function ExtensionDashboard({ className }: ExtensionDashboardProp
     return (
       <div className={`bg-red-50 border border-red-200 rounded-lg p-6 ${className}`}>
         <div className="flex items-center">
-          <AlertTriangle className="h-5 w-5 text-red-500 mr-3" />
+          <AlertTriangle className="h-5 w-5 text-red-500 mr-3 sm:w-auto md:w-full" />
           <div>
             <h3 className="text-lg font-semibold text-red-800">Dashboard Error</h3>
             <p className="text-red-700">{error}</p>
@@ -88,12 +95,12 @@ export default function ExtensionDashboard({ className }: ExtensionDashboardProp
           <h1 className="text-3xl font-bold text-gray-900">Extension Dashboard</h1>
           <p className="text-gray-600 mt-1">Monitor and manage your extensions in real-time</p>
         </div>
-        <Button
+        <button
           variant="outline"
-          onClick={() => window.location.reload()}
+          onClick={() = aria-label="Button"> window.location.reload()}
           className="flex items-center gap-2"
         >
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
           Refresh
         </Button>
       </div>
@@ -102,12 +109,12 @@ export default function ExtensionDashboard({ className }: ExtensionDashboardProp
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Extensions</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Total Extensions</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{dashboardStats.total}</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {dashboardStats.active} active, {dashboardStats.errors} errors
             </p>
           </CardContent>
@@ -115,8 +122,8 @@ export default function ExtensionDashboard({ className }: ExtensionDashboardProp
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Health Score</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Health Score</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{dashboardStats.healthScore}%</div>
@@ -136,12 +143,12 @@ export default function ExtensionDashboard({ className }: ExtensionDashboardProp
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">CPU Usage</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">CPU Usage</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{dashboardStats.avgCpu.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               Average across all extensions
             </p>
           </CardContent>
@@ -149,12 +156,12 @@ export default function ExtensionDashboard({ className }: ExtensionDashboardProp
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Active Tasks</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{taskData.totalActiveTasks}</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {taskData.totalTasks} total background tasks
             </p>
           </CardContent>
@@ -270,11 +277,11 @@ export function CompactExtensionDashboard({ className }: { className?: string })
     <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${className}`}>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Extensions</CardTitle>
+          <CardTitle className="text-sm md:text-base lg:text-lg">Extensions</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{healthData.total}</div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
             {healthData.healthy} healthy
           </p>
         </CardContent>
@@ -282,7 +289,7 @@ export function CompactExtensionDashboard({ className }: { className?: string })
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Health</CardTitle>
+          <CardTitle className="text-sm md:text-base lg:text-lg">Health</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{healthData.healthPercentage}%</div>
@@ -300,11 +307,11 @@ export function CompactExtensionDashboard({ className }: { className?: string })
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Active Tasks</CardTitle>
+          <CardTitle className="text-sm md:text-base lg:text-lg">Active Tasks</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{taskData.totalActiveTasks}</div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
             {taskData.totalTasks} total
           </p>
         </CardContent>

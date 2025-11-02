@@ -1,18 +1,15 @@
 /**
  * Dashboard system type definitions
  */
-
 export type WidgetType = 'metric' | 'chart' | 'table' | 'status' | 'log';
 export type WidgetSize = 'small' | 'medium' | 'large' | 'full';
 export type DashboardLayout = 'grid' | 'masonry' | 'flex';
-
 export interface WidgetPosition {
   x: number;
   y: number;
   w: number;
   h: number;
 }
-
 export interface WidgetConfig {
   id: string;
   type: WidgetType;
@@ -23,7 +20,6 @@ export interface WidgetConfig {
   refreshInterval?: number;
   enabled: boolean;
 }
-
 export interface DashboardConfig {
   id: string;
   name: string;
@@ -35,7 +31,6 @@ export interface DashboardConfig {
   createdAt: Date;
   updatedAt: Date;
 }
-
 export interface DashboardFilter {
   id: string;
   name: string;
@@ -43,7 +38,6 @@ export interface DashboardFilter {
   value: any;
   enabled: boolean;
 }
-
 export interface WidgetData {
   id: string;
   data: any;
@@ -51,7 +45,6 @@ export interface WidgetData {
   error?: string;
   lastUpdated: Date;
 }
-
 export interface WidgetProps {
   config: WidgetConfig;
   data?: WidgetData;
@@ -60,14 +53,12 @@ export interface WidgetProps {
   onRemove?: () => void;
   isEditing?: boolean;
 }
-
 export interface DashboardContainerProps {
   config: DashboardConfig;
   onConfigChange: (config: DashboardConfig) => void;
   isEditing?: boolean;
   className?: string;
 }
-
 export interface WidgetRegistry {
   [key: string]: {
     component: React.ComponentType<WidgetProps>;
@@ -78,19 +69,16 @@ export interface WidgetRegistry {
     icon?: string;
   };
 }
-
 export interface DragItem {
   id: string;
   type: string;
   position: WidgetPosition;
 }
-
 export interface DropResult {
   draggedId: string;
   overId: string | null;
   delta: { x: number; y: number };
 }
-
 // Widget-specific data types
 export interface MetricData {
   value: number;
@@ -106,14 +94,12 @@ export interface MetricData {
   unit?: string;
   format?: 'number' | 'percentage' | 'currency' | 'bytes';
 }
-
 export interface StatusData {
   status: 'healthy' | 'warning' | 'critical' | 'unknown';
   message: string;
   details?: Record<string, any>;
   lastCheck: Date;
 }
-
 export interface ChartData {
   series: Array<{
     name: string;
@@ -130,12 +116,11 @@ export interface ChartData {
     max?: number;
   };
 }
-
 export interface LogData {
   entries: Array<{
     id: string;
     timestamp: Date;
-    level: 'debug' | 'info' | 'warn' | 'error';
+    level: '' | 'warn' | 'error';
     message: string;
     source?: string;
     metadata?: Record<string, any>;

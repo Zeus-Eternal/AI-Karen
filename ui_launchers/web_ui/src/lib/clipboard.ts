@@ -1,13 +1,11 @@
 /**
  * Clipboard utility with fallback support for older browsers and insecure contexts
  */
-
 export interface CopyToClipboardOptions {
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   showToast?: boolean;
 }
-
 /**
  * Copy text to clipboard with fallback support
  * @param text - Text to copy to clipboard
@@ -19,7 +17,6 @@ export async function copyToClipboard(
   options: CopyToClipboardOptions = {}
 ): Promise<void> {
   const { onSuccess, onError, showToast = false } = options;
-  
   try {
     // Check if modern Clipboard API is available
     if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
@@ -27,53 +24,40 @@ export async function copyToClipboard(
       if (onSuccess) onSuccess();
       return;
     }
-
     // Fallback for older browsers or insecure contexts (HTTP)
     const textArea = document.createElement('textarea');
     textArea.value = text;
-    
     // Make the textarea invisible but focusable
     textArea.style.position = 'fixed';
     textArea.style.left = '-999999px';
     textArea.style.top = '-999999px';
     textArea.style.opacity = '0';
     textArea.setAttribute('readonly', '');
-    
     document.body.appendChild(textArea);
-    
     try {
       // Focus and select the text
       textArea.focus();
       textArea.select();
       textArea.setSelectionRange(0, text.length);
-      
       // Use the legacy execCommand API
       const successful = document.execCommand('copy');
-      
       if (!successful) {
         throw new Error('execCommand copy failed');
       }
-      
       if (onSuccess) onSuccess();
-      
     } finally {
       // Always clean up the temporary element
       document.body.removeChild(textArea);
     }
-    
   } catch (error) {
     const copyError = error instanceof Error ? error : new Error('Copy operation failed');
-    
     if (onError) {
       onError(copyError);
     } else {
-      console.warn('Failed to copy to clipboard:', copyError);
     }
-    
     throw copyError;
   }
 }
-
 /**
  * Check if clipboard functionality is available
  * @returns true if clipboard is available, false otherwise
@@ -83,7 +67,6 @@ export function isClipboardAvailable(): boolean {
   if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
     return true;
   }
-  
   // Check for legacy execCommand support
   try {
     return document.queryCommandSupported?.('copy') ?? false;
@@ -91,7 +74,6 @@ export function isClipboardAvailable(): boolean {
     return false;
   }
 }
-
 /**
  * Get the appropriate clipboard method description for user feedback
  * @returns Description of available clipboard method

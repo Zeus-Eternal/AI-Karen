@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { render, screen, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import { useFirstRunSetup } from '@/hooks/useFirstRunSetup';

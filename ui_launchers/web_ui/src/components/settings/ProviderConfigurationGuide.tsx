@@ -313,7 +313,7 @@ export function ProviderConfigurationGuide({
   if (!guide) {
     return (
       <Alert>
-        <Info className="h-4 w-4" />
+        <Info className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertTitle>Configuration Guide Not Available</AlertTitle>
         <AlertDescription>
           No configuration guide is available for {providerName}. Please refer to the provider's documentation.
@@ -362,15 +362,15 @@ export function ProviderConfigurationGuide({
   const getStepIcon = (step: ConfigurationStep) => {
     switch (step.type) {
       case 'api_key':
-        return <Key className="h-4 w-4" />;
+        return <Key className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'installation':
-        return <Download className="h-4 w-4" />;
+        return <Download className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'configuration':
-        return <Settings className="h-4 w-4" />;
+        return <Settings className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'verification':
-        return <CheckCircle2 className="h-4 w-4" />;
+        return <CheckCircle2 className="h-4 w-4 sm:w-auto md:w-full" />;
       default:
-        return <Info className="h-4 w-4" />;
+        return <Info className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
 
@@ -382,14 +382,14 @@ export function ProviderConfigurationGuide({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
+            <FileText className="h-5 w-5 sm:w-auto md:w-full" />
             {guide.provider_name} Configuration Guide
           </CardTitle>
           <CardDescription>{guide.description}</CardDescription>
           
           {/* Progress Bar */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
               <span>Configuration Progress</span>
               <span>{Math.round(progress)}% Complete</span>
             </div>
@@ -424,8 +424,8 @@ export function ProviderConfigurationGuide({
                 <ul className="space-y-2">
                   {guide.prerequisites.map((prereq, index) => (
                     <li key={index} className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">{prereq}</span>
+                      <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />
+                      <span className="text-sm md:text-base lg:text-lg">{prereq}</span>
                     </li>
                   ))}
                 </ul>
@@ -446,7 +446,7 @@ export function ProviderConfigurationGuide({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-2">
-                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium sm:w-auto md:w-full">
                               {index + 1}
                             </span>
                             {getStepIcon(step)}
@@ -458,17 +458,17 @@ export function ProviderConfigurationGuide({
                         </div>
                         <div className="flex items-center gap-2">
                           {step.required && (
-                            <Badge variant="outline" className="text-xs">Required</Badge>
+                            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">Required</Badge>
                           )}
                           {completedSteps.has(step.id) ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            <CheckCircle2 className="h-5 w-5 text-green-600 sm:w-auto md:w-full" />
                           ) : (
-                            <AlertCircle className="h-5 w-5 text-gray-400" />
+                            <AlertCircle className="h-5 w-5 text-gray-400 sm:w-auto md:w-full" />
                           )}
                           {expandedSteps.has(step.id) ? (
-                            <ChevronDown className="h-4 w-4" />
+                            <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
                           ) : (
-                            <ChevronRight className="h-4 w-4" />
+                            <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />
                           )}
                         </div>
                       </div>
@@ -480,7 +480,7 @@ export function ProviderConfigurationGuide({
                       {/* Instructions */}
                       <div className="space-y-2">
                         <h4 className="font-medium">Instructions:</h4>
-                        <ol className="list-decimal list-inside space-y-1 text-sm">
+                        <ol className="list-decimal list-inside space-y-1 text-sm md:text-base lg:text-lg">
                           {step.instructions.map((instruction, idx) => (
                             <li key={idx}>{instruction}</li>
                           ))}
@@ -494,19 +494,19 @@ export function ProviderConfigurationGuide({
                           {step.code_snippets.map((snippet, idx) => (
                             <div key={idx} className="space-y-2">
                               {snippet.description && (
-                                <p className="text-sm text-muted-foreground">{snippet.description}</p>
+                                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">{snippet.description}</p>
                               )}
                               <div className="relative">
-                                <pre className="bg-muted p-3 rounded-lg text-sm overflow-x-auto">
+                                <pre className="bg-muted p-3 rounded-lg text-sm overflow-x-auto md:text-base lg:text-lg">
                                   <code>{snippet.code}</code>
                                 </pre>
-                                <Button
+                                <button
                                   variant="outline"
                                   size="sm"
                                   className="absolute top-2 right-2"
-                                  onClick={() => copyToClipboard(snippet.code)}
+                                  onClick={() = aria-label="Button"> copyToClipboard(snippet.code)}
                                 >
-                                  <Copy className="h-3 w-3" />
+                                  <Copy className="h-3 w-3 sm:w-auto md:w-full" />
                                 </Button>
                               </div>
                             </div>
@@ -521,17 +521,17 @@ export function ProviderConfigurationGuide({
                           <div className="space-y-1">
                             {step.links.map((link, idx) => (
                               <div key={idx} className="flex items-center gap-2">
-                                <Button
+                                <button
                                   variant="link"
                                   size="sm"
-                                  className="p-0 h-auto"
-                                  onClick={() => window.open(link.url, '_blank')}
+                                  className="p-0 h-auto sm:p-4 md:p-6"
+                                  onClick={() = aria-label="Button"> window.open(link.url, '_blank')}
                                 >
-                                  <ExternalLink className="h-3 w-3 mr-1" />
+                                  <ExternalLink className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                                   {link.title}
                                 </Button>
                                 {link.description && (
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                                     - {link.description}
                                   </span>
                                 )}
@@ -544,12 +544,12 @@ export function ProviderConfigurationGuide({
                       {/* Troubleshooting */}
                       {step.troubleshooting && step.troubleshooting.length > 0 && (
                         <Alert>
-                          <AlertCircle className="h-4 w-4" />
+                          <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
                           <AlertTitle>Common Issues</AlertTitle>
                           <AlertDescription>
                             <ul className="list-disc list-inside space-y-1 mt-2">
                               {step.troubleshooting.map((tip, idx) => (
-                                <li key={idx} className="text-sm">{tip}</li>
+                                <li key={idx} className="text-sm md:text-base lg:text-lg">{tip}</li>
                               ))}
                             </ul>
                           </AlertDescription>
@@ -557,15 +557,15 @@ export function ProviderConfigurationGuide({
                       )}
 
                       {/* Mark as Complete Button */}
-                      <Button
-                        onClick={() => handleStepComplete(step.id)}
+                      <button
+                        onClick={() = aria-label="Button"> handleStepComplete(step.id)}
                         disabled={completedSteps.has(step.id)}
                         variant={completedSteps.has(step.id) ? "outline" : "default"}
                         className="w-full"
                       >
                         {completedSteps.has(step.id) ? (
                           <>
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            <CheckCircle2 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                             Step Completed
                           </>
                         ) : (
@@ -590,9 +590,9 @@ export function ProviderConfigurationGuide({
             </CardHeader>
             <CardContent className="space-y-4">
               {guide.common_issues.map((issue, index) => (
-                <div key={index} className="border rounded-lg p-4">
+                <div key={index} className="border rounded-lg p-4 sm:p-4 md:p-6">
                   <h4 className="font-medium text-red-600 mb-2">{issue.issue}</h4>
-                  <p className="text-sm text-muted-foreground">{issue.solution}</p>
+                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">{issue.solution}</p>
                 </div>
               ))}
             </CardContent>
@@ -610,20 +610,20 @@ export function ProviderConfigurationGuide({
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {guide.additional_resources.map((resource, index) => (
-                  <div key={index} className="border rounded-lg p-4">
+                  <div key={index} className="border rounded-lg p-4 sm:p-4 md:p-6">
                     <div className="flex items-center gap-2 mb-2">
-                      {resource.type === 'documentation' && <FileText className="h-4 w-4" />}
-                      {resource.type === 'tutorial' && <Terminal className="h-4 w-4" />}
-                      {resource.type === 'community' && <Globe className="h-4 w-4" />}
+                      {resource.type === 'documentation' && <FileText className="h-4 w-4 sm:w-auto md:w-full" />}
+                      {resource.type === 'tutorial' && <Terminal className="h-4 w-4 sm:w-auto md:w-full" />}
+                      {resource.type === 'community' && <Globe className="h-4 w-4 sm:w-auto md:w-full" />}
                       <h4 className="font-medium">{resource.title}</h4>
                     </div>
-                    <Button
+                    <button
                       variant="outline"
                       size="sm"
-                      onClick={() => window.open(resource.url, '_blank')}
+                      onClick={() = aria-label="Button"> window.open(resource.url, '_blank')}
                       className="w-full"
                     >
-                      <ExternalLink className="h-3 w-3 mr-2" />
+                      <ExternalLink className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
                       Open Resource
                     </Button>
                   </div>

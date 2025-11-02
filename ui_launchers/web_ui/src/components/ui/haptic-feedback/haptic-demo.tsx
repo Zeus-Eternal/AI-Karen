@@ -35,13 +35,13 @@ function HapticDemoContent() {
   };
 
   return (
-    <div className="p-8 space-y-8 max-w-6xl mx-auto">
+    <div className="p-8 space-y-8 max-w-6xl mx-auto sm:w-auto md:w-full">
       <h1 className="text-3xl font-bold">Haptic Feedback Demo</h1>
       
       {/* Support Status */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">Device Support</h2>
-        <div className="p-4 border rounded-lg">
+        <div className="p-4 border rounded-lg sm:p-4 md:p-6">
           <div className="flex items-center space-x-2">
             <span className={`text-2xl ${supported ? '✅' : '❌'}`}>
               {supported ? '✅' : '❌'}
@@ -50,7 +50,7 @@ function HapticDemoContent() {
               <p className="font-medium">
                 Haptic feedback is {supported ? 'supported' : 'not supported'} on this device
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 {supported 
                   ? `Feedback is currently ${enabled ? 'enabled' : 'disabled'}`
                   : 'Try this demo on a mobile device for the best experience'
@@ -72,13 +72,13 @@ function HapticDemoContent() {
         <h2 className="text-2xl font-semibold">Pattern Testing</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-medium mb-2 md:text-base lg:text-lg">
               Select a pattern to test:
             </label>
             <select
               value={selectedPattern}
-              onChange={(e) => setSelectedPattern(e.target.value as HapticPattern)}
-              className="w-full max-w-xs p-2 border rounded-md"
+              onChange={(e) = aria-label="Select option"> setSelectedPattern(e.target.value as HapticPattern)}
+              className="w-full max-w-xs p-2 border rounded-md sm:p-4 md:p-6"
               onFocus={handleInputFocus}
             >
               {patterns.map((pattern) => {
@@ -135,24 +135,24 @@ function HapticDemoContent() {
           <h3 className="text-lg font-medium">Form with Haptic Feedback</h3>
           <form onSubmit={handleFormSubmit} className="space-y-4 max-w-md">
             <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
+              <label className="block text-sm font-medium mb-1 md:text-base lg:text-lg">Name</label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) = aria-label="Input"> setFormData(prev => ({ ...prev, name: e.target.value }))}
                 onFocus={handleInputFocus}
-                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent sm:p-4 md:p-6"
                 placeholder="Enter your name"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
+              <label className="block text-sm font-medium mb-1 md:text-base lg:text-lg">Email</label>
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                onChange={(e) = aria-label="Input"> setFormData(prev => ({ ...prev, email: e.target.value }))}
                 onFocus={handleInputFocus}
-                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-transparent sm:p-4 md:p-6"
                 placeholder="Enter your email"
               />
             </div>
@@ -162,7 +162,7 @@ function HapticDemoContent() {
             >
               Submit Form
             </HapticButton>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
               Try submitting with empty fields to feel error feedback, or with valid data for success feedback.
             </p>
           </form>
@@ -198,9 +198,9 @@ function HapticDemoContent() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">Usage Guidelines</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border rounded-lg sm:p-4 md:p-6">
             <h3 className="font-semibold mb-2 text-green-700">✅ Do</h3>
-            <ul className="space-y-1 text-sm">
+            <ul className="space-y-1 text-sm md:text-base lg:text-lg">
               <li>• Use light haptics for subtle interactions</li>
               <li>• Use success patterns for positive feedback</li>
               <li>• Use error patterns sparingly for critical alerts</li>
@@ -209,9 +209,9 @@ function HapticDemoContent() {
             </ul>
           </div>
           
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border rounded-lg sm:p-4 md:p-6">
             <h3 className="font-semibold mb-2 text-red-700">❌ Don't</h3>
-            <ul className="space-y-1 text-sm">
+            <ul className="space-y-1 text-sm md:text-base lg:text-lg">
               <li>• Overuse haptic feedback - it can be annoying</li>
               <li>• Use heavy patterns for minor interactions</li>
               <li>• Ignore accessibility preferences</li>

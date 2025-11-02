@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
-
 const CANDIDATE_BACKENDS = getBackendCandidates();
 const HEALTH_TIMEOUT_MS = 2000;
-
 export async function GET(request: NextRequest) {
   try {
     // Try multiple backend base URLs to be resilient to Docker/host differences
@@ -61,7 +58,6 @@ export async function GET(request: NextRequest) {
         continue;
       }
     }
-      
       // Process health response
       let healthData: any = { status: 'unknown' };
       if (healthResponse && healthResponse.status === 'fulfilled' && healthResponse.value.ok) {
@@ -81,7 +77,6 @@ export async function GET(request: NextRequest) {
           }
         }
       }
-
       // Process providers response
       let providersData: any = null;
       if (providersResponse && providersResponse.status === 'fulfilled' && providersResponse.value.ok) {
@@ -91,32 +86,25 @@ export async function GET(request: NextRequest) {
           providersData = null;
         }
       }
-
       const statusValue = (healthData.status || healthData.state || '').toString().toLowerCase();
       const normalizedStatus = ['ok', 'healthy', 'up'].includes(statusValue) ? 'healthy' : 'degraded';
-
       const providers = providersData?.providers || [];
       const totalModels = providers.reduce((total: number, provider: any) =>
         total + (provider.total_models || provider.cached_models_count || 0), 0);
-
       const localFallbackReady = providers.some((provider: any) =>
         provider.provider_type === 'local' &&
         ['healthy', 'degraded', 'unknown'].includes((provider.health_status || '').toLowerCase())
       );
-
       const remoteProviderOutages = providers
         .filter((provider: any) =>
           provider.provider_type !== 'local' &&
           ['degraded', 'unhealthy', 'unknown'].includes((provider.health_status || '').toLowerCase())
         )
         .map((provider: any) => provider.name);
-
       const aiStatus = remoteProviderOutages.length > 0 && !localFallbackReady
         ? 'degraded'
         : (healthData.ai_status || normalizedStatus);
-
       const isActive = !(normalizedStatus === 'healthy' && aiStatus === 'healthy');
-
       const data = {
         degraded_mode: isActive,
         is_active: isActive,
@@ -136,12 +124,9 @@ export async function GET(request: NextRequest) {
         timestamp: new Date().toISOString(),
         compatibility_payload: healthData.payload || null
       };
-
       // Always respond 200; encode degraded state in body
       return NextResponse.json(data, { status: 200 });
-    
   } catch (error) {
-    console.error('Degraded mode check error:', error);
     // Normalize to 200 with degraded mode on unexpected errors
     return NextResponse.json(
       { 

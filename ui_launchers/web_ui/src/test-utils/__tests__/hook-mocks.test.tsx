@@ -1,3 +1,9 @@
+import React from 'react';
+import { render, screen, cleanup } from '@testing-library/react';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/hooks/useRole';
 /**
  * Comprehensive Test Coverage for Hook Mocking Utilities
  * 
@@ -5,9 +11,9 @@
  * proper mock setup, cleanup, and isolation for authentication hooks.
  */
 
-import React from 'react';
-import { render, screen, cleanup } from '@testing-library/react';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+
+
 
 // Mock the hooks at the top level
 vi.mock('@/contexts/AuthContext', async () => {
@@ -25,7 +31,7 @@ vi.mock('@/hooks/useRole', () => ({
   useIsAdmin: vi.fn(),
   useIsSuperAdmin: vi.fn(),
 }));
-import {
+
   setupUseAuthMock,
   setupUseRoleMock,
   setupAuthAndRoleMocks,
@@ -48,14 +54,14 @@ import {
   setupGlobalMocks,
   resetToDefaultMocks
 } from '../hook-mocks';
-import {
+
   mockSuperAdminUser,
   mockAdminUser,
   mockRegularUser,
   createMockAuthContext
 } from '../test-providers';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRole } from '@/hooks/useRole';
+
+
 
 // Test component that uses both hooks
 const TestHookComponent: React.FC = () => {

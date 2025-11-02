@@ -105,10 +105,10 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'degraded': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      case 'error': return <XCircle className="h-4 w-4 text-red-600" />;
-      default: return <Clock className="h-4 w-4 text-gray-600" />;
+      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+      case 'degraded': return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
+      case 'error': return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+      default: return <Clock className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
     }
   };
 
@@ -140,7 +140,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 sm:w-auto md:w-full" />
           <p>Loading health metrics...</p>
         </div>
       </div>
@@ -161,12 +161,12 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
           <Badge variant={isMonitoring ? 'default' : 'secondary'}>
             {isMonitoring ? 'Monitoring Active' : 'Monitoring Stopped'}
           </Badge>
-          <Button
+          <button
             variant="outline"
             size="sm"
             onClick={handleToggleMonitoring}
-          >
-            {isMonitoring ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+           aria-label="Button">
+            {isMonitoring ? <BellOff className="h-4 w-4 sm:w-auto md:w-full" /> : <Bell className="h-4 w-4 sm:w-auto md:w-full" />}
             {isMonitoring ? 'Stop' : 'Start'}
           </Button>
         </div>
@@ -176,8 +176,8 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overall Status</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Overall Status</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -186,7 +186,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
                 {metrics.errorRate > 0.1 ? 'Error' : metrics.errorRate > 0.05 ? 'Degraded' : 'Healthy'}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               Last check: {lastUpdate || 'Never'}
             </p>
           </CardContent>
@@ -194,8 +194,8 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Error Rate</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -206,7 +206,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
               className="mt-2"
               max={100}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {metrics.failedRequests} of {metrics.totalRequests} requests failed
             </p>
           </CardContent>
@@ -214,8 +214,8 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Response Time</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Response Time</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -226,7 +226,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
               className="mt-2"
               max={100}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               Average response time
             </p>
           </CardContent>
@@ -234,14 +234,14 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Uptime</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Uptime</CardTitle>
+            <Server className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {formatUptime(metrics.uptime)}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               Since monitoring started
             </p>
           </CardContent>
@@ -251,7 +251,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
       {/* Alerts Section */}
       {unacknowledgedAlerts.length > 0 && (
         <Alert>
-          <AlertTriangle className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
           <AlertDescription>
             You have {unacknowledgedAlerts.length} unacknowledged alert{unacknowledgedAlerts.length !== 1 ? 's' : ''}
           </AlertDescription>
@@ -264,7 +264,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
           <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
           <TabsTrigger value="alerts">
             Alerts {unacknowledgedAlerts.length > 0 && (
-              <Badge variant="destructive" className="ml-1 text-xs">
+              <Badge variant="destructive" className="ml-1 text-xs sm:text-sm md:text-base">
                 {unacknowledgedAlerts.length}
               </Badge>
             )}
@@ -278,7 +278,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
               <Card key={endpoint}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">{endpoint}</CardTitle>
+                    <CardTitle className="text-sm md:text-base lg:text-lg">{endpoint}</CardTitle>
                     <div className="flex items-center gap-2">
                       {getStatusIcon(result.status)}
                       <Badge variant={result.status === 'healthy' ? 'default' : 'destructive'}>
@@ -288,7 +288,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                     <div>
                       <span className="text-muted-foreground">Response Time:</span>
                       <span className="ml-2 font-mono">{result.responseTime}ms</span>
@@ -299,7 +299,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
                     </div>
                   </div>
                   {result.error && (
-                    <div className="mt-2 p-2 bg-red-50 rounded text-sm text-red-700">
+                    <div className="mt-2 p-2 bg-red-50 rounded text-sm text-red-700 md:text-base lg:text-lg">
                       <strong>Error:</strong> {result.error}
                     </div>
                   )}
@@ -313,7 +313,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Recent Alerts</h3>
             {alerts.length > 0 && (
-              <Button variant="outline" size="sm" onClick={handleClearAlerts}>
+              <button variant="outline" size="sm" onClick={handleClearAlerts} aria-label="Button">
                 Clear All
               </Button>
             )}
@@ -323,7 +323,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
             <Card>
               <CardContent className="flex items-center justify-center py-8">
                 <div className="text-center">
-                  <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                  <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2 sm:w-auto md:w-full" />
                   <p className="text-muted-foreground">No alerts</p>
                 </div>
               </CardContent>
@@ -332,18 +332,18 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
             <div className="space-y-2">
               {alerts.map((alert) => (
                 <Card key={alert.id} className={alert.acknowledged ? 'opacity-60' : ''}>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 sm:p-4 md:p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <Badge variant={getSeverityColor(alert.severity)}>
                             {alert.severity}
                           </Badge>
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             {new Date(alert.timestamp).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm">{alert.message}</p>
+                        <p className="text-sm md:text-base lg:text-lg">{alert.message}</p>
                         {alert.acknowledged && (
                           <Badge variant="outline" className="mt-1">
                             Acknowledged
@@ -351,10 +351,10 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
                         )}
                       </div>
                       {!alert.acknowledged && (
-                        <Button
+                        <button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleAcknowledgeAlert(alert.id)}
+                          onClick={() = aria-label="Button"> handleAcknowledgeAlert(alert.id)}
                         >
                           Acknowledge
                         </Button>
@@ -416,7 +416,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
                 </div>
                 <div className="flex justify-between">
                   <span>Last Health Check:</span>
-                  <span className="font-mono text-sm">
+                  <span className="font-mono text-sm md:text-base lg:text-lg">
                     {new Date(metrics.lastHealthCheck).toLocaleTimeString()}
                   </span>
                 </div>

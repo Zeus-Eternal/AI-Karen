@@ -29,15 +29,15 @@ export default function ForecastWidget({ refId }: ForecastWidgetProps) {
   }, [refId]);
 
   if (error) {
-    return <div className="forecast-widget text-sm text-destructive">{error}</div>;
+    return <div className="forecast-widget text-sm text-destructive md:text-base lg:text-lg">{error}</div>;
   }
 
   return (
     <div className="forecast-widget">
       {weather ? (
-        <p className="text-sm">{weather.summary}</p>
+        <p className="text-sm md:text-base lg:text-lg">{weather.summary}</p>
       ) : (
-        <p className="text-sm text-muted-foreground">Loading forecast...</p>
+        <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading forecast...</p>
       )}
     </div>
   );

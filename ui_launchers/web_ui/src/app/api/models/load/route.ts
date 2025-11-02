@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 interface LoadModelRequest {
   model_id: string;
   provider?: string;
@@ -9,7 +8,6 @@ interface LoadModelRequest {
     memory_limit?: number;
   };
 }
-
 interface LoadModelResponse {
   success: boolean;
   model_id: string;
@@ -20,37 +18,23 @@ interface LoadModelResponse {
   message?: string;
   error?: string;
 }
-
 export async function POST(request: NextRequest) {
-  console.log('🔄 Model Load API: Request received');
-
   try {
     const body: LoadModelRequest = await request.json();
     const { model_id, provider, options = {} } = body;
-
     if (!model_id) {
       return NextResponse.json(
         { error: 'Missing required field: model_id' },
         { status: 400 }
       );
     }
-
-    console.log('🔄 Model Load API: Loading model', {
-      modelId: model_id,
-      provider,
-      options
-    });
-
     // Import ModelSelectionService for model loading
     const { modelSelectionService } = await import('@/lib/model-selection-service');
-
     const startTime = Date.now();
-
     try {
       // Get model information first
       const models = await modelSelectionService.getAvailableModels();
       const targetModel = models.find(m => m.id === model_id);
-
       if (!targetModel) {
         return NextResponse.json(
           { 
@@ -60,18 +44,14 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
-
       // Note: Model loading status check would go here in a full implementation
-
       // Note: Model loading would be implemented here
       // For now, we'll simulate a successful load
       const loadResult: { success: boolean; model?: any; error?: string } = {
         success: true,
         model: targetModel
       };
-
       const loadTime = Date.now() - startTime;
-
       if (loadResult.success) {
         const response: LoadModelResponse = {
           success: true,
@@ -81,13 +61,6 @@ export async function POST(request: NextRequest) {
           capabilities: targetModel.capabilities || [],
           message: 'Model loaded successfully'
         };
-
-        console.log('🔄 Model Load API: Model loaded successfully', {
-          modelId: model_id,
-          loadTime,
-          provider: targetModel.provider
-        });
-
         return NextResponse.json(response, {
           headers: {
             'X-Load-Time': loadTime.toString(),
@@ -104,10 +77,7 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
-
     } catch (loadError) {
-      console.error('🔄 Model Load API: Loading error', loadError);
-      
       return NextResponse.json(
         {
           error: 'Model loading failed',
@@ -117,10 +87,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
   } catch (error) {
-    console.error('🔄 Model Load API: Request error', error);
-    
     return NextResponse.json(
       {
         error: 'Invalid request',
@@ -130,15 +97,11 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 export async function GET(request: NextRequest) {
-  console.log('🔄 Model Load API: Status check requested');
-
   try {
     // Get current model loading status
     const { modelSelectionService } = await import('@/lib/model-selection-service');
     const stats = await modelSelectionService.getSelectionStats();
-
     const response = {
       currently_loaded: stats.lastSelectedModel || null,
       loading_status: false, // This would be tracked separately
@@ -150,12 +113,8 @@ export async function GET(request: NextRequest) {
         gpu_available: false // This would be determined by actual system checks
       }
     };
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('🔄 Model Load API: Status check error', error);
-    
     return NextResponse.json(
       {
         error: 'Status check failed',

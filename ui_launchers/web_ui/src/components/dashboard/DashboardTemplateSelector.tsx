@@ -1,7 +1,18 @@
+import React, { useState } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
+import { useEffect } from 'react';
+import { 
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+import { cn } from '@/lib/utils';
+import type { DashboardTemplate } from '@/store/dashboard-store';
 'use client';
 
-import React, { useState } from 'react';
-import { 
+
+
   Layout, 
   Star, 
   Users, 
@@ -11,26 +22,26 @@ import {
   Plus,
   Search
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
+
+
+
+
+
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
-import type { DashboardTemplate } from '@/store/dashboard-store';
+
+
 
 interface DashboardTemplateSelectorProps {
   templates: DashboardTemplate[];
@@ -68,6 +79,20 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
     // Search filtering
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
+
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Handle escape key
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
       return (
         template.name.toLowerCase().includes(query) ||
         template.description.toLowerCase().includes(query) ||
@@ -101,13 +126,13 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
   const getCategoryIcon = (category: DashboardTemplate['category']) => {
     switch (category) {
       case 'system':
-        return <Settings className="h-4 w-4" />;
+        return <Settings className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'role-based':
-        return <Users className="h-4 w-4" />;
+        return <Users className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'user':
-        return <Star className="h-4 w-4" />;
+        return <Star className="h-4 w-4 sm:w-auto md:w-full" />;
       default:
-        return <Layout className="h-4 w-4" />;
+        return <Layout className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
 
@@ -138,14 +163,15 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <ErrorBoundary fallback={<div>Something went wrong in DashboardTemplateSelector</div>}>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className={className}>
-          <Layout className="h-4 w-4 mr-2" />
+        <button variant="outline" className={className} aria-label="Button">
+          <Layout className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
           Templates
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden sm:w-auto md:w-full">
         <DialogHeader>
           <DialogTitle>Dashboard Templates</DialogTitle>
         </DialogHeader>
@@ -154,24 +180,24 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
           {/* Search and Filter Controls */}
           <div className="flex gap-4 mb-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <input
                 placeholder="Search templates..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
             
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
+            <select value={selectedCategory} onValueChange={setSelectedCategory} aria-label="Select option">
+              <selectTrigger className="w-48 sm:w-auto md:w-full" aria-label="Select option">
+                <selectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="system">System</SelectItem>
-                <SelectItem value="role-based">Role-Based</SelectItem>
-                <SelectItem value="user">User Created</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="all" aria-label="Select option">All Categories</SelectItem>
+                <selectItem value="system" aria-label="Select option">System</SelectItem>
+                <selectItem value="role-based" aria-label="Select option">Role-Based</SelectItem>
+                <selectItem value="user" aria-label="Select option">User Created</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -180,9 +206,9 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
           <div className="flex-1 overflow-y-auto">
             {Object.keys(groupedTemplates).length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <Layout className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <Layout className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
                 <h3 className="text-lg font-medium mb-2">No templates found</h3>
-                <p className="text-sm">
+                <p className="text-sm md:text-base lg:text-lg">
                   {searchQuery 
                     ? 'Try adjusting your search criteria'
                     : 'No templates available for your current filters'
@@ -198,7 +224,7 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
                       <h3 className="text-lg font-semibold">
                         {getCategoryLabel(category as DashboardTemplate['category'])}
                       </h3>
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                         {categoryTemplates.length}
                       </Badge>
                     </div>
@@ -215,16 +241,16 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
                                 <CardTitle className="text-base flex items-center gap-2">
                                   {template.name}
                                   {template.isDefault && (
-                                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 sm:w-auto md:w-full" />
                                   )}
                                 </CardTitle>
-                                <CardDescription className="text-xs mt-1">
+                                <CardDescription className="text-xs mt-1 sm:text-sm md:text-base">
                                   {template.description}
                                 </CardDescription>
                               </div>
                               <Badge 
                                 variant={getCategoryBadgeVariant(template.category)}
-                                className="text-xs"
+                                className="text-xs sm:text-sm md:text-base"
                               >
                                 {template.category}
                               </Badge>
@@ -236,12 +262,12 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
                             {template.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mb-3">
                                 {template.tags.slice(0, 3).map(tag => (
-                                  <Badge key={tag} variant="outline" className="text-xs">
+                                  <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
                                     {tag}
                                   </Badge>
                                 ))}
                                 {template.tags.length > 3 && (
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                                     +{template.tags.length - 3}
                                   </Badge>
                                 )}
@@ -249,27 +275,27 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
                             )}
                             
                             {/* Template Stats */}
-                            <div className="text-xs text-muted-foreground mb-3">
+                            <div className="text-xs text-muted-foreground mb-3 sm:text-sm md:text-base">
                               {template.config.widgets.length} widgets • {template.config.layout} layout
                             </div>
                             
                             {/* Template Actions */}
                             <div className="flex gap-2">
-                              <Button
+                              <button
                                 size="sm"
-                                onClick={() => handleApplyTemplate(template.id)}
+                                onClick={() = aria-label="Button"> handleApplyTemplate(template.id)}
                                 className="flex-1"
                               >
-                                <Plus className="h-3 w-3 mr-1" />
+                                <Plus className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                                 Use Template
                               </Button>
                               
-                              <Button
+                              <button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handlePreviewTemplate(template)}
+                                onClick={() = aria-label="Button"> handlePreviewTemplate(template)}
                               >
-                                <Eye className="h-3 w-3" />
+                                <Eye className="h-3 w-3 sm:w-auto md:w-full" />
                               </Button>
                             </div>
                           </CardContent>
@@ -290,22 +316,22 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
           open={!!previewTemplate} 
           onOpenChange={() => setPreviewTemplate(null)}
         >
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl sm:w-auto md:w-full">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 {previewTemplate.name}
                 {previewTemplate.isDefault && (
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 sm:w-auto md:w-full" />
                 )}
               </DialogTitle>
             </DialogHeader>
             
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 {previewTemplate.description}
               </p>
               
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                 <div>
                   <span className="font-medium">Category:</span> {previewTemplate.category}
                 </div>
@@ -322,10 +348,10 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
               
               {previewTemplate.tags.length > 0 && (
                 <div>
-                  <span className="font-medium text-sm">Tags:</span>
+                  <span className="font-medium text-sm md:text-base lg:text-lg">Tags:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {previewTemplate.tags.map(tag => (
-                      <Badge key={tag} variant="outline" className="text-xs">
+                      <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
                         {tag}
                       </Badge>
                     ))}
@@ -335,17 +361,17 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
               
               {previewTemplate.config.widgets.length > 0 && (
                 <div>
-                  <span className="font-medium text-sm">Widgets:</span>
+                  <span className="font-medium text-sm md:text-base lg:text-lg">Widgets:</span>
                   <div className="mt-2 space-y-2">
                     {previewTemplate.config.widgets.map(widget => (
-                      <div key={widget.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                      <div key={widget.id} className="flex items-center justify-between p-2 bg-muted rounded sm:p-4 md:p-6">
                         <div>
-                          <span className="text-sm font-medium">{widget.title}</span>
-                          <span className="text-xs text-muted-foreground ml-2">
+                          <span className="text-sm font-medium md:text-base lg:text-lg">{widget.title}</span>
+                          <span className="text-xs text-muted-foreground ml-2 sm:text-sm md:text-base">
                             ({widget.type})
                           </span>
                         </div>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                           {widget.size}
                         </Badge>
                       </div>
@@ -355,19 +381,19 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
               )}
               
               <div className="flex justify-end gap-2 pt-4">
-                <Button
+                <button
                   variant="outline"
-                  onClick={() => setPreviewTemplate(null)}
+                  onClick={() = aria-label="Button"> setPreviewTemplate(null)}
                 >
                   Close
                 </Button>
-                <Button
-                  onClick={() => {
+                <button
+                  onClick={() = aria-label="Button"> {
                     handleApplyTemplate(previewTemplate.id);
                     setPreviewTemplate(null);
                   }}
                 >
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Use This Template
                 </Button>
               </div>
@@ -376,6 +402,7 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
         </Dialog>
       )}
     </Dialog>
+    </ErrorBoundary>
   );
 };
 

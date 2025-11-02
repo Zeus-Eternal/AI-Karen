@@ -6,10 +6,7 @@
  * 
  * Requirements: 7.3, 7.5
  */
-
-
 import { NextRequest, NextResponse } from 'next/server';
-
 import { withAdminAuth, type AdminAuthContext } from '@/lib/middleware/admin-auth';
 import {
   adminPerformanceMonitor,
@@ -17,16 +14,13 @@ import {
 } from '@/lib/performance/admin-performance-monitor';
 import { getQueryOptimizer } from '@/lib/database/query-optimizer';
 import type { PerformanceReport } from '@/types/admin';
-
 async function handleGET(request: NextRequest, _context: AdminAuthContext) {
   try {
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'json';
     const includeRecommendations = searchParams.get('recommendations') !== 'false';
-
     // Generate performance report
     const report = PerformanceReporter.generateReport();
-
     // Add database-specific metrics if requested
     if (searchParams.get('include_db_stats') === 'true') {
       try {
@@ -35,16 +29,13 @@ async function handleGET(request: NextRequest, _context: AdminAuthContext) {
           queryOptimizer.getQueryPerformanceAnalysis(),
           queryOptimizer.getTableStatistics()
         ]);
-
         (report as any).database_analysis = {
           query_performance: queryPerformance,
           table_statistics: tableStats
         };
       } catch (error) {
-        console.warn('Failed to fetch database statistics:', error);
       }
     }
-
     if (format === 'csv') {
       const csvData = PerformanceReporter.exportMetrics('csv');
       return new NextResponse(csvData, {
@@ -54,15 +45,12 @@ async function handleGET(request: NextRequest, _context: AdminAuthContext) {
         }
       });
     }
-
     return NextResponse.json({
       success: true,
       data: report,
       timestamp: new Date().toISOString()
     });
-
   } catch (error) {
-    console.error('Performance report error:', error);
     return NextResponse.json(
       {
         success: false,
@@ -75,36 +63,21 @@ async function handleGET(request: NextRequest, _context: AdminAuthContext) {
     );
   }
 }
-
 async function handlePOST(request: NextRequest, context: AdminAuthContext) {
   try {
     const report: PerformanceReport = await request.json();
-
     // Store the performance report (in a real implementation, you might save to database)
-    console.log('Received performance report:', {
-      timestamp: report.timestamp,
-      totalMetrics: report.summary.totalMetrics,
-      avgResponseTime: report.summary.avgResponseTime,
-      recommendations: report.recommendations.length
-    });
-
     // You could implement alerting here for performance issues
     if (report.database.slowQueries > 10) {
-      console.warn(`High number of slow queries detected: ${report.database.slowQueries}`);
     }
-
     if (report.api.avgResponseTime > 2000) {
-      console.warn(`High average API response time: ${report.api.avgResponseTime}ms`);
     }
-
     return NextResponse.json({
       success: true,
       message: 'Performance report received',
       timestamp: new Date().toISOString()
     });
-
   } catch (error) {
-    console.error('Performance report submission error:', error);
     return NextResponse.json(
       {
         success: false,
@@ -117,20 +90,16 @@ async function handlePOST(request: NextRequest, context: AdminAuthContext) {
     );
   }
 }
-
 async function handleDELETE(request: NextRequest, context: AdminAuthContext) {
   try {
     // Clear all performance metrics
     adminPerformanceMonitor.clearAllMetrics();
-
     return NextResponse.json({
       success: true,
       message: 'Performance metrics cleared',
       timestamp: new Date().toISOString()
     });
-
   } catch (error) {
-    console.error('Performance metrics clear error:', error);
     return NextResponse.json(
       {
         success: false,
@@ -143,16 +112,13 @@ async function handleDELETE(request: NextRequest, context: AdminAuthContext) {
     );
   }
 }
-
 // Export route handlers with admin authentication
 export async function GET(request: NextRequest) {
   return withAdminAuth(request, handleGET, { requiredPermission: 'system.config.read' });
 }
-
 export async function POST(request: NextRequest) {
   return withAdminAuth(request, handlePOST, { requiredPermission: 'system.config.read' });
 }
-
 export async function DELETE(request: NextRequest) {
   return withAdminAuth(request, handleDELETE, { requiredPermission: 'system.config.update' });
 }

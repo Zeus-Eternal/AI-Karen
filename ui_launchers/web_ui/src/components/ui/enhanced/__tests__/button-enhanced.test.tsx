@@ -16,7 +16,7 @@ import { Heart, ArrowRight } from 'lucide-react';
 describe('ButtonEnhanced', () => {
   describe('Basic Rendering', () => {
     it('should render with default props', () => {
-      render(<ButtonEnhanced>Click me</ButtonEnhanced>);
+      render(<buttonEnhanced aria-label="Button">Click me</ButtonEnhanced>);
       
       const button = screen.getByRole('button', { name: 'Click me' });
       expect(button).toBeInTheDocument();
@@ -24,7 +24,7 @@ describe('ButtonEnhanced', () => {
     });
 
     it('should render with custom className', () => {
-      render(<ButtonEnhanced className="custom-class">Click me</ButtonEnhanced>);
+      render(<buttonEnhanced className="custom-class" aria-label="Button">Click me</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('custom-class');
@@ -32,7 +32,7 @@ describe('ButtonEnhanced', () => {
 
     it('should forward ref correctly', () => {
       const ref = React.createRef<HTMLButtonElement>();
-      render(<ButtonEnhanced ref={ref}>Click me</ButtonEnhanced>);
+      render(<buttonEnhanced ref={ref} aria-label="Button">Click me</ButtonEnhanced>);
       
       expect(ref.current).toBeInstanceOf(HTMLButtonElement);
     });
@@ -40,42 +40,42 @@ describe('ButtonEnhanced', () => {
 
   describe('Variants', () => {
     it('should apply default variant styles', () => {
-      render(<ButtonEnhanced variant="default">Default</ButtonEnhanced>);
+      render(<buttonEnhanced variant="default" aria-label="Button">Default</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('bg-primary', 'text-primary-foreground');
     });
 
     it('should apply destructive variant styles', () => {
-      render(<ButtonEnhanced variant="destructive">Delete</ButtonEnhanced>);
+      render(<buttonEnhanced variant="destructive" aria-label="Button">Delete</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('bg-destructive', 'text-destructive-foreground');
     });
 
     it('should apply outline variant styles', () => {
-      render(<ButtonEnhanced variant="outline">Outline</ButtonEnhanced>);
+      render(<buttonEnhanced variant="outline" aria-label="Button">Outline</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('border', 'border-input', 'bg-background');
     });
 
     it('should apply ghost variant styles', () => {
-      render(<ButtonEnhanced variant="ghost">Ghost</ButtonEnhanced>);
+      render(<buttonEnhanced variant="ghost" aria-label="Button">Ghost</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('hover:bg-accent');
     });
 
     it('should apply gradient variant styles', () => {
-      render(<ButtonEnhanced variant="gradient">Gradient</ButtonEnhanced>);
+      render(<buttonEnhanced variant="gradient" aria-label="Button">Gradient</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('bg-gradient-to-r', 'from-primary', 'to-secondary');
     });
 
     it('should apply glass variant styles', () => {
-      render(<ButtonEnhanced variant="glass">Glass</ButtonEnhanced>);
+      render(<buttonEnhanced variant="glass" aria-label="Button">Glass</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('bg-background/80', 'backdrop-blur-sm');
@@ -84,28 +84,28 @@ describe('ButtonEnhanced', () => {
 
   describe('Sizes', () => {
     it('should apply default size styles', () => {
-      render(<ButtonEnhanced size="default">Default Size</ButtonEnhanced>);
+      render(<buttonEnhanced size="default" aria-label="Button">Default Size</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('h-10', 'px-4', 'py-2');
     });
 
     it('should apply small size styles', () => {
-      render(<ButtonEnhanced size="sm">Small</ButtonEnhanced>);
+      render(<buttonEnhanced size="sm" aria-label="Button">Small</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('h-9', 'px-3');
     });
 
     it('should apply large size styles', () => {
-      render(<ButtonEnhanced size="lg">Large</ButtonEnhanced>);
+      render(<buttonEnhanced size="lg" aria-label="Button">Large</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('h-11', 'px-8');
     });
 
     it('should apply extra large size styles', () => {
-      render(<ButtonEnhanced size="xl">Extra Large</ButtonEnhanced>);
+      render(<buttonEnhanced size="xl" aria-label="Button">Extra Large</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('h-12', 'px-10', 'text-base');
@@ -121,7 +121,7 @@ describe('ButtonEnhanced', () => {
 
   describe('Loading State', () => {
     it('should show loading spinner when loading', () => {
-      render(<ButtonEnhanced loading>Loading</ButtonEnhanced>);
+      render(<buttonEnhanced loading aria-label="Button">Loading</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toBeDisabled();
@@ -134,7 +134,7 @@ describe('ButtonEnhanced', () => {
 
     it('should show loading text when provided', () => {
       render(
-        <ButtonEnhanced loading loadingText="Saving...">
+        <buttonEnhanced loading loadingText="Saving..." aria-label="Button">
           Save
         </ButtonEnhanced>
       );
@@ -145,14 +145,14 @@ describe('ButtonEnhanced', () => {
     });
 
     it('should announce loading state to screen readers', () => {
-      render(<ButtonEnhanced loading loadingText="Processing...">Process</ButtonEnhanced>);
+      render(<buttonEnhanced loading loadingText="Processing..." aria-label="Button">Process</ButtonEnhanced>);
       
       expect(screen.getByText('Processing...', { selector: '.sr-only' })).toBeInTheDocument();
     });
 
     it('should hide icons when loading', () => {
       render(
-        <ButtonEnhanced 
+        <buttonEnhanced 
           loading 
           leftIcon={<Heart data-testid="heart-icon" />}
           rightIcon={<ArrowRight data-testid="arrow-icon" />}
@@ -169,7 +169,7 @@ describe('ButtonEnhanced', () => {
   describe('Icons', () => {
     it('should render left icon', () => {
       render(
-        <ButtonEnhanced leftIcon={<Heart data-testid="heart-icon" />}>
+        <buttonEnhanced leftIcon={<Heart data-testid="heart-icon" />}>
           Like
         </ButtonEnhanced>
       );
@@ -179,7 +179,7 @@ describe('ButtonEnhanced', () => {
 
     it('should render right icon', () => {
       render(
-        <ButtonEnhanced rightIcon={<ArrowRight data-testid="arrow-icon" />}>
+        <buttonEnhanced rightIcon={<ArrowRight data-testid="arrow-icon" />}>
           Next
         </ButtonEnhanced>
       );
@@ -189,7 +189,7 @@ describe('ButtonEnhanced', () => {
 
     it('should render both left and right icons', () => {
       render(
-        <ButtonEnhanced 
+        <buttonEnhanced 
           leftIcon={<Heart data-testid="heart-icon" />}
           rightIcon={<ArrowRight data-testid="arrow-icon" />}
         >
@@ -203,7 +203,7 @@ describe('ButtonEnhanced', () => {
 
     it('should mark icons as aria-hidden', () => {
       render(
-        <ButtonEnhanced leftIcon={<Heart />}>
+        <buttonEnhanced leftIcon={<Heart />}>
           Like
         </ButtonEnhanced>
       );
@@ -215,7 +215,7 @@ describe('ButtonEnhanced', () => {
 
   describe('Disabled State', () => {
     it('should be disabled when disabled prop is true', () => {
-      render(<ButtonEnhanced disabled>Disabled</ButtonEnhanced>);
+      render(<buttonEnhanced disabled aria-label="Button">Disabled</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toBeDisabled();
@@ -223,7 +223,7 @@ describe('ButtonEnhanced', () => {
     });
 
     it('should be disabled when loading', () => {
-      render(<ButtonEnhanced loading>Loading</ButtonEnhanced>);
+      render(<buttonEnhanced loading aria-label="Button">Loading</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toBeDisabled();
@@ -231,7 +231,7 @@ describe('ButtonEnhanced', () => {
     });
 
     it('should apply disabled styles', () => {
-      render(<ButtonEnhanced disabled>Disabled</ButtonEnhanced>);
+      render(<buttonEnhanced disabled aria-label="Button">Disabled</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('disabled:pointer-events-none', 'disabled:opacity-50');
@@ -241,7 +241,7 @@ describe('ButtonEnhanced', () => {
   describe('Event Handling', () => {
     it('should handle click events', () => {
       const handleClick = vi.fn();
-      render(<ButtonEnhanced onClick={handleClick}>Click me</ButtonEnhanced>);
+      render(<buttonEnhanced onClick={handleClick} aria-label="Button">Click me</ButtonEnhanced>);
       
       fireEvent.click(screen.getByRole('button'));
       expect(handleClick).toHaveBeenCalledTimes(1);
@@ -249,7 +249,7 @@ describe('ButtonEnhanced', () => {
 
     it('should not handle click events when disabled', () => {
       const handleClick = vi.fn();
-      render(<ButtonEnhanced disabled onClick={handleClick}>Disabled</ButtonEnhanced>);
+      render(<buttonEnhanced disabled onClick={handleClick} aria-label="Button">Disabled</ButtonEnhanced>);
       
       fireEvent.click(screen.getByRole('button'));
       expect(handleClick).not.toHaveBeenCalled();
@@ -257,7 +257,7 @@ describe('ButtonEnhanced', () => {
 
     it('should not handle click events when loading', () => {
       const handleClick = vi.fn();
-      render(<ButtonEnhanced loading onClick={handleClick}>Loading</ButtonEnhanced>);
+      render(<buttonEnhanced loading onClick={handleClick} aria-label="Button">Loading</ButtonEnhanced>);
       
       fireEvent.click(screen.getByRole('button'));
       expect(handleClick).not.toHaveBeenCalled();
@@ -273,7 +273,7 @@ describe('ButtonEnhanced', () => {
 
   describe('Accessibility', () => {
     it('should have proper focus styles', () => {
-      render(<ButtonEnhanced>Focus me</ButtonEnhanced>);
+      render(<buttonEnhanced aria-label="Button">Focus me</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('focus-visible:outline-none', 'focus-visible:ring-2');
@@ -292,7 +292,7 @@ describe('ButtonEnhanced', () => {
     });
 
     it('should have proper role', () => {
-      render(<ButtonEnhanced>Button</ButtonEnhanced>);
+      render(<buttonEnhanced aria-label="Button">Button</ButtonEnhanced>);
       
       expect(screen.getByRole('button')).toBeInTheDocument();
     });
@@ -300,7 +300,7 @@ describe('ButtonEnhanced', () => {
 
   describe('Design Token Integration', () => {
     it('should use design token classes', () => {
-      render(<ButtonEnhanced>Token Button</ButtonEnhanced>);
+      render(<buttonEnhanced aria-label="Button">Token Button</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass(
@@ -313,14 +313,14 @@ describe('ButtonEnhanced', () => {
     });
 
     it('should have hover and active transform effects', () => {
-      render(<ButtonEnhanced>Interactive</ButtonEnhanced>);
+      render(<buttonEnhanced aria-label="Button">Interactive</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('hover:scale-[1.02]', 'active:scale-[0.98]');
     });
 
     it('should not have transform effects for link variant', () => {
-      render(<ButtonEnhanced variant="link">Link</ButtonEnhanced>);
+      render(<buttonEnhanced variant="link" aria-label="Button">Link</ButtonEnhanced>);
       
       const button = screen.getByRole('button');
       expect(button).toHaveClass('transform-none', 'hover:scale-100', 'active:scale-100');

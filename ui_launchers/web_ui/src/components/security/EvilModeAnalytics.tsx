@@ -1,25 +1,37 @@
-'use client';
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { EvilModeSession, EvilModeAction } from '@/types/rbac';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { PermissionGate } from '@/components/rbac';
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+'use client';
+
+
+
+
+
+
+
+
+
+
+
+
+
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
+
+
   Table,
   TableBody,
   TableCell,
@@ -28,7 +40,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-import { 
+
   BarChart,
   Bar,
   XAxis,
@@ -45,7 +57,7 @@ import {
   AreaChart
 } from 'recharts';
 
-import { 
+
   Skull, 
   TrendingUp, 
   TrendingDown,
@@ -126,7 +138,7 @@ export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold flex items-center space-x-2">
-              <Skull className="h-6 w-6 text-red-600" />
+              <Skull className="h-6 w-6 text-red-600 sm:w-auto md:w-full" />
               <span>Evil Mode Analytics</span>
             </h2>
             <p className="text-muted-foreground">
@@ -134,13 +146,13 @@ export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <Select value={timeframe} onValueChange={(value: '7d' | '30d' | '90d') => setTimeframe(value)}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
+            <select value={timeframe} onValueChange={(value: '7d' | '30d' | '90d') = aria-label="Select option"> setTimeframe(value)}>
+              <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+                <selectValue />
               </SelectTrigger>
-              <SelectContent>
+              <selectContent aria-label="Select option">
                 {Object.entries(timeframeOptions).map(([key, { label }]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                  <selectItem key={key} value={key} aria-label="Select option">{label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -149,7 +161,7 @@ export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary sm:w-auto md:w-full"></div>
           </div>
         ) : (
           <Tabs defaultValue="overview" className="space-y-4">
@@ -235,16 +247,16 @@ function OverviewDashboard({ stats }: OverviewDashboardProps) {
         {metrics.map((metric) => (
           <Card key={metric.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+              <CardTitle className="text-sm font-medium md:text-base lg:text-lg">{metric.title}</CardTitle>
               <metric.icon className={`h-4 w-4 ${metric.color}`} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metric.value}</div>
-              <div className="flex items-center text-xs text-muted-foreground">
+              <div className="flex items-center text-xs text-muted-foreground sm:text-sm md:text-base">
                 {metric.trendUp ? (
-                  <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+                  <TrendingUp className="h-3 w-3 mr-1 text-green-500 sm:w-auto md:w-full" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 mr-1 text-red-500" />
+                  <TrendingDown className="h-3 w-3 mr-1 text-red-500 sm:w-auto md:w-full" />
                 )}
                 {metric.trend} from last period
               </div>
@@ -280,7 +292,7 @@ function OverviewDashboard({ stats }: OverviewDashboardProps) {
               {stats.topUsers.slice(0, 5).map((user, index) => (
                 <div key={user.userId} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-xs">
+                    <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-xs sm:w-auto md:w-full">
                       {index + 1}
                     </div>
                     <span className="font-medium">{user.username}</span>
@@ -297,7 +309,7 @@ function OverviewDashboard({ stats }: OverviewDashboardProps) {
       </div>
 
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
+        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertDescription>
           Evil Mode usage is continuously monitored for security and compliance. 
           All activities are subject to audit and review.
@@ -320,23 +332,23 @@ function SessionAnalysis({ stats, sessions }: SessionAnalysisProps) {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Session Duration Distribution</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Session Duration Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm md:text-base lg:text-lg">
                 <span>&lt; 15 min</span>
                 <span>45%</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm md:text-base lg:text-lg">
                 <span>15-30 min</span>
                 <span>30%</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm md:text-base lg:text-lg">
                 <span>30-60 min</span>
                 <span>20%</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm md:text-base lg:text-lg">
                 <span>&gt; 60 min</span>
                 <span>5%</span>
               </div>
@@ -346,19 +358,19 @@ function SessionAnalysis({ stats, sessions }: SessionAnalysisProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Session Outcomes</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Session Outcomes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm md:text-base lg:text-lg">
                 <span>Normal Termination</span>
                 <Badge variant="secondary">85%</Badge>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm md:text-base lg:text-lg">
                 <span>Timeout</span>
                 <Badge variant="default">12%</Badge>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm md:text-base lg:text-lg">
                 <span>Force Terminated</span>
                 <Badge variant="destructive">3%</Badge>
               </div>
@@ -368,19 +380,19 @@ function SessionAnalysis({ stats, sessions }: SessionAnalysisProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Justification Quality</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Justification Quality</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm md:text-base lg:text-lg">
                 <span>Detailed</span>
                 <Badge variant="default">60%</Badge>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm md:text-base lg:text-lg">
                 <span>Adequate</span>
                 <Badge variant="secondary">30%</Badge>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm md:text-base lg:text-lg">
                 <span>Insufficient</span>
                 <Badge variant="destructive">10%</Badge>
               </div>
@@ -539,21 +551,21 @@ function ActionAnalysis({ stats, sessions }: ActionAnalysisProps) {
                 userId: session.userId
               }))
             ).slice(0, 10).map((action, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+              <div key={index} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
                 <div className="flex items-center space-x-3">
                   <div className={`p-1 rounded-full ${
                     action.impact === 'critical' ? 'bg-red-100 dark:bg-red-900/30' :
                     'bg-orange-100 dark:bg-orange-900/30'
                   }`}>
                     {action.reversible ? (
-                      <CheckCircle className="h-3 w-3 text-green-600" />
+                      <CheckCircle className="h-3 w-3 text-green-600 sm:w-auto md:w-full" />
                     ) : (
-                      <XCircle className="h-3 w-3 text-red-600" />
+                      <XCircle className="h-3 w-3 text-red-600 sm:w-auto md:w-full" />
                     )}
                   </div>
                   <div>
                     <p className="font-medium">{action.action}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                       {action.resource} • {action.userId} • {format(new Date(action.timestamp), 'MMM dd, HH:mm')}
                     </p>
                   </div>
@@ -610,7 +622,7 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
                   style={{ width: `${complianceScore}%` }}
                 ></div>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                 {complianceScore >= 90 ? 'Excellent' :
                  complianceScore >= 80 ? 'Good' :
                  complianceScore >= 70 ? 'Fair' : 'Needs Improvement'}
@@ -631,28 +643,28 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
                 <span>Justification Provided</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.justificationProvided}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span>Additional Auth Used</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.additionalAuthUsed}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span>Timeout Compliance</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.timeoutCompliance}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span>Audit Trail Complete</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.auditTrailComplete}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                 </div>
               </div>
             </div>
@@ -666,19 +678,19 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
           <CardContent>
             <div className="space-y-3">
               <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
+                <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
                 <AlertDescription>
                   2 sessions without proper justification
                 </AlertDescription>
               </Alert>
               <Alert>
-                <Eye className="h-4 w-4" />
+                <Eye className="h-4 w-4 sm:w-auto md:w-full" />
                 <AlertDescription>
                   1 session exceeded time limit
                 </AlertDescription>
               </Alert>
               <Alert>
-                <FileText className="h-4 w-4" />
+                <FileText className="h-4 w-4 sm:w-auto md:w-full" />
                 <AlertDescription>
                   3 actions missing audit details
                 </AlertDescription>
@@ -715,7 +727,7 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
             } className="text-lg px-4 py-2">
               {riskLevel} Risk
             </Badge>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
               Based on recent Evil Mode activity patterns
             </div>
           </div>
@@ -725,7 +737,7 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">High Risk Actions</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">High Risk Actions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
@@ -736,7 +748,7 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Irreversible Actions</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Irreversible Actions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
@@ -747,7 +759,7 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Compliance Violations</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Compliance Violations</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
@@ -758,7 +770,7 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Security Incidents</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">Security Incidents</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
@@ -775,19 +787,19 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
         <CardContent>
           <div className="space-y-3">
             <Alert>
-              <Shield className="h-4 w-4" />
+              <Shield className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>
                 Implement additional approval workflow for critical actions
               </AlertDescription>
             </Alert>
             <Alert>
-              <Clock className="h-4 w-4" />
+              <Clock className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>
                 Reduce maximum session duration to 30 minutes
               </AlertDescription>
             </Alert>
             <Alert>
-              <Eye className="h-4 w-4" />
+              <Eye className="h-4 w-4 sm:w-auto md:w-full" />
               <AlertDescription>
                 Enable real-time monitoring alerts for high-risk actions
               </AlertDescription>

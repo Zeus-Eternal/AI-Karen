@@ -1,3 +1,19 @@
+import React, { useEffect, useState } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
+import { 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
+import { usePluginStore, selectFilteredPlugins, selectPluginLoading, selectPluginError } from '@/store/plugin-store';
+import { PluginInfo, PluginStatus } from '@/types/plugins';
+import { PluginDetailView } from './PluginDetailView';
+import { PluginInstallationWizard } from './PluginInstallationWizard';
+import { PluginMarketplace } from './PluginMarketplace';
 /**
  * Plugin Manager Component
  * 
@@ -7,8 +23,8 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { 
+
+
   Search, 
   Filter, 
   Grid, 
@@ -28,34 +44,34 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { 
+
+
+
+
+
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { 
+
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 
-import { usePluginStore, selectFilteredPlugins, selectPluginLoading, selectPluginError } from '@/store/plugin-store';
-import { PluginInfo, PluginStatus } from '@/types/plugins';
-import { PluginDetailView } from './PluginDetailView';
-import { PluginInstallationWizard } from './PluginInstallationWizard';
-import { PluginMarketplace } from './PluginMarketplace';
+
+
+
+
+
+
+
+
+
 
 // Status badge configuration
 const statusConfig = {
@@ -128,21 +144,22 @@ const PluginCard: React.FC<PluginCardProps> = ({
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <ErrorBoundary fallback={<div>Something went wrong in PluginManager</div>}>
+      <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <CardTitle className="text-lg">{plugin.name}</CardTitle>
-              <Badge variant={statusInfo.variant} className="text-xs">
+              <Badge variant={statusInfo.variant} className="text-xs sm:text-sm md:text-base">
                 <StatusIcon className={`w-3 h-3 mr-1 ${statusInfo.color}`} />
                 {statusInfo.label}
               </Badge>
             </div>
-            <CardDescription className="text-sm">
+            <CardDescription className="text-sm md:text-base lg:text-lg">
               {plugin.manifest.description}
             </CardDescription>
-            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground sm:text-sm md:text-base">
               <span>v{plugin.version}</span>
               <span>by {plugin.manifest.author.name}</span>
               <span className="capitalize">{plugin.manifest.category}</span>
@@ -151,17 +168,17 @@ const PluginCard: React.FC<PluginCardProps> = ({
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={loading}>
-                <MoreVertical className="w-4 h-4" />
+              <button variant="ghost" size="sm" disabled={loading} aria-label="Button">
+                <MoreVertical className="w-4 h-4 sm:w-auto md:w-full" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onSelect(plugin)}>
-                <Eye className="w-4 h-4 mr-2" />
+                <Eye className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                 View Details
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onConfigure(plugin)}>
-                <Settings className="w-4 h-4 mr-2" />
+                <Settings className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                 Configure
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -171,12 +188,12 @@ const PluginCard: React.FC<PluginCardProps> = ({
               >
                 {plugin.enabled ? (
                   <>
-                    <PowerOff className="w-4 h-4 mr-2" />
+                    <PowerOff className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                     Disable
                   </>
                 ) : (
                   <>
-                    <Power className="w-4 h-4 mr-2" />
+                    <Power className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                     Enable
                   </>
                 )}
@@ -187,7 +204,7 @@ const PluginCard: React.FC<PluginCardProps> = ({
                 className="text-destructive"
                 disabled={plugin.status === 'installing' || plugin.status === 'updating'}
               >
-                <Trash2 className="w-4 h-4 mr-2" />
+                <Trash2 className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                 Uninstall
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -197,7 +214,7 @@ const PluginCard: React.FC<PluginCardProps> = ({
       
       <CardContent className="pt-0">
         {/* Performance Metrics */}
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-3 gap-4 text-sm md:text-base lg:text-lg">
           <div>
             <div className="text-muted-foreground">Executions</div>
             <div className="font-medium">{plugin.metrics.performance.totalExecutions.toLocaleString()}</div>
@@ -214,7 +231,7 @@ const PluginCard: React.FC<PluginCardProps> = ({
         
         {/* Health Status */}
         <div className="mt-4">
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
             <span className="text-muted-foreground">Health</span>
             <div className="flex items-center gap-1">
               <div className={`w-2 h-2 rounded-full ${
@@ -228,8 +245,8 @@ const PluginCard: React.FC<PluginCardProps> = ({
           {plugin.metrics.health.issues.length > 0 && (
             <div className="mt-2">
               <Alert variant="destructive" className="py-2">
-                <AlertTriangle className="w-4 h-4" />
-                <AlertDescription className="text-xs">
+                <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
+                <AlertDescription className="text-xs sm:text-sm md:text-base">
                   {plugin.metrics.health.issues[0]}
                   {plugin.metrics.health.issues.length > 1 && 
                     ` (+${plugin.metrics.health.issues.length - 1} more)`
@@ -244,8 +261,8 @@ const PluginCard: React.FC<PluginCardProps> = ({
         {plugin.lastError && (
           <div className="mt-3">
             <Alert variant="destructive" className="py-2">
-              <XCircle className="w-4 h-4" />
-              <AlertDescription className="text-xs">
+              <XCircle className="w-4 h-4 sm:w-auto md:w-full" />
+              <AlertDescription className="text-xs sm:text-sm md:text-base">
                 <div className="font-medium">Last Error:</div>
                 <div>{plugin.lastError.message}</div>
                 <div className="text-muted-foreground mt-1">
@@ -267,30 +284,30 @@ const PluginListSkeleton: React.FC = () => (
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <Skeleton className="h-6 w-32 mb-2" />
+              <Skeleton className="h-6 w-32 mb-2 sm:w-auto md:w-full" />
               <Skeleton className="h-4 w-full mb-2" />
               <div className="flex gap-4">
-                <Skeleton className="h-3 w-16" />
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-16 sm:w-auto md:w-full" />
+                <Skeleton className="h-3 w-20 sm:w-auto md:w-full" />
+                <Skeleton className="h-3 w-16 sm:w-auto md:w-full" />
               </div>
             </div>
-            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-8 sm:w-auto md:w-full" />
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
-              <Skeleton className="h-3 w-16 mb-1" />
-              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-3 w-16 mb-1 sm:w-auto md:w-full" />
+              <Skeleton className="h-4 w-12 sm:w-auto md:w-full" />
             </div>
             <div>
-              <Skeleton className="h-3 w-16 mb-1" />
-              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-3 w-16 mb-1 sm:w-auto md:w-full" />
+              <Skeleton className="h-4 w-12 sm:w-auto md:w-full" />
             </div>
             <div>
-              <Skeleton className="h-3 w-16 mb-1" />
-              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-3 w-16 mb-1 sm:w-auto md:w-full" />
+              <Skeleton className="h-4 w-12 sm:w-auto md:w-full" />
             </div>
           </div>
           <Skeleton className="h-4 w-full" />
@@ -401,16 +418,16 @@ export const PluginManager: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleRefresh} disabled={loading}>
+          <button variant="outline" onClick={handleRefresh} disabled={loading} aria-label="Button">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button variant="outline" onClick={handleBrowseMarketplace}>
-            <Search className="w-4 h-4 mr-2" />
+          <button variant="outline" onClick={handleBrowseMarketplace} aria-label="Button">
+            <Search className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Browse Marketplace
           </Button>
-          <Button onClick={handleInstallPlugin}>
-            <Plus className="w-4 h-4 mr-2" />
+          <button onClick={handleInstallPlugin} aria-label="Button">
+            <Plus className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Install Plugin
           </Button>
         </div>
@@ -419,7 +436,7 @@ export const PluginManager: React.FC = () => {
       {/* Error Display */}
       {error && (
         <Alert variant="destructive">
-          <AlertTriangle className="w-4 h-4" />
+          <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
           <AlertDescription>{typeof error === 'string' ? error : 'An error occurred'}</AlertDescription>
         </Alert>
       )}
@@ -430,71 +447,71 @@ export const PluginManager: React.FC = () => {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex-1 max-w-md">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
+                <input
                   placeholder="Search plugins..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
                   className="pl-10"
                 />
               </div>
             </div>
             
             <div className="flex items-center gap-2">
-              <Select
+              <select
                 value={filters.status?.[0] || 'all'}
-                onValueChange={(value) => 
+                onValueChange={(value) = aria-label="Select option"> 
                   setFilters({ status: value === 'all' ? undefined : [value as PluginStatus] })
                 }
               >
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Status" />
+                <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+                  <selectValue placeholder="Status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="error">Error</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="all" aria-label="Select option">All Status</SelectItem>
+                  <selectItem value="active" aria-label="Select option">Active</SelectItem>
+                  <selectItem value="inactive" aria-label="Select option">Inactive</SelectItem>
+                  <selectItem value="error" aria-label="Select option">Error</SelectItem>
                 </SelectContent>
               </Select>
               
-              <Select
+              <select
                 value={`${sortBy}-${sortOrder}`}
-                onValueChange={(value) => {
+                onValueChange={(value) = aria-label="Select option"> {
                   const [field, order] = value.split('-');
                   setSorting(field, order as 'asc' | 'desc');
                 }}
               >
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Sort by" />
+                <selectTrigger className="w-40 sm:w-auto md:w-full" aria-label="Select option">
+                  <selectValue placeholder="Sort by" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name-asc">Name A-Z</SelectItem>
-                  <SelectItem value="name-desc">Name Z-A</SelectItem>
-                  <SelectItem value="status-asc">Status</SelectItem>
-                  <SelectItem value="installedAt-desc">Recently Installed</SelectItem>
-                  <SelectItem value="performance-asc">Performance</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="name-asc" aria-label="Select option">Name A-Z</SelectItem>
+                  <selectItem value="name-desc" aria-label="Select option">Name Z-A</SelectItem>
+                  <selectItem value="status-asc" aria-label="Select option">Status</SelectItem>
+                  <selectItem value="installedAt-desc" aria-label="Select option">Recently Installed</SelectItem>
+                  <selectItem value="performance-asc" aria-label="Select option">Performance</SelectItem>
                 </SelectContent>
               </Select>
               
               <Separator orientation="vertical" className="h-6" />
               
               <div className="flex items-center border rounded-md">
-                <Button
+                <button
                   variant={view === 'list' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setView('list')}
+                  onClick={() = aria-label="Button"> setView('list')}
                   className="rounded-r-none"
                 >
-                  <List className="w-4 h-4" />
+                  <List className="w-4 h-4 sm:w-auto md:w-full" />
                 </Button>
-                <Button
+                <button
                   variant={view === 'grid' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setView('grid')}
+                  onClick={() = aria-label="Button"> setView('grid')}
                   className="rounded-l-none"
                 >
-                  <Grid className="w-4 h-4" />
+                  <Grid className="w-4 h-4 sm:w-auto md:w-full" />
                 </Button>
               </div>
             </div>
@@ -512,20 +529,20 @@ export const PluginManager: React.FC = () => {
               <div className="text-muted-foreground">
                 {searchQuery || Object.keys(filters).length > 0 ? (
                   <>
-                    <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <Search className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
                     <h3 className="text-lg font-medium mb-2">No plugins found</h3>
                     <p>Try adjusting your search or filters</p>
                   </>
                 ) : (
                   <>
-                    <Plus className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <Plus className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
                     <h3 className="text-lg font-medium mb-2">No plugins installed</h3>
                     <p className="mb-4">Get started by installing your first plugin</p>
                     <div className="flex justify-center gap-2">
-                      <Button onClick={handleBrowseMarketplace}>
+                      <button onClick={handleBrowseMarketplace} aria-label="Button">
                         Browse Marketplace
                       </Button>
-                      <Button variant="outline" onClick={handleInstallPlugin}>
+                      <button variant="outline" onClick={handleInstallPlugin} aria-label="Button">
                         Install Plugin
                       </Button>
                     </div>
@@ -555,7 +572,7 @@ export const PluginManager: React.FC = () => {
       {/* Plugin Configuration Modal */}
       {configurePlugin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+          <div className="bg-background rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto sm:w-auto md:w-full">
             <h2 className="text-xl font-semibold mb-4">Configure {configurePlugin.name}</h2>
             <p className="text-muted-foreground mb-6">
               Adjust settings for this plugin. Changes will be applied immediately.
@@ -563,16 +580,16 @@ export const PluginManager: React.FC = () => {
             
             {/* Configuration form would go here */}
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Plugin configuration interface will be implemented based on the plugin's manifest schema.
               </p>
             </div>
             
             <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setConfigurePlugin(null)}>
+              <button variant="outline" onClick={() = aria-label="Button"> setConfigurePlugin(null)}>
                 Cancel
               </Button>
-              <Button onClick={() => setConfigurePlugin(null)}>
+              <button onClick={() = aria-label="Button"> setConfigurePlugin(null)}>
                 Save Changes
               </Button>
             </div>
@@ -580,5 +597,6 @@ export const PluginManager: React.FC = () => {
         </div>
       )}
     </div>
+    </ErrorBoundary>
   );
 };

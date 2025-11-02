@@ -6,40 +6,33 @@
  * 
  * Requirements: 7.3, 7.5
  */
-
 // Simple cache implementation for testing
 class SimpleCache<K, V> {
   private cache = new Map<K, V>();
   private maxSize: number;
   private ttl: number;
   private timers = new Map<K, NodeJS.Timeout>();
-
   constructor(options: { max: number; ttl: number }) {
     this.maxSize = options.max;
     this.ttl = options.ttl;
   }
-
   get(key: K): V | undefined {
     return this.cache.get(key);
   }
-
   set(key: K, value: V): void {
     // Clear existing timer
     const existingTimer = this.timers.get(key);
     if (existingTimer) {
       clearTimeout(existingTimer);
     }
-
     // Set new value
     this.cache.set(key, value);
-
     // Set TTL timer
     const timer = setTimeout(() => {
       this.cache.delete(key);
       this.timers.delete(key);
     }, this.ttl);
     this.timers.set(key, timer);
-
     // Enforce max size
     if (this.cache.size > this.maxSize) {
       const firstKey = this.cache.keys().next().value;
@@ -48,7 +41,6 @@ class SimpleCache<K, V> {
       }
     }
   }
-
   delete(key: K): boolean {
     const timer = this.timers.get(key);
     if (timer) {
@@ -57,7 +49,6 @@ class SimpleCache<K, V> {
     }
     return this.cache.delete(key);
   }
-
   clear(): void {
     // Clear all timers
     for (const timer of this.timers.values()) {
@@ -66,12 +57,10 @@ class SimpleCache<K, V> {
     this.timers.clear();
     this.cache.clear();
   }
-
   get size(): number {
     return this.cache.size;
   }
 }
-
 import type { 
   User, 
   Permission, 
@@ -81,7 +70,6 @@ import type {
   CacheConfig,
   CacheStats
 } from '@/types/admin';
-
 // Cache configuration
 const CACHE_CONFIG: CacheConfig = {
   permissions: {
@@ -105,88 +93,71 @@ const CACHE_CONFIG: CacheConfig = {
     ttl: 10 * 60 * 1000, // 10 minutes
   }
 };
-
 // Cache instances
 const permissionsCache = new SimpleCache<string, Permission[]>({
   max: CACHE_CONFIG.permissions.maxSize,
   ttl: CACHE_CONFIG.permissions.ttl,
 });
-
 const systemConfigCache = new SimpleCache<string, SystemConfig[]>({
   max: CACHE_CONFIG.systemConfig.maxSize,
   ttl: CACHE_CONFIG.systemConfig.ttl,
 });
-
 const userCache = new SimpleCache<string, User>({
   max: CACHE_CONFIG.users.maxSize,
   ttl: CACHE_CONFIG.users.ttl,
 });
-
 const userListCache = new SimpleCache<string, PaginatedResponse<User>>({
   max: CACHE_CONFIG.userLists.maxSize,
   ttl: CACHE_CONFIG.userLists.ttl,
 });
-
 const statisticsCache = new SimpleCache<string, any>({
   max: CACHE_CONFIG.statistics.maxSize,
   ttl: CACHE_CONFIG.statistics.ttl,
 });
-
 // Cache key generators
 export class CacheKeyGenerator {
   static userPermissions(userId: string): string {
     return `permissions:${userId}`;
   }
-
   static systemConfig(category?: string): string {
     return category ? `config:${category}` : 'config:all';
   }
-
   static user(userId: string): string {
     return `user:${userId}`;
   }
-
   static userByEmail(email: string): string {
     return `user:email:${email.toLowerCase()}`;
   }
-
   static userList(filters: UserListFilter, page: number, limit: number, sortBy?: string, sortOrder?: string): string {
     const filterStr = JSON.stringify(filters);
     const sortStr = `${sortBy || 'created_at'}:${sortOrder || 'desc'}`;
     return `userlist:${Buffer.from(filterStr).toString('base64')}:${page}:${limit}:${sortStr}`;
   }
-
   static statistics(type: string, params?: Record<string, any>): string {
     const paramStr = params ? JSON.stringify(params) : '';
     return `stats:${type}:${Buffer.from(paramStr).toString('base64')}`;
   }
-
   static roleBasedQuery(userId: string): string {
     return `rbq:${userId}`;
   }
 }
-
 // Permission caching
 export class PermissionCache {
   static async get(userId: string): Promise<Permission[] | null> {
     const key = CacheKeyGenerator.userPermissions(userId);
     return permissionsCache.get(key) || null;
   }
-
   static set(userId: string, permissions: Permission[]): void {
     const key = CacheKeyGenerator.userPermissions(userId);
     permissionsCache.set(key, permissions);
   }
-
   static invalidate(userId: string): void {
     const key = CacheKeyGenerator.userPermissions(userId);
     permissionsCache.delete(key);
   }
-
   static invalidateAll(): void {
     permissionsCache.clear();
   }
-
   static getStats(): CacheStats {
     return {
       size: permissionsCache.size,
@@ -196,19 +167,16 @@ export class PermissionCache {
     };
   }
 }
-
 // System configuration caching
 export class SystemConfigCache {
   static async get(category?: string): Promise<SystemConfig[] | null> {
     const key = CacheKeyGenerator.systemConfig(category);
     return systemConfigCache.get(key) || null;
   }
-
   static set(category: string | undefined, config: SystemConfig[]): void {
     const key = CacheKeyGenerator.systemConfig(category);
     systemConfigCache.set(key, config);
   }
-
   static invalidate(category?: string): void {
     if (category) {
       const key = CacheKeyGenerator.systemConfig(category);
@@ -218,11 +186,9 @@ export class SystemConfigCache {
       systemConfigCache.clear();
     }
   }
-
   static invalidateAll(): void {
     systemConfigCache.clear();
   }
-
   static getStats(): CacheStats {
     return {
       size: systemConfigCache.size,
@@ -232,41 +198,33 @@ export class SystemConfigCache {
     };
   }
 }
-
 // User caching
 export class UserCache {
   static async get(userId: string): Promise<User | null> {
     const key = CacheKeyGenerator.user(userId);
     return userCache.get(key) || null;
   }
-
   static async getByEmail(email: string): Promise<User | null> {
     const key = CacheKeyGenerator.userByEmail(email);
     return userCache.get(key) || null;
   }
-
   static set(user: User): void {
     const userKey = CacheKeyGenerator.user(user.user_id);
     const emailKey = CacheKeyGenerator.userByEmail(user.email);
-    
     userCache.set(userKey, user);
     userCache.set(emailKey, user);
   }
-
   static invalidate(userId: string, email?: string): void {
     const userKey = CacheKeyGenerator.user(userId);
     userCache.delete(userKey);
-    
     if (email) {
       const emailKey = CacheKeyGenerator.userByEmail(email);
       userCache.delete(emailKey);
     }
   }
-
   static invalidateAll(): void {
     userCache.clear();
   }
-
   static getStats(): CacheStats {
     return {
       size: userCache.size,
@@ -276,7 +234,6 @@ export class UserCache {
     };
   }
 }
-
 // User list caching
 export class UserListCache {
   static async get(
@@ -289,7 +246,6 @@ export class UserListCache {
     const key = CacheKeyGenerator.userList(filters, page, limit, sortBy, sortOrder);
     return userListCache.get(key) || null;
   }
-
   static set(
     filters: UserListFilter, 
     page: number, 
@@ -301,17 +257,14 @@ export class UserListCache {
     const key = CacheKeyGenerator.userList(filters, page, limit, sortBy, sortOrder);
     userListCache.set(key, data);
   }
-
   static invalidateAll(): void {
     userListCache.clear();
   }
-
   static invalidateByUser(userId: string): void {
     // Since we can't easily find all cache entries that contain a specific user,
     // we'll clear the entire user list cache when a user is updated
     this.invalidateAll();
   }
-
   static getStats(): CacheStats {
     return {
       size: userListCache.size,
@@ -321,28 +274,23 @@ export class UserListCache {
     };
   }
 }
-
 // Statistics caching
 export class StatisticsCache {
   static async get(type: string, params?: Record<string, any>): Promise<any | null> {
     const key = CacheKeyGenerator.statistics(type, params);
     return statisticsCache.get(key) || null;
   }
-
   static set(type: string, data: any, params?: Record<string, any>): void {
     const key = CacheKeyGenerator.statistics(type, params);
     statisticsCache.set(key, data);
   }
-
   static invalidate(type: string, params?: Record<string, any>): void {
     const key = CacheKeyGenerator.statistics(type, params);
     statisticsCache.delete(key);
   }
-
   static invalidateAll(): void {
     statisticsCache.clear();
   }
-
   static getStats(): CacheStats {
     return {
       size: statisticsCache.size,
@@ -352,7 +300,6 @@ export class StatisticsCache {
     };
   }
 }
-
 // Cache management utilities
 export class AdminCacheManager {
   /**
@@ -367,7 +314,6 @@ export class AdminCacheManager {
       statistics: StatisticsCache.getStats()
     };
   }
-
   /**
    * Clear all caches
    */
@@ -378,7 +324,6 @@ export class AdminCacheManager {
     UserListCache.invalidateAll();
     StatisticsCache.invalidateAll();
   }
-
   /**
    * Invalidate caches when user is updated
    */
@@ -388,21 +333,18 @@ export class AdminCacheManager {
     UserListCache.invalidateByUser(userId);
     StatisticsCache.invalidateAll(); // User stats might be affected
   }
-
   /**
    * Invalidate caches when system config is updated
    */
   static invalidateConfigCaches(category?: string): void {
     SystemConfigCache.invalidate(category);
   }
-
   /**
    * Warm up caches with frequently accessed data
    */
   static async warmUp(frequentUserIds: string[] = []): Promise<void> {
     // This would typically be called during application startup
     // to pre-populate caches with frequently accessed data
-    
     try {
       // Warm up system config cache
       const configResponse = await fetch('/api/admin/system/config');
@@ -412,7 +354,6 @@ export class AdminCacheManager {
           SystemConfigCache.set(undefined, configData.data);
         }
       }
-
       // Warm up user permissions for frequent users
       for (const userId of frequentUserIds) {
         try {
@@ -424,14 +365,11 @@ export class AdminCacheManager {
             }
           }
         } catch (error) {
-          console.warn(`Failed to warm up permissions cache for user ${userId}:`, error);
         }
       }
     } catch (error) {
-      console.warn('Cache warm-up failed:', error);
     }
   }
-
   /**
    * Get cache memory usage estimation
    */
@@ -441,7 +379,6 @@ export class AdminCacheManager {
     const usersSize = userCache.size * 200;
     const userListsSize = userListCache.size * 1000;
     const statisticsSize = statisticsCache.size * 300;
-    
     return {
       permissions: permissionsSize,
       systemConfig: systemConfigSize,
@@ -451,16 +388,13 @@ export class AdminCacheManager {
       total: permissionsSize + systemConfigSize + usersSize + userListsSize + statisticsSize
     };
   }
-
   /**
    * Configure cache settings
    */
   static configureCaches(config: Partial<typeof CACHE_CONFIG>): void {
     // This would allow runtime configuration of cache settings
     // Implementation would require recreating cache instances
-    console.warn('Dynamic cache configuration not implemented yet');
   }
-
   /**
    * Health check for all caches
    */
@@ -474,7 +408,6 @@ export class AdminCacheManager {
     };
   }
 }
-
 // Cache middleware for API routes
 export function withCache<T>(
   cacheGetter: () => Promise<T | null>,
@@ -489,20 +422,16 @@ export function withCache<T>(
         resolve(cachedData);
         return;
       }
-
       // Fetch fresh data
       const freshData = await dataFetcher();
-      
       // Cache the fresh data
       cacheSetter(freshData);
-      
       resolve(freshData);
     } catch (error) {
       reject(error);
     }
   });
 }
-
 // Export cache instances for direct access if needed
 export {
   permissionsCache,

@@ -57,13 +57,13 @@ const TestComponent: React.FC = () => {
       <div data-testid="sidebar-collapsed">{sidebarCollapsed.toString()}</div>
       <div data-testid="is-mobile">{isMobile.toString()}</div>
       <div data-testid="is-tablet">{isTablet.toString()}</div>
-      <button data-testid="toggle-sidebar" onClick={toggleSidebar}>
+      <button data-testid="toggle-sidebar" onClick={toggleSidebar} aria-label="Button">
         Toggle
       </button>
-      <button data-testid="close-sidebar" onClick={closeSidebar}>
+      <button data-testid="close-sidebar" onClick={closeSidebar} aria-label="Button">
         Close
       </button>
-      <button data-testid="open-sidebar" onClick={openSidebar}>
+      <button data-testid="open-sidebar" onClick={openSidebar} aria-label="Button">
         Open
       </button>
     </div>

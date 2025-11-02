@@ -35,7 +35,7 @@ export function HapticButton({
       )}
       onClick={handleClick}
       {...props}
-    >
+     aria-label="Button">
       {children}
     </button>
   );

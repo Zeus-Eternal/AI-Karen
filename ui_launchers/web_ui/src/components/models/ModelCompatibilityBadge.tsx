@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
@@ -78,9 +78,9 @@ export default function ModelCompatibilityBadge({
 
   const getCompatibilityIcon = (status: string) => {
     return status === 'compatible' ? (
-      <CheckCircle className="h-3 w-3 text-green-500" />
+      <CheckCircle className="h-3 w-3 text-green-500 sm:w-auto md:w-full" />
     ) : (
-      <AlertTriangle className="h-3 w-3 text-red-500" />
+      <AlertTriangle className="h-3 w-3 text-red-500 sm:w-auto md:w-full" />
     );
   };
 
@@ -88,14 +88,14 @@ export default function ModelCompatibilityBadge({
     if (overallCompatibility === 'compatible') {
       return (
         <Badge variant="default" className={cn("gap-1 bg-green-500 hover:bg-green-600", className)}>
-          <CheckCircle className="h-3 w-3" />
+          <CheckCircle className="h-3 w-3 sm:w-auto md:w-full" />
           Compatible
         </Badge>
       );
     } else {
       return (
         <Badge variant="destructive" className={cn("gap-1", className)}>
-          <AlertTriangle className="h-3 w-3" />
+          <AlertTriangle className="h-3 w-3 sm:w-auto md:w-full" />
           Incompatible
         </Badge>
       );
@@ -110,9 +110,9 @@ export default function ModelCompatibilityBadge({
       <Badge 
         key="cpu"
         variant={cpuStatus === 'compatible' ? 'default' : 'destructive'}
-        className="gap-1 text-xs"
+        className="gap-1 text-xs sm:text-sm md:text-base"
       >
-        <Cpu className="h-3 w-3" />
+        <Cpu className="h-3 w-3 sm:w-auto md:w-full" />
         CPU {cpuStatus === 'compatible' ? '✓' : '✗'}
       </Badge>
     );
@@ -123,9 +123,9 @@ export default function ModelCompatibilityBadge({
         <Badge 
           key="gpu"
           variant={gpuStatus === 'compatible' ? 'default' : 'destructive'}
-          className="gap-1 text-xs"
+          className="gap-1 text-xs sm:text-sm md:text-base"
         >
-          <Monitor className="h-3 w-3" />
+          <Monitor className="h-3 w-3 sm:w-auto md:w-full" />
           GPU {gpuStatus === 'compatible' ? '✓' : '✗'}
         </Badge>
       );
@@ -136,9 +136,9 @@ export default function ModelCompatibilityBadge({
       <Badge 
         key="ram"
         variant={ramStatus === 'compatible' ? 'default' : 'destructive'}
-        className="gap-1 text-xs"
+        className="gap-1 text-xs sm:text-sm md:text-base"
       >
-        <MemoryStick className="h-3 w-3" />
+        <MemoryStick className="h-3 w-3 sm:w-auto md:w-full" />
         {compatibility.min_ram_gb}GB RAM {ramStatus === 'compatible' ? '✓' : '✗'}
       </Badge>
     );
@@ -149,9 +149,9 @@ export default function ModelCompatibilityBadge({
         <Badge 
           key="vram"
           variant={vramStatus === 'compatible' ? 'default' : 'destructive'}
-          className="gap-1 text-xs"
+          className="gap-1 text-xs sm:text-sm md:text-base"
         >
-          <Zap className="h-3 w-3" />
+          <Zap className="h-3 w-3 sm:w-auto md:w-full" />
           {compatibility.min_vram_gb}GB VRAM {vramStatus === 'compatible' ? '✓' : '✗'}
         </Badge>
       );
@@ -162,7 +162,7 @@ export default function ModelCompatibilityBadge({
 
   const getTooltipContent = () => {
     return (
-      <div className="space-y-2 text-xs">
+      <div className="space-y-2 text-xs sm:text-sm md:text-base">
         <div className="font-medium">System Compatibility</div>
         
         <div className="space-y-1">

@@ -34,8 +34,8 @@ export const SetupRouteGuard: React.FC<SetupRouteGuardProps> = ({
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950">
         <div className="text-center space-y-4">
           <div className="relative">
-            <Brain className="h-16 w-16 text-primary mx-auto animate-pulse" />
-            <div className="absolute inset-0 h-16 w-16 bg-primary/20 rounded-full blur-xl animate-pulse" />
+            <Brain className="h-16 w-16 text-primary mx-auto animate-pulse sm:w-auto md:w-full" />
+            <div className="absolute inset-0 h-16 w-16 bg-primary/20 rounded-full blur-xl animate-pulse sm:w-auto md:w-full" />
           </div>
           <div className="space-y-2">
             <h2 className="text-xl font-semibold text-foreground">
@@ -53,9 +53,9 @@ export const SetupRouteGuard: React.FC<SetupRouteGuardProps> = ({
   // Show error state if there's an error checking setup status
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950 p-4 sm:p-4 md:p-6">
         <div className="text-center space-y-4 max-w-md">
-          <Brain className="h-16 w-16 text-red-500 mx-auto" />
+          <Brain className="h-16 w-16 text-red-500 mx-auto sm:w-auto md:w-full" />
           <div className="space-y-2">
             <h2 className="text-xl font-semibold text-red-600">
               Setup Check Failed
@@ -63,12 +63,12 @@ export const SetupRouteGuard: React.FC<SetupRouteGuardProps> = ({
             <p className="text-muted-foreground">
               Unable to verify setup status. Please try refreshing the page.
             </p>
-            <p className="text-sm text-red-600 bg-red-50 dark:bg-red-950/20 p-3 rounded-md">
+            <p className="text-sm text-red-600 bg-red-50 dark:bg-red-950/20 p-3 rounded-md md:text-base lg:text-lg">
               {error}
             </p>
           </div>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() = aria-label="Button"> window.location.reload()}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
             Refresh Page

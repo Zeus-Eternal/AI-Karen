@@ -1,0 +1,17 @@
+{
+  "plugin_api_version": "1.0",
+  "intent": "deepseek_chat",
+  "enable_external_workflow": false,
+  "required_roles": [
+    "admin"
+  ],
+  "trusted_ui": false,
+  "module": "src.extensions.plugins.implementations.ai.llm_services.deepseek.handler",
+  "name": "deepseek",
+  "version": "0.1.0",
+  "description": "Uses the DeepSeek API for chat completion.",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "run",
+  "plugin_type": "core"
+}

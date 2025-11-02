@@ -2,9 +2,7 @@
  * Service Error Handler - Centralized error handling for all services
  * Provides consistent error handling, retry logic, and user-friendly error messages
  */
-
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
-
 export interface ServiceError extends Error {
   code: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
@@ -14,7 +12,6 @@ export interface ServiceError extends Error {
   context?: Record<string, any>;
   timestamp: number;
 }
-
 export interface ErrorHandlerConfig {
   enableRetry: boolean;
   maxRetries: number;
@@ -23,7 +20,6 @@ export interface ErrorHandlerConfig {
   enableUserNotification: boolean;
   fallbackValues: Record<string, any>;
 }
-
 export interface RetryOptions {
   maxAttempts?: number;
   baseDelay?: number;
@@ -31,7 +27,6 @@ export interface RetryOptions {
   backoffMultiplier?: number;
   retryCondition?: (error: Error, attempt: number) => boolean;
 }
-
 /**
  * Centralized error handler for all services
  */
@@ -39,7 +34,6 @@ export class ServiceErrorHandler {
   private config: ErrorHandlerConfig;
   private enhancedApiClient = enhancedApiClient;
   private errorLog: ServiceError[] = [];
-
   constructor(config?: Partial<ErrorHandlerConfig>) {
     this.config = {
       enableRetry: true,
@@ -51,7 +45,6 @@ export class ServiceErrorHandler {
       ...config,
     };
   }
-
   /**
    * Handle and transform errors into ServiceError format
    */
@@ -67,14 +60,11 @@ export class ServiceErrorHandler {
     }
   ): ServiceError {
     const serviceError = this.transformError(error, context);
-    
     if (this.config.enableLogging) {
       this.logError(serviceError);
     }
-
     return serviceError;
   }
-
   /**
    * Execute a function with automatic retry logic
    */
@@ -94,47 +84,36 @@ export class ServiceErrorHandler {
       backoffMultiplier: options?.backoffMultiplier ?? 2,
       retryCondition: options?.retryCondition ?? this.defaultRetryCondition,
     };
-
     let lastError: Error | null = null;
     let attempt = 0;
-
     while (attempt < opts.maxAttempts) {
       try {
         const result = await fn();
-        
         // Log successful retry if this wasn't the first attempt
         if (attempt > 0 && this.config.enableLogging) {
-          console.log(`ServiceErrorHandler: ${context.service}.${context.method} succeeded after ${attempt + 1} attempts`);
         }
-        
         return result;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown error');
         attempt++;
-
         // Check if we should retry
         if (attempt >= opts.maxAttempts || !opts.retryCondition(lastError, attempt)) {
           break;
         }
-
         // Calculate delay with exponential backoff
         const delay = Math.min(
           opts.baseDelay * Math.pow(opts.backoffMultiplier, attempt - 1),
           opts.maxDelay
         );
-
         if (this.config.enableLogging) {
           console.log(`ServiceErrorHandler: ${context.service}.${context.method} failed (attempt ${attempt}), retrying in ${delay}ms`);
         }
-
         await this.sleep(delay);
       }
     }
-
     // All retries exhausted, handle the final error
     throw this.handleError(lastError!, context);
   }
-
   /**
    * Execute a function with fallback value on error
    */
@@ -151,15 +130,11 @@ export class ServiceErrorHandler {
       return await fn();
     } catch (error) {
       const serviceError = this.handleError(error, context);
-      
       if (this.config.enableLogging) {
-        console.warn(`ServiceErrorHandler: ${context.service}.${context.method} failed, using fallback value:`, serviceError);
       }
-
       return fallbackValue;
     }
   }
-
   /**
    * Execute a function with both retry and fallback
    */
@@ -177,12 +152,10 @@ export class ServiceErrorHandler {
       return await this.withRetry(fn, context, retryOptions);
     } catch (error) {
       if (this.config.enableLogging) {
-        console.warn(`ServiceErrorHandler: ${context.service}.${context.method} failed after retries, using fallback value`);
       }
       return fallbackValue;
     }
   }
-
   /**
    * Transform various error types into ServiceError
    */
@@ -192,7 +165,6 @@ export class ServiceErrorHandler {
     let retryable = false;
     let userMessage = 'An unexpected error occurred. Please try again.';
     let technicalMessage = error?.message || 'Unknown error';
-
     // Handle API errors
     if (error?.name === 'ApiError' || error?.name === 'EnhancedApiError') {
       code = this.getApiErrorCode(error);
@@ -250,7 +222,6 @@ export class ServiceErrorHandler {
       retryable = true;
       userMessage = 'Server error. Please try again in a moment.';
     }
-
     const serviceError = new Error(userMessage) as ServiceError;
     serviceError.name = 'ServiceError';
     serviceError.code = code;
@@ -269,10 +240,8 @@ export class ServiceErrorHandler {
       },
     };
     serviceError.timestamp = Date.now();
-
     return serviceError;
   }
-
   private getApiErrorCode(error: any): string {
     if (error.status) {
       if (error.status >= 500) return 'API_SERVER_ERROR';
@@ -284,7 +253,6 @@ export class ServiceErrorHandler {
     }
     return 'API_ERROR';
   }
-
   private getApiErrorSeverity(error: any): 'low' | 'medium' | 'high' | 'critical' {
     if (error.status >= 500) return 'high';
     if (error.status === 401 || error.status === 403) return 'high';
@@ -293,7 +261,6 @@ export class ServiceErrorHandler {
     if (error.isNetworkError || error.isTimeoutError) return 'medium';
     return 'medium';
   }
-
   private isApiErrorRetryable(error: any): boolean {
     const retryableStatuses = [408, 429, 500, 502, 503, 504];
     return (
@@ -302,7 +269,6 @@ export class ServiceErrorHandler {
       (error.status && retryableStatuses.includes(error.status))
     );
   }
-
   private getApiErrorUserMessage(error: any): string {
     if (error.status === 401) return 'Please log in to continue.';
     if (error.status === 403) return 'You do not have permission to access this resource.';
@@ -313,18 +279,15 @@ export class ServiceErrorHandler {
     if (error.isTimeoutError) return 'Request timed out. Please try again.';
     return 'An error occurred while communicating with the server.';
   }
-
   private defaultRetryCondition = (error: Error, attempt: number): boolean => {
     // Don't retry if we've exceeded max attempts
     if (attempt >= this.config.maxRetries) {
       return false;
     }
-
     // Check if it's a retryable error
     if (error.name === 'ServiceError') {
       return (error as ServiceError).retryable;
     }
-
     // Default retry conditions for raw errors
     const message = error.message.toLowerCase();
     return (
@@ -335,16 +298,13 @@ export class ServiceErrorHandler {
       (error as any).status >= 500
     );
   };
-
   private logError(error: ServiceError): void {
     // Add to error log
     this.errorLog.push(error);
-    
     // Keep only recent errors (last 100)
     if (this.errorLog.length > 100) {
       this.errorLog = this.errorLog.slice(-100);
     }
-
     // Console logging based on severity
     const logData = {
       code: error.code,
@@ -356,38 +316,29 @@ export class ServiceErrorHandler {
       technicalMessage: error.technicalMessage,
       timestamp: new Date(error.timestamp).toISOString(),
     };
-
     switch (error.severity) {
       case 'critical':
-        console.error('ServiceErrorHandler [CRITICAL]:', logData);
         break;
       case 'high':
-        console.error('ServiceErrorHandler [HIGH]:', logData);
         break;
       case 'medium':
-        console.warn('ServiceErrorHandler [MEDIUM]:', logData);
         break;
       case 'low':
-        console.log('ServiceErrorHandler [LOW]:', logData);
         break;
     }
   }
-
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
-
   /**
    * Public utility methods
    */
   public getErrorLog(): ServiceError[] {
     return [...this.errorLog];
   }
-
   public clearErrorLog(): void {
     this.errorLog = [];
   }
-
   public getErrorStats(): {
     total: number;
     bySeverity: Record<string, number>;
@@ -400,34 +351,26 @@ export class ServiceErrorHandler {
       byCode: {} as Record<string, number>,
       byService: {} as Record<string, number>,
     };
-
     this.errorLog.forEach(error => {
       // Count by severity
       stats.bySeverity[error.severity] = (stats.bySeverity[error.severity] || 0) + 1;
-      
       // Count by code
       stats.byCode[error.code] = (stats.byCode[error.code] || 0) + 1;
-      
       // Count by service
       const service = error.context?.service || 'unknown';
       stats.byService[service] = (stats.byService[service] || 0) + 1;
     });
-
     return stats;
   }
-
   public updateConfig(config: Partial<ErrorHandlerConfig>): void {
     this.config = { ...this.config, ...config };
   }
-
   public getConfig(): ErrorHandlerConfig {
     return { ...this.config };
   }
 }
-
 // Singleton instance
 let serviceErrorHandler: ServiceErrorHandler | null = null;
-
 /**
  * Get the global service error handler instance
  */
@@ -437,7 +380,6 @@ export function getServiceErrorHandler(): ServiceErrorHandler {
   }
   return serviceErrorHandler;
 }
-
 /**
  * Initialize service error handler with custom configuration
  */
@@ -445,7 +387,6 @@ export function initializeServiceErrorHandler(config?: Partial<ErrorHandlerConfi
   serviceErrorHandler = new ServiceErrorHandler(config);
   return serviceErrorHandler;
 }
-
 /**
  * Utility function to create user-friendly error messages
  */
@@ -456,7 +397,6 @@ export function createUserFriendlyError(
   if (error?.userMessage) {
     return error.userMessage;
   }
-
   if (error?.status) {
     switch (error.status) {
       case 401: return 'Please log in to continue.';
@@ -467,15 +407,11 @@ export function createUserFriendlyError(
       default: return `An error occurred during ${context}. Please try again.`;
     }
   }
-
   if (error?.isNetworkError || error?.message?.includes('fetch')) {
     return 'Network connection issue. Please check your internet connection and try again.';
   }
-
   if (error?.isTimeoutError || error?.message?.includes('timeout')) {
     return 'Request timed out. Please try again.';
   }
-
   return `An unexpected error occurred during ${context}. Please try again.`;
 }
-

@@ -144,18 +144,18 @@ export const RoleBasedNavigation: React.FC<RoleBasedNavigationProps> = ({
     if (variant === 'header') {
       return (
         <Link key={item.href} href={item.href}>
-          <Button
+          <button
             variant={isActive ? 'secondary' : 'ghost'}
             size="sm"
             className={cn(
               'justify-start gap-2',
               isActive && 'bg-secondary'
             )}
-          >
-            <Icon className="h-4 w-4" />
+           aria-label="Button">
+            <Icon className="h-4 w-4 sm:w-auto md:w-full" />
             {item.label}
             {item.badge && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                 {item.badge}
               </Badge>
             )}
@@ -166,15 +166,15 @@ export const RoleBasedNavigation: React.FC<RoleBasedNavigationProps> = ({
 
     return (
       <Link key={item.href} href={item.href}>
-        <Button
+        <button
           variant={isActive ? 'secondary' : 'ghost'}
           className={cn(
             'w-full justify-start h-auto p-3',
             isActive && 'bg-secondary'
           )}
-        >
+         aria-label="Button">
           <div className="flex items-center gap-3 w-full">
-            <Icon className="h-4 w-4 flex-shrink-0" />
+            <Icon className="h-4 w-4 flex-shrink-0 sm:w-auto md:w-full" />
             <div className="flex-1 text-left">
               <div className="flex items-center gap-2">
                 <span className="font-medium">{item.label}</span>
@@ -182,14 +182,14 @@ export const RoleBasedNavigation: React.FC<RoleBasedNavigationProps> = ({
                   <Badge 
                     variant={item.badge === 'Super Admin' ? 'destructive' : 
                            item.badge === 'Admin' ? 'default' : 'outline'}
-                    className="text-xs"
+                    className="text-xs sm:text-sm md:text-base"
                   >
                     {item.badge}
                   </Badge>
                 )}
               </div>
               {item.description && variant === 'sidebar' && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                   {item.description}
                 </p>
               )}
@@ -211,7 +211,7 @@ export const RoleBasedNavigation: React.FC<RoleBasedNavigationProps> = ({
           {/* Main Navigation */}
           <div className="px-3 py-2">
             <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight flex items-center gap-2">
-              <Home className="h-5 w-5 text-primary" />
+              <Home className="h-5 w-5 text-primary sm:w-auto md:w-full" />
               Navigation
             </h2>
             <div className="space-y-1">

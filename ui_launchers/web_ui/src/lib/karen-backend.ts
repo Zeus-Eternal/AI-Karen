@@ -1,15 +1,5 @@
-/**
- * AI Karen Backend Integration Layer
- * Connects the web UI with existing AI Karen backend services
- */
-
 import { generateUUID } from './uuid';
 import type {
-  ChatMessage,
-  KarenSettings,
-  HandleUserMessageResult,
-  AiData
-} from './types';
 import { webUIConfig, type WebUIConfig } from './config';
 import { logger } from './logger';
 import { getPerformanceMonitor } from './performance-monitor';
@@ -18,22 +8,39 @@ import { ErrorHandler, errorHandler, type ErrorInfo } from './error-handler';
 import type { ApiError } from './api-client';
 import { getExtensionAuthManager } from './auth/extension-auth-manager';
 import { 
+/**
+ * AI Karen Backend Integration Layer
+ * Connects the web UI with existing AI Karen backend services
+ */
+
+
+  ChatMessage,
+  KarenSettings,
+  HandleUserMessageResult,
+  AiData
+} from './types';
+
+
+
+
+
+
+
+
   ExtensionAuthErrorFactory,
   extensionAuthErrorHandler,
   type ExtensionAuthError
 } from './auth/extension-auth-errors';
-import { 
+
   extensionAuthRecoveryManager,
   type RecoveryAttemptResult
 } from './auth/extension-auth-recovery';
-import { 
+
   extensionAuthDegradationManager,
   isExtensionFeatureAvailable,
   getExtensionFallbackData
 } from './auth/extension-auth-degradation';
-
 export const SESSION_ID_KEY = 'auth_session_id';
-
 export function initializeSessionId(): string {
   if (typeof window === 'undefined') return '';
   let sessionId = localStorage.getItem(SESSION_ID_KEY);
@@ -43,7 +50,6 @@ export function initializeSessionId(): string {
   }
   return sessionId;
 }
-
 // Error handling types
 interface WebUIErrorResponse {
   error: string;
@@ -53,14 +59,12 @@ interface WebUIErrorResponse {
   request_id?: string;
   timestamp: string;
 }
-
 // Custom error class for structured error handling
 class APIError extends Error {
   public status: number;
   public details?: WebUIErrorResponse;
   public isRetryable: boolean;
   public errorInfo?: ErrorInfo;
-
   constructor(
     message: string,
     status: number,
@@ -73,11 +77,9 @@ class APIError extends Error {
     this.details = details;
     this.isRetryable = isRetryable;
   }
-
   static isRetryableStatus(status: number): boolean {
     return [408, 429, 500, 502, 503, 504].includes(status);
   }
-
   static fromResponse(response: Response, errorData?: any): APIError {
     const isRetryable = APIError.isRetryableStatus(response.status);
     return new APIError(
@@ -88,14 +90,12 @@ class APIError extends Error {
     );
   }
 }
-
 // Backend service configuration
 interface BackendConfig {
   baseUrl: string;
   apiKey?: string;
   timeout: number;
 }
-
 interface OfflineRequest {
   endpoint: string;
   options: RequestInit;
@@ -104,7 +104,6 @@ interface OfflineRequest {
   maxRetries: number;
   retryDelay: number;
 }
-
 // Memory service types
 interface MemoryEntry {
   id: string;
@@ -116,7 +115,6 @@ interface MemoryEntry {
   user_id?: string;
   session_id?: string;
 }
-
 interface MemoryQuery {
   text: string;
   user_id?: string;
@@ -127,7 +125,6 @@ interface MemoryQuery {
   top_k?: number;
   similarity_threshold?: number;
 }
-
 // Plugin service types
 interface PluginInfo {
   name: string;
@@ -137,7 +134,6 @@ interface PluginInfo {
   version: string;
   parameters?: Record<string, any>;
 }
-
 interface PluginExecutionResult {
   success: boolean;
   result?: any;
@@ -147,7 +143,6 @@ interface PluginExecutionResult {
   plugin_name: string;
   timestamp: string;
 }
-
 // Analytics service types
 interface SystemMetrics {
   cpu_usage: number;
@@ -160,7 +155,6 @@ interface SystemMetrics {
   uptime_hours: number;
   timestamp: string;
 }
-
 interface UsageAnalytics {
   total_interactions: number;
   unique_users: number;
@@ -173,19 +167,16 @@ interface UsageAnalytics {
   time_range: string;
   timestamp: string;
 }
-
 // --- Authentication Types ---
 export interface LoginResult {
   token: string
   user_id: string
   roles: string[]
 }
-
 export interface CurrentUser {
   user_id: string
   roles: string[]
 }
-
 // --- Extension Types ---
 export interface ExtensionInfo {
   name: string;
@@ -196,7 +187,6 @@ export interface ExtensionInfo {
   capabilities: Record<string, any>;
   loaded_at: string | null;
 }
-
 export interface BackgroundTaskInfo {
   task_id: string;
   name: string;
@@ -206,7 +196,6 @@ export interface BackgroundTaskInfo {
   last_run: string | null;
   next_run: string | null;
 }
-
 export interface ExtensionListResponse {
   extensions: Record<string, ExtensionInfo> | ExtensionInfo[];
   total: number;
@@ -216,20 +205,17 @@ export interface ExtensionListResponse {
   };
   message?: string;
 }
-
 export interface BackgroundTaskListResponse {
   tasks: BackgroundTaskInfo[];
   total: number;
   extension_name?: string;
   message?: string;
 }
-
 export interface BackgroundTaskRegistrationResponse {
   task_id: string;
   message: string;
   status: string;
 }
-
 class KarenBackendService {
   private config: BackendConfig;
   private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map();
@@ -240,23 +226,19 @@ class KarenBackendService {
   private offlineQueue: OfflineRequest[] = [];
   private failureCount = 0;
   private circuitOpenUntil = 0;
-
   constructor(config: Partial<BackendConfig> = {}) {
     // Force empty baseUrl in browser to ensure Next.js API routes are used
     const baseUrl = typeof window !== 'undefined' ? '' : (config.baseUrl || webUIConfig.backendUrl);
-    
     this.config = {
       baseUrl,
       apiKey: config.apiKey || getStoredApiKey() || webUIConfig.apiKey,
       timeout: config.timeout || webUIConfig.apiTimeout,
     };
-
     // Initialize configuration from webUIConfig
     this.debugLogging = webUIConfig.debugLogging;
     this.requestLogging = webUIConfig.requestLogging;
     this.performanceMonitoring = webUIConfig.performanceMonitoring;
     this.logLevel = webUIConfig.logLevel;
-
     // Log the configuration in a gated way
     logger.info('KarenBackendService initialized with config:', {
       baseUrl: this.config.baseUrl,
@@ -270,12 +252,10 @@ class KarenBackendService {
       fallbackUrls: webUIConfig.fallbackBackendUrls,
       windowLocation: typeof window !== 'undefined' ? window.location.href : 'server-side',
     });
-
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.replayOfflineQueue);
     }
   }
-
   /**
    * Check if endpoint is an extension API endpoint that requires special authentication
    */
@@ -284,50 +264,40 @@ class KarenBackendService {
            endpoint.includes('/background-tasks') ||
            endpoint.includes('extension');
   }
-
   /**
    * Get authentication headers with extension-specific handling
    */
   private async getAuthHeaders(endpoint: string): Promise<Record<string, string>> {
     const headers: Record<string, string> = {};
-
     // For extension endpoints, try to use extension auth manager
     if (this.isExtensionEndpoint(endpoint)) {
       try {
         const extensionAuthManager = getExtensionAuthManager();
         const extensionHeaders = await extensionAuthManager.getAuthHeaders();
         Object.assign(headers, extensionHeaders);
-        
         if (this.debugLogging) {
-          console.log('Added extension authentication headers for:', endpoint);
         }
         return headers;
       } catch (error) {
         logger.warn('Failed to get extension auth headers, falling back to standard auth:', error);
       }
     }
-
     // Standard authentication fallback
     const sessionToken = this.getStoredSessionToken();
     if (sessionToken) {
       headers['Authorization'] = `Bearer ${sessionToken}`;
       if (this.debugLogging) {
-        console.log('Added standard Authorization header with Bearer token');
       }
     } else if (this.config.apiKey) {
       headers['X-API-KEY'] = this.config.apiKey;
       if (this.debugLogging) {
-        console.log('Added X-API-KEY header');
       }
     } else {
       if (this.debugLogging) {
-        console.log('No authentication token or API key available');
       }
     }
-
     return headers;
   }
-
   /**
    * Handle authentication failures with comprehensive extension error handling
    */
@@ -342,7 +312,6 @@ class KarenBackendService {
       try {
         // Create appropriate extension auth error
         let authError: ExtensionAuthError;
-        
         if (response.status === 401) {
           authError = ExtensionAuthErrorFactory.createTokenExpiredError({
             endpoint,
@@ -358,20 +327,16 @@ class KarenBackendService {
             httpStatus: response.status
           });
         }
-
         // Attempt recovery using the recovery manager
         const recoveryResult = await extensionAuthRecoveryManager.attemptRecovery(
           authError,
           endpoint,
           this.getOperationFromEndpoint(endpoint)
         );
-
         // Return true if recovery was successful and we should retry
         return recoveryResult.success && attempt < maxRetries;
-
       } catch (recoveryError) {
         logger.error('Extension auth recovery failed:', recoveryError);
-        
         // Create a recovery failure error
         const recoveryFailureError = ExtensionAuthErrorFactory.createRefreshFailedError({
           endpoint,
@@ -379,12 +344,10 @@ class KarenBackendService {
           maxRetries,
           originalError: recoveryError
         });
-
         // Handle the recovery failure
         extensionAuthErrorHandler.handleError(recoveryFailureError);
       }
     }
-
     // Standard authentication failure handling
     if (response.status === 401) {
       try {
@@ -398,10 +361,8 @@ class KarenBackendService {
         // ignore secondary auth errors
       }
     }
-
     return false; // No retry
   }
-
   /**
    * Extract operation name from endpoint for error context
    */
@@ -412,14 +373,11 @@ class KarenBackendService {
       }
       return 'extension_list';
     }
-    
     if (endpoint.includes('/extension')) {
       return 'extension_status';
     }
-    
     return 'extension_operation';
   }
-
   /**
    * Handle extension-specific errors with fallback data
    */
@@ -430,16 +388,13 @@ class KarenBackendService {
   ): Promise<any | null> {
     try {
       const operation = this.getOperationFromEndpoint(endpoint);
-      
       // Check if the feature is still available in degraded mode
       if (!isExtensionFeatureAvailable(operation)) {
         logger.info(`Extension feature ${operation} not available in current degradation state`);
         return getExtensionFallbackData(operation);
       }
-
       // Create appropriate extension auth error based on status
       let authError: ExtensionAuthError;
-      
       switch (response.status) {
         case 401:
           authError = ExtensionAuthErrorFactory.createTokenExpiredError({
@@ -469,14 +424,12 @@ class KarenBackendService {
             { endpoint, errorDetails }
           );
       }
-
       // Attempt recovery
       const recoveryResult = await extensionAuthRecoveryManager.attemptRecovery(
         authError,
         endpoint,
         operation
       );
-
       // Return fallback data if available
       if (recoveryResult.fallbackData) {
         logger.info(`Using fallback data for ${endpoint}:`, {
@@ -485,26 +438,22 @@ class KarenBackendService {
         });
         return recoveryResult.fallbackData;
       }
-
       // If no fallback data but recovery was successful, return null to allow retry
       if (recoveryResult.success) {
         return null;
       }
-
       // Try to get cached or static fallback data
       const fallbackData = getExtensionFallbackData(operation);
       if (fallbackData) {
         logger.info(`Using static fallback data for ${endpoint}`);
         return fallbackData;
       }
-
       return null;
     } catch (error) {
       logger.error('Error in extension error handling:', error);
       return null;
     }
   }
-
   /**
    * Request interceptor for automatic token injection and preprocessing
    */
@@ -513,36 +462,30 @@ class KarenBackendService {
     options: RequestInit
   ): Promise<RequestInit> {
     const interceptedOptions = { ...options };
-    
     // Ensure headers object exists
     if (!interceptedOptions.headers) {
       interceptedOptions.headers = {};
     }
-
     // Add authentication headers
     const authHeaders = await this.getAuthHeaders(endpoint);
     interceptedOptions.headers = {
       ...interceptedOptions.headers,
       ...authHeaders,
     };
-
     // Add correlation ID if not present
     const headers = interceptedOptions.headers as Record<string, string>;
     if (!headers['X-Correlation-ID']) {
       headers['X-Correlation-ID'] = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
     }
-
     // Add client identification for extension endpoints
     if (this.isExtensionEndpoint(endpoint)) {
       headers['X-Client-Type'] = 'karen-backend-service';
       headers['X-Extension-Request'] = 'true';
     }
-
     // Ensure credentials are included for same-origin requests
     if (!interceptedOptions.credentials && typeof window !== 'undefined') {
       interceptedOptions.credentials = 'include';
     }
-
     if (this.debugLogging) {
       logger.debug('Request intercepted:', {
         endpoint,
@@ -551,10 +494,8 @@ class KarenBackendService {
         correlationId: headers['X-Correlation-ID'],
       });
     }
-
     return interceptedOptions;
   }
-
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -568,25 +509,15 @@ class KarenBackendService {
     // ALWAYS force empty baseUrl in browser to ensure Next.js API routes are used
     const baseUrl = typeof window !== 'undefined' ? '' : this.config.baseUrl;
     const primaryUrl = isAbsoluteEndpoint ? endpoint : `${baseUrl}${endpoint}`;
-    
     // Debug logging for URL construction
     if (this.requestLogging && typeof window !== 'undefined') {
-      console.log(`🔗 KarenBackendService URL construction:`, {
-        endpoint,
-        isAbsoluteEndpoint,
-        baseUrl,
-        primaryUrl,
-        windowDefined: typeof window !== 'undefined'
-      });
     }
     const cacheKey = `${primaryUrl}:${JSON.stringify(options)}`;
-
     // Determine per-request timeout based on endpoint type
     const isLongEndpoint = !isAbsoluteEndpoint && (/^\/api\/(models|providers|health)(\/|$)/.test(endpoint));
     const REQUEST_SHORT_TIMEOUT = this.config.timeout;
     const REQUEST_LONG_TIMEOUT = Number((process as any)?.env?.NEXT_PUBLIC_API_LONG_TIMEOUT_MS || (process as any)?.env?.KAREN_API_LONG_TIMEOUT_MS || Math.max(REQUEST_SHORT_TIMEOUT, 120000));
     const perRequestTimeout = isLongEndpoint ? REQUEST_LONG_TIMEOUT : REQUEST_SHORT_TIMEOUT;
-
     // Circuit breaker check
     const now = Date.now();
     if (this.circuitOpenUntil > now) {
@@ -603,7 +534,6 @@ class KarenBackendService {
         timestamp: new Date().toISOString(),
       }, false);
     }
-
     // Check cache first
     if (useCache && this.cache.has(cacheKey)) {
       const cached = this.cache.get(cacheKey)!;
@@ -612,14 +542,11 @@ class KarenBackendService {
       }
       this.cache.delete(cacheKey);
     }
-
     // Use request interceptor for automatic token injection and preprocessing
     const interceptedOptions = await this.interceptRequest(endpoint, options);
     const headers = interceptedOptions.headers as Record<string, string>;
     const correlationId = headers['X-Correlation-ID'];
-
     let lastError: Error | null = null;
-
     // Log request if enabled
     if (this.requestLogging) {
       let bodyLog: any;
@@ -640,9 +567,7 @@ class KarenBackendService {
         timeoutMs: perRequestTimeout,
       });
     }
-
     const performanceStart = this.performanceMonitoring ? performance.now() : 0;
-
     // Candidate base URLs (primary + configured fallbacks)
     let candidateBases: string[] = [];
     if (!isAbsoluteEndpoint) {
@@ -659,20 +584,16 @@ class KarenBackendService {
         // All browser requests should go through Next.js API routes to avoid rate limiting
         // and ensure proper authentication header forwarding
         candidateBases = Array.from(set);
-        
         // Debug logging for fallback URLs in browser
         if (this.requestLogging && typeof window !== 'undefined') {
-          console.log('🔄 KarenBackendService fallback candidates:', candidateBases);
         }
       }
     }
-
     // Retry logic for transient failures
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         let response: Response | null = null;
         let lastFetchError: any = null;
-
         const useCookies = (typeof window !== 'undefined') && !isAbsoluteEndpoint;
         if (isAbsoluteEndpoint) {
           // Single absolute URL request
@@ -689,10 +610,8 @@ class KarenBackendService {
           }
         } else {
           // Try primary then fallbacks for this attempt
-          console.log(`[DEBUG] Trying candidate bases for ${endpoint}:`, candidateBases);
           for (const base of candidateBases) {
             const url = `${base}${endpoint}`;
-            console.log(`[DEBUG] Attempting URL: ${url}`);
             try {
               const controller = new AbortController();
               const timeoutId = setTimeout(() => controller.abort(), perRequestTimeout);
@@ -701,12 +620,10 @@ class KarenBackendService {
                 signal: controller.signal,
               });
               clearTimeout(timeoutId);
-
               if (response && response.ok) {
                 // If fallback succeeded, promote it to primary for future requests
                 if (base !== this.config.baseUrl) {
                   if (this.requestLogging) {
-                    console.warn(`[FALLBACK] Switched backend baseUrl to ${base}`);
                   }
                   this.config.baseUrl = base;
                 }
@@ -723,12 +640,10 @@ class KarenBackendService {
             }
           }
         }
-
         // If no response obtained from any candidate, throw network error
         if (!response) {
           throw lastFetchError || new Error('Network error');
         }
-
         if (!response.ok) {
           // Use warn instead of error for health checks to reduce noise when backend is unavailable
           const isHealthCheck = endpoint.includes('/health') || endpoint.includes('/api/plugins') || endpoint.includes('/analytics/system');
@@ -771,9 +686,7 @@ class KarenBackendService {
               timestamp: new Date().toISOString(),
             };
           }
-
           const apiError = APIError.fromResponse(response, errorDetails);
-
           // Handle extension endpoint errors with comprehensive error handling
           if (this.isExtensionEndpoint(endpoint) && (response.status === 401 || response.status === 403 || response.status === 503)) {
             const fallbackData = await this.handleExtensionError(endpoint, response, errorDetails);
@@ -781,14 +694,12 @@ class KarenBackendService {
               return fallbackData as T;
             }
           }
-
           // Public fallback for read-only model endpoints when unauthorized/forbidden
           if ((response.status === 401 || response.status === 403) && endpoint.startsWith('/api/models/')) {
             try {
               const publicEndpoint = endpoint.replace('/api/models/', '/api/models/public/');
               if (publicEndpoint !== endpoint) {
                 if (this.requestLogging) {
-                  console.warn(`[PUBLIC-FALLBACK] Retrying ${endpoint} as ${publicEndpoint}`);
                 }
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), perRequestTimeout);
@@ -807,7 +718,6 @@ class KarenBackendService {
               // ignore and fall through to normal handling
             }
           }
-
           // Handle authentication failures with extension-specific retry logic
           const shouldRetryAuth = await this.handleAuthFailure(endpoint, response, attempt, maxRetries);
           if (shouldRetryAuth) {
@@ -815,16 +725,13 @@ class KarenBackendService {
             await this.sleep(500);
             continue;
           }
-
           // Don't retry non-retryable errors
           if (!apiError.isRetryable || attempt === maxRetries) {
             apiError.errorInfo = errorHandler.handleApiError(this.toApiError(apiError, endpoint), endpoint);
             throw apiError;
           }
-
           lastError = apiError;
           console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, apiError.message);
-
           // Wait before retrying with exponential backoff
           // Use longer delays for rate limiting (429) and service unavailable (503) errors
           let baseDelay = retryDelay;
@@ -833,19 +740,15 @@ class KarenBackendService {
           } else if (response.status === 503) {
             baseDelay = retryDelay * 2; // Service unavailable
           }
-          
           // Apply exponential backoff for extension endpoints
           const backoffMultiplier = this.isExtensionEndpoint(endpoint) ? Math.pow(2, attempt) : Math.pow(1.5, attempt);
           const delay = baseDelay * backoffMultiplier;
-          
           if (this.debugLogging) {
             console.log(`Retrying ${endpoint} in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
           }
-          
           await this.sleep(delay);
           continue;
         }
-
         const contentType = response.headers.get('content-type') || '';
         let data: any = null;
         if (contentType.includes('application/json')) {
@@ -858,7 +761,6 @@ class KarenBackendService {
               data = JSON.parse(text);
             }
           } catch (parseError) {
-            console.warn(`JSON parsing error for ${response.url}:`, parseError);
             data = response.status >= 400 ? { error: 'Invalid JSON response' } : {};
           }
         } else {
@@ -866,7 +768,6 @@ class KarenBackendService {
           data = text ? { body: text } : null;
         }
         const responseTime = this.performanceMonitoring ? performance.now() - performanceStart : 0;
-
         // Record performance metrics
         if (this.performanceMonitoring) {
           const performanceMonitor = getPerformanceMonitor();
@@ -878,12 +779,10 @@ class KarenBackendService {
             response.status,
             JSON.stringify(data).length
           );
-
           if (responseTime > 5000) { // Log slow requests (>5s)
             console.warn(`[PERFORMANCE] Slow request detected: ${endpoint} took ${responseTime.toFixed(2)}ms`);
           }
         }
-
         // Log response if enabled
         if (this.requestLogging) {
           console.log(`[RESPONSE] ${response.status} ${options.method || 'GET'} ${response.url}`, {
@@ -894,7 +793,6 @@ class KarenBackendService {
             correlationId,
           });
         }
-
         // Cache successful responses
         if (useCache) {
           this.cache.set(cacheKey, {
@@ -908,7 +806,6 @@ class KarenBackendService {
         return data;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-
         // Handle network errors and timeouts
         if (error instanceof Error) {
           if (error.name === 'AbortError') {
@@ -938,7 +835,6 @@ class KarenBackendService {
             }
           }
         }
-
         // Don't retry if it's not a retryable error or we've exhausted retries
         if (!(lastError instanceof APIError && lastError.isRetryable) || attempt === maxRetries) {
           // Record performance metrics for failed requests
@@ -954,11 +850,9 @@ class KarenBackendService {
               lastError.message
             );
           }
-
           if (lastError instanceof APIError) {
             lastError.errorInfo = errorHandler.handleApiError(this.toApiError(lastError, endpoint), endpoint);
           }
-
           this.failureCount++;
           if (this.failureCount >= webUIConfig.circuitBreakerThreshold) {
             this.circuitOpenUntil = Date.now() + webUIConfig.circuitBreakerResetTime;
@@ -972,16 +866,13 @@ class KarenBackendService {
           }
           throw lastError;
         }
-
         console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, lastError.message);
-
         // Wait before retrying with exponential backoff
         // Use longer delays for rate limiting errors
         const baseDelay = (lastError instanceof APIError && lastError.status === 429) ? retryDelay * 3 : retryDelay;
         await this.sleep(baseDelay * Math.pow(2, attempt));
       }
     }
-
     // This should never be reached, but just in case
     if (lastError instanceof APIError && !lastError.errorInfo) {
       lastError.errorInfo = errorHandler.handleApiError(this.toApiError(lastError, endpoint), endpoint);
@@ -998,15 +889,12 @@ class KarenBackendService {
     }
     throw lastError || new Error('Unknown error occurred');
   }
-
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
-
   private enqueueOfflineRequest(req: OfflineRequest): void {
     this.offlineQueue.push(req);
   }
-
   private replayOfflineQueue = async (): Promise<void> => {
     const queued = [...this.offlineQueue];
     this.offlineQueue = [];
@@ -1018,11 +906,9 @@ class KarenBackendService {
       }
     }
   };
-
   public getOfflineQueueSize(): number {
     return this.offlineQueue.length;
   }
-
   private toApiError(error: APIError, endpoint: string): ApiError {
     return {
       name: 'ApiError',
@@ -1035,11 +921,9 @@ class KarenBackendService {
       originalError: error,
     } as ApiError;
   }
-
   // Session token management
   private getStoredSessionToken(): string | null {
     if (typeof window === 'undefined') return null;
-    
     try {
       // First try to get the token from AuthContext (localStorage)
       const authToken = localStorage.getItem('karen_access_token');
@@ -1049,7 +933,6 @@ class KarenBackendService {
         }
         return authToken;
       }
-
       // Fallback to the old sessionStorage token
       const sessionToken = sessionStorage.getItem('kari_session_token');
       if (sessionToken && sessionToken !== 'null' && sessionToken !== 'undefined') {
@@ -1058,17 +941,13 @@ class KarenBackendService {
         }
         return sessionToken;
       }
-      
       if (this.debugLogging) {
-        console.log('No auth token found in storage');
       }
       return null;
     } catch (error) {
-      console.warn('Error getting stored session token:', error);
       return null;
     }
   }
-
   private storeSessionToken(token: string): void {
     try {
       // Store in localStorage to match AuthContext behavior
@@ -1076,10 +955,8 @@ class KarenBackendService {
       // Also keep the old sessionStorage for backward compatibility
       sessionStorage.setItem('kari_session_token', token);
     } catch (error) {
-      console.warn('Failed to store session token:', error);
     }
   }
-
   private clearSessionToken(): void {
     try {
       // Clear from both storage locations
@@ -1087,14 +964,11 @@ class KarenBackendService {
       localStorage.removeItem('karen_refresh_token');
       sessionStorage.removeItem('kari_session_token');
     } catch (error) {
-      console.warn('Failed to clear session token:', error);
     }
   }
-
   private getSessionId(): string {
     return initializeSessionId();
   }
-
   // Check authentication status without automatic login attempts
   private async ensureAuthenticated(): Promise<boolean> {
     // Check if we already have a valid session token
@@ -1104,49 +978,38 @@ class KarenBackendService {
         // Verify the token is still valid with a short timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-        
         await this.makeRequest('/api/auth/me', {
           headers: { Authorization: `Bearer ${existingToken}` },
           signal: controller.signal
         });
         clearTimeout(timeoutId);
-        
         if (this.debugLogging) {
-          console.log('Existing session token is valid');
         }
         return true;
       } catch (error) {
         if (this.debugLogging) {
-          console.log('Existing session token is invalid, clearing it');
         }
         // Token is invalid, clear it
         this.clearSessionToken();
       }
     }
-
     // Try to check for HttpOnly cookie session without token
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-      
       await this.makeRequest('/api/auth/validate-session', {
         signal: controller.signal
       });
       clearTimeout(timeoutId);
-      
       if (this.debugLogging) {
-        console.log('HttpOnly session is valid');
       }
       return true;
     } catch (error) {
       if (this.debugLogging) {
-        console.log('No valid session available, operations will be skipped');
       }
     }
-
     return false;
   }
-
   // Memory Service Integration
   async storeMemory(
     content: string,
@@ -1162,7 +1025,6 @@ class KarenBackendService {
       if (!isAuthenticated) {
         return null;
       }
-
       // Prepare the request payload for the secure memory endpoint
       const requestPayload = {
         user_id: userId || sid || 'anonymous',
@@ -1174,15 +1036,12 @@ class KarenBackendService {
         session_id: sid,
         metadata: metadata || {},
       };
-
   logger.info('Storing memory with payload:', requestPayload);
-
       // Use the secure memory storage endpoint with proper authentication
       const response = await this.makeRequest<{ memory_id: string }>('/api/memory/commit', {
         method: 'POST',
         body: JSON.stringify(requestPayload),
       });
-
   logger.info('Memory store response:', response);
       return response.memory_id;
     } catch (error) {
@@ -1192,10 +1051,8 @@ class KarenBackendService {
           this.clearSessionToken();
           return null;
         } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
-          console.warn('Memory service unavailable, memory not stored');
           return null;
         } else if (error.details?.type === 'VALIDATION_ERROR') {
-          console.warn('Memory validation failed:', error.details);
           return null;
         }
       }
@@ -1203,7 +1060,6 @@ class KarenBackendService {
       return null;
     }
   }
-
   async queryMemories(query: MemoryQuery): Promise<MemoryEntry[]> {
     try {
       // Check authentication status before querying memories
@@ -1211,7 +1067,6 @@ class KarenBackendService {
       if (!isAuthenticated) {
         return [];
       }
-
       // Transform the query to match the backend format
       const sid = query.session_id ?? this.getSessionId();
       const backendQuery = {
@@ -1221,12 +1076,10 @@ class KarenBackendService {
         top_k: query.top_k || 12,
         session_id: sid,
       };
-
       const response = await this.makeRequest<{ memories: any[] }>('/api/memory/search', {
         method: 'POST',
         body: JSON.stringify(backendQuery),
       });
-
       // Transform the response to match the expected format
       const memories = (response.memories || []).map(mem => ({
         id: mem.id,
@@ -1238,7 +1091,6 @@ class KarenBackendService {
         user_id: mem.user_id,
         session_id: mem.session_id,
       }));
-
       return memories;
     } catch (error) {
       if (error instanceof APIError) {
@@ -1251,12 +1103,10 @@ class KarenBackendService {
           return this.getCachedMemories(query) || [];
         }
       }
-
   logger.error('Failed to query memories:', error);
       return [];
     }
   }
-
   private getCachedMemories(query: MemoryQuery): MemoryEntry[] | null {
     // Simple cache lookup for memory queries
     const cacheKey = `memory:${JSON.stringify(query)}`;
@@ -1266,7 +1116,6 @@ class KarenBackendService {
     }
     return null;
   }
-
   async getMemoryStats(userId?: string): Promise<Record<string, any>> {
     try {
       const params = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
@@ -1274,7 +1123,6 @@ class KarenBackendService {
     } catch (error) {
       if (error instanceof APIError) {
         if (error.details?.type === 'SERVICE_UNAVAILABLE') {
-          console.warn('Memory service unavailable, returning empty stats');
           return { total_memories: 0, last_updated: new Date().toISOString() };
         }
       }
@@ -1282,7 +1130,6 @@ class KarenBackendService {
       return {};
     }
   }
-
   // Plugin Service Integration
   async getAvailablePlugins(): Promise<PluginInfo[]> {
     const cacheKey = '/api/plugins:{}';
@@ -1290,7 +1137,6 @@ class KarenBackendService {
     if (cached && Date.now() - cached.timestamp < cached.ttl) {
       return cached.data.plugins || [];
     }
-
     try {
       const response = await this.makeRequest<{ plugins: PluginInfo[] }>('/api/plugins', {}, false);
       this.cache.set(cacheKey, {
@@ -1301,7 +1147,6 @@ class KarenBackendService {
       return response.plugins || [];
     } catch (error) {
       if (error instanceof APIError && error.details?.type === 'SERVICE_UNAVAILABLE') {
-        console.warn('Plugin service unavailable, returning cached plugins if available');
         if (cached) {
           return cached.data.plugins || [];
         }
@@ -1310,7 +1155,6 @@ class KarenBackendService {
       return [];
     }
   }
-
   async executePlugin(
     pluginName: string,
     parameters: Record<string, any> = {},
@@ -1327,7 +1171,6 @@ class KarenBackendService {
       });
     } catch (error) {
       let errorMessage = 'Unknown error';
-
       if (error instanceof APIError) {
         if (error.details?.type === 'PLUGIN_ERROR') {
           errorMessage = error.details.message || 'Plugin execution failed';
@@ -1341,7 +1184,6 @@ class KarenBackendService {
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-
   logger.error(`Failed to execute plugin ${pluginName}:`, error);
       return {
         success: false,
@@ -1351,7 +1193,6 @@ class KarenBackendService {
       };
     }
   }
-
   // Analytics Service Integration
   async getSystemMetrics(): Promise<SystemMetrics> {
     try {
@@ -1369,7 +1210,6 @@ class KarenBackendService {
       } else {
         console.error('System metrics unavailable:', (error as Error)?.message || error);
       }
-      
       // Return mock data as fallback
       return {
         cpu_usage: 45.2,
@@ -1384,7 +1224,6 @@ class KarenBackendService {
       };
     }
   }
-
   async getUsageAnalytics(timeRange: string = '24h'): Promise<UsageAnalytics> {
     try {
       return await this.makeRequest<UsageAnalytics>(`/api/analytics/usage?range=${timeRange}`, {}, true);
@@ -1406,7 +1245,6 @@ class KarenBackendService {
       };
     }
   }
-
   // Health Check
   async healthCheck(): Promise<{
     status: 'healthy' | 'degraded' | 'error';
@@ -1416,9 +1254,7 @@ class KarenBackendService {
     try {
       // Try different possible health check endpoints
       const healthEndpoints = ['/api/health', '/health', '/api/status', '/status', '/api/ping', '/ping'];
-      
   logger.info('🏥 Starting health check, trying endpoints:', healthEndpoints);
-      
       for (const endpoint of healthEndpoints) {
         try {
           logger.info(`🏥 Trying health endpoint: ${endpoint}`);
@@ -1434,7 +1270,6 @@ class KarenBackendService {
           continue;
         }
       }
-      
       // If all health endpoints fail, backend is likely running but doesn't support health checks
       // Return degraded status instead of error to indicate basic connectivity
   logger.info('🏥 Backend is running but health endpoints are not available - using degraded mode');
@@ -1460,7 +1295,6 @@ class KarenBackendService {
       };
     }
   }
-
   // Enhanced Chat Integration with Memory
   async processUserMessage(
     message: string,
@@ -1475,14 +1309,12 @@ class KarenBackendService {
   ): Promise<HandleUserMessageResult> {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const sid = sessionId ?? this.getSessionId();
-
     try {
       // Ensure we're authenticated before processing the message
       const isAuthenticated = await this.ensureAuthenticated();
       if (!isAuthenticated) {
         // Continue processing without memory features rather than failing completely
       }
-
       // Log request for debugging
   logger.info(`[${requestId}] Processing user message:`, {
         message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
@@ -1490,7 +1322,6 @@ class KarenBackendService {
         sessionId: sid,
         historyLength: conversationHistory.length,
       });
-
       // First, query relevant memories
       const relevantMemories = await this.queryMemories({
         text: message,
@@ -1499,7 +1330,6 @@ class KarenBackendService {
         top_k: 5,
         similarity_threshold: 0.7,
       });
-
       // Use the secure AI orchestrator endpoint with proper authentication
       const startTime = Date.now();
       const aiResponse = await this.makeRequest<{
@@ -1540,7 +1370,6 @@ class KarenBackendService {
           },
         }),
       });
-
       // Transform the AI orchestrator response to match the expected HandleUserMessageResult format
       const response: HandleUserMessageResult = {
         finalResponse: aiResponse.response,
@@ -1549,7 +1378,6 @@ class KarenBackendService {
         proactiveSuggestion: aiResponse.proactive_suggestion,
       };
       const responseTime = Date.now() - startTime;
-
       // Log successful response for debugging
   logger.info(`[${requestId}] Chat processing successful:`, {
         responseTime: `${responseTime}ms`,
@@ -1558,7 +1386,6 @@ class KarenBackendService {
         hasSuggestions: !!response.suggestedNewFacts,
         hasProactiveSuggestion: !!response.proactiveSuggestion,
       });
-
       // Store the conversation in memory if successful
       if (response.finalResponse) {
         const conversationText = `User: ${message}\nAssistant: ${response.finalResponse}`;
@@ -1575,11 +1402,9 @@ class KarenBackendService {
           sid
         );
       }
-
       return response;
     } catch (error) {
   logger.error(`[${requestId}] Failed to process user message:`, error);
-
       // Handle different error types with specific fallback responses
       if (error instanceof APIError) {
         if (error.details?.type === 'CHAT_PROCESSING_ERROR') {
@@ -1619,14 +1444,12 @@ class KarenBackendService {
           };
         }
       }
-
       // Generic fallback response for unknown errors
       return {
         finalResponse: "I'm having trouble connecting to my backend services right now. Please try again in a moment.",
       };
     }
   }
-
   // User Management Integration
   async getUserProfile(userId: string): Promise<{
     id: string;
@@ -1641,10 +1464,8 @@ class KarenBackendService {
     } catch (error) {
       if (error instanceof APIError) {
         if (error.status === 404) {
-          console.warn(`User profile not found for user: ${userId}`);
           return null;
         } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
-          console.warn('User service unavailable');
           return null;
         }
       }
@@ -1652,7 +1473,6 @@ class KarenBackendService {
       return null;
     }
   }
-
   async updateUserPreferences(
     userId: string,
     preferences: Record<string, any>
@@ -1666,10 +1486,8 @@ class KarenBackendService {
     } catch (error) {
       if (error instanceof APIError) {
         if (error.details?.type === 'VALIDATION_ERROR') {
-          console.warn('Invalid user preferences:', error.details);
           return false;
         } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
-          console.warn('User service unavailable, preferences not updated');
           return false;
         }
       }
@@ -1677,7 +1495,6 @@ class KarenBackendService {
       return false;
     }
   }
-
   // --- Authentication ---
   async login(email: string, password: string): Promise<LoginResult> {
     // Backend expects an `email` field for authentication
@@ -1686,18 +1503,15 @@ class KarenBackendService {
       body: JSON.stringify({ email, password })
     })
   }
-
   async getCurrentUser(token: string): Promise<CurrentUser | null> {
     try {
       return await this.makeRequest<CurrentUser>('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` }
       })
     } catch (error) {
-      console.warn('Failed to get current user:', error)
       return null
     }
   }
-
   async updateCredentials(
     token: string,
     newUsername?: string,
@@ -1712,12 +1526,10 @@ class KarenBackendService {
       })
     })
   }
-
   // Clear cache
   clearCache(): void {
     this.cache.clear();
   }
-
   // Get cache stats
   getCacheStats(): { size: number; keys: string[] } {
     return {
@@ -1725,7 +1537,6 @@ class KarenBackendService {
       keys: Array.from(this.cache.keys()),
     };
   }
-
   // Public makeRequest method for external use
   async makeRequestPublic<T>(
     endpoint: string,
@@ -1738,12 +1549,10 @@ class KarenBackendService {
   ): Promise<T> {
     return this.makeRequest<T>(endpoint, options, useCache, cacheTtl, maxRetries, retryDelay, safeFallback);
   }
-
   getBaseUrl(): string {
     // Always return empty string in browser to ensure Next.js API routes are used
     return typeof window !== 'undefined' ? '' : this.config.baseUrl;
   }
-
   /**
    * Force re-initialization of baseUrl for browser environment
    */
@@ -1755,9 +1564,7 @@ class KarenBackendService {
       }
     }
   }
-
   // --- Extension API Methods ---
-
   /**
    * Get list of available extensions with authentication
    */
@@ -1773,7 +1580,6 @@ class KarenBackendService {
       throw error;
     }
   }
-
   /**
    * Get background tasks for extensions with authentication
    */
@@ -1790,7 +1596,6 @@ class KarenBackendService {
       throw error;
     }
   }
-
   /**
    * Register a background task for an extension with authentication
    */
@@ -1814,7 +1619,6 @@ class KarenBackendService {
       throw error;
     }
   }
-
   /**
    * Load an extension with authentication
    */
@@ -1831,7 +1635,6 @@ class KarenBackendService {
       throw error;
     }
   }
-
   /**
    * Unload an extension with authentication
    */
@@ -1848,7 +1651,6 @@ class KarenBackendService {
       throw error;
     }
   }
-
   /**
    * Get extension health status
    */
@@ -1870,7 +1672,6 @@ class KarenBackendService {
       };
     }
   }
-
   /**
    * Check extension authentication status
    */
@@ -1883,7 +1684,6 @@ class KarenBackendService {
       return false;
     }
   }
-
   /**
    * Clear extension authentication state
    */
@@ -1896,9 +1696,7 @@ class KarenBackendService {
       logger.warn('Failed to clear extension auth:', error);
     }
   }
-
   // --- Extension API Methods ---
-
   /**
    * List all available extensions
    */
@@ -1919,7 +1717,6 @@ class KarenBackendService {
           message: 'Extension list temporarily unavailable'
         }
       );
-
       return response;
     } catch (error) {
       logger.error('Failed to list extensions:', error);
@@ -1930,7 +1727,6 @@ class KarenBackendService {
       };
     }
   }
-
   /**
    * List background tasks for extensions
    */
@@ -1953,7 +1749,6 @@ class KarenBackendService {
           message: 'Background tasks temporarily unavailable'
         }
       );
-
       return response;
     } catch (error) {
       logger.error('Failed to list background tasks:', error);
@@ -1965,7 +1760,6 @@ class KarenBackendService {
       };
     }
   }
-
   /**
    * Register a new background task
    */
@@ -1987,7 +1781,6 @@ class KarenBackendService {
           status: 'unavailable'
         }
       );
-
       return response;
     } catch (error) {
       logger.error('Failed to register background task:', error);
@@ -1998,7 +1791,6 @@ class KarenBackendService {
       };
     }
   }
-
   /**
    * Get extension status and health information
    */
@@ -2007,7 +1799,6 @@ class KarenBackendService {
       const endpoint = extensionName 
         ? `/api/extensions/${encodeURIComponent(extensionName)}/status`
         : '/api/extensions/status';
-        
       const response = await this.makeRequest<Record<string, any>>(
         endpoint,
         {
@@ -2022,7 +1813,6 @@ class KarenBackendService {
           message: 'Extension status temporarily unavailable'
         }
       );
-
       return response;
     } catch (error) {
       logger.error('Failed to get extension status:', error);
@@ -2033,28 +1823,22 @@ class KarenBackendService {
     }
   }
 }
-
 // Global instance
 let karenBackend: KarenBackendService | null = null;
-
 export function getKarenBackend(): KarenBackendService {
   if (!karenBackend) {
     karenBackend = new KarenBackendService();
   }
-  
   // Ensure browser configuration is applied
   if (typeof window !== 'undefined') {
     karenBackend.ensureBrowserConfig();
   }
-  
   return karenBackend;
 }
-
 export function initializeKarenBackend(config?: Partial<BackendConfig>): KarenBackendService {
   karenBackend = new KarenBackendService(config);
   return karenBackend;
 }
-
 // Export types (interfaces are already exported via export interface declarations)
 export type {
   BackendConfig,
@@ -2066,5 +1850,4 @@ export type {
   UsageAnalytics,
   WebUIErrorResponse,
 };
-
 export { KarenBackendService, APIError };

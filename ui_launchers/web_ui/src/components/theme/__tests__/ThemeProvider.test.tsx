@@ -5,12 +5,11 @@
  * Based on requirements: 1.1, 1.2, 1.3, 11.4
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { act } from '@testing-library/react';
 import { ThemeProvider, useTheme } from '../ThemeProvider';
 import { useUIStore } from '@/store';
-
 import { vi } from 'vitest';
 
 // Mock localStorage
@@ -50,19 +49,19 @@ const TestComponent = () => {
       <div data-testid="resolved-theme">{resolvedTheme}</div>
       <div data-testid="density">{density}</div>
       <div data-testid="is-system">{isSystemTheme.toString()}</div>
-      <button onClick={() => setTheme('light')} data-testid="set-light">
+      <button onClick={() = aria-label="Button"> setTheme('light')} data-testid="set-light">
         Set Light
       </button>
-      <button onClick={() => setTheme('dark')} data-testid="set-dark">
+      <button onClick={() = aria-label="Button"> setTheme('dark')} data-testid="set-dark">
         Set Dark
       </button>
-      <button onClick={() => setTheme('system')} data-testid="set-system">
+      <button onClick={() = aria-label="Button"> setTheme('system')} data-testid="set-system">
         Set System
       </button>
-      <button onClick={() => setDensity('compact')} data-testid="set-compact">
+      <button onClick={() = aria-label="Button"> setDensity('compact')} data-testid="set-compact">
         Set Compact
       </button>
-      <button onClick={() => setDensity('spacious')} data-testid="set-spacious">
+      <button onClick={() = aria-label="Button"> setDensity('spacious')} data-testid="set-spacious">
         Set Spacious
       </button>
     </div>

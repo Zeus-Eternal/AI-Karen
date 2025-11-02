@@ -1,10 +1,8 @@
 'use client';
-
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
-
 /**
  * Enhanced Input Component
  * 
@@ -13,18 +11,16 @@ import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
  * 
  * Based on requirements: 1.1, 1.2, 1.3, 11.4
  */
-
 const inputVariants = cva(
   [
     // Base styles using design tokens
     'flex h-10 w-full rounded-md border border-input',
     'bg-background px-3 py-2 text-sm',
     'ring-offset-background file:border-0 file:bg-transparent',
-    'file:text-sm file:font-medium placeholder:text-muted-foreground',
+    'file:text-sm file:font-medium -muted-foreground',
     'focus-visible:outline-none focus-visible:ring-2',
     'focus-visible:ring-ring focus-visible:ring-offset-2',
     'disabled:cursor-not-allowed disabled:opacity-50',
-    
     // Enhanced interaction styles
     'transition-all duration-200 ease-out',
     'hover:border-border/80 focus-visible:border-ring',
@@ -52,7 +48,7 @@ const inputVariants = cva(
         default: '',
         error: [
           'border-destructive focus-visible:ring-destructive',
-          'text-destructive placeholder:text-destructive/60',
+          'text-destructive -destructive/60',
         ],
         success: [
           'border-success focus-visible:ring-success',
@@ -71,7 +67,6 @@ const inputVariants = cva(
     },
   }
 );
-
 const inputWrapperVariants = cva(
   [
     'relative flex items-center',
@@ -89,7 +84,6 @@ const inputWrapperVariants = cva(
     },
   }
 );
-
 export interface InputEnhancedProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'>,
     VariantProps<typeof inputVariants> {
@@ -103,7 +97,6 @@ export interface InputEnhancedProps
   showPasswordToggle?: boolean;
   containerClassName?: string;
 }
-
 const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
   (
     {
@@ -128,25 +121,20 @@ const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
   ) => {
     const [showPassword, setShowPassword] = React.useState(false);
     const [internalId] = React.useState(() => id || `input-${Math.random().toString(36).substr(2, 9)}`);
-    
     // Determine state based on props
     const currentState = error ? 'error' : success ? 'success' : warning ? 'warning' : state;
-    
     // Determine input type
     const inputType = showPasswordToggle && type === 'password' 
       ? (showPassword ? 'text' : 'password')
       : type;
-
     // Status icon
     const StatusIcon = currentState === 'error' 
       ? AlertCircle 
       : currentState === 'success' 
       ? CheckCircle2 
       : null;
-
     // Helper text content
     const helperContent = error || success || warning || helperText;
-
     return (
       <div className={cn('space-y-2', containerClassName)}>
         {label && (
@@ -163,19 +151,17 @@ const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
             {label}
           </label>
         )}
-        
         <div className={cn(inputWrapperVariants({ 
           hasLeftIcon: !!leftIcon, 
           hasRightIcon: !!(rightIcon || StatusIcon || showPasswordToggle) 
         }))}>
           {leftIcon && (
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              <div className="h-4 w-4 flex items-center justify-center">
+              <div className="h-4 w-4 flex items-center justify-center sm:w-auto md:w-full">
                 {leftIcon}
               </div>
             </div>
           )}
-          
           <input
             type={inputType}
             id={internalId}
@@ -188,9 +174,7 @@ const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
             ref={ref}
             aria-invalid={currentState === 'error'}
             aria-describedby={helperContent ? `${internalId}-helper` : undefined}
-            {...props}
-          />
-          
+            {...props} />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {StatusIcon && (
               <StatusIcon 
@@ -203,11 +187,10 @@ const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
                 aria-hidden="true"
               />
             )}
-            
             {showPasswordToggle && type === 'password' && (
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={() = aria-label="Button"> setShowPassword(!showPassword)}
                 className={cn(
                   'text-muted-foreground hover:text-foreground',
                   'focus-visible:outline-none focus-visible:ring-2',
@@ -218,23 +201,21 @@ const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
                 tabIndex={-1}
               >
                 {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
+                  <EyeOff className="h-4 w-4 sm:w-auto md:w-full" />
                 ) : (
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-4 w-4 sm:w-auto md:w-full" />
                 )}
               </button>
             )}
-            
             {rightIcon && !StatusIcon && (
               <div className="text-muted-foreground">
-                <div className="h-4 w-4 flex items-center justify-center">
+                <div className="h-4 w-4 flex items-center justify-center sm:w-auto md:w-full">
                   {rightIcon}
                 </div>
               </div>
             )}
           </div>
         </div>
-        
         {helperContent && (
           <p
             id={`${internalId}-helper`}
@@ -254,7 +235,5 @@ const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
     );
   }
 );
-
 InputEnhanced.displayName = 'InputEnhanced';
-
 export { InputEnhanced, inputVariants };

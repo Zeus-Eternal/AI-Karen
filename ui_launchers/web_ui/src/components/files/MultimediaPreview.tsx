@@ -167,37 +167,37 @@ const ImagePreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Image className="h-5 w-5" />
+              <Image className="h-5 w-5 sm:w-auto md:w-full" />
               Image Preview
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}
+                onClick={() = aria-label="Button"> setZoom(Math.max(0.5, zoom - 0.25))}
               >
-                <ZoomOut className="h-4 w-4" />
+                <ZoomOut className="h-4 w-4 sm:w-auto md:w-full" />
               </Button>
-              <span className="text-sm font-mono">{Math.round(zoom * 100)}%</span>
-              <Button
+              <span className="text-sm font-mono md:text-base lg:text-lg">{Math.round(zoom * 100)}%</span>
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setZoom(Math.min(3, zoom + 0.25))}
+                onClick={() = aria-label="Button"> setZoom(Math.min(3, zoom + 0.25))}
               >
-                <ZoomIn className="h-4 w-4" />
+                <ZoomIn className="h-4 w-4 sm:w-auto md:w-full" />
               </Button>
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setRotation((rotation + 90) % 360)}
+                onClick={() = aria-label="Button"> setRotation((rotation + 90) % 360)}
               >
-                <RotateCw className="h-4 w-4" />
+                <RotateCw className="h-4 w-4 sm:w-auto md:w-full" />
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-center bg-muted rounded-lg p-4 overflow-auto max-h-96">
+          <div className="flex justify-center bg-muted rounded-lg p-4 overflow-auto max-h-96 sm:p-4 md:p-6">
             <img
               src={`/api/files/${file.file_id}/thumbnail`}
               alt={file.filename}
@@ -233,10 +233,10 @@ const ImagePreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
                 {analysis.objects_detected?.length > 0 ? (
                   <div className="space-y-2">
                     {analysis.objects_detected.map((obj, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 border rounded">
+                      <div key={index} className="flex items-center justify-between p-2 border rounded sm:p-4 md:p-6">
                         <div>
                           <span className="font-medium">{obj.label}</span>
-                          <p className="text-sm text-muted-foreground">{obj.description}</p>
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">{obj.description}</p>
                         </div>
                         <Badge variant="secondary">
                           {Math.round(obj.confidence * 100)}%
@@ -258,8 +258,8 @@ const ImagePreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
               </CardHeader>
               <CardContent>
                 {analysis.text_extracted ? (
-                  <div className="bg-muted p-4 rounded-lg">
-                    <pre className="whitespace-pre-wrap text-sm">{analysis.text_extracted}</pre>
+                  <div className="bg-muted p-4 rounded-lg sm:p-4 md:p-6">
+                    <pre className="whitespace-pre-wrap text-sm md:text-base lg:text-lg">{analysis.text_extracted}</pre>
                   </div>
                 ) : (
                   <p className="text-muted-foreground">No text detected in image</p>
@@ -330,26 +330,26 @@ const AudioPreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Music className="h-5 w-5" />
+            <Music className="h-5 w-5 sm:w-auto md:w-full" />
             Audio Player
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsPlaying(!isPlaying)}
+                onClick={() = aria-label="Button"> setIsPlaying(!isPlaying)}
               >
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {isPlaying ? <Pause className="h-4 w-4 sm:w-auto md:w-full" /> : <Play className="h-4 w-4 sm:w-auto md:w-full" />}
               </Button>
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsMuted(!isMuted)}
+                onClick={() = aria-label="Button"> setIsMuted(!isMuted)}
               >
-                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                {isMuted ? <VolumeX className="h-4 w-4 sm:w-auto md:w-full" /> : <Volume2 className="h-4 w-4 sm:w-auto md:w-full" />}
               </Button>
               <div className="flex-1">
                 <Progress value={progress} className="h-2" />
@@ -384,7 +384,7 @@ const AudioPreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
               </CardHeader>
               <CardContent>
                 {analysis.transcription ? (
-                  <div className="bg-muted p-4 rounded-lg">
+                  <div className="bg-muted p-4 rounded-lg sm:p-4 md:p-6">
                     <p className="whitespace-pre-wrap">{analysis.transcription}</p>
                   </div>
                 ) : (
@@ -453,7 +453,7 @@ const AudioPreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
                         value={analysis.sentiment_analysis.confidence * 100} 
                         className="mt-2"
                       />
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                         {Math.round(analysis.sentiment_analysis.confidence * 100)}%
                       </span>
                     </div>
@@ -480,7 +480,7 @@ const VideoPreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Video className="h-5 w-5" />
+            <Video className="h-5 w-5 sm:w-auto md:w-full" />
             Video Player
           </CardTitle>
         </CardHeader>
@@ -515,14 +515,14 @@ const VideoPreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
                     {analysis.frame_analysis.map((frame, index) => (
                       <div key={index} className="space-y-2">
                         <div className="aspect-video bg-muted rounded flex items-center justify-center">
-                          <Video className="h-8 w-8 text-muted-foreground" />
+                          <Video className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
                         </div>
-                        <div className="text-sm">
+                        <div className="text-sm md:text-base lg:text-lg">
                           <p className="font-medium">Frame {index + 1}</p>
                           <p className="text-muted-foreground">
                             {frame.timestamp.toFixed(2)}s
                           </p>
-                          <p className="text-xs">{frame.scene_description}</p>
+                          <p className="text-xs sm:text-sm md:text-base">{frame.scene_description}</p>
                         </div>
                       </div>
                     ))}
@@ -575,8 +575,8 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
       default:
         return (
           <Card>
-            <CardContent className="p-8 text-center">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <CardContent className="p-8 text-center sm:p-4 md:p-6">
+              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
               <p className="text-muted-foreground">
                 Preview not available for this file type
               </p>
@@ -594,21 +594,21 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2">
-                <Eye className="h-5 w-5" />
+                <Eye className="h-5 w-5 sm:w-auto md:w-full" />
                 {file.filename}
               </CardTitle>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground md:text-base lg:text-lg">
                 <span className="flex items-center gap-1">
-                  <HardDrive className="h-4 w-4" />
+                  <HardDrive className="h-4 w-4 sm:w-auto md:w-full" />
                   {formatFileSize(file.file_size)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
+                  <Clock className="h-4 w-4 sm:w-auto md:w-full" />
                   {formatDate(file.upload_timestamp)}
                 </span>
                 {file.security_scan_result && (
                   <span className="flex items-center gap-1">
-                    <Shield className="h-4 w-4" />
+                    <Shield className="h-4 w-4 sm:w-auto md:w-full" />
                     <Badge 
                       variant="secondary"
                       className={cn(
@@ -626,13 +626,13 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
             
             <div className="flex items-center gap-2">
               {onFullscreen && (
-                <Button variant="outline" size="sm" onClick={() => onFullscreen(file.file_id)}>
-                  <Maximize2 className="h-4 w-4" />
+                <button variant="outline" size="sm" onClick={() = aria-label="Button"> onFullscreen(file.file_id)}>
+                  <Maximize2 className="h-4 w-4 sm:w-auto md:w-full" />
                 </Button>
               )}
               {onDownload && (
-                <Button variant="outline" size="sm" onClick={() => onDownload(file.file_id)}>
-                  <Download className="h-4 w-4" />
+                <button variant="outline" size="sm" onClick={() = aria-label="Button"> onDownload(file.file_id)}>
+                  <Download className="h-4 w-4 sm:w-auto md:w-full" />
                 </Button>
               )}
             </div>
@@ -643,10 +643,10 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
       {/* File Tags */}
       {file.tags && file.tags.length > 0 && (
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
-              <Tag className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Tags:</span>
+              <Tag className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+              <span className="text-sm font-medium md:text-base lg:text-lg">Tags:</span>
               <div className="flex flex-wrap gap-1">
                 {file.tags.map((tag, index) => (
                   <Badge key={index} variant="outline">
@@ -662,18 +662,18 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
       {/* Content Moderation Warning */}
       {analysis?.content_moderation && !analysis.content_moderation.is_safe && (
         <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center gap-2 text-yellow-800">
-              <Shield className="h-4 w-4" />
+              <Shield className="h-4 w-4 sm:w-auto md:w-full" />
               <span className="font-medium">Content Warning</span>
             </div>
-            <p className="text-sm text-yellow-700 mt-1">
+            <p className="text-sm text-yellow-700 mt-1 md:text-base lg:text-lg">
               This content has been flagged by our moderation system. 
               Recommended action: {analysis.content_moderation.recommended_action}
             </p>
             {analysis.content_moderation.categories_detected.length > 0 && (
               <div className="mt-2">
-                <span className="text-xs text-yellow-600">Categories: </span>
+                <span className="text-xs text-yellow-600 sm:text-sm md:text-base">Categories: </span>
                 {analysis.content_moderation.categories_detected.map((category, index) => (
                   <Badge key={index} variant="outline" className="mr-1 text-yellow-700">
                     {category}
@@ -692,7 +692,7 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Info className="h-5 w-5" />
+            <Info className="h-5 w-5 sm:w-auto md:w-full" />
             File Information
           </CardTitle>
         </CardHeader>
@@ -721,13 +721,13 @@ export const MultimediaPreview: React.FC<MultimediaPreviewProps> = ({
               <span className="font-medium">Features:</span>
               <div className="flex gap-1 mt-1">
                 {file.has_thumbnail && (
-                  <Badge variant="outline" className="text-xs">Thumbnail</Badge>
+                  <Badge variant="outline" className="text-xs sm:text-sm md:text-base">Thumbnail</Badge>
                 )}
                 {file.preview_available && (
-                  <Badge variant="outline" className="text-xs">Preview</Badge>
+                  <Badge variant="outline" className="text-xs sm:text-sm md:text-base">Preview</Badge>
                 )}
                 {file.extracted_content_available && (
-                  <Badge variant="outline" className="text-xs">Text</Badge>
+                  <Badge variant="outline" className="text-xs sm:text-sm md:text-base">Text</Badge>
                 )}
               </div>
             </div>

@@ -1,0 +1,17 @@
+{
+  "plugin_api_version": "1.0",
+  "enable_external_workflow": false,
+  "required_roles": [
+    "admin"
+  ],
+  "intent": "tui_diagnostics",
+  "trusted_ui": false,
+  "module": "src.extensions.plugins.implementations.core.tui_fallback.handler",
+  "name": "tui-fallback",
+  "version": "0.1.0",
+  "description": "Provides a fallback terminal UI.",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "run",
+  "plugin_type": "core"
+}

@@ -1,3 +1,17 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+import { PluginInfo } from '@/types/plugins';
 /**
  * Plugin Health Monitor Component
  * 
@@ -7,8 +21,8 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
+
+
   Activity, 
   AlertTriangle, 
   CheckCircle, 
@@ -40,30 +54,30 @@ import {
   HardDrive,
 } from 'lucide-react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
+
+
+
+
+
+
+
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+
+
+
+
+
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
+
   Dialog,
   DialogContent,
   DialogDescription,
@@ -72,7 +86,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 
-import { PluginInfo } from '@/types/plugins';
+
 
 interface HealthCheck {
   id: string;
@@ -385,32 +399,32 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'passing':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
+        return <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />;
       case 'warning':
-        return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
+        return <AlertTriangle className="w-4 h-4 text-yellow-600 sm:w-auto md:w-full" />;
       case 'failing':
-        return <XCircle className="w-4 h-4 text-red-600" />;
+        return <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />;
       default:
-        return <AlertCircle className="w-4 h-4 text-gray-400" />;
+        return <AlertCircle className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />;
     }
   };
 
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'check_passed':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
+        return <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />;
       case 'check_failed':
-        return <XCircle className="w-4 h-4 text-red-600" />;
+        return <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />;
       case 'recovery_attempted':
-        return <RefreshCw className="w-4 h-4 text-blue-600" />;
+        return <RefreshCw className="w-4 h-4 text-blue-600 sm:w-auto md:w-full" />;
       case 'recovery_succeeded':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
+        return <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />;
       case 'recovery_failed':
-        return <XCircle className="w-4 h-4 text-red-600" />;
+        return <XCircle className="w-4 h-4 text-red-600 sm:w-auto md:w-full" />;
       case 'alert_triggered':
-        return <Bell className="w-4 h-4 text-orange-600" />;
+        return <Bell className="w-4 h-4 text-orange-600 sm:w-auto md:w-full" />;
       default:
-        return <Info className="w-4 h-4 text-gray-400" />;
+        return <Info className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />;
     }
   };
 
@@ -432,27 +446,27 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
               checked={monitoring}
               onCheckedChange={setMonitoring}
             />
-            <Label htmlFor="monitoring" className="text-sm">
+            <Label htmlFor="monitoring" className="text-sm md:text-base lg:text-lg">
               {monitoring ? 'Monitoring On' : 'Monitoring Off'}
             </Label>
           </div>
           
           <Separator orientation="vertical" className="h-6" />
           
-          <Button
+          <button
             variant="outline"
             size="sm"
-            onClick={() => setNotifications(!notifications)}
+            onClick={() = aria-label="Button"> setNotifications(!notifications)}
           >
-            {notifications ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+            {notifications ? <Bell className="w-4 h-4 sm:w-auto md:w-full" /> : <BellOff className="w-4 h-4 sm:w-auto md:w-full" />}
           </Button>
           
-          <Button
+          <button
             variant="outline"
             size="sm"
-            onClick={() => setShowDetails(!showDetails)}
+            onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
           >
-            {showDetails ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showDetails ? <EyeOff className="w-4 h-4 sm:w-auto md:w-full" /> : <Eye className="w-4 h-4 sm:w-auto md:w-full" />}
             Details
           </Button>
         </div>
@@ -469,16 +483,16 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                 'bg-red-100 text-red-600'
               }`}>
                 {overallHealth === 'healthy' ? (
-                  <CheckCircle className="w-6 h-6" />
+                  <CheckCircle className="w-6 h-6 sm:w-auto md:w-full" />
                 ) : overallHealth === 'warning' ? (
-                  <AlertTriangle className="w-6 h-6" />
+                  <AlertTriangle className="w-6 h-6 sm:w-auto md:w-full" />
                 ) : (
-                  <XCircle className="w-6 h-6" />
+                  <XCircle className="w-6 h-6 sm:w-auto md:w-full" />
                 )}
               </div>
               <div>
                 <h3 className="text-lg font-semibold capitalize">{overallHealth}</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   {healthChecks.filter(c => c.enabled && c.status === 'passing').length} of{' '}
                   {healthChecks.filter(c => c.enabled).length} checks passing
                 </p>
@@ -492,7 +506,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
               
               {autoRecovery && (
                 <Badge variant="outline">
-                  <Shield className="w-3 h-3 mr-1" />
+                  <Shield className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                   Auto Recovery
                 </Badge>
               )}
@@ -521,23 +535,23 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium">{check.name}</h4>
                           {check.critical && (
-                            <Badge variant="destructive" className="text-xs">Critical</Badge>
+                            <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">Critical</Badge>
                           )}
                           {!check.enabled && (
-                            <Badge variant="secondary" className="text-xs">Disabled</Badge>
+                            <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">Disabled</Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                           {check.description}
                         </p>
                         
                         {check.details && (
-                          <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
+                          <div className="mt-2 p-2 bg-muted/50 rounded text-sm md:text-base lg:text-lg">
                             <p>{check.details.message}</p>
                             {check.details.suggestions && check.details.suggestions.length > 0 && (
                               <div className="mt-2">
-                                <p className="font-medium text-xs">Suggestions:</p>
-                                <ul className="list-disc list-inside text-xs mt-1 space-y-1">
+                                <p className="font-medium text-xs sm:text-sm md:text-base">Suggestions:</p>
+                                <ul className="list-disc list-inside text-xs mt-1 space-y-1 sm:text-sm md:text-base">
                                   {check.details.suggestions.map((suggestion, index) => (
                                     <li key={index}>{suggestion}</li>
                                   ))}
@@ -547,7 +561,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                           </div>
                         )}
                         
-                        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground sm:text-sm md:text-base">
                           <span>Last check: {check.lastCheck.toLocaleString()}</span>
                           <span>Next check: {check.nextCheck.toLocaleString()}</span>
                           <span>Interval: {check.interval}s</span>
@@ -572,28 +586,28 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
         <TabsContent value="events" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Health Events</h3>
-            <Select value={selectedTimeRange} onValueChange={(value: any) => setSelectedTimeRange(value)}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
+            <select value={selectedTimeRange} onValueChange={(value: any) = aria-label="Select option"> setSelectedTimeRange(value)}>
+              <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+                <selectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1h">Last Hour</SelectItem>
-                <SelectItem value="24h">Last 24h</SelectItem>
-                <SelectItem value="7d">Last 7 days</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="1h" aria-label="Select option">Last Hour</SelectItem>
+                <selectItem value="24h" aria-label="Select option">Last 24h</SelectItem>
+                <selectItem value="7d" aria-label="Select option">Last 7 days</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           <Card>
-            <CardContent className="p-0">
+            <CardContent className="p-0 sm:p-4 md:p-6">
               <ScrollArea className="h-96">
-                <div className="p-4 space-y-3">
+                <div className="p-4 space-y-3 sm:p-4 md:p-6">
                   {healthEvents.map((event) => (
-                    <div key={event.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                    <div key={event.id} className="flex items-start gap-3 p-3 border rounded-lg sm:p-4 md:p-6">
                       {getEventIcon(event.type)}
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">{event.message}</p>
+                          <p className="text-sm font-medium md:text-base lg:text-lg">{event.message}</p>
                           <Badge 
                             variant={
                               event.severity === 'critical' ? 'destructive' :
@@ -601,12 +615,12 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                               event.severity === 'warning' ? 'default' :
                               'secondary'
                             }
-                            className="text-xs"
+                            className="text-xs sm:text-sm md:text-base"
                           >
                             {event.severity}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground sm:text-sm md:text-base">
                           <span>{event.timestamp.toLocaleString()}</span>
                           <span className="capitalize">{event.type.replace('_', ' ')}</span>
                           {event.metadata && Object.keys(event.metadata).length > 0 && (
@@ -630,7 +644,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold">Recovery Actions</h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Automated and manual recovery actions for health issues
               </p>
             </div>
@@ -641,7 +655,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                 checked={autoRecovery}
                 onCheckedChange={setAutoRecovery}
               />
-              <Label htmlFor="auto-recovery" className="text-sm">
+              <Label htmlFor="auto-recovery" className="text-sm md:text-base lg:text-lg">
                 Auto Recovery
               </Label>
             </div>
@@ -656,27 +670,27 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                       <div className="flex items-center gap-2">
                         <h4 className="font-medium">{action.name}</h4>
                         {action.automatic && (
-                          <Badge variant="outline" className="text-xs">
-                            <Zap className="w-3 h-3 mr-1" />
+                          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
+                            <Zap className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                             Auto
                           </Badge>
                         )}
                         <Badge 
                           variant={action.successRate > 80 ? 'default' : 'secondary'}
-                          className="text-xs"
+                          className="text-xs sm:text-sm md:text-base"
                         >
                           {action.successRate}% success
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                         {action.description}
                       </p>
                       
                       <div className="mt-2">
-                        <p className="text-xs font-medium">Triggers:</p>
+                        <p className="text-xs font-medium sm:text-sm md:text-base">Triggers:</p>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {action.conditions.map((condition, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
+                            <Badge key={index} variant="outline" className="text-xs sm:text-sm md:text-base">
                               {condition}
                             </Badge>
                           ))}
@@ -684,7 +698,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                       </div>
                       
                       {action.lastExecuted && (
-                        <p className="text-xs text-muted-foreground mt-2">
+                        <p className="text-xs text-muted-foreground mt-2 sm:text-sm md:text-base">
                           Last executed: {action.lastExecuted.toLocaleString()}
                         </p>
                       )}
@@ -696,16 +710,16 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
                         onCheckedChange={() => handleToggleRecoveryAction(action.id)}
                         className="scale-75"
                       />
-                      <Button
+                      <button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleRunRecoveryAction(action.id)}
+                        onClick={() = aria-label="Button"> handleRunRecoveryAction(action.id)}
                         disabled={!action.enabled || isRunningRecovery}
                       >
                         {isRunningRecovery ? (
-                          <RefreshCw className="w-3 h-3 animate-spin" />
+                          <RefreshCw className="w-3 h-3 animate-spin sm:w-auto md:w-full" />
                         ) : (
-                          <Play className="w-3 h-3" />
+                          <Play className="w-3 h-3 sm:w-auto md:w-full" />
                         )}
                       </Button>
                     </div>
@@ -728,7 +742,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <Label htmlFor="enable-monitoring">Enable Health Monitoring</Label>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                     Continuously monitor plugin health status
                   </p>
                 </div>
@@ -744,7 +758,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <Label htmlFor="enable-notifications">Enable Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                     Receive notifications for health issues
                   </p>
                 </div>
@@ -760,7 +774,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <Label htmlFor="enable-auto-recovery">Enable Auto Recovery</Label>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                     Automatically attempt to recover from failures
                   </p>
                 </div>
@@ -783,34 +797,34 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm">Response Time Threshold</Label>
+                  <Label className="text-sm md:text-base lg:text-lg">Response Time Threshold</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <Progress value={75} className="flex-1" />
-                    <span className="text-sm text-muted-foreground">1000ms</span>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">1000ms</span>
                   </div>
                 </div>
                 
                 <div>
-                  <Label className="text-sm">Error Rate Threshold</Label>
+                  <Label className="text-sm md:text-base lg:text-lg">Error Rate Threshold</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <Progress value={50} className="flex-1" />
-                    <span className="text-sm text-muted-foreground">5%</span>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">5%</span>
                   </div>
                 </div>
                 
                 <div>
-                  <Label className="text-sm">Memory Usage Threshold</Label>
+                  <Label className="text-sm md:text-base lg:text-lg">Memory Usage Threshold</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <Progress value={80} className="flex-1" />
-                    <span className="text-sm text-muted-foreground">100MB</span>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">100MB</span>
                   </div>
                 </div>
                 
                 <div>
-                  <Label className="text-sm">CPU Usage Threshold</Label>
+                  <Label className="text-sm md:text-base lg:text-lg">CPU Usage Threshold</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <Progress value={60} className="flex-1" />
-                    <span className="text-sm text-muted-foreground">10%</span>
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">10%</span>
                   </div>
                 </div>
               </div>

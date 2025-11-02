@@ -192,7 +192,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
       flex: 2,
       cellRenderer: (params: any) => (
         <div className="flex items-center gap-2 py-1">
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          <MessageSquare className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
           <span className="font-medium">{params.value}</span>
         </div>
       )
@@ -210,7 +210,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
       field: 'lastActivity',
       flex: 1,
       cellRenderer: (params: any) => (
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
           {format(new Date(params.value), 'MMM dd, HH:mm')}
         </span>
       )
@@ -250,47 +250,47 @@ return (
         <div className="border-b">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4 sm:w-auto md:w-full" />
               Chat
             </TabsTrigger>
             <TabsTrigger value="conversations" className="flex items-center gap-2">
-              <Grid3X3 className="h-4 w-4" />
+              <Grid3X3 className="h-4 w-4 sm:w-auto md:w-full" />
               Conversations
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
+              <BarChart3 className="h-4 w-4 sm:w-auto md:w-full" />
               Analytics
             </TabsTrigger>
           </TabsList>
         </div>
 
         <div className="flex-1 flex flex-col min-h-0">
-          <TabsContent value="chat" className="flex-1 flex flex-col m-0 p-0">
+          <TabsContent value="chat" className="flex-1 flex flex-col m-0 p-0 sm:p-4 md:p-6">
             <CopilotKit runtimeUrl="/api/copilot">
               <Card className="flex-1 flex flex-col">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5" />
+                    <Sparkles className="h-5 w-5 sm:w-auto md:w-full" />
                     AI Karen Chat
-                    <Badge variant="secondary" className="text-xs">
-                      <Brain className="h-3 w-3 mr-1" />
+                    <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
+                      <Brain className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                       Enhanced with CopilotKit
                     </Badge>
                   </CardTitle>
                 </CardHeader>
 
-                <CardContent className="flex-1 flex flex-col p-0">
+                <CardContent className="flex-1 flex flex-col p-0 sm:p-4 md:p-6">
                   {/* Messages Area */}
                   <ScrollArea className="flex-1 px-4">
                     <div className="space-y-4 pb-4">
                       {messages.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                           <div className="flex items-center justify-center gap-2 mb-4">
-                            <Bot className="h-12 w-12 opacity-50" />
-                            <Zap className="h-8 w-8 text-primary" />
+                            <Bot className="h-12 w-12 opacity-50 sm:w-auto md:w-full" />
+                            <Zap className="h-8 w-8 text-primary sm:w-auto md:w-full" />
                           </div>
                           <p className="text-lg font-medium mb-2">Welcome to AI Karen</p>
-                          <p className="text-sm">
+                          <p className="text-sm md:text-base lg:text-lg">
                             Your intelligent assistant powered by advanced AI and enhanced with CopilotKit.
                             Ask me anything or request help with your tasks!
                           </p>
@@ -308,18 +308,18 @@ return (
                       
                       {isLoading && (
                         <div className="flex gap-3 mb-4">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                            <Bot className="h-4 w-4" />
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center sm:w-auto md:w-full">
+                            <Bot className="h-4 w-4 sm:w-auto md:w-full" />
                           </div>
                           <div className="flex-1">
-                            <div className="inline-block p-3 rounded-lg bg-muted border">
+                            <div className="inline-block p-3 rounded-lg bg-muted border sm:p-4 md:p-6">
                               <div className="flex items-center gap-2">
                                 <div className="flex space-x-1">
-                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce sm:w-auto md:w-full"></div>
+                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce sm:w-auto md:w-full" style={{ animationDelay: '0.1s' }}></div>
+                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce sm:w-auto md:w-full" style={{ animationDelay: '0.2s' }}></div>
                                 </div>
-                                <span className="text-sm text-muted-foreground">AI Karen is thinking...</span>
+                                <span className="text-sm text-muted-foreground md:text-base lg:text-lg">AI Karen is thinking...</span>
                               </div>
                             </div>
                           </div>
@@ -348,16 +348,16 @@ return (
             </CopilotKit>
           </TabsContent>
 
-          <TabsContent value="conversations" className="flex-1 m-0 p-4">
+          <TabsContent value="conversations" className="flex-1 m-0 p-4 sm:p-4 md:p-6">
             <Card className="h-full">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5" />
+                  <Database className="h-5 w-5 sm:w-auto md:w-full" />
                   Conversation History
                   <Badge variant="outline">{conversations.length} conversations</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="h-full p-0">
+              <CardContent className="h-full p-0 sm:p-4 md:p-6">
                 <div className="ag-theme-alpine h-full">
                   <AgGridReact
                     ref={gridRef}
@@ -380,20 +380,20 @@ return (
             </Card>
           </TabsContent>
 
-          <TabsContent value="analytics" className="flex-1 m-0 p-4">
+          <TabsContent value="analytics" className="flex-1 m-0 p-4 sm:p-4 md:p-6">
             <Card className="h-full">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
+                  <BarChart3 className="h-5 w-5 sm:w-auto md:w-full" />
                   Chat Analytics
                   <Badge variant="secondary">Coming Soon</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-8 text-muted-foreground">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
                   <p className="text-lg font-medium mb-2">Analytics Dashboard</p>
-                  <p className="text-sm">
+                  <p className="text-sm md:text-base lg:text-lg">
                     Detailed conversation analytics and insights will be available here.
                   </p>
                 </div>

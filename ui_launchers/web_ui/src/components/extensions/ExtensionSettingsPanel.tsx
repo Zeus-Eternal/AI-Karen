@@ -39,37 +39,37 @@ export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormVa
     <form onSubmit={submit} className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Extension Settings</CardTitle>
+          <CardTitle className="text-sm md:text-base lg:text-lg">Extension Settings</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm">
+        <CardContent className="space-y-4 text-sm md:text-base lg:text-lg">
           <div className="space-y-1">
-            <label className="text-sm font-medium">Refresh Interval ({refresh}m)</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Refresh Interval ({refresh}m)</label>
             <Slider min={1} max={60} value={[refresh]} onValueChange={(v) => setValue("refreshInterval", v[0])} />
-            {errors.refreshInterval && <p className="text-xs text-destructive">Invalid interval</p>}
+            {errors.refreshInterval && <p className="text-xs text-destructive sm:text-sm md:text-base">Invalid interval</p>}
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Enable Logs</label>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Enable Logs</label>
             <Switch {...register("enableLogs")} />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium">Log Level</label>
-            <Select value={watch("logLevel")} onValueChange={(val) => setValue("logLevel", val as any)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="info">Info</SelectItem>
-                <SelectItem value="debug">Debug</SelectItem>
-                <SelectItem value="error">Error</SelectItem>
+            <label className="text-sm font-medium md:text-base lg:text-lg">Log Level</label>
+            <select value={watch("logLevel")} onValueChange={(val) = aria-label="Select option"> setValue("logLevel", val as any)}>
+              <selectTrigger aria-label="Select option"><selectValue /></SelectTrigger>
+              <selectContent aria-label="Select option">
+                <selectItem value="info" aria-label="Select option">Info</SelectItem>
+                <selectItem value="debug" aria-label="Select option">Debug</SelectItem>
+                <selectItem value="error" aria-label="Select option">Error</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="endpoint">Endpoint</label>
-            <Input id="endpoint" {...register("endpoint")}/>
-            {errors.endpoint && <p className="text-xs text-destructive">Enter valid URL</p>}
+            <label className="text-sm font-medium md:text-base lg:text-lg" htmlFor="endpoint">Endpoint</label>
+            <input id="endpoint" {...register("endpoint")} />
+            {errors.endpoint && <p className="text-xs text-destructive sm:text-sm md:text-base">Enter valid URL</p>}
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <Button size="sm" type="submit">Save</Button>
+          <button size="sm" type="submit" aria-label="Submit form">Save</Button>
         </CardFooter>
       </Card>
     </form>

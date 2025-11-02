@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,10 +39,8 @@ import { HelpTooltip, HelpSection, QuickHelp } from '@/components/ui/help-toolti
 import { ContextualHelp, HelpCallout, QuickStartHelp } from '@/components/ui/contextual-help';
 import { useDownloadStatus } from '@/hooks/use-download-status';
 import ConfirmationDialog from '@/components/ui/confirmation-dialog';
-import type { DownloadTask } from '@/hooks/use-download-status';
 import ModelCard from './ModelCard';
 import DownloadManager from './DownloadManager';
-
 interface ModelInfo {
   id: string;
   name: string;
@@ -58,7 +55,6 @@ interface ModelInfo {
   lastUsed?: number;
   downloadDate?: number;
 }
-
 interface ModelMetadata {
   parameters: string;
   quantization: string;
@@ -67,7 +63,6 @@ interface ModelMetadata {
   license: string;
   tags: string[];
 }
-
 interface ModelLibraryStats {
   totalModels: number;
   localModels: number;
@@ -75,7 +70,6 @@ interface ModelLibraryStats {
   downloadingModels: number;
   totalSize: number;
 }
-
 const LOCAL_STORAGE_KEYS = {
   searchQuery: 'model_library_search',
   filterProvider: 'model_library_filter_provider',
@@ -85,27 +79,21 @@ const LOCAL_STORAGE_KEYS = {
   sortBy: 'model_library_sort_by',
   sortOrder: 'model_library_sort_order',
 };
-
 type SortOption = 'name' | 'size' | 'parameters' | 'provider' | 'status';
 type SortOrder = 'asc' | 'desc';
-
 // Debounce hook for search
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
-
     return () => {
       clearTimeout(handler);
     };
   }, [value, delay]);
-
   return debouncedValue;
 }
-
 /**
  * @file ModelLibrary.tsx
  * @description Model Library component for discovering, downloading, and managing LLM models.
@@ -115,7 +103,6 @@ export default function ModelLibrary() {
   // Core state
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [stats, setStats] = useState<ModelLibraryStats | null>(null);
-  
   // UI state
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -127,7 +114,6 @@ export default function ModelLibrary() {
   const [sortBy, setSortBy] = useState<SortOption>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [showDownloadManager, setShowDownloadManager] = useState(false);
-  
   // Confirmation dialog state
   const [confirmationDialog, setConfirmationDialog] = useState<{
     open: boolean;
@@ -151,16 +137,12 @@ export default function ModelLibrary() {
     loading: false,
     onConfirm: async () => {},
   });
-  
   // Action loading states
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
-  
   // Debounced search query
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-  
   const { toast } = useToast();
   const backend = getKarenBackend();
-  
   // Download status integration
   const {
     downloadTasks,
@@ -170,37 +152,30 @@ export default function ModelLibrary() {
     resumeDownload,
     retryDownload
   } = useDownloadStatus();
-
   // Load settings and preferences on mount
   useEffect(() => {
     loadModels();
     loadSavedPreferences();
   }, []);
-
   // Set a timeout to prevent infinite loading
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (loading) {
-        console.warn('Model Library loading timeout - using fallback data');
         setLoading(false);
       }
     }, 10000); // 10 second timeout
-    
     return () => clearTimeout(timeout);
   }, [loading]);
-
   // Auto-save preferences when they change
   useEffect(() => {
     savePreferences();
   }, [searchQuery, filterProvider, filterStatus, filterSize, filterCapability, sortBy, sortOrder]);
-
   // Auto-show download manager when downloads start
   useEffect(() => {
     if (activeDownloads.length > 0 && !showDownloadManager) {
       setShowDownloadManager(true);
     }
   }, [activeDownloads.length, showDownloadManager]);
-
   const loadSavedPreferences = () => {
     try {
       const savedSearch = localStorage.getItem(LOCAL_STORAGE_KEYS.searchQuery);
@@ -210,7 +185,6 @@ export default function ModelLibrary() {
       const savedCapability = localStorage.getItem(LOCAL_STORAGE_KEYS.filterCapability);
       const savedSortBy = localStorage.getItem(LOCAL_STORAGE_KEYS.sortBy);
       const savedSortOrder = localStorage.getItem(LOCAL_STORAGE_KEYS.sortOrder);
-      
       if (savedSearch) setSearchQuery(savedSearch);
       if (savedProvider) setFilterProvider(savedProvider);
       if (savedStatus) setFilterStatus(savedStatus);
@@ -219,10 +193,8 @@ export default function ModelLibrary() {
       if (savedSortBy) setSortBy(savedSortBy as SortOption);
       if (savedSortOrder) setSortOrder(savedSortOrder as SortOrder);
     } catch (error) {
-      console.warn('Failed to load saved preferences:', error);
     }
   };
-
   const savePreferences = useCallback(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEYS.searchQuery, searchQuery);
@@ -233,37 +205,29 @@ export default function ModelLibrary() {
       localStorage.setItem(LOCAL_STORAGE_KEYS.sortBy, sortBy);
       localStorage.setItem(LOCAL_STORAGE_KEYS.sortOrder, sortOrder);
     } catch (error) {
-      console.warn('Failed to save preferences:', error);
     }
   }, [searchQuery, filterProvider, filterStatus, filterSize, filterCapability, sortBy, sortOrder]);
-
   const loadModels = async () => {
     try {
       setLoading(true);
-
       // Load models and stats from backend
       await Promise.all([
         loadAvailableModels(),
         loadModelStats()
       ]);
-
     } catch (error) {
-      console.error('Failed to load model library:', error);
       handleApiError(error, 'load model library');
     } finally {
       setLoading(false);
     }
   };
-
   const loadAvailableModels = async () => {
     try {
-      console.log('📚 ModelLibrary: Loading models from /api/models/library');
       const response = await backend.makeRequestPublic<{
         models: ModelInfo[];
         total?: number;
         status?: string;
       }>('/api/models/library');
-      
       console.log('📚 ModelLibrary: API response received:', {
         responseType: typeof response,
         isObject: response && typeof response === 'object',
@@ -273,30 +237,23 @@ export default function ModelLibrary() {
         modelsLength: response?.models?.length || 0,
         fullResponse: response
       });
-      
       if (response && 'models' in response && Array.isArray(response.models)) {
         setModels(response.models);
-        console.log('📚 ModelLibrary: Successfully set models array with', response.models.length, 'items');
       } else {
-        console.warn('📚 ModelLibrary: API response does not contain valid models array, using fallback models. Response structure:', response);
         setModels(getFallbackModels());
       }
     } catch (error) {
-      console.error('📚 ModelLibrary: Failed to load available models:', error);
       setModels(getFallbackModels());
     }
   };
-
   const loadModelStats = async () => {
     try {
       const response = await backend.makeRequestPublic<ModelLibraryStats>('/api/models/stats');
       setStats(response || calculateStatsFromModels(models));
     } catch (error) {
-      console.error('Failed to load model stats:', error);
       setStats(calculateStatsFromModels(models));
     }
   };
-
   const getFallbackModels = (): ModelInfo[] => [
     {
       id: 'tinyllama-1.1b-chat-q4',
@@ -333,7 +290,6 @@ export default function ModelLibrary() {
       }
     }
   ];
-
   const calculateStatsFromModels = (modelList: ModelInfo[]): ModelLibraryStats => {
     const localModels = modelList.filter(m => m.status === 'local').length;
     const cloudModels = modelList.filter(m => m.status === 'available').length;
@@ -341,7 +297,6 @@ export default function ModelLibrary() {
     const totalSize = modelList
       .filter(m => m.status === 'local')
       .reduce((sum, m) => sum + m.size, 0);
-
     return {
       totalModels: modelList.length,
       localModels,
@@ -350,7 +305,6 @@ export default function ModelLibrary() {
       totalSize
     };
   };
-
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -362,7 +316,6 @@ export default function ModelLibrary() {
       setRefreshing(false);
     }
   };
-
   const setModelActionLoading = (modelId: string, action: string, loading: boolean) => {
     const key = `${modelId}_${action}`;
     setActionLoading(prev => ({
@@ -370,20 +323,16 @@ export default function ModelLibrary() {
       [key]: loading
     }));
   };
-
   const isModelActionLoading = (modelId: string, action: string): boolean => {
     const key = `${modelId}_${action}`;
     return actionLoading[key] || false;
   };
-
   const handleModelAction = async (modelId: string, action: 'download' | 'delete' | 'cancel' | 'pause' | 'resume') => {
     const model = models.find(m => m.id === modelId);
     const modelName = model?.name || modelId;
-
     // For destructive actions, show confirmation dialog
     if (action === 'delete' || action === 'cancel') {
       const dialogConfig = createConfirmationDialog(action, modelName);
-      
       setConfirmationDialog({
         open: true,
         title: dialogConfig.title,
@@ -407,14 +356,11 @@ export default function ModelLibrary() {
       });
       return;
     }
-
     // For non-destructive actions, execute directly
     await executeModelAction(modelId, action, modelName);
   };
-
   const executeModelAction = async (modelId: string, action: string, modelName: string) => {
     setModelActionLoading(modelId, action, true);
-    
     try {
       switch (action) {
         case 'download':
@@ -422,28 +368,24 @@ export default function ModelLibrary() {
             method: 'POST',
             body: JSON.stringify({ model_id: modelId })
           });
-          
           if (response && (response as any).task_id) {
             // The download status hook will automatically pick up this task
             showSuccess(
               "Download Started", 
               `Download of ${modelName} has been initiated. Check the Download Manager for progress.`
             );
-            
             // Show download manager if there are active downloads
             if (!showDownloadManager) {
               setShowDownloadManager(true);
             }
           }
           break;
-        
         case 'delete':
           await backend.makeRequestPublic(`/api/models/${modelId}`, {
             method: 'DELETE'
           });
           showSuccess("Model Deleted", `${modelName} has been removed from local storage.`);
           break;
-        
         case 'cancel':
           // Find the task ID for this model
           const task = downloadTasks.find(t => t.modelId === modelId);
@@ -457,7 +399,6 @@ export default function ModelLibrary() {
             showInfo("Download Cancelled", `Download of ${modelName} has been cancelled.`);
           }
           break;
-        
         case 'pause':
           const pauseTask = downloadTasks.find(t => t.modelId === modelId);
           if (pauseTask) {
@@ -465,7 +406,6 @@ export default function ModelLibrary() {
             showInfo("Download Paused", `Download of ${modelName} has been paused.`);
           }
           break;
-        
         case 'resume':
           const resumeTask = downloadTasks.find(t => t.modelId === modelId);
           if (resumeTask) {
@@ -474,18 +414,14 @@ export default function ModelLibrary() {
           }
           break;
       }
-      
       // Refresh models after action
       await loadModels();
-      
     } catch (error) {
-      console.error(`Failed to ${action} model ${modelId}:`, error);
       handleModelManagementError(error, action, modelName);
     } finally {
       setModelActionLoading(modelId, action, false);
     }
   };
-
   // Helper functions for search and filtering
   const clearAllFilters = () => {
     setSearchQuery('');
@@ -494,7 +430,6 @@ export default function ModelLibrary() {
     setFilterSize('all');
     setFilterCapability('all');
   };
-
   const getActiveFilterCount = () => {
     let count = 0;
     if (searchQuery) count++;
@@ -504,7 +439,6 @@ export default function ModelLibrary() {
     if (filterCapability !== 'all') count++;
     return count;
   };
-
   const toggleSort = (newSortBy: SortOption) => {
     if (sortBy === newSortBy) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -513,7 +447,6 @@ export default function ModelLibrary() {
       setSortOrder('asc');
     }
   };
-
   // Update model status based on download tasks
   const modelsWithDownloadStatus = Array.isArray(models) ? models.map(model => {
     const downloadTask = downloadTasks.find(task => task.modelId === model.id);
@@ -528,22 +461,15 @@ export default function ModelLibrary() {
     }
     return model;
   }) : [];
-  
   // Log if models is not an array
   if (!Array.isArray(models)) {
-    console.error('📚 ModelLibrary: models is not an array, using empty array for rendering', {
-      modelsType: typeof models,
-      modelsValue: models
-    });
   }
-
   // Helper functions for filtering and sorting
   const getSizeCategory = (size: number): string => {
     if (size < 1024 * 1024 * 1024) return 'small'; // < 1GB
     if (size < 5 * 1024 * 1024 * 1024) return 'medium'; // < 5GB
     return 'large'; // >= 5GB
   };
-
   const getParameterCount = (parameters: string): number => {
     const match = parameters.match(/(\d+(?:\.\d+)?)\s*([BM])/i);
     if (!match) return 0;
@@ -551,14 +477,11 @@ export default function ModelLibrary() {
     const unit = match[2].toUpperCase();
     return unit === 'B' ? value : value / 1000; // Convert M to B for comparison
   };
-
   // Get unique values for filter dropdowns
   const availableProviders = useMemo(() => 
     Array.from(new Set(models.map(m => m.provider))), [models]);
-  
   const availableCapabilities = useMemo(() => 
     Array.from(new Set(models.flatMap(m => m.capabilities))), [models]);
-
   // Filter and sort models
   const filteredAndSortedModels = useMemo(() => {
     let filtered = modelsWithDownloadStatus.filter(model => {
@@ -568,27 +491,20 @@ export default function ModelLibrary() {
         model.description?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         model.metadata?.tags?.some(tag => tag?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())) ||
         model.capabilities?.some(cap => cap?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
-      
       // Provider filter
       const matchesProvider = filterProvider === 'all' || model.provider === filterProvider;
-      
       // Status filter
       const matchesStatus = filterStatus === 'all' || model.status === filterStatus;
-      
       // Size filter
       const matchesSize = filterSize === 'all' || getSizeCategory(model.size) === filterSize;
-      
       // Capability filter
       const matchesCapability = filterCapability === 'all' || 
         model.capabilities.includes(filterCapability);
-      
       return matchesSearch && matchesProvider && matchesStatus && matchesSize && matchesCapability;
     });
-
     // Sort models
     filtered.sort((a, b) => {
       let comparison = 0;
-      
       switch (sortBy) {
         case 'name':
           comparison = a.name.localeCompare(b.name);
@@ -609,27 +525,23 @@ export default function ModelLibrary() {
         default:
           comparison = 0;
       }
-      
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-
     return filtered;
   }, [modelsWithDownloadStatus, debouncedSearchQuery, filterProvider, filterStatus, filterSize, filterCapability, sortBy, sortOrder]);
-
   // Group models by provider type
   const localModels = filteredAndSortedModels.filter(m => m.status === 'local');
   const cloudModels = filteredAndSortedModels.filter(m => m.status === 'available');
   const downloadingModels = filteredAndSortedModels.filter(m => m.status === 'downloading');
-
   if (loading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary sm:w-auto md:w-full" />
             <div className="space-y-2">
               <p className="text-lg font-medium">Loading Model Library</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Discovering available models...
               </p>
             </div>
@@ -638,7 +550,6 @@ export default function ModelLibrary() {
       </Card>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* Header Card - Following LLMSettings.tsx pattern */}
@@ -647,7 +558,7 @@ export default function ModelLibrary() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Library className="h-5 w-5" />
+                <Library className="h-5 w-5 sm:w-auto md:w-full" />
                 Model Library
                 <HelpTooltip helpKey="modelLibrary" />
               </CardTitle>
@@ -656,28 +567,28 @@ export default function ModelLibrary() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={handleRefresh}
                 disabled={refreshing}
-              >
+               aria-label="Button">
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
               {activeDownloads.length > 0 && (
-                <Button
+                <button
                   variant={showDownloadManager ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setShowDownloadManager(!showDownloadManager)}
+                  onClick={() = aria-label="Button"> setShowDownloadManager(!showDownloadManager)}
                 >
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Downloads ({activeDownloads.length})
                 </Button>
               )}
               {stats && (
                 <Badge variant="outline" className="gap-1">
-                  <Library className="h-3 w-3" />
+                  <Library className="h-3 w-3 sm:w-auto md:w-full" />
                   {stats.localModels} local, {stats.cloudModels} available
                 </Badge>
               )}
@@ -685,7 +596,6 @@ export default function ModelLibrary() {
           </div>
         </CardHeader>
       </Card>
-
       {/* Quick Start Help */}
       {models.length === 0 && !loading && (
         <QuickStartHelp
@@ -714,17 +624,16 @@ export default function ModelLibrary() {
           className="mb-6"
         />
       )}
-
       {/* Stats Overview */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center gap-2">
-                <Library className="h-4 w-4 text-muted-foreground" />
+                <Library className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 <div>
                   <div className="flex items-center gap-1">
-                    <p className="text-sm font-medium">Total Models</p>
+                    <p className="text-sm font-medium md:text-base lg:text-lg">Total Models</p>
                     <HelpTooltip helpKey="modelStatus" variant="inline" size="sm" />
                   </div>
                   <p className="text-2xl font-bold">{stats.totalModels}</p>
@@ -733,33 +642,33 @@ export default function ModelLibrary() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center gap-2">
-                <HardDrive className="h-4 w-4 text-muted-foreground" />
+                <HardDrive className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 <div>
-                  <p className="text-sm font-medium">Local Models</p>
+                  <p className="text-sm font-medium md:text-base lg:text-lg">Local Models</p>
                   <p className="text-2xl font-bold">{stats.localModels}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center gap-2">
-                <Cloud className="h-4 w-4 text-muted-foreground" />
+                <Cloud className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 <div>
-                  <p className="text-sm font-medium">Available</p>
+                  <p className="text-sm font-medium md:text-base lg:text-lg">Available</p>
                   <p className="text-2xl font-bold">{stats.cloudModels}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-center gap-2">
-                <Download className="h-4 w-4 text-muted-foreground" />
+                <Download className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 <div>
-                  <p className="text-sm font-medium">Downloading</p>
+                  <p className="text-sm font-medium md:text-base lg:text-lg">Downloading</p>
                   <p className="text-2xl font-bold">{stats.downloadingModels}</p>
                 </div>
               </div>
@@ -767,40 +676,38 @@ export default function ModelLibrary() {
           </Card>
         </div>
       )}
-
       {/* Cross-reference to LLM Settings */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Settings className="h-5 w-5 text-primary" />
+              <Settings className="h-5 w-5 text-primary sm:w-auto md:w-full" />
               <div>
                 <h3 className="font-medium">Provider Configuration</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Configure providers and check model compatibility in LLM Settings
                 </p>
               </div>
             </div>
-            <Button
+            <button
               variant="outline"
-              onClick={() => {
+              onClick={() = aria-label="Button"> {
                 // Navigate back to LLM Settings
                 window.dispatchEvent(new CustomEvent('navigate-to-llm-settings'));
               }}
               className="gap-2"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4 sm:w-auto md:w-full" />
               LLM Settings
             </Button>
           </div>
         </CardContent>
       </Card>
-
       {/* Model-Provider Integration Status */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
+            <CheckCircle className="h-5 w-5 sm:w-auto md:w-full" />
             Integration Status
           </CardTitle>
           <CardDescription>
@@ -810,48 +717,47 @@ export default function ModelLibrary() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <h4 className="font-medium text-sm">Local Models Ready</h4>
+              <h4 className="font-medium text-sm md:text-base lg:text-lg">Local Models Ready</h4>
               <div className="flex items-center gap-2">
                 <Badge variant="default" className="gap-1">
-                  <HardDrive className="h-3 w-3" />
+                  <HardDrive className="h-3 w-3 sm:w-auto md:w-full" />
                   {localModels.length} models
                 </Badge>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Available for immediate use
                 </span>
               </div>
             </div>
             <div className="space-y-2">
-              <h4 className="font-medium text-sm">Download Queue</h4>
+              <h4 className="font-medium text-sm md:text-base lg:text-lg">Download Queue</h4>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="gap-1">
-                  <Download className="h-3 w-3" />
+                  <Download className="h-3 w-3 sm:w-auto md:w-full" />
                   {downloadingModels.length} downloading
                 </Badge>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   Models being prepared
                 </span>
               </div>
             </div>
           </div>
-          
           {/* Quick Actions */}
           <div className="flex flex-wrap gap-2 pt-2 border-t">
-            <Button
+            <button
               variant="outline"
               size="sm"
-              onClick={() => {
+              onClick={() = aria-label="Button"> {
                 window.dispatchEvent(new CustomEvent('navigate-to-llm-settings'));
               }}
               className="gap-2"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4 sm:w-auto md:w-full" />
               Configure Providers
             </Button>
-            <Button
+            <button
               variant="outline"
               size="sm"
-              onClick={() => {
+              onClick={() = aria-label="Button"> {
                 // Test workflow integration
                 toast({
                   title: "Integration Test",
@@ -860,211 +766,202 @@ export default function ModelLibrary() {
               }}
               className="gap-2"
             >
-              <PlayCircle className="h-4 w-4" />
+              <PlayCircle className="h-4 w-4 sm:w-auto md:w-full" />
               Test Integration
             </Button>
           </div>
         </CardContent>
       </Card>
-
       {/* Search and Filters */}
       <HelpSection title="Search and Filters" helpKey="searchFiltering">
         <Card>
-          <CardContent className="p-4 space-y-4">
+          <CardContent className="p-4 space-y-4 sm:p-4 md:p-6">
             {/* Search Bar */}
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <input
                     placeholder="Search models by name, description, tags, or capabilities..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
                     className="pl-10"
                   />
                   {searchQuery && (
-                    <Button
+                    <button
                       variant="ghost"
                       size="sm"
-                      className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
-                      onClick={() => setSearchQuery('')}
+                      className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 sm:w-auto md:w-full"
+                      onClick={() = aria-label="Button"> setSearchQuery('')}
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3 sm:w-auto md:w-full" />
                     </Button>
                   )}
                 </div>
               </div>
-            
             {/* Sort Controls */}
             <div className="flex items-center gap-2">
-              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Sort by" />
+              <select value={sortBy} onValueChange={(value) = aria-label="Select option"> setSortBy(value as SortOption)}>
+                <selectTrigger className="w-[120px]" aria-label="Select option">
+                  <selectValue placeholder="Sort by" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name">Name</SelectItem>
-                  <SelectItem value="size">Size</SelectItem>
-                  <SelectItem value="parameters">Parameters</SelectItem>
-                  <SelectItem value="provider">Provider</SelectItem>
-                  <SelectItem value="status">Status</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="name" aria-label="Select option">Name</SelectItem>
+                  <selectItem value="size" aria-label="Select option">Size</SelectItem>
+                  <selectItem value="parameters" aria-label="Select option">Parameters</SelectItem>
+                  <selectItem value="provider" aria-label="Select option">Provider</SelectItem>
+                  <selectItem value="status" aria-label="Select option">Status</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                onClick={() = aria-label="Button"> setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                 className="gap-1"
               >
-                {sortOrder === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />}
+                {sortOrder === 'asc' ? <SortAsc className="h-3 w-3 sm:w-auto md:w-full" /> : <SortDesc className="h-3 w-3 sm:w-auto md:w-full" />}
               </Button>
             </div>
           </div>
-
           {/* Filter Controls */}
           <div className="flex flex-wrap gap-2">
-            <Select value={filterProvider} onValueChange={setFilterProvider}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Provider" />
+            <select value={filterProvider} onValueChange={setFilterProvider} aria-label="Select option">
+              <selectTrigger className="w-[140px]" aria-label="Select option">
+                <selectValue placeholder="Provider" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Providers</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="all" aria-label="Select option">All Providers</SelectItem>
                 {availableProviders.map(provider => (
-                  <SelectItem key={provider} value={provider}>
+                  <selectItem key={provider} value={provider} aria-label="Select option">
                     {provider}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Status" />
+            <select value={filterStatus} onValueChange={setFilterStatus} aria-label="Select option">
+              <selectTrigger className="w-[120px]" aria-label="Select option">
+                <selectValue placeholder="Status" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="local">Local</SelectItem>
-                <SelectItem value="available">Available</SelectItem>
-                <SelectItem value="downloading">Downloading</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="all" aria-label="Select option">All Status</SelectItem>
+                <selectItem value="local" aria-label="Select option">Local</SelectItem>
+                <selectItem value="available" aria-label="Select option">Available</SelectItem>
+                <selectItem value="downloading" aria-label="Select option">Downloading</SelectItem>
               </SelectContent>
             </Select>
-            
-            <Select value={filterSize} onValueChange={setFilterSize}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Size" />
+            <select value={filterSize} onValueChange={setFilterSize} aria-label="Select option">
+              <selectTrigger className="w-[120px]" aria-label="Select option">
+                <selectValue placeholder="Size" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sizes</SelectItem>
-                <SelectItem value="small">Small (&lt;1GB)</SelectItem>
-                <SelectItem value="medium">Medium (1-5GB)</SelectItem>
-                <SelectItem value="large">Large (&gt;5GB)</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="all" aria-label="Select option">All Sizes</SelectItem>
+                <selectItem value="small" aria-label="Select option">Small (&lt;1GB)</SelectItem>
+                <selectItem value="medium" aria-label="Select option">Medium (1-5GB)</SelectItem>
+                <selectItem value="large" aria-label="Select option">Large (&gt;5GB)</SelectItem>
               </SelectContent>
             </Select>
-            
-            <Select value={filterCapability} onValueChange={setFilterCapability}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Capability" />
+            <select value={filterCapability} onValueChange={setFilterCapability} aria-label="Select option">
+              <selectTrigger className="w-[140px]" aria-label="Select option">
+                <selectValue placeholder="Capability" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Capabilities</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="all" aria-label="Select option">All Capabilities</SelectItem>
                 {availableCapabilities.map(capability => (
-                  <SelectItem key={capability} value={capability}>
+                  <selectItem key={capability} value={capability} aria-label="Select option">
                     {capability}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
             {getActiveFilterCount() > 0 && (
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={clearAllFilters}
                 className="gap-1"
-              >
-                <X className="h-3 w-3" />
+               aria-label="Button">
+                <X className="h-3 w-3 sm:w-auto md:w-full" />
                 Clear ({getActiveFilterCount()})
               </Button>
             )}
           </div>
-
           {/* Active Filter Badges */}
           {getActiveFilterCount() > 0 && (
             <div className="flex flex-wrap gap-2">
               {searchQuery && (
                 <Badge variant="secondary" className="gap-1">
-                  <Search className="h-3 w-3" />
+                  <Search className="h-3 w-3 sm:w-auto md:w-full" />
                   Search: "{searchQuery}"
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-1"
-                    onClick={() => setSearchQuery('')}
+                    className="h-4 w-4 p-0 ml-1 sm:w-auto md:w-full"
+                    onClick={() = aria-label="Button"> setSearchQuery('')}
                   >
-                    <X className="h-2 w-2" />
+                    <X className="h-2 w-2 sm:w-auto md:w-full" />
                   </Button>
                 </Badge>
               )}
               {filterProvider !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  <Filter className="h-3 w-3" />
+                  <Filter className="h-3 w-3 sm:w-auto md:w-full" />
                   Provider: {filterProvider}
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-1"
-                    onClick={() => setFilterProvider('all')}
+                    className="h-4 w-4 p-0 ml-1 sm:w-auto md:w-full"
+                    onClick={() = aria-label="Button"> setFilterProvider('all')}
                   >
-                    <X className="h-2 w-2" />
+                    <X className="h-2 w-2 sm:w-auto md:w-full" />
                   </Button>
                 </Badge>
               )}
               {filterStatus !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  <Filter className="h-3 w-3" />
+                  <Filter className="h-3 w-3 sm:w-auto md:w-full" />
                   Status: {filterStatus}
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-1"
-                    onClick={() => setFilterStatus('all')}
+                    className="h-4 w-4 p-0 ml-1 sm:w-auto md:w-full"
+                    onClick={() = aria-label="Button"> setFilterStatus('all')}
                   >
-                    <X className="h-2 w-2" />
+                    <X className="h-2 w-2 sm:w-auto md:w-full" />
                   </Button>
                 </Badge>
               )}
               {filterSize !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  <Filter className="h-3 w-3" />
+                  <Filter className="h-3 w-3 sm:w-auto md:w-full" />
                   Size: {filterSize}
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-1"
-                    onClick={() => setFilterSize('all')}
+                    className="h-4 w-4 p-0 ml-1 sm:w-auto md:w-full"
+                    onClick={() = aria-label="Button"> setFilterSize('all')}
                   >
-                    <X className="h-2 w-2" />
+                    <X className="h-2 w-2 sm:w-auto md:w-full" />
                   </Button>
                 </Badge>
               )}
               {filterCapability !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  <Filter className="h-3 w-3" />
+                  <Filter className="h-3 w-3 sm:w-auto md:w-full" />
                   Capability: {filterCapability}
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-1"
-                    onClick={() => setFilterCapability('all')}
+                    className="h-4 w-4 p-0 ml-1 sm:w-auto md:w-full"
+                    onClick={() = aria-label="Button"> setFilterCapability('all')}
                   >
-                    <X className="h-2 w-2" />
+                    <X className="h-2 w-2 sm:w-auto md:w-full" />
                   </Button>
                 </Badge>
               )}
             </div>
           )}
-
           {/* Results Summary */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center justify-between text-sm text-muted-foreground md:text-base lg:text-lg">
             <span>
               Showing {filteredAndSortedModels.length} of {models.length} models
             </span>
@@ -1075,7 +972,6 @@ export default function ModelLibrary() {
         </CardContent>
       </Card>
       </HelpSection>
-
       {/* Download Manager */}
       {showDownloadManager && (
         <DownloadManager 
@@ -1083,7 +979,6 @@ export default function ModelLibrary() {
           compact={false}
         />
       )}
-
       {/* Provider Categories */}
       <div className="space-y-6">
         {/* Local Models */}
@@ -1091,7 +986,7 @@ export default function ModelLibrary() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <HardDrive className="h-5 w-5" />
+                <HardDrive className="h-5 w-5 sm:w-auto md:w-full" />
                 Local Models ({localModels.length})
                 <HelpTooltip helpKey="storageManagement" variant="inline" size="sm" />
               </CardTitle>
@@ -1121,13 +1016,12 @@ export default function ModelLibrary() {
             </CardContent>
           </Card>
         )}
-
         {/* Downloading Models */}
         {downloadingModels.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Download className="h-5 w-5" />
+                <Download className="h-5 w-5 sm:w-auto md:w-full" />
                 Downloading Models ({downloadingModels.length})
                 <HelpTooltip helpKey="downloadProcess" variant="inline" size="sm" />
               </CardTitle>
@@ -1141,19 +1035,17 @@ export default function ModelLibrary() {
                   key={model.id}
                   model={model}
                   onAction={handleModelAction}
-
                 />
               ))}
             </CardContent>
           </Card>
         )}
-
         {/* Available Models */}
         {cloudModels.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Cloud className="h-5 w-5" />
+                <Cloud className="h-5 w-5 sm:w-auto md:w-full" />
                 Available Models ({cloudModels.length})
               </CardTitle>
               <CardDescription>
@@ -1171,12 +1063,11 @@ export default function ModelLibrary() {
             </CardContent>
           </Card>
         )}
-
         {/* No Models Found */}
         {filteredAndSortedModels.length === 0 && !loading && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Library className="h-12 w-12 text-muted-foreground mb-4" />
+              <Library className="h-12 w-12 text-muted-foreground mb-4 sm:w-auto md:w-full" />
               <h3 className="text-lg font-medium mb-2">No Models Found</h3>
               <p className="text-muted-foreground mb-4">
                 {getActiveFilterCount() > 0 
@@ -1185,11 +1076,11 @@ export default function ModelLibrary() {
                 }
               </p>
               {getActiveFilterCount() > 0 ? (
-                <Button variant="outline" onClick={clearAllFilters}>
+                <button variant="outline" onClick={clearAllFilters} aria-label="Button">
                   Clear All Filters
                 </Button>
               ) : (
-                <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+                <button variant="outline" onClick={handleRefresh} disabled={refreshing} aria-label="Button">
                   <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                   Refresh Library
                 </Button>
@@ -1198,7 +1089,6 @@ export default function ModelLibrary() {
           </Card>
         )}
       </div>
-
       {/* Quick Help Section */}
       <QuickHelp
         helpKeys={[
@@ -1210,7 +1100,6 @@ export default function ModelLibrary() {
         title="Model Library Help"
         className="mt-6"
       />
-
       {/* Confirmation Dialog */}
       <ConfirmationDialog
         isOpen={confirmationDialog.open}

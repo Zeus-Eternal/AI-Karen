@@ -5,7 +5,7 @@
  * Based on requirements: 5.3, 5.5, 9.1, 9.2, 9.4
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PluginConfigurationSecurityIntegration } from '../PluginConfigurationSecurityIntegration';
@@ -15,8 +15,8 @@ import { PluginInfo, PluginConfigField } from '@/types/plugins';
 vi.mock('../DynamicPluginConfigForm', () => ({
   DynamicPluginConfigForm: ({ onSave, onValidate }: any) => (
     <div data-testid="dynamic-config-form">
-      <button onClick={() => onSave({ testConfig: 'value' })}>Save Config</button>
-      <button onClick={() => onValidate({ testConfig: 'value' })}>Validate Config</button>
+      <button onClick={() = aria-label="Button"> onSave({ testConfig: 'value' })}>Save Config</button>
+      <button onClick={() = aria-label="Button"> onValidate({ testConfig: 'value' })}>Validate Config</button>
     </div>
   ),
 }));
@@ -24,9 +24,9 @@ vi.mock('../DynamicPluginConfigForm', () => ({
 vi.mock('../PluginSecurityManager', () => ({
   PluginSecurityManager: ({ onUpdateSecurity, onGrantPermission, onRevokePermission }: any) => (
     <div data-testid="security-manager">
-      <button onClick={() => onUpdateSecurity({ sandboxed: true })}>Update Security</button>
-      <button onClick={() => onGrantPermission('test-permission')}>Grant Permission</button>
-      <button onClick={() => onRevokePermission('test-permission')}>Revoke Permission</button>
+      <button onClick={() = aria-label="Button"> onUpdateSecurity({ sandboxed: true })}>Update Security</button>
+      <button onClick={() = aria-label="Button"> onGrantPermission('test-permission')}>Grant Permission</button>
+      <button onClick={() = aria-label="Button"> onRevokePermission('test-permission')}>Revoke Permission</button>
     </div>
   ),
 }));
@@ -34,8 +34,8 @@ vi.mock('../PluginSecurityManager', () => ({
 vi.mock('../PluginAuditLogger', () => ({
   PluginAuditLogger: ({ onExportAuditLog, onGenerateReport }: any) => (
     <div data-testid="audit-logger">
-      <button onClick={() => onExportAuditLog('csv')}>Export Audit</button>
-      <button onClick={() => onGenerateReport('security')}>Generate Report</button>
+      <button onClick={() = aria-label="Button"> onExportAuditLog('csv')}>Export Audit</button>
+      <button onClick={() = aria-label="Button"> onGenerateReport('security')}>Generate Report</button>
     </div>
   ),
 }));
@@ -43,8 +43,8 @@ vi.mock('../PluginAuditLogger', () => ({
 vi.mock('../EnhancedPluginMarketplace', () => ({
   EnhancedPluginMarketplace: ({ onClose, onInstall }: any) => (
     <div data-testid="marketplace">
-      <button onClick={() => onInstall({ id: 'test-plugin' })}>Install Plugin</button>
-      <button onClick={onClose}>Close Marketplace</button>
+      <button onClick={() = aria-label="Button"> onInstall({ id: 'test-plugin' })}>Install Plugin</button>
+      <button onClick={onClose} aria-label="Button">Close Marketplace</button>
     </div>
   ),
 }));

@@ -1,9 +1,14 @@
-"use client";
-
 import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+import type { CopilotAction, ChatContext } from "../types";
+"use client";
+
+
+
+
+
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -11,7 +16,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import {
+
   Brain,
   Code,
   Bug,
@@ -28,7 +33,7 @@ import {
   Sparkles,
   ChevronDown,
 } from "lucide-react";
-import type { CopilotAction, ChatContext } from "../types";
+
 
 interface CopilotActionsProps {
   actions?: CopilotAction[];
@@ -192,7 +197,7 @@ const CopilotActions: React.FC<CopilotActionsProps> = ({
     return (
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4" />
+          <Icon className="h-4 w-4 sm:w-auto md:w-full" />
           <span>{action.title}</span>
         </div>
         {showShortcuts && action.shortcut && (
@@ -207,20 +212,20 @@ const CopilotActions: React.FC<CopilotActionsProps> = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <button
           type="button"
           variant="outline"
           size="sm"
           disabled={disabled}
           className={`flex items-center gap-2 ${className}`}
-        >
-          <Sparkles className="h-4 w-4" />
+         aria-label="Button">
+          <Sparkles className="h-4 w-4 sm:w-auto md:w-full" />
           Copilot Actions
-          <ChevronDown className="h-3 w-3" />
+          <ChevronDown className="h-3 w-3 sm:w-auto md:w-full" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">
+      <DropdownMenuContent className="w-64 sm:w-auto md:w-full">
+        <DropdownMenuLabel className="text-xs text-muted-foreground sm:text-sm md:text-base">
           Powered by CopilotKit
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -234,7 +239,7 @@ const CopilotActions: React.FC<CopilotActionsProps> = ({
               <DropdownMenuItem
                 key={action.id}
                 onSelect={() => onActionTriggered(action)}
-                className="text-sm"
+                className="text-sm md:text-base lg:text-lg"
               >
                 {renderActionLabel(action)}
               </DropdownMenuItem>

@@ -1,7 +1,6 @@
-import React from 'react';
+
 import { render, screen, act } from '@testing-library/react';
 import { MicroInteractionProvider, useMicroInteractions } from '../micro-interaction-provider';
-
 import { vi } from 'vitest';
 
 // Mock matchMedia
@@ -28,7 +27,7 @@ const TestComponent = () => {
       <div data-testid="enable-haptics">{enableHaptics.toString()}</div>
       <div data-testid="animation-duration">{animationDuration}</div>
       <button 
-        onClick={() => updateConfig({ enableHaptics: false })}
+        onClick={() = aria-label="Button"> updateConfig({ enableHaptics: false })}
         data-testid="update-config"
       >
         Update Config

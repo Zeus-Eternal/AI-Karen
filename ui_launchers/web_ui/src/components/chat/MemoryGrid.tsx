@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridReadyEvent, CellValueChangedEvent, RowSelectedEvent } from 'ag-grid-community';
@@ -17,7 +16,6 @@ import { format } from 'date-fns';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { safeDebug } from '@/lib/safe-console';
-
 export interface MemoryRow {
   id: string;
   content: string;
@@ -31,7 +29,6 @@ export interface MemoryRow {
   source: string;
   isStarred: boolean;
 }
-
 interface MemoryGridProps {
   memories?: MemoryRow[];
   onMemoryUpdate?: (memory: MemoryRow) => Promise<void>;
@@ -39,7 +36,6 @@ interface MemoryGridProps {
   onMemoryCreate?: (memory: Partial<MemoryRow>) => Promise<void>;
   className?: string;
 }
-
 // Custom cell renderers
 const TypeRenderer = (params: any) => {
   const type = params.value;
@@ -49,19 +45,16 @@ const TypeRenderer = (params: any) => {
     context: 'outline',
     insight: 'destructive'
   } as const;
-  
   return (
-    <Badge variant={variants[type as keyof typeof variants]} className="text-xs">
+    <Badge variant={variants[type as keyof typeof variants]} className="text-xs sm:text-sm md:text-base">
       {type}
     </Badge>
   );
 };
-
 const ConfidenceRenderer = (params: any) => {
   const confidence = params.value;
   const percentage = Math.round(confidence * 100);
   const color = confidence > 0.8 ? 'text-green-600' : confidence > 0.5 ? 'text-yellow-600' : 'text-red-600';
-  
   return (
     <div className="flex items-center gap-2">
       <div className={`w-2 h-2 rounded-full ${confidence > 0.8 ? 'bg-green-500' : confidence > 0.5 ? 'bg-yellow-500' : 'bg-red-500'}`} />
@@ -69,11 +62,9 @@ const ConfidenceRenderer = (params: any) => {
     </div>
   );
 };
-
 const RelevanceRenderer = (params: any) => {
   const score = params.value;
   const stars = Math.round(score * 5);
-  
   return (
     <div className="flex items-center">
       {[...Array(5)].map((_, i) => (
@@ -85,59 +76,55 @@ const RelevanceRenderer = (params: any) => {
     </div>
   );
 };
-
 const TagsRenderer = (params: any) => {
   const tags = params.value || [];
   return (
     <div className="flex flex-wrap gap-1">
       {tags.slice(0, 2).map((tag: string, index: number) => (
-        <Badge key={index} variant="outline" className="text-xs">
+        <Badge key={index} variant="outline" className="text-xs sm:text-sm md:text-base">
           {tag}
         </Badge>
       ))}
       {tags.length > 2 && (
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
           +{tags.length - 2}
         </Badge>
       )}
     </div>
   );
 };
-
 const ActionsRenderer = (params: any) => {
   const { onEdit, onDelete, onToggleStar } = params.context;
   const memory = params.data;
-  
   return (
     <div className="flex items-center gap-1">
-      <Button
+      <button
         variant="ghost"
         size="sm"
-        onClick={() => onToggleStar(memory)}
-        className="h-6 w-6 p-0"
+        onClick={() = aria-label="Button"> onToggleStar(memory)}
+        className="h-6 w-6 p-0 sm:w-auto md:w-full"
       >
         <Star className={`h-3 w-3 ${memory.isStarred ? 'text-yellow-400 fill-current' : 'text-gray-400'}`} />
       </Button>
-      <Button
+      <button
         variant="ghost"
         size="sm"
-        onClick={() => onEdit(memory)}
-        className="h-6 w-6 p-0"
+        onClick={() = aria-label="Button"> onEdit(memory)}
+        className="h-6 w-6 p-0 sm:w-auto md:w-full"
       >
-        <Edit className="h-3 w-3" />
+        <Edit className="h-3 w-3 sm:w-auto md:w-full" />
       </Button>
-      <Button
+      <button
         variant="ghost"
         size="sm"
-        onClick={() => onDelete(memory.id)}
-        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+        onClick={() = aria-label="Button"> onDelete(memory.id)}
+        className="h-6 w-6 p-0 text-destructive hover:text-destructive sm:w-auto md:w-full"
       >
-        <Trash2 className="h-3 w-3" />
+        <Trash2 className="h-3 w-3 sm:w-auto md:w-full" />
       </Button>
     </div>
   );
 };
-
 export const MemoryGrid: React.FC<MemoryGridProps> = ({
   memories = [],
   onMemoryUpdate,
@@ -148,7 +135,6 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
   const { user } = useAuth();
   const { triggerHooks, registerGridHook } = useHooks();
   const { toast } = useToast();
-  
   const [searchText, setSearchText] = useState('');
   const [selectedMemories, setSelectedMemories] = useState<MemoryRow[]>([]);
   const [editingMemory, setEditingMemory] = useState<MemoryRow | null>(null);
@@ -158,11 +144,9 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
     type: 'fact',
     tags: []
   });
-
-  // Generate sample data if none provided
+  // Generate  if none provided
   const memoryData = useMemo(() => {
     if (memories.length > 0) return memories;
-    
     return [
       {
         id: '1',
@@ -218,7 +202,6 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       }
     ];
   }, [memories]);
-
   // Column definitions
   const columnDefs: ColDef[] = useMemo(() => [
     {
@@ -297,33 +280,27 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       }
     }
   ], []);
-
   // Default column properties
   const defaultColDef = useMemo(() => ({
     resizable: true,
     sortable: true,
     filter: true
   }), []);
-
   // Register grid hooks
   useEffect(() => {
     const hookIds: string[] = [];
-
     hookIds.push(registerGridHook('memories', 'dataLoad', async (params) => {
       safeDebug('Memory grid data loaded:', params);
       return { success: true, memoryCount: memoryData.length };
     }));
-
     hookIds.push(registerGridHook('memories', 'rowSelected', async (params) => {
       safeDebug('Memory row selected:', params);
       return { success: true, selectedMemory: params.data };
     }));
-
     return () => {
       // Cleanup hooks
     };
   }, [registerGridHook, memoryData.length]);
-
   // Handle grid events
   const onGridReady = useCallback(async (params: GridReadyEvent) => {
     await triggerHooks('grid_memories_dataLoad', {
@@ -332,12 +309,10 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       memoryCount: memoryData.length
     }, { userId: user?.userId });
   }, [triggerHooks, memoryData.length, user?.userId]);
-
   const onSelectionChanged = useCallback(async (event: any) => {
     const selectedNodes = event.api.getSelectedNodes();
     const selectedData = selectedNodes.map((node: any) => node.data);
     setSelectedMemories(selectedData);
-
     for (const memory of selectedData) {
       await triggerHooks('grid_memories_rowSelected', {
         gridId: 'memories',
@@ -346,7 +321,6 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       }, { userId: user?.userId });
     }
   }, [triggerHooks, user?.userId]);
-
   // Memory management functions
   async function handleDeleteMemory(memoryId: string) {
     try {
@@ -365,7 +339,6 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       });
     }
   }
-
   async function handleToggleStar(memory: MemoryRow) {
     try {
       const updatedMemory = { ...memory, isStarred: !memory.isStarred };
@@ -384,7 +357,6 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       });
     }
   }
-
   const handleCreateMemory = async () => {
     try {
       if (onMemoryCreate && newMemory.content) {
@@ -398,10 +370,8 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
           source: 'manual',
           isStarred: false
         });
-        
         setNewMemory({ content: '', type: 'fact', tags: [] });
         setIsCreateDialogOpen(false);
-        
         toast({
           title: 'Memory Created',
           description: 'New memory has been successfully added.'
@@ -415,11 +385,9 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       });
     }
   };
-
   // Filter memories based on search
   const filteredMemories = useMemo(() => {
     if (!searchText) return memoryData;
-    
     const searchLower = searchText.toLowerCase();
     return memoryData.filter(memory =>
       memory.content?.toLowerCase().includes(searchLower) ||
@@ -428,21 +396,19 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       memory.tags?.some(tag => tag?.toLowerCase().includes(searchLower))
     );
   }, [memoryData, searchText]);
-
   return (
     <Card className={`w-full ${className}`}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <Brain className="h-5 w-5" />
+            <Brain className="h-5 w-5 sm:w-auto md:w-full" />
             Memory Management ({filteredMemories.length})
           </CardTitle>
-          
           <div className="flex items-center gap-2">
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
+                <button size="sm" aria-label="Button">
+                  <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Add Memory
                 </Button>
               </DialogTrigger>
@@ -452,20 +418,20 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium">Content</label>
-                    <Textarea
+                    <label className="text-sm font-medium md:text-base lg:text-lg">Content</label>
+                    <textarea
                       value={newMemory.content || ''}
-                      onChange={(e) => setNewMemory({ ...newMemory, content: e.target.value })}
+                      onChange={(e) = aria-label="Textarea"> setNewMemory({ ...newMemory, content: e.target.value })}
                       placeholder="Enter memory content..."
                       className="mt-1"
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Type</label>
+                    <label className="text-sm font-medium md:text-base lg:text-lg">Type</label>
                     <select
                       value={newMemory.type || 'fact'}
-                      onChange={(e) => setNewMemory({ ...newMemory, type: e.target.value as any })}
-                      className="mt-1 w-full p-2 border rounded-md"
+                      onChange={(e) = aria-label="Select option"> setNewMemory({ ...newMemory, type: e.target.value as any })}
+                      className="mt-1 w-full p-2 border rounded-md sm:p-4 md:p-6"
                     >
                       <option value="fact">Fact</option>
                       <option value="preference">Preference</option>
@@ -474,53 +440,49 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
                     </select>
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                    <button variant="outline" onClick={() = aria-label="Button"> setIsCreateDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button onClick={handleCreateMemory} disabled={!newMemory.content}>
+                    <button onClick={handleCreateMemory} disabled={!newMemory.content} aria-label="Button">
                       Create Memory
                     </Button>
                   </div>
                 </div>
               </DialogContent>
             </Dialog>
-            
-            <Button variant="outline" size="sm">
-              <Network className="h-4 w-4 mr-2" />
+            <button variant="outline" size="sm" aria-label="Button">
+              <Network className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               View Network
             </Button>
           </div>
         </div>
-
         <div className="flex items-center gap-2 mt-4">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <input
               placeholder="Search memories..."
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) = aria-label="Input"> setSearchText(e.target.value)}
               className="pl-10"
             />
           </div>
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
+          <button variant="outline" size="sm" aria-label="Button">
+            <Filter className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
             Filters
           </Button>
         </div>
-
         {selectedMemories.length > 0 && (
           <div className="flex items-center gap-2 mt-2">
             <Badge variant="secondary">
               {selectedMemories.length} selected
             </Badge>
-            <Button variant="outline" size="sm">
+            <button variant="outline" size="sm" aria-label="Button">
               Bulk Actions
             </Button>
           </div>
         )}
       </CardHeader>
-
-      <CardContent className="p-0">
+      <CardContent className="p-0 sm:p-4 md:p-6">
         <div className="ag-theme-alpine h-[600px] w-full">
           <AgGridReact
             rowData={filteredMemories}

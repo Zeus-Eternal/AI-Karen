@@ -71,14 +71,14 @@ export default function ModelAvailabilityCheck() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             Model Availability Check
-            <Button onClick={checkAvailability} disabled={loading}>
+            <button onClick={checkAvailability} disabled={loading} aria-label="Button">
               {loading ? 'Checking...' : 'Refresh'}
             </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded mb-4">
+            <div className="p-4 bg-red-50 border border-red-200 rounded mb-4 sm:p-4 md:p-6">
               <p className="text-red-700">Error: {error}</p>
             </div>
           )}
@@ -92,7 +92,7 @@ export default function ModelAvailabilityCheck() {
                   <p className="text-gray-500">No providers with models found</p>
                 ) : (
                   providers.map(provider => (
-                    <div key={provider.id} className="flex items-center justify-between p-3 border rounded">
+                    <div key={provider.id} className="flex items-center justify-between p-3 border rounded sm:p-4 md:p-6">
                       <div>
                         <span className="font-medium">{provider.title}</span>
                         <Badge variant="outline" className="ml-2">
@@ -118,9 +118,9 @@ export default function ModelAvailabilityCheck() {
                   <p className="text-gray-500">No models found</p>
                 ) : (
                   models.map(model => (
-                    <div key={model.id} className="p-3 border rounded">
+                    <div key={model.id} className="p-3 border rounded sm:p-4 md:p-6">
                       <div className="font-medium">{model.displayName}</div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 md:text-base lg:text-lg">
                         Provider: {model.provider} | Family: {model.family}
                       </div>
                       <Badge 
@@ -147,7 +147,7 @@ export default function ModelAvailabilityCheck() {
           <div className="space-y-4">
             <div>
               <h4 className="font-semibold">If no models are showing:</h4>
-              <ul className="list-disc list-inside text-sm text-gray-600 mt-2 space-y-1">
+              <ul className="list-disc list-inside text-sm text-gray-600 mt-2 space-y-1 md:text-base lg:text-lg">
                 <li>Check that your backend server is running</li>
                 <li>Verify model files exist in the models directory</li>
                 <li>Check the model registry configuration</li>
@@ -157,7 +157,7 @@ export default function ModelAvailabilityCheck() {
             
             <div>
               <h4 className="font-semibold">For Vicuña30k model:</h4>
-              <ul className="list-disc list-inside text-sm text-gray-600 mt-2 space-y-1">
+              <ul className="list-disc list-inside text-sm text-gray-600 mt-2 space-y-1 md:text-base lg:text-lg">
                 <li>This model needs to be downloaded separately</li>
                 <li>Check if you have the correct model file format</li>
                 <li>Verify the model is registered in your model registry</li>

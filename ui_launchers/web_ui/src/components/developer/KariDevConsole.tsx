@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 // Lazy-load heavy grid/chart libraries only when this component renders
@@ -25,7 +24,6 @@ import {
   GitBranch
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
 interface DevMetrics {
   plugins: {
     total: number;
@@ -52,7 +50,6 @@ interface DevMetrics {
     avgLatency: number;
   };
 }
-
 interface LiveLog {
   id: string;
   timestamp: string;
@@ -61,7 +58,6 @@ interface LiveLog {
   message: string;
   metadata?: any;
 }
-
 interface QuickAction {
   id: string;
   title: string;
@@ -70,7 +66,6 @@ interface QuickAction {
   action: () => void;
   status?: "idle" | "running" | "success" | "error";
 }
-
 export default function KariDevConsole() {
   const [metrics, setMetrics] = useState<DevMetrics>({
     plugins: { total: 0, active: 0, failed: 0, avgResponseTime: 0 },
@@ -78,19 +73,16 @@ export default function KariDevConsole() {
     hooks: { total: 0, enabled: 0, executions: 0, failures: 0 },
     chat: { totalMessages: 0, aiSuggestions: 0, toolCalls: 0, avgLatency: 0 }
   });
-  
   const [liveLogs, setLiveLogs] = useState<LiveLog[]>([]);
   const [selectedTab, setSelectedTab] = useState("overview");
   const [commandInput, setCommandInput] = useState("");
   const [isExecuting, setIsExecuting] = useState(false);
   const { toast } = useToast();
-
   // Make dev metrics available to CopilotKit
   useCopilotReadable({
     description: "Current Kari development metrics and system status",
     value: metrics,
   });
-
   // CopilotKit actions for developer assistance
   useCopilotAction({
     name: "analyzeSystemHealth",
@@ -112,7 +104,6 @@ export default function KariDevConsole() {
       return analysis;
     },
   });
-
   useCopilotAction({
     name: "executeDevCommand",
     description: "Execute a development command or script",
@@ -128,7 +119,6 @@ export default function KariDevConsole() {
       return await executeCommand(command);
     },
   });
-
   useCopilotAction({
     name: "generateDebugReport",
     description: "Generate a comprehensive debug report for troubleshooting",
@@ -150,52 +140,50 @@ export default function KariDevConsole() {
       return await generateDebugReport(includeMetrics, includeLogs);
     },
   });
-
   const quickActions: QuickAction[] = [
     {
       id: "restart-chat",
       title: "Restart Chat Runtime",
       description: "Restart the CopilotKit chat runtime",
-      icon: <MessageSquare className="h-4 w-4" />,
+      icon: <MessageSquare className="h-4 w-4 sm:w-auto md:w-full" />,
       action: () => executeCommand("restart chat-runtime"),
     },
     {
       id: "reload-plugins",
       title: "Reload All Plugins",
       description: "Hot reload all active plugins",
-      icon: <Zap className="h-4 w-4" />,
+      icon: <Zap className="h-4 w-4 sm:w-auto md:w-full" />,
       action: () => executeCommand("reload plugins --all"),
     },
     {
       id: "refresh-extensions",
       title: "Refresh Extensions",
       description: "Refresh extension registry and health checks",
-      icon: <Layers className="h-4 w-4" />,
+      icon: <Layers className="h-4 w-4 sm:w-auto md:w-full" />,
       action: () => executeCommand("refresh extensions"),
     },
     {
       id: "clear-hooks",
       title: "Clear Failed Hooks",
       description: "Clear and reset failed hook executions",
-      icon: <GitBranch className="h-4 w-4" />,
+      icon: <GitBranch className="h-4 w-4 sm:w-auto md:w-full" />,
       action: () => executeCommand("hooks clear-failed"),
     },
     {
       id: "optimize-memory",
       title: "Optimize Memory",
       description: "Run memory optimization and garbage collection",
-      icon: <Database className="h-4 w-4" />,
+      icon: <Database className="h-4 w-4 sm:w-auto md:w-full" />,
       action: () => executeCommand("system optimize-memory"),
     },
     {
       id: "test-ai-integration",
       title: "Test AI Integration",
       description: "Run AI integration health checks",
-      icon: <Bot className="h-4 w-4" />,
+      icon: <Bot className="h-4 w-4 sm:w-auto md:w-full" />,
       action: () => executeCommand("test ai-integration"),
     },
   ];
-
   // Log grid columns
   const logColumns: ColDef[] = [
     {
@@ -203,7 +191,7 @@ export default function KariDevConsole() {
       headerName: "Time",
       width: 120,
       cellRenderer: (params: any) => (
-        <span className="text-xs font-mono">
+        <span className="text-xs font-mono sm:text-sm md:text-base">
           {new Date(params.value).toLocaleTimeString()}
         </span>
       ),
@@ -231,7 +219,7 @@ export default function KariDevConsole() {
       headerName: "Source",
       width: 120,
       cellRenderer: (params: any) => (
-        <span className="font-mono text-sm">{params.value}</span>
+        <span className="font-mono text-sm md:text-base lg:text-lg">{params.value}</span>
       ),
     },
     {
@@ -239,11 +227,10 @@ export default function KariDevConsole() {
       headerName: "Message",
       flex: 1,
       cellRenderer: (params: any) => (
-        <span className="text-sm">{params.value}</span>
+        <span className="text-sm md:text-base lg:text-lg">{params.value}</span>
       ),
     },
   ];
-
   // Performance chart options
   const performanceChartOptions: any = {
     data: [
@@ -307,7 +294,6 @@ export default function KariDevConsole() {
       text: "System Health Over Time",
     },
   };
-
   const executeCommand = async (command: string): Promise<any> => {
     setIsExecuting(true);
     try {
@@ -316,15 +302,12 @@ export default function KariDevConsole() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ command }),
       });
-
       const result = await response.json();
-      
       if (response.ok) {
         toast({
           title: "Command Executed",
           description: `Successfully executed: ${command}`,
         });
-        
         // Add to logs
         setLiveLogs(prev => [{
           id: Date.now().toString(),
@@ -334,7 +317,6 @@ export default function KariDevConsole() {
           message: `Executed: ${command}`,
           metadata: result
         }, ...prev.slice(0, 99)]);
-        
         return result;
       } else {
         throw new Error(result.error || "Command failed");
@@ -345,7 +327,6 @@ export default function KariDevConsole() {
         description: `Error executing ${command}: ${error}`,
         variant: "destructive",
       });
-      
       setLiveLogs(prev => [{
         id: Date.now().toString(),
         timestamp: new Date().toISOString(),
@@ -354,13 +335,11 @@ export default function KariDevConsole() {
         message: `Failed to execute: ${command}`,
         metadata: { error: String(error) }
       }, ...prev.slice(0, 99)]);
-      
       throw error;
     } finally {
       setIsExecuting(false);
     }
   };
-
   const analyzeSystemHealth = async (focus?: string) => {
     // Mock analysis - in real implementation, this would call backend
     return {
@@ -370,7 +349,6 @@ export default function KariDevConsole() {
       details: "System analysis complete. Check logs for details."
     };
   };
-
   const generateDebugReport = async (includeMetrics: boolean, includeLogs: boolean) => {
     const report = {
       timestamp: new Date().toISOString(),
@@ -382,12 +360,9 @@ export default function KariDevConsole() {
         environment: "development"
       }
     };
-    
     // In real implementation, this would generate and download a report
-    console.log("Debug report generated:", report);
     return report;
   };
-
   const fetchMetrics = useCallback(async () => {
     try {
       const response = await fetch("/api/developer/metrics");
@@ -396,10 +371,8 @@ export default function KariDevConsole() {
         setMetrics(data);
       }
     } catch (error) {
-      console.error("Failed to fetch metrics:", error);
     }
   }, []);
-
   const handleCommandSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (commandInput.trim()) {
@@ -407,13 +380,11 @@ export default function KariDevConsole() {
       setCommandInput("");
     }
   };
-
   useEffect(() => {
     fetchMetrics();
     const interval = setInterval(fetchMetrics, 10000);
     return () => clearInterval(interval);
   }, [fetchMetrics]);
-
   // Simulate live logs
   useEffect(() => {
     const interval = setInterval(() => {
@@ -423,7 +394,6 @@ export default function KariDevConsole() {
         { level: "info", source: "extension-manager", message: "Extension health check passed" },
         { level: "debug", source: "hook-system", message: "Hook triggered successfully" },
       ];
-      
       const randomLog = mockLogs[Math.floor(Math.random() * mockLogs.length)];
       setLiveLogs(prev => [{
         id: Date.now().toString(),
@@ -433,39 +403,36 @@ export default function KariDevConsole() {
         message: randomLog.message,
       }, ...prev.slice(0, 99)]);
     }, 5000);
-
     return () => clearInterval(interval);
   }, []);
-
   return (
-    <div className="h-full flex flex-col space-y-4 p-4">
+    <div className="h-full flex flex-col space-y-4 p-4 sm:p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Terminal className="h-6 w-6" />
+          <Terminal className="h-6 w-6 sm:w-auto md:w-full" />
           <div>
             <h1 className="text-2xl font-bold">Kari Dev Console</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
               AI-powered development tools with real-time monitoring
             </p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
           <Badge variant="outline" className="flex items-center space-x-1">
-            <Activity className="h-3 w-3" />
+            <Activity className="h-3 w-3 sm:w-auto md:w-full" />
             <span>Live</span>
           </Badge>
-          <Button variant="outline" size="sm" onClick={fetchMetrics}>
-            <RefreshCw className="h-4 w-4" />
+          <button variant="outline" size="sm" onClick={fetchMetrics} aria-label="Button">
+            <RefreshCw className="h-4 w-4 sm:w-auto md:w-full" />
           </Button>
         </div>
       </div>
-
       {/* Quick Actions */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Zap className="h-4 w-4" />
+            <Zap className="h-4 w-4 sm:w-auto md:w-full" />
             <span>Quick Actions</span>
           </CardTitle>
           <CardDescription>
@@ -475,17 +442,17 @@ export default function KariDevConsole() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {quickActions.map((action) => (
-              <Button
+              <button
                 key={action.id}
                 variant="outline"
-                className="h-auto p-3 flex flex-col items-center space-y-2"
+                className="h-auto p-3 flex flex-col items-center space-y-2 sm:p-4 md:p-6"
                 onClick={action.action}
                 disabled={isExecuting}
-              >
+               aria-label="Button">
                 {action.icon}
                 <div className="text-center">
-                  <div className="text-xs font-medium">{action.title}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs font-medium sm:text-sm md:text-base">{action.title}</div>
+                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     {action.description}
                   </div>
                 </div>
@@ -494,29 +461,27 @@ export default function KariDevConsole() {
           </div>
         </CardContent>
       </Card>
-
       {/* Command Input */}
       <Card>
         <CardContent className="pt-6">
           <form onSubmit={handleCommandSubmit} className="flex space-x-2">
-            <Input
+            <input
               placeholder="Type a command or ask Kari for help... (e.g., 'restart plugin weather')"
               value={commandInput}
-              onChange={(e) => setCommandInput(e.target.value)}
+              onChange={(e) = aria-label="Input"> setCommandInput(e.target.value)}
               className="font-mono"
               disabled={isExecuting}
             />
-            <Button type="submit" disabled={isExecuting || !commandInput.trim()}>
+            <button type="submit" disabled={isExecuting || !commandInput.trim()} aria-label="Submit form">
               {isExecuting ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <RefreshCw className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
               ) : (
-                <Play className="h-4 w-4" />
+                <Play className="h-4 w-4 sm:w-auto md:w-full" />
               )}
             </Button>
           </form>
         </CardContent>
       </Card>
-
       {/* Main Content */}
       <div className="flex-1">
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="h-full">
@@ -526,63 +491,58 @@ export default function KariDevConsole() {
             <TabsTrigger value="logs">Live Logs</TabsTrigger>
             <TabsTrigger value="ai-assist">AI Assistant</TabsTrigger>
           </TabsList>
-
           <TabsContent value="overview" className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Plugins</CardTitle>
-                  <Zap className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Plugins</CardTitle>
+                  <Zap className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.plugins.active}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     {metrics.plugins.total} total, {metrics.plugins.failed} failed
                   </p>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Extensions</CardTitle>
-                  <Layers className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Extensions</CardTitle>
+                  <Layers className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.extensions.active}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     {metrics.extensions.memoryUsage}MB memory
                   </p>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Hooks</CardTitle>
-                  <GitBranch className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Hooks</CardTitle>
+                  <GitBranch className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.hooks.enabled}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     {metrics.hooks.executions} executions
                   </p>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Chat Runtime</CardTitle>
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Chat Runtime</CardTitle>
+                  <MessageSquare className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics.chat.avgLatency}ms</div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     {metrics.chat.totalMessages} messages
                   </p>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
-
           <TabsContent value="performance" className="space-y-4">
             <Card>
               <CardHeader>
@@ -598,7 +558,6 @@ export default function KariDevConsole() {
               </CardContent>
             </Card>
           </TabsContent>
-
           <TabsContent value="logs" className="space-y-4">
             <Card>
               <CardHeader>
@@ -631,12 +590,11 @@ export default function KariDevConsole() {
               </CardContent>
             </Card>
           </TabsContent>
-
           <TabsContent value="ai-assist" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Bot className="h-4 w-4" />
+                  <Bot className="h-4 w-4 sm:w-auto md:w-full" />
                   <span>AI Development Assistant</span>
                 </CardTitle>
                 <CardDescription>
@@ -645,9 +603,9 @@ export default function KariDevConsole() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="p-4 border rounded-lg bg-muted/50">
+                  <div className="p-4 border rounded-lg bg-muted/50 sm:p-4 md:p-6">
                     <h4 className="font-medium mb-2">Available AI Commands:</h4>
-                    <ul className="text-sm space-y-1 text-muted-foreground">
+                    <ul className="text-sm space-y-1 text-muted-foreground md:text-base lg:text-lg">
                       <li>• "Analyze system health" - Get comprehensive health analysis</li>
                       <li>• "Generate debug report" - Create detailed debug report</li>
                       <li>• "Optimize performance" - Get performance optimization suggestions</li>
@@ -655,17 +613,16 @@ export default function KariDevConsole() {
                       <li>• "Explain metrics" - Get insights about current metrics</li>
                     </ul>
                   </div>
-                  
                   <div className="text-center py-8">
-                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4 sm:w-auto md:w-full" />
                     <p className="text-muted-foreground">
                       Open the Kari chat to get AI assistance with development tasks
                     </p>
-                    <Button className="mt-4" onClick={() => {
+                    <button className="mt-4" onClick={() = aria-label="Button"> {
                       // This would trigger the CopilotKit sidebar
                       window.dispatchEvent(new CustomEvent('openKariChat'));
                     }}>
-                      <MessageSquare className="h-4 w-4 mr-2" />
+                      <MessageSquare className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                       Open Kari Chat
                     </Button>
                   </div>

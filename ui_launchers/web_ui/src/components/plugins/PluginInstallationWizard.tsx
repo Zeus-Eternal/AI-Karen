@@ -1,3 +1,20 @@
+import React, { useState, useEffect } from 'react';
+import { 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+import { usePluginStore } from '@/store/plugin-store';
 /**
  * Plugin Installation Wizard Component
  * 
@@ -7,8 +24,8 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { 
+
+
   ArrowLeft, 
   ArrowRight, 
   Package, 
@@ -38,27 +55,27 @@ import {
   ExternalLink,
 } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
-import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import {
+
   Dialog,
   DialogContent,
   DialogDescription,
@@ -66,8 +83,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-import { usePluginStore } from '@/store/plugin-store';
-import { 
+
+
   PluginInstallationRequest, 
   PluginMarketplaceEntry, 
   PluginDependency, 
@@ -553,53 +570,53 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
             manifest: null,
           }))}
         >
-          <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50">
+          <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50 sm:p-4 md:p-6">
             <RadioGroupItem value="marketplace" id="marketplace" />
             <div className="flex-1">
               <Label htmlFor="marketplace" className="flex items-center gap-2 font-medium">
-                <Search className="w-4 h-4" />
+                <Search className="w-4 h-4 sm:w-auto md:w-full" />
                 Plugin Marketplace
               </Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Browse and install verified plugins from the official marketplace
               </p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50">
+          <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50 sm:p-4 md:p-6">
             <RadioGroupItem value="file" id="file" />
             <div className="flex-1">
               <Label htmlFor="file" className="flex items-center gap-2 font-medium">
-                <Upload className="w-4 h-4" />
+                <Upload className="w-4 h-4 sm:w-auto md:w-full" />
                 Upload Plugin File
               </Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Install a plugin from a local .kari-plugin file
               </p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50">
+          <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50 sm:p-4 md:p-6">
             <RadioGroupItem value="url" id="url" />
             <div className="flex-1">
               <Label htmlFor="url" className="flex items-center gap-2 font-medium">
-                <Link className="w-4 h-4" />
+                <Link className="w-4 h-4 sm:w-auto md:w-full" />
                 Download from URL
               </Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Install a plugin from a direct download URL
               </p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50">
+          <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50 sm:p-4 md:p-6">
             <RadioGroupItem value="git" id="git" />
             <div className="flex-1">
               <Label htmlFor="git" className="flex items-center gap-2 font-medium">
-                <GitBranch className="w-4 h-4" />
+                <GitBranch className="w-4 h-4 sm:w-auto md:w-full" />
                 Git Repository
               </Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                 Install a plugin directly from a Git repository
               </p>
             </div>
@@ -610,11 +627,11 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
         {state.source === 'file' && (
           <div className="space-y-2">
             <Label htmlFor="plugin-file">Plugin File</Label>
-            <Input
+            <input
               id="plugin-file"
               type="file"
               accept=".kari-plugin,.zip"
-              onChange={(e) => {
+              onChange={(e) = aria-label="Input"> {
                 const file = e.target.files?.[0];
                 if (file) {
                   setState(prev => ({ ...prev, pluginFile: file }));
@@ -634,12 +651,12 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
         {state.source === 'url' && (
           <div className="space-y-2">
             <Label htmlFor="plugin-url">Plugin URL</Label>
-            <Input
+            <input
               id="plugin-url"
               type="url"
               placeholder="https://example.com/plugin.kari-plugin"
               value={state.pluginUrl}
-              onChange={(e) => setState(prev => ({ ...prev, pluginUrl: e.target.value }))}
+              onChange={(e) = aria-label="Input"> setState(prev => ({ ...prev, pluginUrl: e.target.value }))}
             />
           </div>
         )}
@@ -648,20 +665,20 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="git-repo">Git Repository</Label>
-              <Input
+              <input
                 id="git-repo"
                 placeholder="https://github.com/user/plugin-repo"
                 value={state.gitRepo}
-                onChange={(e) => setState(prev => ({ ...prev, gitRepo: e.target.value }))}
+                onChange={(e) = aria-label="Input"> setState(prev => ({ ...prev, gitRepo: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="git-branch">Branch</Label>
-              <Input
+              <input
                 id="git-branch"
                 placeholder="main"
                 value={state.gitBranch}
-                onChange={(e) => setState(prev => ({ ...prev, gitBranch: e.target.value }))}
+                onChange={(e) = aria-label="Input"> setState(prev => ({ ...prev, gitBranch: e.target.value }))}
               />
             </div>
           </div>
@@ -700,16 +717,16 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
                     <h3 className="font-medium">{plugin.name}</h3>
                     <Badge variant="secondary">v{plugin.version}</Badge>
                     {plugin.verified && (
-                      <Badge variant="default" className="text-xs">
-                        <CheckCircle className="w-3 h-3 mr-1" />
+                      <Badge variant="default" className="text-xs sm:text-sm md:text-base">
+                        <CheckCircle className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                         Verified
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">
+                  <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
                     {plugin.description}
                   </p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground sm:text-sm md:text-base">
                     <span>by {plugin.author.name}</span>
                     <span>{plugin.downloads.toLocaleString()} downloads</span>
                     <span>★ {plugin.rating} ({plugin.reviewCount} reviews)</span>
@@ -727,7 +744,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <Loader2 className="w-5 h-5 animate-spin sm:w-auto md:w-full" />
           Validating Plugin
         </CardTitle>
         <CardDescription>
@@ -736,28 +753,28 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm">
-            <CheckCircle className="w-4 h-4 text-green-600" />
+          <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
+            <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
             Plugin manifest is valid
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <CheckCircle className="w-4 h-4 text-green-600" />
+          <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
+            <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
             Compatible with current system version
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <CheckCircle className="w-4 h-4 text-green-600" />
+          <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
+            <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
             Security policy validated
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+          <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg">
+            <Loader2 className="w-4 h-4 animate-spin text-blue-600 sm:w-auto md:w-full" />
             Checking system requirements...
           </div>
         </div>
         
         {state.manifest && (
-          <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+          <div className="mt-6 p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
             <h4 className="font-medium mb-2">Plugin Information</h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
               <div>
                 <span className="text-muted-foreground">Name:</span>
                 <span className="ml-2">{state.manifest.name}</span>
@@ -786,9 +803,9 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {state.resolvedDependencies.length > 0 ? (
-            <Package className="w-5 h-5" />
+            <Package className="w-5 h-5 sm:w-auto md:w-full" />
           ) : (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Loader2 className="w-5 h-5 animate-spin sm:w-auto md:w-full" />
           )}
           Resolve Dependencies
         </CardTitle>
@@ -802,34 +819,34 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
       <CardContent>
         {state.resolvedDependencies.length === 0 ? (
           <div className="text-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
             <p className="text-muted-foreground">Resolving dependencies...</p>
           </div>
         ) : (
           <div className="space-y-4">
             {state.resolvedDependencies.map((dep) => (
-              <div key={dep.id} className="flex items-center justify-between p-3 border rounded-lg">
+              <div key={dep.id} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h4 className="font-medium">{dep.name}</h4>
                     <Badge variant="outline">v{dep.version}</Badge>
                     {dep.optional && (
-                      <Badge variant="secondary" className="text-xs">Optional</Badge>
+                      <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">Optional</Badge>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                     Required version: {dep.versionConstraint}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   {dep.installed ? (
-                    <Badge variant="default" className="text-xs">
-                      <CheckCircle className="w-3 h-3 mr-1" />
+                    <Badge variant="default" className="text-xs sm:text-sm md:text-base">
+                      <CheckCircle className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                       Installed
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="text-xs">
-                      <Download className="w-3 h-3 mr-1" />
+                    <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
+                      <Download className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                       Will Install
                     </Badge>
                   )}
@@ -839,7 +856,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
             
             {state.resolvedDependencies.some(dep => !dep.installed) && (
               <Alert>
-                <Info className="w-4 h-4" />
+                <Info className="w-4 h-4 sm:w-auto md:w-full" />
                 <AlertDescription>
                   Missing dependencies will be automatically installed during the plugin installation process.
                 </AlertDescription>
@@ -855,7 +872,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Shield className="w-5 h-5" />
+          <Shield className="w-5 h-5 sm:w-auto md:w-full" />
           Configure Permissions
         </CardTitle>
         <CardDescription>
@@ -865,7 +882,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
       <CardContent>
         <div className="space-y-4">
           {state.permissions.map((permission) => (
-            <div key={permission.id} className="flex items-start space-x-3 p-3 border rounded-lg">
+            <div key={permission.id} className="flex items-start space-x-3 p-3 border rounded-lg sm:p-4 md:p-6">
               <Checkbox
                 id={permission.id}
                 checked={state.grantedPermissions.includes(permission.id) || permission.required}
@@ -892,22 +909,22 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
                   <Badge 
                     variant={permission.level === 'admin' ? 'destructive' : 
                            permission.level === 'write' ? 'default' : 'secondary'}
-                    className="text-xs"
+                    className="text-xs sm:text-sm md:text-base"
                   >
                     {permission.level}
                   </Badge>
                   {permission.required && (
-                    <Badge variant="outline" className="text-xs">Required</Badge>
+                    <Badge variant="outline" className="text-xs sm:text-sm md:text-base">Required</Badge>
                   )}
-                  <Button
+                  <button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setShowPermissionDetails(permission.id)}
+                    onClick={() = aria-label="Button"> setShowPermissionDetails(permission.id)}
                   >
-                    <Info className="w-3 h-3" />
+                    <Info className="w-3 h-3 sm:w-auto md:w-full" />
                   </Button>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                   {permission.description}
                 </p>
               </div>
@@ -916,13 +933,13 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           
           {state.permissions.length === 0 && (
             <div className="text-center py-8">
-              <Shield className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
+              <Shield className="w-8 h-8 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
               <p className="text-muted-foreground">This plugin doesn't require any special permissions.</p>
             </div>
           )}
           
           <Alert>
-            <AlertTriangle className="w-4 h-4" />
+            <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
             <AlertDescription>
               Only grant permissions that you trust this plugin to use. Required permissions cannot be disabled.
             </AlertDescription>
@@ -953,9 +970,9 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
       switch (field.type) {
         case 'string':
           return (
-            <Input
+            <input
               value={value}
-              onChange={(e) => updateConfig(e.target.value)}
+              onChange={(e) = aria-label="Input"> updateConfig(e.target.value)}
               placeholder={field.default}
             />
           );
@@ -963,26 +980,26 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
         case 'password':
           return (
             <div className="relative">
-              <Input
+              <input
                 type={showConfigPassword[field.key] ? 'text' : 'password'}
                 value={value}
-                onChange={(e) => updateConfig(e.target.value)}
+                onChange={(e) = aria-label="Input"> updateConfig(e.target.value)}
                 placeholder="Enter password"
               />
-              <Button
+              <button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className="absolute right-0 top-0 h-full px-3"
-                onClick={() => setShowConfigPassword(prev => ({
+                onClick={() = aria-label="Button"> setShowConfigPassword(prev => ({
                   ...prev,
                   [field.key]: !prev[field.key],
                 }))}
               >
                 {showConfigPassword[field.key] ? (
-                  <EyeOff className="w-4 h-4" />
+                  <EyeOff className="w-4 h-4 sm:w-auto md:w-full" />
                 ) : (
-                  <Eye className="w-4 h-4" />
+                  <Eye className="w-4 h-4 sm:w-auto md:w-full" />
                 )}
               </Button>
             </div>
@@ -990,10 +1007,10 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           
         case 'number':
           return (
-            <Input
+            <input
               type="number"
               value={value}
-              onChange={(e) => updateConfig(Number(e.target.value))}
+              onChange={(e) = aria-label="Input"> updateConfig(Number(e.target.value))}
               min={field.validation?.min}
               max={field.validation?.max}
             />
@@ -1009,13 +1026,13 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           
         case 'select':
           return (
-            <Select value={value} onValueChange={updateConfig}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select an option" />
+            <select value={value} onValueChange={updateConfig} aria-label="Select option">
+              <selectTrigger aria-label="Select option">
+                <selectValue placeholder="Select an option" />
               </SelectTrigger>
-              <SelectContent>
+              <selectContent aria-label="Select option">
                 {field.options?.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
+                  <selectItem key={option.value} value={option.value} aria-label="Select option">
                     {option.label}
                   </SelectItem>
                 ))}
@@ -1025,9 +1042,9 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           
         case 'json':
           return (
-            <Textarea
+            <textarea
               value={typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
-              onChange={(e) => {
+              onChange={(e) = aria-label="Textarea"> {
                 try {
                   const parsed = JSON.parse(e.target.value);
                   updateConfig(parsed);
@@ -1042,9 +1059,9 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           
         default:
           return (
-            <Input
+            <input
               value={value}
-              onChange={(e) => updateConfig(e.target.value)}
+              onChange={(e) = aria-label="Input"> updateConfig(e.target.value)}
             />
           );
       }
@@ -1054,7 +1071,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5" />
+            <Settings className="w-5 h-5 sm:w-auto md:w-full" />
             Plugin Configuration
           </CardTitle>
           <CardDescription>
@@ -1072,7 +1089,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
                   </Label>
                 </div>
                 {field.description && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                     {field.description}
                   </p>
                 )}
@@ -1098,7 +1115,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           {/* Plugin Information */}
           <div>
             <h4 className="font-medium mb-3">Plugin Information</h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
               <div>
                 <span className="text-muted-foreground">Name:</span>
                 <span className="ml-2">{state.manifest?.name}</span>
@@ -1127,9 +1144,9 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
                 <h4 className="font-medium mb-3">Dependencies</h4>
                 <div className="space-y-2">
                   {state.resolvedDependencies.map((dep) => (
-                    <div key={dep.id} className="flex items-center justify-between text-sm">
+                    <div key={dep.id} className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                       <span>{dep.name} v{dep.version}</span>
-                      <Badge variant={dep.installed ? 'default' : 'outline'} className="text-xs">
+                      <Badge variant={dep.installed ? 'default' : 'outline'} className="text-xs sm:text-sm md:text-base">
                         {dep.installed ? 'Installed' : 'Will Install'}
                       </Badge>
                     </div>
@@ -1149,12 +1166,12 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
                   {state.permissions
                     .filter(p => state.grantedPermissions.includes(p.id))
                     .map((permission) => (
-                      <div key={permission.id} className="flex items-center justify-between text-sm">
+                      <div key={permission.id} className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                         <span>{permission.name}</span>
                         <Badge 
                           variant={permission.level === 'admin' ? 'destructive' : 
                                  permission.level === 'write' ? 'default' : 'secondary'}
-                          className="text-xs"
+                          className="text-xs sm:text-sm md:text-base"
                         >
                           {permission.level}
                         </Badge>
@@ -1170,7 +1187,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           {Object.keys(state.configuration).length > 0 && (
             <div>
               <h4 className="font-medium mb-3">Configuration</h4>
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm md:text-base lg:text-lg">
                 {Object.entries(state.configuration).map(([key, value]) => {
                   const field = state.manifest?.configSchema.find(f => f.key === key);
                   const displayValue = field?.type === 'password' ? '***hidden***' : 
@@ -1196,7 +1213,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <Loader2 className="w-5 h-5 animate-spin sm:w-auto md:w-full" />
           Installing Plugin
         </CardTitle>
         <CardDescription>
@@ -1205,7 +1222,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
             <span>Progress</span>
             <span>{state.installationProgress}%</span>
           </div>
@@ -1213,14 +1230,14 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
         </div>
         
         <div className="text-center">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             {state.installationMessage}
           </p>
         </div>
         
         {state.installationError && (
           <Alert variant="destructive">
-            <XCircle className="w-4 h-4" />
+            <XCircle className="w-4 h-4 sm:w-auto md:w-full" />
             <AlertDescription>{state.installationError}</AlertDescription>
           </Alert>
         )}
@@ -1232,7 +1249,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-green-600" />
+          <CheckCircle className="w-5 h-5 text-green-600 sm:w-auto md:w-full" />
           Installation Complete
         </CardTitle>
         <CardDescription>
@@ -1241,7 +1258,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-center py-8">
-          <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-600" />
+          <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-600 sm:w-auto md:w-full" />
           <h3 className="text-lg font-medium mb-2">
             {state.manifest?.name} is now installed!
           </h3>
@@ -1250,10 +1267,10 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           </p>
           
           <div className="flex justify-center gap-2">
-            <Button variant="outline" onClick={onClose}>
+            <button variant="outline" onClick={onClose} aria-label="Button">
               Close
             </Button>
-            <Button onClick={onComplete}>
+            <button onClick={onComplete} aria-label="Button">
               View Plugin
             </Button>
           </div>
@@ -1313,8 +1330,8 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
+        <button variant="ghost" size="sm" onClick={onClose} aria-label="Button">
+          <ArrowLeft className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
           Back to Plugins
         </Button>
         <div>
@@ -1354,7 +1371,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
                     'bg-muted text-muted-foreground'
                   }`}>
                     {isCompleted ? (
-                      <CheckCircle className="w-4 h-4" />
+                      <CheckCircle className="w-4 h-4 sm:w-auto md:w-full" />
                     ) : (
                       stepIndex + 1
                     )}
@@ -1377,21 +1394,21 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
       {/* Navigation */}
       {!['installation', 'complete'].includes(state.step) && (
         <div className="flex justify-between">
-          <Button
+          <button
             variant="outline"
             onClick={handleBack}
             disabled={state.step === 'source' || (state.step === 'validation' && !!preselectedPlugin)}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+           aria-label="Button">
+            <ArrowLeft className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Back
           </Button>
           
-          <Button
+          <button
             onClick={state.step === 'review' ? handleInstall : handleNext}
             disabled={!canProceed()}
-          >
+           aria-label="Button">
             {state.step === 'review' ? 'Install Plugin' : 'Next'}
-            <ArrowRight className="w-4 h-4 ml-2" />
+            <ArrowRight className="w-4 h-4 ml-2 sm:w-auto md:w-full" />
           </Button>
         </div>
       )}
@@ -1415,12 +1432,12 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
                   <>
                     <div>
                       <h4 className="font-medium">{permission.name}</h4>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                         {permission.description}
                       </p>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                       <div>
                         <span className="text-muted-foreground">Category:</span>
                         <span className="ml-2 capitalize">{permission.category}</span>
@@ -1430,7 +1447,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
                         <Badge 
                           variant={permission.level === 'admin' ? 'destructive' : 
                                  permission.level === 'write' ? 'default' : 'secondary'}
-                          className="ml-2 text-xs"
+                          className="ml-2 text-xs sm:text-sm md:text-base"
                         >
                           {permission.level}
                         </Badge>
@@ -1442,7 +1459,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
                     </div>
                     
                     <Alert>
-                      <Info className="w-4 h-4" />
+                      <Info className="w-4 h-4 sm:w-auto md:w-full" />
                       <AlertDescription>
                         {permission.level === 'admin' && 
                           'This permission grants administrative access and should only be granted to trusted plugins.'

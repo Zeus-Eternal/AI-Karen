@@ -2,7 +2,6 @@
  * Chat Service - Handles conversation management and AI processing
  * Integrates with Python backend conversation and AI orchestrator services
  */
-
 import { getKarenBackend } from '@/lib/karen-backend';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { getServiceErrorHandler, createUserFriendlyError } from './errorHandler';
@@ -13,7 +12,6 @@ import type {
   HandleUserMessageResult,
   AiData
 } from '@/lib/types';
-
 export interface ConversationSession {
   conversationId: string;
   sessionId: string;
@@ -24,7 +22,6 @@ export interface ConversationSession {
   context: Record<string, any>;
   summary?: string;
 }
-
 export interface ProcessMessageOptions {
   userId?: string;
   sessionId?: string;
@@ -33,13 +30,11 @@ export interface ProcessMessageOptions {
   preferredLLMProvider?: string;
   preferredModel?: string;
 }
-
 export class ChatService {
   private backend = getKarenBackend();
   private apiClient = enhancedApiClient;
   private errorHandler = getServiceErrorHandler();
   private cache = new Map<string, ConversationSession>();
-
   async processUserMessage(
     message: string,
     conversationHistory: ChatMessage[],
@@ -72,12 +67,10 @@ export class ChatService {
       }
     );
   }
-
   async createConversationSession(userId: string): Promise<{ conversationId: string; sessionId: string }> {
     return this.errorHandler.withRetry(
       async () => {
         const sessionId = generateUUID();
-
         const response = await this.apiClient.post('/api/conversations/create', {
           session_id: sessionId,
           ui_source: 'web',
@@ -91,7 +84,6 @@ export class ChatService {
           tags: [],
           priority: 'normal'
         });
-
         return {
           conversationId: response.data.conversation.id,
           sessionId: response.data.conversation.session_id || sessionId
@@ -104,7 +96,6 @@ export class ChatService {
       }
     );
   }
-
   async addMessageToConversation(conversationId: string, message: ChatMessage): Promise<void> {
     try {
       await this.apiClient.post(`/api/conversations/${conversationId}/messages`, {
@@ -118,18 +109,14 @@ export class ChatService {
         },
       });
     } catch (error) {
-      console.warn('ChatService: Failed to add message to conversation:', error);
     }
   }
-
   async getConversation(sessionId: string): Promise<ConversationSession | null> {
     try {
       if (this.cache.has(sessionId)) {
         return this.cache.get(sessionId)!;
       }
-
       const response = await this.apiClient.get(`/api/conversations/by-session/${sessionId}`);
-
       const data = response.data;
       const session: ConversationSession = {
         conversationId: data.id,
@@ -148,32 +135,26 @@ export class ChatService {
         context: data.metadata || {},
         summary: data.summary,
       };
-
       this.cache.set(sessionId, session);
       return session;
     } catch (error: any) {
       if (error.status === 404) {
         return null;
       }
-      console.warn('ChatService: Failed to get conversation:', error);
       return null;
     }
   }
-
   async generateConversationSummary(sessionId: string): Promise<string | null> {
     try {
       const response = await this.apiClient.post(`/api/conversations/${sessionId}/summary`);
       return response.data.summary;
     } catch (error) {
-      console.warn('ChatService: Failed to generate conversation summary:', error);
       return null;
     }
   }
-
   async getUserConversations(_userId: string): Promise<ConversationSession[]> {
     try {
       const response = await this.apiClient.get('/api/conversations');
-
       return response.data.conversations.map((conv: any) => ({
         conversationId: conv.id,
         sessionId: conv.session_id,
@@ -192,15 +173,12 @@ export class ChatService {
         summary: conv.summary,
       }));
     } catch (error) {
-      console.warn('ChatService: Failed to get user conversations:', error);
       return [];
     }
   }
-
   clearCache(): void {
     this.cache.clear();
   }
-
   getCacheStats(): { size: number; keys: string[] } {
     return {
       size: this.cache.size,
@@ -208,18 +186,14 @@ export class ChatService {
     };
   }
 }
-
 let chatService: ChatService | null = null;
-
 export function getChatService(): ChatService {
   if (!chatService) {
     chatService = new ChatService();
   }
   return chatService;
 }
-
 export function initializeChatService(): ChatService {
   chatService = new ChatService();
   return chatService;
 }
-

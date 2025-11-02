@@ -5,7 +5,7 @@
  * endpoint management, and user interactions.
  */
 
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import HealthDashboard from '../HealthDashboard';
@@ -41,7 +41,7 @@ global.fetch = vi.fn();
 vi.mock('lucide-react', () => ({
   RefreshCw: ({ className }: { className?: string }) => <div className={className} data-testid="refresh-icon" />,
   Activity: ({ className }: { className?: string }) => <div className={className} data-testid="activity-icon" />,
-  AlertTriangle: ({ className }: { className?: string }) => <div className={className} data-testid="alert-icon" />,
+  AlertTriangle: ({ className }: { className?: string }) => <div className={className} data-testid="alert-icon" / role="alert">,
   CheckCircle: ({ className }: { className?: string }) => <div className={className} data-testid="check-icon" />,
   XCircle: ({ className }: { className?: string }) => <div className={className} data-testid="x-icon" />,
   Clock: ({ className }: { className?: string }) => <div className={className} data-testid="clock-icon" />,

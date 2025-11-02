@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
 import { Globe, Check } from 'lucide-react';
@@ -43,29 +43,29 @@ export function LanguageSelector({
   if (variant === 'select') {
     return (
       <div className={cn('w-full max-w-xs', className)}>
-        <Select value={locale} onValueChange={changeLocale}>
-          <SelectTrigger className="w-full">
-            <SelectValue>
+        <select value={locale} onValueChange={changeLocale} aria-label="Select option">
+          <selectTrigger className="w-full" aria-label="Select option">
+            <selectValue aria-label="Select option">
               <div className="flex items-center space-x-2">
-                {showFlag && <span className="text-sm">{currentLocaleInfo.flag}</span>}
+                {showFlag && <span className="text-sm md:text-base lg:text-lg">{currentLocaleInfo.flag}</span>}
                 <span>
                   {showNativeName ? currentLocaleInfo.nativeName : currentLocaleInfo.name}
                 </span>
               </div>
             </SelectValue>
           </SelectTrigger>
-          <SelectContent>
+          <selectContent aria-label="Select option">
             {locales.map((localeCode) => {
               const localeInfo = getLocaleDisplayName(localeCode);
               return (
-                <SelectItem key={localeCode} value={localeCode}>
+                <selectItem key={localeCode} value={localeCode} aria-label="Select option">
                   <div className="flex items-center space-x-2">
-                    {showFlag && <span className="text-sm">{localeInfo.flag}</span>}
+                    {showFlag && <span className="text-sm md:text-base lg:text-lg">{localeInfo.flag}</span>}
                     <span>
                       {showNativeName ? localeInfo.nativeName : localeInfo.name}
                     </span>
                     {locale === localeCode && (
-                      <Check className="h-4 w-4 ml-auto text-primary" />
+                      <Check className="h-4 w-4 ml-auto text-primary sm:w-auto md:w-full" />
                     )}
                   </div>
                 </SelectItem>
@@ -85,11 +85,11 @@ export function LanguageSelector({
           const isActive = locale === localeCode;
           
           return (
-            <Button
+            <button
               key={localeCode}
               variant={isActive ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => changeLocale(localeCode)}
+              onClick={() = aria-label="Button"> changeLocale(localeCode)}
               className={cn(
                 'h-8 px-2 text-xs',
                 isActive && 'bg-primary text-primary-foreground'
@@ -117,9 +117,9 @@ export function LanguageSelector({
         className="h-8 px-2"
         aria-label={t('settings.language')}
       >
-        <Globe className="h-4 w-4 mr-1" />
+        <Globe className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
         {showFlag && <span className="mr-1">{currentLocaleInfo.flag}</span>}
-        <span className="uppercase text-xs font-medium">
+        <span className="uppercase text-xs font-medium sm:text-sm md:text-base">
           {locale}
         </span>
       </Button>

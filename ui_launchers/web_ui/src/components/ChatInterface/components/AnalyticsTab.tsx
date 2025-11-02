@@ -12,28 +12,28 @@ interface AnalyticsTabProps {
 
 const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => {
   return (
-    <div className="flex-1 overflow-y-auto space-y-4 p-4">
+    <div className="flex-1 overflow-y-auto space-y-4 p-4 sm:p-4 md:p-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Conversation Metrics</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-sm text-muted-foreground">Total Messages</div>
+            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Total Messages</div>
             <div className="text-xl font-semibold">{analytics.totalMessages}</div>
           </div>
           <div>
-            <div className="text-sm text-muted-foreground">Avg. Response Time</div>
+            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Avg. Response Time</div>
             <div className="text-xl font-semibold">
               {Math.round(analytics.averageResponseTime)} ms
             </div>
           </div>
           <div>
-            <div className="text-sm text-muted-foreground">Tokens Used</div>
+            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Tokens Used</div>
             <div className="text-xl font-semibold">{analytics.totalTokens}</div>
           </div>
           <div>
-            <div className="text-sm text-muted-foreground">Estimated Cost</div>
+            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Estimated Cost</div>
             <div className="text-xl font-semibold">
               ${analytics.totalCost.toFixed(4)}
             </div>
@@ -66,10 +66,10 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analytics, messages }) => {
         <CardContent className="space-y-3">
           {messages.slice(-5).map((message) => (
             <div key={message.id} className="space-y-1">
-              <div className="text-xs uppercase text-muted-foreground">
+              <div className="text-xs uppercase text-muted-foreground sm:text-sm md:text-base">
                 {message.role} • {message.type ?? "text"}
               </div>
-              <div className="text-sm">
+              <div className="text-sm md:text-base lg:text-lg">
                 {message.content.length > 200
                   ? `${message.content.slice(0, 197)}...`
                   : message.content}

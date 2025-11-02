@@ -4,13 +4,11 @@
  * 
  * Requirements: 4.5, 4.6
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import { validateEmail } from '@/lib/auth/setup-validation';
 import type { AdminApiResponse } from '@/types/admin';
-
 interface ImportResult {
   imported_count: number;
   skipped_count: number;
@@ -21,7 +19,6 @@ interface ImportResult {
     error: string;
   }>;
 }
-
 /**
  * POST /api/admin/users/import - Import users from file
  */
@@ -33,7 +30,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
     const skipDuplicates = formData.get('skip_duplicates') === 'true';
     const sendInvitations = formData.get('send_invitations') === 'true';
     const defaultRole = (formData.get('default_role') as 'admin' | 'user') || 'user';
-
     if (!file) {
       return NextResponse.json({
         success: false,
@@ -44,7 +40,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({
@@ -56,7 +51,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Check permissions for creating admin users
     if (defaultRole === 'admin' && !context.isSuperAdmin()) {
       return NextResponse.json({
@@ -68,21 +62,17 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 403 });
     }
-
     const adminUtils = getAdminDatabaseUtils();
     const fileContent = await file.text();
-    
     let userData: Array<{
       email: string;
       full_name?: string;
       role?: 'admin' | 'user';
     }> = [];
-
     // Parse file based on format
     if (format === 'csv') {
       const lines = fileContent.split('\n').filter(line => line.trim());
       const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
-      
       // Validate headers
       if (!headers.includes('email')) {
         return NextResponse.json({
@@ -94,16 +84,13 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           }
         } as AdminApiResponse<never>, { status: 400 });
       }
-
       // Parse data rows
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
         const row: any = {};
-        
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
         });
-
         if (row.email) {
           userData.push({
             email: row.email,
@@ -143,7 +130,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Process import
     const result: ImportResult = {
       imported_count: 0,
@@ -151,11 +137,9 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       error_count: 0,
       errors: []
     };
-
     for (let i = 0; i < userData.length; i++) {
       const user = userData[i];
       const rowNumber = i + 1;
-
       try {
         // Validate email
         if (!user.email || !validateEmail(user.email)) {
@@ -167,7 +151,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           result.error_count++;
           continue;
         }
-
         // Check if user already exists
         const existingUsers = await adminUtils.getUsersWithRoleFilter({ search: user.email });
         if (existingUsers.data.length > 0) {
@@ -184,10 +167,8 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             continue;
           }
         }
-
         // Determine final role
         const finalRole = user.role || defaultRole;
-        
         // Check permissions for admin role
         if (finalRole === 'admin' && !context.isSuperAdmin()) {
           result.errors.push({
@@ -198,7 +179,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           result.error_count++;
           continue;
         }
-
         // Create user
         const userId = await adminUtils.createUserWithRole({
           email: user.email,
@@ -207,7 +187,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           tenant_id: 'default',
           created_by: context.user.user_id
         });
-
         // Log user creation
         await adminUtils.createAuditLog({
           user_id: context.user.user_id,
@@ -224,14 +203,11 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
           user_agent: request.headers.get('user-agent') || undefined
         });
-
         result.imported_count++;
-
         // TODO: Send invitation email if requested
         // if (sendInvitations) {
         //   await sendInvitationEmail(user.email, finalRole);
         // }
-
       } catch (error) {
         result.errors.push({
           row: rowNumber,
@@ -241,7 +217,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         result.error_count++;
       }
     }
-
     // Log import completion
     await adminUtils.createAuditLog({
       user_id: context.user.user_id,
@@ -259,7 +234,6 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
     });
-
     const response: AdminApiResponse<ImportResult> = {
       success: true,
       data: result,
@@ -277,12 +251,8 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
       }
     };
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('User import error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {

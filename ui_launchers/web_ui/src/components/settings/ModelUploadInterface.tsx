@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -29,7 +28,6 @@ import {
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
-
 interface UploadJob {
   id: string;
   filename: string;
@@ -38,7 +36,6 @@ interface UploadJob {
   status: 'uploading' | 'processing' | 'completed' | 'error';
   error?: string;
 }
-
 interface ConversionJob {
   id: string;
   kind: string;
@@ -51,23 +48,20 @@ interface ConversionJob {
   created_at: number;
   parameters?: Record<string, any>;
 }
-
 interface ModelUploadInterfaceProps {
   onModelUploaded?: (modelId: string) => void;
   onJobCreated?: (jobId: string) => void;
 }
-
 const SUPPORTED_FORMATS = {
-  '.gguf': { name: 'GGUF', description: 'llama.cpp quantized format', icon: <Cpu className="h-4 w-4" /> },
-  '.safetensors': { name: 'SafeTensors', description: 'Safe tensor format', icon: <Database className="h-4 w-4" /> },
-  '.bin': { name: 'PyTorch Binary', description: 'PyTorch model binary', icon: <FileText className="h-4 w-4" /> },
-  '.pt': { name: 'PyTorch', description: 'PyTorch model file', icon: <FileText className="h-4 w-4" /> },
-  '.pth': { name: 'PyTorch', description: 'PyTorch model file', icon: <FileText className="h-4 w-4" /> },
-  '.zip': { name: 'Archive', description: 'Compressed model archive', icon: <Archive className="h-4 w-4" /> },
-  '.tar': { name: 'Archive', description: 'Tar archive', icon: <Archive className="h-4 w-4" /> },
-  '.tar.gz': { name: 'Archive', description: 'Compressed tar archive', icon: <Archive className="h-4 w-4" /> }
+  '.gguf': { name: 'GGUF', description: 'llama.cpp quantized format', icon: <Cpu className="h-4 w-4 sm:w-auto md:w-full" /> },
+  '.safetensors': { name: 'SafeTensors', description: 'Safe tensor format', icon: <Database className="h-4 w-4 sm:w-auto md:w-full" /> },
+  '.bin': { name: 'PyTorch Binary', description: 'PyTorch model binary', icon: <FileText className="h-4 w-4 sm:w-auto md:w-full" /> },
+  '.pt': { name: 'PyTorch', description: 'PyTorch model file', icon: <FileText className="h-4 w-4 sm:w-auto md:w-full" /> },
+  '.pth': { name: 'PyTorch', description: 'PyTorch model file', icon: <FileText className="h-4 w-4 sm:w-auto md:w-full" /> },
+  '.zip': { name: 'Archive', description: 'Compressed model archive', icon: <Archive className="h-4 w-4 sm:w-auto md:w-full" /> },
+  '.tar': { name: 'Archive', description: 'Tar archive', icon: <Archive className="h-4 w-4 sm:w-auto md:w-full" /> },
+  '.tar.gz': { name: 'Archive', description: 'Compressed tar archive', icon: <Archive className="h-4 w-4 sm:w-auto md:w-full" /> }
 };
-
 const QUANTIZATION_FORMATS = [
   { value: 'Q2_K', label: 'Q2_K - 2-bit (smallest, lowest quality)', description: '~25% original size' },
   { value: 'Q3_K', label: 'Q3_K - 3-bit (small, medium quality)', description: '~37.5% original size' },
@@ -79,7 +73,6 @@ const QUANTIZATION_FORMATS = [
   { value: 'IQ3_M', label: 'IQ3_M - Improved 3-bit (experimental)', description: '~37.5% original size' },
   { value: 'IQ4_M', label: 'IQ4_M - Improved 4-bit (experimental)', description: '~50% original size' }
 ];
-
 const MODEL_ARCHITECTURES = [
   { value: 'auto', label: 'Auto-detect', description: 'Automatically detect architecture' },
   { value: 'llama', label: 'Llama/Llama2', description: 'Standard Llama architecture' },
@@ -92,63 +85,51 @@ const MODEL_ARCHITECTURES = [
   { value: 'phi3', label: 'Phi-3', description: 'Microsoft Phi-3 architecture' },
   { value: 'gemma', label: 'Gemma', description: 'Google Gemma architecture' }
 ];
-
 export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: ModelUploadInterfaceProps) {
   const [activeTab, setActiveTab] = useState<'upload' | 'convert' | 'quantize' | 'lora'>('upload');
   const [uploadJobs, setUploadJobs] = useState<UploadJob[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  
   // Upload form state
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadName, setUploadName] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadTags, setUploadTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
-  
   // Conversion form state
   const [conversionSource, setConversionSource] = useState('');
   const [conversionOutput, setConversionOutput] = useState('');
   const [conversionArchitecture, setConversionArchitecture] = useState('auto');
   const [vocabOnly, setVocabOnly] = useState(false);
-  
   // Quantization form state
   const [quantizationSource, setQuantizationSource] = useState('');
   const [quantizationOutput, setQuantizationOutput] = useState('');
   const [quantizationFormat, setQuantizationFormat] = useState('Q4_K_M');
   const [allowRequantize, setAllowRequantize] = useState(false);
-  
   // LoRA merge form state
   const [loraBaseModel, setLoraBaseModel] = useState('');
   const [loraAdapterPath, setLoraAdapterPath] = useState('');
   const [loraOutputPath, setLoraOutputPath] = useState('');
   const [loraAlpha, setLoraAlpha] = useState(1.0);
-  
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
   const { toast } = useToast();
   const backend = getKarenBackend();
-
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(true);
   }, []);
-
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
   }, []);
-
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    
     const files = Array.from(e.dataTransfer.files);
     const validFiles = files.filter(file => {
       const ext = file.name.toLowerCase();
       return Object.keys(SUPPORTED_FORMATS).some(format => ext.endsWith(format));
     });
-    
     if (validFiles.length !== files.length) {
       toast({
         variant: 'destructive',
@@ -156,30 +137,24 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         description: 'Some files were skipped. Only model files are supported.',
       });
     }
-    
     setUploadFiles(prev => [...prev, ...validFiles]);
   }, [toast]);
-
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setUploadFiles(prev => [...prev, ...files]);
   }, []);
-
   const removeFile = (index: number) => {
     setUploadFiles(prev => prev.filter((_, i) => i !== index));
   };
-
   const addTag = () => {
     if (newTag.trim() && !uploadTags.includes(newTag.trim())) {
       setUploadTags(prev => [...prev, newTag.trim()]);
       setNewTag('');
     }
   };
-
   const removeTag = (tag: string) => {
     setUploadTags(prev => prev.filter(t => t !== tag));
   };
-
   const uploadModels = async () => {
     if (uploadFiles.length === 0) {
       toast({
@@ -189,9 +164,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
       });
       return;
     }
-
     setLoading(true);
-    
     try {
       for (const file of uploadFiles) {
         const formData = new FormData();
@@ -199,9 +172,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         formData.append('name', uploadName || file.name.split('.')[0]);
         formData.append('description', uploadDescription);
         formData.append('tags', JSON.stringify(uploadTags));
-
         const jobId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
         // Add upload job to tracking
         const uploadJob: UploadJob = {
           id: jobId,
@@ -210,38 +181,29 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           progress: 0,
           status: 'uploading'
         };
-        
         setUploadJobs(prev => [...prev, uploadJob]);
-
         try {
           const response = await backend.makeRequestPublic('/api/models/local/upload', {
             method: 'POST',
             body: formData
           });
-
           // Update job status
           setUploadJobs(prev => prev.map(job => 
             job.id === jobId 
               ? { ...job, status: 'completed', progress: 100 }
               : job
           ));
-
           onJobCreated?.((response as any).job_id);
-          
           toast({
             title: 'Upload Started',
             description: `${file.name} upload initiated successfully.`,
           });
-
         } catch (error) {
-          console.error(`Failed to upload ${file.name}:`, error);
-          
           setUploadJobs(prev => prev.map(job => 
             job.id === jobId 
               ? { ...job, status: 'error', error: (error as any).message }
               : job
           ));
-
           const info = handleApiError(error as any, 'uploadModel');
           toast({
             variant: 'destructive',
@@ -250,18 +212,15 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           });
         }
       }
-
       // Reset form
       setUploadFiles([]);
       setUploadName('');
       setUploadDescription('');
       setUploadTags([]);
-
     } finally {
       setLoading(false);
     }
   };
-
   const convertModel = async () => {
     if (!conversionSource || !conversionOutput) {
       toast({
@@ -271,9 +230,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
       });
       return;
     }
-
     setLoading(true);
-    
     try {
       const response = await backend.makeRequestPublic('/api/models/local/convert-to-gguf', {
         method: 'POST',
@@ -284,22 +241,17 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           vocab_only: vocabOnly
         })
       });
-
       onJobCreated?.((response as any).job_id);
-      
       toast({
         title: 'Conversion Started',
         description: 'Model conversion job has been queued. Check the job center for progress.',
       });
-
       // Reset form
       setConversionSource('');
       setConversionOutput('');
       setConversionArchitecture('auto');
       setVocabOnly(false);
-
     } catch (error) {
-      console.error('Failed to start conversion:', error);
       const info = handleApiError(error as any, 'convertModel');
       toast({
         variant: 'destructive',
@@ -310,7 +262,6 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
       setLoading(false);
     }
   };
-
   const quantizeModel = async () => {
     if (!quantizationSource || !quantizationOutput) {
       toast({
@@ -320,9 +271,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
       });
       return;
     }
-
     setLoading(true);
-    
     try {
       const response = await backend.makeRequestPublic('/api/models/local/quantize', {
         method: 'POST',
@@ -333,22 +282,17 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           allow_requantize: allowRequantize
         })
       });
-
       onJobCreated?.((response as any).job_id);
-      
       toast({
         title: 'Quantization Started',
         description: 'Model quantization job has been queued. Check the job center for progress.',
       });
-
       // Reset form
       setQuantizationSource('');
       setQuantizationOutput('');
       setQuantizationFormat('Q4_K_M');
       setAllowRequantize(false);
-
     } catch (error) {
-      console.error('Failed to start quantization:', error);
       const info = handleApiError(error as any, 'quantizeModel');
       toast({
         variant: 'destructive',
@@ -359,7 +303,6 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
       setLoading(false);
     }
   };
-
   const mergeLoRA = async () => {
     if (!loraBaseModel || !loraAdapterPath || !loraOutputPath) {
       toast({
@@ -369,9 +312,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
       });
       return;
     }
-
     setLoading(true);
-    
     try {
       const response = await backend.makeRequestPublic('/api/models/local/merge-lora', {
         method: 'POST',
@@ -382,22 +323,17 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           alpha: loraAlpha
         })
       });
-
       onJobCreated?.((response as any).job_id);
-      
       toast({
         title: 'LoRA Merge Started',
         description: 'LoRA merge job has been queued. Check the job center for progress.',
       });
-
       // Reset form
       setLoraBaseModel('');
       setLoraAdapterPath('');
       setLoraOutputPath('');
       setLoraAlpha(1.0);
-
     } catch (error) {
-      console.error('Failed to start LoRA merge:', error);
       const info = handleApiError(error as any, 'mergeLoRA');
       toast({
         variant: 'destructive',
@@ -408,13 +344,11 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
       setLoading(false);
     }
   };
-
   const formatFileSize = (bytes: number) => {
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -424,43 +358,41 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           Upload, convert, quantize, and customize your models
         </p>
       </div>
-
       {/* Tab Navigation */}
-      <div className="flex space-x-1 bg-muted p-1 rounded-lg w-fit">
-        <Button
+      <div className="flex space-x-1 bg-muted p-1 rounded-lg w-fit sm:p-4 md:p-6">
+        <button
           variant={activeTab === 'upload' ? 'default' : 'ghost'}
           size="sm"
-          onClick={() => setActiveTab('upload')}
+          onClick={() = aria-label="Button"> setActiveTab('upload')}
         >
-          <Upload className="h-4 w-4 mr-2" />
+          <Upload className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
           Upload
         </Button>
-        <Button
+        <button
           variant={activeTab === 'convert' ? 'default' : 'ghost'}
           size="sm"
-          onClick={() => setActiveTab('convert')}
+          onClick={() = aria-label="Button"> setActiveTab('convert')}
         >
-          <Settings className="h-4 w-4 mr-2" />
+          <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
           Convert
         </Button>
-        <Button
+        <button
           variant={activeTab === 'quantize' ? 'default' : 'ghost'}
           size="sm"
-          onClick={() => setActiveTab('quantize')}
+          onClick={() = aria-label="Button"> setActiveTab('quantize')}
         >
-          <Zap className="h-4 w-4 mr-2" />
+          <Zap className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
           Quantize
         </Button>
-        <Button
+        <button
           variant={activeTab === 'lora' ? 'default' : 'ghost'}
           size="sm"
-          onClick={() => setActiveTab('lora')}
+          onClick={() = aria-label="Button"> setActiveTab('lora')}
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
           LoRA Merge
         </Button>
       </div>
-
       {/* Upload Tab */}
       {activeTab === 'upload' && (
         <Card>
@@ -482,16 +414,16 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
-              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground sm:w-auto md:w-full" />
               <h3 className="text-lg font-semibold mb-2">Drop model files here</h3>
               <p className="text-muted-foreground mb-4">
                 Or click to browse for files
               </p>
-              <Button
+              <button
                 variant="outline"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() = aria-label="Button"> fileInputRef.current?.click()}
               >
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Browse Files
               </Button>
               <input
@@ -500,140 +432,133 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                 multiple
                 accept={Object.keys(SUPPORTED_FORMATS).join(',')}
                 onChange={handleFileSelect}
-                className="hidden"
-              />
+                className="hidden" />
             </div>
-
             {/* Supported Formats */}
             <div>
-              <Label className="text-sm font-medium mb-2 block">Supported Formats</Label>
+              <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">Supported Formats</Label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {Object.entries(SUPPORTED_FORMATS).map(([ext, info]) => (
-                  <div key={ext} className="flex items-center gap-2 p-2 bg-muted/30 rounded">
+                  <div key={ext} className="flex items-center gap-2 p-2 bg-muted/30 rounded sm:p-4 md:p-6">
                     {info.icon}
                     <div>
-                      <div className="text-sm font-medium">{info.name}</div>
-                      <div className="text-xs text-muted-foreground">{ext}</div>
+                      <div className="text-sm font-medium md:text-base lg:text-lg">{info.name}</div>
+                      <div className="text-xs text-muted-foreground sm:text-sm md:text-base">{ext}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-
             {/* Selected Files */}
             {uploadFiles.length > 0 && (
               <div>
-                <Label className="text-sm font-medium mb-2 block">Selected Files</Label>
+                <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">Selected Files</Label>
                 <div className="space-y-2">
                   {uploadFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded">
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded sm:p-4 md:p-6">
                       <div className="flex items-center gap-3">
-                        <FileText className="h-4 w-4" />
+                        <FileText className="h-4 w-4 sm:w-auto md:w-full" />
                         <div>
                           <div className="font-medium">{file.name}</div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             {formatFileSize(file.size)}
                           </div>
                         </div>
                       </div>
-                      <Button
+                      <button
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeFile(index)}
+                        onClick={() = aria-label="Button"> removeFile(index)}
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4 sm:w-auto md:w-full" />
                       </Button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
             {/* Upload Metadata */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="upload-name">Model Name (Optional)</Label>
-                <Input
+                <input
                   id="upload-name"
                   placeholder="Custom model name"
                   value={uploadName}
-                  onChange={(e) => setUploadName(e.target.value)}
+                  onChange={(e) = aria-label="Input"> setUploadName(e.target.value)}
                 />
               </div>
               <div>
                 <Label htmlFor="upload-description">Description</Label>
-                <Input
+                <input
                   id="upload-description"
                   placeholder="Model description"
                   value={uploadDescription}
-                  onChange={(e) => setUploadDescription(e.target.value)}
+                  onChange={(e) = aria-label="Input"> setUploadDescription(e.target.value)}
                 />
               </div>
             </div>
-
             {/* Tags */}
             <div>
-              <Label className="text-sm font-medium mb-2 block">Tags</Label>
+              <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">Tags</Label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {uploadTags.map(tag => (
                   <Badge key={tag} variant="secondary" className="flex items-center gap-1">
                     {tag}
-                    <Button
+                    <button
                       variant="ghost"
                       size="sm"
-                      className="h-4 w-4 p-0"
-                      onClick={() => removeTag(tag)}
+                      className="h-4 w-4 p-0 sm:w-auto md:w-full"
+                      onClick={() = aria-label="Button"> removeTag(tag)}
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3 sm:w-auto md:w-full" />
                     </Button>
                   </Badge>
                 ))}
               </div>
               <div className="flex gap-2">
-                <Input
+                <input
                   placeholder="Add tag"
                   value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
+                  onChange={(e) = aria-label="Input"> setNewTag(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addTag()}
                 />
-                <Button variant="outline" onClick={addTag}>
-                  <Plus className="h-4 w-4" />
+                <button variant="outline" onClick={addTag} aria-label="Button">
+                  <Plus className="h-4 w-4 sm:w-auto md:w-full" />
                 </Button>
               </div>
             </div>
-
             {/* Upload Button */}
-            <Button
+            <button
               onClick={uploadModels}
               disabled={loading || uploadFiles.length === 0}
               className="w-full"
-            >
+             aria-label="Button">
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
                   Uploading...
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
+                  <Upload className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Upload {uploadFiles.length} File{uploadFiles.length !== 1 ? 's' : ''}
                 </>
               )}
             </Button>
-
             {/* Upload Jobs */}
             {uploadJobs.length > 0 && (
               <div>
-                <Label className="text-sm font-medium mb-2 block">Upload Progress</Label>
+                <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">Upload Progress</Label>
                 <div className="space-y-2">
                   {uploadJobs.map(job => (
-                    <div key={job.id} className="p-3 bg-muted/30 rounded">
+                    <div key={job.id} className="p-3 bg-muted/30 rounded sm:p-4 md:p-6">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium">{job.filename}</span>
                         <div className="flex items-center gap-2">
-                          {job.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                          {job.status === 'error' && <AlertCircle className="h-4 w-4 text-red-600" />}
-                          {job.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin" />}
+                          {job.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />}
+                          {job.status === 'error' && <AlertCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />}
+                          {job.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin sm:w-auto md:w-full" />}
                         </div>
                       </div>
                       {job.status === 'uploading' && (
@@ -641,7 +566,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
                       )}
                       {job.error && (
                         <Alert variant="destructive">
-                          <AlertCircle className="h-4 w-4" />
+                          <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
                           <AlertDescription>{job.error}</AlertDescription>
                         </Alert>
                       )}
@@ -653,7 +578,6 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           </CardContent>
         </Card>
       )}
-
       {/* Convert Tab */}
       {activeTab === 'convert' && (
         <Card>
@@ -666,66 +590,62 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="conversion-source">Source Model Path</Label>
-              <Input
+              <input
                 id="conversion-source"
                 placeholder="/path/to/huggingface/model"
                 value={conversionSource}
-                onChange={(e) => setConversionSource(e.target.value)}
+                onChange={(e) = aria-label="Input"> setConversionSource(e.target.value)}
               />
             </div>
-
             <div>
               <Label htmlFor="conversion-output">Output GGUF Name</Label>
-              <Input
+              <input
                 id="conversion-output"
                 placeholder="model-name.gguf"
                 value={conversionOutput}
-                onChange={(e) => setConversionOutput(e.target.value)}
+                onChange={(e) = aria-label="Input"> setConversionOutput(e.target.value)}
               />
             </div>
-
             <div>
               <Label htmlFor="conversion-architecture">Model Architecture</Label>
-              <Select value={conversionArchitecture} onValueChange={setConversionArchitecture}>
-                <SelectTrigger>
-                  <SelectValue />
+              <select value={conversionArchitecture} onValueChange={setConversionArchitecture} aria-label="Select option">
+                <selectTrigger aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <selectContent aria-label="Select option">
                   {MODEL_ARCHITECTURES.map(arch => (
-                    <SelectItem key={arch.value} value={arch.value}>
+                    <selectItem key={arch.value} value={arch.value} aria-label="Select option">
                       <div>
                         <div className="font-medium">{arch.label}</div>
-                        <div className="text-xs text-muted-foreground">{arch.description}</div>
+                        <div className="text-xs text-muted-foreground sm:text-sm md:text-base">{arch.description}</div>
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="vocab-only"
                 checked={vocabOnly}
-                onChange={(e) => setVocabOnly(e.target.checked)}
+                onChange={(e) = aria-label="Input"> setVocabOnly(e.target.checked)}
               />
               <Label htmlFor="vocab-only">Vocabulary only (faster, for testing)</Label>
             </div>
-
-            <Button
+            <button
               onClick={convertModel}
               disabled={loading || !conversionSource || !conversionOutput}
               className="w-full"
-            >
+             aria-label="Button">
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
                   Starting Conversion...
                 </>
               ) : (
                 <>
-                  <Settings className="h-4 w-4 mr-2" />
+                  <Settings className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Convert to GGUF
                 </>
               )}
@@ -733,7 +653,6 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           </CardContent>
         </Card>
       )}
-
       {/* Quantize Tab */}
       {activeTab === 'quantize' && (
         <Card>
@@ -746,66 +665,62 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="quantization-source">Source GGUF Path</Label>
-              <Input
+              <input
                 id="quantization-source"
                 placeholder="/path/to/model.gguf"
                 value={quantizationSource}
-                onChange={(e) => setQuantizationSource(e.target.value)}
+                onChange={(e) = aria-label="Input"> setQuantizationSource(e.target.value)}
               />
             </div>
-
             <div>
               <Label htmlFor="quantization-output">Output Quantized Name</Label>
-              <Input
+              <input
                 id="quantization-output"
                 placeholder="model-q4_k_m.gguf"
                 value={quantizationOutput}
-                onChange={(e) => setQuantizationOutput(e.target.value)}
+                onChange={(e) = aria-label="Input"> setQuantizationOutput(e.target.value)}
               />
             </div>
-
             <div>
               <Label htmlFor="quantization-format">Quantization Format</Label>
-              <Select value={quantizationFormat} onValueChange={setQuantizationFormat}>
-                <SelectTrigger>
-                  <SelectValue />
+              <select value={quantizationFormat} onValueChange={setQuantizationFormat} aria-label="Select option">
+                <selectTrigger aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <selectContent aria-label="Select option">
                   {QUANTIZATION_FORMATS.map(format => (
-                    <SelectItem key={format.value} value={format.value}>
+                    <selectItem key={format.value} value={format.value} aria-label="Select option">
                       <div>
                         <div className="font-medium">{format.label}</div>
-                        <div className="text-xs text-muted-foreground">{format.description}</div>
+                        <div className="text-xs text-muted-foreground sm:text-sm md:text-base">{format.description}</div>
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="allow-requantize"
                 checked={allowRequantize}
-                onChange={(e) => setAllowRequantize(e.target.checked)}
+                onChange={(e) = aria-label="Input"> setAllowRequantize(e.target.checked)}
               />
               <Label htmlFor="allow-requantize">Allow requantizing already quantized models</Label>
             </div>
-
-            <Button
+            <button
               onClick={quantizeModel}
               disabled={loading || !quantizationSource || !quantizationOutput}
               className="w-full"
-            >
+             aria-label="Button">
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
                   Starting Quantization...
                 </>
               ) : (
                 <>
-                  <Zap className="h-4 w-4 mr-2" />
+                  <Zap className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Quantize Model
                 </>
               )}
@@ -813,7 +728,6 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           </CardContent>
         </Card>
       )}
-
       {/* LoRA Merge Tab */}
       {activeTab === 'lora' && (
         <Card>
@@ -826,63 +740,59 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="lora-base-model">Base Model Path</Label>
-              <Input
+              <input
                 id="lora-base-model"
                 placeholder="/path/to/base-model.gguf"
                 value={loraBaseModel}
-                onChange={(e) => setLoraBaseModel(e.target.value)}
+                onChange={(e) = aria-label="Input"> setLoraBaseModel(e.target.value)}
               />
             </div>
-
             <div>
               <Label htmlFor="lora-adapter-path">LoRA Adapter Path</Label>
-              <Input
+              <input
                 id="lora-adapter-path"
                 placeholder="/path/to/lora-adapter"
                 value={loraAdapterPath}
-                onChange={(e) => setLoraAdapterPath(e.target.value)}
+                onChange={(e) = aria-label="Input"> setLoraAdapterPath(e.target.value)}
               />
             </div>
-
             <div>
               <Label htmlFor="lora-output-path">Output Model Path</Label>
-              <Input
+              <input
                 id="lora-output-path"
                 placeholder="/path/to/merged-model.gguf"
                 value={loraOutputPath}
-                onChange={(e) => setLoraOutputPath(e.target.value)}
+                onChange={(e) = aria-label="Input"> setLoraOutputPath(e.target.value)}
               />
             </div>
-
             <div>
               <Label htmlFor="lora-alpha">LoRA Alpha (Scaling Factor)</Label>
-              <Input
+              <input
                 id="lora-alpha"
                 type="number"
                 step="0.1"
                 min="0"
                 max="10"
                 value={loraAlpha}
-                onChange={(e) => setLoraAlpha(parseFloat(e.target.value) || 1.0)}
+                onChange={(e) = aria-label="Input"> setLoraAlpha(parseFloat(e.target.value) || 1.0)}
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                 Higher values increase LoRA influence (default: 1.0)
               </p>
             </div>
-
-            <Button
+            <button
               onClick={mergeLoRA}
               disabled={loading || !loraBaseModel || !loraAdapterPath || !loraOutputPath}
               className="w-full"
-            >
+             aria-label="Button">
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
                   Starting LoRA Merge...
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Merge LoRA Adapter
                 </>
               )}

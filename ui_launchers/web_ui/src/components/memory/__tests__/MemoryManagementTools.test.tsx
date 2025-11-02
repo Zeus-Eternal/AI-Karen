@@ -60,7 +60,7 @@ vi.mock('@/components/ui/button', () => ({
       data-variant={variant}
       data-size={size}
       className={className}
-    >
+     aria-label="Button">
       {children}
     </button>
   )
@@ -80,8 +80,7 @@ vi.mock('@/components/ui/input', () => ({
       placeholder={placeholder}
       value={value}
       onChange={onChange}
-      className={className}
-    />
+      className={className} />
   )
 }));
 
@@ -106,7 +105,7 @@ vi.mock('@/components/ui/checkbox', () => ({
       data-testid="checkbox"
       type="checkbox"
       checked={checked}
-      onChange={(e) => onCheckedChange(e.target.checked)}
+      onChange={(e) = aria-label="Input"> onCheckedChange(e.target.checked)}
     />
   )
 }));
@@ -134,7 +133,7 @@ vi.mock('@/components/ui/tabs', () => ({
     <button 
       data-testid="tab-trigger" 
       data-value={value}
-      onClick={() => onValueChange?.(value)}
+      onClick={() = aria-label="Button"> onValueChange?.(value)}
     >
       {children}
     </button>

@@ -1,6 +1,4 @@
-
 "use client";
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +11,6 @@ import type { KarenSettings, TemperatureUnit, WeatherServiceOption } from '@/lib
 import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '../ui/separator';
-
 /**
  * @file WeatherPluginPage.tsx
  * @description Page for configuring Weather Service settings for Karen AI.
@@ -30,7 +27,6 @@ export default function WeatherPluginPage() {
     defaultWeatherLocation: DEFAULT_KAREN_SETTINGS.defaultWeatherLocation,
   });
   const { toast } = useToast();
-
   useEffect(() => {
     try {
       const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
@@ -45,14 +41,11 @@ export default function WeatherPluginPage() {
         }));
       }
     } catch (error) {
-      console.error("Error loading weather preferences from localStorage:", error);
     }
   }, []);
-
   const handleUnitChange = (unit: TemperatureUnit) => {
     setSettings(prev => ({ ...prev, temperatureUnit: unit }));
   };
-
   const handleServiceChange = (service: WeatherServiceOption) => {
     setSettings(prev => ({
       ...prev,
@@ -61,7 +54,6 @@ export default function WeatherPluginPage() {
       weatherApiKey: service === 'custom_api' ? (prev.weatherApiKey || '') : null
     }));
   };
-
   const savePreferences = () => {
     try {
       const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
@@ -84,7 +76,6 @@ export default function WeatherPluginPage() {
         description: "Your weather service settings have been updated.",
       });
     } catch (error) {
-      console.error("Error saving weather preferences to localStorage:", error);
       toast({
         variant: "destructive",
         title: "Save Error",
@@ -92,28 +83,25 @@ export default function WeatherPluginPage() {
       });
     } // Ensure catch block is properly closed
   };
-
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3">
-        <CloudSun className="h-8 w-8 text-primary" />
+        <CloudSun className="h-8 w-8 text-primary sm:w-auto md:w-full" />
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Weather Service Configuration</h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             Configure how Karen AI fetches and displays weather information.
           </p>
         </div>
       </div>
-
        <Alert>
-        <Info className="h-4 w-4" />
+        <Info className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertTitle>How to Use Weather Features</AlertTitle>
         <AlertDescription>
           Ask Karen for the weather in a specific location directly in the chat (e.g., "What's the weather in London?").
           She can use different services based on your configuration below. The "Default Location" can be used if you ask for weather without specifying a place.
         </AlertDescription>
       </Alert>
-
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Weather Service & Preferences</CardTitle>
@@ -124,92 +112,86 @@ export default function WeatherPluginPage() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="weather-service-select">Weather Service Source</Label>
-            <Select
+            <select
               value={settings.weatherService}
-              onValueChange={(value) => handleServiceChange(value as WeatherServiceOption)}
+              onValueChange={(value) = aria-label="Select option"> handleServiceChange(value as WeatherServiceOption)}
             >
-              <SelectTrigger id="weather-service-select">
-                <SelectValue placeholder="Select a weather service" />
+              <selectTrigger id="weather-service-select" aria-label="Select option">
+                <selectValue placeholder="Select a weather service" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="wttr_in">wttr.in (Free, Recommended)</SelectItem>
-                <SelectItem value="openweather">OpenWeatherMap</SelectItem>
-                <SelectItem value="custom_api">Custom API (Conceptual)</SelectItem>
+              <selectContent aria-label="Select option">
+                <selectItem value="wttr_in" aria-label="Select option">wttr.in (Free, Recommended)</SelectItem>
+                <selectItem value="openweather" aria-label="Select option">OpenWeatherMap</SelectItem>
+                <selectItem value="custom_api" aria-label="Select option">Custom API (Conceptual)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               Select the service Karen should use. "Custom API" is a placeholder for future integration with services requiring an API key.
             </p>
           </div>
-
           {['custom_api', 'openweather'].includes(settings.weatherService) && (
             <div className="space-y-2 pl-4 border-l-2 border-primary/20 py-3">
-              <Label htmlFor="weather-api-key" className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-primary/80"/>Weather API Key</Label>
-              <Input
+              <Label htmlFor="weather-api-key" className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-primary/80 sm:w-auto md:w-full"/>Weather API Key</Label>
+              <input
                 id="weather-api-key"
                 type="password"
                 value={settings.weatherApiKey || ''}
-                onChange={(e) => setSettings(prev => ({ ...prev, weatherApiKey: e.target.value }))}
+                onChange={(e) = aria-label="Input"> setSettings(prev => ({ ...prev, weatherApiKey: e.target.value }))}
                 placeholder="Enter your API key"
                 disabled /* Keep disabled until actual service logic is implemented */
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 API key usage requires backend support for the selected service.
               </p>
             </div>
           )}
-
           <Separator />
-
           <div className="space-y-2">
             <Label htmlFor="default-weather-location">Default Weather Location (Optional)</Label>
-            <Input
+            <input
               id="default-weather-location"
               value={settings.defaultWeatherLocation || ''}
-              onChange={(e) => setSettings(prev => ({ ...prev, defaultWeatherLocation: e.target.value.trim() ? e.target.value : null }))}
+              onChange={(e) = aria-label="Input"> setSettings(prev => ({ ...prev, defaultWeatherLocation: e.target.value.trim() ? e.target.value : null }))}
               placeholder="e.g., London, UK or New York, US"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               If set, Karen can use this location if you ask for weather without specifying a place.
             </p>
           </div>
-
           <Separator />
-
           <div className="space-y-2">
             <Label>Preferred Temperature Unit</Label>
             <div className="flex items-center space-x-2">
-                <Button
+                <button
                   variant={settings.temperatureUnit === 'C' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => handleUnitChange('C')}
+                  onClick={() = aria-label="Button"> handleUnitChange('C')}
                   className="rounded-md"
                 >
                   Celsius (°C)
                 </Button>
-                <Button
+                <button
                   variant={settings.temperatureUnit === 'F' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => handleUnitChange('F')}
+                  onClick={() = aria-label="Button"> handleUnitChange('F')}
                   className="rounded-md"
                 >
                   Fahrenheit (°F)
                 </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               This preference will be used when Karen reports the weather.
             </p>
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <Button onClick={savePreferences}>
-            <Save className="mr-2 h-4 w-4" /> Save Weather Preferences
+          <button onClick={savePreferences} aria-label="Button">
+            <Save className="mr-2 h-4 w-4 sm:w-auto md:w-full" /> Save Weather Preferences
           </Button>
         </CardFooter>
       </Card>
-
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
+        <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertTitle>About Weather Integration</AlertTitle>
         <AlertDescription>
           <p>
@@ -217,7 +199,7 @@ export default function WeatherPluginPage() {
             Karen will fetch live weather data from OpenWeatherMap. Without it,
             the plugin returns mocked results for demo purposes.
           </p>
-          <p className="mt-1 text-xs">
+          <p className="mt-1 text-xs sm:text-sm md:text-base">
             The location preference below will be used when you ask for the weather
             without specifying a city.
           </p>

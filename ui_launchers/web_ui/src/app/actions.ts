@@ -1,11 +1,9 @@
 'use server';
-
 // Import new service-based architecture
 import { getChatService } from '@/services/chatService';
 import { getMemoryService } from '@/services/memoryService';
 import { getPluginService } from '@/services/pluginService';
 import { getKarenBackend } from '@/lib/karen-backend';
-
 // Minimal tool imports for backward compatibility
 import {
   getCurrentDate,
@@ -15,17 +13,14 @@ import {
   mockCheckGmailUnread,
   mockComposeGmail
 } from '@/ai/tools/core-tools';
-
 import type {
   AiData,
   KarenSettings,
   HandleUserMessageResult,
   ChatMessage
 } from '@/lib/types';
-
 import { DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
 import { handleError } from '@/lib/errorHandler';
-
 // --- Chat message handler ---
 export async function handleUserMessage(
   prompt: string,
@@ -36,7 +31,6 @@ export async function handleUserMessage(
   try {
     const currentSettings = settings || DEFAULT_KAREN_SETTINGS;
     const chatService = getChatService();
-
     // Parse conversationHistory into ChatMessage array
     const messages: ChatMessage[] = conversationHistory
       .split('\n')
@@ -50,7 +44,6 @@ export async function handleUserMessage(
           timestamp: new Date(Date.now() - (arr.length - index) * 60000),
         } as ChatMessage;
       });
-
     const result = await chatService.processUserMessage(
       prompt,
       messages,
@@ -64,16 +57,13 @@ export async function handleUserMessage(
           (totalMessagesSoFar + 1) % 7 === 0,
       }
     );
-
     return result;
-
   } catch (error) {
     const errorResponse = handleError(error, {
       operation: 'handleUserMessage',
       component: 'actions',
       additionalData: { prompt: prompt.substring(0, 100) }
     });
-
     return {
       finalResponse: `Karen: ${errorResponse.userFriendlyMessage}`,
       suggestedNewFacts: undefined,
@@ -82,7 +72,6 @@ export async function handleUserMessage(
     };
   }
 }
-
 // --- Starter Prompt Fetcher (aligns with FastAPI GET /api/ai/generate-starter) ---
 export async function getSuggestedStarter(assistantType: string): Promise<string> {
   try {
@@ -97,7 +86,6 @@ export async function getSuggestedStarter(assistantType: string): Promise<string
       },
       body: JSON.stringify({ assistantType }),
     });
-
     if (response.ok) {
       const data = await response.json();
       // Pick a random prompt, or the first if array is empty.
@@ -107,15 +95,12 @@ export async function getSuggestedStarter(assistantType: string): Promise<string
       }
       return "Tell me something interesting!";
     }
-
     const errorText = await response.text();
     throw new Error(`Failed to get starter: ${response.statusText} — ${errorText}`);
   } catch (error) {
-    console.error('Error getting suggested starter:', error);
     return "I had trouble thinking of a starter prompt right now. How about you start with 'Tell me something interesting'?";
   }
 }
-
 // --- Chat handler with advanced options (user/session aware) ---
 export async function handleUserMessageWithKarenBackend(
   prompt: string,
@@ -127,7 +112,6 @@ export async function handleUserMessageWithKarenBackend(
   try {
     const currentSettings = settings || DEFAULT_KAREN_SETTINGS;
     const chatService = getChatService();
-
     const result = await chatService.processUserMessage(
       prompt,
       conversationHistory,
@@ -143,9 +127,7 @@ export async function handleUserMessageWithKarenBackend(
           (conversationHistory.length + 1) % 7 === 0,
       }
     );
-
     return result;
-
   } catch (error) {
     const errorResponse = handleError(error, {
       operation: 'handleUserMessageWithKarenBackend',
@@ -154,14 +136,12 @@ export async function handleUserMessageWithKarenBackend(
       sessionId,
       additionalData: { prompt: prompt.substring(0, 100) }
     });
-
     return {
       finalResponse: `Karen: ${errorResponse.userFriendlyMessage}`,
       summaryWasGenerated: false,
     };
   }
 }
-
 // --- System Health ---
 export async function getKarenSystemHealth(): Promise<{
   status: string;
@@ -174,7 +154,6 @@ export async function getKarenSystemHealth(): Promise<{
       backend.healthCheck(),
       backend.getSystemMetrics(),
     ]);
-
     return {
       status: health.status,
       services: health.services,
@@ -187,7 +166,6 @@ export async function getKarenSystemHealth(): Promise<{
       }
     };
   } catch (error) {
-    console.error('Failed to get Karen system health:', error);
     return {
       status: 'error',
       services: {},
@@ -195,7 +173,6 @@ export async function getKarenSystemHealth(): Promise<{
     };
   }
 }
-
 // --- Plugins API ---
 export async function getKarenPlugins(): Promise<Array<{
   name: string;
@@ -208,11 +185,9 @@ export async function getKarenPlugins(): Promise<Array<{
     const pluginService = getPluginService();
     return await pluginService.getAvailablePlugins();
   } catch (error) {
-    console.error('Failed to get Karen plugins:', error);
     return [];
   }
 }
-
 export async function executeKarenPluginAction(
   pluginName: string,
   parameters: Record<string, any>,
@@ -225,21 +200,18 @@ export async function executeKarenPluginAction(
   try {
     const pluginService = getPluginService();
     const result = await pluginService.executePlugin(pluginName, parameters, { userId });
-
     return {
       success: result.success,
       result: result.result,
       error: result.error,
     };
   } catch (error) {
-    console.error(`Failed to execute Karen plugin ${pluginName}:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 }
-
 // --- Memory Search ---
 export async function searchKarenMemories(
   query: string,
@@ -266,11 +238,9 @@ export async function searchKarenMemories(
       tags: options.tags,
     });
   } catch (error) {
-    console.error('Failed to search Karen memories:', error);
     return [];
   }
 }
-
 // --- Analytics ---
 export async function getKarenAnalyticsData(
   timeRange: string = '24h'
@@ -285,7 +255,6 @@ export async function getKarenAnalyticsData(
     const backend = getKarenBackend();
     return await backend.getUsageAnalytics(timeRange);
   } catch (error) {
-    console.error('Failed to get Karen analytics:', error);
     return {
       total_interactions: 0,
       unique_users: 0,

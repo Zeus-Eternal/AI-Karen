@@ -1,7 +1,22 @@
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
+import {
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { 
+import { cn } from '@/lib/utils';
+import type { 
+import { WidgetBase } from './WidgetBase';
+import { DraggableWidget } from './DraggableWidget';
+import { TimeRangeSelector } from './TimeRangeSelector';
+import { DashboardFilters } from './DashboardFilters';
+import { DashboardTemplateSelector } from './DashboardTemplateSelector';
+import { DashboardExportImport } from './DashboardExportImport';
+import { useAppStore, selectUser } from '@/store/app-store';
 'use client';
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import {
+
+
   DndContext,
   DragEndEvent,
   DragOverlay,
@@ -11,13 +26,13 @@ import {
   useSensors,
   closestCenter,
 } from '@dnd-kit/core';
-import {
+
   SortableContext,
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { 
+
+
+
   Plus, 
   Settings, 
   LayoutGrid,
@@ -29,33 +44,33 @@ import {
   FileText as Template,
   Share2
 } from 'lucide-react';
-import {
+
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
-import type { 
+
+
   DashboardContainerProps, 
   WidgetConfig, 
   DragItem,
   WidgetData 
 } from '@/types/dashboard';
-import { WidgetBase } from './WidgetBase';
-import { DraggableWidget } from './DraggableWidget';
-import { 
+
+
+
   getWidgetComponent, 
   getAvailableWidgetTypes, 
   getWidgetInfo,
   createWidgetConfig 
 } from './WidgetRegistry';
-import { TimeRangeSelector } from './TimeRangeSelector';
-import { DashboardFilters } from './DashboardFilters';
-import { DashboardTemplateSelector } from './DashboardTemplateSelector';
-import { DashboardExportImport } from './DashboardExportImport';
-import { 
+
+
+
+
+
   useDashboardStore, 
   selectActiveDashboard,
   selectTemplatesForUser,
@@ -63,7 +78,7 @@ import {
   selectGlobalFilters,
   selectIsEditing
 } from '@/store/dashboard-store';
-import { useAppStore, selectUser } from '@/store/app-store';
+
 
 export const DashboardContainer: React.FC<DashboardContainerProps> = ({
   config,
@@ -297,7 +312,8 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
     
     if (!WidgetComponent) {
       return (
-        <WidgetBase
+    <ErrorBoundary fallback={<div>Something went wrong in DashboardContainer</div>}>
+      <WidgetBase
           key={widget.id}
           config={widget}
           error={`Unknown widget type: ${widget.type}`}
@@ -364,12 +380,12 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             {isEditing && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
+                  <button variant="outline" size="sm" aria-label="Button">
+                    <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                     Add Widget
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 sm:w-auto md:w-full">
                   {getAvailableWidgetTypes().map(type => {
                     const info = getWidgetInfo(type);
                     return (
@@ -379,7 +395,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
                       >
                         <div>
                           <div className="font-medium">{info?.name}</div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
                             {info?.description}
                           </div>
                         </div>
@@ -393,8 +409,8 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             {/* Layout Options */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <LayoutGrid className="h-4 w-4 mr-2" />
+                <button variant="outline" size="sm" aria-label="Button">
+                  <LayoutGrid className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Layout
                 </Button>
               </DropdownMenuTrigger>
@@ -418,31 +434,31 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             </DropdownMenu>
 
             {/* Edit Mode Toggle */}
-            <Button
+            <button
               variant={isEditing ? "default" : "outline"}
               size="sm"
               onClick={toggleEditMode}
-            >
+             aria-label="Button">
               {isEditing ? (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Save
                 </>
               ) : (
                 <>
-                  <Edit3 className="h-4 w-4 mr-2" />
+                  <Edit3 className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Edit
                 </>
               )}
             </Button>
 
             {/* Filters Toggle */}
-            <Button
+            <button
               variant={showFilters ? "default" : "outline"}
               size="sm"
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={() = aria-label="Button"> setShowFilters(!showFilters)}
             >
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Filters
             </Button>
           </div>
@@ -468,15 +484,15 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
 
       {/* Dashboard Content */}
       {config.widgets.length === 0 ? (
-        <Card className="p-8 text-center">
+        <Card className="p-8 text-center sm:p-4 md:p-6">
           <div className="text-muted-foreground">
-            <LayoutGrid className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <LayoutGrid className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
             <h3 className="text-lg font-medium mb-2">No widgets added</h3>
-            <p className="text-sm mb-4">
+            <p className="text-sm mb-4 md:text-base lg:text-lg">
               Add widgets to start building your dashboard
             </p>
-            <Button onClick={toggleEditMode} variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
+            <button onClick={toggleEditMode} variant="outline" aria-label="Button">
+              <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
               Add Your First Widget
             </Button>
           </div>
@@ -512,6 +528,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         </DndContext>
       )}
     </div>
+    </ErrorBoundary>
   );
 };
 

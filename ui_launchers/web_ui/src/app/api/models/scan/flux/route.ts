@@ -1,25 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
-
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const directory = searchParams.get('directory') || 'models/flux';
-    
-    console.log('⚡ Flux Scanner: Scanning directory', { directory });
-    
     // Resolve the directory path relative to the project root
     const projectRoot = process.cwd();
     const fullPath = path.resolve(projectRoot, directory);
-    
-    console.log('⚡ Flux Scanner: Full path resolved', { fullPath });
-    
     // Check if directory exists
     try {
       await fs.access(fullPath);
     } catch (error) {
-      console.log('⚡ Flux Scanner: Directory not found, creating mock response');
       return NextResponse.json({
         models: [],
         directory,
@@ -27,26 +19,18 @@ export async function GET(request: NextRequest) {
         scan_time: new Date().toISOString()
       });
     }
-    
     // Read directory contents
     const entries = await fs.readdir(fullPath, { withFileTypes: true });
-    
-    console.log('⚡ Flux Scanner: Found entries', { 
-      totalEntries: entries.length, 
-      entryNames: entries.map(e => e.name)
     });
-    
     // Process entries (both files and directories)
     const models = [];
     for (const entry of entries) {
       try {
         const entryPath = path.join(fullPath, entry.name);
         const entryStats = await fs.stat(entryPath);
-        
         let modelType: 'checkpoint' | 'diffusers' = 'checkpoint';
         let config = null;
         let size = entryStats.size;
-        
         if (entry.isDirectory()) {
           // Check if it's a diffusers model directory
           const isDiffusersModel = await isFluxDiffusersModelDirectory(entryPath);
@@ -62,7 +46,6 @@ export async function GET(request: NextRequest) {
           // Check if it's a Flux checkpoint file
           const ext = path.extname(entry.name).toLowerCase();
           const lowerName = entry.name.toLowerCase();
-          
           if (!['.ckpt', '.safetensors', '.pt', '.pth'].includes(ext) || !lowerName.includes('flux')) {
             // Skip non-Flux model files
             continue;
@@ -72,7 +55,6 @@ export async function GET(request: NextRequest) {
           // Skip other types
           continue;
         }
-        
         models.push({
           name: entry.name,
           path: path.join(directory, entry.name),
@@ -81,22 +63,9 @@ export async function GET(request: NextRequest) {
           type: modelType,
           config
         });
-        
-        console.log('⚡ Flux Scanner: Processed model', {
-          name: entry.name,
-          type: modelType,
-          size: size,
-          hasConfig: !!config
-        });
-        
       } catch (entryError) {
-        console.error('⚡ Flux Scanner: Error processing entry', {
-          name: entry.name,
-          error: entryError
-        });
       }
     }
-    
     const response = {
       models,
       directory,
@@ -104,17 +73,8 @@ export async function GET(request: NextRequest) {
       model_count: models.length,
       scan_time: new Date().toISOString()
     };
-    
-    console.log('⚡ Flux Scanner: Scan completed', {
-      modelsFound: models.length,
-      directory
-    });
-    
     return NextResponse.json(response);
-    
   } catch (error) {
-    console.error('⚡ Flux Scanner: Scan failed', error);
-    
     return NextResponse.json({
       models: [],
       directory: 'models/flux',
@@ -123,7 +83,6 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
-
 /**
  * Check if a directory contains a Flux diffusers model
  */
@@ -132,7 +91,6 @@ async function isFluxDiffusersModelDirectory(dirPath: string): Promise<boolean> 
     // Check for common Flux diffusers files
     const requiredFiles = ['model_index.json'];
     const fluxFiles = ['transformer/config.json', 'text_encoder/config.json', 'vae/config.json'];
-    
     // Check for model_index.json (required for diffusers)
     for (const file of requiredFiles) {
       try {
@@ -141,7 +99,6 @@ async function isFluxDiffusersModelDirectory(dirPath: string): Promise<boolean> 
         return false;
       }
     }
-    
     // Check for Flux-specific components
     let hasFluxComponent = false;
     for (const file of fluxFiles) {
@@ -153,14 +110,12 @@ async function isFluxDiffusersModelDirectory(dirPath: string): Promise<boolean> 
         continue;
       }
     }
-    
     // Also check if the model_index.json mentions Flux components
     if (!hasFluxComponent) {
       try {
         const modelIndexPath = path.join(dirPath, 'model_index.json');
         const configContent = await fs.readFile(modelIndexPath, 'utf-8');
         const config = JSON.parse(configContent);
-        
         // Look for Flux-specific component names
         const componentNames = Object.keys(config).join(' ').toLowerCase();
         hasFluxComponent = componentNames.includes('transformer') || 
@@ -170,13 +125,11 @@ async function isFluxDiffusersModelDirectory(dirPath: string): Promise<boolean> 
         // Ignore parsing errors
       }
     }
-    
     return hasFluxComponent;
   } catch {
     return false;
   }
 }
-
 /**
  * Read Flux diffusers model configuration
  */
@@ -185,7 +138,6 @@ async function readFluxDiffusersConfig(dirPath: string): Promise<any> {
     const modelIndexPath = path.join(dirPath, 'model_index.json');
     const configContent = await fs.readFile(modelIndexPath, 'utf-8');
     const config = JSON.parse(configContent);
-    
     // Try to read transformer config for additional info
     try {
       const transformerConfigPath = path.join(dirPath, 'transformer/config.json');
@@ -195,13 +147,11 @@ async function readFluxDiffusersConfig(dirPath: string): Promise<any> {
     } catch {
       // Transformer config not available
     }
-    
     return config;
   } catch {
     return null;
   }
 }
-
 /**
  * Calculate directory size recursively
  */
@@ -209,7 +159,6 @@ async function calculateDirectorySize(dirPath: string): Promise<number> {
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
     let totalSize = 0;
-    
     for (const entry of entries) {
       try {
         const entryPath = path.join(dirPath, entry.name);
@@ -226,7 +175,6 @@ async function calculateDirectorySize(dirPath: string): Promise<number> {
         continue;
       }
     }
-    
     return totalSize;
   } catch {
     return 0;

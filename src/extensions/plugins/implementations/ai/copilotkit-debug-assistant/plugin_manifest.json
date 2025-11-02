@@ -1,0 +1,56 @@
+{
+  "plugin_api_version": "1.0",
+  "enable_external_workflow": true,
+  "required_roles": [
+    "user",
+    "developer"
+  ],
+  "intent": "debug_code",
+  "trusted_ui": false,
+  "module": "ai_karen_engine.plugins.copilotkit_debug_assistant.handler",
+  "name": "copilotkit-debug-assistant",
+  "version": "1.0.0",
+  "description": "CopilotKit-powered debugging assistance for code analysis and error resolution",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "run",
+  "plugin_type": "ai",
+  "capabilities": [
+    "code_analysis",
+    "error_debugging",
+    "performance_optimization",
+    "code_review"
+  ],
+  "supported_languages": [
+    "python",
+    "javascript",
+    "typescript",
+    "java",
+    "c++",
+    "rust",
+    "go"
+  ],
+  "dependencies": [
+    {
+      "name": "copilotkit",
+      "min_version": "1.0.0",
+      "optional": true
+    },
+    {
+      "name": "ai_karen_engine",
+      "min_version": "1.0.0",
+      "optional": true
+    }
+  ],
+  "hooks": {
+    "pre_execution": [
+      "validate_code_input"
+    ],
+    "post_execution": [
+      "store_debug_results"
+    ],
+    "error_handling": [
+      "fallback_debug_analysis"
+    ]
+  }
+}

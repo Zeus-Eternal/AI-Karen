@@ -70,14 +70,14 @@ const MessageSkeleton: React.FC<{ isUser?: boolean }> = ({ isUser = false }) => 
       className={`flex gap-3 mb-6 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
       {/* Avatar Skeleton */}
-      <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full" />
+      <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full sm:w-auto md:w-full" />
       
       {/* Message Content Skeleton */}
       <div className={`flex-1 max-w-[75%] ${isUser ? 'text-right' : 'text-left'}`}>
         <div className="space-y-2">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-4 w-3/4 sm:w-auto md:w-full" />
+          <Skeleton className="h-4 w-1/2 sm:w-auto md:w-full" />
+          <Skeleton className="h-4 w-2/3 sm:w-auto md:w-full" />
         </div>
       </div>
     </motion.div>
@@ -86,29 +86,29 @@ const MessageSkeleton: React.FC<{ isUser?: boolean }> = ({ isUser = false }) => 
 
 const ChatLoadingSkeleton: React.FC = () => {
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6 p-4 sm:p-4 md:p-6">
       <MessageSkeleton />
       <MessageSkeleton isUser />
       <MessageSkeleton />
       <div className="flex gap-3">
-        <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full" />
+        <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full sm:w-auto md:w-full" />
         <div className="flex-1">
-          <div className="inline-block p-4 rounded-2xl bg-gray-100 dark:bg-gray-800">
+          <div className="inline-block p-4 rounded-2xl bg-gray-100 dark:bg-gray-800 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ repeat: Infinity, duration: 1.5 }}
-                className="w-2 h-2 bg-gray-400 rounded-full"
+                className="w-2 h-2 bg-gray-400 rounded-full sm:w-auto md:w-full"
               />
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}
-                className="w-2 h-2 bg-gray-400 rounded-full"
+                className="w-2 h-2 bg-gray-400 rounded-full sm:w-auto md:w-full"
               />
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }}
-                className="w-2 h-2 bg-gray-400 rounded-full"
+                className="w-2 h-2 bg-gray-400 rounded-full sm:w-auto md:w-full"
               />
             </div>
           </div>
@@ -215,14 +215,14 @@ const LoadingCard: React.FC<LoadingCardProps> = ({
         transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
         className="mb-4"
       >
-        {icon || <Sparkles className="h-8 w-8 text-blue-500" />}
+        {icon || <Sparkles className="h-8 w-8 text-blue-500 sm:w-auto md:w-full" />}
       </motion.div>
       
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
         {title}
       </h3>
       
-      <p className="text-sm text-gray-500 text-center max-w-sm">
+      <p className="text-sm text-gray-500 text-center max-w-sm md:text-base lg:text-lg">
         {description}
       </p>
       
@@ -255,11 +255,11 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   return (
     <div className={cn("w-full", className)}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 md:text-base lg:text-lg">
           Processing...
         </span>
         {showPercentage && (
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-gray-500 md:text-base lg:text-lg">
             {Math.round(progress)}%
           </span>
         )}
@@ -345,7 +345,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl max-w-sm mx-4"
+        className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl max-w-sm mx-4 sm:p-4 md:p-6"
       >
         <div className="flex flex-col items-center">
           <LoadingSpinner size="lg" className="mb-4 text-blue-500" />

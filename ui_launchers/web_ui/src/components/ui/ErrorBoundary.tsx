@@ -4,10 +4,8 @@
  * Provides comprehensive error handling for React components with
  * intelligent fallback strategies and recovery mechanisms.
  */
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { agUIErrorHandler, AGUIErrorType, FallbackStrategy } from '../../lib/ag-ui-error-handler';
-
 interface Props {
   children: ReactNode;
   fallbackComponent?: React.ComponentType<any>;
@@ -15,7 +13,6 @@ interface Props {
   componentName?: string;
   enableRetry?: boolean;
 }
-
 interface State {
   hasError: boolean;
   error: Error | null;
@@ -23,11 +20,9 @@ interface State {
   fallbackResponse: any;
   retryCount: number;
 }
-
 export class ErrorBoundary extends Component<Props, State> {
   private maxRetries = 3;
   private retryTimeout: NodeJS.Timeout | null = null;
-
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -38,45 +33,35 @@ export class ErrorBoundary extends Component<Props, State> {
       retryCount: 0
     };
   }
-
   static getDerivedStateFromError(error: Error): Partial<State> {
     return {
       hasError: true,
       error
     };
   }
-
   async componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-
     // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
-
     // Handle the error with AG-UI error handler
     const componentName = this.props.componentName || 'unknown';
     const fallbackResponse = await agUIErrorHandler.handleComponentError(
       error,
       componentName
     );
-
     this.setState({
       errorInfo,
       fallbackResponse
     });
   }
-
   handleRetry = async () => {
     if (this.state.retryCount >= this.maxRetries) {
-      console.warn('Maximum retry attempts reached');
       return;
     }
-
     this.setState(prevState => ({
       retryCount: prevState.retryCount + 1
     }));
-
     // Clear error state after a short delay to allow re-rendering
     this.retryTimeout = setTimeout(() => {
       this.setState({
@@ -87,11 +72,9 @@ export class ErrorBoundary extends Component<Props, State> {
       });
     }, 1000);
   };
-
   handleReset = () => {
     const componentName = this.props.componentName || 'unknown';
     agUIErrorHandler.resetComponent(componentName);
-    
     this.setState({
       hasError: false,
       error: null,
@@ -100,18 +83,15 @@ export class ErrorBoundary extends Component<Props, State> {
       retryCount: 0
     });
   };
-
   componentWillUnmount() {
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
     }
   }
-
   render() {
     if (this.state.hasError) {
       const { fallbackResponse } = this.state;
       const { fallbackComponent: FallbackComponent, enableRetry = true } = this.props;
-
       // Use custom fallback component if provided
       if (FallbackComponent) {
         return (
@@ -126,18 +106,14 @@ export class ErrorBoundary extends Component<Props, State> {
           />
         );
       }
-
       // Default error UI based on fallback strategy
       return this.renderDefaultErrorUI(fallbackResponse, enableRetry);
     }
-
     return this.props.children;
   }
-
   private renderDefaultErrorUI(fallbackResponse: any, enableRetry: boolean) {
     const { error, retryCount } = this.state;
     const componentName = this.props.componentName || 'Component';
-
     if (!fallbackResponse) {
       return (
         <div className="error-boundary-container">
@@ -149,40 +125,33 @@ export class ErrorBoundary extends Component<Props, State> {
               <button 
                 onClick={this.handleRetry}
                 className="retry-button"
-                disabled={retryCount >= this.maxRetries}
+                disabled={retryCount  aria-label="Button">= this.maxRetries}
               >
                 Retry ({retryCount}/{this.maxRetries})
               </button>
             )}
-            <button onClick={this.handleReset} className="reset-button">
+            <button onClick={this.handleReset} className="reset-button" aria-label="Button">
               Reset Component
             </button>
           </div>
         </div>
       );
     }
-
     switch (fallbackResponse.strategy) {
       case FallbackStrategy.SIMPLE_TABLE:
         return this.renderSimpleTableFallback(fallbackResponse, enableRetry);
-      
       case FallbackStrategy.CACHED_DATA:
         return this.renderCachedDataFallback(fallbackResponse, enableRetry);
-      
       case FallbackStrategy.LOADING_STATE:
         return this.renderLoadingStateFallback(fallbackResponse, enableRetry);
-      
       case FallbackStrategy.ERROR_MESSAGE:
         return this.renderErrorMessageFallback(fallbackResponse, enableRetry);
-      
       default:
         return this.renderGenericFallback(fallbackResponse, enableRetry);
     }
   }
-
   private renderSimpleTableFallback(fallbackResponse: any, enableRetry: boolean) {
     const { data, columns, message, degradedFeatures } = fallbackResponse;
-
     return (
       <div className="error-boundary-container">
         <div className="fallback-warning">
@@ -196,7 +165,6 @@ export class ErrorBoundary extends Component<Props, State> {
             )}
           </div>
         </div>
-        
         <div className="simple-table-container">
           {data && data.length > 0 ? (
             <table className="simple-table">
@@ -221,13 +189,12 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="no-data">No data available</div>
           )}
         </div>
-
         {enableRetry && (
           <div className="fallback-actions">
-            <button onClick={this.handleRetry} className="retry-button">
+            <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
               Try Advanced View Again
             </button>
-            <button onClick={this.handleReset} className="reset-button">
+            <button onClick={this.handleReset} className="reset-button" aria-label="Button">
               Reset Component
             </button>
           </div>
@@ -235,10 +202,8 @@ export class ErrorBoundary extends Component<Props, State> {
       </div>
     );
   }
-
   private renderCachedDataFallback(fallbackResponse: any, enableRetry: boolean) {
     const { message, degradedFeatures } = fallbackResponse;
-
     return (
       <div className="error-boundary-container">
         <div className="fallback-warning cached-data">
@@ -252,13 +217,12 @@ export class ErrorBoundary extends Component<Props, State> {
             )}
           </div>
         </div>
-
         {enableRetry && (
           <div className="fallback-actions">
-            <button onClick={this.handleRetry} className="retry-button">
+            <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
               Refresh Data
             </button>
-            <button onClick={this.handleReset} className="reset-button">
+            <button onClick={this.handleReset} className="reset-button" aria-label="Button">
               Reset Component
             </button>
           </div>
@@ -266,17 +230,15 @@ export class ErrorBoundary extends Component<Props, State> {
       </div>
     );
   }
-
   private renderLoadingStateFallback(fallbackResponse: any, enableRetry: boolean) {
     const { message } = fallbackResponse;
-
     return (
       <div className="error-boundary-container">
         <div className="loading-fallback">
           <div className="loading-spinner">⏳</div>
           <p>{message}</p>
           {enableRetry && (
-            <button onClick={this.handleRetry} className="retry-button">
+            <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
               Retry Loading
             </button>
           )}
@@ -284,10 +246,8 @@ export class ErrorBoundary extends Component<Props, State> {
       </div>
     );
   }
-
   private renderErrorMessageFallback(fallbackResponse: any, enableRetry: boolean) {
     const { message } = fallbackResponse;
-
     return (
       <div className="error-boundary-container">
         <div className="error-message-fallback">
@@ -295,10 +255,10 @@ export class ErrorBoundary extends Component<Props, State> {
           <p>{message}</p>
           {enableRetry && (
             <div className="fallback-actions">
-              <button onClick={this.handleRetry} className="retry-button">
+              <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
                 Retry
               </button>
-              <button onClick={this.handleReset} className="reset-button">
+              <button onClick={this.handleReset} className="reset-button" aria-label="Button">
                 Reset
               </button>
             </div>
@@ -307,11 +267,9 @@ export class ErrorBoundary extends Component<Props, State> {
       </div>
     );
   }
-
   private renderGenericFallback(fallbackResponse: any, enableRetry: boolean) {
     const { message } = fallbackResponse;
     const componentName = this.props.componentName || 'Component';
-
     return (
       <div className="error-boundary-container">
         <div className="generic-fallback">
@@ -320,10 +278,10 @@ export class ErrorBoundary extends Component<Props, State> {
           <p>{message || 'An unexpected error occurred.'}</p>
           {enableRetry && (
             <div className="fallback-actions">
-              <button onClick={this.handleRetry} className="retry-button">
+              <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
                 Retry
               </button>
-              <button onClick={this.handleReset} className="reset-button">
+              <button onClick={this.handleReset} className="reset-button" aria-label="Button">
                 Reset
               </button>
             </div>
@@ -333,7 +291,6 @@ export class ErrorBoundary extends Component<Props, State> {
     );
   }
 }
-
 // Higher-order component for easy wrapping
 export function withErrorBoundary<P extends object>(
   WrappedComponent: React.ComponentType<P>,
@@ -344,13 +301,10 @@ export function withErrorBoundary<P extends object>(
       <WrappedComponent {...props} />
     </ErrorBoundary>
   );
-
   WithErrorBoundaryComponent.displayName = 
     `withErrorBoundary(${WrappedComponent.displayName || WrappedComponent.name})`;
-
   return WithErrorBoundaryComponent;
 }
-
 // Hook for error boundary context
 export function useErrorBoundary() {
   return {

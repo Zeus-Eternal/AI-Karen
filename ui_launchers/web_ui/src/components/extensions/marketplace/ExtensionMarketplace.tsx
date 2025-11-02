@@ -4,9 +4,7 @@
  * Provides a comprehensive marketplace interface for discovering, browsing,
  * and installing extensions from the Kari extension ecosystem.
  */
-
 'use client';
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
@@ -27,7 +25,6 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
-
 interface MarketplaceExtension {
   id: string;
   name: string;
@@ -60,13 +57,11 @@ interface MarketplaceExtension {
   installed?: boolean;
   installing?: boolean;
 }
-
 interface ExtensionMarketplaceProps {
   className?: string;
   onInstall?: (extensionId: string) => Promise<void>;
   onUninstall?: (extensionId: string) => Promise<void>;
 }
-
 export default function ExtensionMarketplace({ 
   className, 
   onInstall, 
@@ -77,8 +72,7 @@ export default function ExtensionMarketplace({
   const [sortBy, setSortBy] = useState<'popular' | 'recent' | 'rating' | 'name'>('popular');
   const [showFilters, setShowFilters] = useState(false);
   const [installingExtensions, setInstallingExtensions] = useState<Set<string>>(new Set());
-
-  // Sample marketplace data - in real implementation, this would come from API
+  //  - in real implementation, this would come from API
   const marketplaceExtensions: MarketplaceExtension[] = [
     {
       id: 'advanced-analytics',
@@ -228,7 +222,6 @@ export default function ExtensionMarketplace({
       }
     }
   ];
-
   const categories = [
     { id: 'all', name: 'All Categories', count: marketplaceExtensions.length },
     { id: 'analytics', name: 'Analytics', count: marketplaceExtensions.filter(e => e.category === 'analytics').length },
@@ -237,10 +230,8 @@ export default function ExtensionMarketplace({
     { id: 'security', name: 'Security', count: marketplaceExtensions.filter(e => e.category === 'security').length },
     { id: 'experimental', name: 'Experimental', count: marketplaceExtensions.filter(e => e.category === 'experimental').length }
   ];
-
   const filteredAndSortedExtensions = useMemo(() => {
     let filtered = marketplaceExtensions;
-
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -251,12 +242,10 @@ export default function ExtensionMarketplace({
         ext.author.toLowerCase().includes(query)
       );
     }
-
     // Apply category filter
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(ext => ext.category === selectedCategory);
     }
-
     // Apply sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
@@ -272,15 +261,11 @@ export default function ExtensionMarketplace({
           return 0;
       }
     });
-
     return filtered;
   }, [marketplaceExtensions, searchQuery, selectedCategory, sortBy]);
-
   const handleInstall = useCallback(async (extension: MarketplaceExtension) => {
     if (installingExtensions.has(extension.id)) return;
-
     setInstallingExtensions(prev => new Set(prev).add(extension.id));
-    
     try {
       if (onInstall) {
         await onInstall(extension.id);
@@ -288,7 +273,6 @@ export default function ExtensionMarketplace({
       // Simulate installation delay
       await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (error) {
-      console.error('Failed to install extension:', error);
     } finally {
       setInstallingExtensions(prev => {
         const newSet = new Set(prev);
@@ -297,13 +281,11 @@ export default function ExtensionMarketplace({
       });
     }
   }, [onInstall, installingExtensions]);
-
   const handleUninstall = useCallback(async (extension: MarketplaceExtension) => {
     if (onUninstall) {
       await onUninstall(extension.id);
     }
   }, [onUninstall]);
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
@@ -312,32 +294,31 @@ export default function ExtensionMarketplace({
           <h1 className="text-3xl font-bold text-gray-900">Extension Marketplace</h1>
           <p className="text-gray-600 mt-1">Discover and install extensions to enhance your Kari experience</p>
         </div>
-        <Button
+        <button
           variant="outline"
-          onClick={() => setShowFilters(!showFilters)}
+          onClick={() = aria-label="Button"> setShowFilters(!showFilters)}
           className="flex items-center gap-2"
         >
-          <Filter className="h-4 w-4" />
+          <Filter className="h-4 w-4 sm:w-auto md:w-full" />
           Filters
         </Button>
       </div>
-
       {/* Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:w-auto md:w-full" />
             <input
               type="text"
               placeholder="Search extensions..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) = aria-label="Input"> setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) = aria-label="Select option"> setSortBy(e.target.value as any)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="popular">Most Popular</option>
@@ -346,7 +327,6 @@ export default function ExtensionMarketplace({
             <option value="name">Name (A-Z)</option>
           </select>
         </div>
-
         {showFilters && (
           <Card>
             <CardHeader>
@@ -360,7 +340,7 @@ export default function ExtensionMarketplace({
                     {categories.map(category => (
                       <button
                         key={category.id}
-                        onClick={() => setSelectedCategory(category.id)}
+                        onClick={() = aria-label="Button"> setSelectedCategory(category.id)}
                         className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
                           selectedCategory === category.id
                             ? 'bg-blue-100 text-blue-800 border border-blue-200'
@@ -377,7 +357,6 @@ export default function ExtensionMarketplace({
           </Card>
         )}
       </div>
-
       {/* Results */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -385,7 +364,6 @@ export default function ExtensionMarketplace({
             {filteredAndSortedExtensions.length} extension{filteredAndSortedExtensions.length !== 1 ? 's' : ''} found
           </p>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAndSortedExtensions.map(extension => (
             <ExtensionCard
@@ -397,10 +375,9 @@ export default function ExtensionMarketplace({
             />
           ))}
         </div>
-
         {filteredAndSortedExtensions.length === 0 && (
           <div className="text-center py-12">
-            <Search className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <Search className="mx-auto h-12 w-12 text-gray-400 mb-4 sm:w-auto md:w-full" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No extensions found</h3>
             <p className="text-gray-600">Try adjusting your search terms or filters</p>
           </div>
@@ -409,28 +386,23 @@ export default function ExtensionMarketplace({
     </div>
   );
 }
-
 interface ExtensionCardProps {
   extension: MarketplaceExtension;
   installing: boolean;
   onInstall: () => void;
   onUninstall: () => void;
 }
-
 function ExtensionCard({ extension, installing, onInstall, onUninstall }: ExtensionCardProps) {
   const [showDetails, setShowDetails] = useState(false);
-
   const formatPrice = (price: number | 'free') => {
     if (price === 'free') return 'Free';
     return `$${price}`;
   };
-
   const formatDownloads = (downloads: number) => {
     if (downloads >= 1000000) return `${(downloads / 1000000).toFixed(1)}M`;
     if (downloads >= 1000) return `${(downloads / 1000).toFixed(1)}K`;
     return downloads.toString();
   };
-
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
@@ -440,23 +412,23 @@ function ExtensionCard({ extension, installing, onInstall, onUninstall }: Extens
               <CardTitle className="text-lg">{extension.display_name}</CardTitle>
               {extension.verified && (
                 <span title="Verified Extension">
-                  <Shield className="h-4 w-4 text-blue-600" />
+                  <Shield className="h-4 w-4 text-blue-600 sm:w-auto md:w-full" />
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-              <User className="h-3 w-3" />
+            <div className="flex items-center gap-2 text-sm text-gray-600 mb-2 md:text-base lg:text-lg">
+              <User className="h-3 w-3 sm:w-auto md:w-full" />
               <span>{extension.author}</span>
               <span>•</span>
               <span>v{extension.version}</span>
             </div>
-            <div className="flex items-center gap-4 text-sm text-gray-600">
+            <div className="flex items-center gap-4 text-sm text-gray-600 md:text-base lg:text-lg">
               <div className="flex items-center gap-1">
-                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 sm:w-auto md:w-full" />
                 <span>{extension.rating}</span>
               </div>
               <div className="flex items-center gap-1">
-                <Download className="h-3 w-3" />
+                <Download className="h-3 w-3 sm:w-auto md:w-full" />
                 <span>{formatDownloads(extension.downloads)}</span>
               </div>
             </div>
@@ -471,89 +443,83 @@ function ExtensionCard({ extension, installing, onInstall, onUninstall }: Extens
           </div>
         </div>
       </CardHeader>
-
       <CardContent className="flex-1 flex flex-col">
         <CardDescription className="flex-1 mb-4">
           {extension.description}
         </CardDescription>
-
         <div className="space-y-3">
           {/* Tags */}
           <div className="flex flex-wrap gap-1">
             {extension.tags.slice(0, 3).map(tag => (
-              <Badge key={tag} variant="outline" className="text-xs">
-                <Tag className="h-2 w-2 mr-1" />
+              <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
+                <Tag className="h-2 w-2 mr-1 sm:w-auto md:w-full" />
                 {tag}
               </Badge>
             ))}
             {extension.tags.length > 3 && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                 +{extension.tags.length - 3} more
               </Badge>
             )}
           </div>
-
           {/* Capabilities */}
           <div className="flex flex-wrap gap-1">
             {extension.capabilities.provides_ui && (
-              <Badge variant="secondary" className="text-xs">UI</Badge>
+              <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">UI</Badge>
             )}
             {extension.capabilities.provides_api && (
-              <Badge variant="secondary" className="text-xs">API</Badge>
+              <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">API</Badge>
             )}
             {extension.capabilities.provides_background_tasks && (
-              <Badge variant="secondary" className="text-xs">Tasks</Badge>
+              <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">Tasks</Badge>
             )}
             {extension.capabilities.provides_webhooks && (
-              <Badge variant="secondary" className="text-xs">Webhooks</Badge>
+              <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">Webhooks</Badge>
             )}
           </div>
-
           {/* Actions */}
           <div className="flex gap-2 pt-2">
             {extension.installed ? (
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={onUninstall}
                 className="flex-1"
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
+               aria-label="Button">
+                <CheckCircle className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Installed
               </Button>
             ) : (
-              <Button
+              <button
                 size="sm"
                 onClick={onInstall}
                 disabled={installing}
                 className="flex-1"
-              >
+               aria-label="Button">
                 {installing ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin sm:w-auto md:w-full" />
                     Installing...
                   </>
                 ) : (
                   <>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                     Install
                   </>
                 )}
               </Button>
             )}
-            
-            <Button
+            <button
               variant="outline"
               size="sm"
-              onClick={() => setShowDetails(!showDetails)}
+              onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
             >
               Details
             </Button>
           </div>
-
           {/* Additional Details */}
           {showDetails && (
-            <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-sm">
+            <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-sm md:text-base lg:text-lg">
               <div className="flex justify-between">
                 <span className="text-gray-600">License:</span>
                 <span>{extension.license}</span>
@@ -575,7 +541,7 @@ function ExtensionCard({ extension, installing, onInstall, onUninstall }: Extens
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
                   >
-                    View <ExternalLink className="h-3 w-3" />
+                    View <ExternalLink className="h-3 w-3 sm:w-auto md:w-full" />
                   </a>
                 </div>
               )}

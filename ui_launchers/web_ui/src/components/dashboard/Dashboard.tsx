@@ -20,7 +20,7 @@ export default function Dashboard() {
           {isAdmin ? 'Admin Dashboard' : 'My Dashboard'}
         </h2>
         {!isAdmin && (
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-sm text-muted-foreground mt-2 md:text-base lg:text-lg">
             Welcome, {user.email ?? 'User'}
           </p>
         )}

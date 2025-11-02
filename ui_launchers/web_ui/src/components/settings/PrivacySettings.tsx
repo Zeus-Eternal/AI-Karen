@@ -34,9 +34,9 @@ export default function PrivacySettings() {
       <CardContent className="space-y-6">
         
         <Alert variant="default" className="bg-background border-border">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle className="font-semibold text-sm">Local Browser Storage</AlertTitle>
-            <AlertDescription className="text-xs text-muted-foreground space-y-1">
+            <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+            <AlertTitle className="font-semibold text-sm md:text-base lg:text-lg">Local Browser Storage</AlertTitle>
+            <AlertDescription className="text-xs text-muted-foreground space-y-1 sm:text-sm md:text-base">
                 <p>Karen AI stores your settings and some personalization data directly in your browser's local storage. This ensures your preferences are remembered across sessions on this specific browser. This data includes:</p>
                 <ul className="list-disc list-inside pl-4">
                     <li><strong>API Key (for convenience):</strong> The Google AI API key you enter in the "API Key" tab is saved here to pre-fill the field. For the AI to function, this key must also be configured server-side (typically in an <code>.env</code> file).</li>
@@ -54,8 +54,8 @@ export default function PrivacySettings() {
         </Alert>
         
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-foreground">Managing Personal Information</h3>
-          <p className="text-xs text-muted-foreground">
+          <h3 className="text-sm font-medium text-foreground md:text-base lg:text-lg">Managing Personal Information</h3>
+          <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
             You have direct control over the personal facts Karen remembers. Visit the "Facts" tab to add, review, delete, or confirm facts. Confirmed facts are used to personalize your interactions.
           </p>
         </div>
@@ -63,8 +63,8 @@ export default function PrivacySettings() {
         <Separator />
 
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-foreground">Clearing Current Chat Display</h3>
-          <p className="text-xs text-muted-foreground">
+          <h3 className="text-sm font-medium text-foreground md:text-base lg:text-lg">Clearing Current Chat Display</h3>
+          <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
             To visually clear the messages displayed in the current chat window and start a fresh chat session, simply refresh your browser page. Karen's memory of past topics in new sessions will depend on your "Memory Depth" settings and any "Personal Facts" you've saved.
           </p>
         </div>
@@ -72,11 +72,11 @@ export default function PrivacySettings() {
         <Separator />
 
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-foreground">Server-Side Data (Conceptual)</h3>
+          <h3 className="text-sm font-medium text-foreground md:text-base lg:text-lg">Server-Side Data (Conceptual)</h3>
            <Alert variant="default" className="bg-muted/30">
-            <Info className="h-4 w-4 !text-accent-foreground" />
-            <AlertTitle className="font-semibold text-accent-foreground text-sm">Information: Server Data</AlertTitle>
-            <AlertDescription className="text-muted-foreground text-xs">
+            <Info className="h-4 w-4 !text-accent-foreground sm:w-auto md:w-full" />
+            <AlertTitle className="font-semibold text-accent-foreground text-sm md:text-base lg:text-lg">Information: Server Data</AlertTitle>
+            <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
               This application primarily uses data stored locally in your browser for settings and personalization. Any persistent storage of user accounts or extensive conversation histories on a server would be governed by the application's backend and its own privacy policy. Currently, there are no specific user settings here for managing server-side data retention, as the focus is on local storage and in-session memory.
             </AlertDescription>
           </Alert>
@@ -85,13 +85,13 @@ export default function PrivacySettings() {
         <Separator />
 
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-foreground">Account Data Deletion Request (Conceptual)</h3>
-          <p className="text-xs text-muted-foreground mb-2">
+          <h3 className="text-sm font-medium text-foreground md:text-base lg:text-lg">Account Data Deletion Request (Conceptual)</h3>
+          <p className="text-xs text-muted-foreground mb-2 sm:text-sm md:text-base">
             If this application supported server-side user accounts with persistent data storage, a mechanism to request the deletion of that account and associated data would be provided here.
           </p>
-          <Button 
+          <button 
             variant="outline" 
-            onClick={() => handlePlaceholderClick("Full Data Deletion Request")}
+            onClick={() = aria-label="Button"> handlePlaceholderClick("Full Data Deletion Request")}
             className="w-full sm:w-auto"
             disabled
           >

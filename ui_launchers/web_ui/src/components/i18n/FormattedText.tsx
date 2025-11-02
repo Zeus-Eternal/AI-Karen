@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+
 import { useFormatting, useLocale } from '../../providers/i18n-provider';
 import type { FormatOptions } from '../../lib/i18n';
 

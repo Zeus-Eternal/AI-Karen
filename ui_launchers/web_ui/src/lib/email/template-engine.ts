@@ -4,7 +4,6 @@
  * Template rendering, validation, and management system for email templates.
  * Supports variable substitution, conditional content, and template validation.
  */
-
 import { 
   EmailTemplate, 
   EmailTemplateVariables, 
@@ -13,7 +12,6 @@ import {
   UpdateEmailTemplateRequest 
 } from './types';
 import { DEFAULT_TEMPLATES } from './config';
-
 /**
  * Simple template variable replacement
  * Supports {{variable}} syntax with basic conditional blocks
@@ -24,34 +22,27 @@ export class TemplateEngine {
    */
   static render(template: string, variables: EmailTemplateVariables): string {
     let rendered = template;
-    
     // Replace simple variables {{variable}}
     Object.entries(variables).forEach(([key, value]) => {
       const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
       rendered = rendered.replace(regex, String(value));
     });
-    
     // Handle conditional blocks {{#if variable}}...{{/if}}
     rendered = this.renderConditionals(rendered, variables);
-    
     // Clean up any remaining template syntax
     rendered = this.cleanupTemplate(rendered);
-    
     return rendered;
   }
-  
   /**
    * Render conditional blocks
    */
   private static renderConditionals(template: string, variables: EmailTemplateVariables): string {
     const conditionalRegex = /{{#if\s+(\w+)}}([\s\S]*?){{\/if}}/g;
-    
     return template.replace(conditionalRegex, (match, variable, content) => {
       const value = variables[variable];
       return value ? content : '';
     });
   }
-  
   /**
    * Clean up remaining template syntax
    */
@@ -59,7 +50,6 @@ export class TemplateEngine {
     // Remove any remaining template variables
     return template.replace(/{{[^}]*}}/g, '');
   }
-  
   /**
    * Extract variables from template content
    */
@@ -67,14 +57,11 @@ export class TemplateEngine {
     const variables = new Set<string>();
     const regex = /{{(?:#if\s+)?(\w+)(?:\s*}}|[^}]*}})/g;
     let match;
-    
     while ((match = regex.exec(template)) !== null) {
       variables.add(match[1]);
     }
-    
     return Array.from(variables);
   }
-  
   /**
    * Validate template syntax and variables
    */
@@ -83,43 +70,34 @@ export class TemplateEngine {
     const warnings: string[] = [];
     const htmlIssues: string[] = [];
     const textIssues: string[] = [];
-    
     // Extract variables from content
     const htmlVariables = this.extractVariables(template.html_content);
     const textVariables = this.extractVariables(template.text_content);
     const subjectVariables = this.extractVariables(template.subject);
-    
     const allTemplateVariables = new Set([...htmlVariables, ...textVariables, ...subjectVariables]);
     const declaredVariables = new Set(template.variables);
-    
     // Check for missing variable declarations
     const missingVariables = Array.from(allTemplateVariables).filter(v => !declaredVariables.has(v));
     const unusedVariables = template.variables.filter(v => !allTemplateVariables.has(v));
-    
     if (missingVariables.length > 0) {
       errors.push(`Missing variable declarations: ${missingVariables.join(', ')}`);
     }
-    
     if (unusedVariables.length > 0) {
       warnings.push(`Unused declared variables: ${unusedVariables.join(', ')}`);
     }
-    
     // Validate HTML content
     if (template.html_content) {
       const htmlValidation = this.validateHtmlContent(template.html_content);
       htmlIssues.push(...htmlValidation);
     }
-    
     // Validate text content
     if (!template.text_content.trim()) {
       warnings.push('Text content is empty - consider adding plain text version');
     }
-    
     // Validate subject
     if (!template.subject.trim()) {
       errors.push('Subject is required');
     }
-    
     // If variables provided, test rendering
     if (variables) {
       try {
@@ -130,7 +108,6 @@ export class TemplateEngine {
         errors.push(`Template rendering failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
-    
     return {
       template_id: template.id,
       is_valid: errors.length === 0,
@@ -143,35 +120,28 @@ export class TemplateEngine {
       validated_at: new Date(),
     };
   }
-  
   /**
    * Basic HTML validation
    */
   private static validateHtmlContent(html: string): string[] {
     const issues: string[] = [];
-    
     // Check for basic HTML structure
     if (!html.includes('<html>') && !html.includes('<div>') && !html.includes('<p>')) {
       issues.push('HTML content appears to lack proper structure');
     }
-    
     // Check for unclosed tags (basic check)
     const openTags = html.match(/<[^/][^>]*>/g) || [];
     const closeTags = html.match(/<\/[^>]*>/g) || [];
-    
     if (openTags.length !== closeTags.length) {
       issues.push('Possible unclosed HTML tags detected');
     }
-    
     // Check for inline styles (recommended for email)
     if (html.includes('<style>') || html.includes('class=')) {
       issues.push('Consider using inline styles instead of CSS classes for better email client compatibility');
     }
-    
     return issues;
   }
 }
-
 /**
  * Email Template Manager
  */
@@ -181,7 +151,6 @@ export class EmailTemplateManager {
    */
   static async createDefaultTemplates(createdBy: string): Promise<EmailTemplate[]> {
     const templates: EmailTemplate[] = [];
-    
     for (const [type, defaultTemplate] of Object.entries(DEFAULT_TEMPLATES)) {
       const template: EmailTemplate = {
         id: `default_${type}`,
@@ -196,13 +165,10 @@ export class EmailTemplateManager {
         updated_at: new Date(),
         created_by: createdBy,
       };
-      
       templates.push(template);
     }
-    
     return templates;
   }
-  
   /**
    * Create new template
    */
@@ -220,10 +186,8 @@ export class EmailTemplateManager {
       updated_at: new Date(),
       created_by: createdBy,
     };
-    
     return template;
   }
-  
   /**
    * Update existing template
    */
@@ -242,7 +206,6 @@ export class EmailTemplateManager {
       updated_at: new Date(),
     };
   }
-  
   /**
    * Generate template preview
    */
@@ -251,19 +214,17 @@ export class EmailTemplateManager {
     sampleVariables?: EmailTemplateVariables
   ): { html: string; text: string; subject: string } {
     const variables = sampleVariables || this.generateSampleVariables(template.variables);
-    
     return {
       html: TemplateEngine.render(template.html_content, variables),
       text: TemplateEngine.render(template.text_content, variables),
       subject: TemplateEngine.render(template.subject, variables),
     };
   }
-  
   /**
    * Generate sample variables for preview
    */
   private static generateSampleVariables(variableNames: string[]): EmailTemplateVariables {
-    const sampleData: Record<string, any> = {
+    const : Record<string, any> = {
       name: 'John Doe',
       full_name: 'John Doe',
       email: 'john.doe@example.com',
@@ -283,23 +244,18 @@ export class EmailTemplateManager {
       alert_description: 'Multiple failed login attempts detected from this IP address.',
       action_required: 'Please verify this activity and consider changing your password.',
     };
-    
     const variables: EmailTemplateVariables = {};
-    
     variableNames.forEach(name => {
-      variables[name] = sampleData[name] || `[${name}]`;
+      variables[name] = [name] || `[${name}]`;
     });
-    
     return variables;
   }
-  
   /**
    * Validate all templates
    */
   static async validateAllTemplates(templates: EmailTemplate[]): Promise<EmailTemplateValidation[]> {
     return templates.map(template => TemplateEngine.validateTemplate(template));
   }
-  
   /**
    * Get template by type
    */
@@ -309,7 +265,6 @@ export class EmailTemplateManager {
   ): EmailTemplate | undefined {
     return templates.find(t => t.template_type === type && t.is_active);
   }
-  
   /**
    * Clone template
    */
@@ -324,7 +279,6 @@ export class EmailTemplateManager {
     };
   }
 }
-
 /**
  * Template variable helpers
  */
@@ -346,7 +300,6 @@ export class TemplateVariableHelpers {
       expiry_date: data.expiryDate.toLocaleDateString(),
     };
   }
-  
   /**
    * Get user welcome variables
    */
@@ -367,7 +320,6 @@ export class TemplateVariableHelpers {
       setup_link: data.setupLink,
     };
   }
-  
   /**
    * Get security alert variables
    */

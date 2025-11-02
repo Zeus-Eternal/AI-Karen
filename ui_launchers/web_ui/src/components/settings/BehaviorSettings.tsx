@@ -1,6 +1,4 @@
-
 "use client";
-
 import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,7 +14,6 @@ import type { KarenSettings, MemoryDepth, PersonalityTone, PersonalityVerbosity 
 import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
-
 /**
  * @file BehaviorSettings.tsx
  * @description Component for managing Karen AI's behavior settings.
@@ -31,12 +28,10 @@ export default function BehaviorSettings() {
     activeListenMode: DEFAULT_KAREN_SETTINGS.activeListenMode,
   });
   const { toast } = useToast();
-
   useEffect(() => {
     try {
       const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
       let fullSettings: KarenSettings;
-
       if (storedSettingsStr) {
         const parsedSettings = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
         fullSettings = {
@@ -73,7 +68,6 @@ export default function BehaviorSettings() {
         activeListenMode: fullSettings.activeListenMode,
       });
     } catch (error) {
-      console.error("Failed to load or parse settings from localStorage in BehaviorSettings:", error);
       setSettings({
         memoryDepth: DEFAULT_KAREN_SETTINGS.memoryDepth,
         personalityTone: DEFAULT_KAREN_SETTINGS.personalityTone,
@@ -83,15 +77,12 @@ export default function BehaviorSettings() {
       try {
         localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
       } catch (lsError) {
-        console.error("Failed to save default settings to localStorage after error in BehaviorSettings:", lsError);
       }
     }
   }, []);
-
   const handleSettingChange = (key: keyof typeof settings, value: string | boolean) => {
     setSettings(prevSettings => ({ ...prevSettings, [key]: value }));
   };
-
   const getFullCurrentSettingsFromStorage = (): KarenSettings => {
     let currentFullSettings = { ...DEFAULT_KAREN_SETTINGS };
     try {
@@ -113,11 +104,9 @@ export default function BehaviorSettings() {
         };
       }
     } catch (e) {
-      console.error("Error parsing current settings from storage, falling back to defaults for merge", e);
     }
     return currentFullSettings;
   };
-
   const saveSettingsToLocalStorage = () => {
     try {
       const currentFullSettings = getFullCurrentSettingsFromStorage();
@@ -128,14 +117,12 @@ export default function BehaviorSettings() {
         personalityVerbosity: settings.personalityVerbosity,
         activeListenMode: settings.activeListenMode,
       };
-
       localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(updatedFullSettings));
       toast({
         title: "Behavior Settings Saved",
         description: "Karen's behavior settings have been updated.",
       });
     } catch (error) {
-      console.error("Failed to save behavior settings to localStorage:", error);
       toast({
         title: "Error Saving Settings",
         description: "Could not save behavior settings. localStorage might be disabled or full.",
@@ -143,7 +130,6 @@ export default function BehaviorSettings() {
       });
     }
   };
-
   const resetToDefaults = () => {
     const defaultBehaviorSettings = {
         memoryDepth: DEFAULT_KAREN_SETTINGS.memoryDepth,
@@ -164,7 +150,6 @@ export default function BehaviorSettings() {
         description: "Karen's behavior settings have been reset to defaults.",
       });
     } catch (error) {
-        console.error("Failed to reset behavior settings in localStorage:", error);
         toast({
             title: "Error Resetting Settings",
             description: "Could not reset behavior settings.",
@@ -172,7 +157,6 @@ export default function BehaviorSettings() {
         });
     }
   };
-
   return (
     <Card>
       <CardHeader>
@@ -181,69 +165,66 @@ export default function BehaviorSettings() {
           Adjust how Karen interacts, remembers, and listens. Changes will apply to new interactions.
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="p-0 sm:p-4 md:p-6">
         <div className="divide-y divide-border">
           <div className="px-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="memoryDepth">Memory Depth</Label>
-              <Select
+              <select
                 value={settings.memoryDepth}
-                onValueChange={(value) => handleSettingChange('memoryDepth', value as MemoryDepth)}
+                onValueChange={(value) = aria-label="Select option"> handleSettingChange('memoryDepth', value as MemoryDepth)}
               >
-                <SelectTrigger id="memoryDepth">
-                  <SelectValue placeholder="Select memory depth" />
+                <selectTrigger id="memoryDepth" aria-label="Select option">
+                  <selectValue placeholder="Select memory depth" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="short">Short (Recent context)</SelectItem>
-                  <SelectItem value="medium">Medium (Key topics from session)</SelectItem>
-                  <SelectItem value="long">Long (Broader understanding)</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="short" aria-label="Select option">Short (Recent context)</SelectItem>
+                  <selectItem value="medium" aria-label="Select option">Medium (Key topics from session)</SelectItem>
+                  <selectItem value="long" aria-label="Select option">Long (Broader understanding)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Controls how far back Karen considers conversation history.</p>
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Controls how far back Karen considers conversation history.</p>
             </div>
           </div>
-
           <div className="px-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="personalityTone">Personality Tone</Label>
-              <Select
+              <select
                 value={settings.personalityTone}
-                onValueChange={(value) => handleSettingChange('personalityTone', value as PersonalityTone)}
+                onValueChange={(value) = aria-label="Select option"> handleSettingChange('personalityTone', value as PersonalityTone)}
               >
-                <SelectTrigger id="personalityTone">
-                  <SelectValue placeholder="Select tone" />
+                <selectTrigger id="personalityTone" aria-label="Select option">
+                  <selectValue placeholder="Select tone" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="neutral">Neutral</SelectItem>
-                  <SelectItem value="friendly">Friendly</SelectItem>
-                  <SelectItem value="formal">Formal</SelectItem>
-                  <SelectItem value="humorous">Humorous</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="neutral" aria-label="Select option">Neutral</SelectItem>
+                  <selectItem value="friendly" aria-label="Select option">Friendly</SelectItem>
+                  <selectItem value="formal" aria-label="Select option">Formal</SelectItem>
+                  <selectItem value="humorous" aria-label="Select option">Humorous</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Influences the style of Karen's responses.</p>
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Influences the style of Karen's responses.</p>
             </div>
           </div>
-
           <div className="px-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="personalityVerbosity">Personality Verbosity</Label>
-              <Select
+              <select
                 value={settings.personalityVerbosity}
-                onValueChange={(value) => handleSettingChange('personalityVerbosity', value as PersonalityVerbosity)}
+                onValueChange={(value) = aria-label="Select option"> handleSettingChange('personalityVerbosity', value as PersonalityVerbosity)}
               >
-                <SelectTrigger id="personalityVerbosity">
-                  <SelectValue placeholder="Select verbosity" />
+                <selectTrigger id="personalityVerbosity" aria-label="Select option">
+                  <selectValue placeholder="Select verbosity" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="concise">Concise (To the point)</SelectItem>
-                  <SelectItem value="balanced">Balanced (Detailed but not overly long)</SelectItem>
-                  <SelectItem value="detailed">Detailed (Thorough explanations)</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="concise" aria-label="Select option">Concise (To the point)</SelectItem>
+                  <selectItem value="balanced" aria-label="Select option">Balanced (Detailed but not overly long)</SelectItem>
+                  <selectItem value="detailed" aria-label="Select option">Detailed (Thorough explanations)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Determines the length and detail of Karen's answers.</p>
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Determines the length and detail of Karen's answers.</p>
             </div>
           </div>
-
           <div className="px-6 py-4">
             <div className="space-y-2">
                <div className="flex items-center space-x-2">
@@ -254,7 +235,7 @@ export default function BehaviorSettings() {
                 />
                 <Label htmlFor="active-listen-mode" className="cursor-pointer">Active Listen Mode</Label>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 When enabled, if you use voice input, Karen will automatically try to listen again after she finishes speaking.
               </p>
             </div>
@@ -262,8 +243,8 @@ export default function BehaviorSettings() {
         </div>
       </CardContent>
       <CardFooter className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={resetToDefaults}>Reset to Defaults</Button>
-            <Button onClick={saveSettingsToLocalStorage}>Save Settings</Button>
+            <button variant="outline" onClick={resetToDefaults} aria-label="Button">Reset to Defaults</Button>
+            <button onClick={saveSettingsToLocalStorage} aria-label="Button">Save Settings</Button>
       </CardFooter>
     </Card>
   );

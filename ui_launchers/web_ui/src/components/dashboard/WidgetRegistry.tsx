@@ -20,9 +20,9 @@ import LogWidget from './widgets/LogWidget';
 const TableWidget: React.FC<WidgetProps> = ({ config }) => (
   <div className="flex items-center justify-center h-full text-muted-foreground">
     <div className="text-center">
-      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-      <p className="text-sm">Table Widget</p>
-      <p className="text-xs">{config.title}</p>
+      <AlertCircle className="h-8 w-8 mx-auto mb-2 sm:w-auto md:w-full" />
+      <p className="text-sm md:text-base lg:text-lg">Table Widget</p>
+      <p className="text-xs sm:text-sm md:text-base">{config.title}</p>
     </div>
   </div>
 );

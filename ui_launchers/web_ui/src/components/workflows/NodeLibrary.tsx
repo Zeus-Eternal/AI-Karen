@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,9 +19,7 @@ import {
   FileOutput,
   Zap
 } from 'lucide-react';
-
 import { NodeTemplate } from '@/types/workflows';
-
 const nodeTemplates: NodeTemplate[] = [
   // Input Nodes
   {
@@ -37,12 +34,12 @@ const nodeTemplates: NodeTemplate[] = [
     ],
     config: {
       schema: {
-        placeholder: { type: 'string', default: 'Enter text...' },
+        ...' },
         multiline: { type: 'boolean', default: false },
         required: { type: 'boolean', default: true }
       },
       defaults: {
-        placeholder: 'Enter text...',
+        ...',
         multiline: false,
         required: true
       }
@@ -70,7 +67,6 @@ const nodeTemplates: NodeTemplate[] = [
       }
     }
   },
-
   // Processing Nodes
   {
     id: 'llm-chat',
@@ -155,7 +151,6 @@ const nodeTemplates: NodeTemplate[] = [
       }
     }
   },
-
   // Control Flow Nodes
   {
     id: 'condition',
@@ -208,7 +203,6 @@ const nodeTemplates: NodeTemplate[] = [
       }
     }
   },
-
   // Output Nodes
   {
     id: 'text-output',
@@ -260,7 +254,6 @@ const nodeTemplates: NodeTemplate[] = [
     }
   }
 ];
-
 const categoryIcons = {
   input: FileInput,
   processing: Settings,
@@ -269,20 +262,16 @@ const categoryIcons = {
   ai: Brain,
   integration: Plug,
 };
-
 interface NodeLibraryProps {
   readOnly?: boolean;
 }
-
 export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-
   const categories = useMemo(() => {
     const cats = Array.from(new Set(nodeTemplates.map(node => node.category)));
     return ['all', ...cats];
   }, []);
-
   const filteredNodes = useMemo(() => {
     return nodeTemplates.filter(node => {
       const matchesSearch = node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -291,50 +280,44 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
       return matchesSearch && matchesCategory;
     });
   }, [searchTerm, selectedCategory]);
-
   const onDragStart = (event: React.DragEvent, nodeTemplate: NodeTemplate) => {
     if (readOnly) {
       event.preventDefault();
       return;
     }
-    
     event.dataTransfer.setData('application/reactflow', JSON.stringify(nodeTemplate));
     event.dataTransfer.effectAllowed = 'move';
   };
-
   return (
     <div className="space-y-4">
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+        <input
           placeholder="Search nodes..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) = aria-label="Input"> setSearchTerm(e.target.value)}
           className="pl-10"
         />
       </div>
-
       {/* Category Tabs */}
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-          <TabsTrigger value="input" className="text-xs">Input</TabsTrigger>
-          <TabsTrigger value="ai" className="text-xs">AI</TabsTrigger>
+          <TabsTrigger value="all" className="text-xs sm:text-sm md:text-base">All</TabsTrigger>
+          <TabsTrigger value="input" className="text-xs sm:text-sm md:text-base">Input</TabsTrigger>
+          <TabsTrigger value="ai" className="text-xs sm:text-sm md:text-base">AI</TabsTrigger>
         </TabsList>
         <TabsList className="grid w-full grid-cols-3 mt-1">
-          <TabsTrigger value="control" className="text-xs">Control</TabsTrigger>
-          <TabsTrigger value="integration" className="text-xs">Tools</TabsTrigger>
-          <TabsTrigger value="output" className="text-xs">Output</TabsTrigger>
+          <TabsTrigger value="control" className="text-xs sm:text-sm md:text-base">Control</TabsTrigger>
+          <TabsTrigger value="integration" className="text-xs sm:text-sm md:text-base">Tools</TabsTrigger>
+          <TabsTrigger value="output" className="text-xs sm:text-sm md:text-base">Output</TabsTrigger>
         </TabsList>
       </Tabs>
-
       {/* Node List */}
       <ScrollArea className="h-[600px]">
         <div className="space-y-2">
           {filteredNodes.map((node) => {
             const IconComponent = categoryIcons[node.category as keyof typeof categoryIcons] || Settings;
-            
             return (
               <div
                 key={node.id}
@@ -347,25 +330,22 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
                     ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary'}
                   `}
                 >
-                <CardContent className="p-3">
+                <CardContent className="p-3 sm:p-4 md:p-6">
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
-                      <IconComponent className="h-4 w-4 text-muted-foreground" />
+                      <IconComponent className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                     </div>
-                    
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 sm:w-auto md:w-full">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-medium text-sm truncate">{node.name}</h4>
-                        <Badge variant="outline" className="text-xs">
+                        <h4 className="font-medium text-sm truncate md:text-base lg:text-lg">{node.name}</h4>
+                        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                           {node.category}
                         </Badge>
                       </div>
-                      
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2 sm:text-sm md:text-base">
                         {node.description}
                       </p>
-                      
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
                         <span>{node.inputs.length} in</span>
                         <span>{node.outputs.length} out</span>
                       </div>
@@ -376,18 +356,16 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
               </div>
             );
           })}
-          
           {filteredNodes.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No nodes found matching your search.</p>
+              <Search className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+              <p className="text-sm md:text-base lg:text-lg">No nodes found matching your search.</p>
             </div>
           )}
         </div>
       </ScrollArea>
-      
       {!readOnly && (
-        <div className="text-xs text-muted-foreground text-center p-2 border-t">
+        <div className="text-xs text-muted-foreground text-center p-2 border-t sm:text-sm md:text-base">
           Drag nodes to the canvas to build your workflow
         </div>
       )}

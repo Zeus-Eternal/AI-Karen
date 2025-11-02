@@ -4,10 +4,8 @@
  * Advanced HTTP client with comprehensive error handling, retries, and interceptors.
  * Based on requirements: 12.2, 12.3
  */
-
 import { useAppStore } from "@/store/app-store";
 import { queryClient } from "@/lib/query-client";
-
 // Enhanced API Response types
 export interface ApiResponse<T = any> {
   data: T;
@@ -27,7 +25,6 @@ export interface ApiResponse<T = any> {
     code?: string;
   }>;
 }
-
 interface ApiErrorInterface extends Error {
   code?: string;
   status?: number;
@@ -35,7 +32,6 @@ interface ApiErrorInterface extends Error {
   timestamp?: string;
   requestId?: string;
 }
-
 // Enhanced Request configuration
 export interface EnhancedRequestConfig extends RequestInit {
   timeout?: number;
@@ -50,7 +46,6 @@ export interface EnhancedRequestConfig extends RequestInit {
   invalidateQueries?: string[];
   metadata?: Record<string, any>;
 }
-
 // Interceptor types
 export type RequestInterceptor = (
   config: EnhancedRequestConfig
@@ -63,7 +58,6 @@ export type ErrorInterceptor = (
   error: ApiError,
   config: EnhancedRequestConfig
 ) => ApiError | Promise<ApiError>;
-
 // Request/Response logging
 interface RequestLog {
   id: string;
@@ -74,7 +68,6 @@ interface RequestLog {
   status?: number;
   error?: string;
 }
-
 // Enhanced API Client class
 export class EnhancedApiClient {
   private baseURL: string;
@@ -88,13 +81,11 @@ export class EnhancedApiClient {
   private requestLogs: Map<string, RequestLog> = new Map();
   private rateLimiters: Map<string, { count: number; resetTime: number }> =
     new Map();
-
   constructor(baseURL?: string) {
     this.baseURL = baseURL || this.getBaseURL();
     this.setupDefaultInterceptors();
     this.setupPerformanceMonitoring();
   }
-
   // Get base URL from environment or current location
   private getBaseURL(): string {
     if (typeof window !== "undefined") {
@@ -104,7 +95,6 @@ export class EnhancedApiClient {
     }
     return process.env.NEXT_PUBLIC_API_URL || "/api";
   }
-
   // Setup default interceptors
   private setupDefaultInterceptors(): void {
     // Request interceptor for authentication and headers
@@ -120,49 +110,39 @@ export class EnhancedApiClient {
             };
           }
         }
-
         // Add default headers
         const headers = new Headers(config.headers);
         headers.set("Content-Type", "application/json");
         headers.set("X-Client-Version", process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0");
         headers.set("X-Request-ID", this.generateRequestId());
-
         // Add CSRF token if available
         const csrfToken = this.getCSRFToken();
         if (csrfToken) {
           headers.set("X-CSRF-Token", csrfToken);
         }
-
         config.headers = headers;
-
         return config;
       } catch (error) {
-        console.error("Error in request interceptor:", error);
         return config;
       }
     });
-
     // Request interceptor for loading states
     this.addRequestInterceptor(async (config) => {
       try {
         if (!config.skipLoading) {
           const { setLoading, setGlobalLoading } = useAppStore.getState();
           const loadingKey = config.loadingKey || "api";
-
           if (loadingKey === "global") {
             setGlobalLoading(true);
           } else {
             setLoading(loadingKey, true);
           }
         }
-
         return config;
       } catch (error) {
-        console.error("Error in loading interceptor:", error);
         return config;
       }
     });
-
     // Response interceptor for authentication and error handling
     this.addResponseInterceptor(async (response, config) => {
       try {
@@ -171,14 +151,12 @@ export class EnhancedApiClient {
           const { setLoading, setGlobalLoading, clearLoading } =
             useAppStore.getState();
           const loadingKey = config.loadingKey || "api";
-
           if (loadingKey === "global") {
             setGlobalLoading(false);
           } else {
             clearLoading(loadingKey);
           }
         }
-
         // Handle rate limiting
         if (response.status === 429) {
           const retryAfter = response.headers.get("Retry-After");
@@ -190,7 +168,6 @@ export class EnhancedApiClient {
             });
           }
         }
-
         // Handle 401 unauthorized
         if (response.status === 401) {
           const { logout, addNotification } = useAppStore.getState();
@@ -201,7 +178,6 @@ export class EnhancedApiClient {
             message: "Please log in again to continue.",
           });
         }
-
         // Handle 403 forbidden
         if (response.status === 403) {
           const { addNotification } = useAppStore.getState();
@@ -211,14 +187,11 @@ export class EnhancedApiClient {
             message: "You do not have permission to perform this action.",
           });
         }
-
         return response;
       } catch (error) {
-        console.error("Error in response interceptor:", error);
         return response;
       }
     });
-
     // Error interceptor for global error handling
     this.addErrorInterceptor(async (error, config) => {
       try {
@@ -227,18 +200,15 @@ export class EnhancedApiClient {
           const { setLoading, setGlobalLoading, clearLoading } =
             useAppStore.getState();
           const loadingKey = config.loadingKey || "api";
-
           if (loadingKey === "global") {
             setGlobalLoading(false);
           } else {
             clearLoading(loadingKey);
           }
         }
-
         if (!config.skipErrorHandling) {
           const { addNotification, setConnectionQuality } =
             useAppStore.getState();
-
           // Handle different error types
           switch (error.code) {
             case "NETWORK_ERROR":
@@ -249,7 +219,6 @@ export class EnhancedApiClient {
                 message: "Please check your internet connection and try again.",
               });
               break;
-
             case "TIMEOUT":
               addNotification({
                 type: "warning",
@@ -258,7 +227,6 @@ export class EnhancedApiClient {
                   "The request took too long to complete. Please try again.",
               });
               break;
-
             case "RATE_LIMITED":
               addNotification({
                 type: "warning",
@@ -267,7 +235,6 @@ export class EnhancedApiClient {
                   "Too many requests. Please wait a moment before trying again.",
               });
               break;
-
             default:
               if (error.status && error.status >= 500) {
                 addNotification({
@@ -278,15 +245,12 @@ export class EnhancedApiClient {
               }
           }
         }
-
         return error;
       } catch (interceptorError) {
-        console.error("Error in error interceptor:", interceptorError);
         return error;
       }
     });
   }
-
   // Setup performance monitoring
   private setupPerformanceMonitoring(): void {
     // Clean up old request logs every 5 minutes
@@ -298,7 +262,6 @@ export class EnhancedApiClient {
         }
       }
     }, 5 * 60 * 1000);
-
     // Clean up rate limiters
     setInterval(() => {
       const now = Date.now();
@@ -309,20 +272,16 @@ export class EnhancedApiClient {
       }
     }, 60 * 1000);
   }
-
   // Add interceptors
   public addRequestInterceptor(interceptor: RequestInterceptor): void {
     this.requestInterceptors.push(interceptor);
   }
-
   public addResponseInterceptor(interceptor: ResponseInterceptor): void {
     this.responseInterceptors.push(interceptor);
   }
-
   public addErrorInterceptor(interceptor: ErrorInterceptor): void {
     this.errorInterceptors.push(interceptor);
   }
-
   // Check rate limiting
   private checkRateLimit(endpoint: string): boolean {
     const limiter = this.rateLimiters.get(endpoint);
@@ -331,7 +290,6 @@ export class EnhancedApiClient {
     }
     return true;
   }
-
   // Make HTTP request with enhanced features
   public async request<T = any>(
     endpoint: string,
@@ -339,7 +297,6 @@ export class EnhancedApiClient {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     const requestId = this.generateRequestId();
-
     // Check rate limiting
     if (!this.checkRateLimit(endpoint)) {
       throw new ApiError(
@@ -348,7 +305,6 @@ export class EnhancedApiClient {
         429
       );
     }
-
     const {
       timeout = this.defaultTimeout,
       retries = this.defaultRetries,
@@ -357,7 +313,6 @@ export class EnhancedApiClient {
       invalidateQueries = [],
       ...fetchConfig
     } = config;
-
     // Start request logging
     const requestLog: RequestLog = {
       id: requestId,
@@ -366,25 +321,20 @@ export class EnhancedApiClient {
       timestamp: new Date(),
     };
     this.requestLogs.set(requestId, requestLog);
-
     // Apply request interceptors
     let finalConfig = { ...fetchConfig };
     for (const interceptor of this.requestInterceptors) {
       try {
         finalConfig = await interceptor(finalConfig);
       } catch (error) {
-        console.error("Error applying request interceptor:", error);
         // Continue with current config if interceptor fails
       }
     }
-
     // Create abort controller for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
-
     let lastError: ApiError | null = null;
     const startTime = Date.now();
-
     // Retry logic
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
@@ -392,24 +342,19 @@ export class EnhancedApiClient {
           ...finalConfig,
           signal: controller.signal,
         });
-
         clearTimeout(timeoutId);
-
         // Update request log
         requestLog.duration = Date.now() - startTime;
         requestLog.status = response.status;
-
         // Apply response interceptors
         let finalResponse = response;
         for (const interceptor of this.responseInterceptors) {
           try {
             finalResponse = await interceptor(finalResponse, config);
           } catch (error) {
-            console.error("Error applying response interceptor:", error);
             // Continue with current response if interceptor fails
           }
         }
-
         // Handle HTTP errors
         if (!finalResponse.ok) {
           const errorData = await this.parseErrorResponse(finalResponse);
@@ -420,10 +365,8 @@ export class EnhancedApiClient {
           );
           apiError.details = errorData.details;
           apiError.requestId = requestId;
-
           // Update request log
           requestLog.error = apiError.message;
-
           // Don't retry on client errors (4xx) unless retry condition says otherwise
           if (
             finalResponse.status >= 400 &&
@@ -432,32 +375,25 @@ export class EnhancedApiClient {
           ) {
             throw apiError;
           }
-
           lastError = apiError;
-
           // Wait before retry
           if (attempt < retries && retryCondition(apiError, attempt)) {
             await this.delay(retryDelay * Math.pow(2, attempt));
             continue;
           }
-
           throw apiError;
         }
-
         // Parse successful response
         const data = await this.parseResponse<T>(finalResponse);
-
         // Invalidate queries if specified
         if (invalidateQueries.length > 0) {
           for (const queryKey of invalidateQueries) {
             queryClient.invalidateQueries({ queryKey: [queryKey] });
           }
         }
-
         return data;
       } catch (error: any) {
         clearTimeout(timeoutId);
-
         // Handle different error types
         if (error.name === "AbortError") {
           lastError = new ApiError("Request timeout", "TIMEOUT", 408);
@@ -474,14 +410,11 @@ export class EnhancedApiClient {
             "UNKNOWN_ERROR"
           );
         }
-
         lastError.requestId = requestId;
         lastError.timestamp = new Date().toISOString();
-
         // Update request log
         requestLog.duration = Date.now() - startTime;
         requestLog.error = lastError.message;
-
         // Check retry condition
         if (attempt < retries && retryCondition(lastError, attempt)) {
           await this.delay(
@@ -491,22 +424,18 @@ export class EnhancedApiClient {
         }
       }
     }
-
     // Apply error interceptors
     if (lastError) {
       for (const interceptor of this.errorInterceptors) {
         try {
           lastError = await interceptor(lastError, config);
         } catch (error) {
-          console.error("Error applying error interceptor:", error);
           // Continue with current error if interceptor fails
         }
       }
     }
-
     throw lastError;
   }
-
   // HTTP method helpers
   public async get<T = any>(
     endpoint: string,
@@ -514,7 +443,6 @@ export class EnhancedApiClient {
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...config, method: "GET" });
   }
-
   public async post<T = any>(
     endpoint: string,
     data?: any,
@@ -526,7 +454,6 @@ export class EnhancedApiClient {
       body: data ? JSON.stringify(data) : undefined,
     });
   }
-
   public async put<T = any>(
     endpoint: string,
     data?: any,
@@ -538,7 +465,6 @@ export class EnhancedApiClient {
       body: data ? JSON.stringify(data) : undefined,
     });
   }
-
   public async patch<T = any>(
     endpoint: string,
     data?: any,
@@ -550,14 +476,12 @@ export class EnhancedApiClient {
       body: data ? JSON.stringify(data) : undefined,
     });
   }
-
   public async delete<T = any>(
     endpoint: string,
     config?: EnhancedRequestConfig
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...config, method: "DELETE" });
   }
-
   // Upload with progress tracking
   public async upload<T = any>(
     endpoint: string,
@@ -567,19 +491,16 @@ export class EnhancedApiClient {
   ): Promise<ApiResponse<T>> {
     const formData = new FormData();
     formData.append("file", file);
-
     // Create XMLHttpRequest for progress tracking
     if (onProgress) {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-
         xhr.upload.addEventListener("progress", (event) => {
           if (event.lengthComputable) {
             const progress = (event.loaded / event.total) * 100;
             onProgress(progress);
           }
         });
-
         xhr.addEventListener("load", () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
@@ -598,23 +519,18 @@ export class EnhancedApiClient {
             );
           }
         });
-
         xhr.addEventListener("error", () => {
           reject(new ApiError("Upload failed", "UPLOAD_ERROR"));
         });
-
         xhr.open("POST", `${this.baseURL}${endpoint}`);
-
         // Add auth header
         const token = this.getAuthToken();
         if (token) {
           xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         }
-
         xhr.send(formData);
       });
     }
-
     // Fallback to regular request
     return this.request<T>(endpoint, {
       ...config,
@@ -626,7 +542,6 @@ export class EnhancedApiClient {
       },
     });
   }
-
   // Default retry condition
   private defaultRetryCondition = (
     error: ApiError,
@@ -636,7 +551,6 @@ export class EnhancedApiClient {
     if (error.status && error.status >= 400 && error.status < 500) {
       return error.status === 408 || error.status === 429; // Timeout or rate limited
     }
-
     // Retry on network errors and server errors
     return (
       error.code === "NETWORK_ERROR" ||
@@ -644,14 +558,11 @@ export class EnhancedApiClient {
       (error.status && error.status >= 500)
     );
   };
-
   // Parse response
   private async parseResponse<T>(response: Response): Promise<ApiResponse<T>> {
     const contentType = response.headers.get("content-type");
-
     if (contentType && contentType.includes("application/json")) {
       const json = await response.json();
-
       // Handle different response formats
       if (json.data !== undefined) {
         return json as ApiResponse<T>;
@@ -675,12 +586,10 @@ export class EnhancedApiClient {
       };
     }
   }
-
   // Parse error response
   private async parseErrorResponse(response: Response): Promise<any> {
     try {
       const contentType = response.headers.get("content-type");
-
       if (contentType && contentType.includes("application/json")) {
         return await response.json();
       } else {
@@ -691,7 +600,6 @@ export class EnhancedApiClient {
       return { message: response.statusText || "Unknown error" };
     }
   }
-
   // Utility methods
   private getAuthToken(): string | null {
     if (typeof window !== "undefined") {
@@ -699,7 +607,6 @@ export class EnhancedApiClient {
     }
     return null;
   }
-
   private getCSRFToken(): string | null {
     if (typeof window !== "undefined") {
       const meta = document.querySelector('meta[name="csrf-token"]');
@@ -707,26 +614,21 @@ export class EnhancedApiClient {
     }
     return null;
   }
-
   private generateRequestId(): string {
     return `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
-
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
-
   // Get request logs for debugging
   public getRequestLogs(): RequestLog[] {
     return Array.from(this.requestLogs.values());
   }
-
   // Clear request logs
   public clearRequestLogs(): void {
     this.requestLogs.clear();
   }
 }
-
 // Custom ApiError class
 class ApiError extends Error {
   public code?: string;
@@ -734,7 +636,6 @@ class ApiError extends Error {
   public details?: any;
   public timestamp?: string;
   public requestId?: string;
-
   constructor(message: string, code?: string, status?: number) {
     super(message);
     this.name = "ApiError";
@@ -743,10 +644,8 @@ class ApiError extends Error {
     this.timestamp = new Date().toISOString();
   }
 }
-
 // Create singleton instance
 export const enhancedApiClient = new EnhancedApiClient();
-
 // React hook for enhanced API client
 export function useEnhancedApiClient() {
   return enhancedApiClient;

@@ -4,9 +4,24 @@ import type { Config } from "tailwindcss";
 export default {
     darkMode: ["class"],
     content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    './src/**/*.{js,ts,jsx,tsx}',
+    './src/components/**/*.{js,ts,jsx,tsx}',
+    './src/app/**/*.{js,ts,jsx,tsx}',
+  ],
+  safelist: [
+    // Keep dynamic classes that might be generated
+    'text-green-500',
+    'text-red-500',
+    'text-blue-500',
+    'text-yellow-500',
+    'bg-green-50',
+    'bg-red-50',
+    'bg-blue-50',
+    'bg-yellow-50',
+    'border-green-200',
+    'border-red-200',
+    'border-blue-200',
+    'border-yellow-200',
   ],
   theme: {
   	extend: {

@@ -27,7 +27,7 @@ export const TokenStatus: React.FC = () => {
     <Card className="w-full max-w-md">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Shield className="h-5 w-5" />
+          <Shield className="h-5 w-5 sm:w-auto md:w-full" />
           Token Status
         </CardTitle>
         <CardDescription>
@@ -35,10 +35,10 @@ export const TokenStatus: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+        <div className="flex items-center justify-between p-3 bg-muted rounded-lg sm:p-4 md:p-6">
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Session Status:</span>
+            <Shield className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+            <span className="text-sm font-medium md:text-base lg:text-lg">Session Status:</span>
           </div>
           <Badge variant="default">Cookie-based</Badge>
         </div>
@@ -49,7 +49,7 @@ export const TokenStatus: React.FC = () => {
           </Alert>
         )}
 
-        <div className="text-xs text-muted-foreground space-y-1">
+        <div className="text-xs text-muted-foreground space-y-1 sm:text-sm md:text-base">
           <p>• Authentication uses secure HTTP-only cookies</p>
           <p>• Sessions are managed by the server</p>
           <p>• No token management required</p>

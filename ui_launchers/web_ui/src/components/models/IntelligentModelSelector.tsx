@@ -2,7 +2,6 @@
  * Intelligent Model Selector
  * AI-powered model recommendations with task-based suggestions
  */
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,6 @@ import {
   Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
 interface IntelligentModelSelectorProps {
   showRecommendations?: boolean;
   showPerformanceMetrics?: boolean;
@@ -37,7 +35,6 @@ interface IntelligentModelSelectorProps {
   onModelSelected?: (model: ModelRecommendation) => void;
   className?: string;
 }
-
 interface TaskRequirements {
   description: string;
   type: 'text-generation' | 'code-generation' | 'analysis' | 'translation' | 'summarization' | 'qa' | 'creative' | 'custom';
@@ -48,7 +45,6 @@ interface TaskRequirements {
   latencyRequirement?: number;
   qualityThreshold?: number;
 }
-
 interface ModelRecommendation {
   id: string;
   name: string;
@@ -73,7 +69,6 @@ interface ModelRecommendation {
   estimatedCost: number;
   estimatedLatency: number;
 }
-
 interface OptimizationSuggestion {
   type: 'parameter_tuning' | 'prompt_optimization' | 'batch_processing' | 'caching' | 'model_switch';
   title: string;
@@ -86,7 +81,6 @@ interface OptimizationSuggestion {
     quality?: number;
   };
 }
-
 const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
   showRecommendations = true,
   showPerformanceMetrics = true,
@@ -107,20 +101,16 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
   const [selectedModel, setSelectedModel] = useState<ModelRecommendation | null>(null);
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-
   useEffect(() => {
     if (taskRequirements.description.trim()) {
       const debounceTimer = setTimeout(() => {
         analyzeRequirements();
       }, 1000);
-      
       return () => clearTimeout(debounceTimer);
     }
   }, [taskRequirements]);
-
   const analyzeRequirements = async () => {
     if (!taskRequirements.description.trim()) return;
-    
     setAnalyzing(true);
     try {
       const response = await fetch('/api/models/intelligent-recommendations', {
@@ -128,18 +118,14 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requirements: taskRequirements })
       });
-
       if (!response.ok) throw new Error('Failed to get recommendations');
-
       const data = await response.json();
       setRecommendations(data.recommendations || []);
       setOptimizationSuggestions(data.optimizations || []);
-      
       if (data.recommendations.length > 0) {
         setSelectedModel(data.recommendations[0]);
       }
     } catch (error) {
-      console.error('Error analyzing requirements:', error);
       toast({
         title: 'Analysis Error',
         description: 'Failed to analyze task requirements',
@@ -149,43 +135,37 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
       setAnalyzing(false);
     }
   };
-
   const handleModelSelection = (model: ModelRecommendation) => {
     setSelectedModel(model);
     onModelSelected?.(model);
-    
     toast({
       title: 'Model Selected',
       description: `${model.name} selected for your task`,
     });
   };
-
   const getScoreColor = (score: number): string => {
     if (score >= 90) return 'text-green-600';
     if (score >= 70) return 'text-blue-600';
     if (score >= 50) return 'text-yellow-600';
     return 'text-red-600';
   };
-
   const getScoreBadgeVariant = (score: number) => {
     if (score >= 90) return 'default';
     if (score >= 70) return 'secondary';
     return 'outline';
   };
-
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
       case 'speed':
-        return <Zap className="w-4 h-4" />;
+        return <Zap className="w-4 h-4 sm:w-auto md:w-full" />;
       case 'quality':
-        return <Target className="w-4 h-4" />;
+        return <Target className="w-4 h-4 sm:w-auto md:w-full" />;
       case 'cost':
-        return <DollarSign className="w-4 h-4" />;
+        return <DollarSign className="w-4 h-4 sm:w-auto md:w-full" />;
       default:
-        return <Settings className="w-4 h-4" />;
+        return <Settings className="w-4 h-4 sm:w-auto md:w-full" />;
     }
   };
-
   const getImpactColor = (impact: string): string => {
     switch (impact) {
       case 'high':
@@ -196,14 +176,13 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
         return 'text-gray-600';
     }
   };
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Task Requirements Input */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Brain className="w-5 h-5" />
+            <Brain className="w-5 h-5 sm:w-auto md:w-full" />
             Task Requirements
           </CardTitle>
           <CardDescription>
@@ -213,139 +192,131 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
         <CardContent className="space-y-4">
           <div>
             <Label htmlFor="description">Task Description</Label>
-            <Textarea
+            <textarea
               id="description"
               value={taskRequirements.description}
-              onChange={(e) => setTaskRequirements(prev => ({ ...prev, description: e.target.value }))}
+              onChange={(e) = aria-label="Textarea"> setTaskRequirements(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Describe what you want to accomplish (e.g., 'Generate creative marketing copy for a tech startup', 'Analyze customer feedback sentiment', 'Write Python code for data processing')"
               className="min-h-20"
             />
           </div>
-
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="type">Task Type</Label>
-              <Select value={taskRequirements.type} onValueChange={(value: any) => setTaskRequirements(prev => ({ ...prev, type: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
+              <select value={taskRequirements.type} onValueChange={(value: any) = aria-label="Select option"> setTaskRequirements(prev => ({ ...prev, type: value }))}>
+                <selectTrigger aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="text-generation">Text Generation</SelectItem>
-                  <SelectItem value="code-generation">Code Generation</SelectItem>
-                  <SelectItem value="analysis">Analysis</SelectItem>
-                  <SelectItem value="translation">Translation</SelectItem>
-                  <SelectItem value="summarization">Summarization</SelectItem>
-                  <SelectItem value="qa">Q&A</SelectItem>
-                  <SelectItem value="creative">Creative Writing</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="text-generation" aria-label="Select option">Text Generation</SelectItem>
+                  <selectItem value="code-generation" aria-label="Select option">Code Generation</SelectItem>
+                  <selectItem value="analysis" aria-label="Select option">Analysis</SelectItem>
+                  <selectItem value="translation" aria-label="Select option">Translation</SelectItem>
+                  <selectItem value="summarization" aria-label="Select option">Summarization</SelectItem>
+                  <selectItem value="qa" aria-label="Select option">Q&A</SelectItem>
+                  <selectItem value="creative" aria-label="Select option">Creative Writing</SelectItem>
+                  <selectItem value="custom" aria-label="Select option">Custom</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
             <div>
               <Label htmlFor="priority">Priority</Label>
-              <Select value={taskRequirements.priority} onValueChange={(value: any) => setTaskRequirements(prev => ({ ...prev, priority: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
+              <select value={taskRequirements.priority} onValueChange={(value: any) = aria-label="Select option"> setTaskRequirements(prev => ({ ...prev, priority: value }))}>
+                <selectTrigger aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="speed">
+                <selectContent aria-label="Select option">
+                  <selectItem value="speed" aria-label="Select option">
                     <div className="flex items-center gap-2">
-                      <Zap className="w-4 h-4" />
+                      <Zap className="w-4 h-4 sm:w-auto md:w-full" />
                       Speed
                     </div>
                   </SelectItem>
-                  <SelectItem value="quality">
+                  <selectItem value="quality" aria-label="Select option">
                     <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4" />
+                      <Target className="w-4 h-4 sm:w-auto md:w-full" />
                       Quality
                     </div>
                   </SelectItem>
-                  <SelectItem value="cost">
+                  <selectItem value="cost" aria-label="Select option">
                     <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4" />
+                      <DollarSign className="w-4 h-4 sm:w-auto md:w-full" />
                       Cost
                     </div>
                   </SelectItem>
-                  <SelectItem value="balanced">
+                  <selectItem value="balanced" aria-label="Select option">
                     <div className="flex items-center gap-2">
-                      <Settings className="w-4 h-4" />
+                      <Settings className="w-4 h-4 sm:w-auto md:w-full" />
                       Balanced
                     </div>
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
             <div>
               <Label htmlFor="complexity">Complexity</Label>
-              <Select value={taskRequirements.complexity} onValueChange={(value: any) => setTaskRequirements(prev => ({ ...prev, complexity: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
+              <select value={taskRequirements.complexity} onValueChange={(value: any) = aria-label="Select option"> setTaskRequirements(prev => ({ ...prev, complexity: value }))}>
+                <selectTrigger aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="simple">Simple</SelectItem>
-                  <SelectItem value="moderate">Moderate</SelectItem>
-                  <SelectItem value="complex">Complex</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="simple" aria-label="Select option">Simple</SelectItem>
+                  <selectItem value="moderate" aria-label="Select option">Moderate</SelectItem>
+                  <selectItem value="complex" aria-label="Select option">Complex</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
             <div>
               <Label htmlFor="volume">Expected Volume</Label>
-              <Select value={taskRequirements.expectedVolume} onValueChange={(value: any) => setTaskRequirements(prev => ({ ...prev, expectedVolume: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
+              <select value={taskRequirements.expectedVolume} onValueChange={(value: any) = aria-label="Select option"> setTaskRequirements(prev => ({ ...prev, expectedVolume: value }))}>
+                <selectTrigger aria-label="Select option">
+                  <selectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low (&lt;100/day)</SelectItem>
-                  <SelectItem value="medium">Medium (100-1000/day)</SelectItem>
-                  <SelectItem value="high">High (&gt;1000/day)</SelectItem>
+                <selectContent aria-label="Select option">
+                  <selectItem value="low" aria-label="Select option">Low (&lt;100/day)</SelectItem>
+                  <selectItem value="medium" aria-label="Select option">Medium (100-1000/day)</SelectItem>
+                  <selectItem value="high" aria-label="Select option">High (&gt;1000/day)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="budget">Budget ($/month, optional)</Label>
-              <Input
+              <input
                 id="budget"
                 type="number"
                 value={taskRequirements.budget || ''}
-                onChange={(e) => setTaskRequirements(prev => ({ ...prev, budget: Number(e.target.value) || undefined }))}
+                onChange={(e) = aria-label="Input"> setTaskRequirements(prev => ({ ...prev, budget: Number(e.target.value) || undefined }))}
                 placeholder="100"
               />
             </div>
-
             <div>
               <Label htmlFor="latency">Max Latency (ms, optional)</Label>
-              <Input
+              <input
                 id="latency"
                 type="number"
                 value={taskRequirements.latencyRequirement || ''}
-                onChange={(e) => setTaskRequirements(prev => ({ ...prev, latencyRequirement: Number(e.target.value) || undefined }))}
+                onChange={(e) = aria-label="Input"> setTaskRequirements(prev => ({ ...prev, latencyRequirement: Number(e.target.value) || undefined }))}
                 placeholder="1000"
               />
             </div>
-
             <div>
               <Label htmlFor="quality">Min Quality Score (0-100, optional)</Label>
-              <Input
+              <input
                 id="quality"
                 type="number"
                 value={taskRequirements.qualityThreshold || ''}
-                onChange={(e) => setTaskRequirements(prev => ({ ...prev, qualityThreshold: Number(e.target.value) || undefined }))}
+                onChange={(e) = aria-label="Input"> setTaskRequirements(prev => ({ ...prev, qualityThreshold: Number(e.target.value) || undefined }))}
                 placeholder="80"
                 min="0"
                 max="100"
               />
             </div>
           </div>
-
           {analyzing && (
             <Alert>
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 sm:w-auto md:w-full" />
               <AlertDescription>
                 Analyzing your requirements and finding the best models...
               </AlertDescription>
@@ -353,13 +324,12 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
           )}
         </CardContent>
       </Card>
-
       {/* Model Recommendations */}
       {showRecommendations && recommendations.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="w-5 h-5" />
+              <Lightbulb className="w-5 h-5 sm:w-auto md:w-full" />
               Intelligent Recommendations
             </CardTitle>
             <CardDescription>
@@ -376,14 +346,14 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
                   }`}
                   onClick={() => handleModelSelection(model)}
                 >
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 sm:p-4 md:p-6">
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-medium">{model.name}</h3>
-                          {index === 0 && <Star className="w-4 h-4 text-yellow-500" />}
+                          {index === 0 && <Star className="w-4 h-4 text-yellow-500 sm:w-auto md:w-full" />}
                         </div>
-                        <p className="text-sm text-gray-600">{model.provider}</p>
+                        <p className="text-sm text-gray-600 md:text-base lg:text-lg">{model.provider}</p>
                       </div>
                       <Badge 
                         variant={getScoreBadgeVariant(model.score)}
@@ -392,52 +362,47 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
                         {model.score}%
                       </Badge>
                     </div>
-
                     {/* Suitability Metrics */}
                     <div className="space-y-2 mb-3">
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-sm md:text-base lg:text-lg">
                         <span>Task Match</span>
                         <span>{model.suitability.taskMatch}%</span>
                       </div>
                       <Progress value={model.suitability.taskMatch} className="h-1" />
-                      
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-sm md:text-base lg:text-lg">
                         <span>Performance</span>
                         <span>{model.suitability.performanceMatch}%</span>
                       </div>
                       <Progress value={model.suitability.performanceMatch} className="h-1" />
-                      
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-sm md:text-base lg:text-lg">
                         <span>Cost Fit</span>
                         <span>{model.suitability.costMatch}%</span>
                       </div>
                       <Progress value={model.suitability.costMatch} className="h-1" />
                     </div>
-
                     {/* Key Metrics */}
                     {showPerformanceMetrics && (
-                      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                      <div className="grid grid-cols-2 gap-2 text-xs mb-3 sm:text-sm md:text-base">
                         <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                          <Clock className="w-3 h-3 sm:w-auto md:w-full" />
                           <span>{model.estimatedLatency}ms</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <DollarSign className="w-3 h-3" />
+                          <DollarSign className="w-3 h-3 sm:w-auto md:w-full" />
                           <span>${model.estimatedCost.toFixed(4)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Target className="w-3 h-3" />
+                          <Target className="w-3 h-3 sm:w-auto md:w-full" />
                           <span>{model.metrics.quality}% quality</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" />
+                          <CheckCircle className="w-3 h-3 sm:w-auto md:w-full" />
                           <span>{model.metrics.reliability}% reliable</span>
                         </div>
                       </div>
                     )}
-
                     {/* Top Reasoning */}
-                    <div className="text-xs text-gray-600 mb-3">
+                    <div className="text-xs text-gray-600 mb-3 sm:text-sm md:text-base">
                       <div className="font-medium mb-1">Why this model:</div>
                       <ul className="list-disc list-inside space-y-1">
                         {model.reasoning.slice(0, 2).map((reason, idx) => (
@@ -445,15 +410,14 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
                         ))}
                       </ul>
                     </div>
-
                     {/* Pros/Cons */}
-                    <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm md:text-base">
                       <div>
                         <div className="font-medium text-green-600 mb-1">Pros:</div>
                         <ul className="space-y-1">
                           {model.pros.slice(0, 2).map((pro, idx) => (
                             <li key={idx} className="flex items-start gap-1">
-                              <CheckCircle className="w-3 h-3 text-green-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="w-3 h-3 text-green-600 mt-0.5 flex-shrink-0 sm:w-auto md:w-full" />
                               <span>{pro}</span>
                             </li>
                           ))}
@@ -464,18 +428,17 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
                         <ul className="space-y-1">
                           {model.cons.slice(0, 2).map((con, idx) => (
                             <li key={idx} className="flex items-start gap-1">
-                              <AlertTriangle className="w-3 h-3 text-red-600 mt-0.5 flex-shrink-0" />
+                              <AlertTriangle className="w-3 h-3 text-red-600 mt-0.5 flex-shrink-0 sm:w-auto md:w-full" />
                               <span>{con}</span>
                             </li>
                           ))}
                         </ul>
                       </div>
                     </div>
-
                     {selectedModel?.id === model.id && (
                       <div className="mt-3 pt-3 border-t">
                         <Badge variant="default" className="w-full justify-center">
-                          <CheckCircle className="w-3 h-3 mr-1" />
+                          <CheckCircle className="w-3 h-3 mr-1 sm:w-auto md:w-full" />
                           Selected
                         </Badge>
                       </div>
@@ -487,13 +450,12 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
           </CardContent>
         </Card>
       )}
-
       {/* Optimization Suggestions */}
       {optimizationSuggestions.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
+              <TrendingUp className="w-5 h-5 sm:w-auto md:w-full" />
               Optimization Suggestions
             </CardTitle>
             <CardDescription>
@@ -503,11 +465,11 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2">
               {optimizationSuggestions.map((suggestion, index) => (
-                <div key={index} className="p-4 border rounded-lg">
+                <div key={index} className="p-4 border rounded-lg sm:p-4 md:p-6">
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <h4 className="font-medium">{suggestion.title}</h4>
-                      <p className="text-sm text-gray-600 mt-1">{suggestion.description}</p>
+                      <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">{suggestion.description}</p>
                     </div>
                     <Badge 
                       variant={suggestion.impact === 'high' ? 'default' : 'secondary'}
@@ -516,8 +478,7 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
                       {suggestion.impact} impact
                     </Badge>
                   </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                     <span className="text-gray-600">Effort: {suggestion.effort}</span>
                     <div className="flex items-center gap-3">
                       {suggestion.potentialImprovement.speed && (
@@ -543,13 +504,12 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
           </CardContent>
         </Card>
       )}
-
       {/* Selected Model Summary */}
       {selectedModel && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
+              <CheckCircle className="w-5 h-5 text-green-600 sm:w-auto md:w-full" />
               Selected Model: {selectedModel.name}
             </CardTitle>
           </CardHeader>
@@ -557,7 +517,7 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <h4 className="font-medium mb-2">Performance Estimates</h4>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-sm md:text-base lg:text-lg">
                   <div className="flex justify-between">
                     <span>Expected Latency:</span>
                     <span>{selectedModel.estimatedLatency}ms</span>
@@ -576,12 +536,11 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
                   </div>
                 </div>
               </div>
-              
               <div>
                 <h4 className="font-medium mb-2">Alternative Options</h4>
                 <div className="space-y-1">
                   {selectedModel.alternatives.map((alt, idx) => (
-                    <div key={idx} className="text-sm text-gray-600">
+                    <div key={idx} className="text-sm text-gray-600 md:text-base lg:text-lg">
                       • {alt}
                     </div>
                   ))}
@@ -591,12 +550,11 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
           </CardContent>
         </Card>
       )}
-
       {/* No Recommendations State */}
       {!analyzing && recommendations.length === 0 && taskRequirements.description.trim() && (
         <Card>
           <CardContent className="text-center py-8">
-            <Brain className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <Brain className="w-12 h-12 mx-auto mb-4 text-gray-400 sm:w-auto md:w-full" />
             <h3 className="text-lg font-medium mb-2">No Recommendations Found</h3>
             <p className="text-gray-600">
               Try providing more details about your task or adjusting your requirements
@@ -607,5 +565,4 @@ const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
     </div>
   );
 };
-
 export default IntelligentModelSelector;

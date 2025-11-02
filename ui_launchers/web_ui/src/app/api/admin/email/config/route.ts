@@ -1,3 +1,8 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
+import { 
+import { emailService } from '@/lib/email/email-service';
+import { auditLogger } from '@/lib/audit/audit-logger';
 /**
  * Email Configuration API
  * 
@@ -5,20 +10,18 @@
  * provider settings, testing connections, and service health monitoring.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
-import { 
+
+
   EmailServiceConfig,
   UpdateEmailServiceConfigRequest 
 } from '@/lib/email/types';
-import { 
+
   getEmailServiceConfig, 
   validateEmailConfig, 
   testEmailService,
   EMAIL_PROVIDERS 
 } from '@/lib/email/config';
-import { emailService } from '@/lib/email/email-service';
-import { auditLogger } from '@/lib/audit/audit-logger';
+
 
 /**
  * GET /api/admin/email/config
@@ -30,9 +33,7 @@ export async function GET(request: NextRequest) {
     if (!authResult.success || !authResult.user) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-
     const config = await getEmailServiceConfig();
-
     // Remove sensitive information from response
     const safeConfig = {
       ...config,
@@ -40,7 +41,6 @@ export async function GET(request: NextRequest) {
       api_key: config.api_key ? '***' : '',
       api_secret: config.api_secret ? '***' : '',
     };
-
     // Log audit event
     await auditLogger.log(
       authResult.user?.user_id || 'unknown',
@@ -52,7 +52,6 @@ export async function GET(request: NextRequest) {
         request: request
       }
     );
-
     return NextResponse.json({
       success: true,
       data: {
@@ -60,16 +59,13 @@ export async function GET(request: NextRequest) {
         providers: EMAIL_PROVIDERS,
       }
     });
-
   } catch (error) {
-    console.error('Error getting email configuration:', error);
     return NextResponse.json(
       { error: 'Failed to get email configuration' },
       { status: 500 }
     );
   }
 }
-
 /**
  * PUT /api/admin/email/config
  * Update email service configuration
@@ -80,18 +76,14 @@ export async function PUT(request: NextRequest) {
     if (!authResult.success || !authResult.user) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-
     const body: UpdateEmailServiceConfigRequest = await request.json();
-
     // Get current configuration
     const currentConfig = await getEmailServiceConfig();
-
     // Merge with new configuration
     const newConfig: EmailServiceConfig = {
       ...currentConfig,
       ...body,
     };
-
     // Validate configuration
     const validation = validateEmailConfig(newConfig);
     if (!validation.isValid) {
@@ -103,7 +95,6 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-
     // Test configuration if enabled
     if (newConfig.enabled) {
       const testResult = await testEmailService(newConfig);
@@ -117,12 +108,9 @@ export async function PUT(request: NextRequest) {
         );
       }
     }
-
     // Update email service configuration
     await emailService.updateConfig(newConfig);
-
     // In a real implementation, save to database here
-
     // Log audit event
     await auditLogger.log(
       authResult.user?.user_id || 'unknown',
@@ -137,14 +125,11 @@ export async function PUT(request: NextRequest) {
         request
       }
     );
-
     return NextResponse.json({
       success: true,
       message: 'Email configuration updated successfully'
     });
-
   } catch (error) {
-    console.error('Error updating email configuration:', error);
     return NextResponse.json(
       { error: 'Failed to update email configuration' },
       { status: 500 }

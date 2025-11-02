@@ -240,7 +240,7 @@ const ArtifactCard: React.FC<{
   
   // Render diff view
   const renderDiffView = () => (
-    <div className="font-mono text-sm">
+    <div className="font-mono text-sm md:text-base lg:text-lg">
       {diffLines.map((line, index) => (
         <div
           key={index}
@@ -252,11 +252,11 @@ const ArtifactCard: React.FC<{
           }`}
         >
           {showLineNumbers && (
-            <div className="flex-shrink-0 w-16 px-2 py-1 text-xs text-gray-500 border-r">
-              <span className="inline-block w-6 text-right">
+            <div className="flex-shrink-0 w-16 px-2 py-1 text-xs text-gray-500 border-r sm:w-auto md:w-full">
+              <span className="inline-block w-6 text-right sm:w-auto md:w-full">
                 {line.oldLineNumber || ''}
               </span>
-              <span className="inline-block w-6 text-right ml-1">
+              <span className="inline-block w-6 text-right ml-1 sm:w-auto md:w-full">
                 {line.newLineNumber || ''}
               </span>
             </div>
@@ -302,7 +302,7 @@ const ArtifactCard: React.FC<{
         <div className="flex gap-4">
           {artifact.metadata.confidence && (
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Confidence:</span>
+              <span className="text-sm font-medium md:text-base lg:text-lg">Confidence:</span>
               <Badge variant="outline">
                 {Math.round(artifact.metadata.confidence * 100)}%
               </Badge>
@@ -310,7 +310,7 @@ const ArtifactCard: React.FC<{
           )}
           {artifact.metadata.impact && (
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Impact:</span>
+              <span className="text-sm font-medium md:text-base lg:text-lg">Impact:</span>
               <Badge 
                 variant={
                   artifact.metadata.impact === 'high' ? 'destructive' :
@@ -327,10 +327,10 @@ const ArtifactCard: React.FC<{
         {/* Tags */}
         {artifact.metadata.tags && artifact.metadata.tags.length > 0 && (
           <div>
-            <span className="text-sm font-medium mb-2 block">Tags:</span>
+            <span className="text-sm font-medium mb-2 block md:text-base lg:text-lg">Tags:</span>
             <div className="flex flex-wrap gap-1">
               {artifact.metadata.tags.map((tag, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
+                <Badge key={index} variant="secondary" className="text-xs sm:text-sm md:text-base">
                   {tag}
                 </Badge>
               ))}
@@ -341,11 +341,11 @@ const ArtifactCard: React.FC<{
         {/* Warnings */}
         {artifact.metadata.warnings && artifact.metadata.warnings.length > 0 && (
           <div>
-            <span className="text-sm font-medium mb-2 block text-amber-700">Warnings:</span>
+            <span className="text-sm font-medium mb-2 block text-amber-700 md:text-base lg:text-lg">Warnings:</span>
             <div className="space-y-1">
               {artifact.metadata.warnings.map((warning, index) => (
-                <div key={index} className="flex items-start gap-2 text-sm text-amber-700">
-                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div key={index} className="flex items-start gap-2 text-sm text-amber-700 md:text-base lg:text-lg">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0 sm:w-auto md:w-full" />
                   {warning}
                 </div>
               ))}
@@ -356,11 +356,11 @@ const ArtifactCard: React.FC<{
         {/* Suggestions */}
         {artifact.metadata.suggestions && artifact.metadata.suggestions.length > 0 && (
           <div>
-            <span className="text-sm font-medium mb-2 block text-blue-700">Suggestions:</span>
+            <span className="text-sm font-medium mb-2 block text-blue-700 md:text-base lg:text-lg">Suggestions:</span>
             <div className="space-y-1">
               {artifact.metadata.suggestions.map((suggestion, index) => (
-                <div key={index} className="flex items-start gap-2 text-sm text-blue-700">
-                  <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div key={index} className="flex items-start gap-2 text-sm text-blue-700 md:text-base lg:text-lg">
+                  <Info className="h-4 w-4 mt-0.5 flex-shrink-0 sm:w-auto md:w-full" />
                   {suggestion}
                 </div>
               ))}
@@ -376,8 +376,8 @@ const ArtifactCard: React.FC<{
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 flex-1">
-            <ArtifactIcon className="h-5 w-5 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
+            <ArtifactIcon className="h-5 w-5 mt-0.5 flex-shrink-0 sm:w-auto md:w-full" />
+            <div className="flex-1 min-w-0 sm:w-auto md:w-full">
               <div className="flex items-center gap-2 mb-1">
                 <CardTitle className="text-base">{artifact.title}</CardTitle>
                 {artifact.status && (
@@ -387,7 +387,7 @@ const ArtifactCard: React.FC<{
                 )}
               </div>
               {artifact.description && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   {artifact.description}
                 </p>
               )}
@@ -397,36 +397,36 @@ const ArtifactCard: React.FC<{
           {/* Action buttons */}
           <div className="flex items-center gap-1 ml-4">
             {enableCollapse && (
-              <Button
+              <button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="h-8 w-8 p-0"
+                onClick={() = aria-label="Button"> setIsExpanded(!isExpanded)}
+                className="h-8 w-8 p-0 sm:w-auto md:w-full"
               >
                 {isExpanded ? (
-                  <Minimize2 className="h-4 w-4" />
+                  <Minimize2 className="h-4 w-4 sm:w-auto md:w-full" />
                 ) : (
-                  <Expand className="h-4 w-4" />
+                  <Expand className="h-4 w-4 sm:w-auto md:w-full" />
                 )}
               </Button>
             )}
             
-            <Button
+            <button
               variant="ghost"
               size="sm"
               onClick={handleCopy}
-              className="h-8 w-8 p-0"
-            >
-              <Copy className="h-4 w-4" />
+              className="h-8 w-8 p-0 sm:w-auto md:w-full"
+             aria-label="Button">
+              <Copy className="h-4 w-4 sm:w-auto md:w-full" />
             </Button>
             
-            <Button
+            <button
               variant="ghost"
               size="sm"
               onClick={handleDownload}
-              className="h-8 w-8 p-0"
-            >
-              <Download className="h-4 w-4" />
+              className="h-8 w-8 p-0 sm:w-auto md:w-full"
+             aria-label="Button">
+              <Download className="h-4 w-4 sm:w-auto md:w-full" />
             </Button>
           </div>
         </div>
@@ -464,7 +464,7 @@ const ArtifactCard: React.FC<{
                   disabled={action.disabled}
                   title={action.tooltip}
                 >
-                  <action.icon className="h-4 w-4 mr-2" />
+                  <action.icon className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   {action.label}
                 </Button>
               ))}
@@ -473,33 +473,33 @@ const ArtifactCard: React.FC<{
             {/* Standard approval actions */}
             <div className="flex gap-2">
               {onReject && artifact.status === 'pending' && (
-                <Button
+                <button
                   variant="outline"
                   size="sm"
                   onClick={onReject}
-                >
-                  <X className="h-4 w-4 mr-2" />
+                 aria-label="Button">
+                  <X className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Reject
                 </Button>
               )}
               
               {onApprove && artifact.status === 'pending' && (
-                <Button
+                <button
                   variant="outline"
                   size="sm"
                   onClick={onApprove}
-                >
-                  <Check className="h-4 w-4 mr-2" />
+                 aria-label="Button">
+                  <Check className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Approve
                 </Button>
               )}
               
               {onApply && (artifact.status === 'approved' || artifact.status === 'pending') && (
-                <Button
+                <button
                   size="sm"
                   onClick={onApply}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                 aria-label="Button">
+                  <RefreshCw className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Apply Changes
                 </Button>
               )}
@@ -551,22 +551,22 @@ export const CopilotArtifacts: React.FC<CopilotArtifactsProps> = ({
       {/* Header with controls */}
       {artifacts.length > 1 && (
         <div className="flex items-center justify-between">
-          <div className="text-sm font-medium">
+          <div className="text-sm font-medium md:text-base lg:text-lg">
             {artifacts.length} Copilot Artifact{artifacts.length > 1 ? 's' : ''}
           </div>
-          <Button
+          <button
             variant="ghost"
             size="sm"
             onClick={toggleExpandAll}
-          >
+           aria-label="Button">
             {expandedArtifacts.size === artifacts.length ? (
               <>
-                <EyeOff className="h-4 w-4 mr-2" />
+                <EyeOff className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Collapse All
               </>
             ) : (
               <>
-                <Eye className="h-4 w-4 mr-2" />
+                <Eye className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Expand All
               </>
             )}

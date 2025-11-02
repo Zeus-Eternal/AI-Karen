@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 interface SwitchModelRequest {
   from_model_id?: string;
   to_model_id: string;
   preserve_context?: boolean;
   switch_reason?: string;
 }
-
 interface SwitchModelResponse {
   success: boolean;
   from_model: string | null;
@@ -20,42 +18,27 @@ interface SwitchModelResponse {
   message?: string;
   error?: string;
 }
-
 export async function POST(request: NextRequest) {
-  console.log('🔄 Model Switch API: Request received');
-
   try {
     const body: SwitchModelRequest = await request.json();
     const { from_model_id, to_model_id, preserve_context = true, switch_reason } = body;
-
     if (!to_model_id) {
       return NextResponse.json(
         { error: 'Missing required field: to_model_id' },
         { status: 400 }
       );
     }
-
-    console.log('🔄 Model Switch API: Switching models', {
-      fromModel: from_model_id,
-      toModel: to_model_id,
-      preserveContext: preserve_context,
-      reason: switch_reason
-    });
-
     const { modelSelectionService } = await import('@/lib/model-selection-service');
     const startTime = Date.now();
     const actualFromModel = from_model_id || null;
-
     try {
       // Get current model info
       const stats = await modelSelectionService.getSelectionStats();
       const currentModel = null; // This would need to be tracked separately
-
       // Get available models to validate target model
       const models = await modelSelectionService.getAvailableModels();
       const targetModel = models.find(m => m.id === to_model_id);
       const sourceModel = actualFromModel ? models.find(m => m.id === actualFromModel) : null;
-
       if (!targetModel) {
         return NextResponse.json(
           {
@@ -65,11 +48,9 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
-
       // Check if we're already using the target model
       if (actualFromModel === to_model_id) {
         const switchTime = Date.now() - startTime;
-        
         const response: SwitchModelResponse = {
           success: true,
           from_model: actualFromModel,
@@ -79,28 +60,22 @@ export async function POST(request: NextRequest) {
           capabilities_changed: { added: [], removed: [] },
           message: 'Already using target model'
         };
-
         return NextResponse.json(response);
       }
-
       // Perform the model switch
       const switchResult = await modelSelectionService.switchModel(to_model_id, {
         preserveContext: preserve_context,
         forceSwitch: false
       });
-
       const switchTime = Date.now() - startTime;
-
       if (switchResult.success) {
         // Calculate capability changes
         const sourceCapabilities = sourceModel?.capabilities || [];
         const targetCapabilities = targetModel.capabilities || [];
-        
         const capabilitiesChanged = {
           added: targetCapabilities.filter(cap => !sourceCapabilities.includes(cap)),
           removed: sourceCapabilities.filter(cap => !targetCapabilities.includes(cap))
         };
-
         const response: SwitchModelResponse = {
           success: true,
           from_model: actualFromModel,
@@ -110,14 +85,6 @@ export async function POST(request: NextRequest) {
           capabilities_changed: capabilitiesChanged,
           message: 'Model switched successfully'
         };
-
-        console.log('🔄 Model Switch API: Switch completed successfully', {
-          fromModel: actualFromModel,
-          toModel: to_model_id,
-          switchTime,
-          capabilitiesChanged
-        });
-
         return NextResponse.json(response, {
           headers: {
             'X-Switch-Time': switchTime.toString(),
@@ -125,7 +92,6 @@ export async function POST(request: NextRequest) {
             'X-To-Provider': targetModel.provider
           }
         });
-
       } else {
         return NextResponse.json(
           {
@@ -137,10 +103,7 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
-
     } catch (switchError) {
-      console.error('🔄 Model Switch API: Switch error', switchError);
-      
       return NextResponse.json(
         {
           error: 'Model switch failed',
@@ -151,10 +114,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
   } catch (error) {
-    console.error('🔄 Model Switch API: Request error', error);
-    
     return NextResponse.json(
       {
         error: 'Invalid request',

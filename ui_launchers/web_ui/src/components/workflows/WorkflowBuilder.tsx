@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useCallback, useMemo, useState, useRef } from 'react';
 import ReactFlow, {
   Node,
@@ -18,7 +17,6 @@ import ReactFlow, {
   EdgeTypes,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-
 import { WorkflowDefinition, WorkflowNode, WorkflowEdge, NodeTemplate, WorkflowValidationResult } from '@/types/workflows';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,12 +39,10 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-
 import { WorkflowNodeComponent } from './WorkflowNodeComponent';
 import { NodeLibrary } from './NodeLibrary';
 import { WorkflowValidator } from './WorkflowValidator';
 import { WorkflowTester } from './WorkflowTester';
-
 interface WorkflowBuilderProps {
   workflow?: WorkflowDefinition;
   onSave?: (workflow: WorkflowDefinition) => void;
@@ -54,11 +50,9 @@ interface WorkflowBuilderProps {
   readOnly?: boolean;
   className?: string;
 }
-
 const nodeTypes: NodeTypes = {
   workflowNode: WorkflowNodeComponent,
 };
-
 export function WorkflowBuilder({
   workflow,
   onSave,
@@ -68,7 +62,6 @@ export function WorkflowBuilder({
 }: WorkflowBuilderProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
-  
   // Convert workflow nodes/edges to ReactFlow format
   const initialNodes: Node[] = useMemo(() => 
     workflow?.nodes.map(node => ({
@@ -79,7 +72,6 @@ export function WorkflowBuilder({
       style: node.style,
     })) || [], [workflow]
   );
-
   const initialEdges: Edge[] = useMemo(() => 
     workflow?.edges.map(edge => ({
       id: edge.id,
@@ -93,7 +85,6 @@ export function WorkflowBuilder({
       data: edge.data,
     })) || [], [workflow]
   );
-
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -102,7 +93,6 @@ export function WorkflowBuilder({
   const [isTesting, setIsTesting] = useState(false);
   const [showMiniMap, setShowMiniMap] = useState(true);
   const [showBackground, setShowBackground] = useState(true);
-
   const onConnect = useCallback(
     (params: Connection) => {
       if (readOnly) return;
@@ -110,34 +100,26 @@ export function WorkflowBuilder({
     },
     [setEdges, readOnly]
   );
-
   const onInit = useCallback((instance: ReactFlowInstance) => {
     setReactFlowInstance(instance);
   }, []);
-
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
-
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-
       if (!reactFlowInstance || readOnly) return;
-
       const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
       if (!reactFlowBounds) return;
-
       const nodeTemplate = JSON.parse(
         event.dataTransfer.getData('application/reactflow')
       ) as NodeTemplate;
-
       const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
-
       const newNode: Node = {
         id: `${nodeTemplate.id}-${Date.now()}`,
         type: 'workflowNode',
@@ -151,20 +133,16 @@ export function WorkflowBuilder({
           outputs: nodeTemplate.outputs,
         },
       };
-
       setNodes((nds) => nds.concat(newNode));
     },
     [reactFlowInstance, setNodes, readOnly]
   );
-
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
   }, []);
-
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
   }, []);
-
   const validateWorkflow = useCallback(async () => {
     setIsValidating(true);
     try {
@@ -172,26 +150,21 @@ export function WorkflowBuilder({
       const result = await WorkflowValidator.validate(workflowDef);
       setValidationResult(result);
     } catch (error) {
-      console.error('Validation error:', error);
     } finally {
       setIsValidating(false);
     }
   }, [nodes, edges]);
-
   const testWorkflow = useCallback(async () => {
     if (!onTest) return;
-    
     setIsTesting(true);
     try {
       const workflowDef = convertToWorkflowDefinition();
       await onTest(workflowDef);
     } catch (error) {
-      console.error('Test error:', error);
     } finally {
       setIsTesting(false);
     }
   }, [nodes, edges, onTest]);
-
   const convertToWorkflowDefinition = useCallback((): WorkflowDefinition => {
     const workflowNodes: WorkflowNode[] = nodes.map(node => ({
       id: node.id,
@@ -200,7 +173,6 @@ export function WorkflowBuilder({
       data: node.data,
       style: node.style,
     }));
-
     const workflowEdges: WorkflowEdge[] = edges.map(edge => ({
       id: edge.id,
       source: edge.source,
@@ -212,7 +184,6 @@ export function WorkflowBuilder({
       style: edge.style,
       data: edge.data,
     }));
-
     return {
       id: workflow?.id || `workflow-${Date.now()}`,
       name: workflow?.name || 'Untitled Workflow',
@@ -230,26 +201,21 @@ export function WorkflowBuilder({
       },
     };
   }, [nodes, edges, workflow]);
-
   const handleSave = useCallback(() => {
     if (!onSave) return;
     const workflowDef = convertToWorkflowDefinition();
     onSave(workflowDef);
   }, [convertToWorkflowDefinition, onSave]);
-
   const deleteSelectedNode = useCallback(() => {
     if (!selectedNode || readOnly) return;
-    
     setNodes((nds) => nds.filter((node) => node.id !== selectedNode.id));
     setEdges((eds) => eds.filter((edge) => 
       edge.source !== selectedNode.id && edge.target !== selectedNode.id
     ));
     setSelectedNode(null);
   }, [selectedNode, setNodes, setEdges, readOnly]);
-
   const duplicateSelectedNode = useCallback(() => {
     if (!selectedNode || readOnly) return;
-    
     const newNode: Node = {
       ...selectedNode,
       id: `${selectedNode.id}-copy-${Date.now()}`,
@@ -258,24 +224,21 @@ export function WorkflowBuilder({
         y: selectedNode.position.y + 50,
       },
     };
-    
     setNodes((nds) => nds.concat(newNode));
   }, [selectedNode, setNodes, readOnly]);
-
   return (
     <div className={`flex h-full ${className}`}>
       {/* Node Library Sidebar */}
-      <div className="w-80 border-r bg-background">
-        <div className="p-4">
+      <div className="w-80 border-r bg-background sm:w-auto md:w-full">
+        <div className="p-4 sm:p-4 md:p-6">
           <h3 className="text-lg font-semibold mb-4">Node Library</h3>
           <NodeLibrary readOnly={readOnly} />
         </div>
       </div>
-
       {/* Main Workflow Canvas */}
       <div className="flex-1 flex flex-col">
         {/* Toolbar */}
-        <div className="border-b p-4">
+        <div className="border-b p-4 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-semibold">
@@ -287,86 +250,77 @@ export function WorkflowBuilder({
                 </Badge>
               )}
             </div>
-            
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowMiniMap(!showMiniMap)}
+                onClick={() = aria-label="Button"> setShowMiniMap(!showMiniMap)}
               >
-                {showMiniMap ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showMiniMap ? <EyeOff className="h-4 w-4 sm:w-auto md:w-full" /> : <Eye className="h-4 w-4 sm:w-auto md:w-full" />}
                 MiniMap
               </Button>
-              
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowBackground(!showBackground)}
+                onClick={() = aria-label="Button"> setShowBackground(!showBackground)}
               >
-                {showBackground ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showBackground ? <EyeOff className="h-4 w-4 sm:w-auto md:w-full" /> : <Eye className="h-4 w-4 sm:w-auto md:w-full" />}
                 Grid
               </Button>
-              
               <Separator orientation="vertical" className="h-6" />
-              
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={validateWorkflow}
                 disabled={isValidating}
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
+               aria-label="Button">
+                <CheckCircle className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Validate
               </Button>
-              
               {onTest && (
-                <Button
+                <button
                   variant="outline"
                   size="sm"
                   onClick={testWorkflow}
                   disabled={isTesting}
-                >
-                  <Play className="h-4 w-4 mr-2" />
+                 aria-label="Button">
+                  <Play className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Test
                 </Button>
               )}
-              
               {onSave && !readOnly && (
-                <Button
+                <button
                   size="sm"
                   onClick={handleSave}
-                >
-                  <Save className="h-4 w-4 mr-2" />
+                 aria-label="Button">
+                  <Save className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                   Save
                 </Button>
               )}
             </div>
           </div>
-          
           {/* Validation Results */}
           {validationResult && (
             <div className="mt-4">
               {validationResult.errors.length > 0 && (
                 <Alert variant="destructive" className="mb-2">
-                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
                   <AlertDescription>
                     {validationResult.errors.length} error(s) found. Please fix them before saving.
                   </AlertDescription>
                 </Alert>
               )}
-              
               {validationResult.warnings.length > 0 && (
                 <Alert className="mb-2">
-                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTriangle className="h-4 w-4 sm:w-auto md:w-full" />
                   <AlertDescription>
                     {validationResult.warnings.length} warning(s) found.
                   </AlertDescription>
                 </Alert>
               )}
-              
               {validationResult.valid && (
                 <Alert className="mb-2">
-                  <CheckCircle className="h-4 w-4" />
+                  <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />
                   <AlertDescription>
                     Workflow validation passed successfully.
                   </AlertDescription>
@@ -375,7 +329,6 @@ export function WorkflowBuilder({
             </div>
           )}
         </div>
-
         {/* ReactFlow Canvas */}
         <div className="flex-1" ref={reactFlowWrapper}>
           <ReactFlow
@@ -399,61 +352,57 @@ export function WorkflowBuilder({
           </ReactFlow>
         </div>
       </div>
-
       {/* Properties Panel */}
       {selectedNode && (
-        <div className="w-80 border-l bg-background">
-          <div className="p-4">
+        <div className="w-80 border-l bg-background sm:w-auto md:w-full">
+          <div className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Node Properties</h3>
               <div className="flex gap-2">
                 {!readOnly && (
                   <>
-                    <Button
+                    <button
                       variant="outline"
                       size="sm"
                       onClick={duplicateSelectedNode}
-                    >
-                      <Copy className="h-4 w-4" />
+                     aria-label="Button">
+                      <Copy className="h-4 w-4 sm:w-auto md:w-full" />
                     </Button>
-                    <Button
+                    <button
                       variant="outline"
                       size="sm"
                       onClick={deleteSelectedNode}
-                    >
-                      <Trash2 className="h-4 w-4" />
+                     aria-label="Button">
+                      <Trash2 className="h-4 w-4 sm:w-auto md:w-full" />
                     </Button>
                   </>
                 )}
               </div>
             </div>
-            
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">{selectedNode.data.label}</CardTitle>
+                <CardTitle className="text-sm md:text-base lg:text-lg">{selectedNode.data.label}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium">Description</label>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <label className="text-sm font-medium md:text-base lg:text-lg">Description</label>
+                    <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                       {selectedNode.data.description || 'No description available'}
                     </p>
                   </div>
-                  
                   <div>
-                    <label className="text-sm font-medium">Type</label>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <label className="text-sm font-medium md:text-base lg:text-lg">Type</label>
+                    <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                       {selectedNode.data.nodeType || 'custom'}
                     </p>
                   </div>
-                  
                   {selectedNode.data.inputs && selectedNode.data.inputs.length > 0 && (
                     <div>
-                      <label className="text-sm font-medium">Inputs</label>
+                      <label className="text-sm font-medium md:text-base lg:text-lg">Inputs</label>
                       <div className="mt-2 space-y-1">
                         {selectedNode.data.inputs.map((input: any) => (
-                          <div key={input.id} className="text-sm">
+                          <div key={input.id} className="text-sm md:text-base lg:text-lg">
                             <span className="font-medium">{input.name}</span>
                             <span className="text-muted-foreground ml-2">({input.type})</span>
                             {input.required && <span className="text-red-500 ml-1">*</span>}
@@ -462,13 +411,12 @@ export function WorkflowBuilder({
                       </div>
                     </div>
                   )}
-                  
                   {selectedNode.data.outputs && selectedNode.data.outputs.length > 0 && (
                     <div>
-                      <label className="text-sm font-medium">Outputs</label>
+                      <label className="text-sm font-medium md:text-base lg:text-lg">Outputs</label>
                       <div className="mt-2 space-y-1">
                         {selectedNode.data.outputs.map((output: any) => (
-                          <div key={output.id} className="text-sm">
+                          <div key={output.id} className="text-sm md:text-base lg:text-lg">
                             <span className="font-medium">{output.name}</span>
                             <span className="text-muted-foreground ml-2">({output.type})</span>
                           </div>
@@ -485,7 +433,6 @@ export function WorkflowBuilder({
     </div>
   );
 }
-
 export function WorkflowBuilderProvider({ children }: { children: React.ReactNode }) {
   return (
     <ReactFlowProvider>

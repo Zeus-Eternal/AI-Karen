@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +7,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
+'use client';
+
+
+
+
+
+
+
+
+
   Play, 
   Square, 
   Pause, 
@@ -27,13 +35,11 @@ import {
   BarChart3
 } from 'lucide-react';
 
-import { 
   WorkflowExecution, 
   ExecutionLog, 
   WorkflowDefinition,
   BottleneckAnalysis 
 } from '@/types/workflows';
-
 interface WorkflowMonitorProps {
   executions: WorkflowExecution[];
   workflows: WorkflowDefinition[];
@@ -44,7 +50,6 @@ interface WorkflowMonitorProps {
   onExportLogs?: (executionId: string) => void;
   className?: string;
 }
-
 const statusColors = {
   pending: 'bg-gray-100 text-gray-700 border-gray-200',
   running: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -52,14 +57,12 @@ const statusColors = {
   failed: 'bg-red-100 text-red-700 border-red-200',
   cancelled: 'bg-orange-100 text-orange-700 border-orange-200',
 };
-
 const logLevelColors = {
   debug: 'text-gray-600 bg-gray-50 border-gray-200',
   info: 'text-blue-600 bg-blue-50 border-blue-200',
   warn: 'text-yellow-600 bg-yellow-50 border-yellow-200',
   error: 'text-red-600 bg-red-50 border-red-200',
 };
-
 export function WorkflowMonitor({
   executions,
   workflows,
@@ -75,20 +78,16 @@ export function WorkflowMonitor({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [logLevelFilter, setLogLevelFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
-
   const filteredExecutions = useMemo(() => {
     return executions.filter(execution => {
       const workflow = workflows.find(w => w.id === execution.workflowId);
       const workflowName = workflow?.name || 'Unknown';
-      
       const matchesSearch = workflowName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            execution.id.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || execution.status === statusFilter;
-      
       return matchesSearch && matchesStatus;
     });
   }, [executions, workflows, searchTerm, statusFilter]);
-
   const executionStats = useMemo(() => {
     const stats = {
       total: executions.length,
@@ -100,31 +99,24 @@ export function WorkflowMonitor({
       averageDuration: 0,
       successRate: 0,
     };
-
     let totalDuration = 0;
     let completedCount = 0;
-
     executions.forEach(execution => {
       stats[execution.status]++;
-      
       if (execution.duration) {
         totalDuration += execution.duration;
         completedCount++;
       }
     });
-
     stats.averageDuration = completedCount > 0 ? totalDuration / completedCount : 0;
     stats.successRate = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
-
     return stats;
   }, [executions]);
-
   const handleExecutionAction = useCallback(async (
     action: 'pause' | 'resume' | 'cancel' | 'retry',
     executionId: string
   ) => {
     setIsLoading(prev => ({ ...prev, [executionId]: true }));
-    
     try {
       switch (action) {
         case 'pause':
@@ -141,43 +133,37 @@ export function WorkflowMonitor({
           break;
       }
     } catch (error) {
-      console.error(`Failed to ${action} execution:`, error);
     } finally {
       setIsLoading(prev => ({ ...prev, [executionId]: false }));
     }
   }, [onPauseExecution, onResumeExecution, onCancelExecution, onRetryExecution]);
-
   const formatDuration = (duration: number) => {
     if (duration < 1000) return `${duration}ms`;
     if (duration < 60000) return `${(duration / 1000).toFixed(1)}s`;
     return `${(duration / 60000).toFixed(1)}m`;
   };
-
   const getExecutionIcon = (status: string) => {
     switch (status) {
       case 'running':
-        return <Activity className="h-4 w-4 animate-pulse" />;
+        return <Activity className="h-4 w-4 animate-pulse sm:w-auto md:w-full" />;
       case 'completed':
-        return <CheckCircle className="h-4 w-4" />;
+        return <CheckCircle className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'failed':
-        return <AlertCircle className="h-4 w-4" />;
+        return <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'pending':
-        return <Clock className="h-4 w-4" />;
+        return <Clock className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'cancelled':
-        return <Square className="h-4 w-4" />;
+        return <Square className="h-4 w-4 sm:w-auto md:w-full" />;
       default:
-        return <Clock className="h-4 w-4" />;
+        return <Clock className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
-
   const filteredLogs = useMemo(() => {
     if (!selectedExecution) return [];
-    
     return selectedExecution.logs.filter(log => 
       logLevelFilter === 'all' || log.level === logLevelFilter
     );
   }, [selectedExecution, logLevelFilter]);
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Monitor Header */}
@@ -186,23 +172,21 @@ export function WorkflowMonitor({
           <h2 className="text-2xl font-bold">Workflow Monitor</h2>
           <p className="text-muted-foreground">Track workflow executions and performance</p>
         </div>
-        
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
+            <Search className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
             <input
               type="text"
               placeholder="Search executions..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-3 py-2 border border-input rounded-md text-sm w-64"
+              onChange={(e) = aria-label="Input"> setSearchTerm(e.target.value)}
+              className="px-3 py-2 border border-input rounded-md text-sm w-64 sm:w-auto md:w-full"
             />
           </div>
-          
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-input rounded-md text-sm"
+            onChange={(e) = aria-label="Select option"> setStatusFilter(e.target.value)}
+            className="px-3 py-2 border border-input rounded-md text-sm md:text-base lg:text-lg"
           >
             <option value="all">All Status</option>
             <option value="running">Running</option>
@@ -213,62 +197,57 @@ export function WorkflowMonitor({
           </select>
         </div>
       </div>
-
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Executions</p>
+                <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Total Executions</p>
                 <p className="text-2xl font-bold">{executionStats.total}</p>
               </div>
-              <Activity className="h-8 w-8 text-muted-foreground" />
+              <Activity className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
             </div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Success Rate</p>
+                <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Success Rate</p>
                 <p className="text-2xl font-bold text-green-600">
                   {executionStats.successRate.toFixed(1)}%
                 </p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-600" />
+              <TrendingUp className="h-8 w-8 text-green-600 sm:w-auto md:w-full" />
             </div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Running</p>
+                <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Running</p>
                 <p className="text-2xl font-bold text-blue-600">{executionStats.running}</p>
               </div>
-              <Play className="h-8 w-8 text-blue-600" />
+              <Play className="h-8 w-8 text-blue-600 sm:w-auto md:w-full" />
             </div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Avg Duration</p>
+                <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">Avg Duration</p>
                 <p className="text-2xl font-bold">
                   {formatDuration(executionStats.averageDuration)}
                 </p>
               </div>
-              <Clock className="h-8 w-8 text-muted-foreground" />
+              <Clock className="h-8 w-8 text-muted-foreground sm:w-auto md:w-full" />
             </div>
           </CardContent>
         </Card>
       </div>
-
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Execution List */}
@@ -282,7 +261,6 @@ export function WorkflowMonitor({
                 <div className="space-y-4">
                   {filteredExecutions.map((execution) => {
                     const workflow = workflows.find(w => w.id === execution.workflowId);
-                    
                     return (
                       <Card
                         key={execution.id}
@@ -291,7 +269,7 @@ export function WorkflowMonitor({
                         }`}
                         onClick={() => setSelectedExecution(execution)}
                       >
-                        <CardContent className="p-4">
+                        <CardContent className="p-4 sm:p-4 md:p-6">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
@@ -303,8 +281,7 @@ export function WorkflowMonitor({
                                   {execution.status}
                                 </Badge>
                               </div>
-                              
-                              <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                              <div className="grid grid-cols-2 gap-4 text-sm mb-3 md:text-base lg:text-lg">
                                 <div>
                                   <span className="text-muted-foreground">Started:</span>
                                   <span className="ml-2 font-medium">
@@ -326,83 +303,77 @@ export function WorkflowMonitor({
                                   <span className="ml-2 font-medium">{execution.metadata.triggeredBy}</span>
                                 </div>
                               </div>
-                              
                               {/* Progress Bar */}
                               <Progress value={execution.progress} className="mb-3" />
-                              
                               {/* Current Node */}
                               {execution.currentNode && (
-                                <div className="text-sm">
+                                <div className="text-sm md:text-base lg:text-lg">
                                   <span className="text-muted-foreground">Current step:</span>
                                   <span className="ml-2 font-medium">{execution.currentNode}</span>
                                 </div>
                               )}
-                              
                               {/* Error Message */}
                               {execution.error && (
                                 <Alert variant="destructive" className="mt-2">
-                                  <AlertCircle className="h-4 w-4" />
-                                  <AlertDescription className="text-sm">
+                                  <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
+                                  <AlertDescription className="text-sm md:text-base lg:text-lg">
                                     {execution.error}
                                   </AlertDescription>
                                 </Alert>
                               )}
                             </div>
-                            
                             {/* Action Buttons */}
                             <div className="flex flex-col gap-2 ml-4">
                               {execution.status === 'running' && (
                                 <>
-                                  <Button
+                                  <button
                                     size="sm"
                                     variant="outline"
-                                    onClick={(e) => {
+                                    onClick={(e) = aria-label="Button"> {
                                       e.stopPropagation();
                                       handleExecutionAction('pause', execution.id);
                                     }}
                                     disabled={isLoading[execution.id]}
                                   >
-                                    <Pause className="h-4 w-4 mr-1" />
+                                    <Pause className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                                     Pause
                                   </Button>
-                                  <Button
+                                  <button
                                     size="sm"
                                     variant="outline"
-                                    onClick={(e) => {
+                                    onClick={(e) = aria-label="Button"> {
                                       e.stopPropagation();
                                       handleExecutionAction('cancel', execution.id);
                                     }}
                                     disabled={isLoading[execution.id]}
                                   >
-                                    <Square className="h-4 w-4 mr-1" />
+                                    <Square className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                                     Cancel
                                   </Button>
                                 </>
                               )}
-                              
                               {execution.status === 'failed' && (
-                                <Button
+                                <button
                                   size="sm"
-                                  onClick={(e) => {
+                                  onClick={(e) = aria-label="Button"> {
                                     e.stopPropagation();
                                     handleExecutionAction('retry', execution.id);
                                   }}
                                   disabled={isLoading[execution.id]}
                                 >
-                                  <RotateCcw className="h-4 w-4 mr-1" />
+                                  <RotateCcw className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                                   Retry
                                 </Button>
                               )}
-                              
-                              <Button
+                              <button
                                 size="sm"
                                 variant="outline"
-                                onClick={(e) => {
+                                onClick={(e) = aria-label="Button"> {
                                   e.stopPropagation();
                                   onExportLogs?.(execution.id);
                                 }}
                               >
-                                <Download className="h-4 w-4 mr-1" />
+                                <Download className="h-4 w-4 mr-1 sm:w-auto md:w-full" />
                                 Export
                               </Button>
                             </div>
@@ -411,10 +382,9 @@ export function WorkflowMonitor({
                       </Card>
                     );
                   })}
-                  
                   {filteredExecutions.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                      <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <Activity className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
                       <p>No executions found matching your criteria.</p>
                     </div>
                   )}
@@ -423,7 +393,6 @@ export function WorkflowMonitor({
             </CardContent>
           </Card>
         </div>
-
         {/* Execution Details Panel */}
         <div>
           {selectedExecution ? (
@@ -438,7 +407,7 @@ export function WorkflowMonitor({
             <Card>
               <CardContent className="flex items-center justify-center h-[600px] text-muted-foreground">
                 <div className="text-center">
-                  <Eye className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <Eye className="h-8 w-8 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
                   <p>Select an execution to view details</p>
                 </div>
               </CardContent>
@@ -449,7 +418,6 @@ export function WorkflowMonitor({
     </div>
   );
 }
-
 interface ExecutionDetailsPanelProps {
   execution: WorkflowExecution;
   workflow?: WorkflowDefinition;
@@ -457,7 +425,6 @@ interface ExecutionDetailsPanelProps {
   onLogLevelFilterChange: (level: string) => void;
   onClose: () => void;
 }
-
 function ExecutionDetailsPanel({ 
   execution, 
   workflow, 
@@ -470,7 +437,6 @@ function ExecutionDetailsPanel({
       logLevelFilter === 'all' || log.level === logLevelFilter
     );
   }, [execution.logs, logLevelFilter]);
-
   return (
     <Card>
       <CardHeader>
@@ -481,7 +447,7 @@ function ExecutionDetailsPanel({
               {execution.status}
             </Badge>
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <button variant="ghost" size="sm" onClick={onClose} aria-label="Button">
             ×
           </Button>
         </div>
@@ -493,15 +459,14 @@ function ExecutionDetailsPanel({
             <TabsTrigger value="results">Results</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
           </TabsList>
-          
           <TabsContent value="logs" className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Filter className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                 <select
                   value={logLevelFilter}
-                  onChange={(e) => onLogLevelFilterChange(e.target.value)}
-                  className="px-2 py-1 border border-input rounded text-sm"
+                  onChange={(e) = aria-label="Select option"> onLogLevelFilterChange(e.target.value)}
+                  className="px-2 py-1 border border-input rounded text-sm md:text-base lg:text-lg"
                 >
                   <option value="all">All Levels</option>
                   <option value="debug">Debug</option>
@@ -514,7 +479,6 @@ function ExecutionDetailsPanel({
                 {filteredLogs.length} entries
               </Badge>
             </div>
-            
             <ScrollArea className="h-[400px]">
               <div className="space-y-2">
                 {filteredLogs.map((log, index) => (
@@ -523,89 +487,81 @@ function ExecutionDetailsPanel({
                     className={`p-3 rounded border text-sm ${logLevelColors[log.level]}`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                         {log.level.toUpperCase()}
                       </Badge>
-                      <span className="text-xs opacity-75">
+                      <span className="text-xs opacity-75 sm:text-sm md:text-base">
                         {log.timestamp.toLocaleTimeString()}
                       </span>
                     </div>
-                    
                     <p className="font-medium">{log.message}</p>
-                    
                     {log.nodeId && (
-                      <p className="text-xs opacity-75 mt-1">
+                      <p className="text-xs opacity-75 mt-1 sm:text-sm md:text-base">
                         Node: {log.nodeId}
                       </p>
                     )}
-                    
                     {log.data && (
                       <details className="mt-2">
-                        <summary className="text-xs cursor-pointer opacity-75">
+                        <summary className="text-xs cursor-pointer opacity-75 sm:text-sm md:text-base">
                           View Data
                         </summary>
-                        <pre className="text-xs mt-1 p-2 bg-black/5 rounded overflow-auto">
+                        <pre className="text-xs mt-1 p-2 bg-black/5 rounded overflow-auto sm:text-sm md:text-base">
                           {JSON.stringify(log.data, null, 2)}
                         </pre>
                       </details>
                     )}
                   </div>
                 ))}
-                
                 {filteredLogs.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    <Bug className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No logs found for selected level</p>
+                    <Bug className="h-6 w-6 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                    <p className="text-sm md:text-base lg:text-lg">No logs found for selected level</p>
                   </div>
                 )}
               </div>
             </ScrollArea>
           </TabsContent>
-          
           <TabsContent value="results" className="space-y-4">
             <ScrollArea className="h-[400px]">
               <div className="space-y-4">
                 {Object.entries(execution.results).map(([nodeId, result]) => {
                   const node = workflow?.nodes.find(n => n.id === nodeId);
                   return (
-                    <Card key={nodeId} className="p-3">
+                    <Card key={nodeId} className="p-3 sm:p-4 md:p-6">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-sm">
+                        <h4 className="font-medium text-sm md:text-base lg:text-lg">
                           {node?.data.label || nodeId}
                         </h4>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                           {typeof result}
                         </Badge>
                       </div>
-                      
-                      <div className="bg-muted rounded p-2">
-                        <pre className="text-xs overflow-auto">
+                      <div className="bg-muted rounded p-2 sm:p-4 md:p-6">
+                        <pre className="text-xs overflow-auto sm:text-sm md:text-base">
                           {JSON.stringify(result, null, 2)}
                         </pre>
                       </div>
                     </Card>
                   );
                 })}
-                
                 {Object.keys(execution.results).length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    <BarChart3 className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No results available</p>
+                    <BarChart3 className="h-6 w-6 mx-auto mb-2 opacity-50 sm:w-auto md:w-full" />
+                    <p className="text-sm md:text-base lg:text-lg">No results available</p>
                   </div>
                 )}
               </div>
             </ScrollArea>
           </TabsContent>
-          
           <TabsContent value="performance" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
               <div>
                 <span className="text-muted-foreground">Execution ID:</span>
-                <p className="font-mono text-xs mt-1">{execution.id}</p>
+                <p className="font-mono text-xs mt-1 sm:text-sm md:text-base">{execution.id}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Workflow ID:</span>
-                <p className="font-mono text-xs mt-1">{execution.workflowId}</p>
+                <p className="font-mono text-xs mt-1 sm:text-sm md:text-base">{execution.workflowId}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Start Time:</span>
@@ -628,19 +584,17 @@ function ExecutionDetailsPanel({
                 <p className="font-medium mt-1">{execution.progress}%</p>
               </div>
             </div>
-            
             {execution.currentNode && (
               <div>
-                <span className="text-muted-foreground text-sm">Current Node:</span>
+                <span className="text-muted-foreground text-sm md:text-base lg:text-lg">Current Node:</span>
                 <p className="font-medium mt-1">{execution.currentNode}</p>
               </div>
             )}
-            
             <div>
-              <span className="text-muted-foreground text-sm">Triggered By:</span>
+              <span className="text-muted-foreground text-sm md:text-base lg:text-lg">Triggered By:</span>
               <p className="font-medium mt-1">{execution.metadata.triggeredBy}</p>
               {execution.metadata.trigger && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                   Trigger: {execution.metadata.trigger}
                 </p>
               )}

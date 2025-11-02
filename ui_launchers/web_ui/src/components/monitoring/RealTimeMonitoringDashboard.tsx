@@ -1,8 +1,8 @@
 /**
  * Real-time monitoring dashboard component
  */
-
 import React, { useState, useEffect, useCallback } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { SystemHealth, MonitoringConfig } from './types';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 import { PerformanceMetricsDisplay } from './PerformanceMetricsDisplay';
@@ -13,13 +13,11 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { connectivityLogger } from '../../lib/logging';
 import { performanceTracker } from '../../lib/logging';
-
 interface RealTimeMonitoringDashboardProps {
   config?: Partial<MonitoringConfig>;
   className?: string;
   onHealthChange?: (health: SystemHealth) => void;
 }
-
 export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardProps> = ({
   config = {},
   className = '',
@@ -29,7 +27,6 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
-
   const defaultConfig: MonitoringConfig = {
     refreshInterval: 30000, // 30 seconds
     enableRealTimeUpdates: true,
@@ -41,17 +38,14 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
     },
     ...config
   };
-
   // Mock data generator for demonstration
   const generateMockSystemHealth = useCallback((): SystemHealth => {
     const now = new Date();
     const performanceStats = performanceTracker.getPerformanceStats();
-    
     // Generate realistic mock data
     const baseResponseTime = 800 + Math.random() * 400;
     const errorRate = Math.random() * 3;
     const authSuccessRate = 95 + Math.random() * 4;
-    
     return {
       overall: errorRate < 1 && baseResponseTime < 2000 && authSuccessRate > 95 ? 'healthy' : 
                errorRate < 5 && baseResponseTime < 5000 && authSuccessRate > 85 ? 'degraded' : 'critical',
@@ -125,22 +119,17 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
       lastUpdated: now
     };
   }, []);
-
   const fetchSystemHealth = useCallback(async () => {
     try {
       setIsLoading(true);
-      
       // In a real implementation, this would fetch from actual monitoring endpoints
       // For now, we'll generate mock data and integrate with the logging system
       const health = generateMockSystemHealth();
-      
       setSystemHealth(health);
       setLastUpdate(new Date());
-      
       if (onHealthChange) {
         onHealthChange(health);
       }
-      
       // Log the health check
       connectivityLogger.logConnectivity(
         'debug',
@@ -151,9 +140,7 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
           statusCode: 200
         }
       );
-      
     } catch (error) {
-      console.error('Failed to fetch system health:', error);
       connectivityLogger.logError(
         'Failed to fetch system health',
         error as Error,
@@ -163,17 +150,14 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
       setIsLoading(false);
     }
   }, [generateMockSystemHealth, onHealthChange]);
-
   // Auto-refresh effect
   useEffect(() => {
     fetchSystemHealth();
-    
     if (autoRefresh && defaultConfig.enableRealTimeUpdates) {
       const interval = setInterval(fetchSystemHealth, defaultConfig.refreshInterval);
       return () => clearInterval(interval);
     }
   }, [fetchSystemHealth, autoRefresh, defaultConfig.enableRealTimeUpdates, defaultConfig.refreshInterval]);
-
   const getOverallStatusColor = (status: SystemHealth['overall']) => {
     switch (status) {
       case 'healthy':
@@ -186,7 +170,6 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
         return 'text-gray-600';
     }
   };
-
   const getOverallStatusBadge = (status: SystemHealth['overall']) => {
     switch (status) {
       case 'healthy':
@@ -199,14 +182,14 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
         return 'outline';
     }
   };
-
   if (isLoading && !systemHealth) {
     return (
+    <ErrorBoundary fallback={<div>Something went wrong in RealTimeMonitoringDashboard</div>}>
       <div className={`space-y-4 ${className}`}>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6 sm:p-4 md:p-6">
             <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 sm:w-auto md:w-full"></div>
               <span className="ml-2 text-muted-foreground">Loading system health...</span>
             </div>
           </CardContent>
@@ -214,12 +197,11 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
       </div>
     );
   }
-
   if (!systemHealth) {
     return (
       <div className={`space-y-4 ${className}`}>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6 sm:p-4 md:p-6">
             <div className="text-center text-muted-foreground">
               Failed to load system health data
             </div>
@@ -228,7 +210,6 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
       </div>
     );
   }
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Overall System Status */}
@@ -237,22 +218,22 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
           <CardTitle className="flex items-center justify-between">
             <span className="text-xl font-bold">System Health Dashboard</span>
             <div className="flex items-center space-x-3">
-              <Badge variant={getOverallStatusBadge(systemHealth.overall)} className="text-sm">
+              <Badge variant={getOverallStatusBadge(systemHealth.overall)} className="text-sm md:text-base lg:text-lg">
                 {systemHealth.overall.toUpperCase()}
               </Badge>
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={fetchSystemHealth}
                 disabled={isLoading}
-                className="text-xs"
-              >
+                className="text-xs sm:text-sm md:text-base"
+               aria-label="Button">
                 {isLoading ? 'Refreshing...' : 'Refresh'}
               </Button>
-              <Button
+              <button
                 variant="ghost"
                 size="sm"
-                onClick={() => setAutoRefresh(!autoRefresh)}
+                onClick={() = aria-label="Button"> setAutoRefresh(!autoRefresh)}
                 className={`text-xs ${autoRefresh ? 'text-blue-600' : 'text-muted-foreground'}`}
               >
                 Auto-refresh {autoRefresh ? 'ON' : 'OFF'}
@@ -260,7 +241,6 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
             </div>
           </CardTitle>
         </CardHeader>
-        
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -275,13 +255,12 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
                 System is {systemHealth.overall}
               </span>
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
               Last updated: {lastUpdate.toLocaleTimeString()}
             </div>
           </div>
         </CardContent>
       </Card>
-
       {/* Component Status Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <ConnectionStatusIndicator
@@ -300,7 +279,6 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
           showDetails={defaultConfig.showDetailedMetrics}
         />
       </div>
-
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <PerformanceMetricsDisplay
@@ -312,12 +290,12 @@ export const RealTimeMonitoringDashboard: React.FC<RealTimeMonitoringDashboardPr
           showRecentErrors={defaultConfig.showDetailedMetrics}
         />
       </div>
-
       {/* Authentication Metrics */}
       <AuthenticationMetricsDisplay
         metrics={systemHealth.authentication}
         showRecentFailures={defaultConfig.showDetailedMetrics}
       />
     </div>
+    </ErrorBoundary>
   );
 };

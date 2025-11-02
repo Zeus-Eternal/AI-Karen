@@ -1,16 +1,13 @@
 'use client';
 
-import React from 'react';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { ButtonEnhanced } from '@/components/ui/enhanced/button-enhanced';
 import { CardEnhanced, CardHeaderEnhanced, CardTitleEnhanced, CardContentEnhanced } from '@/components/ui/enhanced/card-enhanced';
 import { InputEnhanced } from '@/components/ui/enhanced/input-enhanced';
 import { useTheme } from '@/providers/theme-provider';
 import { Moon, Sun, Palette } from 'lucide-react';
-
 function DemoContent() {
   const { theme, toggleTheme, density, setDensity } = useTheme();
-
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -21,7 +18,6 @@ function DemoContent() {
             Testing the design token system with theme switching and enhanced components
           </p>
         </div>
-
         {/* Theme Controls */}
         <CardEnhanced className="p-6">
           <CardHeaderEnhanced>
@@ -39,7 +35,6 @@ function DemoContent() {
               >
                 Current: {theme}
               </ButtonEnhanced>
-              
               <div className="flex gap-2">
                 <ButtonEnhanced
                   size="sm"
@@ -66,7 +61,6 @@ function DemoContent() {
             </div>
           </CardContentEnhanced>
         </CardEnhanced>
-
         {/* Button Variants */}
         <CardEnhanced>
           <CardHeaderEnhanced>
@@ -81,14 +75,12 @@ function DemoContent() {
               <ButtonEnhanced variant="gradient">Gradient</ButtonEnhanced>
               <ButtonEnhanced variant="glass">Glass</ButtonEnhanced>
             </div>
-            
             <div className="flex flex-wrap gap-4">
               <ButtonEnhanced size="sm">Small</ButtonEnhanced>
               <ButtonEnhanced size="default">Default</ButtonEnhanced>
               <ButtonEnhanced size="lg">Large</ButtonEnhanced>
               <ButtonEnhanced size="xl">Extra Large</ButtonEnhanced>
             </div>
-            
             <div className="flex flex-wrap gap-4">
               <ButtonEnhanced loading>Loading</ButtonEnhanced>
               <ButtonEnhanced disabled>Disabled</ButtonEnhanced>
@@ -96,7 +88,6 @@ function DemoContent() {
             </div>
           </CardContentEnhanced>
         </CardEnhanced>
-
         {/* Card Variants */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <CardEnhanced variant="default">
@@ -107,7 +98,6 @@ function DemoContent() {
               This is a default card with standard styling.
             </CardContentEnhanced>
           </CardEnhanced>
-
           <CardEnhanced variant="elevated">
             <CardHeaderEnhanced>
               <CardTitleEnhanced>Elevated Card</CardTitleEnhanced>
@@ -116,7 +106,6 @@ function DemoContent() {
               This card has enhanced shadow for elevation.
             </CardContentEnhanced>
           </CardEnhanced>
-
           <CardEnhanced variant="glass">
             <CardHeaderEnhanced>
               <CardTitleEnhanced>Glass Card</CardTitleEnhanced>
@@ -125,7 +114,6 @@ function DemoContent() {
               This card has a glass morphism effect.
             </CardContentEnhanced>
           </CardEnhanced>
-
           <CardEnhanced variant="outlined">
             <CardHeaderEnhanced>
               <CardTitleEnhanced>Outlined Card</CardTitleEnhanced>
@@ -134,7 +122,6 @@ function DemoContent() {
               This card has a dashed outline style.
             </CardContentEnhanced>
           </CardEnhanced>
-
           <CardEnhanced variant="gradient">
             <CardHeaderEnhanced>
               <CardTitleEnhanced>Gradient Card</CardTitleEnhanced>
@@ -143,7 +130,6 @@ function DemoContent() {
               This card has a subtle gradient background.
             </CardContentEnhanced>
           </CardEnhanced>
-
           <CardEnhanced variant="default" interactive>
             <CardHeaderEnhanced>
               <CardTitleEnhanced>Interactive Card</CardTitleEnhanced>
@@ -153,7 +139,6 @@ function DemoContent() {
             </CardContentEnhanced>
           </CardEnhanced>
         </div>
-
         {/* Input Examples */}
         <CardEnhanced>
           <CardHeaderEnhanced>
@@ -163,24 +148,21 @@ function DemoContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <InputEnhanced
                 label="Default Input"
-                placeholder="Enter some text..."
+                ..."
                 helperText="This is helper text"
               />
-              
               <InputEnhanced
                 label="Input with Error"
-                placeholder="Enter some text..."
+                ..."
                 error="This field is required"
                 defaultValue="Invalid input"
               />
-              
               <InputEnhanced
                 label="Input with Success"
-                placeholder="Enter some text..."
+                ..."
                 success="Looks good!"
                 defaultValue="Valid input"
               />
-              
               <InputEnhanced
                 label="Password Input"
                 type="password"
@@ -191,7 +173,6 @@ function DemoContent() {
             </div>
           </CardContentEnhanced>
         </CardEnhanced>
-
         {/* Design Tokens Display */}
         <CardEnhanced>
           <CardHeaderEnhanced>
@@ -209,7 +190,6 @@ function DemoContent() {
                   <div className="w-8 h-8 rounded bg-primary-900"></div>
                 </div>
               </div>
-              
               <div className="space-y-2">
                 <h4 className="font-semibold text-sm">Spacing Scale</h4>
                 <div className="space-y-1">
@@ -220,7 +200,6 @@ function DemoContent() {
                   <div className="h-2 bg-muted rounded" style={{ width: 'var(--space-xl)' }}></div>
                 </div>
               </div>
-              
               <div className="space-y-2">
                 <h4 className="font-semibold text-sm">Typography</h4>
                 <div className="space-y-1">
@@ -231,7 +210,6 @@ function DemoContent() {
                   <div className="text-xl">Extra Large</div>
                 </div>
               </div>
-              
               <div className="space-y-2">
                 <h4 className="font-semibold text-sm">Shadows</h4>
                 <div className="space-y-2">
@@ -248,7 +226,6 @@ function DemoContent() {
     </div>
   );
 }
-
 export default function DesignSystemDemo() {
   return (
     <ThemeProvider enableCSSInjection={true}>

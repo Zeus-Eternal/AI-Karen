@@ -4,19 +4,16 @@
  * 
  * Requirements: 3.3
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { AdminApiResponse } from '@/types/admin';
-
 /**
  * POST /api/admin/admins/demote/[id] - Demote admin to user (super admin only)
  */
 export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
   try {
     const userId = request.nextUrl.pathname.split('/').slice(-2)[0]; // Get ID from demote/[id]/route
-    
     if (!userId) {
       return NextResponse.json({
         success: false,
@@ -27,9 +24,7 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     const adminUtils = getAdminDatabaseUtils();
-    
     // Get current user data
     const currentUser = await adminUtils.getUserWithRole(userId);
     if (!currentUser) {
@@ -42,7 +37,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 404 });
     }
-
     // Check if user is actually an admin
     if (currentUser.role !== 'admin' && currentUser.role !== 'super_admin') {
       return NextResponse.json({
@@ -54,7 +48,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Cannot demote self
     if (userId === context.user.user_id) {
       return NextResponse.json({
@@ -66,7 +59,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         }
       } as AdminApiResponse<never>, { status: 400 });
     }
-
     // Cannot demote the last super admin
     if (currentUser.role === 'super_admin') {
       const isLastSuperAdmin = await adminUtils.isLastSuperAdmin(userId);
@@ -81,16 +73,13 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         } as AdminApiResponse<never>, { status: 400 });
       }
     }
-
     // Demote user to regular user
     await adminUtils.updateUserRole(userId, 'user', context.user.user_id);
-
     // Get updated user for response
     const updatedUser = await adminUtils.getUserWithRole(userId);
     if (!updatedUser) {
       throw new Error('Failed to retrieve demoted user');
     }
-
     // Log the demotion
     await adminUtils.createAuditLog({
       user_id: context.user.user_id,
@@ -107,7 +96,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
     });
-
     // Remove sensitive information from response
     const responseUser = {
       user_id: updatedUser.user_id,
@@ -121,7 +109,6 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       last_login_at: updatedUser.last_login_at,
       two_factor_enabled: updatedUser.two_factor_enabled
     };
-
     const response: AdminApiResponse<{ demoted_user: typeof responseUser }> = {
       success: true,
       data: { demoted_user: responseUser },
@@ -137,12 +124,8 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
         ]
       }
     };
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('Admin demotion error:', error);
-    
     return NextResponse.json({
       success: false,
       error: {

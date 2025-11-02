@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -196,8 +197,9 @@ const OptimizationDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+    <ErrorBoundary fallback={<div>Something went wrong in OptimizationDashboard</div>}>
+      <div className="flex items-center justify-center p-8 sm:p-4 md:p-6">
+        <RefreshCw className="h-6 w-6 animate-spin mr-2 sm:w-auto md:w-full" />
         <span>Loading optimization dashboard...</span>
       </div>
     );
@@ -206,14 +208,14 @@ const OptimizationDashboard: React.FC = () => {
   if (error) {
     return (
       <Alert className="m-4">
-        <XCircle className="h-4 w-4" />
+        <XCircle className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6 sm:p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -223,16 +225,16 @@ const OptimizationDashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button 
+          <button 
             onClick={refreshData} 
             disabled={refreshing}
             variant="outline"
-          >
+           aria-label="Button">
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           {!integrationStatus?.initialized && (
-            <Button onClick={initializeIntegration}>
+            <button onClick={initializeIntegration} aria-label="Button">
               Initialize Integration
             </Button>
           )}
@@ -243,14 +245,14 @@ const OptimizationDashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Integration Status</CardTitle>
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Integration Status</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-2">
               {integrationStatus?.initialized ? (
-                <CheckCircle className="h-5 w-5 text-green-500" />
+                <CheckCircle className="h-5 w-5 text-green-500 sm:w-auto md:w-full" />
               ) : (
-                <XCircle className="h-5 w-5 text-red-500" />
+                <XCircle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />
               )}
               <span className="text-lg font-semibold">
                 {integrationStatus?.initialized ? 'Initialized' : 'Not Initialized'}
@@ -261,7 +263,7 @@ const OptimizationDashboard: React.FC = () => {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">System Health</CardTitle>
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">System Health</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-2">
@@ -280,11 +282,11 @@ const OptimizationDashboard: React.FC = () => {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Active Alerts</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <AlertTriangle className="h-5 w-5 text-yellow-500 sm:w-auto md:w-full" />
               <span className="text-lg font-semibold">
                 {performanceDashboard?.active_alerts?.length || 0}
               </span>
@@ -294,11 +296,11 @@ const OptimizationDashboard: React.FC = () => {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Optimization Level</CardTitle>
+            <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Optimization Level</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-2">
-              <Gauge className="h-5 w-5 text-blue-500" />
+              <Gauge className="h-5 w-5 text-blue-500 sm:w-auto md:w-full" />
               <span className="text-lg font-semibold capitalize">
                 {integrationStatus?.configuration_summary?.optimization_level || 'Unknown'}
               </span>
@@ -328,7 +330,7 @@ const OptimizationDashboard: React.FC = () => {
               <CardContent className="space-y-4">
                 {performanceDashboard?.component_health && Object.entries(performanceDashboard.component_health).map(([component, health]) => (
                   <div key={component} className="space-y-2">
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-sm md:text-base lg:text-lg">
                       <span className="capitalize">{component.replace('_', ' ')}</span>
                       <span>{Math.round(health)}%</span>
                     </div>
@@ -351,10 +353,10 @@ const OptimizationDashboard: React.FC = () => {
                   
                   return (
                     <div key={metric} className="flex items-center justify-between">
-                      <span className="text-sm capitalize">{metric.replace('_', ' ')}</span>
+                      <span className="text-sm capitalize md:text-base lg:text-lg">{metric.replace('_', ' ')}</span>
                       <div className="flex items-center space-x-2">
                         <TrendIcon className={`h-4 w-4 ${getTrendColor(trend, isGoodWhenIncreasing)}`} />
-                        <span className="text-sm capitalize">{trend}</span>
+                        <span className="text-sm capitalize md:text-base lg:text-lg">{trend}</span>
                       </div>
                     </div>
                   );
@@ -377,7 +379,7 @@ const OptimizationDashboard: React.FC = () => {
                       <h4 className="font-medium capitalize">{category.replace('_', ' ')}</h4>
                       <div className="space-y-1">
                         {Object.entries(stats).map(([metric, value]) => (
-                          <div key={metric} className="flex justify-between text-sm">
+                          <div key={metric} className="flex justify-between text-sm md:text-base lg:text-lg">
                             <span className="text-muted-foreground">
                               {metric.replace('_', ' ').replace(/([A-Z])/g, ' $1').toLowerCase()}
                             </span>
@@ -410,20 +412,20 @@ const OptimizationDashboard: React.FC = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {integrationStatus?.component_status && Object.entries(integrationStatus.component_status).map(([component, status]) => (
-                  <div key={component} className="flex items-center justify-between p-3 border rounded">
+                  <div key={component} className="flex items-center justify-between p-3 border rounded sm:p-4 md:p-6">
                     <div className="flex items-center space-x-3">
                       {status.integrated ? (
-                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <CheckCircle className="h-5 w-5 text-green-500 sm:w-auto md:w-full" />
                       ) : (
-                        <XCircle className="h-5 w-5 text-red-500" />
+                        <XCircle className="h-5 w-5 text-red-500 sm:w-auto md:w-full" />
                       )}
                       <div>
                         <p className="font-medium capitalize">{component.replace('_', ' ')}</p>
                         {status.error_message && (
-                          <p className="text-sm text-red-500">{status.error_message}</p>
+                          <p className="text-sm text-red-500 md:text-base lg:text-lg">{status.error_message}</p>
                         )}
                         {status.integration_time && (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                             Integrated: {new Date(status.integration_time).toLocaleString()}
                           </p>
                         )}
@@ -465,11 +467,11 @@ const OptimizationDashboard: React.FC = () => {
                 {integrationStatus?.configuration_summary?.reasoning_preservation && Object.entries(integrationStatus.configuration_summary.reasoning_preservation).map(([component, preserved]) => (
                   <div key={component} className="flex items-center space-x-2">
                     {preserved ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                     ) : (
-                      <XCircle className="h-4 w-4 text-red-500" />
+                      <XCircle className="h-4 w-4 text-red-500 sm:w-auto md:w-full" />
                     )}
-                    <span className="text-sm capitalize">{component.replace('_', ' ')}</span>
+                    <span className="text-sm capitalize md:text-base lg:text-lg">{component.replace('_', ' ')}</span>
                   </div>
                 ))}
               </div>
@@ -486,9 +488,9 @@ const OptimizationDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
-                <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <Activity className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
                 <p>Performance metrics visualization coming soon</p>
-                <p className="text-sm">Metrics are being collected: {performanceDashboard?.metrics_count || 0} data points</p>
+                <p className="text-sm md:text-base lg:text-lg">Metrics are being collected: {performanceDashboard?.metrics_count || 0} data points</p>
               </div>
             </CardContent>
           </Card>
@@ -503,9 +505,9 @@ const OptimizationDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
-                <Settings className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <Settings className="h-12 w-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
                 <p>Configuration management interface coming soon</p>
-                <p className="text-sm">Current config version: {integrationStatus?.configuration_summary?.config_version}</p>
+                <p className="text-sm md:text-base lg:text-lg">Current config version: {integrationStatus?.configuration_summary?.config_version}</p>
               </div>
             </CardContent>
           </Card>
@@ -522,7 +524,7 @@ const OptimizationDashboard: React.FC = () => {
               {performanceDashboard?.active_alerts && performanceDashboard.active_alerts.length > 0 ? (
                 <div className="space-y-4">
                   {performanceDashboard.active_alerts.map((alert) => (
-                    <div key={alert.alert_id} className="border rounded p-4">
+                    <div key={alert.alert_id} className="border rounded p-4 sm:p-4 md:p-6">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
@@ -530,19 +532,19 @@ const OptimizationDashboard: React.FC = () => {
                             <Badge variant={alert.severity === 'critical' ? 'destructive' : 'secondary'}>
                               {alert.severity}
                             </Badge>
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                               {new Date(alert.timestamp).toLocaleString()}
                             </span>
                           </div>
                           <p className="font-medium">{alert.message}</p>
-                          <div className="text-sm text-muted-foreground mt-1">
+                          <div className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                             Current: {alert.current_value} | Threshold: {alert.threshold_value}
                           </div>
                         </div>
-                        <Button
+                        <button
                           size="sm"
                           variant="outline"
-                          onClick={() => resolveAlert(alert.alert_id)}
+                          onClick={() = aria-label="Button"> resolveAlert(alert.alert_id)}
                         >
                           Resolve
                         </Button>
@@ -552,9 +554,9 @@ const OptimizationDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50 text-green-500" />
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50 text-green-500 sm:w-auto md:w-full" />
                   <p>No active alerts</p>
-                  <p className="text-sm">All systems are operating within normal parameters</p>
+                  <p className="text-sm md:text-base lg:text-lg">All systems are operating within normal parameters</p>
                 </div>
               )}
             </CardContent>
@@ -562,6 +564,7 @@ const OptimizationDashboard: React.FC = () => {
         </TabsContent>
       </Tabs>
     </div>
+    </ErrorBoundary>
   );
 };
 

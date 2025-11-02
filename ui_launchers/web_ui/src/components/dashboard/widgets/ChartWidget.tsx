@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useMemo, useCallback } from 'react';
 import { AgCharts } from 'ag-charts-react';
 import { AgChartOptions } from 'ag-charts-community';
@@ -22,7 +21,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { WidgetProps, ChartData } from '@/types/dashboard';
-
 interface ChartWidgetProps extends WidgetProps {
   data?: {
     id: string;
@@ -32,23 +30,20 @@ interface ChartWidgetProps extends WidgetProps {
     lastUpdated: Date;
   };
 }
-
 const getChartTypeIcon = (type: string) => {
   switch (type) {
     case 'line':
-      return <TrendingUp className="h-3 w-3" />;
+      return <TrendingUp className="h-3 w-3 sm:w-auto md:w-full" />;
     case 'bar':
-      return <BarChart3 className="h-3 w-3" />;
+      return <BarChart3 className="h-3 w-3 sm:w-auto md:w-full" />;
     case 'area':
-      return <Activity className="h-3 w-3" />;
+      return <Activity className="h-3 w-3 sm:w-auto md:w-full" />;
     default:
-      return <TrendingUp className="h-3 w-3" />;
+      return <TrendingUp className="h-3 w-3 sm:w-auto md:w-full" />;
   }
 };
-
 export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
   const { data: widgetData, config } = props;
-  
   const chartOptions = useMemo((): AgChartOptions => {
     if (!widgetData?.data) {
       return {
@@ -56,9 +51,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
         series: [],
       };
     }
-
     const chartData = widgetData.data;
-    
     // Transform data for AG Charts
     const transformedData = chartData.series[0]?.data.map(point => ({
       x: chartData.xAxis?.type === 'time' ? new Date(point.x) : point.x,
@@ -72,7 +65,6 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
         return acc;
       }, {} as Record<string, number>)
     })) || [];
-
     const series = chartData.series.map(seriesData => {
       const baseConfig = {
         type: seriesData.type || 'line',
@@ -80,7 +72,6 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
         yKey: seriesData.name,
         yName: seriesData.name,
       };
-
       switch (seriesData.type) {
         case 'bar':
           return {
@@ -104,7 +95,6 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
           };
       }
     });
-
     return {
       data: transformedData,
       series,
@@ -158,32 +148,21 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
       },
     };
   }, [widgetData?.data]);
-
   const handleExport = useCallback((format: 'png' | 'svg' | 'pdf') => {
     // In a real implementation, this would trigger chart export
-    console.log(`Exporting chart as ${format}`);
   }, []);
-
   const handleZoomIn = useCallback(() => {
     // In a real implementation, this would zoom the chart
-    console.log('Zoom in');
   }, []);
-
   const handleZoomOut = useCallback(() => {
     // In a real implementation, this would zoom out the chart
-    console.log('Zoom out');
   }, []);
-
   const handleResetZoom = useCallback(() => {
     // In a real implementation, this would reset zoom
-    console.log('Reset zoom');
   }, []);
-
   const handleChangeChartType = useCallback((type: 'line' | 'bar' | 'area') => {
     // In a real implementation, this would change the chart type
-    console.log(`Change chart type to ${type}`);
   }, []);
-
   if (!widgetData?.data) {
     return (
       <WidgetBase {...props}>
@@ -193,7 +172,6 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
       </WidgetBase>
     );
   }
-
   return (
     <WidgetBase 
       {...props}
@@ -204,70 +182,66 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
         {/* Chart Type Selector */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-            >
+              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm sm:w-auto md:w-full"
+             aria-label="Button">
               {getChartTypeIcon(widgetData.data.series[0]?.type || 'line')}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32">
+          <DropdownMenuContent align="end" className="w-32 sm:w-auto md:w-full">
             <DropdownMenuItem onClick={() => handleChangeChartType('line')}>
-              <TrendingUp className="h-3 w-3 mr-2" />
+              <TrendingUp className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
               Line
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleChangeChartType('bar')}>
-              <BarChart3 className="h-3 w-3 mr-2" />
+              <BarChart3 className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
               Bar
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleChangeChartType('area')}>
-              <Activity className="h-3 w-3 mr-2" />
+              <Activity className="h-3 w-3 mr-2 sm:w-auto md:w-full" />
               Area
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
         {/* Zoom Controls */}
-        <Button
+        <button
           variant="ghost"
           size="sm"
           onClick={handleZoomIn}
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-        >
-          <ZoomIn className="h-3 w-3" />
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm sm:w-auto md:w-full"
+         aria-label="Button">
+          <ZoomIn className="h-3 w-3 sm:w-auto md:w-full" />
         </Button>
-        
-        <Button
+        <button
           variant="ghost"
           size="sm"
           onClick={handleZoomOut}
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-        >
-          <ZoomOut className="h-3 w-3" />
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm sm:w-auto md:w-full"
+         aria-label="Button">
+          <ZoomOut className="h-3 w-3 sm:w-auto md:w-full" />
         </Button>
-        
-        <Button
+        <button
           variant="ghost"
           size="sm"
           onClick={handleResetZoom}
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-        >
-          <RotateCcw className="h-3 w-3" />
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm sm:w-auto md:w-full"
+         aria-label="Button">
+          <RotateCcw className="h-3 w-3 sm:w-auto md:w-full" />
         </Button>
-
         {/* Export Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-            >
-              <Download className="h-3 w-3" />
+              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm sm:w-auto md:w-full"
+             aria-label="Button">
+              <Download className="h-3 w-3 sm:w-auto md:w-full" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32">
+          <DropdownMenuContent align="end" className="w-32 sm:w-auto md:w-full">
             <DropdownMenuItem onClick={() => handleExport('png')}>
               Export PNG
             </DropdownMenuItem>
@@ -281,16 +255,14 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
       {/* Chart Container */}
       <div className="h-full w-full pt-8">
         <AgCharts options={chartOptions} />
       </div>
-
       {/* Chart Summary */}
       {widgetData.data.series.length > 0 && (
         <div className="absolute bottom-2 left-2 right-2 bg-background/80 backdrop-blur-sm rounded px-2 py-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
             <span>
               {widgetData.data.series.length} series, {widgetData.data.series[0]?.data.length || 0} points
             </span>
@@ -303,5 +275,4 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
     </WidgetBase>
   );
 };
-
 export default ChartWidget;

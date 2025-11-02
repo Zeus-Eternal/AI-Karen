@@ -1,10 +1,15 @@
-'use client';
-
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
+'use client';
+
+
+
+
+
+
   TrendingUp,
   TrendingDown,
   Minus,
@@ -15,7 +20,7 @@ import {
   Target,
   Zap
 } from 'lucide-react';
-import {
+
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -108,11 +113,11 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className={`flex items-center gap-2 ${className}`}>
-              <Icon className="h-4 w-4 text-muted-foreground" />
+              <Icon className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
               <div className={`px-2 py-1 rounded text-xs font-medium border ${confidenceLevel.color}`}>
                 {Math.round(confidence * 100)}%
               </div>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {confidenceLevel.level}
               </span>
             </div>
@@ -133,7 +138,7 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
     <Card className={`${className}`}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Target className="h-5 w-5" />
+          <Target className="h-5 w-5 sm:w-auto md:w-full" />
           Confidence Analysis
         </CardTitle>
       </CardHeader>
@@ -142,11 +147,11 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
         {/* Overall Confidence */}
         <div className="text-center">
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${confidenceLevel.color}`}>
-            <confidenceLevel.icon className="h-5 w-5" />
+            <confidenceLevel.icon className="h-5 w-5 sm:w-auto md:w-full" />
             <span className="text-2xl font-bold">{Math.round(confidence * 100)}%</span>
             <span className="font-medium">{confidenceLevel.level}</span>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-sm text-muted-foreground mt-2 md:text-base lg:text-lg">
             Overall confidence in the AI response
           </p>
         </div>
@@ -154,8 +159,8 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
         {/* Confidence Metrics */}
         {showDetails && (
           <div className="space-y-4">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              <Brain className="h-4 w-4" />
+            <h3 className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
+              <Brain className="h-4 w-4 sm:w-auto md:w-full" />
               Detailed Metrics
             </h3>
             
@@ -163,9 +168,9 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
               {/* Reasoning Quality */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Reasoning Quality</span>
+                  <span className="text-sm font-medium md:text-base lg:text-lg">Reasoning Quality</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">{Math.round(finalMetrics.reasoning * 100)}%</span>
+                    <span className="text-sm md:text-base lg:text-lg">{Math.round(finalMetrics.reasoning * 100)}%</span>
                     {(() => {
                       const trend = getTrend(finalMetrics.reasoning);
                       return <trend.icon className={`h-3 w-3 ${trend.color}`} />;
@@ -173,7 +178,7 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
                   </div>
                 </div>
                 <Progress value={finalMetrics.reasoning * 100} className="h-2" />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   Based on logical consistency and evidence strength
                 </p>
               </div>
@@ -181,9 +186,9 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
               {/* Source Reliability */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Source Reliability</span>
+                  <span className="text-sm font-medium md:text-base lg:text-lg">Source Reliability</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">{Math.round(finalMetrics.sources * 100)}%</span>
+                    <span className="text-sm md:text-base lg:text-lg">{Math.round(finalMetrics.sources * 100)}%</span>
                     {(() => {
                       const trend = getTrend(finalMetrics.sources);
                       return <trend.icon className={`h-3 w-3 ${trend.color}`} />;
@@ -191,7 +196,7 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
                   </div>
                 </div>
                 <Progress value={finalMetrics.sources * 100} className="h-2" />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   Quality and relevance of information sources
                 </p>
               </div>
@@ -199,9 +204,9 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
               {/* Response Consistency */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Response Consistency</span>
+                  <span className="text-sm font-medium md:text-base lg:text-lg">Response Consistency</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">{Math.round(finalMetrics.consistency * 100)}%</span>
+                    <span className="text-sm md:text-base lg:text-lg">{Math.round(finalMetrics.consistency * 100)}%</span>
                     {(() => {
                       const trend = getTrend(finalMetrics.consistency);
                       return <trend.icon className={`h-3 w-3 ${trend.color}`} />;
@@ -209,7 +214,7 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
                   </div>
                 </div>
                 <Progress value={finalMetrics.consistency * 100} className="h-2" />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   Internal consistency across reasoning steps
                 </p>
               </div>
@@ -217,9 +222,9 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
               {/* Completeness */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Response Completeness</span>
+                  <span className="text-sm font-medium md:text-base lg:text-lg">Response Completeness</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">{Math.round(finalMetrics.completeness * 100)}%</span>
+                    <span className="text-sm md:text-base lg:text-lg">{Math.round(finalMetrics.completeness * 100)}%</span>
                     {(() => {
                       const trend = getTrend(finalMetrics.completeness);
                       return <trend.icon className={`h-3 w-3 ${trend.color}`} />;
@@ -227,7 +232,7 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
                   </div>
                 </div>
                 <Progress value={finalMetrics.completeness * 100} className="h-2" />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                   How thoroughly the response addresses the query
                 </p>
               </div>
@@ -238,25 +243,25 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
         {/* Reasoning Stats */}
         {reasoning && (
           <div className="space-y-3">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              <Zap className="h-4 w-4" />
+            <h3 className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
+              <Zap className="h-4 w-4 sm:w-auto md:w-full" />
               Reasoning Statistics
             </h3>
             
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="space-y-1">
                 <div className="text-lg font-bold text-primary">{reasoning.steps}</div>
-                <div className="text-xs text-muted-foreground">Reasoning Steps</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Reasoning Steps</div>
               </div>
               <div className="space-y-1">
                 <div className="text-lg font-bold text-primary">{reasoning.evidenceCount}</div>
-                <div className="text-xs text-muted-foreground">Evidence Points</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Evidence Points</div>
               </div>
               <div className="space-y-1">
                 <div className="text-lg font-bold text-primary">
                   {Math.round(reasoning.averageConfidence * 100)}%
                 </div>
-                <div className="text-xs text-muted-foreground">Avg Step Confidence</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Avg Step Confidence</div>
               </div>
             </div>
           </div>
@@ -265,24 +270,24 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
         {/* Source Stats */}
         {sources && (
           <div className="space-y-3">
-            <h3 className="text-sm font-medium">Source Quality</h3>
+            <h3 className="text-sm font-medium md:text-base lg:text-lg">Source Quality</h3>
             
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="space-y-1">
                 <div className="text-lg font-bold text-primary">{sources.count}</div>
-                <div className="text-xs text-muted-foreground">Sources Used</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Sources Used</div>
               </div>
               <div className="space-y-1">
                 <div className="text-lg font-bold text-primary">
                   {Math.round(sources.averageReliability * 100)}%
                 </div>
-                <div className="text-xs text-muted-foreground">Avg Reliability</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Avg Reliability</div>
               </div>
               <div className="space-y-1">
                 <div className="text-lg font-bold text-primary">
                   {Math.round(sources.averageRelevance * 100)}%
                 </div>
-                <div className="text-xs text-muted-foreground">Avg Relevance</div>
+                <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Avg Relevance</div>
               </div>
             </div>
           </div>
@@ -291,23 +296,23 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
         {/* Confidence Factors */}
         {factors && (
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">Confidence Factors</h3>
+            <h3 className="text-sm font-medium md:text-base lg:text-lg">Confidence Factors</h3>
             
             {/* Positive Factors */}
             {factors.positive.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-green-600 flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
+                <h4 className="text-sm font-medium text-green-600 flex items-center gap-2 md:text-base lg:text-lg">
+                  <TrendingUp className="h-4 w-4 sm:w-auto md:w-full" />
                   Positive Factors
                 </h4>
                 <div className="space-y-2">
                   {factors.positive.map((factor, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
+                    <div key={index} className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded sm:p-4 md:p-6">
                       <div className="flex-1">
-                        <span className="text-sm font-medium">{factor.factor}</span>
-                        <p className="text-xs text-muted-foreground">{factor.description}</p>
+                        <span className="text-sm font-medium md:text-base lg:text-lg">{factor.factor}</span>
+                        <p className="text-xs text-muted-foreground sm:text-sm md:text-base">{factor.description}</p>
                       </div>
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                         +{Math.round(factor.impact * 100)}%
                       </Badge>
                     </div>
@@ -319,18 +324,18 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
             {/* Negative Factors */}
             {factors.negative.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-red-600 flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4" />
+                <h4 className="text-sm font-medium text-red-600 flex items-center gap-2 md:text-base lg:text-lg">
+                  <TrendingDown className="h-4 w-4 sm:w-auto md:w-full" />
                   Limiting Factors
                 </h4>
                 <div className="space-y-2">
                   {factors.negative.map((factor, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-red-50 border border-red-200 rounded">
+                    <div key={index} className="flex items-center justify-between p-2 bg-red-50 border border-red-200 rounded sm:p-4 md:p-6">
                       <div className="flex-1">
-                        <span className="text-sm font-medium">{factor.factor}</span>
-                        <p className="text-xs text-muted-foreground">{factor.description}</p>
+                        <span className="text-sm font-medium md:text-base lg:text-lg">{factor.factor}</span>
+                        <p className="text-xs text-muted-foreground sm:text-sm md:text-base">{factor.description}</p>
                       </div>
-                      <Badge variant="destructive" className="text-xs">
+                      <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
                         -{Math.round(factor.impact * 100)}%
                       </Badge>
                     </div>
@@ -342,9 +347,9 @@ export const ConfidenceScoring: React.FC<ConfidenceScoringProps> = ({
         )}
 
         {/* Confidence Interpretation */}
-        <div className="p-3 bg-muted/50 rounded-lg">
-          <h4 className="text-sm font-medium mb-2">Interpretation</h4>
-          <p className="text-sm text-muted-foreground">
+        <div className="p-3 bg-muted/50 rounded-lg sm:p-4 md:p-6">
+          <h4 className="text-sm font-medium mb-2 md:text-base lg:text-lg">Interpretation</h4>
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             {confidence >= 0.9 && "This response has excellent confidence with strong reasoning and reliable sources. The information can be trusted with high certainty."}
             {confidence >= 0.8 && confidence < 0.9 && "This response has high confidence with good reasoning and sources. The information is likely accurate but consider verification for critical decisions."}
             {confidence >= 0.6 && confidence < 0.8 && "This response has medium confidence. While the reasoning is sound, consider additional verification or alternative perspectives."}

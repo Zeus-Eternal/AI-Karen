@@ -1,9 +1,22 @@
-"use client";
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
+import { MetaBar } from "@/components/chat";
+import { ChatInterface } from "@/components/chat";
+import { webUIConfig } from "@/lib/config";
+import { Button, IconButton } from "@/components/ui/polymorphic/button";
+import { GridContainer } from "@/components/ui/layout/grid-container";
+import { FlexContainer } from "@/components/ui/layout/flex-container";
+import { Separator } from "@/components/ui/separator";
+"use client";
+
+
+
+
+
   Brain,
   MessageSquare,
   LayoutGrid,
@@ -12,23 +25,23 @@ import {
   SlidersHorizontal,
   PlugZap,
 } from "lucide-react";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
-import { MetaBar } from "@/components/chat";
 
-import { ChatInterface } from "@/components/chat";
-import { webUIConfig } from "@/lib/config";
-import { Button, IconButton } from "@/components/ui/polymorphic/button";
-import { GridContainer } from "@/components/ui/layout/grid-container";
-import { FlexContainer } from "@/components/ui/layout/flex-container";
-import {
+
+
+
+
+
+
+
+
+
   Sheet,
   SheetTrigger,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
+
   Sidebar,
   SidebarProvider,
   SidebarTrigger as AppSidebarTrigger,
@@ -42,7 +55,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
+
 
 const ExtensionSidebar = dynamic(() => import("@/components/extensions/ExtensionSidebar"));
 

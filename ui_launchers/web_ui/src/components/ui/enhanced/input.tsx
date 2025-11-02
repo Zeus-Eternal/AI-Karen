@@ -4,11 +4,9 @@
  * Extended input component with design token integration and modern styling.
  * Based on requirements: 1.1, 1.2, 1.3, 11.4
  */
-
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-
 // Enhanced input variants using design tokens
 export const enhancedInputVariants = cva(
   [
@@ -19,13 +17,13 @@ export const enhancedInputVariants = cva(
     'ring-offset-[var(--color-neutral-50)]',
     'transition-all [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-standard)]',
     'file:border-0 file:bg-transparent file:text-[var(--text-sm)] file:font-medium',
-    'placeholder:text-[var(--color-neutral-500)]',
+    '-[var(--color-neutral-500)]',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:ring-offset-2',
     'focus-visible:border-[var(--color-primary-400)]',
     'disabled:cursor-not-allowed disabled:opacity-50',
     'dark:border-[var(--color-neutral-700)] dark:bg-[var(--color-neutral-900)]',
     'dark:text-[var(--color-neutral-100)] dark:ring-offset-[var(--color-neutral-900)]',
-    'dark:placeholder:text-[var(--color-neutral-400)]',
+    'dark:-[var(--color-neutral-400)]',
     'dark:focus-visible:border-[var(--color-primary-500)]',
   ],
   {
@@ -77,7 +75,6 @@ export const enhancedInputVariants = cva(
     },
   }
 );
-
 export interface EnhancedInputProps
   extends Omit<React.ComponentProps<'input'>, 'size'>,
     VariantProps<typeof enhancedInputVariants> {
@@ -88,7 +85,6 @@ export interface EnhancedInputProps
   label?: string;
   required?: boolean;
 }
-
 export const EnhancedInput = React.forwardRef<HTMLInputElement, EnhancedInputProps>(
   ({ 
     className, 
@@ -108,7 +104,6 @@ export const EnhancedInput = React.forwardRef<HTMLInputElement, EnhancedInputPro
     const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
     const hasError = state === 'error' || !!errorText;
     const actualState = hasError ? 'error' : state;
-    
     return (
       <div className="w-full">
         {label && (
@@ -128,14 +123,12 @@ export const EnhancedInput = React.forwardRef<HTMLInputElement, EnhancedInputPro
             )}
           </label>
         )}
-        
         <div className="relative">
           {leftIcon && (
             <div className="absolute left-[var(--space-sm)] top-1/2 -translate-y-1/2 text-[var(--color-neutral-500)] dark:text-[var(--color-neutral-400)]">
               {leftIcon}
             </div>
           )}
-          
           <input
             type={type}
             id={inputId}
@@ -154,16 +147,13 @@ export const EnhancedInput = React.forwardRef<HTMLInputElement, EnhancedInputPro
                 ? `${inputId}-helper` 
                 : undefined
             }
-            {...props}
-          />
-          
+            {...props} />
           {rightIcon && (
             <div className="absolute right-[var(--space-sm)] top-1/2 -translate-y-1/2 text-[var(--color-neutral-500)] dark:text-[var(--color-neutral-400)]">
               {rightIcon}
             </div>
           )}
         </div>
-        
         {(errorText || helperText) && (
           <p
             id={hasError ? `${inputId}-error` : `${inputId}-helper`}
@@ -182,5 +172,4 @@ export const EnhancedInput = React.forwardRef<HTMLInputElement, EnhancedInputPro
     );
   }
 );
-
 EnhancedInput.displayName = 'EnhancedInput';

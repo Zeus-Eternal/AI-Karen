@@ -4,7 +4,6 @@
  * Displays license compliance status and history for models.
  * Provides compliance reporting and audit trail functionality.
  */
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ import {
   RefreshCw
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
 interface LicenseAcceptance {
   user_id: string;
   model_id: string;
@@ -36,7 +34,6 @@ interface LicenseAcceptance {
   user_agent?: string;
   acceptance_method: string;
 }
-
 interface ComplianceReport {
   report_generated: string;
   period_start?: string;
@@ -48,11 +45,9 @@ interface ComplianceReport {
   acceptances_by_method: Record<string, number>;
   acceptances: LicenseAcceptance[];
 }
-
 interface LicenseCompliancePanelProps {
   className?: string;
 }
-
 export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProps) {
   const [report, setReport] = useState<ComplianceReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,27 +57,22 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
     start: '',
     end: ''
   });
-
   useEffect(() => {
     loadComplianceReport();
   }, []);
-
   const loadComplianceReport = async (startDate?: string, endDate?: string) => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
       if (startDate) params.append('start_date', startDate);
       if (endDate) params.append('end_date', endDate);
-      
       const response = await fetch(`/api/models/license/report?${params}`);
       if (!response.ok) {
         throw new Error('Failed to load compliance report');
       }
-      
       const data = await response.json();
       setReport(data);
     } catch (error) {
-      console.error('Failed to load compliance report:', error);
       toast({
         title: "Error Loading Report",
         description: "Failed to load compliance report",
@@ -92,11 +82,9 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
       setIsLoading(false);
     }
   };
-
   const handleRefresh = () => {
     loadComplianceReport(dateRange.start, dateRange.end);
   };
-
   const handleDateRangeChange = () => {
     if (dateRange.start && dateRange.end) {
       loadComplianceReport(dateRange.start, dateRange.end);
@@ -104,10 +92,8 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
       loadComplianceReport();
     }
   };
-
   const exportReport = () => {
     if (!report) return;
-    
     const dataStr = JSON.stringify(report, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
@@ -116,23 +102,18 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
     link.download = `license-compliance-report-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    
     toast({
       title: "Export Successful",
       description: "Compliance report exported"
     });
   };
-
   const filteredAcceptances = report?.acceptances.filter(acceptance => {
     const matchesSearch = !searchTerm || 
       acceptance.model_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       acceptance.user_id.toLowerCase().includes(searchTerm.toLowerCase());
-    
     const matchesType = filterType === 'all' || acceptance.license_type === filterType;
-    
     return matchesSearch && matchesType;
   }) || [];
-
   const getLicenseTypeBadge = (type: string) => {
     const variants = {
       'open': 'default',
@@ -141,35 +122,32 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
       'research_only': 'destructive',
       'custom': 'outline'
     } as const;
-    
     return (
       <Badge variant={variants[type as keyof typeof variants] || 'outline'}>
         {type.replace('_', ' ').toUpperCase()}
       </Badge>
     );
   };
-
   const getMethodIcon = (method: string) => {
     switch (method) {
       case 'web_ui':
-        return <Shield className="h-4 w-4" />;
+        return <Shield className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'cli':
-        return <FileText className="h-4 w-4" />;
+        return <FileText className="h-4 w-4 sm:w-auto md:w-full" />;
       case 'api':
-        return <Download className="h-4 w-4" />;
+        return <Download className="h-4 w-4 sm:w-auto md:w-full" />;
       default:
-        return <FileText className="h-4 w-4" />;
+        return <FileText className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
-
   if (!report && !isLoading) {
     return (
       <Card className={className}>
         <CardContent className="flex items-center justify-center h-48">
           <div className="text-center">
-            <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4 sm:w-auto md:w-full" />
             <p className="text-muted-foreground">No compliance data available</p>
-            <Button onClick={() => loadComplianceReport()} className="mt-2">
+            <button onClick={() = aria-label="Button"> loadComplianceReport()} className="mt-2">
               Load Report
             </Button>
           </div>
@@ -177,7 +155,6 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
       </Card>
     );
   }
-
   return (
     <div className={className}>
       <Card>
@@ -185,7 +162,7 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
+                <Shield className="h-5 w-5 sm:w-auto md:w-full" />
                 License Compliance
               </CardTitle>
               <CardDescription>
@@ -193,28 +170,27 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={handleRefresh}
                 disabled={isLoading}
-              >
+               aria-label="Button">
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={exportReport}
                 disabled={!report}
-              >
-                <Download className="h-4 w-4 mr-2" />
+               aria-label="Button">
+                <Download className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                 Export
               </Button>
             </div>
           </div>
         </CardHeader>
-
         <CardContent>
           <Tabs defaultValue="overview" className="space-y-4">
             <TabsList>
@@ -222,78 +198,73 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
               <TabsTrigger value="acceptances">Acceptances</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
             </TabsList>
-
             <TabsContent value="overview" className="space-y-4">
               {/* Date Range Filter */}
-              <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+              <div className="flex items-center gap-4 p-4 bg-muted rounded-lg sm:p-4 md:p-6">
                 <div className="flex items-center gap-2">
                   <Label htmlFor="start-date">From:</Label>
-                  <Input
+                  <input
                     id="start-date"
                     type="date"
                     value={dateRange.start}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                    onChange={(e) = aria-label="Input"> setDateRange(prev => ({ ...prev, start: e.target.value }))}
                     className="w-auto"
                   />
                 </div>
                 <div className="flex items-center gap-2">
                   <Label htmlFor="end-date">To:</Label>
-                  <Input
+                  <input
                     id="end-date"
                     type="date"
                     value={dateRange.end}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                    onChange={(e) = aria-label="Input"> setDateRange(prev => ({ ...prev, end: e.target.value }))}
                     className="w-auto"
                   />
                 </div>
-                <Button onClick={handleDateRangeChange} size="sm">
+                <button onClick={handleDateRangeChange} size="sm" aria-label="Button">
                   Apply Filter
                 </Button>
               </div>
-
               {/* Summary Cards */}
               {report && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-4 sm:p-4 md:p-6">
                       <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-blue-500" />
+                        <FileText className="h-4 w-4 text-blue-500 sm:w-auto md:w-full" />
                         <div>
                           <p className="text-2xl font-bold">{report.total_acceptances}</p>
-                          <p className="text-sm text-muted-foreground">Total Acceptances</p>
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Total Acceptances</p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-4 sm:p-4 md:p-6">
                       <div className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-green-500" />
+                        <Shield className="h-4 w-4 text-green-500 sm:w-auto md:w-full" />
                         <div>
                           <p className="text-2xl font-bold">{report.unique_users}</p>
-                          <p className="text-sm text-muted-foreground">Unique Users</p>
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Unique Users</p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-4 sm:p-4 md:p-6">
                       <div className="flex items-center gap-2">
-                        <Download className="h-4 w-4 text-purple-500" />
+                        <Download className="h-4 w-4 text-purple-500 sm:w-auto md:w-full" />
                         <div>
                           <p className="text-2xl font-bold">{report.unique_models}</p>
-                          <p className="text-sm text-muted-foreground">Unique Models</p>
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Unique Models</p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-4 sm:p-4 md:p-6">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-orange-500" />
+                        <Calendar className="h-4 w-4 text-orange-500 sm:w-auto md:w-full" />
                         <div>
                           <p className="text-2xl font-bold">
                             {report.period_start ? 
@@ -301,7 +272,7 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
                               : 'All Time'
                             }
                           </p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                             {report.period_start ? 'Days' : 'Period'}
                           </p>
                         </div>
@@ -310,7 +281,6 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
                   </Card>
                 </div>
               )}
-
               {/* Recent Activity */}
               {report && report.acceptances.length > 0 && (
                 <Card>
@@ -320,19 +290,19 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
                   <CardContent>
                     <div className="space-y-2">
                       {report.acceptances.slice(0, 5).map((acceptance, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 border rounded">
+                        <div key={index} className="flex items-center justify-between p-2 border rounded sm:p-4 md:p-6">
                           <div className="flex items-center gap-3">
                             {getMethodIcon(acceptance.acceptance_method)}
                             <div>
                               <p className="font-medium">{acceptance.model_id}</p>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                                 by {acceptance.user_id}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {getLicenseTypeBadge(acceptance.license_type)}
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                               {new Date(acceptance.accepted_at).toLocaleDateString()}
                             </span>
                           </div>
@@ -343,22 +313,21 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
                 </Card>
               )}
             </TabsContent>
-
             <TabsContent value="acceptances" className="space-y-4">
               {/* Search and Filter */}
               <div className="flex items-center gap-4">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
+                  <input
                     placeholder="Search by model ID or user..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) = aria-label="Input"> setSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                 </div>
                 <select
                   value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
+                  onChange={(e) = aria-label="Select option"> setFilterType(e.target.value)}
                   className="px-3 py-2 border rounded-md"
                 >
                   <option value="all">All Types</option>
@@ -367,10 +336,9 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
                   ))}
                 </select>
               </div>
-
               {/* Acceptances Table */}
               <Card>
-                <CardContent className="p-0">
+                <CardContent className="p-0 sm:p-4 md:p-6">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -411,7 +379,6 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
                 </CardContent>
               </Card>
             </TabsContent>
-
             <TabsContent value="analytics" className="space-y-4">
               {report && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -433,7 +400,6 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
                       </div>
                     </CardContent>
                   </Card>
-
                   {/* Acceptance Methods Distribution */}
                   <Card>
                     <CardHeader>
@@ -462,5 +428,4 @@ export function LicenseCompliancePanel({ className }: LicenseCompliancePanelProp
     </div>
   );
 }
-
 export default LicenseCompliancePanel;

@@ -85,35 +85,35 @@ const PRESET_CONFIGS: PresetConfig[] = [
     name: 'High Quality',
     description: 'Best quality with more steps',
     params: { steps: 50, guidanceScale: 8.0, width: 768, height: 768 },
-    icon: <Target className="w-4 h-4" />,
+    icon: <Target className="w-4 h-4 sm:w-auto md:w-full" />,
     category: 'quality'
   },
   {
     name: 'Fast Generation',
     description: 'Quick results with fewer steps',
     params: { steps: 10, guidanceScale: 6.0, width: 512, height: 512 },
-    icon: <Zap className="w-4 h-4" />,
+    icon: <Zap className="w-4 h-4 sm:w-auto md:w-full" />,
     category: 'speed'
   },
   {
     name: 'Portrait',
     description: 'Optimized for portrait images',
     params: { width: 512, height: 768, guidanceScale: 7.0, steps: 25 },
-    icon: <Image className="w-4 h-4" />,
+    icon: <Image className="w-4 h-4 sm:w-auto md:w-full" />,
     category: 'size'
   },
   {
     name: 'Landscape',
     description: 'Optimized for landscape images',
     params: { width: 768, height: 512, guidanceScale: 7.0, steps: 25 },
-    icon: <Image className="w-4 h-4" />,
+    icon: <Image className="w-4 h-4 sm:w-auto md:w-full" />,
     category: 'size'
   },
   {
     name: 'Artistic',
     description: 'Creative and artistic style',
     params: { guidanceScale: 9.0, steps: 30, negativePrompt: 'blurry, low quality' },
-    icon: <Palette className="w-4 h-4" />,
+    icon: <Palette className="w-4 h-4 sm:w-auto md:w-full" />,
     category: 'style'
   }
 ];
@@ -268,7 +268,7 @@ export default function ImageGenerationControls({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Image className="w-5 h-5" />
+                <Image className="w-5 h-5 sm:w-auto md:w-full" />
                 Image Generation Controls
               </CardTitle>
               <CardDescription>
@@ -287,16 +287,16 @@ export default function ImageGenerationControls({
         <CardContent className="space-y-6">
           {/* Preset Configurations */}
           <div>
-            <Label className="text-sm font-medium mb-3 block">Quick Presets</Label>
+            <Label className="text-sm font-medium mb-3 block md:text-base lg:text-lg">Quick Presets</Label>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
               {PRESET_CONFIGS.map((preset) => (
                 <Tooltip key={preset.name}>
                   <TooltipTrigger asChild>
-                    <Button
+                    <button
                       variant={selectedPreset === preset.name ? "default" : "outline"}
                       size="sm"
-                      onClick={() => applyPreset(preset)}
-                      className="flex items-center gap-1 text-xs"
+                      onClick={() = aria-label="Button"> applyPreset(preset)}
+                      className="flex items-center gap-1 text-xs sm:text-sm md:text-base"
                     >
                       {preset.icon}
                       {preset.name}
@@ -318,17 +318,17 @@ export default function ImageGenerationControls({
               Prompt
               <Tooltip>
                 <TooltipTrigger>
-                  <Info className="w-4 h-4 text-gray-400" />
+                  <Info className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Describe what you want to generate. Be specific and detailed.</p>
                 </TooltipContent>
               </Tooltip>
             </Label>
-            <Textarea
+            <textarea
               id="prompt"
               value={params.prompt}
-              onChange={(e) => handleParamChange('prompt', e.target.value)}
+              onChange={(e) = aria-label="Textarea"> handleParamChange('prompt', e.target.value)}
               placeholder="A beautiful landscape with mountains and a lake at sunset..."
               className="min-h-[80px] resize-none"
             />
@@ -341,17 +341,17 @@ export default function ImageGenerationControls({
                 Negative Prompt
                 <Tooltip>
                   <TooltipTrigger>
-                    <Info className="w-4 h-4 text-gray-400" />
+                    <Info className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Describe what you don't want in the image</p>
                   </TooltipContent>
                 </Tooltip>
               </Label>
-              <Textarea
+              <textarea
                 id="negativePrompt"
                 value={params.negativePrompt || ''}
-                onChange={(e) => handleParamChange('negativePrompt', e.target.value)}
+                onChange={(e) = aria-label="Textarea"> handleParamChange('negativePrompt', e.target.value)}
                 placeholder="blurry, low quality, distorted..."
                 className="min-h-[60px] resize-none"
               />
@@ -360,19 +360,19 @@ export default function ImageGenerationControls({
 
           {/* Dimensions and Aspect Ratio */}
           <div className="space-y-4">
-            <Label className="text-sm font-medium">Dimensions</Label>
+            <Label className="text-sm font-medium md:text-base lg:text-lg">Dimensions</Label>
             
             {/* Aspect Ratio Presets */}
             <div>
-              <Label className="text-xs text-gray-600 mb-2 block">Aspect Ratios</Label>
+              <Label className="text-xs text-gray-600 mb-2 block sm:text-sm md:text-base">Aspect Ratios</Label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {ASPECT_RATIOS.map((ratio) => (
-                  <Button
+                  <button
                     key={ratio.value}
                     variant="outline"
                     size="sm"
-                    onClick={() => applyAspectRatio(ratio)}
-                    className="text-xs"
+                    onClick={() = aria-label="Button"> applyAspectRatio(ratio)}
+                    className="text-xs sm:text-sm md:text-base"
                   >
                     {ratio.label}
                   </Button>
@@ -383,24 +383,24 @@ export default function ImageGenerationControls({
             {/* Custom Dimensions */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="width" className="text-xs">Width</Label>
-                <Input
+                <Label htmlFor="width" className="text-xs sm:text-sm md:text-base">Width</Label>
+                <input
                   id="width"
                   type="number"
                   value={params.width}
-                  onChange={(e) => handleParamChange('width', parseInt(e.target.value) || 512)}
+                  onChange={(e) = aria-label="Input"> handleParamChange('width', parseInt(e.target.value) || 512)}
                   min={modelConstraints.minWidth}
                   max={modelConstraints.maxWidth}
                   step={64}
                 />
               </div>
               <div>
-                <Label htmlFor="height" className="text-xs">Height</Label>
-                <Input
+                <Label htmlFor="height" className="text-xs sm:text-sm md:text-base">Height</Label>
+                <input
                   id="height"
                   type="number"
                   value={params.height}
-                  onChange={(e) => handleParamChange('height', parseInt(e.target.value) || 512)}
+                  onChange={(e) = aria-label="Input"> handleParamChange('height', parseInt(e.target.value) || 512)}
                   min={modelConstraints.minHeight}
                   max={modelConstraints.maxHeight}
                   step={64}
@@ -417,7 +417,7 @@ export default function ImageGenerationControls({
                 Steps: {params.steps}
                 <Tooltip>
                   <TooltipTrigger>
-                    <Info className="w-4 h-4 text-gray-400" />
+                    <Info className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>More steps = higher quality but slower generation</p>
@@ -432,7 +432,7 @@ export default function ImageGenerationControls({
                 step={1}
                 className="w-full"
               />
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-gray-500 sm:text-sm md:text-base">
                 <span>{modelConstraints.minSteps}</span>
                 <span>{modelConstraints.maxSteps}</span>
               </div>
@@ -444,7 +444,7 @@ export default function ImageGenerationControls({
                 Guidance Scale: {params.guidanceScale}
                 <Tooltip>
                   <TooltipTrigger>
-                    <Info className="w-4 h-4 text-gray-400" />
+                    <Info className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>How closely to follow the prompt. Higher = more adherence</p>
@@ -459,7 +459,7 @@ export default function ImageGenerationControls({
                 step={0.1}
                 className="w-full"
               />
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-gray-500 sm:text-sm md:text-base">
                 <span>{modelConstraints.defaultGuidanceRange[0]}</span>
                 <span>{modelConstraints.defaultGuidanceRange[1]}</span>
               </div>
@@ -469,12 +469,12 @@ export default function ImageGenerationControls({
           {/* Advanced Settings */}
           <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-2">
+              <button variant="ghost" className="w-full justify-between p-2 sm:p-4 md:p-6" aria-label="Button">
                 <span className="flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
+                  <Settings className="w-4 h-4 sm:w-auto md:w-full" />
                   Advanced Settings
                 </span>
-                {showAdvanced ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                {showAdvanced ? <ChevronDown className="w-4 h-4 sm:w-auto md:w-full" /> : <ChevronRight className="w-4 h-4 sm:w-auto md:w-full" />}
               </Button>
             </CollapsibleTrigger>
             
@@ -486,7 +486,7 @@ export default function ImageGenerationControls({
                     Seed
                     <Tooltip>
                       <TooltipTrigger>
-                        <Info className="w-4 h-4 text-gray-400" />
+                        <Info className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>Random seed for reproducible results. Leave empty for random.</p>
@@ -494,18 +494,18 @@ export default function ImageGenerationControls({
                     </Tooltip>
                   </Label>
                   <div className="flex gap-2">
-                    <Input
+                    <input
                       type="number"
                       value={params.seed || ''}
-                      onChange={(e) => handleParamChange('seed', e.target.value ? parseInt(e.target.value) : undefined)}
+                      onChange={(e) = aria-label="Input"> handleParamChange('seed', e.target.value ? parseInt(e.target.value) : undefined)}
                       placeholder="Random"
                     />
-                    <Button
+                    <button
                       variant="outline"
                       size="sm"
                       onClick={generateRandomSeed}
-                    >
-                      <Shuffle className="w-4 h-4" />
+                     aria-label="Button">
+                      <Shuffle className="w-4 h-4 sm:w-auto md:w-full" />
                     </Button>
                   </div>
                 </div>
@@ -516,7 +516,7 @@ export default function ImageGenerationControls({
                     Batch Size: {params.batchSize}
                     <Tooltip>
                       <TooltipTrigger>
-                        <Info className="w-4 h-4 text-gray-400" />
+                        <Info className="w-4 h-4 text-gray-400 sm:w-auto md:w-full" />
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>Number of images to generate at once</p>
@@ -536,16 +536,16 @@ export default function ImageGenerationControls({
                 {/* Sampler */}
                 <div className="space-y-2">
                   <Label>Sampler</Label>
-                  <Select 
+                  <select 
                     value={params.sampler || 'euler_a'} 
-                    onValueChange={(value) => handleParamChange('sampler', value)}
+                    onValueChange={(value) = aria-label="Select option"> handleParamChange('sampler', value)}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
+                    <selectTrigger aria-label="Select option">
+                      <selectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <selectContent aria-label="Select option">
                       {modelConstraints.supportedSamplers.map((sampler) => (
-                        <SelectItem key={sampler} value={sampler}>
+                        <selectItem key={sampler} value={sampler} aria-label="Select option">
                           {sampler.toUpperCase()}
                         </SelectItem>
                       ))}
@@ -556,17 +556,17 @@ export default function ImageGenerationControls({
                 {/* Scheduler */}
                 <div className="space-y-2">
                   <Label>Scheduler</Label>
-                  <Select 
+                  <select 
                     value={params.scheduler || 'normal'} 
-                    onValueChange={(value) => handleParamChange('scheduler', value)}
+                    onValueChange={(value) = aria-label="Select option"> handleParamChange('scheduler', value)}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
+                    <selectTrigger aria-label="Select option">
+                      <selectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="karras">Karras</SelectItem>
-                      <SelectItem value="exponential">Exponential</SelectItem>
+                    <selectContent aria-label="Select option">
+                      <selectItem value="normal" aria-label="Select option">Normal</SelectItem>
+                      <selectItem value="karras" aria-label="Select option">Karras</SelectItem>
+                      <selectItem value="exponential" aria-label="Select option">Exponential</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -579,20 +579,20 @@ export default function ImageGenerationControls({
           {/* Action Buttons */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={resetToDefaults}
                 disabled={isGenerating}
-              >
-                <RotateCcw className="w-4 h-4 mr-1" />
+               aria-label="Button">
+                <RotateCcw className="w-4 h-4 mr-1 sm:w-auto md:w-full" />
                 Reset
               </Button>
               
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => {
+                onClick={() = aria-label="Button"> {
                   // Save current params as preset (mock implementation)
                   toast({
                     title: 'Preset Saved',
@@ -601,25 +601,25 @@ export default function ImageGenerationControls({
                 }}
                 disabled={isGenerating}
               >
-                <Save className="w-4 h-4 mr-1" />
+                <Save className="w-4 h-4 mr-1 sm:w-auto md:w-full" />
                 Save Preset
               </Button>
             </div>
 
-            <Button
+            <button
               onClick={handleGenerate}
               disabled={!params.prompt.trim() || isGenerating}
               size="lg"
               className="px-8"
-            >
+             aria-label="Button">
               {isGenerating ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 sm:w-auto md:w-full" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Image className="w-4 h-4 mr-2" />
+                  <Image className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                   Generate Image
                 </>
               )}
@@ -628,9 +628,9 @@ export default function ImageGenerationControls({
 
           {/* Model-specific warnings or tips */}
           {model && (
-            <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+            <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg sm:text-sm md:text-base">
               <div className="flex items-start gap-2">
-                <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <Info className="w-4 h-4 mt-0.5 flex-shrink-0 sm:w-auto md:w-full" />
                 <div>
                   <p className="font-medium mb-1">Tips for {model.name}:</p>
                   {model.subtype === 'flux' && (

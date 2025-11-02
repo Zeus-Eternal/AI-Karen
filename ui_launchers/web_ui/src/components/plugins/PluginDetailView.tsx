@@ -103,14 +103,14 @@ const MetricCard: React.FC<{
   trend?: 'up' | 'down' | 'stable';
 }> = ({ title, value, subtitle, icon: Icon, trend }) => (
   <Card>
-    <CardContent className="p-4">
+    <CardContent className="p-4 sm:p-4 md:p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">{title}</p>
           <p className="text-2xl font-bold">{value}</p>
-          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-muted-foreground sm:text-sm md:text-base">{subtitle}</p>}
         </div>
-        <Icon className="w-8 h-8 text-muted-foreground" />
+        <Icon className="w-8 h-8 text-muted-foreground sm:w-auto md:w-full" />
       </div>
     </CardContent>
   </Card>
@@ -124,11 +124,11 @@ const PermissionBadge: React.FC<{ permission: any }> = ({ permission }) => {
   };
 
   return (
-    <div className="flex items-center gap-2 p-2 border rounded-lg">
-      <Shield className="w-4 h-4 text-muted-foreground" />
+    <div className="flex items-center gap-2 p-2 border rounded-lg sm:p-4 md:p-6">
+      <Shield className="w-4 h-4 text-muted-foreground sm:w-auto md:w-full" />
       <div className="flex-1">
-        <div className="font-medium text-sm">{permission.name}</div>
-        <div className="text-xs text-muted-foreground">{permission.description}</div>
+        <div className="font-medium text-sm md:text-base lg:text-lg">{permission.name}</div>
+        <div className="text-xs text-muted-foreground sm:text-sm md:text-base">{permission.description}</div>
       </div>
       <Badge className={`text-xs ${levelColors[permission.level as keyof typeof levelColors]}`}>
         {permission.level}
@@ -146,14 +146,14 @@ const LogEntry: React.FC<{ entry: any }> = ({ entry }) => {
   };
 
   return (
-    <div className="flex gap-3 p-3 border-b last:border-b-0">
-      <div className="text-xs text-muted-foreground w-20 flex-shrink-0">
+    <div className="flex gap-3 p-3 border-b last:border-b-0 sm:p-4 md:p-6">
+      <div className="text-xs text-muted-foreground w-20 flex-shrink-0 sm:w-auto md:w-full">
         {entry.timestamp.toLocaleTimeString()}
       </div>
       <div className={`text-xs font-medium w-12 flex-shrink-0 uppercase ${levelColors[entry.level as keyof typeof levelColors] || 'text-gray-500'}`}>
         {entry.level}
       </div>
-      <div className="flex-1 text-sm">{entry.message}</div>
+      <div className="flex-1 text-sm md:text-base lg:text-lg">{entry.message}</div>
     </div>
   );
 };
@@ -217,15 +217,15 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
+          <button variant="ghost" size="sm" onClick={onClose} aria-label="Button">
+            <ArrowLeft className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Back to Plugins
           </Button>
           <Separator orientation="vertical" className="h-6" />
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold">{plugin.name}</h1>
-              <Badge variant={statusInfo.variant} className="text-sm">
+              <Badge variant={statusInfo.variant} className="text-sm md:text-base lg:text-lg">
                 <StatusIcon className={`w-4 h-4 mr-1 ${statusInfo.color}`} />
                 {statusInfo.label}
               </Badge>
@@ -235,37 +235,37 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
         </div>
         
         <div className="flex items-center gap-2">
-          <Button 
+          <button 
             variant="outline" 
-            onClick={() => onConfigure(plugin)}
+            onClick={() = aria-label="Button"> onConfigure(plugin)}
             disabled={isActionDisabled || configureLoading}
           >
-            <Settings className="w-4 h-4 mr-2" />
+            <Settings className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Configure
           </Button>
-          <Button 
+          <button 
             variant={plugin.enabled ? "outline" : "default"}
             onClick={handleToggleEnabled}
             disabled={isActionDisabled || enableLoading || disableLoading}
-          >
+           aria-label="Button">
             {enableLoading || disableLoading ? (
-              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin sm:w-auto md:w-full" />
             ) : plugin.enabled ? (
-              <PowerOff className="w-4 h-4 mr-2" />
+              <PowerOff className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             ) : (
-              <Power className="w-4 h-4 mr-2" />
+              <Power className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             )}
             {plugin.enabled ? 'Disable' : 'Enable'}
           </Button>
-          <Button 
+          <button 
             variant="destructive" 
-            onClick={() => onUninstall(plugin.id)}
+            onClick={() = aria-label="Button"> onUninstall(plugin.id)}
             disabled={isActionDisabled || uninstallLoading}
           >
             {uninstallLoading ? (
-              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin sm:w-auto md:w-full" />
             ) : (
-              <Trash2 className="w-4 h-4 mr-2" />
+              <Trash2 className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             )}
             Uninstall
           </Button>
@@ -275,11 +275,11 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
       {/* Error Display */}
       {plugin.lastError && (
         <Alert variant="destructive">
-          <XCircle className="w-4 h-4" />
+          <XCircle className="w-4 h-4 sm:w-auto md:w-full" />
           <AlertDescription>
             <div className="font-medium">Last Error:</div>
             <div>{plugin.lastError.message}</div>
-            <div className="text-sm text-muted-foreground mt-1">
+            <div className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
               {plugin.lastError.timestamp.toLocaleString()}
             </div>
           </AlertDescription>
@@ -289,12 +289,12 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
       {/* Health Issues */}
       {plugin.metrics.health.issues.length > 0 && (
         <Alert variant="destructive">
-          <AlertTriangle className="w-4 h-4" />
+          <AlertTriangle className="w-4 h-4 sm:w-auto md:w-full" />
           <AlertDescription>
             <div className="font-medium">Health Issues:</div>
             <ul className="list-disc list-inside mt-1">
               {plugin.metrics.health.issues.map((issue, index) => (
-                <li key={index} className="text-sm">{issue}</li>
+                <li key={index} className="text-sm md:text-base lg:text-lg">{issue}</li>
               ))}
             </ul>
           </AlertDescription>
@@ -318,12 +318,12 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
+                  <Package className="w-5 h-5 sm:w-auto md:w-full" />
                   Plugin Information
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                   <div>
                     <div className="text-muted-foreground">Version</div>
                     <div className="font-medium">{plugin.version}</div>
@@ -352,9 +352,9 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
                 
                 {plugin.manifest.homepage && (
                   <div className="pt-2">
-                    <Button variant="outline" size="sm" asChild>
+                    <button variant="outline" size="sm" asChild aria-label="Button">
                       <a href={plugin.manifest.homepage} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="w-4 h-4 mr-2" />
+                        <ExternalLink className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
                         Visit Homepage
                       </a>
                     </Button>
@@ -367,12 +367,12 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
+                  <Activity className="w-5 h-5 sm:w-auto md:w-full" />
                   Runtime Status
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                   <div>
                     <div className="text-muted-foreground">Auto Start</div>
                     <div className="font-medium">{plugin.autoStart ? 'Yes' : 'No'}</div>
@@ -394,7 +394,7 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
                 </div>
                 
                 <div>
-                  <div className="text-sm text-muted-foreground mb-2">Health Status</div>
+                  <div className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">Health Status</div>
                   <div className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${
                       plugin.metrics.health.status === 'healthy' ? 'bg-green-500' :
@@ -458,7 +458,7 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5" />
+                <Activity className="w-5 h-5 sm:w-auto md:w-full" />
                 Resource Usage
               </CardTitle>
             </CardHeader>
@@ -468,10 +468,10 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Cpu className="w-4 h-4" />
-                        <span className="text-sm font-medium">CPU Usage</span>
+                        <Cpu className="w-4 h-4 sm:w-auto md:w-full" />
+                        <span className="text-sm font-medium md:text-base lg:text-lg">CPU Usage</span>
                       </div>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                         {plugin.metrics.resources.cpuUsage.toFixed(1)}%
                       </span>
                     </div>
@@ -481,10 +481,10 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Zap className="w-4 h-4" />
-                        <span className="text-sm font-medium">Memory Usage</span>
+                        <Zap className="w-4 h-4 sm:w-auto md:w-full" />
+                        <span className="text-sm font-medium md:text-base lg:text-lg">Memory Usage</span>
                       </div>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                         {plugin.metrics.resources.memoryUsage.toFixed(1)} MB
                       </span>
                     </div>
@@ -496,10 +496,10 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <HardDrive className="w-4 h-4" />
-                        <span className="text-sm font-medium">Disk Usage</span>
+                        <HardDrive className="w-4 h-4 sm:w-auto md:w-full" />
+                        <span className="text-sm font-medium md:text-base lg:text-lg">Disk Usage</span>
                       </div>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                         {plugin.metrics.resources.diskUsage.toFixed(1)} MB
                       </span>
                     </div>
@@ -509,10 +509,10 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Network className="w-4 h-4" />
-                        <span className="text-sm font-medium">Network Usage</span>
+                        <Network className="w-4 h-4 sm:w-auto md:w-full" />
+                        <span className="text-sm font-medium md:text-base lg:text-lg">Network Usage</span>
                       </div>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                         {plugin.metrics.resources.networkUsage.toFixed(1)} KB/s
                       </span>
                     </div>
@@ -529,7 +529,7 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5" />
+                <Shield className="w-5 h-5 sm:w-auto md:w-full" />
                 Plugin Permissions
               </CardTitle>
               <CardDescription>
@@ -554,19 +554,19 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Sandboxed</span>
+                    <span className="text-sm md:text-base lg:text-lg">Sandboxed</span>
                     <Badge variant={plugin.manifest.sandboxed ? "default" : "destructive"}>
                       {plugin.manifest.sandboxed ? "Yes" : "No"}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Network Access</span>
+                    <span className="text-sm md:text-base lg:text-lg">Network Access</span>
                     <Badge variant={plugin.manifest.securityPolicy.allowNetworkAccess ? "secondary" : "default"}>
                       {plugin.manifest.securityPolicy.allowNetworkAccess ? "Allowed" : "Denied"}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">File System Access</span>
+                    <span className="text-sm md:text-base lg:text-lg">File System Access</span>
                     <Badge variant={plugin.manifest.securityPolicy.allowFileSystemAccess ? "secondary" : "default"}>
                       {plugin.manifest.securityPolicy.allowFileSystemAccess ? "Allowed" : "Denied"}
                     </Badge>
@@ -574,17 +574,17 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">System Calls</span>
+                    <span className="text-sm md:text-base lg:text-lg">System Calls</span>
                     <Badge variant={plugin.manifest.securityPolicy.allowSystemCalls ? "secondary" : "default"}>
                       {plugin.manifest.securityPolicy.allowSystemCalls ? "Allowed" : "Denied"}
                     </Badge>
                   </div>
                   {plugin.manifest.securityPolicy.trustedDomains && (
                     <div>
-                      <div className="text-sm text-muted-foreground mb-2">Trusted Domains</div>
+                      <div className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">Trusted Domains</div>
                       <div className="space-y-1">
                         {plugin.manifest.securityPolicy.trustedDomains.map((domain) => (
-                          <Badge key={domain} variant="outline" className="text-xs">
+                          <Badge key={domain} variant="outline" className="text-xs sm:text-sm md:text-base">
                             {domain}
                           </Badge>
                         ))}
@@ -602,7 +602,7 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Package className="w-5 h-5" />
+                <Package className="w-5 h-5 sm:w-auto md:w-full" />
                 Dependencies
               </CardTitle>
               <CardDescription>
@@ -612,22 +612,22 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
             <CardContent>
               {plugin.manifest.dependencies.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <Package className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
                   <p>This plugin has no external dependencies</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {plugin.manifest.dependencies.map((dep) => (
-                    <div key={dep.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div key={dep.id} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
                       <div>
                         <div className="font-medium">{dep.name}</div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
                           Version: {dep.version} ({dep.versionConstraint})
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {dep.optional && (
-                          <Badge variant="outline" className="text-xs">Optional</Badge>
+                          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">Optional</Badge>
                         )}
                         <Badge variant={dep.installed ? "default" : "destructive"}>
                           {dep.installed ? "Installed" : "Missing"}
@@ -646,18 +646,18 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
+                <FileText className="w-5 h-5 sm:w-auto md:w-full" />
                 Plugin Logs
               </CardTitle>
               <CardDescription>
                 Recent activity and error logs from this plugin
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 sm:p-4 md:p-6">
               <ScrollArea className="h-96">
                 {mockLogs.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <FileText className="w-12 h-12 mx-auto mb-4 opacity-50 sm:w-auto md:w-full" />
                     <p>No logs available</p>
                   </div>
                 ) : (

@@ -1,10 +1,3 @@
-/**
- * Endpoint Status Dashboard Component
- * Displays real-time endpoint connectivity status and diagnostic information
- */
-
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +9,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { 
+import { webUIConfig } from '@/lib/config';
+/**
+ * Endpoint Status Dashboard Component
+ * Displays real-time endpoint connectivity status and diagnostic information
+ */
+'use client';
+
+
+
+
+
+
+
+
+
+
+
   Activity, 
   AlertTriangle, 
   CheckCircle, 
@@ -36,25 +46,23 @@ import {
   Copy,
   ExternalLink
 } from 'lucide-react';
-import { 
+
   getHealthMonitor, 
   type HealthMetrics, 
   type Alert as HealthAlert 
 } from '@/lib/health-monitor';
-import { 
+
   getDiagnosticLogger, 
   type DiagnosticInfo 
 } from '@/lib/diagnostics';
-import { 
+
   getNetworkDiagnostics, 
   type ComprehensiveNetworkReport 
 } from '@/lib/network-diagnostics';
-import { webUIConfig } from '@/lib/config';
 
 interface EndpointStatusDashboardProps {
   className?: string;
 }
-
 export function EndpointStatusDashboard({ className }: EndpointStatusDashboardProps) {
   const [metrics, setMetrics] = useState<HealthMetrics | null>(null);
   const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticInfo[]>([]);
@@ -66,41 +74,33 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
   const [customEndpoint, setCustomEndpoint] = useState<string>('');
   const [showDetailedLogs, setShowDetailedLogs] = useState(false);
   const [logFilter, setLogFilter] = useState<'all' | 'error' | 'network' | 'cors'>('all');
-
   useEffect(() => {
     const healthMonitor = getHealthMonitor();
     const diagnosticLogger = getDiagnosticLogger();
-
     // Get initial state
     setMetrics(healthMonitor.getMetrics());
     setDiagnosticLogs(diagnosticLogger.getLogs(50));
     setIsMonitoring(healthMonitor.getStatus().isMonitoring);
-
     // Set up listeners
     const unsubscribeMetrics = healthMonitor.onMetricsUpdate((newMetrics) => {
       setMetrics(newMetrics);
       setLastUpdate(new Date().toLocaleTimeString());
     });
-
     const unsubscribeLogs = diagnosticLogger.onLog((newLog) => {
       setDiagnosticLogs(prev => [newLog, ...prev.slice(0, 49)]);
     });
-
     // Start monitoring if not already started
     if (!healthMonitor.getStatus().isMonitoring) {
       healthMonitor.start();
       setIsMonitoring(true);
     }
-
     return () => {
       unsubscribeMetrics();
       unsubscribeLogs();
     };
   }, []);
-
   const handleToggleMonitoring = () => {
     const healthMonitor = getHealthMonitor();
-    
     if (isMonitoring) {
       healthMonitor.stop();
       setIsMonitoring(false);
@@ -109,7 +109,6 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
       setIsMonitoring(true);
     }
   };
-
   const handleRunComprehensiveDiagnostics = async () => {
     setIsRunningDiagnostics(true);
     try {
@@ -117,30 +116,24 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
       const report = await networkDiagnostics.runComprehensiveTest();
       setNetworkReport(report);
     } catch (error) {
-      console.error('Failed to run comprehensive diagnostics:', error);
     } finally {
       setIsRunningDiagnostics(false);
     }
   };
-
   const handleTestCustomEndpoint = async () => {
     if (!customEndpoint.trim()) return;
-    
     setIsRunningDiagnostics(true);
     try {
       const networkDiagnostics = getNetworkDiagnostics();
       await networkDiagnostics.testEndpointDetailed(customEndpoint);
     } catch (error) {
-      console.error('Failed to test custom endpoint:', error);
     } finally {
       setIsRunningDiagnostics(false);
     }
   };
-
   const handleExportDiagnostics = () => {
     const diagnosticLogger = getDiagnosticLogger();
     const exportData = diagnosticLogger.exportLogs();
-    
     const blob = new Blob([exportData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -151,11 +144,9 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
   const handleCopyEndpointUrl = (endpoint: string) => {
     navigator.clipboard.writeText(endpoint);
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'healthy': return 'text-green-600';
@@ -164,44 +155,39 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
       default: return 'text-gray-600';
     }
   };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'degraded': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      case 'error': return <XCircle className="h-4 w-4 text-red-600" />;
-      default: return <Clock className="h-4 w-4 text-gray-600" />;
+      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
+      case 'degraded': return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
+      case 'error': return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
+      default: return <Clock className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
     }
   };
-
   const getLogIcon = (category: string) => {
     switch (category) {
-      case 'network': return <Globe className="h-4 w-4" />;
-      case 'cors': return <Shield className="h-4 w-4" />;
-      case 'auth': return <Shield className="h-4 w-4" />;
-      case 'api': return <Server className="h-4 w-4" />;
-      case 'health': return <Activity className="h-4 w-4" />;
-      default: return <Activity className="h-4 w-4" />;
+      case 'network': return <Globe className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'cors': return <Shield className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'auth': return <Shield className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'api': return <Server className="h-4 w-4 sm:w-auto md:w-full" />;
+      case 'health': return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
+      default: return <Activity className="h-4 w-4 sm:w-auto md:w-full" />;
     }
   };
-
   const filteredLogs = diagnosticLogs.filter(log => {
     if (logFilter === 'all') return true;
     if (logFilter === 'error') return log.level === 'error';
     return log.category === logFilter;
   });
-
   if (!metrics) {
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 sm:w-auto md:w-full" />
           <p>Loading endpoint status...</p>
         </div>
       </div>
     );
   }
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
@@ -216,35 +202,34 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
           <Badge variant={isMonitoring ? 'default' : 'secondary'}>
             {isMonitoring ? 'Monitoring Active' : 'Monitoring Stopped'}
           </Badge>
-          <Button
+          <button
             variant="outline"
             size="sm"
             onClick={handleToggleMonitoring}
-          >
-            {isMonitoring ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+           aria-label="Button">
+            {isMonitoring ? <Pause className="h-4 w-4 sm:w-auto md:w-full" /> : <Play className="h-4 w-4 sm:w-auto md:w-full" />}
             {isMonitoring ? 'Stop' : 'Start'}
           </Button>
-          <Button
+          <button
             variant="outline"
             size="sm"
             onClick={handleRunComprehensiveDiagnostics}
             disabled={isRunningDiagnostics}
-          >
+           aria-label="Button">
             {isRunningDiagnostics ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
+              <RefreshCw className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
             ) : (
-              <Activity className="h-4 w-4" />
+              <Activity className="h-4 w-4 sm:w-auto md:w-full" />
             )}
             Run Diagnostics
           </Button>
         </div>
       </div>
-
       {/* Configuration Info */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Server className="h-5 w-5" />
+            <Server className="h-5 w-5 sm:w-auto md:w-full" />
             Current Configuration
           </CardTitle>
         </CardHeader>
@@ -253,15 +238,15 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
             <div>
               <Label className="text-muted-foreground">Backend URL</Label>
               <div className="flex items-center gap-2 mt-1">
-                <code className="bg-muted px-2 py-1 rounded text-xs">
+                <code className="bg-muted px-2 py-1 rounded text-xs sm:text-sm md:text-base">
                   {webUIConfig.backendUrl}
                 </code>
-                <Button
+                <button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleCopyEndpointUrl(webUIConfig.backendUrl)}
+                  onClick={() = aria-label="Button"> handleCopyEndpointUrl(webUIConfig.backendUrl)}
                 >
-                  <Copy className="h-3 w-3" />
+                  <Copy className="h-3 w-3 sm:w-auto md:w-full" />
                 </Button>
               </div>
             </div>
@@ -278,20 +263,19 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
               </div>
             </div>
           </div>
-          
           {webUIConfig.fallbackBackendUrls.length > 0 && (
             <div className="mt-4">
               <Label className="text-muted-foreground">Fallback URLs</Label>
               <div className="flex flex-wrap gap-2 mt-1">
                 {webUIConfig.fallbackBackendUrls.map((url, index) => (
                   <div key={index} className="flex items-center gap-1">
-                    <code className="bg-muted px-2 py-1 rounded text-xs">{url}</code>
-                    <Button
+                    <code className="bg-muted px-2 py-1 rounded text-xs sm:text-sm md:text-base">{url}</code>
+                    <button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleCopyEndpointUrl(url)}
+                      onClick={() = aria-label="Button"> handleCopyEndpointUrl(url)}
                     >
-                      <Copy className="h-3 w-3" />
+                      <Copy className="h-3 w-3 sm:w-auto md:w-full" />
                     </Button>
                   </div>
                 ))}
@@ -300,11 +284,10 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
           )}
         </CardContent>
       </Card>
-
       {/* Network Report Summary */}
       {networkReport && (
         <Alert>
-          <Activity className="h-4 w-4" />
+          <Activity className="h-4 w-4 sm:w-auto md:w-full" />
           <AlertDescription>
             <div className="flex items-center justify-between">
               <span>
@@ -320,7 +303,6 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
           </AlertDescription>
         </Alert>
       )}
-
       {/* Main Tabs */}
       <Tabs defaultValue="endpoints" className="w-full">
         <TabsList>
@@ -328,7 +310,7 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
           <TabsTrigger value="diagnostics">
             Diagnostics
             {filteredLogs.filter(log => log.level === 'error').length > 0 && (
-              <Badge variant="destructive" className="ml-1 text-xs">
+              <Badge variant="destructive" className="ml-1 text-xs sm:text-sm md:text-base">
                 {filteredLogs.filter(log => log.level === 'error').length}
               </Badge>
             )}
@@ -336,14 +318,13 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
           <TabsTrigger value="testing">Manual Testing</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
-
         <TabsContent value="endpoints" className="space-y-4">
           <div className="grid gap-4">
             {Object.entries(metrics.endpoints).map(([endpoint, result]) => (
               <Card key={endpoint} className={selectedEndpoint === endpoint ? 'ring-2 ring-primary' : ''}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm flex items-center gap-2">
+                    <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
                       {getStatusIcon(result.status)}
                       {endpoint}
                     </CardTitle>
@@ -351,12 +332,12 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                       <Badge variant={result.status === 'healthy' ? 'default' : 'destructive'}>
                         {result.status}
                       </Badge>
-                      <Button
+                      <button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setSelectedEndpoint(selectedEndpoint === endpoint ? '' : endpoint)}
+                        onClick={() = aria-label="Button"> setSelectedEndpoint(selectedEndpoint === endpoint ? '' : endpoint)}
                       >
-                        {selectedEndpoint === endpoint ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                        {selectedEndpoint === endpoint ? <EyeOff className="h-3 w-3 sm:w-auto md:w-full" /> : <Eye className="h-3 w-3 sm:w-auto md:w-full" />}
                       </Button>
                     </div>
                   </div>
@@ -386,36 +367,34 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
+                      <button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleCopyEndpointUrl(endpoint)}
+                        onClick={() = aria-label="Button"> handleCopyEndpointUrl(endpoint)}
                       >
-                        <Copy className="h-3 w-3" />
+                        <Copy className="h-3 w-3 sm:w-auto md:w-full" />
                       </Button>
-                      <Button
+                      <button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.open(endpoint, '_blank')}
+                        onClick={() = aria-label="Button"> window.open(endpoint, '_blank')}
                       >
-                        <ExternalLink className="h-3 w-3" />
+                        <ExternalLink className="h-3 w-3 sm:w-auto md:w-full" />
                       </Button>
                     </div>
                   </div>
-                  
                   {selectedEndpoint === endpoint && (
                     <div className="mt-4 space-y-2">
                       {result.error && (
-                        <div className="p-3 bg-red-50 rounded border-l-4 border-red-500">
-                          <div className="text-sm font-medium text-red-800">Error Details</div>
-                          <div className="text-sm text-red-700 mt-1">{result.error}</div>
+                        <div className="p-3 bg-red-50 rounded border-l-4 border-red-500 sm:p-4 md:p-6">
+                          <div className="text-sm font-medium text-red-800 md:text-base lg:text-lg">Error Details</div>
+                          <div className="text-sm text-red-700 mt-1 md:text-base lg:text-lg">{result.error}</div>
                         </div>
                       )}
-                      
                       {result.details && (
-                        <div className="p-3 bg-gray-50 rounded">
-                          <div className="text-sm font-medium mb-2">Response Details</div>
-                          <pre className="text-xs overflow-auto">
+                        <div className="p-3 bg-gray-50 rounded sm:p-4 md:p-6">
+                          <div className="text-sm font-medium mb-2 md:text-base lg:text-lg">Response Details</div>
+                          <pre className="text-xs overflow-auto sm:text-sm md:text-base">
                             {JSON.stringify(result.details, null, 2)}
                           </pre>
                         </div>
@@ -427,15 +406,14 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
             ))}
           </div>
         </TabsContent>
-
         <TabsContent value="diagnostics" className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Label>Filter:</Label>
               <select 
                 value={logFilter} 
-                onChange={(e) => setLogFilter(e.target.value as any)}
-                className="px-3 py-1 border rounded text-sm"
+                onChange={(e) = aria-label="Select option"> setLogFilter(e.target.value as any)}
+                className="px-3 py-1 border rounded text-sm md:text-base lg:text-lg"
               >
                 <option value="all">All Logs</option>
                 <option value="error">Errors Only</option>
@@ -444,31 +422,30 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <Button
+              <button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowDetailedLogs(!showDetailedLogs)}
+                onClick={() = aria-label="Button"> setShowDetailedLogs(!showDetailedLogs)}
               >
-                {showDetailedLogs ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showDetailedLogs ? <EyeOff className="h-4 w-4 sm:w-auto md:w-full" /> : <Eye className="h-4 w-4 sm:w-auto md:w-full" />}
                 {showDetailedLogs ? 'Hide Details' : 'Show Details'}
               </Button>
-              <Button
+              <button
                 variant="outline"
                 size="sm"
                 onClick={handleExportDiagnostics}
-              >
-                <Download className="h-4 w-4" />
+               aria-label="Button">
+                <Download className="h-4 w-4 sm:w-auto md:w-full" />
                 Export
               </Button>
             </div>
           </div>
-
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {filteredLogs.length === 0 ? (
               <Card>
                 <CardContent className="flex items-center justify-center py-8">
                   <div className="text-center">
-                    <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2 sm:w-auto md:w-full" />
                     <p className="text-muted-foreground">No diagnostic logs found</p>
                   </div>
                 </CardContent>
@@ -480,58 +457,55 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                   log.level === 'warn' ? 'border-yellow-200 bg-yellow-50' :
                   'border-gray-200'
                 }`}>
-                  <CardContent className="p-3">
+                  <CardContent className="p-3 sm:p-4 md:p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-2 flex-1">
                         {getLogIcon(log.category)}
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                               {log.category}
                             </Badge>
                             <Badge variant={
                               log.level === 'error' ? 'destructive' :
                               log.level === 'warn' ? 'secondary' : 'default'
-                            } className="text-xs">
+                            } className="text-xs sm:text-sm md:text-base">
                               {log.level}
                             </Badge>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                               {new Date(log.timestamp).toLocaleTimeString()}
                             </span>
                             {log.duration && (
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                                 {log.duration}ms
                               </span>
                             )}
                           </div>
-                          <p className="text-sm">{log.message}</p>
+                          <p className="text-sm md:text-base lg:text-lg">{log.message}</p>
                           {log.endpoint && (
-                            <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                            <code className="text-xs bg-muted px-1 py-0.5 rounded sm:text-sm md:text-base">
                               {log.endpoint}
                             </code>
                           )}
-                          
                           {showDetailedLogs && (
                             <div className="mt-2 space-y-2">
                               {log.error && (
-                                <div className="text-xs text-red-600 bg-red-100 p-2 rounded">
+                                <div className="text-xs text-red-600 bg-red-100 p-2 rounded sm:text-sm md:text-base">
                                   <strong>Error:</strong> {log.error instanceof Error ? log.error.message : log.error}
                                 </div>
                               )}
-                              
                               {log.details && (
-                                <details className="text-xs">
+                                <details className="text-xs sm:text-sm md:text-base">
                                   <summary className="cursor-pointer text-muted-foreground">
                                     Show Details
                                   </summary>
-                                  <pre className="mt-1 p-2 bg-muted rounded overflow-auto">
+                                  <pre className="mt-1 p-2 bg-muted rounded overflow-auto sm:p-4 md:p-6">
                                     {JSON.stringify(log.details, null, 2)}
                                   </pre>
                                 </details>
                               )}
-                              
                               {log.troubleshooting && (
-                                <div className="text-xs bg-blue-50 p-2 rounded">
+                                <div className="text-xs bg-blue-50 p-2 rounded sm:text-sm md:text-base">
                                   <div className="font-medium mb-1">Troubleshooting:</div>
                                   <div className="space-y-1">
                                     <div>
@@ -564,7 +538,6 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
             )}
           </div>
         </TabsContent>
-
         <TabsContent value="testing" className="space-y-4">
           <Card>
             <CardHeader>
@@ -575,32 +548,31 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <Input
+                <input
                   placeholder="Enter endpoint URL (e.g., /api/health or full URL)"
                   value={customEndpoint}
-                  onChange={(e) => setCustomEndpoint(e.target.value)}
+                  onChange={(e) = aria-label="Input"> setCustomEndpoint(e.target.value)}
                   className="flex-1"
                 />
-                <Button
+                <button
                   onClick={handleTestCustomEndpoint}
                   disabled={!customEndpoint.trim() || isRunningDiagnostics}
-                >
+                 aria-label="Button">
                   {isRunningDiagnostics ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <RefreshCw className="h-4 w-4 animate-spin sm:w-auto md:w-full" />
                   ) : (
-                    <Play className="h-4 w-4" />
+                    <Play className="h-4 w-4 sm:w-auto md:w-full" />
                   )}
                   Test
                 </Button>
               </div>
-              
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {['/api/health', '/api/auth/status', '/api/ai/conversation-processing', '/api/memory/query'].map((endpoint) => (
-                  <Button
+                  <button
                     key={endpoint}
                     variant="outline"
                     size="sm"
-                    onClick={() => setCustomEndpoint(endpoint)}
+                    onClick={() = aria-label="Button"> setCustomEndpoint(endpoint)}
                   >
                     {endpoint}
                   </Button>
@@ -609,7 +581,6 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="reports" className="space-y-4">
           {networkReport ? (
             <div className="space-y-4">
@@ -624,25 +595,24 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                     <div className="text-center">
                       <div className="text-2xl font-bold">{networkReport.summary.totalTests}</div>
-                      <div className="text-sm text-muted-foreground">Total Tests</div>
+                      <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Total Tests</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-600">{networkReport.summary.passedTests}</div>
-                      <div className="text-sm text-muted-foreground">Passed</div>
+                      <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Passed</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-red-600">{networkReport.summary.failedTests}</div>
-                      <div className="text-sm text-muted-foreground">Failed</div>
+                      <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Failed</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold">{networkReport.summary.averageResponseTime.toFixed(0)}ms</div>
-                      <div className="text-sm text-muted-foreground">Avg Response</div>
+                      <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Avg Response</div>
                     </div>
                   </div>
-                  
                   <div className="space-y-2">
                     <h4 className="font-medium">Recommendations:</h4>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
+                    <ul className="list-disc list-inside space-y-1 text-sm md:text-base lg:text-lg">
                       {networkReport.recommendations.map((rec, index) => (
                         <li key={index}>{rec}</li>
                       ))}
@@ -650,33 +620,31 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                   </div>
                 </CardContent>
               </Card>
-
               <div className="space-y-2">
                 {networkReport.testResults.map((result, index) => (
                   <Card key={index}>
-                    <CardContent className="p-4">
+                    <CardContent className="p-4 sm:p-4 md:p-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           {getStatusIcon(result.success ? 'healthy' : 'error')}
                           <div>
                             <div className="font-medium">{result.test.name}</div>
-                            <div className="text-sm text-muted-foreground">{result.test.description}</div>
+                            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">{result.test.description}</div>
                           </div>
                         </div>
                         <div className="text-right">
                           <Badge variant={result.success ? 'default' : 'destructive'}>
                             {result.success ? 'Pass' : 'Fail'}
                           </Badge>
-                          <div className="text-sm text-muted-foreground mt-1">
+                          <div className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
                             {result.diagnostic.responseTime}ms
                           </div>
                         </div>
                       </div>
-                      
                       {result.recommendations && result.recommendations.length > 0 && (
-                        <div className="mt-2 p-2 bg-yellow-50 rounded">
-                          <div className="text-sm font-medium mb-1">Recommendations:</div>
-                          <ul className="list-disc list-inside text-sm space-y-1">
+                        <div className="mt-2 p-2 bg-yellow-50 rounded sm:p-4 md:p-6">
+                          <div className="text-sm font-medium mb-1 md:text-base lg:text-lg">Recommendations:</div>
+                          <ul className="list-disc list-inside text-sm space-y-1 md:text-base lg:text-lg">
                             {result.recommendations.map((rec, i) => (
                               <li key={i}>{rec}</li>
                             ))}
@@ -692,13 +660,13 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
             <Card>
               <CardContent className="flex items-center justify-center py-8">
                 <div className="text-center">
-                  <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2 sm:w-auto md:w-full" />
                   <p className="text-muted-foreground mb-4">No diagnostic report available</p>
-                  <Button onClick={handleRunComprehensiveDiagnostics} disabled={isRunningDiagnostics}>
+                  <button onClick={handleRunComprehensiveDiagnostics} disabled={isRunningDiagnostics} aria-label="Button">
                     {isRunningDiagnostics ? (
-                      <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                      <RefreshCw className="h-4 w-4 animate-spin mr-2 sm:w-auto md:w-full" />
                     ) : (
-                      <Activity className="h-4 w-4 mr-2" />
+                      <Activity className="h-4 w-4 mr-2 sm:w-auto md:w-full" />
                     )}
                     Run Comprehensive Diagnostics
                   </Button>

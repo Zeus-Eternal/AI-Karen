@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 interface BatchImageGenerationRequest {
   requests: Array<{
     id?: string; // Optional ID for tracking individual requests
@@ -18,7 +17,6 @@ interface BatchImageGenerationRequest {
   priority?: 'low' | 'normal' | 'high';
   callback_url?: string; // URL to POST results to when complete
 }
-
 interface BatchImageGenerationResponse {
   success: boolean;
   batch_id: string;
@@ -47,7 +45,6 @@ interface BatchImageGenerationResponse {
   error?: string;
   message?: string;
 }
-
 // In-memory batch tracking (in production, this would be in a database)
 const batchJobs = new Map<string, {
   id: string;
@@ -58,28 +55,22 @@ const batchJobs = new Map<string, {
   completed_at?: Date;
   estimated_completion: Date;
 }>();
-
 export async function POST(request: NextRequest) {
-  console.log('🎨 Batch Image Generation API: Request received');
-
   try {
     const body: BatchImageGenerationRequest = await request.json();
     const { requests, global_model_id, priority = 'normal', callback_url } = body;
-
     if (!requests || !Array.isArray(requests) || requests.length === 0) {
       return NextResponse.json(
         { error: 'Missing or empty requests array' },
         { status: 400 }
       );
     }
-
     if (requests.length > 20) {
       return NextResponse.json(
         { error: 'Batch size cannot exceed 20 requests' },
         { status: 400 }
       );
     }
-
     // Validate each request
     for (let i = 0; i < requests.length; i++) {
       const req = requests[i];
@@ -90,16 +81,7 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-
-    console.log('🎨 Batch Image Generation API: Processing batch', {
-      requestCount: requests.length,
-      globalModel: global_model_id,
-      priority,
-      hasCallback: !!callback_url
-    });
-
     const { modelSelectionService } = await import('@/lib/model-selection-service');
-
     try {
       // Get available image models
       const models = await modelSelectionService.getAvailableModels();
@@ -108,7 +90,6 @@ export async function POST(request: NextRequest) {
         m.capabilities?.includes('text2img') ||
         m.capabilities?.includes('image-generation')
       );
-
       if (imageModels.length === 0) {
         return NextResponse.json(
           {
@@ -118,16 +99,13 @@ export async function POST(request: NextRequest) {
           { status: 503 }
         );
       }
-
       // Generate batch ID
       const batchId = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
       // Estimate completion time (rough calculation)
       const avgTimePerImage = 30; // seconds
       const totalImages = requests.length; // Each request generates 1 image
       const estimatedTime = totalImages * avgTimePerImage;
       const estimatedCompletion = new Date(Date.now() + estimatedTime * 1000);
-
       // Create batch job
       const batchJob = {
         id: batchId,
@@ -141,19 +119,15 @@ export async function POST(request: NextRequest) {
         created_at: new Date(),
         estimated_completion: estimatedCompletion
       };
-
       batchJobs.set(batchId, batchJob);
-
       // Start processing batch asynchronously
       processBatchAsync(batchId, callback_url).catch(error => {
-        console.error('🎨 Batch processing error:', error);
         const job = batchJobs.get(batchId);
         if (job) {
           job.status = 'failed';
           batchJobs.set(batchId, job);
         }
       });
-
       const response: BatchImageGenerationResponse = {
         success: true,
         batch_id: batchId,
@@ -161,13 +135,6 @@ export async function POST(request: NextRequest) {
         estimated_completion_time: estimatedTime,
         status: 'queued'
       };
-
-      console.log('🎨 Batch Image Generation API: Batch queued', {
-        batchId,
-        requestCount: requests.length,
-        estimatedTime
-      });
-
       return NextResponse.json(response, {
         status: 202, // Accepted
         headers: {
@@ -176,10 +143,7 @@ export async function POST(request: NextRequest) {
           'Location': `/api/generate/image/batch/${batchId}`
         }
       });
-
     } catch (batchError) {
-      console.error('🎨 Batch Image Generation API: Batch setup error', batchError);
-      
       return NextResponse.json(
         {
           error: 'Batch setup failed',
@@ -188,10 +152,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
   } catch (error) {
-    console.error('🎨 Batch Image Generation API: Request error', error);
-    
     return NextResponse.json(
       {
         error: 'Invalid request',
@@ -201,14 +162,10 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 export async function GET(request: NextRequest) {
-  console.log('🎨 Batch Image Generation API: Status check requested');
-
   try {
     const { searchParams } = new URL(request.url);
     const batchId = searchParams.get('batch_id');
-
     if (!batchId) {
       // Return list of recent batches
       const recentBatches = Array.from(batchJobs.values())
@@ -223,13 +180,11 @@ export async function GET(request: NextRequest) {
           completed_at: job.completed_at?.toISOString(),
           estimated_completion: job.estimated_completion.toISOString()
         }));
-
       return NextResponse.json({
         recent_batches: recentBatches,
         active_batches: recentBatches.filter(b => b.status === 'processing' || b.status === 'queued').length
       });
     }
-
     // Return specific batch status
     const batchJob = batchJobs.get(batchId);
     if (!batchJob) {
@@ -238,7 +193,6 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
-
     const response: BatchImageGenerationResponse = {
       success: true,
       batch_id: batchId,
@@ -247,12 +201,8 @@ export async function GET(request: NextRequest) {
       status: batchJob.status,
       results: batchJob.results
     };
-
     return NextResponse.json(response);
-
   } catch (error) {
-    console.error('🎨 Batch Image Generation API: Status check error', error);
-    
     return NextResponse.json(
       {
         error: 'Status check failed',
@@ -262,34 +212,23 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
 /**
  * Process batch requests asynchronously
  */
 async function processBatchAsync(batchId: string, callbackUrl?: string): Promise<void> {
   const batchJob = batchJobs.get(batchId);
   if (!batchJob) return;
-
-  console.log('🎨 Starting batch processing:', batchId);
-  
   batchJob.status = 'processing';
   batchJobs.set(batchId, batchJob);
-
   const results = [];
-
   for (const request of batchJob.requests) {
     try {
-      console.log('🎨 Processing batch request:', request.id);
-      
       // Simulate image generation (in real implementation, call actual generation)
       const startTime = Date.now();
-      
       // Simulate processing time
       await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
-      
       const batchSize = request.batch_size || 1;
       const images = [];
-      
       for (let i = 0; i < batchSize; i++) {
         images.push({
           base64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
@@ -298,9 +237,7 @@ async function processBatchAsync(batchId: string, callbackUrl?: string): Promise
           height: request.height || 512
         });
       }
-
       const generationTime = Date.now() - startTime;
-
       results.push({
         request_id: request.id,
         success: true,
@@ -319,32 +256,25 @@ async function processBatchAsync(batchId: string, callbackUrl?: string): Promise
           generation_time: generationTime
         }
       });
-
     } catch (error) {
-      console.error('🎨 Batch request failed:', request.id, error);
-      
       results.push({
         request_id: request.id,
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
-
     // Update batch job with current results
     batchJob.results = results;
     batchJobs.set(batchId, batchJob);
   }
-
   // Mark batch as completed
   batchJob.status = 'completed';
   batchJob.completed_at = new Date();
   batchJobs.set(batchId, batchJob);
-
   console.log('🎨 Batch processing completed:', batchId, {
     totalRequests: batchJob.requests.length,
     successfulResults: results.filter(r => r.success).length
   });
-
   // Send callback if provided
   if (callbackUrl) {
     try {
@@ -358,7 +288,6 @@ async function processBatchAsync(batchId: string, callbackUrl?: string): Promise
         })
       });
     } catch (callbackError) {
-      console.error('🎨 Callback failed:', callbackError);
     }
   }
 }

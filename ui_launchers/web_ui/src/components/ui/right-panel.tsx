@@ -295,11 +295,11 @@ export const RightPanelNavigation = forwardRef<HTMLElement, RightPanelNavigation
                 "py-1"
               )}>
                 {views.map((view) => (
-                  <Button
+                  <button
                     key={view.id}
                     variant={activeView === view.id ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => onViewChange?.(view.id)}
+                    onClick={() = aria-label="Button"> onViewChange?.(view.id)}
                     className={cn(
                       "whitespace-nowrap shrink-0",
                       // Responsive spacing and alignment

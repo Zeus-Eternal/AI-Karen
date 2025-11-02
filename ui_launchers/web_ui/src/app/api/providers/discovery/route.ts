@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 // IMPORTANT: Never use NEXT_PUBLIC_* here (those may point back to the Next server and cause loops)
-
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
-
 const BACKEND_CANDIDATES = getBackendCandidates(['http://host.docker.internal:8000']);
 const TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_API_PROXY_LONG_TIMEOUT_MS || process.env.KAREN_API_PROXY_LONG_TIMEOUT_MS || 20000);
-
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const searchParams = url.searchParams.toString();
     const bases = BACKEND_CANDIDATES;
-
     let response: Response | null = null;
     let lastErr: any = null;
     for (const base of bases) {
@@ -64,12 +59,9 @@ export async function GET(request: NextRequest) {
         continue;
       }
     }
-
     if (!response) {
-      console.error('Providers discovery proxy fatal error:', lastErr);
       return NextResponse.json({ error: 'Discovery request failed' }, { status: 502 });
     }
-
     const contentType = response.headers.get('content-type') || '';
     let data: any = {};
     if (contentType.includes('application/json')) {
@@ -80,14 +72,11 @@ export async function GET(request: NextRequest) {
         data = { message: data };
       }
     }
-
     return NextResponse.json(
       typeof data === 'string' ? { error: data } : data,
       { status: response.status }
     );
-
   } catch (error) {
-    console.error('Providers discovery proxy error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

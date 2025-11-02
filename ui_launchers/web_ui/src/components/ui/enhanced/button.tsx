@@ -157,7 +157,7 @@ export const EnhancedButton = React.forwardRef<HTMLButtonElement, EnhancedButton
       >
         {loading && (
           <svg
-            className="animate-spin h-4 w-4"
+            className="animate-spin h-4 w-4 sm:w-auto md:w-full"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"

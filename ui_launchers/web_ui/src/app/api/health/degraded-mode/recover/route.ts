@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 import { withBackendPath } from '@/app/api/_utils/backend';
 const HEALTH_TIMEOUT_MS = 10000; // Longer timeout for recovery operations
-
 export async function POST(request: NextRequest) {
   try {
     // Forward the request to the backend degraded-mode recovery endpoint
     const url = withBackendPath('/api/health/degraded-mode/recover');
-    
     // Get request body if present
     let body: any = null;
     try {
@@ -18,10 +15,8 @@ export async function POST(request: NextRequest) {
     } catch {
       // No body or invalid JSON, continue without body
     }
-    
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
-    
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -40,12 +35,9 @@ export async function POST(request: NextRequest) {
         keepalive: true,
         cache: 'no-store',
       });
-      
       clearTimeout(timeout);
-      
       const contentType = response.headers.get('content-type') || '';
       let data: any = {};
-      
       if (contentType.includes('application/json')) {
         try { 
           data = await response.json(); 
@@ -60,12 +52,9 @@ export async function POST(request: NextRequest) {
           data = { status: 'unknown' }; 
         }
       }
-
       return NextResponse.json(data, { status: response.status });
-      
     } catch (err: any) {
       clearTimeout(timeout);
-      
       // Return error response
       return NextResponse.json(
         { 
@@ -77,9 +66,7 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
-    
   } catch (error) {
-    console.error('Degraded mode recovery error:', error);
     return NextResponse.json(
       { 
         status: 'error', 
@@ -91,7 +78,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 // Also support GET method to check recovery status
 export async function GET(request: NextRequest) {
   return NextResponse.json(

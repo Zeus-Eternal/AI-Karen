@@ -19,9 +19,9 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
 }) => {
   const TypingDots = () => (
     <div className="flex space-x-1">
-      <div className="w-2 h-2 bg-current rounded-full animate-bounce" />
-      <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.1s]" />
-      <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.2s]" />
+      <div className="w-2 h-2 bg-current rounded-full animate-bounce sm:w-auto md:w-full" />
+      <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.1s] sm:w-auto md:w-full" />
+      <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.2s] sm:w-auto md:w-full" />
     </div>
   );
 
@@ -40,7 +40,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
   }
 
   return (
-    <div className="flex items-center justify-between p-3 border-t bg-muted/50">
+    <div className="flex items-center justify-between p-3 border-t bg-muted/50 sm:p-4 md:p-6">
       {/* Typing Indicator */}
       {isTyping && (
         <div 
@@ -49,16 +49,16 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
           aria-live="polite" 
           aria-label={getTypingMessage()}
         >
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <Bot className="h-4 w-4 text-primary" aria-hidden="true" />
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center sm:w-auto md:w-full">
+            <Bot className="h-4 w-4 text-primary sm:w-auto md:w-full" aria-hidden="true" />
           </div>
           <div className="flex items-center space-x-2">
             <TypingDots />
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
               {getTypingMessage()}
             </span>
             {estimatedTime && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
                 ~{estimatedTime}s
               </Badge>
             )}
@@ -72,15 +72,15 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
           <div className="flex items-center space-x-1">
             {isConnected ? (
               <>
-                <Wifi className="h-4 w-4 text-green-500" aria-hidden="true" />
-                <span className="text-xs text-green-600 dark:text-green-400">
+                <Wifi className="h-4 w-4 text-green-500 sm:w-auto md:w-full" aria-hidden="true" />
+                <span className="text-xs text-green-600 dark:text-green-400 sm:text-sm md:text-base">
                   Connected
                 </span>
               </>
             ) : (
               <>
-                <WifiOff className="h-4 w-4 text-red-500" aria-hidden="true" />
-                <span className="text-xs text-red-600 dark:text-red-400">
+                <WifiOff className="h-4 w-4 text-red-500 sm:w-auto md:w-full" aria-hidden="true" />
+                <span className="text-xs text-red-600 dark:text-red-400 sm:text-sm md:text-base">
                   Disconnected
                 </span>
               </>

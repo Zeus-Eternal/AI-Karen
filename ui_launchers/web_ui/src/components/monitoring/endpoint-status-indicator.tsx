@@ -1,3 +1,8 @@
+import React, { useState, useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { 
+import { Progress } from '@/components/ui/progress';
 /**
  * Endpoint Status Indicator Component
  * Compact status indicator for endpoint connectivity with real-time updates
@@ -5,16 +10,16 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { 
+
+
+
+
   Popover, 
   PopoverContent, 
   PopoverTrigger 
 } from '@/components/ui/popover';
-import { Progress } from '@/components/ui/progress';
-import { 
+
+
   Activity, 
   AlertTriangle, 
   CheckCircle, 
@@ -25,11 +30,11 @@ import {
   RefreshCw,
   ExternalLink
 } from 'lucide-react';
-import { 
+
   getHealthMonitor, 
   type HealthMetrics 
 } from '@/lib/health-monitor';
-import { 
+
   getDiagnosticLogger 
 } from '@/lib/diagnostics';
 
@@ -106,13 +111,13 @@ export function EndpointStatusIndicator({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <CheckCircle className="h-4 w-4 text-green-600 sm:w-auto md:w-full" />;
       case 'degraded':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600 sm:w-auto md:w-full" />;
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-600" />;
+        return <XCircle className="h-4 w-4 text-red-600 sm:w-auto md:w-full" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-600" />;
+        return <Clock className="h-4 w-4 text-gray-600 sm:w-auto md:w-full" />;
     }
   };
 
@@ -163,7 +168,7 @@ export function EndpointStatusIndicator({
       <div className={`flex items-center gap-1 ${className}`}>
         {getStatusIcon(overallStatus)}
         {recentErrors > 0 && (
-          <Badge variant="destructive" className="text-xs px-1 py-0 h-4 min-w-4">
+          <Badge variant="destructive" className="text-xs px-1 py-0 h-4 min-w-4 sm:w-auto md:w-full">
             {recentErrors}
           </Badge>
         )}
@@ -179,7 +184,7 @@ export function EndpointStatusIndicator({
           {getStatusText(overallStatus)}
         </Badge>
         {recentErrors > 0 && (
-          <Badge variant="destructive" className="text-xs">
+          <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
             {recentErrors}
           </Badge>
         )}
@@ -190,19 +195,19 @@ export function EndpointStatusIndicator({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className={`gap-2 ${className}`}>
+        <button variant="ghost" size="sm" className={`gap-2 ${className}`} aria-label="Button">
           {getStatusIcon(overallStatus)}
           <Badge variant={getStatusColor(overallStatus)}>
             {getStatusText(overallStatus)}
           </Badge>
           {recentErrors > 0 && (
-            <Badge variant="destructive" className="text-xs">
+            <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
               {recentErrors}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80" align="end">
+      <PopoverContent className="w-80 sm:w-auto md:w-full" align="end">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold">Endpoint Status</h4>
@@ -217,9 +222,9 @@ export function EndpointStatusIndicator({
           {metrics && (
             <div className="space-y-3">
               {/* Quick Stats */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm md:text-base lg:text-lg">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <TrendingUp className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                   <div>
                     <div className="font-medium">Error Rate</div>
                     <div className="text-muted-foreground">
@@ -228,7 +233,7 @@ export function EndpointStatusIndicator({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-muted-foreground" />
+                  <Zap className="h-4 w-4 text-muted-foreground sm:w-auto md:w-full" />
                   <div>
                     <div className="font-medium">Response Time</div>
                     <div className="text-muted-foreground">
@@ -239,7 +244,7 @@ export function EndpointStatusIndicator({
               </div>
 
               {/* Endpoint Summary */}
-              <div className="text-sm">
+              <div className="text-sm md:text-base lg:text-lg">
                 <div className="font-medium mb-2">Endpoints ({healthyEndpoints}/{totalEndpoints} healthy)</div>
                 <Progress 
                   value={totalEndpoints > 0 ? (healthyEndpoints / totalEndpoints) * 100 : 0} 
@@ -250,8 +255,8 @@ export function EndpointStatusIndicator({
               {/* Individual Endpoints */}
               <div className="space-y-2 max-h-32 overflow-y-auto">
                 {Object.entries(metrics.endpoints).map(([endpoint, result]) => (
-                  <div key={endpoint} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div key={endpoint} className="flex items-center justify-between text-xs sm:text-sm md:text-base">
+                    <div className="flex items-center gap-2 flex-1 min-w-0 sm:w-auto md:w-full">
                       {getStatusIcon(result.status)}
                       <span className="truncate" title={endpoint}>
                         {endpoint.split('/').pop() || endpoint}
@@ -259,13 +264,13 @@ export function EndpointStatusIndicator({
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <span>{result.responseTime}ms</span>
-                      <Button
+                      <button
                         variant="ghost"
                         size="sm"
-                        className="h-4 w-4 p-0"
-                        onClick={() => window.open(endpoint, '_blank')}
+                        className="h-4 w-4 p-0 sm:w-auto md:w-full"
+                        onClick={() = aria-label="Button"> window.open(endpoint, '_blank')}
                       >
-                        <ExternalLink className="h-3 w-3" />
+                        <ExternalLink className="h-3 w-3 sm:w-auto md:w-full" />
                       </Button>
                     </div>
                   </div>
@@ -273,7 +278,7 @@ export function EndpointStatusIndicator({
               </div>
 
               {/* Recent Activity */}
-              <div className="text-sm">
+              <div className="text-sm md:text-base lg:text-lg">
                 <div className="font-medium mb-1">Activity</div>
                 <div className="text-muted-foreground space-y-1">
                   <div className="flex justify-between">
@@ -294,7 +299,7 @@ export function EndpointStatusIndicator({
               </div>
 
               {/* Monitoring Status */}
-              <div className="flex items-center justify-between text-sm pt-2 border-t">
+              <div className="flex items-center justify-between text-sm pt-2 border-t md:text-base lg:text-lg">
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${isMonitoring ? 'bg-green-500' : 'bg-gray-400'}`} />
                   <span className="text-muted-foreground">
@@ -302,7 +307,7 @@ export function EndpointStatusIndicator({
                   </span>
                 </div>
                 {lastUpdate && (
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-muted-foreground text-xs sm:text-sm md:text-base">
                     {lastUpdate}
                   </span>
                 )}
@@ -313,8 +318,8 @@ export function EndpointStatusIndicator({
           {!metrics && (
             <div className="flex items-center justify-center py-4">
               <div className="text-center">
-                <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Loading status...</p>
+                <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground sm:w-auto md:w-full" />
+                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading status...</p>
               </div>
             </div>
           )}

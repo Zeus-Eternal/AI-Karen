@@ -1,3 +1,14 @@
+import React, { useState, useEffect } from 'react';
+import { 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { PluginInfo, PluginMetrics as PluginMetricsType } from '@/types/plugins';
 /**
  * Plugin Metrics Component
  * 
@@ -7,8 +18,8 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { 
+
+
   Activity, 
   Clock, 
   Cpu, 
@@ -40,29 +51,29 @@ import {
   EyeOff,
 } from 'lucide-react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
+
+
+
+
+
+
+
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+
+
+
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-import { PluginInfo, PluginMetrics as PluginMetricsType } from '@/types/plugins';
+
 
 // Chart component placeholder (would use AG-Charts in real implementation)
 const MetricChart: React.FC<{
@@ -76,9 +87,9 @@ const MetricChart: React.FC<{
     style={{ height }}
   >
     <div className="text-center text-muted-foreground">
-      <BarChart3 className="w-8 h-8 mx-auto mb-2" />
-      <p className="text-sm">Chart: {data.length} data points</p>
-      <p className="text-xs">Type: {type}</p>
+      <BarChart3 className="w-8 h-8 mx-auto mb-2 sm:w-auto md:w-full" />
+      <p className="text-sm md:text-base lg:text-lg">Chart: {data.length} data points</p>
+      <p className="text-xs sm:text-sm md:text-base">Type: {type}</p>
     </div>
   </div>
 );
@@ -120,15 +131,15 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="p-4 sm:p-4 md:p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Icon className={`w-4 h-4 ${statusColors[status]}`} />
-            <span className="text-sm font-medium">{title}</span>
+            <span className="text-sm font-medium md:text-base lg:text-lg">{title}</span>
           </div>
           {trend && TrendIcon && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <TrendIcon className="w-3 h-3" />
+            <div className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm md:text-base">
+              <TrendIcon className="w-3 h-3 sm:w-auto md:w-full" />
               {trendValue && `${trendValue > 0 ? '+' : ''}${trendValue}%`}
             </div>
           )}
@@ -136,10 +147,10 @@ const MetricCard: React.FC<MetricCardProps> = ({
         <div className="mt-2">
           <div className="text-2xl font-bold">
             {typeof value === 'number' ? value.toLocaleString() : value}
-            {unit && <span className="text-sm font-normal text-muted-foreground ml-1">{unit}</span>}
+            {unit && <span className="text-sm font-normal text-muted-foreground ml-1 md:text-base lg:text-lg">{unit}</span>}
           </div>
           {description && (
-            <p className="text-xs text-muted-foreground mt-1">{description}</p>
+            <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">{description}</p>
           )}
         </div>
       </CardContent>
@@ -176,9 +187,9 @@ const PerformanceAlerts: React.FC<PerformanceAlertsProps> = ({
   if (alerts.length === 0) {
     return (
       <Card>
-        <CardContent className="p-6 text-center">
-          <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-600" />
-          <p className="text-sm text-muted-foreground">No active alerts</p>
+        <CardContent className="p-6 text-center sm:p-4 md:p-6">
+          <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-600 sm:w-auto md:w-full" />
+          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">No active alerts</p>
         </CardContent>
       </Card>
     );
@@ -188,7 +199,7 @@ const PerformanceAlerts: React.FC<PerformanceAlertsProps> = ({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5" />
+          <AlertTriangle className="w-5 h-5 sm:w-auto md:w-full" />
           Performance Alerts
           <Badge variant="outline">{alerts.length}</Badge>
         </CardTitle>
@@ -201,21 +212,21 @@ const PerformanceAlerts: React.FC<PerformanceAlertsProps> = ({
             
             return (
               <Alert key={alert.id} variant={config.variant}>
-                <AlertIcon className="w-4 h-4" />
+                <AlertIcon className="w-4 h-4 sm:w-auto md:w-full" />
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <AlertDescription className="font-medium">
                       {alert.message}
                     </AlertDescription>
-                    <Button
+                    <button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onDismiss(alert.id)}
+                      onClick={() = aria-label="Button"> onDismiss(alert.id)}
                     >
-                      <XCircle className="w-3 h-3" />
+                      <XCircle className="w-3 h-3 sm:w-auto md:w-full" />
                     </Button>
                   </div>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground sm:text-sm md:text-base">
                     <span className="capitalize">{alert.type}</span>
                     <span className="capitalize">{alert.severity}</span>
                     <span>{alert.timestamp.toLocaleString()}</span>
@@ -317,42 +328,42 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
         </div>
         
         <div className="flex items-center gap-2">
-          <Select value={timeRange} onValueChange={(value: any) => setTimeRange(value)}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
+          <select value={timeRange} onValueChange={(value: any) = aria-label="Select option"> setTimeRange(value)}>
+            <selectTrigger className="w-32 sm:w-auto md:w-full" aria-label="Select option">
+              <selectValue />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1h">Last Hour</SelectItem>
-              <SelectItem value="24h">Last 24h</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
+            <selectContent aria-label="Select option">
+              <selectItem value="1h" aria-label="Select option">Last Hour</SelectItem>
+              <selectItem value="24h" aria-label="Select option">Last 24h</SelectItem>
+              <selectItem value="7d" aria-label="Select option">Last 7 days</SelectItem>
+              <selectItem value="30d" aria-label="Select option">Last 30 days</SelectItem>
             </SelectContent>
           </Select>
           
-          <Button
+          <button
             variant="outline"
             size="sm"
-            onClick={() => setShowAdvanced(!showAdvanced)}
+            onClick={() = aria-label="Button"> setShowAdvanced(!showAdvanced)}
           >
-            {showAdvanced ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showAdvanced ? <EyeOff className="w-4 h-4 sm:w-auto md:w-full" /> : <Eye className="w-4 h-4 sm:w-auto md:w-full" />}
             {showAdvanced ? 'Simple' : 'Advanced'}
           </Button>
           
-          <Button
+          <button
             variant="outline"
             size="sm"
             onClick={onConfigureAlerts}
-          >
-            <Settings className="w-4 h-4 mr-2" />
+           aria-label="Button">
+            <Settings className="w-4 h-4 mr-2 sm:w-auto md:w-full" />
             Alerts
           </Button>
           
-          <Button
+          <button
             variant="outline"
             size="sm"
             onClick={handleRefresh}
             disabled={refreshing}
-          >
+           aria-label="Button">
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -428,9 +439,9 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
             <CardContent>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                     <div className="flex items-center gap-2">
-                      <Cpu className="w-4 h-4" />
+                      <Cpu className="w-4 h-4 sm:w-auto md:w-full" />
                       <span>CPU Usage</span>
                     </div>
                     <span>{metrics.resources.cpuUsage.toFixed(1)}%</span>
@@ -439,9 +450,9 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
                 </div>
                 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                     <div className="flex items-center gap-2">
-                      <MemoryStick className="w-4 h-4" />
+                      <MemoryStick className="w-4 h-4 sm:w-auto md:w-full" />
                       <span>Memory Usage</span>
                     </div>
                     <span>{metrics.resources.memoryUsage.toFixed(1)} MB</span>
@@ -450,9 +461,9 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
                 </div>
                 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                     <div className="flex items-center gap-2">
-                      <Network className="w-4 h-4" />
+                      <Network className="w-4 h-4 sm:w-auto md:w-full" />
                       <span>Network Usage</span>
                     </div>
                     <span>{metrics.resources.networkUsage.toFixed(1)} MB/s</span>
@@ -461,9 +472,9 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
                 </div>
                 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                     <div className="flex items-center gap-2">
-                      <HardDrive className="w-4 h-4" />
+                      <HardDrive className="w-4 h-4 sm:w-auto md:w-full" />
                       <span>Disk Usage</span>
                     </div>
                     <span>{metrics.resources.diskUsage.toFixed(1)} MB</span>
@@ -482,19 +493,19 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                     <span>Last Execution</span>
                     <span className="text-muted-foreground">
                       {metrics.performance.lastExecution?.toLocaleString() || 'Never'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                     <span>Last Health Check</span>
                     <span className="text-muted-foreground">
                       {metrics.health.lastHealthCheck.toLocaleString()}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                     <span>Plugin Status</span>
                     <Badge variant={plugin.status === 'active' ? 'default' : 'secondary'}>
                       {plugin.status}
@@ -511,19 +522,19 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
               <CardContent>
                 {metrics.health.issues.length === 0 ? (
                   <div className="text-center py-4">
-                    <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-600" />
-                    <p className="text-sm text-muted-foreground">No health issues</p>
+                    <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-600 sm:w-auto md:w-full" />
+                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">No health issues</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {metrics.health.issues.slice(0, 3).map((issue, index) => (
-                      <div key={index} className="flex items-start gap-2 text-sm">
-                        <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                      <div key={index} className="flex items-start gap-2 text-sm md:text-base lg:text-lg">
+                        <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0 sm:w-auto md:w-full" />
                         <span>{issue}</span>
                       </div>
                     ))}
                     {metrics.health.issues.length > 3 && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                         +{metrics.health.issues.length - 3} more issues
                       </p>
                     )}
@@ -595,26 +606,26 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">P50 Execution Time</span>
+                    <span className="text-sm md:text-base lg:text-lg">P50 Execution Time</span>
                     <span className="font-medium">245ms</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">P95 Execution Time</span>
+                    <span className="text-sm md:text-base lg:text-lg">P95 Execution Time</span>
                     <span className="font-medium">890ms</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">P99 Execution Time</span>
+                    <span className="text-sm md:text-base lg:text-lg">P99 Execution Time</span>
                     <span className="font-medium">1.2s</span>
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Success Rate</span>
+                    <span className="text-sm md:text-base lg:text-lg">Success Rate</span>
                     <span className="font-medium text-green-600">
                       {((1 - metrics.performance.errorRate) * 100).toFixed(2)}%
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Throughput</span>
+                    <span className="text-sm md:text-base lg:text-lg">Throughput</span>
                     <span className="font-medium">
                       {(metrics.performance.totalExecutions / 24).toFixed(1)} exec/hour
                     </span>
@@ -711,15 +722,15 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
                     'bg-red-100 text-red-600'
                   }`}>
                     {metrics.health.status === 'healthy' ? (
-                      <CheckCircle className="w-8 h-8" />
+                      <CheckCircle className="w-8 h-8 sm:w-auto md:w-full" />
                     ) : metrics.health.status === 'warning' ? (
-                      <AlertTriangle className="w-8 h-8" />
+                      <AlertTriangle className="w-8 h-8 sm:w-auto md:w-full" />
                     ) : (
-                      <XCircle className="w-8 h-8" />
+                      <XCircle className="w-8 h-8 sm:w-auto md:w-full" />
                     )}
                   </div>
                   <h3 className="font-medium capitalize">{metrics.health.status}</h3>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                     {metrics.health.uptime.toFixed(1)}% uptime
                   </p>
                 </div>
@@ -733,20 +744,20 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">API Connectivity</span>
-                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <span className="text-sm md:text-base lg:text-lg">API Connectivity</span>
+                    <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Dependencies</span>
-                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <span className="text-sm md:text-base lg:text-lg">Dependencies</span>
+                    <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Configuration</span>
-                    <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                    <span className="text-sm md:text-base lg:text-lg">Configuration</span>
+                    <AlertTriangle className="w-4 h-4 text-yellow-600 sm:w-auto md:w-full" />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Permissions</span>
-                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <span className="text-sm md:text-base lg:text-lg">Permissions</span>
+                    <CheckCircle className="w-4 h-4 text-green-600 sm:w-auto md:w-full" />
                   </div>
                 </div>
               </CardContent>
@@ -760,12 +771,12 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
                 <ScrollArea className="h-32">
                   <div className="space-y-2">
                     {metrics.health.issues.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">
+                      <p className="text-sm text-muted-foreground text-center py-4 md:text-base lg:text-lg">
                         No recent issues
                       </p>
                     ) : (
                       metrics.health.issues.map((issue, index) => (
-                        <div key={index} className="text-sm p-2 bg-muted/50 rounded">
+                        <div key={index} className="text-sm p-2 bg-muted/50 rounded md:text-base lg:text-lg">
                           {issue}
                         </div>
                       ))
@@ -786,7 +797,7 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
                   <CardDescription>Advanced performance metrics</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3 text-sm">
+                  <div className="space-y-3 text-sm md:text-base lg:text-lg">
                     <div className="flex justify-between">
                       <span>Memory Heap Size</span>
                       <span>24.5 MB</span>
@@ -817,7 +828,7 @@ export const PluginMetrics: React.FC<PluginMetricsProps> = ({
                   <CardDescription>Plugin system integration status</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3 text-sm">
+                  <div className="space-y-3 text-sm md:text-base lg:text-lg">
                     <div className="flex justify-between items-center">
                       <span>Hook Registrations</span>
                       <Badge variant="outline">5 active</Badge>

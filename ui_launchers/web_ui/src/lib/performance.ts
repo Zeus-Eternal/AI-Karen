@@ -3,7 +3,6 @@
  * 
  * Mock implementation for performance metrics and recommendations
  */
-
 interface PerformanceMetrics {
   connectionPool: {
     totalConnections: number;
@@ -32,7 +31,6 @@ interface PerformanceMetrics {
   timestamp: string;
   error?: string;
 }
-
 export class PerformanceUtils {
   static getComprehensiveMetrics(): PerformanceMetrics {
     return {
@@ -63,7 +61,6 @@ export class PerformanceUtils {
       timestamp: new Date().toISOString()
     };
   }
-
   static getPerformanceRecommendations(): string[] {
     return [
       'Consider increasing connection pool size',
@@ -71,15 +68,11 @@ export class PerformanceUtils {
       'Monitor slow queries for optimization opportunities'
     ];
   }
-
   static autoOptimizeAll(): void {
     // Mock implementation for auto-optimization
-    console.log('Auto-optimization triggered');
   }
-
   static clearAllCaches(): boolean {
     // Mock implementation for clearing caches
-    console.log('Caches cleared');
     return true;
   }
 }

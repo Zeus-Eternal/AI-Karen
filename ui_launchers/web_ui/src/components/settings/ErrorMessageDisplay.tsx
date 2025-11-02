@@ -324,29 +324,29 @@ export function ErrorMessageDisplay({
     <div className="space-y-4">
       {/* Main Error Alert */}
       <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
+        <AlertCircle className="h-4 w-4 sm:w-auto md:w-full" />
         <AlertTitle className="flex items-center justify-between">
           <span>{errorInfo.error_type || 'Error'}</span>
           <div className="flex items-center gap-2">
             {onRetry && (
-              <Button variant="outline" size="sm" onClick={onRetry}>
-                <RefreshCw className="h-3 w-3 mr-1" />
+              <button variant="outline" size="sm" onClick={onRetry} aria-label="Button">
+                <RefreshCw className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                 Retry
               </Button>
             )}
-            <Button
+            <button
               variant="outline"
               size="sm"
-              onClick={() => copyToClipboard(errorMessage)}
+              onClick={() = aria-label="Button"> copyToClipboard(errorMessage)}
             >
-              <Copy className="h-3 w-3" />
+              <Copy className="h-3 w-3 sm:w-auto md:w-full" />
             </Button>
-            <Button
+            <button
               variant="outline"
               size="sm"
-              onClick={() => searchForSolution(errorMessage)}
+              onClick={() = aria-label="Button"> searchForSolution(errorMessage)}
             >
-              <Search className="h-3 w-3" />
+              <Search className="h-3 w-3 sm:w-auto md:w-full" />
             </Button>
           </div>
         </AlertTitle>
@@ -355,7 +355,7 @@ export function ErrorMessageDisplay({
           
           {/* Error Context */}
           {context && (
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
               <p>Provider: {context.provider}</p>
               {context.model && <p>Model: {context.model}</p>}
               {context.timestamp && <p>Time: {new Date(context.timestamp).toLocaleString()}</p>}
@@ -363,24 +363,24 @@ export function ErrorMessageDisplay({
           )}
 
           {/* Technical Details Toggle */}
-          <Button
+          <button
             variant="link"
             size="sm"
-            className="p-0 h-auto text-xs"
-            onClick={() => setShowDetails(!showDetails)}
+            className="p-0 h-auto text-xs sm:text-sm md:text-base"
+            onClick={() = aria-label="Button"> setShowDetails(!showDetails)}
           >
             {showDetails ? 'Hide' : 'Show'} Technical Details
-            {showDetails ? <ChevronDown className="h-3 w-3 ml-1" /> : <ChevronRight className="h-3 w-3 ml-1" />}
+            {showDetails ? <ChevronDown className="h-3 w-3 ml-1 sm:w-auto md:w-full" /> : <ChevronRight className="h-3 w-3 ml-1 sm:w-auto md:w-full" />}
           </Button>
 
           {showDetails && (
-            <div className="mt-2 p-2 bg-muted rounded text-xs">
+            <div className="mt-2 p-2 bg-muted rounded text-xs sm:text-sm md:text-base">
               <p><strong>Error Code:</strong> {errorInfo.error_code || 'N/A'}</p>
               <p><strong>Technical Details:</strong> {errorInfo.technical_details || errorMessage}</p>
               {typeof error === 'object' && error.stack && (
                 <details className="mt-2">
                   <summary className="cursor-pointer">Stack Trace</summary>
-                  <pre className="mt-1 text-xs overflow-x-auto">{error.stack}</pre>
+                  <pre className="mt-1 text-xs overflow-x-auto sm:text-sm md:text-base">{error.stack}</pre>
                 </details>
               )}
             </div>
@@ -392,13 +392,13 @@ export function ErrorMessageDisplay({
       {errorInfo.possible_causes && errorInfo.possible_causes.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Info className="h-4 w-4" />
+            <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
+              <Info className="h-4 w-4 sm:w-auto md:w-full" />
               Possible Causes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="list-disc list-inside space-y-1 text-sm">
+            <ul className="list-disc list-inside space-y-1 text-sm md:text-base lg:text-lg">
               {errorInfo.possible_causes.map((cause, index) => (
                 <li key={index}>{cause}</li>
               ))}
@@ -411,8 +411,8 @@ export function ErrorMessageDisplay({
       {showSolutions && errorInfo.solutions && errorInfo.solutions.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Wrench className="h-4 w-4" />
+            <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
+              <Wrench className="h-4 w-4 sm:w-auto md:w-full" />
               Solutions
             </CardTitle>
             <CardDescription>
@@ -427,27 +427,27 @@ export function ErrorMessageDisplay({
                 onOpenChange={(open) => setExpandedSolution(open ? solution.id : null)}
               >
                 <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
+                  <div className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50 sm:p-4 md:p-6">
                     <div className="flex items-center gap-3">
                       <div>
                         <h4 className="font-medium">{solution.title}</h4>
-                        <p className="text-sm text-muted-foreground">{solution.description}</p>
+                        <p className="text-sm text-muted-foreground md:text-base lg:text-lg">{solution.description}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge className={getDifficultyColor(solution.difficulty)}>
                         {solution.difficulty}
                       </Badge>
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                         {solution.estimated_time}
                       </Badge>
                       <span className={`text-xs ${getSuccessRateColor(solution.success_rate)}`}>
                         {solution.success_rate}% success
                       </span>
                       {expandedSolution === solution.id ? (
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className="h-4 w-4 sm:w-auto md:w-full" />
                       ) : (
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-4 w-4 sm:w-auto md:w-full" />
                       )}
                     </div>
                   </div>
@@ -458,8 +458,8 @@ export function ErrorMessageDisplay({
                     {/* Prerequisites */}
                     {solution.prerequisites && solution.prerequisites.length > 0 && (
                       <div>
-                        <h5 className="text-sm font-medium mb-2">Prerequisites:</h5>
-                        <ul className="list-disc list-inside text-sm space-y-1">
+                        <h5 className="text-sm font-medium mb-2 md:text-base lg:text-lg">Prerequisites:</h5>
+                        <ul className="list-disc list-inside text-sm space-y-1 md:text-base lg:text-lg">
                           {solution.prerequisites.map((prereq, index) => (
                             <li key={index}>{prereq}</li>
                           ))}
@@ -469,43 +469,43 @@ export function ErrorMessageDisplay({
 
                     {/* Steps */}
                     <div>
-                      <h5 className="text-sm font-medium mb-2">Steps:</h5>
+                      <h5 className="text-sm font-medium mb-2 md:text-base lg:text-lg">Steps:</h5>
                       <div className="space-y-3">
                         {solution.steps.map((step) => (
                           <div key={step.step_number} className="border-l-2 border-primary pl-4">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-medium sm:w-auto md:w-full">
                                 {step.step_number}
                               </span>
-                              <h6 className="text-sm font-medium">{step.title}</h6>
+                              <h6 className="text-sm font-medium md:text-base lg:text-lg">{step.title}</h6>
                             </div>
-                            <p className="text-sm text-muted-foreground mb-2">{step.description}</p>
+                            <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">{step.description}</p>
                             
                             {step.command && (
-                              <div className="bg-muted p-2 rounded text-xs font-mono mb-2">
+                              <div className="bg-muted p-2 rounded text-xs font-mono mb-2 sm:text-sm md:text-base">
                                 {step.command}
-                                <Button
+                                <button
                                   variant="ghost"
                                   size="sm"
-                                  className="ml-2 h-auto p-1"
-                                  onClick={() => copyToClipboard(step.command!)}
+                                  className="ml-2 h-auto p-1 sm:p-4 md:p-6"
+                                  onClick={() = aria-label="Button"> copyToClipboard(step.command!)}
                                 >
-                                  <Copy className="h-3 w-3" />
+                                  <Copy className="h-3 w-3 sm:w-auto md:w-full" />
                                 </Button>
                               </div>
                             )}
                             
                             {step.warning && (
                               <Alert className="mb-2">
-                                <AlertCircle className="h-3 w-3" />
-                                <AlertDescription className="text-xs">
+                                <AlertCircle className="h-3 w-3 sm:w-auto md:w-full" />
+                                <AlertDescription className="text-xs sm:text-sm md:text-base">
                                   <strong>Warning:</strong> {step.warning}
                                 </AlertDescription>
                               </Alert>
                             )}
                             
                             {step.verification && (
-                              <div className="text-xs text-green-600 bg-green-50 p-2 rounded">
+                              <div className="text-xs text-green-600 bg-green-50 p-2 rounded sm:text-sm md:text-base">
                                 <strong>Verification:</strong> {step.verification}
                               </div>
                             )}
@@ -517,17 +517,17 @@ export function ErrorMessageDisplay({
                     {/* Related Links */}
                     {solution.related_links && solution.related_links.length > 0 && (
                       <div>
-                        <h5 className="text-sm font-medium mb-2">Related Links:</h5>
+                        <h5 className="text-sm font-medium mb-2 md:text-base lg:text-lg">Related Links:</h5>
                         <div className="space-y-1">
                           {solution.related_links.map((link, index) => (
-                            <Button
+                            <button
                               key={index}
                               variant="link"
                               size="sm"
-                              className="p-0 h-auto text-xs"
-                              onClick={() => window.open(link.url, '_blank')}
+                              className="p-0 h-auto text-xs sm:text-sm md:text-base"
+                              onClick={() = aria-label="Button"> window.open(link.url, '_blank')}
                             >
-                              <ExternalLink className="h-3 w-3 mr-1" />
+                              <ExternalLink className="h-3 w-3 mr-1 sm:w-auto md:w-full" />
                               {link.title}
                             </Button>
                           ))}
@@ -546,13 +546,13 @@ export function ErrorMessageDisplay({
       {errorInfo.prevention_tips && errorInfo.prevention_tips.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Lightbulb className="h-4 w-4" />
+            <CardTitle className="text-sm flex items-center gap-2 md:text-base lg:text-lg">
+              <Lightbulb className="h-4 w-4 sm:w-auto md:w-full" />
               Prevention Tips
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="list-disc list-inside space-y-1 text-sm">
+            <ul className="list-disc list-inside space-y-1 text-sm md:text-base lg:text-lg">
               {errorInfo.prevention_tips.map((tip, index) => (
                 <li key={index}>{tip}</li>
               ))}
@@ -564,7 +564,7 @@ export function ErrorMessageDisplay({
       {/* Dismiss Button */}
       {onDismiss && (
         <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={onDismiss}>
+          <button variant="outline" size="sm" onClick={onDismiss} aria-label="Button">
             Dismiss
           </Button>
         </div>
