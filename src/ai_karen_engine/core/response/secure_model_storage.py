@@ -30,7 +30,12 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
 
 from ai_karen_engine.auth.models import UserData
-from ai_karen_engine.services.audit_logging import get_audit_logger
+from ai_karen_engine.services.audit_logging import (
+    get_audit_logger,
+    AuditEvent,
+    AuditEventType,
+    AuditSeverity,
+)
 from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -139,7 +144,9 @@ class SecureModelStorage:
         # Initialize encryption
         self.encryption_key = encryption_key or os.environ.get("MODEL_ENCRYPTION_KEY")
         if self.encryption_key:
-            self.cipher = Fernet(self.encryption_key.encode() if isinstance(self.encryption_key, str) else self.encryption_key)
+            normalized_key = self._normalize_encryption_key(self.encryption_key)
+            self.cipher = Fernet(normalized_key)
+            self.encryption_key = normalized_key
         else:
             self.cipher = None
             logger.warning("No encryption key provided - models will be stored unencrypted")
@@ -165,6 +172,51 @@ class SecureModelStorage:
             iterations=100000,
         )
         return base64.urlsafe_b64encode(kdf.derive(password.encode()))
+
+    def _normalize_encryption_key(self, key: Union[str, bytes]) -> bytes:
+        """Ensure a provided key is compatible with Fernet requirements."""
+
+        if isinstance(key, str):
+            raw_key = key.encode()
+        else:
+            raw_key = key
+
+        try:
+            decoded = base64.urlsafe_b64decode(raw_key)
+            if len(decoded) == 32:
+                return raw_key if isinstance(raw_key, bytes) else raw_key.encode()
+        except Exception:
+            pass
+
+        digest = hashlib.sha256(raw_key).digest()
+        return base64.urlsafe_b64encode(digest)
+
+    def _audit_event(
+        self,
+        *,
+        message: str,
+        user: UserData,
+        metadata: Dict[str, Any],
+        severity: AuditSeverity = AuditSeverity.INFO,
+        event_type: AuditEventType = AuditEventType.API_REQUEST_PERFORMANCE,
+    ) -> None:
+        """Emit a structured audit event if the audit logger is available."""
+
+        if not self.audit_logger:
+            return
+
+        event = AuditEvent(
+            event_type=event_type,
+            severity=severity,
+            message=message,
+            user_id=user.user_id,
+            tenant_id=user.tenant_id,
+            metadata=metadata,
+        )
+        try:
+            self.audit_logger.log_audit_event(event)
+        except Exception as exc:  # pragma: no cover - logging should not break flow
+            logger.error("Failed to emit audit event: %s", exc)
     
     def _calculate_checksum(self, file_path: Path) -> str:
         """Calculate SHA-256 checksum of file."""
@@ -277,6 +329,7 @@ class SecureModelStorage:
     ) -> str:
         """Store a model securely with metadata and versioning."""
         try:
+            user = UserData.ensure(user)
             model_id = str(uuid.uuid4())
             timestamp = datetime.now(timezone.utc)
             
@@ -347,22 +400,20 @@ class SecureModelStorage:
             self._save_metadata()
             
             # Audit log
-            self.audit_logger.log_audit_event({
-                "event_type": "model_stored",
-                "severity": "info",
-                "message": f"Model {name} stored securely",
-                "user_id": user.user_id,
-                "tenant_id": user.tenant_id,
-                "metadata": {
+            self._audit_event(
+                message=f"Model {name} stored securely",
+                user=user,
+                metadata={
                     "model_id": model_id,
                     "model_name": name,
                     "model_type": model_type.value,
                     "version": version,
                     "encrypted": encrypted,
                     "security_level": security_level.value,
-                    "file_size": metadata.file_size
-                }
-            })
+                    "file_size": metadata.file_size,
+                },
+                event_type=AuditEventType.AI_ANALYSIS_COMPLETED,
+            )
             
             logger.info(f"Model {name} stored successfully with ID {model_id}")
             return model_id
@@ -379,6 +430,7 @@ class SecureModelStorage:
     ) -> Path:
         """Retrieve a model from secure storage."""
         try:
+            user = UserData.ensure(user)
             # Check if model exists
             if model_id not in self.models_metadata:
                 raise ValueError(f"Model {model_id} not found")
@@ -421,18 +473,16 @@ class SecureModelStorage:
             self._save_metadata()
             
             # Audit log
-            self.audit_logger.log_audit_event({
-                "event_type": "model_retrieved",
-                "severity": "info",
-                "message": f"Model {metadata.name} retrieved",
-                "user_id": user.user_id,
-                "tenant_id": user.tenant_id,
-                "metadata": {
+            self._audit_event(
+                message=f"Model {metadata.name} retrieved",
+                user=user,
+                metadata={
                     "model_id": model_id,
                     "model_name": metadata.name,
-                    "access_count": metadata.access_count
-                }
-            })
+                    "access_count": metadata.access_count,
+                },
+                event_type=AuditEventType.API_REQUEST_PERFORMANCE,
+            )
             
             logger.info(f"Model {model_id} retrieved successfully")
             return output_path
@@ -444,6 +494,7 @@ class SecureModelStorage:
     async def delete_model(self, model_id: str, user: UserData) -> bool:
         """Delete a model from secure storage."""
         try:
+            user = UserData.ensure(user)
             # Check if model exists
             if model_id not in self.models_metadata:
                 raise ValueError(f"Model {model_id} not found")
@@ -475,18 +526,17 @@ class SecureModelStorage:
             self._save_metadata()
             
             # Audit log
-            self.audit_logger.log_audit_event({
-                "event_type": "model_deleted",
-                "severity": "warning",
-                "message": f"Model {metadata.name} deleted",
-                "user_id": user.user_id,
-                "tenant_id": user.tenant_id,
-                "metadata": {
+            self._audit_event(
+                message=f"Model {metadata.name} deleted",
+                user=user,
+                metadata={
                     "model_id": model_id,
                     "model_name": metadata.name,
-                    "deleted_by": user.user_id
-                }
-            })
+                    "deleted_by": user.user_id,
+                },
+                event_type=AuditEventType.ANOMALY_DETECTED,
+                severity=AuditSeverity.WARNING,
+            )
             
             logger.info(f"Model {model_id} deleted successfully")
             return True

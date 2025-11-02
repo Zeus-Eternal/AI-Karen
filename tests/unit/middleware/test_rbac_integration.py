@@ -9,7 +9,7 @@ Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
 
 import pytest
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from unittest.mock import Mock, patch, AsyncMock
 from fastapi import HTTPException
 
@@ -306,7 +306,11 @@ class TestTrainingAuditLogger:
     @pytest.fixture
     def audit_logger(self):
         """Create training audit logger for testing."""
-        return get_training_audit_logger()
+        logger_instance = get_training_audit_logger()
+        logger_instance._event_counts.clear()
+        logger_instance._security_events.clear()
+        logger_instance._base_audit_logger = None
+        return logger_instance
     
     @patch('ai_karen_engine.services.training_audit_logger.get_audit_logger')
     def test_log_training_started(self, mock_audit_logger, audit_logger, admin_user):
@@ -356,7 +360,7 @@ class TestTrainingAuditLogger:
         """Test unauthorized access logging."""
         mock_logger = Mock()
         mock_audit_logger.return_value = mock_logger
-        
+
         audit_logger.log_unauthorized_access_attempt(
             user=regular_user,
             resource_type="model",
@@ -364,13 +368,39 @@ class TestTrainingAuditLogger:
             permission_required="model:delete",
             ip_address="192.168.1.100"
         )
-        
+
         # Verify audit event was logged
         mock_logger.log_audit_event.assert_called_once()
         call_args = mock_logger.log_audit_event.call_args[0][0]
         assert call_args["user_id"] == regular_user.user_id
         assert call_args["metadata"]["permission_required"] == "model:delete"
         assert call_args["metadata"]["granted"] is False
+
+    @patch('ai_karen_engine.services.training_audit_logger.get_audit_logger')
+    def test_get_security_events_filters_old_entries(self, mock_audit_logger, audit_logger, regular_user):
+        """Security event retrieval should return only recent events."""
+        mock_logger = Mock()
+        mock_audit_logger.return_value = mock_logger
+
+        audit_logger.log_unauthorized_access_attempt(
+            user=regular_user,
+            resource_type="model",
+            resource_id="model-123",
+            permission_required="model:delete",
+            ip_address="192.168.1.100"
+        )
+
+        assert len(audit_logger._security_events) == 1
+
+        # Recent events should be returned
+        recent_events = audit_logger.get_security_events(hours=1)
+        assert len(recent_events) == 1
+
+        # Backdate the event so it falls outside of the requested window
+        audit_logger._security_events[0].timestamp = datetime.now(timezone.utc) - timedelta(hours=2)
+
+        filtered_events = audit_logger.get_security_events(hours=1)
+        assert filtered_events == []
 
 
 class TestSecureModelStorage:
