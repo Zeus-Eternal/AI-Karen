@@ -1,1 +1,394 @@
-[{"name": "", "path": "./models/", "type": "transformers", "source": "local"}, {"name": "basic_cls", "path": "./models/basic_cls", "type": "transformers", "source": "local"}, {"name": "configs", "path": "./models/configs", "type": "transformers", "source": "local"}, {"name": "downloads", "path": "./models/downloads", "type": "transformers", "source": "local"}, {"name": "llama-cpp", "path": "./models/llama-cpp", "type": "transformers", "source": "local"}, {"name": "Phi-3-mini-4k-instruct-q4.gguf", "path": "./models/llama-cpp/Phi-3-mini-4k-instruct-q4.gguf", "type": "llama-gguf", "source": "local"}, {"name": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf", "path": "./models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf", "type": "llama-gguf", "source": "local"}, {"name": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf", "path": "./models/llama-cpp/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf", "type": "llama-gguf", "source": "local"}, {"name": "metadata_cache", "path": "./models/metadata_cache", "type": "transformers", "source": "local"}, {"name": "stable-diffusion", "path": "./models/stable-diffusion", "type": "transformers", "source": "local"}, {"name": "models--runwayml--stable-diffusion-v1-5", "path": "./models/stable-diffusion/models--runwayml--stable-diffusion-v1-5", "type": "transformers", "source": "local"}, {"name": "refs", "path": "./models/stable-diffusion/models--runwayml--stable-diffusion-v1-5/refs", "type": "transformers", "source": "local"}, {"name": "stable-diffusion-v1-5", "path": "./models/stable-diffusion/stable-diffusion-v1-5", "type": "transformers", "source": "local"}, {"name": "feature_extractor", "path": "./models/stable-diffusion/stable-diffusion-v1-5/feature_extractor", "type": "transformers", "source": "local"}, {"name": "safety_checker", "path": "./models/stable-diffusion/stable-diffusion-v1-5/safety_checker", "type": "transformers", "source": "local"}, {"name": "scheduler", "path": "./models/stable-diffusion/stable-diffusion-v1-5/scheduler", "type": "transformers", "source": "local"}, {"name": "text_encoder", "path": "./models/stable-diffusion/stable-diffusion-v1-5/text_encoder", "type": "transformers", "source": "local"}, {"name": "model.fp16.safetensors", "path": "./models/stable-diffusion/stable-diffusion-v1-5/text_encoder/model.fp16.safetensors", "type": "safetensors", "source": "local"}, {"name": "model.safetensors", "path": "./models/stable-diffusion/stable-diffusion-v1-5/text_encoder/model.safetensors", "type": "safetensors", "source": "local"}, {"name": "pytorch_model.bin", "path": "./models/stable-diffusion/stable-diffusion-v1-5/text_encoder/pytorch_model.bin", "type": "bin", "source": "local"}, {"name": "pytorch_model.fp16.bin", "path": "./models/stable-diffusion/stable-diffusion-v1-5/text_encoder/pytorch_model.fp16.bin", "type": "bin", "source": "local"}, {"name": "tokenizer", "path": "./models/stable-diffusion/stable-diffusion-v1-5/tokenizer", "type": "transformers", "source": "local"}, {"name": "unet", "path": "./models/stable-diffusion/stable-diffusion-v1-5/unet", "type": "transformers", "source": "local"}, {"name": "diffusion_pytorch_model.bin", "path": "./models/stable-diffusion/stable-diffusion-v1-5/unet/diffusion_pytorch_model.bin", "type": "bin", "source": "local"}, {"name": "diffusion_pytorch_model.fp16.bin", "path": "./models/stable-diffusion/stable-diffusion-v1-5/unet/diffusion_pytorch_model.fp16.bin", "type": "bin", "source": "local"}, {"name": "diffusion_pytorch_model.fp16.safetensors", "path": "./models/stable-diffusion/stable-diffusion-v1-5/unet/diffusion_pytorch_model.fp16.safetensors", "type": "safetensors", "source": "local"}, {"name": "diffusion_pytorch_model.non_ema.bin", "path": "./models/stable-diffusion/stable-diffusion-v1-5/unet/diffusion_pytorch_model.non_ema.bin", "type": "bin", "source": "local"}, {"name": "diffusion_pytorch_model.non_ema.safetensors", "path": "./models/stable-diffusion/stable-diffusion-v1-5/unet/diffusion_pytorch_model.non_ema.safetensors", "type": "safetensors", "source": "local"}, {"name": "diffusion_pytorch_model.safetensors", "path": "./models/stable-diffusion/stable-diffusion-v1-5/unet/diffusion_pytorch_model.safetensors", "type": "safetensors", "source": "local"}, {"name": "vae", "path": "./models/stable-diffusion/stable-diffusion-v1-5/vae", "type": "transformers", "source": "local"}, {"name": "diffusion_pytorch_model.bin", "path": "./models/stable-diffusion/stable-diffusion-v1-5/vae/diffusion_pytorch_model.bin", "type": "bin", "source": "local"}, {"name": "diffusion_pytorch_model.fp16.bin", "path": "./models/stable-diffusion/stable-diffusion-v1-5/vae/diffusion_pytorch_model.fp16.bin", "type": "bin", "source": "local"}, {"name": "diffusion_pytorch_model.fp16.safetensors", "path": "./models/stable-diffusion/stable-diffusion-v1-5/vae/diffusion_pytorch_model.fp16.safetensors", "type": "safetensors", "source": "local"}, {"name": "diffusion_pytorch_model.safetensors", "path": "./models/stable-diffusion/stable-diffusion-v1-5/vae/diffusion_pytorch_model.safetensors", "type": "safetensors", "source": "local"}, {"name": "transformers", "path": "./models/transformers", "type": "transformers", "source": "local"}, {"name": "deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B", "path": "./models/transformers/deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B", "type": "transformers", "source": "local"}, {"name": "figures", "path": "./models/transformers/deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B/figures", "type": "transformers", "source": "local"}, {"name": "distilbert-base-uncased", "path": "./models/transformers/distilbert-base-uncased", "type": "transformers", "source": "local"}, {"name": "model.safetensors", "path": "./models/transformers/distilbert-base-uncased/model.safetensors", "type": "safetensors", "source": "local"}, {"name": "pytorch_model.bin", "path": "./models/transformers/distilbert-base-uncased/pytorch_model.bin", "type": "bin", "source": "local"}, {"name": "gpt2", "path": "./models/transformers/gpt2", "type": "transformers", "source": "local"}, {"name": "model.safetensors", "path": "./models/transformers/gpt2/model.safetensors", "type": "safetensors", "source": "local"}, {"name": "microsoft--DialoGPT-medium", "path": "./models/transformers/microsoft--DialoGPT-medium", "type": "transformers", "source": "local"}, {"name": "sentence-transformers--all-MiniLM-L6-v2", "path": "./models/transformers/sentence-transformers--all-MiniLM-L6-v2", "type": "transformers", "source": "local"}, {"name": "1_Pooling", "path": "./models/transformers/sentence-transformers--all-MiniLM-L6-v2/1_Pooling", "type": "transformers", "source": "local"}, {"name": "model.safetensors", "path": "./models/transformers/sentence-transformers--all-MiniLM-L6-v2/model.safetensors", "type": "safetensors", "source": "local"}, {"name": "onnx", "path": "./models/transformers/sentence-transformers--all-MiniLM-L6-v2/onnx", "type": "transformers", "source": "local"}, {"name": "openvino", "path": "./models/transformers/sentence-transformers--all-MiniLM-L6-v2/openvino", "type": "transformers", "source": "local"}, {"name": "openvino_model.bin", "path": "./models/transformers/sentence-transformers--all-MiniLM-L6-v2/openvino/openvino_model.bin", "type": "bin", "source": "local"}, {"name": "openvino_model_qint8_quantized.bin", "path": "./models/transformers/sentence-transformers--all-MiniLM-L6-v2/openvino/openvino_model_qint8_quantized.bin", "type": "bin", "source": "local"}, {"name": "pytorch_model.bin", "path": "./models/transformers/sentence-transformers--all-MiniLM-L6-v2/pytorch_model.bin", "type": "bin", "source": "local"}, {"name": "bert-base-uncased", "source": "hf_hub", "type": "transformers"}, {"name": "sentence-transformers/all-MiniLM-L6-v2", "source": "hf_hub", "type": "transformers"}]
+[
+  {
+    "id": "gpt-4.1",
+    "name": "gpt-4.1",
+    "display_name": "GPT-4.1",
+    "provider": "openai",
+    "type": "chat-completion",
+    "source": "remote",
+    "managed": false,
+    "capabilities": [
+      "chat",
+      "reasoning",
+      "function-calling",
+      "vision"
+    ],
+    "context_window": 128000,
+    "pricing": {
+      "unit": "1K tokens",
+      "input_usd": 0.01,
+      "output_usd": 0.03
+    },
+    "compliance": {
+      "hipaa": true,
+      "gdpr": true
+    },
+    "latency_ms_p95": 850,
+    "region": "us-east-1"
+  },
+  {
+    "id": "gpt-4.1-mini",
+    "name": "gpt-4.1-mini",
+    "display_name": "GPT-4.1 Mini",
+    "provider": "openai",
+    "type": "chat-completion",
+    "source": "remote",
+    "managed": false,
+    "capabilities": [
+      "chat",
+      "reasoning",
+      "function-calling"
+    ],
+    "context_window": 128000,
+    "pricing": {
+      "unit": "1K tokens",
+      "input_usd": 0.00015,
+      "output_usd": 0.0006
+    },
+    "compliance": {
+      "hipaa": true,
+      "gdpr": true
+    },
+    "latency_ms_p95": 420,
+    "region": "us-east-1"
+  },
+  {
+    "id": "claude-3-5-sonnet-20240620",
+    "name": "claude-3-5-sonnet-20240620",
+    "display_name": "Claude 3.5 Sonnet",
+    "provider": "anthropic",
+    "type": "chat-completion",
+    "source": "remote",
+    "managed": false,
+    "capabilities": [
+      "chat",
+      "reasoning",
+      "analysis",
+      "vision"
+    ],
+    "context_window": 200000,
+    "pricing": {
+      "unit": "1K tokens",
+      "input_usd": 0.003,
+      "output_usd": 0.015
+    },
+    "compliance": {
+      "hipaa": true,
+      "gdpr": true
+    },
+    "latency_ms_p95": 650,
+    "region": "us-east-1"
+  },
+  {
+    "id": "claude-3-haiku-20240307",
+    "name": "claude-3-haiku-20240307",
+    "display_name": "Claude 3 Haiku",
+    "provider": "anthropic",
+    "type": "chat-completion",
+    "source": "remote",
+    "managed": false,
+    "capabilities": [
+      "chat",
+      "analysis"
+    ],
+    "context_window": 200000,
+    "pricing": {
+      "unit": "1K tokens",
+      "input_usd": 0.00025,
+      "output_usd": 0.00125
+    },
+    "compliance": {
+      "hipaa": true,
+      "gdpr": true
+    },
+    "latency_ms_p95": 350,
+    "region": "us-east-1"
+  },
+  {
+    "id": "gemini-1.5-pro-latest",
+    "name": "gemini-1.5-pro-latest",
+    "display_name": "Gemini 1.5 Pro",
+    "provider": "google",
+    "type": "chat-completion",
+    "source": "remote",
+    "managed": false,
+    "capabilities": [
+      "chat",
+      "reasoning",
+      "vision",
+      "tool-use"
+    ],
+    "context_window": 1000000,
+    "pricing": {
+      "unit": "1K tokens",
+      "input_usd": 0.0035,
+      "output_usd": 0.0105
+    },
+    "compliance": {
+      "hipaa": true,
+      "gdpr": true
+    },
+    "latency_ms_p95": 700,
+    "region": "us-central1"
+  },
+  {
+    "id": "gemini-1.5-flash-latest",
+    "name": "gemini-1.5-flash-latest",
+    "display_name": "Gemini 1.5 Flash",
+    "provider": "google",
+    "type": "chat-completion",
+    "source": "remote",
+    "managed": false,
+    "capabilities": [
+      "chat",
+      "vision",
+      "reasoning"
+    ],
+    "context_window": 1000000,
+    "pricing": {
+      "unit": "1K tokens",
+      "input_usd": 0.00035,
+      "output_usd": 0.00105
+    },
+    "compliance": {
+      "hipaa": true,
+      "gdpr": true
+    },
+    "latency_ms_p95": 320,
+    "region": "us-central1"
+  },
+  {
+    "id": "groq-llama3-70b-versatile",
+    "name": "groq-llama3-70b-versatile",
+    "display_name": "Groq LLaMA3 70B",
+    "provider": "groq",
+    "type": "chat-completion",
+    "source": "remote",
+    "managed": false,
+    "capabilities": [
+      "chat",
+      "reasoning",
+      "code"
+    ],
+    "context_window": 8192,
+    "latency_ms_p95": 450,
+    "pricing": {
+      "unit": "1K tokens",
+      "input_usd": 0.0,
+      "output_usd": 0.0
+    },
+    "compliance": {
+      "hipaa": false,
+      "gdpr": true
+    },
+    "region": "us-west-1"
+  },
+  {
+    "id": "mistral-large-latest",
+    "name": "mistral-large-latest",
+    "display_name": "Mistral Large",
+    "provider": "mistral",
+    "type": "chat-completion",
+    "source": "remote",
+    "managed": false,
+    "capabilities": [
+      "chat",
+      "reasoning",
+      "analysis"
+    ],
+    "context_window": 32000,
+    "pricing": {
+      "unit": "1K tokens",
+      "input_usd": 0.004,
+      "output_usd": 0.012
+    },
+    "compliance": {
+      "hipaa": true,
+      "gdpr": true
+    },
+    "latency_ms_p95": 500,
+    "region": "eu-west-1"
+  },
+  {
+    "id": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "name": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "display_name": "Meta Llama 3 8B Instruct",
+    "provider": "transformers",
+    "type": "transformers",
+    "source": "huggingface",
+    "managed": true,
+    "path": "./models/transformers/meta-llama/Meta-Llama-3-8B-Instruct",
+    "capabilities": [
+      "chat",
+      "text-generation",
+      "function-calling"
+    ],
+    "metadata": {
+      "parameters": "8B",
+      "quantization": "fp16",
+      "memory_requirement": "16GB",
+      "context_length": 8192,
+      "license": "LLAMA COMMUNITY",
+      "tags": [
+        "chat",
+        "general"
+      ]
+    }
+  },
+  {
+    "id": "microsoft/Phi-3-mini-4k-instruct-gguf",
+    "name": "microsoft/Phi-3-mini-4k-instruct-gguf",
+    "display_name": "Phi-3 Mini 4K Instruct Q4",
+    "provider": "llama-gguf",
+    "type": "llama-gguf",
+    "source": "local",
+    "managed": true,
+    "path": "./models/llama-cpp/Phi-3-mini-4k-instruct-q4.gguf",
+    "capabilities": [
+      "chat",
+      "text-generation",
+      "local-inference"
+    ],
+    "metadata": {
+      "parameters": "3.8B",
+      "quantization": "Q4_K_M",
+      "memory_requirement": "6GB",
+      "context_length": 4096,
+      "license": "MIT",
+      "tags": [
+        "edge",
+        "quantized"
+      ]
+    }
+  },
+  {
+    "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF",
+    "name": "TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF",
+    "display_name": "TinyLlama 1.1B Chat Q4",
+    "provider": "llama-gguf",
+    "type": "llama-gguf",
+    "source": "local",
+    "managed": true,
+    "path": "./models/llama-cpp/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+    "capabilities": [
+      "chat",
+      "text-generation",
+      "local-inference"
+    ],
+    "metadata": {
+      "parameters": "1.1B",
+      "quantization": "Q4_K_M",
+      "memory_requirement": "2GB",
+      "context_length": 2048,
+      "license": "Apache 2.0",
+      "tags": [
+        "efficient",
+        "edge"
+      ]
+    }
+  },
+  {
+    "id": "sentence-transformers/all-MiniLM-L6-v2",
+    "name": "sentence-transformers/all-MiniLM-L6-v2",
+    "display_name": "All MiniLM L6 v2",
+    "provider": "transformers",
+    "type": "embeddings",
+    "source": "huggingface",
+    "managed": true,
+    "path": "./models/transformers/sentence-transformers/all-MiniLM-L6-v2",
+    "capabilities": [
+      "embeddings",
+      "semantic-search"
+    ],
+    "metadata": {
+      "parameters": "110M",
+      "quantization": "fp32",
+      "memory_requirement": "1GB",
+      "context_length": 512,
+      "license": "Apache 2.0",
+      "tags": [
+        "embeddings",
+        "semantic"
+      ]
+    }
+  },
+  {
+    "id": "nomic-ai/nomic-embed-text-v1.5",
+    "name": "nomic-ai/nomic-embed-text-v1.5",
+    "display_name": "Nomic Embed Text v1.5",
+    "provider": "transformers",
+    "type": "embeddings",
+    "source": "huggingface",
+    "managed": true,
+    "path": "./models/transformers/nomic-ai/nomic-embed-text-v1.5",
+    "capabilities": [
+      "embeddings",
+      "semantic-search",
+      "multilingual"
+    ],
+    "metadata": {
+      "parameters": "180M",
+      "quantization": "fp16",
+      "memory_requirement": "2GB",
+      "context_length": 8192,
+      "license": "Apache 2.0",
+      "tags": [
+        "embeddings",
+        "multilingual"
+      ]
+    }
+  },
+  {
+    "id": "text-embedding-3-large",
+    "name": "text-embedding-3-large",
+    "display_name": "Text Embedding 3 Large",
+    "provider": "openai",
+    "type": "embeddings-api",
+    "source": "remote",
+    "managed": false,
+    "capabilities": [
+      "embeddings",
+      "semantic-search"
+    ],
+    "context_window": 8192,
+    "embedding_dimension": 3072,
+    "pricing": {
+      "unit": "1K tokens",
+      "input_usd": 0.00013,
+      "output_usd": 0.00013
+    },
+    "compliance": {
+      "hipaa": true,
+      "gdpr": true
+    },
+    "latency_ms_p95": 250,
+    "region": "us-east-1"
+  },
+  {
+    "id": "voyage/voyage-large-2",
+    "name": "voyage/voyage-large-2",
+    "display_name": "Voyage Large 2",
+    "provider": "voyage",
+    "type": "embeddings-api",
+    "source": "remote",
+    "managed": false,
+    "capabilities": [
+      "embeddings",
+      "multilingual",
+      "reranking"
+    ],
+    "context_window": 32000,
+    "embedding_dimension": 1536,
+    "pricing": {
+      "unit": "1K tokens",
+      "input_usd": 0.0006,
+      "output_usd": 0.0006
+    },
+    "compliance": {
+      "hipaa": true,
+      "gdpr": true
+    },
+    "latency_ms_p95": 380,
+    "region": "us"
+  }
+]
