@@ -20,9 +20,9 @@ const mockUseRole = useRole as jest.MockedFunction<typeof useRole>;
 jest.mock('../UserManagementTable', () => ({
   UserManagementTable: ({ onSelectionChange, onUserUpdated }: any) => (
     <div data-testid="user-management-table">
-      <button onClick={() => onSelectionChange(['user1', 'user2'])}>
-      </button>
-      <button onClick={onUserUpdated} aria-label="Button">Update User</button>
+      <Button onClick={() => onSelectionChange(['user1', 'user2'])}>
+      </Button>
+      <Button onClick={onUserUpdated} aria-label="Button">Update User</Button>
     </div>
   )
 }));
@@ -30,7 +30,7 @@ jest.mock('../UserManagementTable', () => ({
 jest.mock('../UserCreationForm', () => ({
   UserCreationForm: ({ onUserCreated }: any) => (
     <div data-testid="user-creation-form">
-      <button onClick={onUserCreated} aria-label="Button">Create User</button>
+      <Button onClick={onUserCreated} aria-label="Button">Create User</Button>
     </div>
   )
 }));
@@ -43,8 +43,8 @@ jest.mock('../BulkUserOperations', () => ({
   BulkUserOperations: ({ selectedUserIds, onOperationComplete, onCancel }: any) => (
     <div data-testid="bulk-user-operations">
       <span>Selected: {selectedUserIds.length}</span>
-      <button onClick={onOperationComplete} aria-label="Button">Complete Operation</button>
-      <button onClick={onCancel} aria-label="Button">Cancel</button>
+      <Button onClick={onOperationComplete} aria-label="Button">Complete Operation</Button>
+      <Button onClick={onCancel} aria-label="Button">Cancel</Button>
     </div>
   )
 }));

@@ -3,21 +3,19 @@
  * Provides easy access to all AI Karen services
  */
 // Export service classes and functions
-import { export { ChatService, getChatService, initializeChatService } from './chatService';
-import { export { MemoryService, getMemoryService, initializeMemoryService } from './memoryService';
-import { export { PluginService, getPluginService, initializePluginService } from './pluginService';
-import { export { ExtensionService, getExtensionService, initializeExtensionService } from './extensionService';
-import { export { AuthService, getAuthService, initializeAuthService } from './authService';
-import { export { AuditService } from './auditService';
-import { export { AlertManager, alertManager } from './alertManager';
+export { ChatService, getChatService, initializeChatService } from './chatService';
+export { MemoryService, getMemoryService, initializeMemoryService } from './memoryService';
+export { PluginService, getPluginService, initializePluginService } from './pluginService';
+export { ExtensionService, getExtensionService, initializeExtensionService } from './extensionService';
+export { AuthService, getAuthService, initializeAuthService } from './authService';
+export { AuditService } from './auditService';
+export { AlertManager, alertManager } from './alertManager';
 // Export service types
-import { export type { ConversationSession, ProcessMessageOptions } from './chatService';
-export type { 
-import { } from './memoryService';
-export type {
-import { } from './pluginService';
-import { export type { ExtensionInfo } from './extensionService';
-import { export type { LoginResult, CurrentUser } from '@/lib/karen-backend';
+export type { ConversationSession, ProcessMessageOptions } from './chatService';
+export type { MemorySearchOptions, MemoryStats, MemoryContext } from './memoryService';
+export type { PluginCategory, PluginExecutionOptions, PluginValidationResult, PluginMetrics } from './pluginService';
+export type { ExtensionInfo } from './extensionService';
+export type { LoginResult, CurrentUser } from '@/lib/karen-backend';
 // Service initialization helper
 export async function initializeAllServices() {
   const { initializeChatService } = await import('./chatService');

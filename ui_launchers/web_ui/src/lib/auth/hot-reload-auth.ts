@@ -57,7 +57,7 @@ export class HotReloadAuthManager {
       sessionId: this.sessionId,
       hasPreservedState: !!this.preservedState,
       devFeaturesEnabled,
-
+    });
   }
 
   /**
@@ -92,11 +92,12 @@ export class HotReloadAuthManager {
           type: 'webpack',
           timestamp: Date.now(),
           source: 'webpack-hmr',
-
+        });
+      });
 
       (window as any).module.hot.dispose(() => {
         this.preserveAuthState();
-
+      });
     }
 
     // Vite Hot Module Replacement
@@ -106,22 +107,25 @@ export class HotReloadAuthManager {
           type: 'vite',
           timestamp: Date.now(),
           source: 'vite-hmr',
-
+        });
+      });
 
       window.addEventListener('vite:afterUpdate', () => {
         this.restoreStateIfNeeded();
-
+      });
     }
 
     // Generic beforeunload for any hot reload scenario
-    window.addEventListener('beforeunload', (event) => {
+    window.addEventListener('beforeunload', () => {
       if (this.isHotReloadScenario()) {
         this.preserveAuthState();
       }
+    });
 
     // Page load restoration
     window.addEventListener('load', () => {
       this.restoreStateIfNeeded();
+    });
 
     // Manual hot reload detection via URL parameters
     if (window.location.search.includes('hot_reload=true')) {
@@ -129,12 +133,11 @@ export class HotReloadAuthManager {
         type: 'manual',
         timestamp: Date.now(),
         source: 'url-parameter',
-
+      });
     }
 
     logger.debug('Hot reload detection configured');
   }
-
   /**
    * Check if current scenario is a hot reload
    */
@@ -181,6 +184,7 @@ export class HotReloadAuthManager {
       } catch (error) {
         logger.warn('Hot reload listener error:', error);
       }
+    });
 
     // Set flag to restore state after reload
     try {
@@ -213,14 +217,15 @@ export class HotReloadAuthManager {
         JSON.stringify(authState)
       );
 
-      this.preservedState = authState;
+    this.preservedState = authState;
 
-      logger.debug('Authentication state preserved for hot reload', {
-        tokenCount: Object.keys(authState.tokens).length,
-        currentUser: authState.currentUser,
-        sessionId: authState.sessionId,
+    logger.debug('Authentication state preserved for hot reload', {
+      tokenCount: Object.keys(authState.tokens).length,
+      currentUser: authState.currentUser,
+      sessionId: authState.sessionId,
+    });
 
-    } catch (error) {
+  } catch (error) {
       logger.error('Failed to preserve auth state for hot reload:', error);
     }
   }

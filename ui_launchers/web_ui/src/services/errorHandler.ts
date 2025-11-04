@@ -359,6 +359,7 @@ export class ServiceErrorHandler {
       // Count by service
       const service = error.context?.service || 'unknown';
       stats.byService[service] = (stats.byService[service] || 0) + 1;
+    });
 
     return stats;
   }

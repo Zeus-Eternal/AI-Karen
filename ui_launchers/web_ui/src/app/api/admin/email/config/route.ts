@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
         config: safeConfig,
         providers: EMAIL_PROVIDERS,
       }
+    });
 
   } catch (error) {
     return NextResponse.json(
@@ -117,6 +118,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Email configuration updated successfully'
+    });
 
   } catch (error) {
     return NextResponse.json(

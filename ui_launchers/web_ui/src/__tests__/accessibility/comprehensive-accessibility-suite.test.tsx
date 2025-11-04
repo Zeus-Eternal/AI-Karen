@@ -16,9 +16,9 @@ expect.extend(toHaveNoViolations);
 
 // Mock components for testing
 const MockButton = ({ children, disabled, onClick, ...props }: any) => (
-  <button disabled={disabled} onClick={onClick} {...props}>
+  <Button disabled={disabled} onClick={onClick} {...props}>
     {children}
-  </button>
+  </Button>
 );
 
 const MockInput = ({ label, error, required, ...props }: any) => (
@@ -85,7 +85,7 @@ const MockModal = ({ isOpen, onClose, title, children }: any) => {
       <div className="modal-content">
         <h2 id="modal-title">{title}</h2>
         {children}
-        <button onClick={onClose}>Close</button>
+        <Button onClick={onClose}>Close</Button>
       </div>
     </div>
   );
@@ -151,13 +151,13 @@ const MockAccordion = ({ items }: any) => {
         const isExpanded = expandedItems.has(index);
         return (
           <div key={index}>
-            <button
+            <Button
               aria-expanded={isExpanded}
               aria-controls={`panel-${index}`}
               onClick={() => toggleItem(index)}
             >
               {item.title}
-            </button>
+            </Button>
             <div
               id={`panel-${index}`}
               role="region"
@@ -307,14 +307,14 @@ describe('Comprehensive Accessibility Test Suite', () => {
       const handleClose = jest.fn();
       render(
         <div>
-          <button>Outside button</button>
+          <Button>Outside button</Button>
           <MockModal
             isOpen={true}
             onClose={handleClose}
             title="Focus Trap Modal"
           >
-            <button>First button</button>
-            <button>Second button</button>
+            <Button>First button</Button>
+            <Button>Second button</Button>
           </MockModal>
         </div>
       );
@@ -531,10 +531,10 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       return (
         <div>
-          <button onClick={() => setMessage('Content updated!')}>
-          </button>
-          <button onClick={() => setStatus('Operation completed')}>
-          </button>
+          <Button onClick={() => setMessage('Content updated!')}>
+          </Button>
+          <Button onClick={() => setStatus('Operation completed')}>
+          </Button>
           <div aria-live="polite" id="live-region">
             {message}
           </div>
@@ -607,14 +607,14 @@ describe('Comprehensive Accessibility Test Suite', () => {
       
       return (
         <div>
-          <button ref={buttonRef} onClick={handleToggle}>
+          <Button ref={buttonRef} onClick={handleToggle}>
             {showContent ? 'Hide' : 'Show'} Content
-          </button>
+          </Button>
           {showContent && (
             <div>
               <h2>Dynamic Content</h2>
-              <button>Focusable element</button>
-              <button onClick={handleToggle}>Close</button>
+              <Button>Focusable element</Button>
+              <Button onClick={handleToggle}>Close</Button>
             </div>
           )}
         </div>
@@ -674,8 +674,8 @@ describe('Comprehensive Accessibility Test Suite', () => {
       const ResponsiveComponent = () => (
         <div style={{ fontSize: '16px', lineHeight: '1.5' }}>
           <p>This text should be readable at 200% zoom</p>
-          <button style={{ minHeight: '44px', minWidth: '44px' }}>
-          </button>
+          <Button style={{ minHeight: '44px', minWidth: '44px' }}>
+          </Button>
         </div>
       );
       
@@ -697,7 +697,7 @@ describe('Comprehensive Accessibility Test Suite', () => {
           <div role="alert">
             <h2>Something went wrong</h2>
             <p>Please try refreshing the page or contact support.</p>
-            <button>Retry</button>
+            <Button>Retry</Button>
           </div>
         );
       }

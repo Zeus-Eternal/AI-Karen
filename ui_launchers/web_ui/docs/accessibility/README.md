@@ -335,12 +335,12 @@ const simulationSettings = {
 
 ```typescript
 // Good: Semantic button with proper labeling
-<button
+<Button
   aria-label="Close dialog"
   onClick={handleClose}
 >
   <X aria-hidden="true" />
-</button>
+</Button>
 
 // Good: Form with proper labeling and error handling
 <div>

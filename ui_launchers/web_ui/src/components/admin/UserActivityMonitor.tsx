@@ -160,7 +160,7 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
           { id: 'security-events', label: 'Security Events' },
           { id: 'login-activity', label: 'Login Activity' }
         ].map((tab) => (
-          <button
+          <Button
             key={tab.id}
             onClick={() => setCurrentView(tab.id as ViewMode)}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -170,7 +170,7 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
             }`}
           >
             {tab.label}
-          </button>
+          </Button>
         ))}
       </nav>
     </div>
@@ -313,18 +313,18 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
       {/* Pagination */}
       <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
         <div className="flex-1 flex justify-between sm:hidden">
-          <button
+          <Button
             onClick={() => setAuditPagination(prev => ({ ...prev, page: prev.page - 1 }))}
             disabled={auditPagination.page <= 1}
             className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 md:text-base lg:text-lg"
           >
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setAuditPagination(prev => ({ ...prev, page: prev.page + 1 }))}
             disabled={auditPagination.page >= auditTotalPages}
             className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 md:text-base lg:text-lg"
           >
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -413,11 +413,11 @@ export function UserActivityMonitor({ className = '' }: UserActivityMonitorProps
         {error && (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md sm:p-4 md:p-6">
             <p className="text-red-800">{error}</p>
-            <button
+            <Button
               onClick={loadData}
               className="mt-2 text-sm text-red-600 hover:text-red-800 underline md:text-base lg:text-lg"
              aria-label="Button">
-            </button>
+            </Button>
           </div>
         )}
       </div>

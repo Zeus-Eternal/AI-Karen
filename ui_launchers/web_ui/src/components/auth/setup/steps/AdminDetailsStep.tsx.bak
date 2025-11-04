@@ -359,7 +359,7 @@ export const AdminDetailsStep: React.FC<SetupStepProps> = ({
 
       {/* Submit Button */}
       <div className="pt-4">
-        <button
+        <Button
           type="submit"
           disabled={!isFormValid || isLoading}
           className="w-full h-12 text-base font-semibold"

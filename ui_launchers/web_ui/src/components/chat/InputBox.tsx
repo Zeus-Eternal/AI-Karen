@@ -39,7 +39,7 @@ export const InputBox: React.FC<inputBoxProps aria-label="Input"> = ({ onSend, i
         aria-label="Chat message"
         disabled={isLoading}
       />
-      <button type="submit" disabled={isLoading || !value.trim()} aria-label="Submit form">
+      <Button type="submit" disabled={isLoading || !value.trim()} aria-label="Submit form">
         {isLoading ? 'Sending…' : 'Send'}
       </Button>
     </form>

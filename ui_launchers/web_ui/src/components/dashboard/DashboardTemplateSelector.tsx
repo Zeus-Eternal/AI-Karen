@@ -257,7 +257,7 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
                             
                             {/* Template Actions */}
                             <div className="flex gap-2">
-                              <button
+                              <Button
                                 size="sm"
                                 onClick={() => handleApplyTemplate(template.id)}
                                 className="flex-1"
@@ -361,7 +361,7 @@ export const DashboardTemplateSelector: React.FC<DashboardTemplateSelectorProps>
                   onClick={() => setPreviewTemplate(null)}
                 >
                 </Button>
-                <button
+                <Button
                   onClick={() => {
                     handleApplyTemplate(previewTemplate.id);
                     setPreviewTemplate(null);

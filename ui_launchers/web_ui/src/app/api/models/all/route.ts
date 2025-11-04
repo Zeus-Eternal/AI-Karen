@@ -1,47 +1,90 @@
+// app/api/models/all/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { withBackendPath } from '@/app/api/_utils/backend';
+
+/**
+ * GET /api/models/all
+ * - Forwards query params to backend
+ * - Forwards Authorization & Cookie safely
+ * - 20s timeout
+ * - Robust JSON-or-text response handling
+ * - Caches successful upstream responses for 10 minutes
+ */
 export async function GET(request: NextRequest) {
+  // Build upstream URL with original query params
+  const upstreamUrl = new URL(withBackendPath('/api/models/all'));
+  const incomingUrl = new URL(request.url);
+  incomingUrl.searchParams.forEach((v, k) => upstreamUrl.searchParams.append(k, v));
+
+  // Minimal, explicit header forwarding
+  const headers = new Headers({ Accept: 'application/json' });
+  const authorization = request.headers.get('authorization');
+  const cookie = request.headers.get('cookie');
+  if (authorization) headers.set('Authorization', authorization);
+  if (cookie) headers.set('Cookie', cookie);
+
+  let upstreamResponse: Response;
+
   try {
-    // Get authorization header from the request
-    const authorization = request.headers.get('authorization');
-    const cookie = request.headers.get('cookie');
-    // Get query parameters for filtering, pagination, etc.
-    const { searchParams } = new URL(request.url);
-    // Forward the request to the backend models all endpoint
-    const backendUrl = `${withBackendPath('/api/models/all')}?${searchParams.toString()}`;
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-    // Forward auth headers if present
-    if (authorization) {
-      headers['Authorization'] = authorization;
-    }
-    if (cookie) {
-      headers['Cookie'] = cookie;
-    }
-    const response = await fetch(backendUrl, {
+    upstreamResponse = await fetch(upstreamUrl.toString(), {
       method: 'GET',
       headers,
-      signal: AbortSignal.timeout(20000), // 20 second timeout for large model lists
-
-    const data = await response.json();
-    // Return the backend response with appropriate status
-    return NextResponse.json(data, { 
-      status: response.status,
-      headers: {
-        'Cache-Control': 'public, max-age=600', // Cache for 10 minutes
-        'Pragma': 'cache',
-      }
-
-  } catch (error) {
-    // Return structured error response
+      // Node 18+ supports AbortSignal.timeout
+      signal: AbortSignal.timeout(20_000),
+      // We control caching on our response, not the fetch cache
+      cache: 'no-store',
+    });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : 'Unknown upstream fetch error';
     return NextResponse.json(
-      { 
+      {
         error: 'Models service unavailable',
-        message: 'Unable to fetch all models',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        message: 'Unable to reach upstream models service',
+        details: message,
       },
       { status: 503 }
     );
   }
+
+  // Try to parse JSON; fall back to text if needed
+  const isJson =
+    upstreamResponse.headers
+      .get('content-type')
+      ?.toLowerCase()
+      .includes('application/json') ?? false;
+
+  let payload: unknown = null;
+  try {
+    payload = isJson ? await upstreamResponse.json() : await upstreamResponse.text();
+  } catch {
+    // If body parse fails, keep payload as null for transparent pass-through
+    payload = null;
+  }
+
+  // Cache successful responses for 10 minutes (public models list is cacheable)
+  const cacheHeaders: Record<string, string> = {
+    'Cache-Control': 'public, max-age=600',
+    Pragma: 'cache',
+  };
+
+  if (upstreamResponse.ok) {
+    // If upstream didn't return JSON but was OK, still wrap as JSON for our API contract
+    const data =
+      payload ?? { message: 'No content from upstream', data: null };
+    return NextResponse.json(data, {
+      status: upstreamResponse.status,
+      headers: cacheHeaders,
+    });
+  }
+
+  // Non-2xx: surface upstream status and payload (text or json) transparently
+  return NextResponse.json(
+    {
+      error: 'Upstream error',
+      upstream_status: upstreamResponse.status,
+      data: payload,
+    },
+    { status: upstreamResponse.status }
+  );
 }

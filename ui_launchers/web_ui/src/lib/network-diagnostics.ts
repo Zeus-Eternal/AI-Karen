@@ -1,18 +1,22 @@
 /**
- * Network Diagnostics Utility for AI Karen Web UI
- * Performs comprehensive network connectivity tests and diagnostics
+ * Network Diagnostics Utility for AI Karen Web UI (production-grade)
+ * - SSR-safe guards (no window/document on server)
+ * - Deterministic timeouts via AbortController
+ * - CORS preflight inspection and header extraction
+ * - Consolidated comprehensive test suite w/ fallback backends
+ * - Clean, structured logging via diagnostics logger
  */
 
 import { webUIConfig } from './config';
-import { getDiagnosticLogger, NetworkDiagnostic, CORSInfo, NetworkInfo } from './diagnostics';
+import { getDiagnosticLogger, type NetworkDiagnostic, type CORSInfo, type NetworkInfo } from './diagnostics';
 
 export interface NetworkTest {
   name: string;
   description: string;
-  endpoint: string;
-  method: string;
+  endpoint: string;            // absolute or relative
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
   expectedStatus?: number;
-  timeout?: number;
+  timeout?: number;            // ms
   headers?: Record<string, string>;
   body?: string;
 }
@@ -38,115 +42,146 @@ export interface ComprehensiveNetworkReport {
   recommendations: string[];
 }
 
-class NetworkDiagnostics {
+const isBrowser = typeof window !== 'undefined';
+const nowISO = () => new Date().toISOString();
+
+function buildFullUrl(endpoint: string): string {
+  if (/^https?:\/\//i.test(endpoint)) return endpoint;
+  const base = webUIConfig.backendUrl?.replace(/\/+$/, '') ?? '';
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${base}${path}`;
+}
+
+function readHeaders(h: Headers): Record<string, string> {
+  const o: Record<string, string> = {};
+  h.forEach((v, k) => { o[k] = v; });
+  return o;
+}
+
+function classifyErrorMessage(msg: string): NetworkDiagnostic['status'] {
+  const m = msg.toLowerCase();
+  if (m.includes('abort') || m.includes('timeout')) return 'timeout';
+  if (m.includes('cors') || m.includes('cross-origin')) return 'cors';
+  if (m.includes('networkerror') || m.includes('failed to fetch')) return 'network';
+  return 'error';
+}
+
+export class NetworkDiagnostics {
   private logger = getDiagnosticLogger();
 
   /**
-   * Get current network information
+   * Current client → backend network info (SSR-safe)
    */
   public getNetworkInfo(): NetworkInfo {
-    const url = new URL(webUIConfig.backendUrl);
-    
+    let protocol = 'http';
+    let host = 'unknown';
+    let port = '80';
+
+    try {
+      const url = new URL(webUIConfig.backendUrl);
+      protocol = url.protocol.replace(':', '') || 'http';
+      host = url.hostname;
+      port = url.port || (url.protocol === 'https:' ? '443' : '80');
+    } catch {
+      // ignore, leave defaults
+    }
+
     return {
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
+      userAgent: isBrowser ? (navigator.userAgent || 'browser') : 'server',
       connectionType: this.getConnectionType(),
-      isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
-      protocol: url.protocol.replace(':', ''),
-      host: url.hostname,
-      port: url.port || (url.protocol === 'https:' ? '443' : '80'),
+      isOnline: isBrowser ? navigator.onLine : true,
+      protocol,
+      host,
+      port,
     };
   }
 
-  /**
-   * Get connection type if available
-   */
   private getConnectionType(): string | undefined {
-    if (typeof navigator !== 'undefined' && 'connection' in navigator) {
-      const connection = (navigator as any).connection;
-      return connection?.effectiveType || connection?.type;
-    }
-    return undefined;
+    if (!isBrowser) return undefined;
+    const n = navigator as any;
+    const conn = n?.connection ?? n?.mozConnection ?? n?.webkitConnection;
+    return conn?.effectiveType || conn?.type;
   }
 
   /**
-   * Test basic connectivity to an endpoint
+   * Fetch wrapper with timeout and clean abort
+   */
+  private async timedFetch(
+    url: string,
+    init: RequestInit & { timeout?: number } = {}
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = init.timeout ?? 5000;
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(id);
+    }
+  }
+
+  /**
+   * Test connectivity to a given endpoint with diagnostics
    */
   public async testEndpointConnectivity(
     endpoint: string,
-    method: string = 'GET',
-    timeout: number = 5000,
+    method: NetworkTest['method'] = 'GET',
+    timeout = 5000,
     headers?: Record<string, string>,
     body?: string
   ): Promise<NetworkDiagnostic> {
-    const startTime = Date.now();
-    const fullUrl = endpoint.startsWith('http') ? endpoint : `${webUIConfig.backendUrl}${endpoint}`;
-    
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const start = Date.now();
+    const fullUrl = buildFullUrl(endpoint);
 
-      const response = await fetch(fullUrl, {
+    try {
+      const res = await this.timedFetch(fullUrl, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          ...headers,
+          ...(headers ?? {}),
         },
         body,
-        signal: controller.signal,
+        timeout,
+      });
 
-      clearTimeout(timeoutId);
-      const responseTime = Date.now() - startTime;
-
-      // Extract response headers
-      const responseHeaders: Record<string, string> = {};
-      response.headers.forEach((value, key) => {
-        responseHeaders[key] = value;
-
+      const responseTime = Date.now() - start;
       const diagnostic: NetworkDiagnostic = {
         endpoint: fullUrl,
         method,
-        status: response.ok ? 'success' : 'error',
-        statusCode: response.status,
+        status: res.ok ? 'success' : 'error',
+        statusCode: res.status,
         responseTime,
-        timestamp: new Date().toISOString(),
-        headers: responseHeaders,
+        timestamp: nowISO(),
+        headers: readHeaders(res.headers),
         networkInfo: this.getNetworkInfo(),
       };
 
-      // Check for CORS issues
-      if (!response.ok && response.status === 0) {
+      // If opaque or similar, `status` can be 0 in some modes (CORS no-cors),
+      // but fetch in typical web apps returns non-0. We still handle CORS via OPTIONS below.
+      if (!res.ok && res.status === 0) {
         diagnostic.status = 'cors';
         diagnostic.corsInfo = await this.analyzeCORS(fullUrl);
       }
 
       this.logger.logNetworkDiagnostic(diagnostic);
       return diagnostic;
-
-    } catch (error) {
-      const responseTime = Date.now() - startTime;
-      let status: NetworkDiagnostic['status'] = 'error';
-      let errorMessage = error instanceof Error ? error.message : String(error);
-
-      // Analyze error type
-      if (errorMessage.includes('AbortError') || errorMessage.includes('timeout')) {
-        status = 'timeout';
-      } else if (errorMessage.includes('CORS') || errorMessage.includes('cross-origin')) {
-        status = 'cors';
-      } else if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
-        status = 'network';
-      }
+    } catch (e) {
+      const responseTime = Date.now() - start;
+      const message = e instanceof Error ? e.message : String(e);
+      const status = classifyErrorMessage(message);
 
       const diagnostic: NetworkDiagnostic = {
         endpoint: fullUrl,
         method,
         status,
         responseTime,
-        timestamp: new Date().toISOString(),
-        error: errorMessage,
+        timestamp: nowISO(),
+        error: message,
         networkInfo: this.getNetworkInfo(),
       };
 
-      // Add CORS info if it's a CORS error
       if (status === 'cors') {
         diagnostic.corsInfo = await this.analyzeCORS(fullUrl);
       }
@@ -157,58 +192,49 @@ class NetworkDiagnostics {
   }
 
   /**
-   * Analyze CORS configuration for an endpoint
+   * CORS analysis (preflight)
    */
   private async analyzeCORS(endpoint: string): Promise<CORSInfo> {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'unknown';
-    
-    const corsInfo: CORSInfo = {
+    const origin = isBrowser ? window.location.origin : 'unknown';
+
+    const info: CORSInfo = {
       origin,
-      preflightRequired: false,
+      preflightRequired: true,
     };
 
     try {
-      // Test preflight request
-      const preflightResponse = await fetch(endpoint, {
+      const res = await this.timedFetch(endpoint, {
         method: 'OPTIONS',
         headers: {
-          'Origin': origin,
+          Origin: origin,
           'Access-Control-Request-Method': 'POST',
           'Access-Control-Request-Headers': 'Content-Type',
         },
+        timeout: 5000,
+      });
 
-      corsInfo.preflightStatus = preflightResponse.status;
-      corsInfo.preflightRequired = true;
+      info.preflightStatus = res.status;
 
-      // Extract CORS headers
-      const allowOrigin = preflightResponse.headers.get('Access-Control-Allow-Origin');
-      const allowMethods = preflightResponse.headers.get('Access-Control-Allow-Methods');
-      const allowHeaders = preflightResponse.headers.get('Access-Control-Allow-Headers');
+      const allowOrigin = res.headers.get('Access-Control-Allow-Origin');
+      const allowMethods = res.headers.get('Access-Control-Allow-Methods');
+      const allowHeaders = res.headers.get('Access-Control-Allow-Headers');
 
-      if (allowOrigin) {
-        corsInfo.allowedOrigins = [allowOrigin];
-      }
-      if (allowMethods) {
-        corsInfo.allowedMethods = allowMethods.split(',').map(m => m.trim());
-      }
-      if (allowHeaders) {
-        corsInfo.allowedHeaders = allowHeaders.split(',').map(h => h.trim());
-      }
-
-    } catch (error) {
-      corsInfo.corsError = error instanceof Error ? error.message : String(error);
+      if (allowOrigin) info.allowedOrigins = [allowOrigin];
+      if (allowMethods) info.allowedMethods = allowMethods.split(',').map(s => s.trim());
+      if (allowHeaders) info.allowedHeaders = allowHeaders.split(',').map(s => s.trim());
+    } catch (e) {
+      info.corsError = e instanceof Error ? e.message : String(e);
     }
 
-    return corsInfo;
+    return info;
   }
 
   /**
-   * Run a comprehensive network diagnostic test
+   * Run the full diagnostic suite against primary + fallback backends
    */
   public async runComprehensiveTest(): Promise<ComprehensiveNetworkReport> {
-    const startTime = Date.now();
-    
-    // Define test suite
+    const start = Date.now();
+
     const tests: NetworkTest[] = [
       {
         name: 'Backend Health Check',
@@ -218,230 +244,193 @@ class NetworkDiagnostics {
         expectedStatus: 200,
       },
       {
-        name: 'Authentication Endpoint',
-        description: 'Test authentication endpoint availability',
+        name: 'Authentication Status',
+        description: 'Auth endpoint availability',
         endpoint: '/api/auth/status',
         method: 'GET',
       },
       {
         name: 'Chat Endpoint',
-        description: 'Test chat endpoint availability',
+        description: 'Conversation processing endpoint availability',
         endpoint: '/api/ai/conversation-processing',
         method: 'POST',
         body: JSON.stringify({ messages: [] }),
       },
       {
-        name: 'Memory Endpoint Options',
-        description: 'Test memory endpoint CORS preflight',
+        name: 'Memory Endpoint Preflight',
+        description: 'CORS preflight for memory endpoint',
         endpoint: '/api/memory/query',
         method: 'OPTIONS',
       },
       {
-        name: 'Plugin List Endpoint',
-        description: 'Test plugin listing endpoint',
+        name: 'Plugin List',
+        description: 'Plugin listing endpoint',
         endpoint: '/api/plugins',
         method: 'GET',
       },
       {
-        name: 'System Metrics Endpoint',
-        description: 'Test system metrics endpoint',
+        name: 'System Metrics',
+        description: 'System metrics endpoint',
         endpoint: '/api/web/analytics/system',
         method: 'GET',
       },
+      // Fallbacks
+      ...(Array.isArray(webUIConfig.fallbackBackendUrls)
+        ? webUIConfig.fallbackBackendUrls.map((base: string, i: number): NetworkTest => ({
+            name: `Fallback Backend ${i + 1}`,
+            description: `Test fallback backend connectivity`,
+            endpoint: `${base.replace(/\/+$/, '')}/api/health`,
+            method: 'GET',
+            expectedStatus: 200,
+          }))
+        : []),
     ];
 
-    // Add fallback endpoint tests
-    webUIConfig.fallbackBackendUrls.forEach((fallbackUrl, index) => {
-      tests.push({
-        name: `Fallback Backend ${index + 1}`,
-        description: `Test fallback backend connectivity: ${fallbackUrl}`,
-        endpoint: `${fallbackUrl}/api/health`,
-        method: 'GET',
-        expectedStatus: 200,
-
-
-    // Run all tests
-    const testResults: NetworkTestResult[] = [];
-    let totalResponseTime = 0;
-    let passedTests = 0;
+    const results: NetworkTestResult[] = [];
+    let passed = 0;
+    let totalResponse = 0;
 
     for (const test of tests) {
       try {
         const diagnostic = await this.testEndpointConnectivity(
           test.endpoint,
           test.method,
-          test.timeout || 10000,
+          test.timeout ?? 10_000,
           test.headers,
           test.body
         );
 
-        const success = diagnostic.status === 'success' && 
-          (test.expectedStatus ? diagnostic.statusCode === test.expectedStatus : true);
+        const meetsCode = test.expectedStatus ? diagnostic.statusCode === test.expectedStatus : true;
+        const success = diagnostic.status === 'success' && meetsCode;
+        if (success) passed++;
+        totalResponse += diagnostic.responseTime;
 
-        if (success) {
-          passedTests++;
-        }
-
-        totalResponseTime += diagnostic.responseTime;
-
-        const recommendations = this.generateTestRecommendations(test, diagnostic);
-
-        testResults.push({
+        results.push({
           test,
           success,
           diagnostic,
-          recommendations,
-
-      } catch (error) {
-        // Create a failed diagnostic for the test
+          recommendations: this.generateTestRecommendations(test, diagnostic),
+        });
+      } catch (e) {
         const diagnostic: NetworkDiagnostic = {
-          endpoint: test.endpoint,
+          endpoint: buildFullUrl(test.endpoint),
           method: test.method,
           status: 'error',
           responseTime: 0,
-          timestamp: new Date().toISOString(),
-          error: error instanceof Error ? error.message : String(error),
+          timestamp: nowISO(),
+          error: e instanceof Error ? e.message : String(e),
           networkInfo: this.getNetworkInfo(),
         };
-
-        testResults.push({
+        results.push({
           test,
           success: false,
           diagnostic,
           recommendations: ['Test execution failed', 'Check network connectivity'],
-
+        });
       }
     }
 
-    // Calculate overall status
-    const failureRate = (tests.length - passedTests) / tests.length;
-    let overallStatus: ComprehensiveNetworkReport['overallStatus'];
-    
-    if (failureRate === 0) {
-      overallStatus = 'healthy';
-    } else if (failureRate < 0.3) {
-      overallStatus = 'degraded';
-    } else {
-      overallStatus = 'critical';
-    }
-
-    // Generate overall recommendations
-    const recommendations = this.generateOverallRecommendations(testResults, overallStatus);
+    const failureRate = (tests.length - passed) / tests.length;
+    const overallStatus: ComprehensiveNetworkReport['overallStatus'] =
+      failureRate === 0 ? 'healthy' : failureRate < 0.3 ? 'degraded' : 'critical';
 
     const report: ComprehensiveNetworkReport = {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       overallStatus,
       summary: {
         totalTests: tests.length,
-        passedTests,
-        failedTests: tests.length - passedTests,
-        averageResponseTime: totalResponseTime / tests.length,
+        passedTests: passed,
+        failedTests: tests.length - passed,
+        averageResponseTime: tests.length ? totalResponse / tests.length : 0,
       },
-      testResults,
+      testResults: results,
       systemInfo: this.getNetworkInfo(),
-      recommendations,
+      recommendations: this.generateOverallRecommendations(results, overallStatus),
     };
 
-    // Log the comprehensive report
     this.logger.log('info', 'network', 'Comprehensive network diagnostic completed', {
-      duration: Date.now() - startTime,
+      duration: Date.now() - start,
       overallStatus,
       summary: report.summary,
+    });
 
     return report;
   }
 
-  /**
-   * Generate recommendations for individual test results
-   */
   private generateTestRecommendations(test: NetworkTest, diagnostic: NetworkDiagnostic): string[] {
-    const recommendations: string[] = [];
+    const recs: string[] = [];
 
     if (!diagnostic.statusCode || diagnostic.statusCode >= 400) {
-      recommendations.push(`Check if ${test.endpoint} is properly configured on the backend`);
+      recs.push(`Verify backend route for ${test.method} ${test.endpoint}`);
     }
 
     if (diagnostic.status === 'timeout') {
-      recommendations.push('Consider increasing timeout values');
-      recommendations.push('Check backend service performance');
+      recs.push('Increase client timeout (if appropriate)');
+      recs.push('Investigate backend latency / queueing');
     }
 
     if (diagnostic.status === 'cors') {
-      recommendations.push('Update CORS configuration to allow the current origin');
-      recommendations.push('Verify preflight request handling');
+      recs.push('Update CORS to allow current origin');
+      recs.push('Verify OPTIONS preflight handler');
     }
 
     if (diagnostic.status === 'network') {
-      recommendations.push('Check network connectivity');
-      recommendations.push('Verify backend service is running and accessible');
+      recs.push('Check network/firewall connectivity to backend');
+      recs.push('Confirm backend is reachable and running');
     }
 
-    if (diagnostic.responseTime > 5000) {
-      recommendations.push('Response time is slow - investigate backend performance');
+    if ((diagnostic.responseTime ?? 0) > 5000) {
+      recs.push('High response time: profile backend and DB hot paths');
     }
 
-    return recommendations;
+    return recs;
   }
 
-  /**
-   * Generate overall recommendations based on test results
-   */
   private generateOverallRecommendations(
     testResults: NetworkTestResult[],
     overallStatus: ComprehensiveNetworkReport['overallStatus']
   ): string[] {
-    const recommendations: string[] = [];
-    const failedTests = testResults.filter(result => !result.success);
-    const corsIssues = failedTests.filter(result => result.diagnostic.status === 'cors');
-    const networkIssues = failedTests.filter(result => result.diagnostic.status === 'network');
-    const timeoutIssues = failedTests.filter(result => result.diagnostic.status === 'timeout');
+    const recs: string[] = [];
+    const failed = testResults.filter(r => !r.success);
+    const corsIssues = failed.filter(r => r.diagnostic.status === 'cors');
+    const netIssues = failed.filter(r => r.diagnostic.status === 'network');
+    const timeouts = failed.filter(r => r.diagnostic.status === 'timeout');
 
     if (overallStatus === 'critical') {
-      recommendations.push('Critical network issues detected - immediate attention required');
-      recommendations.push('Check if backend service is running and accessible');
+      recs.push('Critical network issues detected — prioritize backend availability');
+      recs.push('Verify base URL configuration and TLS/hostname DNS resolution');
     } else if (overallStatus === 'degraded') {
-      recommendations.push('Some network issues detected - monitoring recommended');
+      recs.push('Intermittent network issues — monitor and tune timeouts/retries');
     }
 
-    if (corsIssues.length > 0) {
-      recommendations.push('CORS configuration issues detected');
-      recommendations.push('Update backend CORS settings to allow the current origin');
-      recommendations.push('Verify preflight request handling for complex requests');
+    if (corsIssues.length) {
+      recs.push('Fix CORS policy for current origin');
+      recs.push('Ensure preflight responses include correct Allow-* headers');
+    }
+    if (netIssues.length) {
+      recs.push('Check upstream connectivity / gateway / proxy rules');
+      recs.push('Validate security groups / firewall / reverse-proxy routes');
+    }
+    if (timeouts.length) {
+      recs.push('Increase client timeout or improve backend latency SLAs');
+      recs.push('Add request tracing to identify slow spans');
     }
 
-    if (networkIssues.length > 0) {
-      recommendations.push('Network connectivity issues detected');
-      recommendations.push('Check internet connection and firewall settings');
-      recommendations.push('Verify backend service accessibility');
+    const fallbackRows = testResults.filter(r => r.test.name.startsWith('Fallback Backend'));
+    const failedFallbacks = fallbackRows.filter(r => !r.success);
+    if (fallbackRows.length && failedFallbacks.length === fallbackRows.length) {
+      recs.push('All fallbacks failing — recheck fallback URLs and health routes');
     }
 
-    if (timeoutIssues.length > 0) {
-      recommendations.push('Timeout issues detected');
-      recommendations.push('Consider increasing timeout configuration');
-      recommendations.push('Investigate backend service performance');
+    if (recs.length === 0) {
+      recs.push('All network tests passed successfully');
+      recs.push('Connectivity is healthy');
     }
-
-    // Check for fallback endpoint issues
-    const fallbackTests = testResults.filter(result => 
-      result.test.name.includes('Fallback Backend')
-    );
-    const failedFallbacks = fallbackTests.filter(result => !result.success);
-    
-    if (failedFallbacks.length === fallbackTests.length && fallbackTests.length > 0) {
-      recommendations.push('All fallback endpoints are failing');
-      recommendations.push('Review fallback endpoint configuration');
-    }
-
-    if (recommendations.length === 0) {
-      recommendations.push('All network tests passed successfully');
-      recommendations.push('Network connectivity is healthy');
-    }
-
-    return recommendations;
+    return recs;
   }
 
   /**
-   * Test specific endpoint with detailed analysis
+   * Detailed probe of a single endpoint (connectivity + CORS)
    */
   public async testEndpointDetailed(endpoint: string): Promise<{
     connectivity: NetworkDiagnostic;
@@ -449,68 +438,57 @@ class NetworkDiagnostics {
     recommendations: string[];
   }> {
     const connectivity = await this.testEndpointConnectivity(endpoint);
-    const corsAnalysis = await this.analyzeCORS(endpoint);
-    
-    const recommendations: string[] = [];
-    
+    const corsAnalysis = await this.analyzeCORS(buildFullUrl(endpoint));
+    const recs: string[] = [];
+
     if (connectivity.status !== 'success') {
-      recommendations.push('Endpoint connectivity failed');
-      recommendations.push('Check backend service status');
+      recs.push('Endpoint connectivity failed');
+      recs.push('Check backend service status / route mapping');
     }
-    
     if (corsAnalysis.corsError) {
-      recommendations.push('CORS configuration issues detected');
-      recommendations.push('Update backend CORS settings');
+      recs.push('CORS configuration issue');
+      recs.push('Update backend CORS allowlist and headers');
     }
-    
-    if (connectivity.responseTime > 3000) {
-      recommendations.push('Slow response time detected');
-      recommendations.push('Investigate backend performance');
+    if ((connectivity.responseTime ?? 0) > 3000) {
+      recs.push('Slow response detected — investigate backend performance');
     }
 
-    return {
-      connectivity,
-      corsAnalysis,
-      recommendations,
-    };
+    return { connectivity, corsAnalysis, recommendations: recs };
   }
 
   /**
-   * Monitor network connectivity continuously
+   * Lightweight periodic health monitoring
    */
-  public startNetworkMonitoring(interval: number = 60000): () => void {
-    const monitoringInterval = setInterval(async () => {
+  public startNetworkMonitoring(intervalMs = 60_000): () => void {
+    const timer = setInterval(async () => {
       try {
-        const healthCheck = await this.testEndpointConnectivity('/api/health', 'GET', 5000);
-        
-        if (healthCheck.status !== 'success') {
+        const hc = await this.testEndpointConnectivity('/api/health', 'GET', 5000);
+        if (hc.status !== 'success') {
           this.logger.log('warn', 'network', 'Network monitoring detected connectivity issue', {
-            endpoint: healthCheck.endpoint,
-            status: healthCheck.status,
-            error: healthCheck.error,
-
+            endpoint: hc.endpoint,
+            status: hc.status,
+            error: hc.error,
+          });
         }
-      } catch (error) {
-        this.logger.log('error', 'network', 'Network monitoring failed', undefined, undefined, undefined, error as Error);
+      } catch (e) {
+        this.logger.log('error', 'network', 'Network monitoring failed', undefined, undefined, undefined, e as Error);
       }
-    }, interval);
+    }, intervalMs);
 
-    this.logger.log('info', 'network', 'Network monitoring started', { interval });
+    this.logger.log('info', 'network', 'Network monitoring started', { interval: intervalMs });
 
     return () => {
-      clearInterval(monitoringInterval);
+      clearInterval(timer);
       this.logger.log('info', 'network', 'Network monitoring stopped');
     };
   }
 }
 
-// Global network diagnostics instance
+// Singleton accessors
 let networkDiagnostics: NetworkDiagnostics | null = null;
 
 export function getNetworkDiagnostics(): NetworkDiagnostics {
-  if (!networkDiagnostics) {
-    networkDiagnostics = new NetworkDiagnostics();
-  }
+  if (!networkDiagnostics) networkDiagnostics = new NetworkDiagnostics();
   return networkDiagnostics;
 }
 
@@ -519,6 +497,4 @@ export function initializeNetworkDiagnostics(): NetworkDiagnostics {
   return networkDiagnostics;
 }
 
-// Types are already exported via export interface declarations above
-
-export { NetworkDiagnostics };
+export default NetworkDiagnostics;

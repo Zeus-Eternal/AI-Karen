@@ -69,8 +69,8 @@ describe('Automated Accessibility Test Suite', () => {
           </GridContainer>
 
           <FlexContainer direction="row" gap="1rem">
-            <button>Flex Item 1</button>
-            <button>Flex Item 2</button>
+            <Button>Flex Item 1</Button>
+            <Button>Flex Item 2</Button>
           </FlexContainer>
 
           <ResponsiveContainer>
@@ -89,8 +89,8 @@ describe('Automated Accessibility Test Suite', () => {
             </Card.Content>
             <Card.Footer>
               <Card.Actions>
-                <button>Primary</button>
-                <button>Secondary</button>
+                <Button>Primary</Button>
+                <Button>Secondary</Button>
               </Card.Actions>
             </Card.Footer>
           </Card.Root>
@@ -103,7 +103,7 @@ describe('Automated Accessibility Test Suite', () => {
               <Form.Help id="test-help">Help text for the input</Form.Help>
             </Form.Field>
             <Form.Actions>
-              <button type="submit">Submit</button>
+              <Button type="submit">Submit</Button>
             </Form.Actions>
           </Form.Root>
 
@@ -165,7 +165,7 @@ describe('Automated Accessibility Test Suite', () => {
     it('should validate keyboard accessibility', async () => {
       const { container } = render(
         <AccessibilityTestWrapper>
-          <button>Button 1</button>
+          <Button>Button 1</Button>
           <a href="#test">Link 1</a>
           <input type="text" placeholder="Input 1" />
           <select>
@@ -332,7 +332,7 @@ describe('Automated Accessibility Test Suite', () => {
               </div>
             </fieldset>
             
-            <button type="submit">Create Account</button>
+            <Button type="submit">Create Account</Button>
           </form>
         </AccessibilityTestWrapper>
       );
@@ -414,11 +414,11 @@ describe('Automated Accessibility Test Suite', () => {
               </Modal.Header>
               <Modal.Body>
                 <p>Modal content with proper focus management.</p>
-                <button>Action Button</button>
+                <Button>Action Button</Button>
               </Modal.Body>
               <Modal.Actions>
-                <button>Cancel</button>
-                <button>Confirm</button>
+                <Button>Cancel</Button>
+                <Button>Confirm</Button>
               </Modal.Actions>
             </Modal.Content>
           </Modal.Root>
@@ -435,9 +435,9 @@ describe('Automated Accessibility Test Suite', () => {
             <div role="dialog" aria-labelledby="dialog-title" aria-modal="true">
               <h2 id="dialog-title">Dialog Title</h2>
               <p>Content inside focus trap.</p>
-              <button>First Button</button>
-              <button>Second Button</button>
-              <button>Close</button>
+              <Button>First Button</Button>
+              <Button>Second Button</Button>
+              <Button>Close</Button>
             </div>
           </FocusTrap>
         </AccessibilityTestWrapper>
@@ -467,8 +467,8 @@ describe('Automated Accessibility Test Suite', () => {
                 <td>john@example.com</td>
                 <td>Admin</td>
                 <td>
-                  <button aria-label="Edit John Doe">Edit</button>
-                  <button aria-label="Delete John Doe">Delete</button>
+                  <Button aria-label="Edit John Doe">Edit</Button>
+                  <Button aria-label="Delete John Doe">Delete</Button>
                 </td>
               </tr>
               <tr>
@@ -476,8 +476,8 @@ describe('Automated Accessibility Test Suite', () => {
                 <td>jane@example.com</td>
                 <td>User</td>
                 <td>
-                  <button aria-label="Edit Jane Smith">Edit</button>
-                  <button aria-label="Delete Jane Smith">Delete</button>
+                  <Button aria-label="Edit Jane Smith">Edit</Button>
+                  <Button aria-label="Delete Jane Smith">Delete</Button>
                 </td>
               </tr>
             </tbody>
@@ -505,12 +505,12 @@ describe('Automated Accessibility Test Suite', () => {
             <p>Background updates that don't need announcement</p>
           </div>
           
-          <button 
+          <Button 
             aria-expanded="false"
             aria-controls="collapsible-content"
             aria-describedby="expand-help"
           >
-          </button>
+          </Button>
           <div id="expand-help">Click to reveal additional information</div>
           
           <div id="collapsible-content" hidden>
@@ -528,20 +528,20 @@ describe('Automated Accessibility Test Suite', () => {
       const { container } = render(
         <AccessibilityTestWrapper>
           <div role="tablist" aria-label="Settings tabs">
-            <button 
+            <Button 
               role="tab" 
               aria-selected="true" 
               aria-controls="general-panel"
               id="general-tab"
             >
-            </button>
-            <button 
+            </Button>
+            <Button 
               role="tab" 
               aria-selected="false" 
               aria-controls="privacy-panel"
               id="privacy-tab"
             >
-            </button>
+            </Button>
           </div>
           
           <div 
@@ -550,7 +550,7 @@ describe('Automated Accessibility Test Suite', () => {
             aria-labelledby="general-tab"
           >
             <h3>General Settings</h3>
-            <button>Save General Settings</button>
+            <Button>Save General Settings</Button>
           </div>
           
           <div 
@@ -560,7 +560,7 @@ describe('Automated Accessibility Test Suite', () => {
             hidden
           >
             <h3>Privacy Settings</h3>
-            <button>Save Privacy Settings</button>
+            <Button>Save Privacy Settings</Button>
           </div>
         </AccessibilityTestWrapper>
       );
@@ -590,7 +590,7 @@ describe('Automated Accessibility Test Suite', () => {
           {Array.from({ length: 50 }, (_, i) => (
             <div key={i}>
               <h3>Section {i + 1}</h3>
-              <button>Button {i + 1}</button>
+              <Button>Button {i + 1}</Button>
               <input type="text" aria-label={`Input ${i + 1}`} />
             </div>
           ))}

@@ -48,16 +48,16 @@ const TestComponent = () => {
       <div data-testid="resolved-theme">{resolvedTheme}</div>
       <div data-testid="density">{density}</div>
       <div data-testid="is-system">{isSystemTheme.toString()}</div>
-      <button onClick={() => setTheme('light')} data-testid="set-light">
-      </button>
-      <button onClick={() => setTheme('dark')} data-testid="set-dark">
-      </button>
-      <button onClick={() => setTheme('system')} data-testid="set-system">
-      </button>
-      <button onClick={() => setDensity('compact')} data-testid="set-compact">
-      </button>
-      <button onClick={() => setDensity('spacious')} data-testid="set-spacious">
-      </button>
+      <Button onClick={() => setTheme('light')} data-testid="set-light">
+      </Button>
+      <Button onClick={() => setTheme('dark')} data-testid="set-dark">
+      </Button>
+      <Button onClick={() => setTheme('system')} data-testid="set-system">
+      </Button>
+      <Button onClick={() => setDensity('compact')} data-testid="set-compact">
+      </Button>
+      <Button onClick={() => setDensity('spacious')} data-testid="set-spacious">
+      </Button>
     </div>
   );
 };

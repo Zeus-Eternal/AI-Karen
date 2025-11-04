@@ -242,16 +242,16 @@ export default function AuditLogViewer({
           
           {showExportButton && (
             <div className="flex space-x-2">
-              <button
+              <Button
                 onClick={() => handleExport('csv')}
                 className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base lg:text-lg"
               >
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => handleExport('json')}
                 className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base lg:text-lg"
               >
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -278,24 +278,24 @@ export default function AuditLogViewer({
             {/* Quick Filter Presets */}
             <div className="flex flex-wrap gap-2">
               {Object.entries(AUDIT_FILTER_PRESETS).map(([key, preset]) => (
-                <button
+                <Button
                   key={key}
                   onClick={() => handlePresetFilter(key as keyof typeof AUDIT_FILTER_PRESETS)}
                   className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm md:text-base"
                 >
                   {preset.name}
-                </button>
+                </Button>
               ))}
-              <button
+              <Button
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm md:text-base"
               >
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={clearFilters}
                 className="px-3 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm md:text-base"
                aria-label="Button">
-              </button>
+              </Button>
             </div>
 
             {/* Advanced Filters */}
@@ -497,23 +497,23 @@ export default function AuditLogViewer({
           </div>
           
           <div className="flex items-center space-x-2">
-            <button
+            <Button
               onClick={() => handlePageChange(logs.pagination.page - 1)}
               disabled={!logs.pagination.has_prev}
               className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
             >
-            </button>
+            </Button>
             
             <span className="text-sm text-gray-700 md:text-base lg:text-lg">
               Page {logs.pagination.page} of {logs.pagination.total_pages}
             </span>
             
-            <button
+            <Button
               onClick={() => handlePageChange(logs.pagination.page + 1)}
               disabled={!logs.pagination.has_next}
               className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
             >
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -526,16 +526,16 @@ export default function AuditLogViewer({
               {selectedLogs.size} log{selectedLogs.size !== 1 ? 's' : ''} selected
             </span>
             <div className="flex space-x-2">
-              <button
+              <Button
                 onClick={() => handleExport('csv')}
                 className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm md:text-base"
               >
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={clearSelections}
                 className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 sm:text-sm md:text-base"
                aria-label="Button">
-              </button>
+              </Button>
             </div>
           </div>
         </div>

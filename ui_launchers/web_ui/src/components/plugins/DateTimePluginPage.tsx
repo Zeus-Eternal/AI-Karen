@@ -1,15 +1,36 @@
-
 "use client";
 
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import React from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CalendarDays, Clock, AlertTriangle, Info, Settings2, KeyRound, Globe } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  AlertTriangle,
+  Info,
+  Settings2,
+  KeyRound,
+  Globe,
+} from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 
 /**
  * @file DateTimePluginPage.tsx
@@ -19,61 +40,86 @@ import { Separator } from "@/components/ui/separator";
 export default function DateTimePluginPage() {
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div className="flex items-center space-x-3">
-        <CalendarDays className="h-8 w-8 text-primary " />
+        <CalendarDays className="h-8 w-8 text-primary" />
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Date & Time Service</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Date &amp; Time Service</h2>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
             Karen AI can provide the current date and time, including for specific locations.
           </p>
         </div>
       </div>
 
-       <div role="alert" className="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground">
-        <Info className="h-4 w-4 " />
-        <h5 className="mb-1 font-medium leading-none tracking-tight">How to Use Date & Time Features</h5>
-        <div className="text-sm [&_p]:leading-relaxed">
-          <p>You can ask Karen AI for the current date or time directly in the chat interface. For example:</p>
+      {/* How to use */}
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>How to Use Date &amp; Time Features</AlertTitle>
+        <AlertDescription>
+          Ask Karen in chat for the current date/time. Examples:
           <ul className="list-disc list-inside pl-4 mt-1 text-xs sm:text-sm md:text-base">
-              <li>"What's the date today?"</li>
-              <li>"What time is it?"</li>
-              <li>"What's the time in London?" or "Time in Detroit, MI"</li>
+            <li>&quot;What&apos;s the date today?&quot;</li>
+            <li>&quot;What time is it?&quot;</li>
+            <li>&quot;What&apos;s the time in London?&quot; or &quot;Time in Detroit, MI&quot;</li>
           </ul>
-        </div>
-      </div>
+        </AlertDescription>
+      </Alert>
 
+      {/* Capabilities */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Current Date & Time Capabilities</CardTitle>
+          <CardTitle className="text-lg">Current Date &amp; Time Capabilities</CardTitle>
           <CardDescription>
             Karen uses the following methods to provide date and time:
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-start">
-            <CalendarDays className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0 mt-1 " />
+            <CalendarDays className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
             <div>
               <h4 className="font-medium">Current Date</h4>
               <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                Provided based on the server's current system settings.
+                Provided based on the server&apos;s current system settings.
               </p>
             </div>
           </div>
+
           <div className="flex items-start">
-            <Clock className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0 mt-1 " />
+            <Clock className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
             <div>
               <h4 className="font-medium">Current Time</h4>
               <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                - For general queries ("What time is it?"): Provided based on the server's current system time.
+                • General queries (&quot;What time is it?&quot;): based on the server&apos;s current system time.
                 <br />
-                - For specific locations ("Time in Paris?"): Karen attempts to fetch this using a combination of free, public time services:
+                • Specific locations (&quot;Time in Paris?&quot;): fetched via free public services:
               </p>
               <ul className="list-disc list-inside pl-5 mt-1 text-xs text-muted-foreground sm:text-sm md:text-base">
-                  <li>Primary: <a href="https://timeapi.io/" target="_blank" rel="noopener noreferrer" className="underline">timeapi.io</a></li>
-                  <li>Secondary: <a href="https://worldtimeapi.org/" target="_blank" rel="noopener noreferrer" className="underline">worldtimeapi.org</a></li>
+                <li>
+                  Primary:{" "}
+                  <a
+                    href="https://timeapi.io/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    timeapi.io
+                  </a>
+                </li>
+                <li>
+                  Secondary:{" "}
+                  <a
+                    href="https://worldtimeapi.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    worldtimeapi.org
+                  </a>
+                </li>
               </ul>
               <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-               These services try to resolve common location names. If they fail, Karen will ask you to rephrase the location.
+                These services try to resolve common location names. If they fail, Karen will ask you to rephrase the
+                location.
               </p>
             </div>
           </div>
@@ -82,66 +128,83 @@ export default function DateTimePluginPage() {
 
       <Separator />
 
+      {/* Future enhancements */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center">
-            <Settings2 className="mr-2 h-5 w-5 text-primary/80 " />
-            Future Enhancements & Custom Setup (Conceptual)
+            <Settings2 className="mr-2 h-5 w-5 text-primary/80" />
+            Future Enhancements &amp; Custom Setup (Conceptual)
           </CardTitle>
           <CardDescription>
-            For a more consistently precise location-based time experience, especially for less common or ambiguously named locations, integrating a premium or API-key driven service could be an option in the future.
+            For more precise location-based time (especially for ambiguous places), integrate a premium or API-key
+            service in the future.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-            <div className="space-y-2">
-                <Label htmlFor="custom-time-service" className="flex items-center">
-                    <Globe className="mr-2 h-4 w-4 text-muted-foreground " />
-                </Label>
-                <select disabled aria-label="Select option">
-                    <selectTrigger id="custom-time-service" aria-label="Select option">
-                    <selectValue placeholder="Select a service (e.g., Google Time Zone API)" />
-                    </SelectTrigger>
-                    <selectContent aria-label="Select option">
-                    <selectItem value="google_tz" aria-label="Select option">Google Time Zone API (Requires API Key)</SelectItem>
-                    <selectItem value="timezonedb" aria-label="Select option">TimezoneDB (Requires API Key)</SelectItem>
-                    <selectItem value="other" aria-label="Select option">Other Custom Service</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="custom-time-api-key" className="flex items-center">
-                    <KeyRound className="mr-2 h-4 w-4 text-muted-foreground " />
-                    API Key (for selected custom service)
-                </Label>
-                <input id="custom-time-api-key" placeholder="Enter API key for the selected service" disabled />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="custom-time-endpoint">Custom Endpoint URL (if applicable)</Label>
-                <input id="custom-time-endpoint" placeholder="Enter custom API endpoint if needed" disabled />
-            </div>
-            <div role="alert" className="bg-muted/30 relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground">
-                <Info className="h-4 w-4 !text-accent-foreground " />
-                <h5 className="font-semibold text-accent-foreground text-sm md:text-base lg:text-lg mb-1 font-medium leading-none tracking-tight">Developer Note</h5>
-                <div className="text-muted-foreground text-xs sm:text-sm md:text-base text-sm [&_p]:leading-relaxed">
-                This section is conceptual. Integrating a new time service would require updating Karen's core tools (`src/ai/tools/core-tools.ts`) to make calls to the new API, handle its specific response format, and manage the API key securely.
-                </div>
-            </div>
+          {/* Custom service select (disabled demo) */}
+          <div className="space-y-2">
+            <Label htmlFor="custom-time-service" className="flex items-center">
+              <Globe className="mr-2 h-4 w-4 text-muted-foreground" />
+              Custom Time Service
+            </Label>
+            <Select disabled>
+              <SelectTrigger id="custom-time-service" aria-label="Select custom time service">
+                <SelectValue placeholder="Select a service (e.g., Google Time Zone API)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="google_tz">Google Time Zone API (Requires API Key)</SelectItem>
+                <SelectItem value="timezonedb">TimezoneDB (Requires API Key)</SelectItem>
+                <SelectItem value="other">Other Custom Service</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* API Key */}
+          <div className="space-y-2">
+            <Label htmlFor="custom-time-api-key" className="flex items-center">
+              <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />
+              API Key (for selected custom service)
+            </Label>
+            <Input
+              id="custom-time-api-key"
+              placeholder="Enter API key for the selected service"
+              disabled
+              type="password"
+            />
+          </div>
+
+          {/* Endpoint */}
+          <div className="space-y-2">
+            <Label htmlFor="custom-time-endpoint">Custom Endpoint URL (if applicable)</Label>
+            <Input id="custom-time-endpoint" placeholder="Enter custom API endpoint if needed" disabled />
+          </div>
+
+          {/* Dev note */}
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Developer Note</AlertTitle>
+            <AlertDescription>
+              This section is conceptual. Integrating a new time service would require updating Karen&apos;s core tools
+              (<code className="px-1">src/ai/tools/core-tools.ts</code>) to call the API, normalize its response, and
+              manage credentials securely.
+            </AlertDescription>
+          </Alert>
         </CardContent>
         <CardFooter className="flex justify-end">
-            <Button disabled >Save Custom Time Service Settings</Button>
+          <Button disabled>Save Custom Time Service Settings</Button>
         </CardFooter>
       </Card>
 
-
-      <div role="alert" className="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground text-destructive border-destructive/50 dark:border-destructive [&>svg]:text-destructive">
-        <AlertTriangle className="h-4 w-4 " />
-        <h5 className="mb-1 font-medium leading-none tracking-tight">Note on Location Accuracy</h5>
-        <div className="text-sm [&_p]:leading-relaxed">
-          Free time services like `timeapi.io` and `worldtimeapi.org` are convenient but may not always perfectly resolve all location name variations. For the most robust experience with a wide range of locations, dedicated geolocation and time zone APIs (often requiring API keys) are typically used in production systems.
-        </div>
-      </div>
-
+      {/* Accuracy note */}
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Note on Location Accuracy</AlertTitle>
+        <AlertDescription>
+          Free services like <code>timeapi.io</code> and <code>worldtimeapi.org</code> are convenient but may not
+          perfectly resolve all location names. Production systems typically rely on geolocation + time zone APIs with
+          API keys for consistency and coverage.
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }
-

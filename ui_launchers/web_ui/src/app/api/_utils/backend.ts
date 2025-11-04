@@ -187,6 +187,7 @@ export async function makeBackendRequest<T = any>(
           return await connectionManager.makeRequest<T>(fallbackUrl, options, {
             ...connectionOptions,
             retryAttempts: 1, // Reduce retries for fallback attempts
+          });
 
         } catch (fallbackError) {
           continue;

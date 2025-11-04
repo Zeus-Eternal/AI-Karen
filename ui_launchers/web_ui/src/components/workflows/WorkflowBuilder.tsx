@@ -259,7 +259,7 @@ export function WorkflowBuilder({
                 </Button>
               )}
               {onSave && !readOnly && (
-                <button
+                <Button
                   size="sm"
                   onClick={handleSave}
                  aria-label="Button">

@@ -9,9 +9,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import { } from 'lucide-react';
+import { 
+  Library, 
+  Download, 
+  HardDrive, 
+  Cloud, 
+  Settings, 
+  CheckCircle, 
+  Search, 
+  X, 
+  SortAsc, 
+  SortDesc, 
+  Filter, 
+  Loader2, 
+  RefreshCw,
+  PlayCircle
+} from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 
+import { 
   errorHandler, 
   handleApiError, 
   handleDownloadError, 
@@ -20,7 +36,7 @@ import { getKarenBackend } from '@/lib/karen-backend';
   showSuccess,
   showInfo,
   showWarning
-import { } from '@/lib/error-handler';
+} from '@/lib/error-handler';
 import { HelpTooltip, HelpSection, QuickHelp } from '@/components/ui/help-tooltip';
 import { ContextualHelp, HelpCallout, QuickStartHelp } from '@/components/ui/contextual-help';
 import { useDownloadStatus } from '@/hooks/use-download-status';
@@ -493,6 +509,7 @@ export default function ModelLibrary() {
       const matchesCapability = filterCapability === 'all' || 
         model.capabilities.includes(filterCapability);
       return matchesSearch && matchesProvider && matchesStatus && matchesSize && matchesCapability;
+    });
 
     // Sort models
     filtered.sort((a, b) => {
@@ -518,6 +535,7 @@ export default function ModelLibrary() {
           comparison = 0;
       }
       return sortOrder === 'asc' ? comparison : -comparison;
+    });
 
     return filtered;
   }, [modelsWithDownloadStatus, debouncedSearchQuery, filterProvider, filterStatus, filterSize, filterCapability, sortBy, sortOrder]);
@@ -565,6 +583,7 @@ export default function ModelLibrary() {
                 disabled={refreshing}
                >
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
               </Button>
               {activeDownloads.length > 0 && (
                 <Button
@@ -687,6 +706,7 @@ export default function ModelLibrary() {
               className="gap-2"
             >
               <Settings className="h-4 w-4 " />
+              Configure Providers
             </Button>
           </div>
         </CardContent>
@@ -736,6 +756,7 @@ export default function ModelLibrary() {
               className="gap-2"
             >
               <Settings className="h-4 w-4 " />
+              Configure
             </Button>
             <Button
               variant="outline"
@@ -750,6 +771,7 @@ export default function ModelLibrary() {
               className="gap-2"
             >
               <PlayCircle className="h-4 w-4 " />
+              Test Integration
             </Button>
           </div>
         </CardContent>
@@ -763,7 +785,7 @@ export default function ModelLibrary() {
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground " />
-                  <input
+                  <Input
                     placeholder="Search models by name, description, tags, or capabilities..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -781,6 +803,7 @@ export default function ModelLibrary() {
                   )}
                 </div>
               </div>
+            </div>
             {/* Sort Controls */}
             <div className="flex items-center gap-2">
               <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
@@ -804,7 +827,7 @@ export default function ModelLibrary() {
                 {sortOrder === 'asc' ? <SortAsc className="h-3 w-3 " /> : <SortDesc className="h-3 w-3 " />}
               </Button>
             </div>
-          </div>
+          
           {/* Filter Controls */}
           <div className="flex flex-wrap gap-2">
             <Select value={filterProvider} onValueChange={setFilterProvider} aria-label="Select option">
@@ -831,25 +854,25 @@ export default function ModelLibrary() {
                 <SelectItem value="downloading" aria-label="Select option">Downloading</SelectItem>
               </SelectContent>
             </Select>
-            <select value={filterSize} onValueChange={setFilterSize} aria-label="Select option">
-              <selectTrigger className="w-[120px]" aria-label="Select option">
-                <selectValue placeholder="Size" />
+            <Select value={filterSize} onValueChange={setFilterSize} aria-label="Select option">
+              <SelectTrigger className="w-[120px]" aria-label="Select option">
+                <SelectValue placeholder="Size" />
               </SelectTrigger>
-              <selectContent aria-label="Select option">
-                <selectItem value="all" aria-label="Select option">All Sizes</SelectItem>
-                <selectItem value="small" aria-label="Select option">Small (&lt;1GB)</SelectItem>
-                <selectItem value="medium" aria-label="Select option">Medium (1-5GB)</SelectItem>
-                <selectItem value="large" aria-label="Select option">Large (&gt;5GB)</SelectItem>
+              <SelectContent aria-label="Select option">
+                <SelectItem value="all" aria-label="Select option">All Sizes</SelectItem>
+                <SelectItem value="small" aria-label="Select option">Small (&lt;1GB)</SelectItem>
+                <SelectItem value="medium" aria-label="Select option">Medium (1-5GB)</SelectItem>
+                <SelectItem value="large" aria-label="Select option">Large (&gt;5GB)</SelectItem>
               </SelectContent>
             </Select>
-            <select value={filterCapability} onValueChange={setFilterCapability} aria-label="Select option">
-              <selectTrigger className="w-[140px]" aria-label="Select option">
-                <selectValue placeholder="Capability" />
+            <Select value={filterCapability} onValueChange={setFilterCapability} aria-label="Select option">
+              <SelectTrigger className="w-[140px]" aria-label="Select option">
+                <SelectValue placeholder="Capability" />
               </SelectTrigger>
-              <selectContent aria-label="Select option">
-                <selectItem value="all" aria-label="Select option">All Capabilities</SelectItem>
+              <SelectContent aria-label="Select option">
+                <SelectItem value="all" aria-label="Select option">All Capabilities</SelectItem>
                 {availableCapabilities.map(capability => (
-                  <selectItem key={capability} value={capability} aria-label="Select option">
+                  <SelectItem key={capability} value={capability} aria-label="Select option">
                     {capability}
                   </SelectItem>
                 ))}
@@ -954,6 +977,7 @@ export default function ModelLibrary() {
         </CardContent>
       </Card>
       </HelpSection>
+      
       {/* Download Manager */}
       {showDownloadManager && (
         <DownloadManager 
@@ -1055,11 +1079,13 @@ export default function ModelLibrary() {
                 }
               </p>
               {getActiveFilterCount() > 0 ? (
-                <Button variant="outline" onClick={clearAllFilters} >
+                <Button variant="outline" onClick={clearAllFilters}>
+                  Clear Filters
                 </Button>
               ) : (
-                <Button variant="outline" onClick={handleRefresh} disabled={refreshing} >
+                <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
                   <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  Refresh
                 </Button>
               )}
             </CardContent>

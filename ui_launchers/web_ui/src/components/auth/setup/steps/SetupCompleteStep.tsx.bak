@@ -141,7 +141,7 @@ export const SetupCompleteStep: React.FC<SetupCompleteStepProps> = ({
 
       {/* Complete Setup Button */}
       <div className="text-center pt-6">
-        <button
+        <Button
           onClick={onComplete}
           disabled={isLoading}
           size="lg"

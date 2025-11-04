@@ -307,7 +307,7 @@ const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
       </div>
       <div className="flex items-center gap-1 ml-2">
         {canRetry && !streamAborted && (
-          <button
+          <Button
             onClick={onRetry}
             disabled={isRetrying}
             className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed sm:text-sm md:text-base"
@@ -331,10 +331,10 @@ const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
                 </svg>
               </>
             )}
-          </button>
+          </Button>
         )}
         {preservePartialContent && !streamAborted && (
-          <button
+          <Button
             onClick={onContinue}
             className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 rounded transition-colors sm:text-sm md:text-base"
             type="button"
@@ -343,10 +343,10 @@ const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="9 18 15 12 9 6"/>
             </svg>
-          </button>
+          </Button>
         )}
         {!streamAborted && (
-          <button
+          <Button
             onClick={onAbort}
             className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 rounded transition-colors sm:text-sm md:text-base"
             type="button"
@@ -355,7 +355,7 @@ const StreamingErrorFallback: React.FC<StreamingErrorFallbackProps> = ({
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="6" y="6" width="12" height="12" rx="2"/>
             </svg>
-          </button>
+          </Button>
         )}
       </div>
       {process.env.NODE_ENV === 'development' && errorId && (

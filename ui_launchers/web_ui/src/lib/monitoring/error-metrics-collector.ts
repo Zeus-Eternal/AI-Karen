@@ -1,8 +1,15 @@
 /**
- * Error Metrics Collector
- * 
- * Specialized metrics collection for error tracking, recovery monitoring,
- * and error analytics for comprehensive error observability.
+ * Error Metrics Collector (Prod-Ready)
+ *
+ * Tracks error events across UI/Network/Server/DB/Auth,
+ * measures recovery attempts/success, trends, MTTR, and criticals.
+ *
+ * Highlights:
+ * - Trend sampler (1m) with leak-free lifecycle
+ * - Safe math & guards (no divide-by-zero)
+ * - Recent-window analytics (1h defaults) for dashboards
+ * - Stable ID generation (crypto if available, fallback otherwise)
+ * - Lightweight hot-path maps + on-demand aggregations
  */
 
 export interface ErrorMetrics {
@@ -14,16 +21,16 @@ export interface ErrorMetrics {
   errorsBySeverity: Record<string, number>;
   errorsBySection: Record<string, number>;
   errorTrends: ErrorTrend[];
-  meanTimeToRecovery: number;
-  errorRate: number;
-  criticalErrors: number;
+  meanTimeToRecovery: number;  // ms
+  errorRate: number;           // errors per minute (recent window)
+  criticalErrors: number;      // count in recent window
 }
 
 export interface ErrorTrend {
   timestamp: number;
   errorCount: number;
   recoveryCount: number;
-  errorRate: number;
+  errorRate: number;           // errors per second in the sampled minute
 }
 
 export interface ErrorEvent {
@@ -37,56 +44,97 @@ export interface ErrorEvent {
   component?: string;
   stack?: string;
   recovered: boolean;
-  recoveryTime?: number;
+  recoveryTime?: number;       // ms
   recoveryAttempts: number;
   context?: Record<string, any>;
+}
+
+type TrendTimer = ReturnType<typeof setInterval> | null;
+
+function now(): number {
+  return Date.now();
+}
+
+function safeAvg(nums: number[]): number {
+  if (!nums.length) return 0;
+  let sum = 0;
+  for (let i = 0; i < nums.length; i++) sum += nums[i];
+  return sum / nums.length;
+}
+
+function median(nums: number[]): number {
+  if (!nums.length) return 0;
+  const s = [...nums].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
+}
+
+function incr(map: Record<string, number>, key: string, by = 1) {
+  map[key] = (map[key] || 0) + by;
+}
+
+function makeId(): string {
+  // Prefer crypto if available
+  try {
+    const g = (globalThis as any);
+    if (g?.crypto?.randomUUID) return 'err-' + g.crypto.randomUUID();
+  } catch {}
+  // Fallback
+  return `err-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export class ErrorMetricsCollector {
   private errorEvents: ErrorEvent[] = [];
   private errorCounts: Record<string, number> = {};
   private errorBoundaries: Record<string, number> = {};
-  private recoveryAttempts: number = 0;
-  private recoverySuccesses: number = 0;
+  private recoveryAttempts = 0;
+  private recoverySuccesses = 0;
+
   private errorTrends: ErrorTrend[] = [];
-  private trendInterval: NodeJS.Timeout | null = null;
+  private trendInterval: TrendTimer = null;
+
+  // Configurable windows
+  private readonly trendWindowMs = 60_000;     // 1 minute per sample
+  private readonly metricsWindowMs = 60 * 60 * 1000; // 1 hour for recent analytics
+  private readonly maxEvents = 5000;           // ring buffer limit
 
   constructor() {
     this.startTrendTracking();
   }
 
+  // ---------------- Trend tracking ----------------
+
   private startTrendTracking() {
-    // Update error trends every minute
-    this.trendInterval = setInterval(() => {
-      this.updateErrorTrends();
-    }, 60000);
+    this.stopTrendTracking(); // ensure no duplicates
+    this.trendInterval = setInterval(() => this.updateErrorTrends(), this.trendWindowMs);
+  }
+
+  private stopTrendTracking() {
+    if (this.trendInterval) {
+      clearInterval(this.trendInterval);
+      this.trendInterval = null;
+    }
   }
 
   private updateErrorTrends() {
-    const now = Date.now();
-    const oneMinuteAgo = now - 60000;
-    
-    // Get errors from the last minute
-    const recentErrors = this.errorEvents.filter(event => event.timestamp >= oneMinuteAgo);
-    const recentRecoveries = recentErrors.filter(event => event.recovered);
-    
-    // Calculate error rate (errors per second)
-    const errorRate = recentErrors.length / 60;
-    
+    const t = now();
+    const recent = this.errorEvents.filter(e => e.timestamp >= t - this.trendWindowMs);
+    const recovered = recent.filter(e => e.recovered);
+    const ratePerSec = recent.length / Math.max(1, this.trendWindowMs / 1000);
+
     const trend: ErrorTrend = {
-      timestamp: now,
-      errorCount: recentErrors.length,
-      recoveryCount: recentRecoveries.length,
-      errorRate
+      timestamp: t,
+      errorCount: recent.length,
+      recoveryCount: recovered.length,
+      errorRate: ratePerSec,
     };
-    
     this.errorTrends.push(trend);
-    
-    // Keep only last 60 trends (1 hour of data)
     if (this.errorTrends.length > 60) {
-      this.errorTrends = this.errorTrends.slice(-60);
+      this.errorTrends = this.errorTrends.slice(-60); // keep last 60 mins
     }
   }
+
+  // ---------------- Recording APIs ----------------
 
   public recordError(
     message: string,
@@ -98,11 +146,10 @@ export class ErrorMetricsCollector {
     stack?: string,
     context?: Record<string, any>
   ): string {
-    const errorId = `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    const errorEvent: ErrorEvent = {
-      id: errorId,
-      timestamp: Date.now(),
+    const id = makeId();
+    const evt: ErrorEvent = {
+      id,
+      timestamp: now(),
       message,
       type,
       category,
@@ -112,180 +159,163 @@ export class ErrorMetricsCollector {
       stack,
       recovered: false,
       recoveryAttempts: 0,
-      context
+      context,
     };
-    
-    this.errorEvents.push(errorEvent);
-    
-    // Update error counts
-    this.errorCounts[type] = (this.errorCounts[type] || 0) + 1;
-    
-    // Keep only last 1000 error events
-    if (this.errorEvents.length > 1000) {
-      this.errorEvents = this.errorEvents.slice(-1000);
+
+    this.errorEvents.push(evt);
+    incr(this.errorCounts, type, 1);
+
+    // ring buffer bound
+    if (this.errorEvents.length > this.maxEvents) {
+      this.errorEvents = this.errorEvents.slice(-this.maxEvents);
     }
-    
-    return errorId;
+
+    return id;
   }
 
   public recordErrorBoundaryTrigger(component: string) {
-    this.errorBoundaries[component] = (this.errorBoundaries[component] || 0) + 1;
+    incr(this.errorBoundaries, component, 1);
   }
 
   public recordRecoveryAttempt(errorId: string) {
-    const errorEvent = this.errorEvents.find(event => event.id === errorId);
-    if (errorEvent) {
-      errorEvent.recoveryAttempts++;
-    }
-    
+    const evt = this.errorEvents.find(e => e.id === errorId);
+    if (evt) evt.recoveryAttempts++;
     this.recoveryAttempts++;
   }
 
-  public recordRecoverySuccess(errorId: string, recoveryTime?: number) {
-    const errorEvent = this.errorEvents.find(event => event.id === errorId);
-    if (errorEvent) {
-      errorEvent.recovered = true;
-      errorEvent.recoveryTime = recoveryTime || (Date.now() - errorEvent.timestamp);
+  public recordRecoverySuccess(errorId: string, recoveryTimeMs?: number) {
+    const evt = this.errorEvents.find(e => e.id === errorId);
+    if (evt && !evt.recovered) {
+      evt.recovered = true;
+      evt.recoveryTime = typeof recoveryTimeMs === 'number' ? recoveryTimeMs : Math.max(0, now() - evt.timestamp);
+      this.recoverySuccesses++;
     }
-    
-    this.recoverySuccesses++;
   }
 
+  // ---------------- Aggregations ----------------
+
   public async getErrorMetrics(): Promise<ErrorMetrics> {
-    const now = Date.now();
-    const oneHourAgo = now - 3600000;
-    
-    // Get recent errors for calculations
-    const recentErrors = this.errorEvents.filter(event => event.timestamp >= oneHourAgo);
-    
-    // Calculate error counts by category
-    const errorsByCategory: Record<string, number> = {};
-    recentErrors.forEach(event => {
-      errorsByCategory[event.category] = (errorsByCategory[event.category] || 0) + 1;
+    const t = now();
+    const recent = this.errorEvents.filter(e => e.timestamp >= t - this.metricsWindowMs);
 
-    // Calculate error counts by severity
-    const errorsBySeverity: Record<string, number> = {};
-    recentErrors.forEach(event => {
-      errorsBySeverity[event.severity] = (errorsBySeverity[event.severity] || 0) + 1;
+    // category
+    const byCategory: Record<string, number> = {};
+    for (let i = 0; i < recent.length; i++) {
+      const c = recent[i].category;
+      incr(byCategory, c, 1);
+    }
 
-    // Calculate error counts by section
-    const errorsBySection: Record<string, number> = {};
-    recentErrors.forEach(event => {
-      errorsBySection[event.section] = (errorsBySection[event.section] || 0) + 1;
+    // severity
+    const bySeverity: Record<string, number> = {};
+    for (let i = 0; i < recent.length; i++) {
+      const s = recent[i].severity;
+      incr(bySeverity, s, 1);
+    }
 
-    // Calculate mean time to recovery
-    const recoveredErrors = recentErrors.filter(event => event.recovered && event.recoveryTime);
-    const meanTimeToRecovery = recoveredErrors.length > 0
-      ? recoveredErrors.reduce((sum, event) => sum + (event.recoveryTime || 0), 0) / recoveredErrors.length
-      : 0;
-    
-    // Calculate error rate (errors per minute)
-    const errorRate = recentErrors.length / 60;
-    
-    // Count critical errors
-    const criticalErrors = recentErrors.filter(event => event.severity === 'critical').length;
-    
+    // section
+    const bySection: Record<string, number> = {};
+    for (let i = 0; i < recent.length; i++) {
+      const sec = recent[i].section;
+      incr(bySection, sec, 1);
+    }
+
+    // MTTR
+    const recovered = recent.filter(e => e.recovered && typeof e.recoveryTime === 'number');
+    const mttr = safeAvg(recovered.map(e => e.recoveryTime as number)); // ms
+
+    // Error rate: per minute over the 1h window (errors / 60min)
+    const minutes = Math.max(1, this.metricsWindowMs / 60_000);
+    const errorRatePerMinute = recent.length / minutes;
+
+    // Criticals
+    const criticals = recent.reduce((acc, e) => acc + (e.severity === 'critical' ? 1 : 0), 0);
+
     return {
       errorCounts: { ...this.errorCounts },
       errorBoundaries: { ...this.errorBoundaries },
       recoveryAttempts: this.recoveryAttempts,
       recoverySuccesses: this.recoverySuccesses,
-      errorsByCategory,
-      errorsBySeverity,
-      errorsBySection,
+      errorsByCategory: byCategory,
+      errorsBySeverity: bySeverity,
+      errorsBySection: bySection,
       errorTrends: [...this.errorTrends],
-      meanTimeToRecovery,
-      errorRate,
-      criticalErrors
+      meanTimeToRecovery: mttr,
+      errorRate: errorRatePerMinute,
+      criticalErrors: criticals,
     };
   }
 
-  public getErrorEvents(limit: number = 100): ErrorEvent[] {
-    return this.errorEvents.slice(-limit);
+  public getErrorEvents(limit = 100): ErrorEvent[] {
+    if (limit <= 0) return [];
+    const start = Math.max(0, this.errorEvents.length - limit);
+    return this.errorEvents.slice(start);
   }
 
   public getErrorsByTimeRange(startTime: number, endTime: number): ErrorEvent[] {
-    return this.errorEvents.filter(event => 
-      event.timestamp >= startTime && event.timestamp <= endTime
-    );
+    return this.errorEvents.filter(e => e.timestamp >= startTime && e.timestamp <= endTime);
   }
 
   public getErrorsByCategory(category: ErrorEvent['category']): ErrorEvent[] {
-    return this.errorEvents.filter(event => event.category === category);
+    return this.errorEvents.filter(e => e.category === category);
   }
 
   public getErrorsBySeverity(severity: ErrorEvent['severity']): ErrorEvent[] {
-    return this.errorEvents.filter(event => event.severity === severity);
+    return this.errorEvents.filter(e => e.severity === severity);
   }
 
   public getErrorsBySection(section: string): ErrorEvent[] {
-    return this.errorEvents.filter(event => event.section === section);
+    return this.errorEvents.filter(e => e.section === section);
   }
 
   public getCriticalErrors(): ErrorEvent[] {
-    return this.errorEvents.filter(event => event.severity === 'critical');
+    return this.errorEvents.filter(e => e.severity === 'critical');
   }
 
   public getUnrecoveredErrors(): ErrorEvent[] {
-    return this.errorEvents.filter(event => !event.recovered);
+    return this.errorEvents.filter(e => !e.recovered);
   }
 
   public getRecoveryStats() {
-    const totalErrors = this.errorEvents.length;
-    const recoveredErrors = this.errorEvents.filter(event => event.recovered).length;
-    const recoveryRate = totalErrors > 0 ? recoveredErrors / totalErrors : 0;
-    
-    const recoveryTimes = this.errorEvents
-      .filter(event => event.recovered && event.recoveryTime)
-      .map(event => event.recoveryTime!);
-    
-    const averageRecoveryTime = recoveryTimes.length > 0
-      ? recoveryTimes.reduce((sum, time) => sum + time, 0) / recoveryTimes.length
-      : 0;
-    
-    const medianRecoveryTime = recoveryTimes.length > 0
-      ? this.calculateMedian(recoveryTimes)
-      : 0;
-    
+    const total = this.errorEvents.length;
+    const recovered = this.errorEvents.filter(e => e.recovered);
+    const recoveryRate = total > 0 ? recovered.length / total : 0;
+
+    const times = recovered
+      .map(e => e.recoveryTime)
+      .filter((v): v is number => typeof v === 'number');
+
+    const averageRecoveryTime = safeAvg(times);
+    const medianRecoveryTime = median(times);
+
     return {
-      totalErrors,
-      recoveredErrors,
-      unrecoveredErrors: totalErrors - recoveredErrors,
+      totalErrors: total,
+      recoveredErrors: recovered.length,
+      unrecoveredErrors: total - recovered.length,
       recoveryRate,
       averageRecoveryTime,
       medianRecoveryTime,
       totalRecoveryAttempts: this.recoveryAttempts,
       successfulRecoveries: this.recoverySuccesses,
-      recoverySuccessRate: this.recoveryAttempts > 0 ? this.recoverySuccesses / this.recoveryAttempts : 0
+      recoverySuccessRate: this.recoveryAttempts > 0 ? this.recoverySuccesses / this.recoveryAttempts : 0,
     };
   }
 
-  private calculateMedian(numbers: number[]): number {
-    const sorted = [...numbers].sort((a, b) => a - b);
-    const middle = Math.floor(sorted.length / 2);
-    
-    if (sorted.length % 2 === 0) {
-      return (sorted[middle - 1] + sorted[middle]) / 2;
-    } else {
-      return sorted[middle];
+  public getErrorFrequency(timeWindowMs = this.metricsWindowMs): Record<string, number> {
+    const cutoff = now() - timeWindowMs;
+    const recent = this.errorEvents.filter(e => e.timestamp >= cutoff);
+    const freq: Record<string, number> = {};
+    for (let i = 0; i < recent.length; i++) {
+      const e = recent[i];
+      const key = `${e.type}:${e.message}`;
+      incr(freq, key, 1);
     }
+    return freq;
   }
 
-  public getErrorFrequency(timeWindowMs: number = 3600000): Record<string, number> {
-    const now = Date.now();
-    const cutoff = now - timeWindowMs;
-    
-    const recentErrors = this.errorEvents.filter(event => event.timestamp >= cutoff);
-    const frequency: Record<string, number> = {};
-    
-    recentErrors.forEach(event => {
-      const key = `${event.type}:${event.message}`;
-      frequency[key] = (frequency[key] || 0) + 1;
-
-    return frequency;
-  }
-
-  public getTopErrors(limit: number = 10, timeWindowMs: number = 3600000): Array<{
+  public getTopErrors(
+    limit = 10,
+    timeWindowMs = this.metricsWindowMs
+  ): Array<{
     type: string;
     message: string;
     count: number;
@@ -293,74 +323,84 @@ export class ErrorMetricsCollector {
     severity: string;
     category: string;
   }> {
-    const frequency = this.getErrorFrequency(timeWindowMs);
-    
-    return Object.entries(frequency)
-      .map(([key, count]) => {
-        const [type, message] = key.split(':', 2);
-        const lastError = this.errorEvents
-          .filter(event => event.type === type && event.message === message)
-          .sort((a, b) => b.timestamp - a.timestamp)[0];
-        
-        return {
-          type,
-          message,
-          count,
-          lastOccurrence: lastError?.timestamp || 0,
-          severity: lastError?.severity || 'unknown',
-          category: lastError?.category || 'unknown'
-        };
-      })
-      .sort((a, b) => b.count - a.count)
-      .slice(0, limit);
+    const freq = this.getErrorFrequency(timeWindowMs);
+    const entries = Object.entries(freq);
+    const out: Array<{
+      type: string;
+      message: string;
+      count: number;
+      lastOccurrence: number;
+      severity: string;
+      category: string;
+    }> = [];
+
+    for (let i = 0; i < entries.length; i++) {
+      const [key, count] = entries[i];
+      const [type, message] = key.split(':', 2);
+      // find most recent matching event
+      let last: ErrorEvent | undefined;
+      for (let j = this.errorEvents.length - 1; j >= 0; j--) {
+        const e = this.errorEvents[j];
+        if (e.type === type && e.message === message) {
+          last = e; break;
+        }
+      }
+      out.push({
+        type,
+        message,
+        count,
+        lastOccurrence: last?.timestamp ?? 0,
+        severity: last?.severity ?? 'unknown',
+        category: last?.category ?? 'unknown',
+      });
+    }
+
+    out.sort((a, b) => b.count - a.count);
+    return out.slice(0, Math.max(0, limit));
   }
 
-  public getErrorTrendAnalysis(timeWindowMs: number = 3600000) {
-    const now = Date.now();
-    const cutoff = now - timeWindowMs;
-    
-    const recentTrends = this.errorTrends.filter(trend => trend.timestamp >= cutoff);
-    
+  public getErrorTrendAnalysis(timeWindowMs = this.metricsWindowMs) {
+    const cutoff = now() - timeWindowMs;
+    const recentTrends = this.errorTrends.filter(t => t.timestamp >= cutoff);
+
     if (recentTrends.length === 0) {
       return {
-        trend: 'stable',
+        trend: 'stable' as const,
         changePercent: 0,
         averageErrorRate: 0,
         peakErrorRate: 0,
-        totalErrors: 0
+        totalErrors: 0,
       };
     }
-    
-    const totalErrors = recentTrends.reduce((sum, trend) => sum + trend.errorCount, 0);
-    const averageErrorRate = recentTrends.reduce((sum, trend) => sum + trend.errorRate, 0) / recentTrends.length;
-    const peakErrorRate = Math.max(...recentTrends.map(trend => trend.errorRate));
-    
-    // Calculate trend direction
-    const firstHalf = recentTrends.slice(0, Math.floor(recentTrends.length / 2));
-    const secondHalf = recentTrends.slice(Math.floor(recentTrends.length / 2));
-    
-    const firstHalfAvg = firstHalf.reduce((sum, trend) => sum + trend.errorRate, 0) / firstHalf.length;
-    const secondHalfAvg = secondHalf.reduce((sum, trend) => sum + trend.errorRate, 0) / secondHalf.length;
-    
-    const changePercent = firstHalfAvg > 0 ? ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100 : 0;
-    
+
+    const totalErrors = recentTrends.reduce((a, t) => a + t.errorCount, 0);
+    const avgRate = safeAvg(recentTrends.map(t => t.errorRate));
+    const peakRate = Math.max(...recentTrends.map(t => t.errorRate));
+
+    // split halves safely
+    const mid = Math.floor(recentTrends.length / 2) || 1;
+    const firstHalf = recentTrends.slice(0, mid);
+    const secondHalf = recentTrends.slice(mid);
+
+    const firstAvg = safeAvg(firstHalf.map(t => t.errorRate));
+    const secondAvg = safeAvg(secondHalf.map(t => t.errorRate));
+    const changePercent = firstAvg > 0 ? ((secondAvg - firstAvg) / firstAvg) * 100 : 0;
+
     let trend: 'increasing' | 'decreasing' | 'stable' = 'stable';
-    if (Math.abs(changePercent) > 10) {
-      trend = changePercent > 0 ? 'increasing' : 'decreasing';
-    }
-    
+    if (Math.abs(changePercent) > 10) trend = changePercent > 0 ? 'increasing' : 'decreasing';
+
     return {
       trend,
       changePercent,
-      averageErrorRate,
-      peakErrorRate,
-      totalErrors
+      averageErrorRate: avgRate,
+      peakErrorRate: peakRate,
+      totalErrors,
     };
   }
 
-  public clearOldErrors(maxAge: number = 86400000) { // Default: 24 hours
-    const cutoff = Date.now() - maxAge;
-    this.errorEvents = this.errorEvents.filter(event => event.timestamp >= cutoff);
+  public clearOldErrors(maxAgeMs = 24 * 60 * 60 * 1000) {
+    const cutoff = now() - maxAgeMs;
+    this.errorEvents = this.errorEvents.filter(e => e.timestamp >= cutoff);
   }
 
   public resetMetrics() {
@@ -370,26 +410,25 @@ export class ErrorMetricsCollector {
     this.recoveryAttempts = 0;
     this.recoverySuccesses = 0;
     this.errorTrends = [];
+    // restart trend timer cleanly
+    this.startTrendTracking();
   }
 
   public destroy() {
-    if (this.trendInterval) {
-      clearInterval(this.trendInterval);
-      this.trendInterval = null;
-    }
+    this.stopTrendTracking();
   }
 
   public exportErrorData() {
     return {
-      errorEvents: this.errorEvents,
-      errorCounts: this.errorCounts,
-      errorBoundaries: this.errorBoundaries,
+      errorEvents: [...this.errorEvents],
+      errorCounts: { ...this.errorCounts },
+      errorBoundaries: { ...this.errorBoundaries },
       recoveryAttempts: this.recoveryAttempts,
       recoverySuccesses: this.recoverySuccesses,
-      errorTrends: this.errorTrends,
+      errorTrends: [...this.errorTrends],
       recoveryStats: this.getRecoveryStats(),
       topErrors: this.getTopErrors(),
-      trendAnalysis: this.getErrorTrendAnalysis()
+      trendAnalysis: this.getErrorTrendAnalysis(),
     };
   }
 }

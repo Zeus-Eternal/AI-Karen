@@ -1,78 +1,212 @@
 /**
- * Verify Extension Fix
- * 
- * Simple verification script to check if the extension error recovery is working
+ * Verify Extension Fix (production-grade)
+ *
+ * - SSR-safe (no window/document on server)
+ * - Strong typing for results
+ * - Robust patch detection (flag-based with safe fallbacks)
+ * - Resilient fetch test (handles non-JSON/headers missing)
+ * - Minimal dev logging
  */
-export function verifyExtensionFix() {
-  if (typeof window === 'undefined') {
+
+type Status = 'not_browser' | 'active' | 'inactive' | 'success' | 'error';
+
+interface VerifyChecks {
+  fetchPatched: boolean;
+  immediateFixApplied: boolean;
+  errorRecoveryLoaded: boolean;
+}
+
+interface VerifyResult {
+  status: 'not_browser' | 'active' | 'inactive';
+  checks: VerifyChecks;
+  message: string;
+  fetchInfo: {
+    isPatched: boolean;
+    patchType: 'immediate' | 'standard' | 'unknown';
+  };
+}
+
+interface TestResultSuccess {
+  status: 'success';
+  usingFallback: boolean;
+  data: unknown;
+  message: string;
+}
+
+interface TestResultError {
+  status: 'error' | 'not_browser';
+  error?: string;
+  message: string;
+}
+
+export type TestExtensionErrorRecoveryResult = TestResultSuccess | TestResultError;
+
+const PREFIX = '[ExtensionFix]';
+const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+
+// Optional: a more reliable signal your fetch patch can set.
+// e.g. when patching, do: (window as any).__EXT_FIX_PATCHED__ = { type: 'immediate' | 'standard' }
+function readPatchedFlag(): { patched: boolean; type: 'immediate' | 'standard' | 'unknown' } {
+  if (!isBrowser) return { patched: false, type: 'unknown' };
+  const flag = (window as any).__EXT_FIX_PATCHED__;
+  if (flag && (flag.type === 'immediate' || flag.type === 'standard')) {
+    return { patched: true, type: flag.type };
+  }
+  return { patched: false, type: 'unknown' };
+}
+
+function safeIncludes(haystack: unknown, needle: string): boolean {
+  try {
+    return typeof haystack === 'string' && haystack.includes(needle);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verify that the extension error recovery shim is present.
+ * Uses a preferred global flag and falls back to fetch string checks.
+ */
+export function verifyExtensionFix(): VerifyResult | { status: 'not_browser'; message: string } {
+  if (!isBrowser) {
     return { status: 'not_browser', message: 'Not running in browser environment' };
   }
-  const checks = {
+
+  const checks: VerifyChecks = {
     fetchPatched: false,
     immediateFixApplied: false,
-    errorRecoveryLoaded: false
+    errorRecoveryLoaded: false,
   };
-  // Check if fetch is patched
-  const fetchString = window.fetch.toString();
-  checks.fetchPatched = fetchString.includes('api/extensions') || 
-                       fetchString.includes('EXTENSION-FIX') ||
-                       fetchString.includes('Extension API');
-  // Check if immediate fix is applied
-  checks.immediateFixApplied = fetchString.includes('EXTENSION-FIX');
-  // Check if error recovery system is loaded
-  checks.errorRecoveryLoaded = !!(window as any).extensionErrorIntegration ||
-                              !!(window as any).handleKarenBackendError;
-  const allChecksPass = Object.values(checks).some(check => check);
+
+  // 1) Prefer explicit patch flag (set by your patcher)
+  const flag = readPatchedFlag();
+  if (flag.patched) {
+    checks.fetchPatched = true;
+    checks.immediateFixApplied = flag.type === 'immediate';
+  } else {
+    // 2) Fallback to heuristic via fetch.toString()
+    try {
+      const fetchString = Function.prototype.toString.call(window.fetch);
+      checks.fetchPatched =
+        safeIncludes(fetchString, 'api/extensions') ||
+        safeIncludes(fetchString, 'EXTENSION-FIX') ||
+        safeIncludes(fetchString, 'Extension API');
+
+      checks.immediateFixApplied = safeIncludes(fetchString, 'EXTENSION-FIX');
+    } catch {
+      // Some environments lock down Function#toString
+      // Leave heuristic as false in that case
+    }
+  }
+
+  // 3) Error recovery integration presence
+  checks.errorRecoveryLoaded =
+    Boolean((window as any).extensionErrorIntegration) ||
+    Boolean((window as any).handleKarenBackendError);
+
+  const allChecksPass = checks.fetchPatched || checks.immediateFixApplied || checks.errorRecoveryLoaded;
+
   return {
     status: allChecksPass ? 'active' : 'inactive',
     checks,
-    message: allChecksPass 
-      ? 'Extension error recovery is active'
-      : 'Extension error recovery is not active',
+    message: allChecksPass ? 'Extension error recovery is active' : 'Extension error recovery is not active',
     fetchInfo: {
       isPatched: checks.fetchPatched,
-      patchType: checks.immediateFixApplied ? 'immediate' : 'standard'
-    }
+      patchType: checks.immediateFixApplied ? 'immediate' : flag.type,
+    },
   };
 }
+
 /**
- * Test the extension error recovery by making a test request
+ * Test the extension error recovery by making a test request.
+ * Robust to non-JSON responses and missing headers.
  */
-export async function testExtensionErrorRecovery() {
-  if (typeof window === 'undefined') {
+export async function testExtensionErrorRecovery(): Promise<TestExtensionErrorRecoveryResult> {
+  if (!isBrowser) {
     return { status: 'not_browser', message: 'Not running in browser environment' };
   }
+
   try {
-    // Make a test request to the extensions endpoint
-    const response = await fetch('/api/extensions');
-    const data = await response.json();
-    const isUsingFallback = response.headers.get('X-Fallback-Mode') !== null ||
-                           data.fallback_mode === true ||
-                           data.access_level === 'readonly';
+    const response = await fetch('/api/extensions', {
+      headers: {
+        'Accept': 'application/json, */*;q=0.8',
+        'X-Extension-Fix-Probe': '1',
+      },
+      // keep credentials policy if your endpoint requires auth:
+      // credentials: 'include',
+    });
+
+    // Try to parse JSON, fall back to text
+    let data: unknown;
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      // Attempt JSON parse in case backend sends JSON without proper header
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text };
+      }
+    }
+
+    const headerFallback =
+      response.headers.get('X-Fallback-Mode') === '1' ||
+      response.headers.get('X-Fallback-Mode') === 'true';
+
+    const body = (data ?? {}) as Record<string, any>;
+    const bodyFallback =
+      body.fallback_mode === true ||
+      body.fallback === true ||
+      body.access_level === 'readonly';
+
+    const isUsingFallback = Boolean(headerFallback || bodyFallback);
+
     return {
       status: 'success',
       usingFallback: isUsingFallback,
-      data: data,
-      message: isUsingFallback 
-        ? 'Extension error recovery is working - using fallback data'
-        : 'Extension API is working normally'
+      data,
+      message: isUsingFallback
+        ? 'Extension error recovery is working — using fallback data'
+        : 'Extension API is working normally',
     };
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
     return {
       status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      message: 'Test request failed'
+      error: msg,
+      message: 'Test request failed',
     };
   }
 }
-// Auto-run verification in development
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  setTimeout(() => {
-    const verification = verifyExtensionFix();
-    // Also test the actual functionality
-    setTimeout(() => {
-      testExtensionErrorRecovery().then(testResult => {
 
-    }, 2000);
-  }, 1000);
+/**
+ * Dev-time auto verification (browser only)
+ * - Runs a quick verify + live call
+ * - Silently no-ops on server
+ */
+if (isBrowser && process.env.NODE_ENV === 'development') {
+  setTimeout(() => {
+    try {
+      const verification = verifyExtensionFix();
+      // eslint-disable-next-line no-console
+      console.log(`${PREFIX} Verification:`, verification);
+
+      setTimeout(() => {
+        testExtensionErrorRecovery()
+          .then((testResult) => {
+            // eslint-disable-next-line no-console
+            console.log(`${PREFIX} Test:`, testResult);
+          })
+          .catch((err) => {
+            // eslint-disable-next-line no-console
+            console.warn(`${PREFIX} Test error:`, err);
+          });
+      }, 800);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(`${PREFIX} Verification error:`, err);
+    }
+  }, 300);
 }

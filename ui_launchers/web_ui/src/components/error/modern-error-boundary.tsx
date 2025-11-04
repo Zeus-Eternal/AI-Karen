@@ -244,7 +244,7 @@ Please describe what you were doing when this error occurred:
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2">
               {canRetry && !isRetrying && (
-                <button 
+                <Button 
                   onClick={this.handleManualRetry} 
                   size="sm"
                   className="flex items-center gap-2"

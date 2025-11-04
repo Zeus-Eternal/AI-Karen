@@ -52,7 +52,8 @@
     "postinstall": "patch-package --error-on-fail",
     "optimize:pre-build": "node scripts/clean-development-artifacts.js && node scripts/optimize-css-js.js",
     "optimize:post-build": "npm run analyze:bundle",
-    "analyze:production": "ANALYZE=true npm run build:production"
+    "analyze:production": "ANALYZE=true npm run build:production",
+    "qa:report": "tsx src/scripts/qa-report.ts"
   },
   "dependencies": {
     "@copilotkit/react-core": "^1.9.3",

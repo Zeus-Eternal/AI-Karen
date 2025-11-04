@@ -326,7 +326,7 @@ export class ApiErrorBoundary extends Component<ApiErrorBoundaryProps, ApiErrorB
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3">
               {canRetry && !isRetrying && (
-                <button 
+                <Button 
                   onClick={this.handleManualRetry} 
                   className="flex items-center gap-2"
                  aria-label="Button">

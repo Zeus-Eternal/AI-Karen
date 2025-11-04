@@ -509,14 +509,14 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({
               </SelectContent>
             </Select>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 variant={viewMode === 'grid' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('grid')}
               >
                 <Grid className="h-4 w-4 " />
               </Button>
-              <button
+              <Button
                 variant={viewMode === 'list' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('list')}

@@ -178,7 +178,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           {...props}
         />
         {showClearButton && currentValue && (
-          <button
+          <Button
             type="button"
             onClick={handleClear}
             className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:text-foreground focus:outline-none "
@@ -197,7 +197,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
                 d="M6 18L18 6M6 6l12 12"
               />
             </svg>
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -233,7 +233,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
           {...props}
         />
         {showToggle && (
-          <button
+          <Button
             type="button"
             onClick={togglePasswordVisibility}
             className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground focus:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded "
@@ -275,7 +275,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
                 />
               </svg>
             )}
-          </button>
+          </Button>
         )}
       </div>
     );

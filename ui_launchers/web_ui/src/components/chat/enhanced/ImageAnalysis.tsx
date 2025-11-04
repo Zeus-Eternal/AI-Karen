@@ -235,7 +235,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
 
         {/* Analysis Controls */}
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={handleAnalyze}
             disabled={isAnalyzing}
             className="flex-1"

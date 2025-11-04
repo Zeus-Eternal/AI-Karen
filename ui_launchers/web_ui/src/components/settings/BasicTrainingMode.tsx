@@ -355,7 +355,7 @@ const BasicTrainingMode: React.FC = () => {
                 ))}
               </div>
               <div className="mt-6">
-                <button
+                <Button
                   onClick={startTraining}
                   disabled={loading || !modelId || !datasetId || !selectedPreset || !!currentJob}
                   className="w-full"
@@ -557,7 +557,7 @@ const BasicTrainingMode: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <button onClick={createBackup} className="flex-1" aria-label="Button">
+                <Button onClick={createBackup} className="flex-1" aria-label="Button">
                   <Save className="mr-2 h-4 w-4 " />
                 </Button>
                 <Button onClick={resetToDefaults} variant="destructive" className="flex-1" >

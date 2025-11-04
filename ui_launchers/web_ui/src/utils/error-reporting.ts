@@ -1,9 +1,9 @@
 /**
  * Error Reporting and Logging System
- * 
  * Provides comprehensive error reporting, logging, and monitoring capabilities
  * for the modern error boundary system.
  */
+
 export interface ErrorReport {
   id: string;
   message: string;
@@ -21,6 +21,7 @@ export interface ErrorReport {
   context?: Record<string, any>;
   breadcrumbs?: ErrorBreadcrumb[];
 }
+
 export interface ErrorBreadcrumb {
   timestamp: string;
   category: 'navigation' | 'user' | 'http' | 'console' | 'dom';
@@ -28,6 +29,7 @@ export interface ErrorBreadcrumb {
   level: 'info' | 'warning' | 'error';
   data?: Record<string, any>;
 }
+
 export interface ErrorReportingConfig {
   enabled: boolean;
   endpoint?: string;
@@ -36,13 +38,49 @@ export interface ErrorReportingConfig {
   enableConsoleCapture: boolean;
   enableNetworkCapture: boolean;
   enableUserInteractionCapture: boolean;
-  sampleRate: number;
+  sampleRate: number; // 0..1
   beforeSend?: (report: ErrorReport) => ErrorReport | null;
 }
+
+type ReactErrorInfoLike = { componentStack?: string };
+
+function safeNowISO() {
+  try {
+    return new Date().toISOString();
+  } catch {
+    return '' + Date.now();
+  }
+}
+
+function coerceError(err: unknown): Error {
+  if (err instanceof Error) return err;
+  if (typeof err === 'string') return new Error(err);
+  try {
+    return new Error(JSON.stringify(err));
+  } catch {
+    return new Error(String(err));
+  }
+}
+
+function getEnvNodeEnv(): string | undefined {
+  try {
+    // Bundlers often inline this; guards keep SSR/tools happy.
+    // @ts-ignore
+    return typeof process !== 'undefined' ? process.env?.NODE_ENV : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 class ErrorReportingService {
   private config: ErrorReportingConfig;
   private breadcrumbs: ErrorBreadcrumb[] = [];
   private sessionId: string;
+  private consolePatched = false;
+  private fetchPatched = false;
+  private xhrPatched = false;
+  private listenersBound = false;
+
   constructor(config: Partial<ErrorReportingConfig> = {}) {
     this.config = {
       enabled: true,
@@ -56,195 +94,299 @@ class ErrorReportingService {
     this.sessionId = this.generateSessionId();
     this.initializeBreadcrumbCapture();
   }
-  private generateSessionId(): string {
-    return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  public updateConfig(newConfig: Partial<ErrorReportingConfig>): void {
+    this.config = { ...this.config, ...newConfig };
   }
+
+  private generateSessionId(): string {
+    return `session-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  }
+
   private initializeBreadcrumbCapture() {
     if (!this.config.enabled) return;
-    // Capture console errors
-    if (this.config.enableConsoleCapture) {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    if (this.config.enableConsoleCapture && !this.consolePatched) {
       this.captureConsoleErrors();
+      this.consolePatched = true;
     }
-    // Capture network errors
-    if (this.config.enableNetworkCapture) {
+    if (this.config.enableNetworkCapture && !this.fetchPatched && !this.xhrPatched) {
       this.captureNetworkErrors();
+      this.fetchPatched = true;
+      this.xhrPatched = true;
     }
-    // Capture user interactions
-    if (this.config.enableUserInteractionCapture) {
+    if (this.config.enableUserInteractionCapture && !this.listenersBound) {
       this.captureUserInteractions();
+      this.listenersBound = true;
     }
-    // Capture navigation events
     this.captureNavigationEvents();
   }
+
   private captureConsoleErrors() {
-    const originalError = console.error;
-    console.error = (...args) => {
-      this.addBreadcrumb({
-        category: 'console',
-        message: args.join(' '),
-        level: 'error',
-        data: { arguments: args },
+    try {
+      const originalError = console.error.bind(console);
+      const originalWarn = console.warn.bind(console);
 
-      originalError.apply(console, args);
-    };
-    const originalWarn = console.warn;
-    console.warn = (...args) => {
-      this.addBreadcrumb({
-        category: 'console',
-        message: args.join(' '),
-        level: 'warning',
-        data: { arguments: args },
-
-      originalWarn.apply(console, args);
-    };
-  }
-  private captureNetworkErrors() {
-    // Capture fetch errors
-    const originalFetch = window.fetch;
-    window.fetch = async (...args) => {
-      const startTime = Date.now();
-      try {
-        const response = await originalFetch(...args);
-        const duration = Date.now() - startTime;
-        this.addBreadcrumb({
-          category: 'http',
-          message: `${response.status} ${args[0]}`,
-          level: response.ok ? 'info' : 'error',
-          data: {
-            url: args[0],
-            status: response.status,
-            duration,
-            method: args[1]?.method || 'GET',
-          },
-
-        return response;
-      } catch (error) {
-        const duration = Date.now() - startTime;
-        this.addBreadcrumb({
-          category: 'http',
-          message: `Network error: ${args[0]}`,
-          level: 'error',
-          data: {
-            url: args[0],
-            error: error instanceof Error ? error.message : String(error),
-            duration,
-            method: args[1]?.method || 'GET',
-          },
-
-        throw error;
-      }
-    };
-    // Capture XMLHttpRequest errors
-    const originalXHROpen = XMLHttpRequest.prototype.open;
-    const originalXHRSend = XMLHttpRequest.prototype.send;
-    XMLHttpRequest.prototype.open = function(method: string, url: string | URL, async: boolean = true, username?: string | null, password?: string | null) {
-      (this as any)._errorReportingData = { method, url, startTime: Date.now() };
-      return originalXHROpen.call(this, method, url, async, username, password);
-    };
-    XMLHttpRequest.prototype.send = function(body?: Document | XMLHttpRequestBodyInit | null) {
-      const xhr = this;
-      const data = (xhr as any)._errorReportingData;
-      xhr.addEventListener('load', () => {
-        if (data) {
-          const duration = Date.now() - data.startTime;
-          errorReportingService.addBreadcrumb({
-            category: 'http',
-            message: `${xhr.status} ${data.url}`,
-            level: xhr.status >= 400 ? 'error' : 'info',
-            data: {
-              url: data.url,
-              status: xhr.status,
-              duration,
-              method: data.method,
-            },
-
-        }
-
-      xhr.addEventListener('error', () => {
-        if (data) {
-          const duration = Date.now() - data.startTime;
-          errorReportingService.addBreadcrumb({
-            category: 'http',
-            message: `Network error: ${data.url}`,
+      console.error = (...args: any[]) => {
+        try {
+          this.addBreadcrumb({
+            category: 'console',
+            message: args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '),
             level: 'error',
-            data: {
-              url: data.url,
-              error: 'Network error',
-              duration,
-              method: data.method,
-            },
-
+            data: { arguments: args },
+          });
+        } catch {
+          // swallow
+        } finally {
+          originalError(...args);
         }
+      };
 
-      return originalXHRSend.call(this, body);
-    };
+      console.warn = (...args: any[]) => {
+        try {
+          this.addBreadcrumb({
+            category: 'console',
+            message: args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '),
+            level: 'warning',
+            data: { arguments: args },
+          });
+        } catch {
+          // swallow
+        } finally {
+          originalWarn(...args);
+        }
+      };
+    } catch {
+      // noop
+    }
   }
+
+  private captureNetworkErrors() {
+    if (typeof window === 'undefined') return;
+
+    // Patch fetch
+    if (typeof window.fetch === 'function') {
+      const originalFetch = window.fetch.bind(window);
+      const self = this;
+      window.fetch = async (...args: Parameters<typeof fetch>) => {
+        const startTime = Date.now();
+        try {
+          const response = await originalFetch(...args);
+          const duration = Date.now() - startTime;
+          try {
+            self.addBreadcrumb({
+              category: 'http',
+              message: `${response.status} ${String(args[0])}`,
+              level: response.ok ? 'info' : 'error',
+              data: {
+                url: String(args[0]),
+                status: response.status,
+                duration,
+                method: (args[1] as RequestInit | undefined)?.method || 'GET',
+              },
+            });
+          } catch {
+            // swallow
+          }
+          return response;
+        } catch (error) {
+          const duration = Date.now() - startTime;
+          try {
+            self.addBreadcrumb({
+              category: 'http',
+              message: `Network error: ${String(args[0])}`,
+              level: 'error',
+              data: {
+                url: String(args[0]),
+                error: error instanceof Error ? error.message : String(error),
+                duration,
+                method: (args[1] as RequestInit | undefined)?.method || 'GET',
+              },
+            });
+          } catch {
+            // swallow
+          }
+          throw error;
+        }
+      };
+    }
+
+    // Patch XHR
+    if (typeof XMLHttpRequest !== 'undefined') {
+      const originalXHROpen = XMLHttpRequest.prototype.open;
+      const originalXHRSend = XMLHttpRequest.prototype.send;
+      const self = this;
+
+      XMLHttpRequest.prototype.open = function (
+        method: string,
+        url: string | URL,
+        async: boolean = true,
+        username?: string | null,
+        password?: string | null
+      ) {
+        (this as any)._errorReportingData = { method, url: String(url), startTime: Date.now() };
+        return originalXHROpen.call(this, method, url, async, username as any, password as any);
+      };
+
+      XMLHttpRequest.prototype.send = function (body?: Document | XMLHttpRequestBodyInit | null) {
+        const xhr = this as XMLHttpRequest & { _errorReportingData?: any };
+        const data = xhr._errorReportingData;
+        const done = (statusLabel: 'info' | 'error') => {
+          try {
+            if (data) {
+              const duration = Date.now() - data.startTime;
+              self.addBreadcrumb({
+                category: 'http',
+                message: `${xhr.status} ${data.url}`,
+                level: statusLabel,
+                data: {
+                  url: data.url,
+                  status: xhr.status,
+                  duration,
+                  method: data.method,
+                },
+              });
+            }
+          } catch {
+            // swallow
+          }
+        };
+
+        xhr.addEventListener('load', () => {
+          done(xhr.status >= 400 ? 'error' : 'info');
+        });
+        xhr.addEventListener('error', () => {
+          try {
+            if (data) {
+              const duration = Date.now() - data.startTime;
+              self.addBreadcrumb({
+                category: 'http',
+                message: `Network error: ${data.url}`,
+                level: 'error',
+                data: {
+                  url: data.url,
+                  error: 'Network error',
+                  duration,
+                  method: data.method,
+                },
+              });
+            }
+          } catch {
+            // swallow
+          }
+        });
+
+        return originalXHRSend.call(this, body as any);
+      };
+    }
+  }
+
   private captureUserInteractions() {
-    // Capture click events
-    document.addEventListener('click', (event) => {
-      const target = event.target as Element;
-      const tagName = target.tagName.toLowerCase();
-      const className = target.className;
-      const id = target.id;
-      this.addBreadcrumb({
-        category: 'user',
-        message: `Clicked ${tagName}${id ? `#${id}` : ''}${className ? `.${className}` : ''}`,
-        level: 'info',
-        data: {
-          tagName,
-          className,
-          id,
-          innerText: target.textContent?.slice(0, 100),
-        },
+    if (typeof document === 'undefined') return;
 
+    // Click events
+    document.addEventListener(
+      'click',
+      (event) => {
+        try {
+          const target = event.target as Element | null;
+          if (!target) return;
+          const tagName = target.tagName.toLowerCase();
+          const className = (target as HTMLElement).className || '';
+          const id = (target as HTMLElement).id || '';
+          // Avoid leaking sensitive input values
+          const isSensitiveInput =
+            tagName === 'input' &&
+            ['password', 'email'].includes(((target as HTMLInputElement).type || '').toLowerCase());
 
-    // Capture form submissions
-    document.addEventListener('submit', (event) => {
-      const target = event.target as HTMLFormElement;
-      this.addBreadcrumb({
-        category: 'user',
-        message: `Form submitted: ${target.action || 'current page'}`,
-        level: 'info',
-        data: {
-          action: target.action,
-          method: target.method,
-          formId: target.id,
-        },
+          this.addBreadcrumb({
+            category: 'user',
+            message: `Clicked ${tagName}${id ? `#${id}` : ''}${className ? `.${String(className).split(' ').join('.')}` : ''}`,
+            level: 'info',
+            data: {
+              tagName,
+              className,
+              id,
+              innerText: isSensitiveInput ? undefined : (target.textContent || '').slice(0, 100),
+            },
+          });
+        } catch {
+          // swallow
+        }
+      },
+      { passive: true }
+    );
 
-
+    // Form submissions
+    document.addEventListener(
+      'submit',
+      (event) => {
+        try {
+          const target = event.target as HTMLFormElement | null;
+          if (!target) return;
+          this.addBreadcrumb({
+            category: 'user',
+            message: `Form submitted: ${target.action || 'current page'}`,
+            level: 'info',
+            data: {
+              action: target.action,
+              method: target.method,
+              formId: target.id,
+            },
+          });
+        } catch {
+          // swallow
+        }
+      },
+      { passive: true }
+    );
   }
+
   private captureNavigationEvents() {
-    // Capture page navigation
-    window.addEventListener('popstate', () => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      // Initial load
       this.addBreadcrumb({
         category: 'navigation',
-        message: `Navigated to ${window.location.pathname}`,
+        message: `Page loaded: ${window.location.pathname}`,
         level: 'info',
         data: {
           pathname: window.location.pathname,
           search: window.location.search,
           hash: window.location.hash,
+          referrer: typeof document !== 'undefined' ? document.referrer : undefined,
         },
+      });
 
-
-    // Capture initial page load
-    this.addBreadcrumb({
-      category: 'navigation',
-      message: `Page loaded: ${window.location.pathname}`,
-      level: 'info',
-      data: {
-        pathname: window.location.pathname,
-        search: window.location.search,
-        hash: window.location.hash,
-        referrer: document.referrer,
-      },
-
+      // History navigation
+      window.addEventListener('popstate', () => {
+        try {
+          this.addBreadcrumb({
+            category: 'navigation',
+            message: `Navigated to ${window.location.pathname}`,
+            level: 'info',
+            data: {
+              pathname: window.location.pathname,
+              search: window.location.search,
+              hash: window.location.hash,
+            },
+          });
+        } catch {
+          // swallow
+        }
+      });
+    } catch {
+      // noop
+    }
   }
+
   public addBreadcrumb(breadcrumb: Omit<ErrorBreadcrumb, 'timestamp'>) {
     if (!this.config.enabled) return;
     const fullBreadcrumb: ErrorBreadcrumb = {
       ...breadcrumb,
-      timestamp: new Date().toISOString(),
+      timestamp: safeNowISO(),
     };
     this.breadcrumbs.push(fullBreadcrumb);
     // Keep only the most recent breadcrumbs
@@ -252,9 +394,10 @@ class ErrorReportingService {
       this.breadcrumbs = this.breadcrumbs.slice(-this.config.maxBreadcrumbs);
     }
   }
+
   public async reportError(
-    error: Error,
-    errorInfo?: React.ErrorInfo,
+    rawError: unknown,
+    errorInfo?: ReactErrorInfoLike,
     context?: {
       section?: string;
       retryCount?: number;
@@ -263,15 +406,18 @@ class ErrorReportingService {
     }
   ): Promise<void> {
     if (!this.config.enabled) return;
-    // Apply sampling rate
+    // Sampling
     if (Math.random() > this.config.sampleRate) return;
+
+    const error = coerceError(rawError);
+
     const errorReport: ErrorReport = {
-      id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `error-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
       message: error.message,
       stack: error.stack,
       componentStack: errorInfo?.componentStack || undefined,
       section: context?.section,
-      timestamp: new Date().toISOString(),
+      timestamp: safeNowISO(),
       url: typeof window !== 'undefined' ? window.location.href : undefined,
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
       userId: context?.userId,
@@ -282,26 +428,37 @@ class ErrorReportingService {
       context: context ? { ...context } : undefined,
       breadcrumbs: [...this.breadcrumbs],
     };
-    // Apply beforeSend hook
+
+    // beforeSend hook
     const processedReport = this.config.beforeSend ? this.config.beforeSend(errorReport) : errorReport;
     if (!processedReport) return;
+
     try {
-      // Log to console in development
-      // Send to external service
       if (this.config.endpoint) {
         await this.sendToService(processedReport);
       }
-      // Send to analytics
+    } catch {
+      // swallow remote failure
+    }
+
+    try {
       this.sendToAnalytics(processedReport);
-      // Store locally for offline support
+    } catch {
+      // swallow analytics failure
+    }
+
+    try {
       this.storeLocally(processedReport);
-    } catch (reportingError) {
+    } catch {
+      // localStorage can fail (quota/private mode)
     }
   }
+
   private determineSeverity(error: Error, context?: any): ErrorReport['severity'] {
-    const message = error.message.toLowerCase();
-    const stack = error.stack?.toLowerCase() || '';
-    // Critical errors
+    const message = (error.message || '').toLowerCase();
+    const stack = (error.stack || '').toLowerCase();
+
+    // Critical indicators
     if (
       message.includes('chunk') ||
       message.includes('loading') ||
@@ -310,7 +467,8 @@ class ErrorReportingService {
     ) {
       return 'critical';
     }
-    // High severity errors
+
+    // High severity indicators
     if (
       message.includes('auth') ||
       message.includes('permission') ||
@@ -319,19 +477,19 @@ class ErrorReportingService {
     ) {
       return 'high';
     }
-    // Medium severity errors
-    if (
-      message.includes('validation') ||
-      message.includes('form') ||
-      context?.retryCount > 2
-    ) {
+
+    // Medium severity indicators
+    if (message.includes('validation') || message.includes('form') || (context?.retryCount ?? 0) > 2) {
       return 'medium';
     }
+
     return 'low';
   }
+
   private categorizeError(error: Error): ErrorReport['category'] {
-    const message = error.message.toLowerCase();
-    const name = error.name.toLowerCase();
+    const message = (error.message || '').toLowerCase();
+    const name = (error.name || '').toLowerCase();
+
     if (message.includes('network') || message.includes('fetch') || name.includes('network')) {
       return 'network';
     }
@@ -349,104 +507,132 @@ class ErrorReportingService {
     }
     return 'unknown';
   }
+
   private async sendToService(report: ErrorReport): Promise<void> {
+    if (typeof fetch !== 'function') return;
     if (!this.config.endpoint || !this.config.apiKey) return;
-    const response = await fetch(this.config.endpoint, {
+
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+    const id = controller ? setTimeout(() => controller.abort(), 8000) : undefined;
+
+    const resp = await fetch(this.config.endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.config.apiKey}`,
-      },
+        Authorization: `Bearer ${this.config.apiKey}`,
+      } as Record<string, string>,
       body: JSON.stringify(report),
+      signal: controller?.signal,
+    });
 
-    if (!response.ok) {
-      throw new Error(`Failed to send error report: ${response.status}`);
+    if (id) clearTimeout(id as any);
+
+    if (!resp.ok) {
+      throw new Error(`Failed to send error report: ${resp.status}`);
     }
   }
+
   private sendToAnalytics(report: ErrorReport): void {
-    // Send to Google Analytics if available
-    if (typeof window !== 'undefined' && 'gtag' in window) {
-      (window as any).gtag('event', 'exception', {
+    if (typeof window === 'undefined') return;
+
+    // Google Analytics (gtag)
+    const gtag = (window as any).gtag;
+    if (typeof gtag === 'function') {
+      gtag('event', 'exception', {
         description: `${report.section || 'Unknown'}: ${report.message}`,
         fatal: report.severity === 'critical',
-        custom_map: {
-          error_id: report.id,
-          section: report.section,
-          category: report.category,
-          severity: report.severity,
-          retry_count: report.retryCount,
-        },
+        error_id: report.id,
+        section: report.section,
+        category: report.category,
+        severity: report.severity,
+        retry_count: report.retryCount,
+      });
+    }
+    // Hook other analytics here as needed (Mixpanel, Segment, etc.)
+  }
 
-    }
-    // Send to other analytics services as needed
-  }
   private storeLocally(report: ErrorReport): void {
-    try {
-      const key = `error_reports`;
-      const stored = localStorage.getItem(key);
-      const reports = stored ? JSON.parse(stored) : [];
-      reports.push(report);
-      // Keep only the most recent 10 reports
-      const recentReports = reports.slice(-10);
-      localStorage.setItem(key, JSON.stringify(recentReports));
-    } catch (error) {
-    }
+    if (typeof localStorage === 'undefined') return;
+    const key = 'error_reports';
+    const stored = localStorage.getItem(key);
+    const reports: ErrorReport[] = stored ? JSON.parse(stored) : [];
+    reports.push(report);
+    const recentReports = reports.slice(-10);
+    localStorage.setItem(key, JSON.stringify(recentReports));
   }
+
   public getStoredReports(): ErrorReport[] {
     try {
+      if (typeof localStorage === 'undefined') return [];
       const stored = localStorage.getItem('error_reports');
       return stored ? JSON.parse(stored) : [];
-    } catch (error) {
+    } catch {
       return [];
     }
   }
+
   public clearStoredReports(): void {
     try {
+      if (typeof localStorage === 'undefined') return;
       localStorage.removeItem('error_reports');
-    } catch (error) {
+    } catch {
+      // noop
     }
   }
-  public updateConfig(newConfig: Partial<ErrorReportingConfig>): void {
-    this.config = { ...this.config, ...newConfig };
-  }
 }
-// Create singleton instance
+
+// Singleton instance
+const nodeEnv = getEnvNodeEnv();
+const isProd = nodeEnv === 'production';
+
 export const errorReportingService = new ErrorReportingService({
-  enabled: process.env.NODE_ENV === 'production',
-  sampleRate: process.env.NODE_ENV === 'development' ? 1.0 : 0.1,
+  enabled: isProd ?? true,
+  sampleRate: nodeEnv === 'development' ? 1.0 : 0.1,
   beforeSend: (report) => {
-    // Filter out sensitive information
+    // Scrub obvious secrets
     if (report.context) {
-      delete report.context.password;
-      delete report.context.token;
-      delete report.context.apiKey;
+      delete (report.context as any).password;
+      delete (report.context as any).token;
+      delete (report.context as any).apiKey;
+      delete (report.context as any).authorization;
+    }
+    // Truncate overly long messages to keep payloads lean
+    if (report.message && report.message.length > 2000) {
+      report.message = report.message.slice(0, 2000) + '…';
     }
     return report;
   },
+});
 
-// Initialize error reporting
+// Global hooks (browser only)
 if (typeof window !== 'undefined') {
-  // Capture unhandled promise rejections
+  // Unhandled Promise rejections
   window.addEventListener('unhandledrejection', (event) => {
-    errorReportingService.reportError(
-      new Error(`Unhandled Promise Rejection: ${event.reason}`),
-      undefined,
-      { section: 'global', category: 'promise' }
-    );
+    try {
+      const reason = (event as PromiseRejectionEvent).reason;
+      const err = coerceError(reason);
+      errorReportingService.reportError(err, undefined, { section: 'global', category: 'promise' });
+    } catch {
+      // swallow
+    }
+  });
 
-  // Capture global errors
-  window.addEventListener('error', (event) => {
-    errorReportingService.reportError(
-      event.error || new Error(event.message),
-      undefined,
-      { 
-        section: 'global', 
+  // Global errors
+  window.addEventListener('error', (event: Event) => {
+    try {
+      const e = event as ErrorEvent;
+      const err = e.error ? coerceError(e.error) : new Error(e.message || 'Unknown error');
+      errorReportingService.reportError(err, undefined, {
+        section: 'global',
         category: 'global',
-        filename: event.filename,
-        lineno: event.lineno,
-        colno: event.colno,
-      }
-    );
-
+        filename: (e as any).filename,
+        lineno: (e as any).lineno,
+        colno: (e as any).colno,
+      });
+    } catch {
+      // swallow
+    }
+  });
 }
+
 export default errorReportingService;

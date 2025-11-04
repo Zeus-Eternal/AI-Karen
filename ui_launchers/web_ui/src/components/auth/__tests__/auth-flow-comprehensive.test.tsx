@@ -60,9 +60,9 @@ const mockGetCurrentUser = getCurrentUser as ReturnType<typeof vi.fn>;
 // Mock UI components to avoid dependency issues
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, disabled, onClick, type, ...props }: any) => (
-    <button disabled={disabled} onClick={onClick} type={type} {...props} aria-label="Button">
+    <Button disabled={disabled} onClick={onClick} type={type} {...props} aria-label="Button">
       {children}
-    </button>
+    </Button>
   ),
 }));
 
@@ -118,18 +118,18 @@ const TestAuthComponent: React.FC = () => {
       <div data-testid="user-email">
         {user?.email || 'no-user'}
       </div>
-      <button 
+      <Button 
         data-testid="test-login" 
         onClick={() => login({ email: 'test@example.com', password: 'password123' })}
       >
-      </button>
-      <button data-testid="test-logout" onClick={logout} aria-label="Button">
-      </button>
-      <button 
+      </Button>
+      <Button data-testid="test-logout" onClick={logout} aria-label="Button">
+      </Button>
+      <Button 
         data-testid="test-check-auth" 
         onClick={() => checkAuth()}
       >
-      </button>
+      </Button>
     </div>
   );
 };

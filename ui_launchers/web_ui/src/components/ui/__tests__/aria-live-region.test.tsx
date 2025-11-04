@@ -16,12 +16,12 @@ const TestAnnouncementComponent = () => {
 
   return (
     <div>
-      <button onClick={() => announce('Polite message', 'polite')}>
-      </button>
-      <button onClick={() => announce('Assertive message', 'assertive')}>
-      </button>
-      <button onClick={clearAnnouncements} aria-label="Button">
-      </button>
+      <Button onClick={() => announce('Polite message', 'polite')}>
+      </Button>
+      <Button onClick={() => announce('Assertive message', 'assertive')}>
+      </Button>
+      <Button onClick={clearAnnouncements} aria-label="Button">
+      </Button>
       <div data-testid="polite-message">{politeMessage}</div>
       <div data-testid="assertive-message">{assertiveMessage}</div>
     </div>
@@ -121,8 +121,8 @@ describe('useAriaAnnouncements', () => {
 ribe('AriaAnnouncer', () => {
   it('should provide announce function to children', () => {
     const TestChild = ({ announce }: { announce: (message: string) => void }) => (
-      <button onClick={() => announce('Test announcement')}>
-      </button>
+      <Button onClick={() => announce('Test announcement')}>
+      </Button>
     );
 
     render(

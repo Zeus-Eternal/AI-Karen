@@ -3,171 +3,365 @@
  */
 import type { Model, ModelLibraryResponse } from "../model-utils";
 import { getKarenBackend } from "../karen-backend";
-// Import modular services
+
+// Modular services
 import { ModelHealthMonitor } from "./health-monitor";
 import { ResourceMonitor } from "./resource-monitor";
 import { ModelScanner } from "./model-scanner";
 import { BaseModelService } from "./base-service";
-import {  ModelSelectionPreferences, ModelSelectionResult, ModelRegistry, ModelCategories, DirectoryWatchOptions, FileSystemChangeEvent, SelectOptimalModelOptions, ModelSwitchOptions, ModelSwitchResult, ModelsByTypeOptions, ModelSelectionStats } from "./types";
+
+// Optional: real preferences service (fallback to in-file stub if unavailable)
+import { getPreferencesService, PreferencesService } from "./preferences-service";
+
+// ---------- Local Types (self-contained, no external type gaps) ----------
+
+export interface ModelSelectionPreferences {
+  lastSelectedModel?: string;
+  defaultModel?: string;
+  preferredProviders?: string[];
+  preferLocal?: boolean;
+  autoSelectFallback?: boolean;
+}
+
+export type Capability =
+  | "text-generation"
+  | "image-generation"
+  | "embedding"
+  | "multimodal"
+  | string;
+
+export interface ModelCategories {
+  byType: Record<string, Model[]>;
+  byProvider: Record<string, Model[]>;
+  byCapability: Record<string, Model[]>;
+  byStatus: Record<string, Model[]>;
+  byHealth: Record<string, Model[]>;
+}
+
+export interface ModelRegistry {
+  models: Model[];
+  categories: ModelCategories;
+  lastUpdate: number;
+  scanMetadata?: {
+    last_scan: string;
+    scan_version: string;
+    directories_scanned: string[];
+    total_models_found: number;
+    scan_duration_ms: number;
+  };
+}
+
+export interface DirectoryWatchOptions {
+  directories?: string[];
+  debounceMs?: number;
+  enablePolling?: boolean;
+  pollingInterval?: number;
+}
+
+export interface FileSystemChangeEvent {
+  type: "created" | "deleted" | "modified";
+  path: string;
+  directory: string;
+  timestamp: number;
+}
+
+export interface SelectOptimalModelOptions {
+  filterByCapability?: Capability;
+  filterByType?: "text" | "image" | "embedding" | "multimodal";
+  preferLocal?: boolean;
+  forceRefresh?: boolean;
+  includeDynamicScan?: boolean;
+  checkResourceFeasibility?: boolean;
+}
+
+export interface ModelSwitchOptions {
+  preserveContext?: boolean;
+  forceSwitch?: boolean;
+}
+
+export interface ModelSwitchResult {
+  success: boolean;
+  model: Model | null;
+  contextPreserved: boolean;
+  message: string;
+}
+
+export interface ModelsByTypeOptions {
+  includeMultimodal?: boolean;
+  filterByCapability?: Capability;
+  onlyHealthy?: boolean;
+  sortBy?: "name" | "size" | "performance" | "health";
+}
+
+export interface ModelSelectionResult {
+  selectedModel: Model | null;
+  selectionReason:
+    | "last_selected"
+    | "default"
+    | "first_available"
+    | "none_available";
+  availableModels: Model[];
+  fallbackUsed: boolean;
+}
+
+export interface ModelSelectionStats {
+  totalModels: number;
+  readyModels: number;
+  localModels: number;
+  cloudModels: number;
+  lastSelectedModel?: string;
+  defaultModel?: string;
+  modelsByType: {
+    text: number;
+    image: number;
+    embedding: number;
+    multimodal: number;
+  };
+  registryStats: {
+    lastUpdate: string;
+    categoriesCount: number;
+    healthyModels: number;
+    unhealthyModels: number;
+  };
+  watchingStats: {
+    isWatching: boolean;
+    watchedDirectories: string[];
+    changeListeners: number;
+    lastChangeDetection: Record<string, number>;
+  };
+}
+
+// ----------------- Main Service -----------------
+
 export class ModelSelectionService extends BaseModelService {
   private static instance: ModelSelectionService;
+
   // Modular services
   private healthMonitor: ModelHealthMonitor;
   private resourceMonitor: ResourceMonitor;
   private modelScanner: ModelScanner;
+
+  // Preferences
+  private prefSvc: PreferencesService | null = null;
+
   // Core state
   private cachedModels: Model[] = [];
   private modelRegistry: ModelRegistry | null = null;
-  private lastFetchTime: number = 0;
+  private lastFetchTime = 0;
+
   // File system watching
-  private isWatching: boolean = false;
+  private isWatching = false;
   private watchedDirectories: Set<string> = new Set();
-  private changeListeners: Set<(event: FileSystemChangeEvent) => void> = new Set();
+  private changeListeners: Set<(event: FileSystemChangeEvent) => void> =
+    new Set();
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private lastChangeDetection: Map<string, number> = new Map();
   private pollingInterval: NodeJS.Timeout | null = null;
+
+  // Cache duration fallback if BaseModelService doesn't define
+  private readonly CACHE_DURATION_FALLBACK = 30_000;
+
   private constructor() {
-    super('ModelSelectionService');
-    this.healthMonitor = new ModelHealthMonitor('ModelHealthMonitor');
-    this.resourceMonitor = new ResourceMonitor('ResourceMonitor');
-    this.modelScanner = new ModelScanner('ModelScanner', this.healthMonitor);
+    super("ModelSelectionService");
+    this.healthMonitor = new ModelHealthMonitor("ModelHealthMonitor");
+    this.resourceMonitor = new ResourceMonitor("ResourceMonitor");
+    this.modelScanner = new ModelScanner("ModelScanner", this.healthMonitor);
+
+    // Try to wire real preferences service; tolerate absence
+    try {
+      this.prefSvc = getPreferencesService?.() ?? null;
+    } catch {
+      this.prefSvc = null;
+    }
   }
+
   static getInstance(): ModelSelectionService {
     if (!ModelSelectionService.instance) {
       ModelSelectionService.instance = new ModelSelectionService();
     }
     return ModelSelectionService.instance;
   }
+
   // Export the modular services for direct access if needed
-  get health() { return this.healthMonitor; }
-  get resources() { return this.resourceMonitor; }
-  get scanner() { return this.modelScanner; }
-  // Core model selection methods
-  async selectOptimalModel(options: SelectOptimalModelOptions = {}): Promise<ModelSelectionResult> {
+  get health() {
+    return this.healthMonitor;
+  }
+  get resources() {
+    return this.resourceMonitor;
+  }
+  get scanner() {
+    return this.modelScanner;
+  }
+
+  // ----------------- Core model selection -----------------
+
+  async selectOptimalModel(
+    options: SelectOptimalModelOptions = {}
+  ): Promise<ModelSelectionResult> {
     const {
       filterByCapability,
       filterByType,
       preferLocal = true,
       forceRefresh = false,
       includeDynamicScan = true,
-      checkResourceFeasibility = true
+      checkResourceFeasibility = true,
     } = options;
+
     try {
       // Get available models with optional dynamic scanning
-      const models = await this.getAvailableModels(forceRefresh, includeDynamicScan);
-      // Filter models based on criteria
+      const models = await this.getAvailableModels(
+        forceRefresh,
+        includeDynamicScan
+      );
+
+      // Filter models
       let filteredModels = models;
+
       if (filterByType) {
-        filteredModels = filteredModels.filter(model => 
-          model.type === filterByType || 
-          (model.type === 'multimodal' && model.capabilities?.includes(`${filterByType}-generation`))
+        filteredModels = filteredModels.filter(
+          (model) =>
+            model.type === filterByType ||
+            (model.type === "multimodal" &&
+              (model.capabilities?.includes(`${filterByType}-generation`) ||
+                model.capabilities?.includes(filterByType)))
         );
       }
+
       if (filterByCapability) {
-        filteredModels = filteredModels.filter(model => 
-          model.capabilities?.includes(filterByCapability)
+        filteredModels = filteredModels.filter((model) =>
+          (model.capabilities || []).includes(filterByCapability)
         );
       }
-      // Check resource feasibility if requested
+
+      // Resource feasibility checks
       if (checkResourceFeasibility) {
-        const feasibleModels = [];
+        const feasible: Model[] = [];
         for (const model of filteredModels) {
           const canLoad = await this.resourceMonitor.canLoadModel(model);
-          if (canLoad.canLoad) {
-            feasibleModels.push(model);
-          }
+          if (canLoad.canLoad) feasible.push(model);
         }
-        filteredModels = feasibleModels;
+        filteredModels = feasible;
       }
+
       // Apply selection priority logic
       const preferences = await this.getPreferences();
       let selectedModel: Model | null = null;
-      let selectionReason: ModelSelectionResult['selectionReason'] = 'none_available';
-      // 1. Try last selected model
+      let selectionReason: ModelSelectionResult["selectionReason"] =
+        "none_available";
+
+      // 1) last selected
       if (preferences.lastSelectedModel) {
-        const lastModel = filteredModels.find(m => m.id === preferences.lastSelectedModel);
-        if (lastModel) {
-          selectedModel = lastModel;
-          selectionReason = 'last_selected';
+        const last = filteredModels.find(
+          (m) => m.id === preferences.lastSelectedModel
+        );
+        if (last) {
+          selectedModel = last;
+          selectionReason = "last_selected";
         }
       }
-      // 2. Try default model
+
+      // 2) default
       if (!selectedModel && preferences.defaultModel) {
-        const defaultModel = filteredModels.find(m => m.id === preferences.defaultModel);
-        if (defaultModel) {
-          selectedModel = defaultModel;
-          selectionReason = 'default';
+        const def = filteredModels.find((m) => m.id === preferences.defaultModel);
+        if (def) {
+          selectedModel = def;
+          selectionReason = "default";
         }
       }
-      // 3. Select first available with preference logic
+
+      // 3) prefer local -> else first available
       if (!selectedModel && filteredModels.length > 0) {
-        if (preferLocal) {
-          // Prefer local models
-          const localModels = filteredModels.filter(m => m.status === 'local');
-          if (localModels.length > 0) {
-            selectedModel = localModels[0];
-          } else {
-            selectedModel = filteredModels[0];
-          }
+        if (preferLocal || preferences.preferLocal) {
+          const locals = filteredModels.filter((m) => m.status === "local");
+          selectedModel = locals[0] ?? filteredModels[0];
         } else {
           selectedModel = filteredModels[0];
         }
-        selectionReason = 'first_available';
+        selectionReason = "first_available";
       }
+
       return {
         selectedModel,
         selectionReason,
         availableModels: filteredModels,
-        fallbackUsed: false
+        fallbackUsed: false,
       };
     } catch (error) {
+      this.logError("selectOptimalModel failed:", error);
       return {
         selectedModel: null,
-        selectionReason: 'none_available',
+        selectionReason: "none_available",
         availableModels: [],
-        fallbackUsed: false
+        fallbackUsed: false,
       };
     }
   }
-  async getAvailableModels(forceRefresh = false, includeDynamicScan = true): Promise<Model[]> {
+
+  async getAvailableModels(
+    forceRefresh = false,
+    includeDynamicScan = true
+  ): Promise<Model[]> {
     const now = Date.now();
-    const cacheExpired = now - this.lastFetchTime > this.CACHE_DURATION;
+    const cacheDuration =
+      // @ts-ignore optional on BaseModelService
+      (this as any).CACHE_DURATION ?? this.CACHE_DURATION_FALLBACK;
+    const cacheExpired = now - this.lastFetchTime > cacheDuration;
+
     if (!forceRefresh && !cacheExpired && this.cachedModels.length > 0) {
       return this.cachedModels;
     }
+
     try {
       let models: Model[] = [];
+
       if (includeDynamicScan) {
-        // Use dynamic scanning
+        // Dynamic scanning (local-first)
         models = await this.modelScanner.scanLocalDirectories();
       } else {
-        // Fallback to API
+        // API fallback
         const backend = getKarenBackend();
-        const response = await backend.makeRequestPublic<ModelLibraryResponse>('/api/models/library');
+        const response = await backend.makeRequestPublic<ModelLibraryResponse>(
+          "/api/models/library"
+        );
         models = response?.models || [];
       }
-      // Update health status for all models
+
+      // Update health for all models
       for (const model of models) {
-        model.health = await this.healthMonitor.performComprehensiveHealthCheck(model);
+        try {
+          model.health =
+            await this.healthMonitor.performComprehensiveHealthCheck(model);
+        } catch {
+          // keep existing / undefined health
+        }
       }
+
       this.cachedModels = models;
       this.lastFetchTime = now;
       return models;
     } catch (error) {
-      return this.cachedModels; // Return cached models as fallback
+      this.logError("getAvailableModels failed, returning cache:", error);
+      return this.cachedModels;
     }
   }
+
   async getModelById(modelId: string): Promise<Model | null> {
     const models = await this.getAvailableModels();
-    return models.find(model => model.id === modelId) || null;
-  }
+    return models.find((m) => m.id === modelId) || null;
+    }
+
   async isModelReady(modelId: string): Promise<boolean> {
     const model = await this.getModelById(modelId);
     if (!model) return false;
-    return model.status === 'local' && (!model.health || model.health.is_healthy);
+    return model.status === "local" && (model.health?.is_healthy !== false);
   }
-  async switchModel(modelId: string, options: ModelSwitchOptions = {}): Promise<ModelSwitchResult> {
+
+  async switchModel(
+    modelId: string,
+    options: ModelSwitchOptions = {}
+  ): Promise<ModelSwitchResult> {
     const { preserveContext = true, forceSwitch = false } = options;
+
     try {
       const model = await this.getModelById(modelId);
       if (!model) {
@@ -175,37 +369,41 @@ export class ModelSelectionService extends BaseModelService {
           success: false,
           model: null,
           contextPreserved: false,
-          message: 'Model not found'
+          message: "Model not found",
         };
       }
-      // Check if model can be loaded
+
       const canLoad = await this.resourceMonitor.canLoadModel(model);
       if (!canLoad.canLoad && !forceSwitch) {
         return {
           success: false,
           model: null,
           contextPreserved: false,
-          message: canLoad.reason || 'Cannot load model'
+          message: canLoad.reason || "Cannot load model",
         };
       }
-      // Update last selected model
+
       await this.updateLastSelectedModel(modelId);
       return {
         success: true,
         model,
         contextPreserved: preserveContext,
-        message: 'Model switched successfully'
+        message: "Model switched successfully",
       };
     } catch (error) {
+      this.logError("switchModel failed:", error);
       return {
         success: false,
         model: null,
         contextPreserved: false,
-        message: error instanceof Error ? error.message : 'Failed to switch model'
+        message:
+          error instanceof Error ? error.message : "Failed to switch model",
       };
     }
   }
-  // Model registry and categorization methods
+
+  // ----------------- Registry & categorization -----------------
+
   async getModelRegistry(): Promise<ModelRegistry> {
     if (!this.modelRegistry) {
       const models = await this.getAvailableModels();
@@ -213,35 +411,47 @@ export class ModelSelectionService extends BaseModelService {
     }
     return this.modelRegistry;
   }
+
   private buildModelRegistry(models: Model[]): ModelRegistry {
     const categories: ModelCategories = {
       byType: {},
       byProvider: {},
       byCapability: {},
       byStatus: {},
-      byHealth: {}
+      byHealth: {},
     };
-    // Categorize models
-    models.forEach(model => {
+
+    const push = (map: Record<string, Model[]>, key: string, model: Model) => {
+      if (!map[key]) map[key] = [];
+      map[key].push(model);
+    };
+
+    const started = performance?.now?.() ?? Date.now();
+
+    models.forEach((model) => {
       // By type
-      const type = model.type || 'unknown';
-      if (!categories.byType[type]) categories.byType[type] = [];
-      categories.byType[type].push(model);
+      const type = model.type || "unknown";
+      push(categories.byType, type, model);
+
       // By provider
-      if (!categories.byProvider[model.provider]) categories.byProvider[model.provider] = [];
-      categories.byProvider[model.provider].push(model);
+      const provider = model.provider || "unknown";
+      push(categories.byProvider, provider, model);
+
       // By capabilities
-      model.capabilities?.forEach(capability => {
-        if (!categories.byCapability[capability]) categories.byCapability[capability] = [];
-        categories.byCapability[capability].push(model);
+      (model.capabilities || []).forEach((capability) =>
+        push(categories.byCapability, capability, model)
+      );
 
       // By status
-      if (!categories.byStatus[model.status]) categories.byStatus[model.status] = [];
-      categories.byStatus[model.status].push(model);
+      const status = model.status || "unknown";
+      push(categories.byStatus, status, model);
+
       // By health
-      const healthStatus = model.health?.is_healthy ? 'healthy' : 'unhealthy';
-      if (!categories.byHealth[healthStatus]) categories.byHealth[healthStatus] = [];
-      categories.byHealth[healthStatus].push(model);
+      const healthStatus = model.health?.is_healthy ? "healthy" : "unhealthy";
+      push(categories.byHealth, healthStatus, model);
+    });
+
+    const ended = performance?.now?.() ?? Date.now();
 
     return {
       models,
@@ -249,193 +459,274 @@ export class ModelSelectionService extends BaseModelService {
       lastUpdate: Date.now(),
       scanMetadata: {
         last_scan: new Date().toISOString(),
-        scan_version: '2.0',
-        directories_scanned: ['models/llama-cpp', 'models/transformers', 'models/stable-diffusion', 'models/flux'],
+        scan_version: "2.0",
+        directories_scanned: [
+          "models/llama-cpp",
+          "models/transformers",
+          "models/stable-diffusion",
+          "models/flux",
+        ],
         total_models_found: models.length,
-        scan_duration_ms: 0
-      }
+        scan_duration_ms: Math.max(0, Math.round(ended - started)),
+      },
     };
   }
-  async getModelsByType(type: 'text' | 'image' | 'embedding' | 'multimodal', options: ModelsByTypeOptions = {}): Promise<Model[]> {
+
+  async getModelsByType(
+    type: "text" | "image" | "embedding" | "multimodal",
+    options: ModelsByTypeOptions = {}
+  ): Promise<Model[]> {
     const registry = await this.getModelRegistry();
-    let models = registry.categories.byType[type] || [];
-    if (options.includeMultimodal && type !== 'multimodal') {
-      const multimodalModels = registry.categories.byType['multimodal'] || [];
-      const relevantMultimodal = multimodalModels.filter(model => 
-        model.capabilities?.includes(`${type}-generation`) || model.capabilities?.includes(type)
+    let models = [...(registry.categories.byType[type] || [])];
+
+    if (options.includeMultimodal && type !== "multimodal") {
+      const multimodal = registry.categories.byType["multimodal"] || [];
+      const relevant = multimodal.filter(
+        (m) =>
+          (m.capabilities || []).includes(`${type}-generation`) ||
+          (m.capabilities || []).includes(type)
       );
-      models = [...models, ...relevantMultimodal];
+      models = [...models, ...relevant];
     }
+
     if (options.filterByCapability) {
-      models = models.filter(model => model.capabilities?.includes(options.filterByCapability!));
+      models = models.filter((m) =>
+        (m.capabilities || []).includes(options.filterByCapability!)
+      );
     }
+
     if (options.onlyHealthy) {
-      models = models.filter(model => !model.health || model.health.is_healthy);
+      models = models.filter((m) => m.health?.is_healthy !== false);
     }
-    // Sort models
+
     if (options.sortBy) {
       models.sort((a, b) => {
         switch (options.sortBy) {
-          case 'name':
-            return a.name.localeCompare(b.name);
-          case 'size':
+          case "name":
+            return (a.name || "").localeCompare(b.name || "");
+          case "size":
             return (a.size || 0) - (b.size || 0);
-          case 'performance':
-            // Sort by performance metrics if available
-            const aPerf = a.health?.performance_metrics?.inference_speed || 0;
-            const bPerf = b.health?.performance_metrics?.inference_speed || 0;
-            return Number(bPerf) - Number(aPerf);
-          case 'health':
+          case "performance": {
+            const aPerf = Number(
+              (a.health as any)?.performance_metrics?.inference_speed || 0
+            );
+            const bPerf = Number(
+              (b.health as any)?.performance_metrics?.inference_speed || 0
+            );
+            return bPerf - aPerf;
+          }
+          case "health": {
             const aHealthy = a.health?.is_healthy ? 1 : 0;
             const bHealthy = b.health?.is_healthy ? 1 : 0;
             return bHealthy - aHealthy;
+          }
           default:
             return 0;
         }
-
+      });
     }
+
     return models;
   }
-  async getModelCategorySummary(): Promise<any> {
+
+  async getModelCategorySummary(): Promise<{
+    types: Record<string, number>;
+    providers: Record<string, number>;
+    status: Record<string, number>;
+    health: Record<string, number>;
+  }> {
     const registry = await this.getModelRegistry();
     return {
       types: Object.fromEntries(
-        Object.entries(registry.categories.byType).map(([type, models]) => [type, models.length])
+        Object.entries(registry.categories.byType).map(([k, v]) => [k, v.length])
       ),
       providers: Object.fromEntries(
-        Object.entries(registry.categories.byProvider).map(([provider, models]) => [provider, models.length])
+        Object.entries(registry.categories.byProvider).map(([k, v]) => [
+          k,
+          v.length,
+        ])
       ),
       status: Object.fromEntries(
-        Object.entries(registry.categories.byStatus).map(([status, models]) => [status, models.length])
+        Object.entries(registry.categories.byStatus).map(([k, v]) => [k, v.length])
       ),
       health: Object.fromEntries(
-        Object.entries(registry.categories.byHealth).map(([health, models]) => [health, models.length])
-      )
+        Object.entries(registry.categories.byHealth).map(([k, v]) => [k, v.length])
+      ),
     };
   }
-  // Statistics and monitoring methods
+
+  // ----------------- Stats & Monitoring -----------------
+
   async getSelectionStats(): Promise<ModelSelectionStats> {
     const models = await this.getAvailableModels();
     const preferences = await this.getPreferences();
     const registry = await this.getModelRegistry();
-    const stats: ModelSelectionStats = {
+
+    return {
       totalModels: models.length,
-      readyModels: models.filter(m => m.status === 'local' && (!m.health || m.health.is_healthy)).length,
-      localModels: models.filter(m => m.status === 'local').length,
-      cloudModels: models.filter(m => m.status === 'available').length,
+      readyModels: models.filter(
+        (m) => m.status === "local" && (m.health?.is_healthy !== false)
+      ).length,
+      localModels: models.filter((m) => m.status === "local").length,
+      cloudModels: models.filter((m) => m.status === "available").length,
       lastSelectedModel: preferences.lastSelectedModel,
       defaultModel: preferences.defaultModel,
       modelsByType: {
-        text: models.filter(m => m.type === 'text').length,
-        image: models.filter(m => m.type === 'image').length,
-        embedding: models.filter(m => m.type === 'embedding').length,
-        multimodal: models.filter(m => m.type === 'multimodal').length
+        text: models.filter((m) => m.type === "text").length,
+        image: models.filter((m) => m.type === "image").length,
+        embedding: models.filter((m) => m.type === "embedding").length,
+        multimodal: models.filter((m) => m.type === "multimodal").length,
       },
       registryStats: {
         lastUpdate: new Date(registry.lastUpdate).toISOString(),
         categoriesCount: Object.keys(registry.categories.byType).length,
-        healthyModels: registry.categories.byHealth['healthy']?.length || 0,
-        unhealthyModels: registry.categories.byHealth['unhealthy']?.length || 0
+        healthyModels: registry.categories.byHealth["healthy"]?.length || 0,
+        unhealthyModels: registry.categories.byHealth["unhealthy"]?.length || 0,
       },
       watchingStats: {
         isWatching: this.isWatching,
         watchedDirectories: Array.from(this.watchedDirectories),
         changeListeners: this.changeListeners.size,
-        lastChangeDetection: Object.fromEntries(this.lastChangeDetection)
-      }
+        lastChangeDetection: Object.fromEntries(this.lastChangeDetection),
+      },
     };
-    return stats;
   }
-  // File system watching methods
-  async startDirectoryWatching(options: DirectoryWatchOptions = {}): Promise<void> {
+
+  // ----------------- File system watching -----------------
+
+  async startDirectoryWatching(
+    options: DirectoryWatchOptions = {}
+  ): Promise<void> {
     const {
-      directories = ['models/llama-cpp', 'models/transformers', 'models/stable-diffusion', 'models/flux'],
+      directories = [
+        "models/llama-cpp",
+        "models/transformers",
+        "models/stable-diffusion",
+        "models/flux",
+      ],
       debounceMs = 1000,
       enablePolling = true,
-      pollingInterval = 30000
+      pollingInterval = 30_000,
     } = options;
-    if (this.isWatching) {
-      return; // Already watching
-    }
+
+    if (this.isWatching) return;
     this.isWatching = true;
-    directories.forEach(dir => this.watchedDirectories.add(dir));
-    // Set up polling as a fallback
+
+    directories.forEach((d) => this.watchedDirectories.add(d));
+
+    // Basic debounce placeholder (you can wire real FS watchers here)
+    directories.forEach((dir) => {
+      this.debounceTimers.set(
+        dir,
+        setTimeout(() => {
+          /* placeholder hook for real FS events */
+        }, debounceMs)
+      );
+    });
+
+    // Polling fallback
     if (enablePolling) {
       this.pollingInterval = setInterval(async () => {
         await this.checkForDirectoryChanges();
       }, pollingInterval);
     }
   }
+
   async stopDirectoryWatching(): Promise<void> {
     this.isWatching = false;
     this.watchedDirectories.clear();
     this.changeListeners.clear();
-    // Clear debounce timers
-    this.debounceTimers.forEach(timer => clearTimeout(timer));
+
+    this.debounceTimers.forEach((t) => clearTimeout(t));
     this.debounceTimers.clear();
-    // Clear polling interval
+
     if (this.pollingInterval) {
       clearInterval(this.pollingInterval);
       this.pollingInterval = null;
     }
   }
-  addChangeListener(listener: (event: FileSystemChangeEvent) => void): () => void {
+
+  addChangeListener(
+    listener: (event: FileSystemChangeEvent) => void
+  ): () => void {
     this.changeListeners.add(listener);
-    // Return unsubscribe function
-    return () => {
-      this.changeListeners.delete(listener);
-    };
+    return () => this.changeListeners.delete(listener);
   }
+
   private async checkForDirectoryChanges(): Promise<void> {
     for (const directory of this.watchedDirectories) {
       const lastCheck = this.lastChangeDetection.get(directory) || 0;
       const now = Date.now();
-      // Simple change detection - in a real implementation, this would check file timestamps
-      if (now - lastCheck > 30000) { // Check every 30 seconds
+
+      // (Placeholder) Simple “heartbeat” change notification per 30s
+      if (now - lastCheck > 30_000) {
         this.lastChangeDetection.set(directory, now);
-        // Notify listeners of potential changes
         const event: FileSystemChangeEvent = {
-          type: 'modified',
+          type: "modified",
           path: directory,
           directory,
-          timestamp: now
+          timestamp: now,
         };
-        this.changeListeners.forEach(listener => {
+        this.changeListeners.forEach((listener) => {
           try {
             listener(event);
-          } catch (error) {
+          } catch (err) {
+            this.logError("Change listener failed:", err);
           }
-
+        });
       }
     }
   }
-  // Utility methods
+
+  // ----------------- Preferences (real service + safe fallback) -----------------
+
   clearCache(): void {
     this.cachedModels = [];
     this.modelRegistry = null;
     this.lastFetchTime = 0;
   }
+
   async updateLastSelectedModel(modelId: string): Promise<void> {
-    const preferences = await this.getPreferences();
-    preferences.lastSelectedModel = modelId;
-    await this.savePreferences(preferences);
+    const prefs = await this.getPreferences();
+    prefs.lastSelectedModel = modelId;
+    await this.savePreferences(prefs);
   }
+
   async setDefaultModel(modelId: string): Promise<void> {
-    const preferences = await this.getPreferences();
-    preferences.defaultModel = modelId;
-    await this.savePreferences(preferences);
+    const prefs = await this.getPreferences();
+    prefs.defaultModel = modelId;
+    await this.savePreferences(prefs);
   }
+
   private async getPreferences(): Promise<ModelSelectionPreferences> {
-    // In a real implementation, this would load from storage
+    try {
+      if (this.prefSvc) {
+        return await this.prefSvc.getUserPreferences();
+      }
+    } catch (e) {
+      this.logError("getPreferences (service) failed, using fallback:", e);
+    }
+    // Fallback to in-memory defaults
     return {
       lastSelectedModel: undefined,
       defaultModel: undefined,
       preferredProviders: [],
       preferLocal: true,
-      autoSelectFallback: true
+      autoSelectFallback: true,
     };
   }
-  private async savePreferences(preferences: ModelSelectionPreferences): Promise<void> {
-    // In a real implementation, this would save to storage
+
+  private async savePreferences(
+    preferences: ModelSelectionPreferences
+  ): Promise<void> {
+    try {
+      if (this.prefSvc) {
+        await this.prefSvc.saveUserPreferences(preferences);
+        return;
+      }
+    } catch (e) {
+      this.logError("savePreferences (service) failed, ignoring:", e);
+    }
+    // Fallback: no-op (in-memory)
   }
 }

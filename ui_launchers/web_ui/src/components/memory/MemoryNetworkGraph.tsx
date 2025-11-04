@@ -1,19 +1,47 @@
 /**
- * Memory Network Graph Component
+ * Memory Network Graph Component (Production)
  * Interactive network visualization using D3.js for memory relationships
  */
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import * as d3 from 'd3';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 
-import { } from 'lucide-react';
-import { getMemoryService } from '@/services/memoryService';
-import type {  MemoryNetworkNode as BaseMemoryNetworkNode, MemoryNetworkEdge, MemoryNetworkData, MemoryCluster, NetworkStatistics, MemoryNetworkProps } from '@/types/memory';
+"use client";
+
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
+import * as d3 from "d3";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Pause,
+  Play,
+  Minimize2,
+  Maximize2,
+  Search,
+  Settings,
+} from "lucide-react";
+
+import { getMemoryService } from "@/services/memoryService";
+import type {
+  MemoryNetworkNode as BaseMemoryNetworkNode,
+  MemoryNetworkEdge,
+  MemoryNetworkData,
+  MemoryCluster,
+  NetworkStatistics,
+  MemoryNetworkProps,
+} from "@/types/memory";
+
 // Extend the base node type to be compatible with D3 simulation
 type MemoryNetworkNode = BaseMemoryNetworkNode & d3.SimulationNodeDatum;
+
 interface NetworkConfig {
   nodeSize: [number, number]; // [min, max]
   linkDistance: number;
@@ -23,13 +51,15 @@ interface NetworkConfig {
   showLabels: boolean;
   showClusters: boolean;
   animationSpeed: number;
-  colorScheme: 'default' | 'confidence' | 'type' | 'cluster';
+  colorScheme: "default" | "confidence" | "type" | "cluster";
 }
+
 interface TooltipData {
   node: MemoryNetworkNode;
   x: number;
   y: number;
 }
+
 interface FilterOptions {
   minConfidence: number;
   maxConfidence: number;
@@ -38,6 +68,7 @@ interface FilterOptions {
   minConnections: number;
   searchQuery: string;
 }
+
 export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
   userId,
   tenantId,
@@ -45,29 +76,37 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
   onNodeDoubleClick,
   onClusterSelect,
   height = 600,
-  width = 800
+  width = 800,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const simulationRef = useRef<d3.Simulation<MemoryNetworkNode, MemoryNetworkEdge> | null>(null);
-  const [networkData, setNetworkData] = useState<MemoryNetworkData | null>(null);
+  const simulationRef =
+    useRef<d3.Simulation<MemoryNetworkNode, MemoryNetworkEdge> | null>(null);
+
+  const [networkData, setNetworkData] = useState<MemoryNetworkData | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedNode, setSelectedNode] = useState<MemoryNetworkNode | null>(null);
+  const [selectedNode, setSelectedNode] = useState<MemoryNetworkNode | null>(
+    null
+  );
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
   const [showControls, setShowControls] = useState(true);
+
   const [config, setConfig] = useState<NetworkConfig>({
     nodeSize: [5, 20],
-    linkDistance: 50,
-    linkStrength: 0.1,
-    chargeStrength: -100,
+    linkDistance: 60,
+    linkStrength: 0.12,
+    chargeStrength: -140,
     clusterPadding: 20,
     showLabels: true,
     showClusters: true,
     animationSpeed: 1,
-    colorScheme: 'cluster'
+    colorScheme: "cluster",
+  });
 
   const [filters, setFilters] = useState<FilterOptions>({
     minConfidence: 0,
@@ -75,488 +114,609 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     selectedTypes: [],
     selectedClusters: [],
     minConnections: 0,
-    searchQuery: ''
+    searchQuery: "",
+  });
 
   const memoryService = useMemo(() => getMemoryService(), []);
+
   // Color scales for different visualization modes
-  const colorScales = useMemo(() => ({
-    default: d3.scaleOrdinal(d3.schemeCategory10),
-    confidence: d3.scaleSequential(d3.interpolateViridis).domain([0, 1]),
-    type: d3.scaleOrdinal(d3.schemeSet2),
-    cluster: d3.scaleOrdinal(d3.schemeTableau10)
-  }), []);
-  // Load network data
+  const colorScales = useMemo(
+    () => ({
+      // index -> color
+      default: d3.scaleOrdinal<string, string>(d3.schemeCategory10),
+      // 0..1 -> color
+      confidence: d3.scaleSequential(d3.interpolateViridis).domain([0, 1]),
+      // type -> color
+      type: d3.scaleOrdinal<string, string>(d3.schemeSet2),
+      // cluster -> color
+      cluster: d3.scaleOrdinal<string, string>(d3.schemeTableau10),
+    }),
+    []
+  );
+
+  /** Load network data (mocked from stats; wire your real endpoint later) */
   const loadNetworkData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      // Get memory stats to generate network data
-      const stats = await memoryService.getMemoryStats(userId);
-      // Generate mock network data based on memory stats
+
+      const stats = await memoryService.getMemoryStats(userId, tenantId);
+
       const nodes: MemoryNetworkNode[] = [];
       const edges: MemoryNetworkEdge[] = [];
       const clusters: MemoryCluster[] = [];
-      // Create nodes from memory data
-      const nodeCount = Math.min(stats.totalMemories, 100); // Limit for performance
+
+      // create nodes
+      const nodeCount = Math.max(5, Math.min(stats.totalMemories ?? 50, 120));
+      const types = ["fact", "preference", "context"] as const;
+      const clusterKeys = Object.keys(stats.memoriesByTag ?? {});
+      const safeCluster = (i: number) =>
+        clusterKeys.length > 0 ? clusterKeys[i % clusterKeys.length] : "general";
+
       for (let i = 0; i < nodeCount; i++) {
-        const types = ['fact', 'preference', 'context'];
-        const clusterNames = Object.keys(stats.memoriesByTag);
         const type = types[i % types.length];
-        const cluster = clusterNames[i % clusterNames.length] || 'general';
-        nodes.push({
+        const cluster = safeCluster(i);
+        const size =
+          config.nodeSize[0] +
+          Math.random() * (config.nodeSize[1] - config.nodeSize[0]);
+
+        const node: MemoryNetworkNode = {
           id: `node-${i}`,
           label: `Memory ${i + 1}`,
           content: `Sample memory content for node ${i + 1}`,
           type,
           confidence: 0.5 + Math.random() * 0.5,
           cluster,
-          size: 5 + Math.random() * 15,
+          size,
           color: colorScales.cluster(cluster),
           metadata: {
             created: new Date(Date.now() - Math.random() * 86400000 * 30),
-            accessed: Math.floor(Math.random() * 100)
+            accessed: Math.floor(Math.random() * 100),
           },
-          tags: [`tag-${i % 5}`, `category-${i % 3}`]
-
+          tags: [`tag-${i % 5}`, `category-${i % 3}`],
+        };
+        nodes.push(node);
       }
-      // Create edges between related nodes
+
+      // edges
       const edgeCount = Math.floor(nodeCount * 1.5);
-      const edgeSet = new Set<string>();
-      for (let i = 0; i < edgeCount; i++) {
-        const sourceIdx = Math.floor(Math.random() * nodeCount);
-        const targetIdx = Math.floor(Math.random() * nodeCount);
-        if (sourceIdx !== targetIdx) {
-          const edgeId = `${sourceIdx}-${targetIdx}`;
-          const reverseEdgeId = `${targetIdx}-${sourceIdx}`;
-          if (!edgeSet.has(edgeId) && !edgeSet.has(reverseEdgeId)) {
-            edgeSet.add(edgeId);
-            const edgeTypes = ['semantic', 'temporal', 'explicit', 'inferred'];
-            edges.push({
-              id: edgeId,
-              source: nodes[sourceIdx].id,
-              target: nodes[targetIdx].id,
-              weight: Math.random(),
-              type: edgeTypes[Math.floor(Math.random() * edgeTypes.length)] as any,
-              confidence: 0.3 + Math.random() * 0.7
+      const seen = new Set<string>();
+      const edgeTypes = ["semantic", "temporal", "explicit", "inferred"] as const;
 
-          }
-        }
+      for (let i = 0; i < edgeCount; i++) {
+        const a = Math.floor(Math.random() * nodeCount);
+        const b = Math.floor(Math.random() * nodeCount);
+        if (a === b) continue;
+
+        const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const e: MemoryNetworkEdge = {
+          id: key,
+          source: nodes[a].id,
+          target: nodes[b].id,
+          weight: Math.random(),
+          type: edgeTypes[Math.floor(Math.random() * edgeTypes.length)] as any,
+          confidence: 0.3 + Math.random() * 0.7,
+        };
+        edges.push(e);
       }
-      // Create clusters
-      const clusterNames = [...new Set(nodes.map(n => n.cluster))];
-      clusterNames.forEach((clusterName, index) => {
-        const clusterNodes = nodes.filter(n => n.cluster === clusterName);
-        clusters.push({
-          id: `cluster-${index}`,
-          name: clusterName,
-          nodes: clusterNodes.map(n => n.id),
-          centroid: { x: 0, y: 0 }, // Will be calculated during layout
-          color: colorScales.cluster(clusterName),
+
+      // clusters
+      const clusterNames = [...new Set(nodes.map((n) => n.cluster))];
+      clusterNames.forEach((name, idx) => {
+        const clusterNodes = nodes.filter((n) => n.cluster === name);
+        const cl: MemoryCluster = {
+          id: `cluster-${idx}`,
+          name,
+          nodes: clusterNodes.map((n) => n.id),
+          centroid: { x: 0, y: 0 },
+          color: colorScales.cluster(name),
           size: clusterNodes.length,
           density: clusterNodes.length / nodeCount,
           coherence: 0.7 + Math.random() * 0.3,
-          topics: [`topic-${index}-1`, `topic-${index}-2`]
+          topics: [`topic-${idx}-1`, `topic-${idx}-2`],
+        };
+        clusters.push(cl);
+      });
 
-
-      // Calculate network statistics
       const statistics: NetworkStatistics = {
         nodeCount: nodes.length,
         edgeCount: edges.length,
         clusterCount: clusters.length,
-        averageConnectivity: edges.length / nodes.length,
-        networkDensity: (2 * edges.length) / (nodes.length * (nodes.length - 1)),
+        averageConnectivity: edges.length / Math.max(1, nodes.length),
+        networkDensity:
+          (2 * edges.length) / (nodes.length * Math.max(1, nodes.length - 1)),
         modularity: 0.3 + Math.random() * 0.4,
-        smallWorldCoefficient: 0.1 + Math.random() * 0.2
+        smallWorldCoefficient: 0.1 + Math.random() * 0.2,
       };
-      const networkData: MemoryNetworkData = {
-        nodes,
-        edges,
-        clusters,
-        statistics
-      };
-      setNetworkData(networkData);
+
+      setNetworkData({ nodes, edges, clusters, statistics });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load network data';
-      setError(errorMessage);
+      const msg =
+        err instanceof Error ? err.message : "Failed to load network data";
+      setError(msg);
     } finally {
       setLoading(false);
     }
-  }, [userId, memoryService, colorScales]);
-  // Filter network data based on current filters
+  }, [userId, tenantId, memoryService, colorScales, config.nodeSize]);
+
+  /** Filter data for rendering */
   const filteredData = useMemo(() => {
     if (!networkData) return null;
-    let filteredNodes = networkData.nodes.filter(node => {
-      // Confidence filter
-      if (node.confidence < filters.minConfidence || node.confidence > filters.maxConfidence) {
+
+    let nodes = networkData.nodes.filter((node) => {
+      // confidence
+      if (
+        node.confidence < filters.minConfidence ||
+        node.confidence > filters.maxConfidence
+      )
         return false;
-      }
-      // Type filter
-      if (filters.selectedTypes.length > 0 && !filters.selectedTypes.includes(node.type)) {
+
+      // type
+      if (
+        filters.selectedTypes.length > 0 &&
+        !filters.selectedTypes.includes(node.type)
+      )
         return false;
-      }
-      // Cluster filter
-      if (filters.selectedClusters.length > 0 && !filters.selectedClusters.includes(node.cluster)) {
+
+      // cluster
+      if (
+        filters.selectedClusters.length > 0 &&
+        !filters.selectedClusters.includes(node.cluster)
+      )
         return false;
-      }
-      // Search filter
+
+      // search
       if (filters.searchQuery) {
-        const query = filters.searchQuery.toLowerCase();
-        if (!node.label.toLowerCase().includes(query) && 
-            !node.content.toLowerCase().includes(query) &&
-            !node.tags.some(tag => tag.toLowerCase().includes(query))) {
-          return false;
-        }
+        const q = filters.searchQuery.toLowerCase();
+        const hit =
+          node.label.toLowerCase().includes(q) ||
+          node.content.toLowerCase().includes(q) ||
+          (node.tags || []).some((t) => t.toLowerCase().includes(q));
+        if (!hit) return false;
       }
       return true;
+    });
 
-    // Filter edges to only include those between visible nodes
-    const nodeIds = new Set(filteredNodes.map(n => n.id));
-    const filteredEdges = networkData.edges.filter(edge => 
-      nodeIds.has(edge.source as string) && nodeIds.has(edge.target as string)
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    let edges = networkData.edges.filter(
+      (e) =>
+        nodeIds.has(e.source as string) && nodeIds.has(e.target as string)
     );
-    // Apply minimum connections filter
-    if (filters.minConnections > 0) {
-      const connectionCounts = new Map<string, number>();
-      filteredEdges.forEach(edge => {
-        const source = edge.source as string;
-        const target = edge.target as string;
-        connectionCounts.set(source, (connectionCounts.get(source) || 0) + 1);
-        connectionCounts.set(target, (connectionCounts.get(target) || 0) + 1);
 
-      filteredNodes = filteredNodes.filter(node => 
-        (connectionCounts.get(node.id) || 0) >= filters.minConnections
+    if (filters.minConnections > 0) {
+      const counts = new Map<string, number>();
+      edges.forEach((e) => {
+        const s = e.source as string;
+        const t = e.target as string;
+        counts.set(s, (counts.get(s) || 0) + 1);
+        counts.set(t, (counts.get(t) || 0) + 1);
+      });
+      nodes = nodes.filter(
+        (n) => (counts.get(n.id) || 0) >= filters.minConnections
+      );
+
+      // recompute edges using reduced nodes set
+      const reduced = new Set(nodes.map((n) => n.id));
+      edges = edges.filter(
+        (e) => reduced.has(e.source as string) && reduced.has(e.target as string)
       );
     }
-    return {
-      ...networkData,
-      nodes: filteredNodes,
-      edges: filteredEdges
-    };
+
+    // pass through clusters unchanged (optional: recalc)
+    return { ...networkData, nodes, edges };
   }, [networkData, filters]);
-  // Initialize and update D3 visualization
+
+  /** Main D3 renderer */
   const updateVisualization = useCallback(() => {
     if (!filteredData || !svgRef.current) return;
-    const svg = d3.select(svgRef.current);
-    const container = svg.select('.network-container');
-    // Clear existing elements
-    container.selectAll('*').remove();
-    // Set up zoom behavior
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.1, 10])
-      .on('zoom', (event) => {
-        container.attr('transform', event.transform);
 
-    svg.call(zoom);
-    // Create simulation
-    const simulation = d3.forceSimulation<MemoryNetworkNode>(filteredData.nodes)
-      .force('link', d3.forceLink<MemoryNetworkNode, MemoryNetworkEdge>(filteredData.edges)
-        .id(d => d.id)
-        .distance(config.linkDistance)
-        .strength(config.linkStrength))
-      .force('charge', d3.forceManyBody().strength(config.chargeStrength))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(d => (d as MemoryNetworkNode).size + 2));
-    simulationRef.current = simulation;
-    // Create cluster backgrounds if enabled
-    if (config.showClusters) {
-      const clusterGroups = container.selectAll('.cluster')
+    const svg = d3.select(svgRef.current);
+    const container = svg.select<SVGGElement>(".network-container");
+    container.selectAll("*").remove();
+
+    // Zoom
+    const zoomBehavior = d3
+      .zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 10])
+      .on("zoom", (event) => {
+        container.attr("transform", event.transform.toString());
+      });
+
+    svg.call(zoomBehavior as any);
+
+    // Simulation
+    const sim = d3
+      .forceSimulation<MemoryNetworkNode>(filteredData.nodes)
+      .force(
+        "link",
+        d3
+          .forceLink<MemoryNetworkNode, MemoryNetworkEdge>(filteredData.edges)
+          .id((d) => d.id)
+          .distance(config.linkDistance)
+          .strength(config.linkStrength)
+      )
+      .force("charge", d3.forceManyBody().strength(config.chargeStrength))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force(
+        "collision",
+        d3
+          .forceCollide<MemoryNetworkNode>()
+          .radius((d) => (d as MemoryNetworkNode).size + 2)
+      );
+
+    simulationRef.current = sim;
+
+    // Clusters (background circles)
+    if (config.showClusters && filteredData.clusters) {
+      const clusterGroups = container
+        .selectAll<SVGGElement, MemoryCluster>(".cluster")
         .data(filteredData.clusters)
         .enter()
-        .append('g')
-        .attr('class', 'cluster');
-      clusterGroups.append('circle')
-        .attr('class', 'cluster-background')
-        .attr('r', d => Math.sqrt(d.size) * 20)
-        .attr('fill', d => d.color)
-        .attr('fill-opacity', 0.1)
-        .attr('stroke', d => d.color)
-        .attr('stroke-width', 2)
-        .attr('stroke-dasharray', '5,5');
+        .append("g")
+        .attr("class", "cluster");
+
+      clusterGroups
+        .append("circle")
+        .attr("class", "cluster-background")
+        .attr("r", (d) => Math.sqrt(Math.max(1, d.size)) * 20)
+        .attr("fill", (d) => d.color)
+        .attr("fill-opacity", 0.1)
+        .attr("stroke", (d) => d.color)
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", "5,5");
     }
-    // Create links
-    const links = container.selectAll('.link')
+
+    // Links
+    const links = container
+      .selectAll<SVGLineElement, MemoryNetworkEdge>(".link")
       .data(filteredData.edges)
       .enter()
-      .append('line')
-      .attr('class', 'link')
-      .attr('stroke', d => {
-        const colors = {
-          semantic: '#2196F3',
-          temporal: '#4CAF50',
-          explicit: '#FF9800',
-          inferred: '#9C27B0'
+      .append("line")
+      .attr("class", "link")
+      .attr("stroke", (d) => {
+        const colors: Record<string, string> = {
+          semantic: "#2196F3",
+          temporal: "#4CAF50",
+          explicit: "#FF9800",
+          inferred: "#9C27B0",
         };
-        return colors[d.type] || '#999';
+        return colors[d.type] || "#999";
       })
-      .attr('stroke-width', d => Math.sqrt(d.weight) * 2)
-      .attr('stroke-opacity', d => d.confidence * 0.8);
-    // Create nodes
-    const nodes = container.selectAll('.node')
+      .attr("stroke-width", (d) => Math.max(1, Math.sqrt(d.weight) * 2))
+      .attr("stroke-opacity", (d) => Math.max(0.15, d.confidence * 0.85));
+
+    // Nodes
+    const nodeGroups = container
+      .selectAll<SVGGElement, MemoryNetworkNode>(".node")
       .data(filteredData.nodes)
       .enter()
-      .append('g')
-      .attr('class', 'node')
-      .style('cursor', 'pointer');
-    // Node circles
-    nodes.append('circle')
-      .attr('r', d => d.size)
-      .attr('fill', d => {
+      .append("g")
+      .attr("class", "node")
+      .style("cursor", "pointer");
+
+    // Circles
+    nodeGroups
+      .append("circle")
+      .attr("r", (d) => d.size)
+      .attr("fill", (d) => {
         switch (config.colorScheme) {
-          case 'confidence':
+          case "confidence":
             return colorScales.confidence(d.confidence);
-          case 'type':
+          case "type":
             return colorScales.type(d.type);
-          case 'cluster':
+          case "cluster":
             return colorScales.cluster(d.cluster);
           default:
             return colorScales.default(d.id);
         }
       })
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 2);
-    // Node labels
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 2);
+
+    // Labels
     if (config.showLabels) {
-      nodes.append('text')
-        .attr('class', 'node-label')
-        .attr('dx', d => d.size + 5)
-        .attr('dy', '.35em')
-        .style('font-size', '10px')
-        .style('fill', '#333')
-        .text(d => d.label);
+      nodeGroups
+        .append("text")
+        .attr("class", "node-label")
+        .attr("dx", (d) => d.size + 5)
+        .attr("dy", ".35em")
+        .style("fontSize", "10px")
+        .style("fill", "#333")
+        .text((d) => d.label);
     }
-    // Node interactions
-    nodes
-      .on('mouseover', (event, d) => {
-        setTooltip({
-          node: d,
-          x: event.pageX,
-          y: event.pageY
 
-        // Highlight connected nodes and edges
-        const connectedNodeIds = new Set<string>();
-        links
-          .style('stroke-opacity', edge => {
-            const sourceId = typeof edge.source === 'string' ? edge.source : (edge.source as MemoryNetworkNode).id;
-            const targetId = typeof edge.target === 'string' ? edge.target : (edge.target as MemoryNetworkNode).id;
-            if (sourceId === d.id || targetId === d.id) {
-              connectedNodeIds.add(sourceId);
-              connectedNodeIds.add(targetId);
-              return 1;
-            }
-            return 0.1;
+    // Hover + tooltip + highlight
+    nodeGroups
+      .on("mouseover", (event, d) => {
+        // tooltip relative to container
+        const rect = containerRef.current?.getBoundingClientRect();
+        const x = (event as MouseEvent).clientX - (rect?.left ?? 0);
+        const y = (event as MouseEvent).clientY - (rect?.top ?? 0);
 
-        nodes.select('circle')
-          .style('opacity', node => connectedNodeIds.has(node.id) || node.id === d.id ? 1 : 0.3);
+        setTooltip({ node: d, x, y });
+
+        const connected = new Set<string>();
+        links.style("stroke-opacity", (edge) => {
+          const sid =
+            typeof edge.source === "string"
+              ? edge.source
+              : (edge.source as MemoryNetworkNode).id;
+          const tid =
+            typeof edge.target === "string"
+              ? edge.target
+              : (edge.target as MemoryNetworkNode).id;
+          if (sid === d.id || tid === d.id) {
+            connected.add(sid);
+            connected.add(tid);
+            return 1;
+          }
+          return 0.1;
+        });
+
+        nodeGroups.select("circle").style("opacity", (n) => {
+          const id = (n as MemoryNetworkNode).id;
+          return connected.has(id) || id === d.id ? 1 : 0.3;
+        });
       })
-      .on('mouseout', () => {
+      .on("mouseout", () => {
         setTooltip(null);
-        links.style('stroke-opacity', d => d.confidence * 0.8);
-        nodes.select('circle').style('opacity', 1);
+        links.style("stroke-opacity", (edge) =>
+          Math.max(0.15, edge.confidence * 0.85)
+        );
+        nodeGroups.select("circle").style("opacity", 1);
       })
-      .on('click', (event, d) => {
+      .on("click", (_, d) => {
         setSelectedNode(d);
         onNodeSelect?.(d);
       })
-      .on('dblclick', (event, d) => {
+      .on("dblclick", (_, d) => {
         onNodeDoubleClick?.(d);
+      });
 
-    // Drag behavior
-    const drag = d3.drag<SVGGElement, MemoryNetworkNode>()
-      .on('start', (event, d) => {
-        if (!event.active) simulation.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
+    // Drag
+    const drag = d3
+      .drag<SVGGElement, MemoryNetworkNode>()
+      .on("start", (event, d) => {
+        if (!event.active) sim.alphaTarget(0.3).restart();
+        d.fx = d.x ?? 0;
+        d.fy = d.y ?? 0;
       })
-      .on('drag', (event, d) => {
+      .on("drag", (event, d) => {
         d.fx = event.x;
         d.fy = event.y;
       })
-      .on('end', (event, d) => {
-        if (!event.active) simulation.alphaTarget(0);
+      .on("end", (event, d) => {
+        if (!event.active) sim.alphaTarget(0);
         d.fx = null;
         d.fy = null;
+      });
 
-    nodes.call(drag);
-    // Update positions on simulation tick
-    simulation.on('tick', () => {
+    nodeGroups.call(drag as any);
+
+    // Tick
+    sim.on("tick", () => {
       links
-        .attr('x1', d => {
-          const source = d.source as any;
-          return typeof source === 'object' ? source.x : 0;
-        })
-        .attr('y1', d => {
-          const source = d.source as any;
-          return typeof source === 'object' ? source.y : 0;
-        })
-        .attr('x2', d => {
-          const target = d.target as any;
-          return typeof target === 'object' ? target.x : 0;
-        })
-        .attr('y2', d => {
-          const target = d.target as any;
-          return typeof target === 'object' ? target.y : 0;
+        .attr("x1", (d) =>
+          typeof d.source === "object" ? (d.source as any).x ?? 0 : 0
+        )
+        .attr("y1", (d) =>
+          typeof d.source === "object" ? (d.source as any).y ?? 0 : 0
+        )
+        .attr("x2", (d) =>
+          typeof d.target === "object" ? (d.target as any).x ?? 0 : 0
+        )
+        .attr("y2", (d) =>
+          typeof d.target === "object" ? (d.target as any).y ?? 0 : 0
+        );
 
-      nodes.attr('transform', d => `translate(${(d as any).x || 0},${(d as any).y || 0})`);
-      // Update cluster positions
-      if (config.showClusters) {
-        filteredData.clusters.forEach(cluster => {
-          const clusterNodes = filteredData.nodes.filter(n => cluster.nodes.includes(n.id));
-          if (clusterNodes.length > 0) {
-            cluster.centroid.x = d3.mean(clusterNodes, n => (n as any).x || 0) || 0;
-            cluster.centroid.y = d3.mean(clusterNodes, n => (n as any).y || 0) || 0;
+      nodeGroups.attr(
+        "transform",
+        (d) => `translate(${(d as any).x || 0}, ${(d as any).y || 0})`
+      );
+
+      // cluster centroids
+      if (config.showClusters && filteredData.clusters) {
+        filteredData.clusters.forEach((cluster) => {
+          const cNodes = filteredData.nodes.filter((n) =>
+            cluster.nodes.includes(n.id)
+          );
+          if (cNodes.length > 0) {
+            cluster.centroid.x =
+              d3.mean(cNodes, (n: any) => n.x || 0) ?? cluster.centroid.x;
+            cluster.centroid.y =
+              d3.mean(cNodes, (n: any) => n.y || 0) ?? cluster.centroid.y;
           }
+        });
 
-        container.selectAll('.cluster circle')
-          .attr('cx', d => (d as MemoryCluster).centroid.x)
-          .attr('cy', d => (d as MemoryCluster).centroid.y);
+        container
+          .selectAll<SVGCircleElement, MemoryCluster>(".cluster-background")
+          .attr("cx", (d) => d.centroid.x)
+          .attr("cy", (d) => d.centroid.y)
+          .on("click", (_, d) => onClusterSelect?.(d));
       }
+    });
 
-    // Control simulation playback
-    if (!isPlaying) {
-      simulation.stop();
-    }
-  }, [filteredData, config, width, height, colorScales, isPlaying, onNodeSelect, onNodeDoubleClick]);
-  // Load data on mount
+    if (!isPlaying) sim.stop();
+  }, [
+    filteredData,
+    config,
+    width,
+    height,
+    colorScales,
+    isPlaying,
+    onNodeSelect,
+    onNodeDoubleClick,
+    onClusterSelect,
+  ]);
+
+  // Load on mount
   useEffect(() => {
     loadNetworkData();
   }, [loadNetworkData]);
-  // Update visualization when data or config changes
+
+  // Refresh render on data/config changes
   useEffect(() => {
     updateVisualization();
   }, [updateVisualization]);
-  // Cleanup simulation on unmount
+
+  // Cleanup
   useEffect(() => {
     return () => {
-      if (simulationRef.current) {
-        simulationRef.current.stop();
-      }
+      simulationRef.current?.stop();
     };
   }, []);
-  // Control functions
+
+  // Controls
   const handleZoomIn = useCallback(() => {
     if (svgRef.current) {
-      d3.select(svgRef.current).transition().call(
-        d3.zoom<SVGSVGElement, unknown>().scaleBy as any, 1.5
-      );
+      d3.select(svgRef.current)
+        .transition()
+        .call((d3.zoom<SVGSVGElement, unknown>().scaleBy as any), 1.5);
     }
   }, []);
+
   const handleZoomOut = useCallback(() => {
     if (svgRef.current) {
-      d3.select(svgRef.current).transition().call(
-        d3.zoom<SVGSVGElement, unknown>().scaleBy as any, 1 / 1.5
-      );
+      d3.select(svgRef.current)
+        .transition()
+        .call((d3.zoom<SVGSVGElement, unknown>().scaleBy as any), 1 / 1.5);
     }
   }, []);
+
   const handleReset = useCallback(() => {
     if (svgRef.current) {
-      d3.select(svgRef.current).transition().call(
-        d3.zoom<SVGSVGElement, unknown>().transform as any,
-        d3.zoomIdentity
-      );
+      d3.select(svgRef.current)
+        .transition()
+        .call(
+          (d3.zoom<SVGSVGElement, unknown>().transform as any),
+          d3.zoomIdentity
+        );
     }
-    if (simulationRef.current) {
-      simulationRef.current.alpha(1).restart();
-    }
+    simulationRef.current?.alpha(1).restart();
   }, []);
-  const togglePlayPause = useCallback(() => {
-    setIsPlaying(prev => {
-      const newPlaying = !prev;
-      if (simulationRef.current) {
-        if (newPlaying) {
-          simulationRef.current.alpha(0.3).restart();
-        } else {
-          simulationRef.current.stop();
-        }
-      }
-      return newPlaying;
 
+  const togglePlayPause = useCallback(() => {
+    setIsPlaying((prev) => {
+      const next = !prev;
+      if (simulationRef.current) {
+        if (next) simulationRef.current.alpha(0.3).restart();
+        else simulationRef.current.stop();
+      }
+      return next;
+    });
   }, []);
+
   const toggleFullscreen = useCallback(() => {
-    setIsFullscreen(prev => !prev);
+    setIsFullscreen((prev) => !prev);
   }, []);
+
   if (error) {
     return (
       <Card className="p-6 sm:p-4 md:p-6">
         <div className="text-center">
-          <div className="text-red-600 mb-4">
-            <Settings className="w-12 h-12 mx-auto mb-2 " />
+          <div className="mb-4 text-red-600">
+            <Settings className="mx-auto mb-2 h-12 w-12" />
             <h3 className="text-lg font-semibold">Network Error</h3>
           </div>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <Button onClick={loadNetworkData} variant="outline" >
+          <p className="mb-4 text-gray-600">{error}</p>
+          <Button onClick={loadNetworkData} variant="outline">
+            Retry
           </Button>
         </div>
       </Card>
     );
   }
+
   return (
-    <div 
+    <div
       ref={containerRef}
-      className={`relative ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : ''}`}
+      className={`relative ${isFullscreen ? "fixed inset-0 z-50 bg-white" : ""}`}
       style={{ height: `${height}px`, width: `${width}px` }}
+      data-kari="memory-network-graph"
     >
       {/* Controls */}
       {showControls && (
-        <div className="absolute top-4 left-4 z-10 space-y-2">
-          <Card className="p-2 sm:p-4 md:p-6">
+        <div className="absolute left-4 top-4 z-10 space-y-2">
+          <Card className="p-2">
             <div className="flex space-x-1">
-              <Button size="sm" variant="outline" onClick={handleZoomIn} >
-                <ZoomIn className="w-4 h-4 " />
+              <Button size="sm" variant="outline" onClick={handleZoomIn} title="Zoom in">
+                <ZoomIn className="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="outline" onClick={handleZoomOut} >
-                <ZoomOut className="w-4 h-4 " />
+              <Button size="sm" variant="outline" onClick={handleZoomOut} title="Zoom out">
+                <ZoomOut className="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="outline" onClick={handleReset} >
-                <RotateCcw className="w-4 h-4 " />
+              <Button size="sm" variant="outline" onClick={handleReset} title="Reset view">
+                <RotateCcw className="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="outline" onClick={togglePlayPause} >
-                {isPlaying ? <Pause className="w-4 h-4 " /> : <Play className="w-4 h-4 " />}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={togglePlayPause}
+                title={isPlaying ? "Pause layout" : "Resume layout"}
+              >
+                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               </Button>
-              <Button size="sm" variant="outline" onClick={toggleFullscreen} >
-                {isFullscreen ? <Minimize2 className="w-4 h-4 " /> : <Maximize2 className="w-4 h-4 " />}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={toggleFullscreen}
+                title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              >
+                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </Button>
             </div>
           </Card>
-          {/* Search and Filter */}
-          <Card className="p-3 w-64 ">
+
+          {/* Search + filter */}
+          <Card className="w-64 p-3">
             <div className="space-y-2">
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 " />
-                <input
-                  type="text"
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+                <Input
                   placeholder="Search nodes..."
                   value={filters.searchQuery}
-                  onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
-                  className="pl-8 text-sm md:text-base lg:text-lg"
+                  onChange={(e) =>
+                    setFilters((p) => ({ ...p, searchQuery: e.target.value }))
+                  }
+                  className="pl-8"
                 />
               </div>
+
               <div className="flex items-center space-x-2">
-                <label className="text-xs text-gray-600 sm:text-sm md:text-base">Min Confidence:</label>
+                <label className="text-xs text-gray-600">Min Confidence:</label>
                 <input
                   type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
+                  min={0}
+                  max={1}
+                  step={0.1}
                   value={filters.minConfidence}
-                  onChange={(e) => setFilters(prev => ({ 
-                    ...prev, 
-                    minConfidence: parseFloat(e.target.value) 
-                  }))}
+                  onChange={(e) =>
+                    setFilters((p) => ({
+                      ...p,
+                      minConfidence: parseFloat(e.target.value),
+                    }))
+                  }
                   className="flex-1"
                 />
-                <span className="text-xs text-gray-600 w-8 ">
+                <span className="w-8 text-xs text-gray-600">
                   {filters.minConfidence.toFixed(1)}
                 </span>
               </div>
+
               <div className="flex items-center space-x-2">
-                <label className="text-xs text-gray-600 sm:text-sm md:text-base">Color by:</label>
+                <label className="text-xs text-gray-600">Color by:</label>
                 <select
                   value={config.colorScheme}
-                  onChange={(e) => setConfig(prev => ({ 
-                    ...prev, 
-                    colorScheme: e.target.value as any 
-                  }))}
-                  className="flex-1 text-xs border rounded px-1 py-1 sm:text-sm md:text-base"
+                  onChange={(e) =>
+                    setConfig((p) => ({
+                      ...p,
+                      colorScheme: e.target.value as NetworkConfig["colorScheme"],
+                    }))
+                  }
+                  className="rounded border px-1 py-1 text-xs"
                 >
                   <option value="cluster">Cluster</option>
                   <option value="type">Type</option>
@@ -568,107 +728,119 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           </Card>
         </div>
       )}
+
       {/* Statistics */}
       {networkData && (
-        <div className="absolute top-4 right-4 z-10">
-          <Card className="p-3 sm:p-4 md:p-6">
-            <div className="text-xs space-y-1 sm:text-sm md:text-base">
+        <div className="absolute right-4 top-4 z-10">
+          <Card className="p-3">
+            <div className="space-y-1 text-xs">
               <div className="font-semibold">Network Statistics</div>
-              <div>Nodes: {filteredData?.nodes.length || 0} / {networkData.statistics.nodeCount}</div>
-              <div>Edges: {filteredData?.edges.length || 0} / {networkData.statistics.edgeCount}</div>
+              <div>
+                Nodes: {filteredData?.nodes.length || 0} / {networkData.statistics.nodeCount}
+              </div>
+              <div>
+                Edges: {filteredData?.edges.length || 0} / {networkData.statistics.edgeCount}
+              </div>
               <div>Clusters: {networkData.statistics.clusterCount}</div>
-              <div>Density: {(networkData.statistics.networkDensity * 100).toFixed(1)}%</div>
+              <div>
+                Density: {(networkData.statistics.networkDensity * 100).toFixed(1)}%
+              </div>
             </div>
           </Card>
         </div>
       )}
-      {/* Main SVG */}
+
+      {/* SVG */}
       <svg
         ref={svgRef}
         width={width}
         height={height}
-        className="border rounded"
-        style={{ background: '#fafafa' }}
+        className="rounded border"
+        style={{ background: "#fafafa" }}
       >
         <defs>
-          <marker
-            id="arrowhead"
-            markerWidth="10"
-            markerHeight="7"
-            refX="9"
-            refY="3.5"
-            orient="auto"
-          >
-            <polygon
-              points="0 0, 10 3.5, 0 7"
-              fill="#999"
-            />
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#999" />
           </marker>
         </defs>
         <g className="network-container" />
       </svg>
-      {/* Loading overlay */}
+
+      {/* Loading */}
       {loading && (
-        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-white/75">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2 "></div>
-            <div className="text-sm text-gray-600 md:text-base lg:text-lg">Loading network...</div>
+            <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500" />
+            <div className="text-sm text-gray-600">Loading network...</div>
           </div>
         </div>
       )}
+
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="absolute z-20 bg-black text-white text-xs rounded p-2 pointer-events-none max-w-xs sm:text-sm md:text-base"
+          className="pointer-events-none absolute z-20 max-w-xs rounded bg-black p-2 text-xs text-white"
           style={{
             left: tooltip.x + 10,
             top: tooltip.y - 10,
-            transform: 'translateY(-100%)'
+            transform: "translateY(-100%)",
           }}
-         role="tooltip">
+          role="tooltip"
+        >
           <div className="font-semibold">{tooltip.node.label}</div>
           <div className="text-gray-300">Type: {tooltip.node.type}</div>
           <div className="text-gray-300">Cluster: {tooltip.node.cluster}</div>
           <div className="text-gray-300">
             Confidence: {(tooltip.node.confidence * 100).toFixed(0)}%
           </div>
-          <div className="text-gray-300 mt-1 line-clamp-2">
+          <div className="mt-1 line-clamp-2 text-gray-300">
             {tooltip.node.content}
           </div>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {tooltip.node.tags.slice(0, 3).map(tag => (
-              <Badge key={tag} variant="secondary" className="text-xs sm:text-sm md:text-base">
+          <div className="mt-1 flex flex-wrap gap-1">
+            {tooltip.node.tags.slice(0, 3).map((tag) => (
+              <Badge key={tag} variant="secondary" className="text-xs">
                 {tag}
               </Badge>
             ))}
           </div>
         </div>
       )}
+
       {/* Selected node details */}
       {selectedNode && (
         <div className="absolute bottom-4 left-4 z-10">
-          <Card className="p-3 max-w-sm sm:p-4 md:p-6">
+          <Card className="max-w-sm p-3">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-sm md:text-base lg:text-lg">{selectedNode.label}</h4>
-                <button
+                <h4 className="text-sm font-semibold">{selectedNode.label}</h4>
+                <Button
                   onClick={() => setSelectedNode(null)}
                   className="text-gray-400 hover:text-gray-600"
+                  variant="ghost"
+                  size="sm"
                 >
                   ×
-                </button>
+                </Button>
               </div>
-              <div className="text-xs text-gray-600 sm:text-sm md:text-base">
-                <div>Type: <Badge variant="outline" className="text-xs sm:text-sm md:text-base">{selectedNode.type}</Badge></div>
-                <div>Cluster: <Badge variant="outline" className="text-xs sm:text-sm md:text-base">{selectedNode.cluster}</Badge></div>
+              <div className="text-xs text-gray-600">
+                <div>
+                  Type:{" "}
+                  <Badge variant="outline" className="text-xs">
+                    {selectedNode.type}
+                  </Badge>
+                </div>
+                <div>
+                  Cluster:{" "}
+                  <Badge variant="outline" className="text-xs">
+                    {selectedNode.cluster}
+                  </Badge>
+                </div>
                 <div>Confidence: {(selectedNode.confidence * 100).toFixed(0)}%</div>
               </div>
-              <div className="text-xs sm:text-sm md:text-base">
-                {selectedNode.content}
-              </div>
+              <div className="text-xs">{selectedNode.content}</div>
               <div className="flex flex-wrap gap-1">
-                {selectedNode.tags.map(tag => (
-                  <Badge key={tag} variant="secondary" className="text-xs sm:text-sm md:text-base">
+                {selectedNode.tags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="text-xs">
                     {tag}
                   </Badge>
                 ))}
@@ -680,4 +852,5 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     </div>
   );
 };
+
 export default MemoryNetworkGraph;

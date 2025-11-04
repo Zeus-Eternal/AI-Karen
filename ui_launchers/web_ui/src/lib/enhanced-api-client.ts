@@ -125,6 +125,7 @@ export class EnhancedApiClient {
       } catch (error) {
         return config;
       }
+    });
 
     // Request interceptor for loading states
     this.addRequestInterceptor(async (config) => {
@@ -142,6 +143,7 @@ export class EnhancedApiClient {
       } catch (error) {
         return config;
       }
+    });
 
     // Response interceptor for authentication and error handling
     this.addResponseInterceptor(async (response, config) => {
@@ -165,7 +167,7 @@ export class EnhancedApiClient {
             this.rateLimiters.set(endpoint, {
               count: 0,
               resetTime: Date.now() + parseInt(retryAfter) * 1000,
-
+            });
           }
         }
         // Handle 401 unauthorized
@@ -176,7 +178,7 @@ export class EnhancedApiClient {
             type: "warning",
             title: "Session Expired",
             message: "Please log in again to continue.",
-
+          });
         }
         // Handle 403 forbidden
         if (response.status === 403) {
@@ -185,12 +187,13 @@ export class EnhancedApiClient {
             type: "error",
             title: "Access Denied",
             message: "You do not have permission to perform this action.",
-
+          });
         }
         return response;
       } catch (error) {
         return response;
       }
+    });
 
     // Error interceptor for global error handling
     this.addErrorInterceptor(async (error, config) => {
@@ -217,7 +220,7 @@ export class EnhancedApiClient {
                 type: "error",
                 title: "Network Error",
                 message: "Please check your internet connection and try again.",
-
+              });
               break;
             case "TIMEOUT":
               addNotification({
@@ -225,7 +228,7 @@ export class EnhancedApiClient {
                 title: "Request Timeout",
                 message:
                   "The request took too long to complete. Please try again.",
-
+              });
               break;
             case "RATE_LIMITED":
               addNotification({
@@ -233,7 +236,7 @@ export class EnhancedApiClient {
                 title: "Rate Limited",
                 message:
                   "Too many requests. Please wait a moment before trying again.",
-
+              });
               break;
             default:
               if (error.status && error.status >= 500) {
@@ -241,7 +244,7 @@ export class EnhancedApiClient {
                   type: "error",
                   title: "Server Error",
                   message: "A server error occurred. Please try again later.",
-
+                });
               }
           }
         }
@@ -249,7 +252,7 @@ export class EnhancedApiClient {
       } catch (interceptorError) {
         return error;
       }
-
+    });
   }
   // Setup performance monitoring
   private setupPerformanceMonitoring(): void {
@@ -341,7 +344,7 @@ export class EnhancedApiClient {
         const response = await fetch(url, {
           ...finalConfig,
           signal: controller.signal,
-
+        });
         clearTimeout(timeoutId);
         // Update request log
         requestLog.duration = Date.now() - startTime;
@@ -452,7 +455,7 @@ export class EnhancedApiClient {
       ...config,
       method: "POST",
       body: data ? JSON.stringify(data) : undefined,
-
+    });
   }
   public async put<T = any>(
     endpoint: string,
@@ -463,7 +466,7 @@ export class EnhancedApiClient {
       ...config,
       method: "PUT",
       body: data ? JSON.stringify(data) : undefined,
-
+    });
   }
   public async patch<T = any>(
     endpoint: string,
@@ -474,7 +477,7 @@ export class EnhancedApiClient {
       ...config,
       method: "PATCH",
       body: data ? JSON.stringify(data) : undefined,
-
+    });
   }
   public async delete<T = any>(
     endpoint: string,
@@ -500,7 +503,7 @@ export class EnhancedApiClient {
             const progress = (event.loaded / event.total) * 100;
             onProgress(progress);
           }
-
+        });
         xhr.addEventListener("load", () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
@@ -518,10 +521,10 @@ export class EnhancedApiClient {
               )
             );
           }
-
+        });
         xhr.addEventListener("error", () => {
           reject(new ApiError("Upload failed", "UPLOAD_ERROR"));
-
+        });
         xhr.open("POST", `${this.baseURL}${endpoint}`);
         // Add auth header
         const token = this.getAuthToken();
@@ -529,7 +532,7 @@ export class EnhancedApiClient {
           xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         }
         xhr.send(formData);
-
+      });
     }
     // Fallback to regular request
     return this.request<T>(endpoint, {
@@ -540,7 +543,7 @@ export class EnhancedApiClient {
         ...config?.headers,
         "Content-Type": undefined, // Let browser set it for FormData
       },
-
+    });
   }
   // Default retry condition
   private defaultRetryCondition = (

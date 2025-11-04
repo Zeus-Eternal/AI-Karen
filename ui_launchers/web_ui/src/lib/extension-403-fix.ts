@@ -1,72 +1,41 @@
 /**
- * Extension 403 Error Fix
- * 
- * Immediate fix for the 403 Forbidden error when accessing /api/extensions
- * This provides a quick solution while the comprehensive error recovery system is being integrated.
+ * Extension 403 Error Fix (production-ready)
+ *
+ * Immediate, idempotent fetch patch for /api/extensions*:
+ * - Handles 403 (permission), 504 (timeout), network errors (offline)
+ * - Optional: also shields common transient 5xx + 401
+ * - Returns deterministic fallback payloads to keep UI stable
  */
 
 import { logger } from './logger';
 
-/**
- * Patch fetch to handle extension errors (403, 504, network errors)
- */
-export function patchFetchForExtension403() {
-  if (typeof window === 'undefined') return;
+declare global {
+  interface Window {
+    __EXT_PATCH__?: {
+      extFetchPatched?: boolean;
+      extOriginalFetch?: typeof fetch;
+    };
+  }
+}
 
-  const originalFetch = window.fetch;
+/** Type guard: running in a browser */
+function isBrowser(): boolean {
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
 
-  window.fetch = async function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    try {
-      const response = await originalFetch(input, init);
-      
-      // Handle 403 and 504 errors for extension endpoints
-      if (!response.ok && (response.status === 403 || response.status === 504)) {
-        const url = typeof input === 'string' ? input : input.toString();
-        
-        if (url.includes('/api/extensions')) {
-          const errorType = response.status === 403 ? 'permission denied' : 'timeout';
-          logger.warn(`Extension API ${response.status} error (${errorType}) for ${url}, providing fallback response`);
-          
-          // Create fallback response data
-          const fallbackData = getFallbackDataForExtensionEndpoint(url, response.status);
-          
-          // Return a mock successful response with fallback data
-          return new Response(JSON.stringify(fallbackData), {
-            status: 200,
-            statusText: 'OK',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Fallback-Mode': response.status === 403 ? 'extension-readonly' : 'extension-offline'
-            }
+/** Match any /api/extensions endpoint */
+function isExtensionsUrl(url: string): boolean {
+  return url.includes('/api/extensions');
+}
 
-        }
-      }
-      
-      return response;
-    } catch (error) {
-      // Handle network errors for extension endpoints
-      const url = typeof input === 'string' ? input : input.toString();
-      
-      if (url.includes('/api/extensions')) {
-        logger.warn(`Extension API network error for ${url}, providing fallback response`);
-        
-        const fallbackData = getFallbackDataForExtensionEndpoint(url, 0); // 0 indicates network error
-        
-        return new Response(JSON.stringify(fallbackData), {
-          status: 200,
-          statusText: 'OK',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Fallback-Mode': 'extension-offline'
-          }
+/** The list endpoint (used to return the full fallback catalog) */
+function isListEndpoint(url: string): boolean {
+  return /\/api\/extensions\/?$/.test(url);
+}
 
-      }
-      
-      throw error;
-    }
-  };
-
-  logger.info('Extension 403 error fix applied to fetch');
+/** Error codes we treat as “gracefully degradable” */
+function isGracefulStatus(status: number): boolean {
+  return status === 403 || status === 504 || status === 502 || status === 503 || status === 401;
 }
 
 /**
@@ -74,7 +43,7 @@ export function patchFetchForExtension403() {
  */
 function getFallbackDataForExtensionEndpoint(url: string, status: number = 403): any {
   // Main extensions list endpoint
-  if (url.endsWith('/api/extensions') || url.endsWith('/api/extensions/')) {
+  if (isListEndpoint(url)) {
     if (status === 504) {
       // Gateway timeout - service unavailable
       return {
@@ -83,7 +52,8 @@ function getFallbackDataForExtensionEndpoint(url: string, status: number = 403):
             id: 'offline-mode',
             name: 'offline-mode',
             display_name: 'Extensions (Service Unavailable)',
-            description: 'Extension service is temporarily unavailable due to a timeout. Core functionality continues to work.',
+            description:
+              'Extension service is temporarily unavailable due to a timeout. Core functionality continues to work.',
             version: '1.0.0',
             author: 'System',
             category: 'system',
@@ -112,7 +82,8 @@ function getFallbackDataForExtensionEndpoint(url: string, status: number = 403):
             id: 'network-error',
             name: 'network-error',
             display_name: 'Extensions (Network Error)',
-            description: 'Unable to connect to extension service. Please check your internet connection.',
+            description:
+              'Unable to connect to extension service. Please check your internet connection.',
             version: '1.0.0',
             author: 'System',
             category: 'system',
@@ -134,14 +105,15 @@ function getFallbackDataForExtensionEndpoint(url: string, status: number = 403):
         error_type: 'network'
       };
     } else {
-      // 403 or other permission errors
+      // 403/401 or other permission errors
       return {
         extensions: {
           'readonly-mode': {
             id: 'readonly-mode',
             name: 'readonly-mode',
             display_name: 'Extensions (Read-Only Mode)',
-            description: 'Extension features are available in read-only mode. Some functionality may be limited due to insufficient permissions.',
+            description:
+              'Extension features are available in read-only mode. Some functionality may be limited due to insufficient permissions.',
             version: '1.0.0',
             author: 'System',
             category: 'system',
@@ -165,7 +137,7 @@ function getFallbackDataForExtensionEndpoint(url: string, status: number = 403):
     }
   }
 
-  // Extension status endpoint
+  // Extension status/health endpoints
   if (url.includes('/status') || url.includes('/health')) {
     if (status === 504 || status === 0) {
       return {
@@ -179,27 +151,27 @@ function getFallbackDataForExtensionEndpoint(url: string, status: number = 403):
         fallback_mode: true,
         error_type: status === 504 ? 'timeout' : 'network'
       };
-    } else {
-      return {
-        status: 'readonly',
-        message: 'Extension status available in read-only mode',
-        health: {
-          status: 'degraded',
-          message: 'Running in read-only mode',
-          lastCheck: new Date().toISOString()
-        },
-        fallback_mode: true,
-        error_type: 'permission'
-      };
     }
+    return {
+      status: 'readonly',
+      message: 'Extension status available in read-only mode',
+      health: {
+        status: 'degraded',
+        message: 'Running in read-only mode',
+        lastCheck: new Date().toISOString()
+      },
+      fallback_mode: true,
+      error_type: 'permission'
+    };
   }
 
   // Background tasks endpoint
   if (url.includes('/background-tasks')) {
-    const message = status === 504 || status === 0 
-      ? 'Background tasks service is temporarily unavailable'
-      : 'Background tasks not available in read-only mode';
-    
+    const message =
+      status === 504 || status === 0
+        ? 'Background tasks service is temporarily unavailable'
+        : 'Background tasks not available in read-only mode';
+
     return {
       tasks: [],
       total: 0,
@@ -211,10 +183,11 @@ function getFallbackDataForExtensionEndpoint(url: string, status: number = 403):
   }
 
   // Generic extension endpoint
-  const message = status === 504 || status === 0
-    ? 'This extension feature is temporarily unavailable'
-    : 'This extension feature is not available in read-only mode';
-    
+  const message =
+    status === 504 || status === 0
+      ? 'This extension feature is temporarily unavailable'
+      : 'This extension feature is not available in read-only mode';
+
   return {
     data: [],
     message,
@@ -226,55 +199,136 @@ function getFallbackDataForExtensionEndpoint(url: string, status: number = 403):
 }
 
 /**
+ * Patch fetch to handle extension errors (403, 504, plus offline/5xx/401)
+ * Idempotent and SSR-safe.
+ */
+export function patchFetchForExtension403(): void {
+  if (!isBrowser()) return;
+
+  if (!window.__EXT_PATCH__) window.__EXT_PATCH__ = {};
+
+  // Avoid double-patching under HMR or multiple imports
+  if (window.__EXT_PATCH__.extFetchPatched) {
+    logger?.info?.('Extension 403 error fix already applied to fetch');
+    return;
+  }
+
+  const originalFetch = window.fetch.bind(window);
+  window.__EXT_PATCH__.extOriginalFetch = originalFetch;
+
+  window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const url = typeof input === 'string' ? input : input.toString();
+
+    try {
+      const response = await originalFetch(input as any, init);
+
+      // Non-extensions: pass through
+      if (!isExtensionsUrl(url)) return response;
+
+      // OK path: pass through
+      if (response.ok) return response;
+
+      // Graceful statuses → fallback
+      if (isGracefulStatus(response.status)) {
+        const kind =
+          response.status === 504 ? 'extension-offline' : 'extension-readonly';
+        const fallbackData = getFallbackDataForExtensionEndpoint(url, response.status);
+
+        logger?.warn?.(
+          `Extension API ${response.status} for ${url}, returning fallback (${kind})`
+        );
+
+        return new Response(JSON.stringify(fallbackData), {
+          status: 200,
+          statusText: 'OK',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Fallback-Mode': kind
+          }
+        });
+      }
+
+      // Other errors: return as-is
+      return response;
+    } catch (error) {
+      // Network/CORS failure on extensions → offline fallback
+      if (isExtensionsUrl(url)) {
+        logger?.warn?.(
+          `Extension API network error for ${url}, providing offline fallback`
+        );
+        const fallbackData = getFallbackDataForExtensionEndpoint(url, 0);
+        return new Response(JSON.stringify(fallbackData), {
+          status: 200,
+          statusText: 'OK',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Fallback-Mode': 'extension-offline'
+          }
+        });
+      }
+
+      // Non-extensions: propagate
+      throw error;
+    }
+  };
+
+  window.__EXT_PATCH__.extFetchPatched = true;
+  logger?.info?.('Extension 403 error fix applied to fetch');
+}
+
+/**
  * Show user notification about extension status
  */
-export function showExtensionStatusNotification(errorType: 'permission' | 'timeout' | 'network' = 'permission') {
-  if (typeof window === 'undefined') return;
+export function showExtensionStatusNotification(
+  errorType: 'permission' | 'timeout' | 'network' = 'permission'
+) {
+  if (!isBrowser()) return;
 
   let message: string;
   let logLevel: 'info' | 'warn' | 'error' = 'info';
 
   switch (errorType) {
     case 'timeout':
-      message = 'Extension service is temporarily unavailable due to a timeout. Core functionality continues to work.';
+      message =
+        'Extension service is temporarily unavailable due to a timeout. Core functionality continues to work.';
       logLevel = 'warn';
       break;
     case 'network':
-      message = 'Unable to connect to extension service. Please check your internet connection.';
+      message =
+        'Unable to connect to extension service. Please check your internet connection.';
       logLevel = 'error';
       break;
     case 'permission':
     default:
-      message = 'Extension features are running in read-only mode due to insufficient permissions.';
+      message =
+        'Extension features are running in read-only mode due to insufficient permissions.';
       logLevel = 'info';
       break;
   }
 
-  // Log with appropriate level
-  logger[logLevel](message);
-  
-  // You could add a toast notification here if you have a notification system
-  // For example:
-  // if (errorType === 'timeout' || errorType === 'network') {
-  //   toast.warning(message);
-  // } else {
-  //   toast.info(message);
-  // }
+  logger?.[logLevel]?.(message);
+
+  // Hook a toast system here if present:
+  // toast[logLevel === 'error' ? 'error' : logLevel](message);
 }
 
 /**
- * Initialize the extension error fix
+ * Initialize the extension error fix (safe to call multiple times)
  */
 export function initializeExtensionErrorFix() {
   patchFetchForExtension403();
-  
-  logger.info('Extension error fix initialized (handles 403, 504, and network errors)');
+  logger?.info?.(
+    'Extension error fix initialized (handles 403, 504, 5xx/401 gracefully, and network errors)'
+  );
 }
 
-// Auto-initialize if in browser environment
-if (typeof window !== 'undefined') {
-  // Wait a bit for other modules to load
+// Auto-init (browser only) after a short delay to let other modules mount first
+if (isBrowser()) {
   setTimeout(() => {
-    initializeExtensionErrorFix();
+    try {
+      initializeExtensionErrorFix();
+    } catch (e) {
+      logger?.error?.('Failed to initialize Extension 403 error fix', e);
+    }
   }, 500);
 }

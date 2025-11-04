@@ -5,38 +5,77 @@
  */
 "use client";
 
-import React from 'react';
-import { Separator } from '@/components/ui/separator';
-import { useExtensionContext } from '@/extensions';
+import React, { memo, useCallback } from "react";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { useExtensionContext } from "@/extensions";
 
-export default function ExtensionBreadcrumbs() {
+type Crumb = {
+  id: string | number;
+  name: string;
+};
+
+function _ExtensionBreadcrumbs() {
   const {
     state: { breadcrumbs },
     dispatch,
-  } = useExtensionContext();
-
-  if (breadcrumbs.length === 0) {
-    return null;
-  }
-
-  const handleClick = (index: number) => {
-    dispatch({ type: 'SET_LEVEL', level: index + 1 });
+  } = useExtensionContext() as {
+    state: { breadcrumbs: Crumb[] };
+    dispatch: (action: { type: "SET_LEVEL"; level: number }) => void;
   };
 
+  if (!Array.isArray(breadcrumbs) || breadcrumbs.length === 0) return null;
+
+  const handleClick = useCallback(
+    (index: number) => {
+      // index is zero-based; levels are 1-based in your reducer
+      dispatch({ type: "SET_LEVEL", level: index + 1 });
+    },
+    [dispatch]
+  );
+
   return (
-    <div className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg">
-      {breadcrumbs.map((crumb, idx) => (
-        <React.Fragment key={crumb.id}>
-          <button
-            className="hover:underline"
-            onClick={() => handleClick(idx)}
-            type="button"
-          >
-            {crumb.name}
-          </button>
-          {idx < breadcrumbs.length - 1 && <Separator orientation="vertical" className="h-4" />}
-        </React.Fragment>
-      ))}
-    </div>
+    <nav
+      aria-label="Breadcrumb"
+      className="min-w-0" // allow inner truncation
+    >
+      <ol
+        role="list"
+        className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg"
+      >
+        {breadcrumbs.map((crumb, idx) => {
+          const isLast = idx === breadcrumbs.length - 1;
+          return (
+            <li key={crumb.id} className="flex items-center">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={`h-7 px-2 py-0 font-normal hover:underline max-w-[12rem] sm:max-w-[16rem] truncate text-ellipsis ${
+                  isLast ? "text-foreground cursor-default hover:no-underline" : ""
+                }`}
+                onClick={!isLast ? () => handleClick(idx) : undefined}
+                aria-current={isLast ? "page" : undefined}
+                disabled={isLast}
+                title={crumb.name}
+              >
+                <span className="truncate">{crumb.name}</span>
+              </Button>
+
+              {!isLast && (
+                <Separator
+                  orientation="vertical"
+                  className="mx-2 h-4 shrink-0"
+                  aria-hidden="true"
+                />
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
+
+const ExtensionBreadcrumbs = memo(_ExtensionBreadcrumbs);
+export default ExtensionBreadcrumbs;

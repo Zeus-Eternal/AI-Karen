@@ -53,9 +53,9 @@ vi.mock('@/hooks/use-form-validation', () => ({
 // Mock UI components
 vi.mock('@/components/ui/button', () => ({
     Button: ({ children, disabled, ...props }: any) => (
-        <button disabled={disabled} {...props} aria-label="Button">
+        <Button disabled={disabled} {...props} aria-label="Button">
             {children}
-        </button>
+        </Button>
     ),
 }));
 

@@ -1,75 +1,112 @@
+// app/api/copilot/start/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-// Use the correct backend URL from environment variables
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || 'http://127.0.0.1:8000';
-const TIMEOUT_MS = 30000;
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    // Forward the request to the backend copilot start endpoint
-    const base = BACKEND_URL.replace(/\/+$/, '');
-    const url = `${base}/api/copilot/start`;
-    // Get Authorization header from the request
-    const authHeader = request.headers.get('authorization');
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Connection': 'keep-alive',
-    };
-    if (authHeader) {
-      headers['Authorization'] = authHeader;
-    }
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-        signal: controller.signal,
-        // @ts-ignore Node/undici hints
-        keepalive: true,
-        cache: 'no-store',
 
-      clearTimeout(timeout);
-      const contentType = response.headers.get('content-type') || '';
-      let data: any = {};
-      if (contentType.includes('application/json')) {
-        try { 
-          data = await response.json(); 
-        } catch { 
-          data = {}; 
-        }
-      } else {
-        try { 
-          const text = await response.text(); 
-          data = { message: text };
-        } catch { 
-          data = {}; 
-        }
-      }
-      return NextResponse.json(data, { status: response.status });
-    } catch (err: any) {
-      clearTimeout(timeout);
-      // Return a fallback response for copilot start
-      return NextResponse.json(
-        { 
-          status: 'started', 
-          message: 'Copilot session initialized',
-          session_id: `session_${Date.now()}`,
-          timestamp: new Date().toISOString()
-        }, 
-        { status: 200 }
-      );
-    }
-  } catch (error) {
+const BACKEND_URL =
+  process.env.KAREN_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_KAREN_BACKEND_URL ||
+  'http://127.0.0.1:8000';
+
+const TIMEOUT_MS = 30_000;
+
+function buildUpstreamUrl(path: string) {
+  const base = BACKEND_URL.replace(/\/+$/, '');
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+function buildHeaders(req: NextRequest): Headers {
+  const h = new Headers({
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+    Connection: 'keep-alive',
+  });
+  const auth = req.headers.get('authorization');
+  if (auth) h.set('Authorization', auth);
+
+  const cookie = req.headers.get('cookie');
+  if (cookie) h.set('Cookie', cookie);
+
+  const reqId = req.headers.get('x-request-id');
+  if (reqId) h.set('X-Request-ID', reqId);
+
+  const corrId = req.headers.get('x-correlation-id');
+  if (corrId) h.set('X-Correlation-ID', corrId);
+
+  return h;
+}
+
+export async function POST(request: NextRequest) {
+  // Parse body (fail → 400)
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch (e) {
     return NextResponse.json(
-      { 
-        status: 'started', 
-        message: 'Copilot session initialized (fallback)',
-        session_id: `session_${Date.now()}`,
-        timestamp: new Date().toISOString()
+      {
+        error: 'Invalid JSON body',
+        message: e instanceof Error ? e.message : 'Malformed request payload',
       },
-      { status: 200 }
+      { status: 400 }
     );
+  }
+
+  const url = buildUpstreamUrl('/api/copilot/start');
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: buildHeaders(request),
+      body: JSON.stringify(body ?? {}),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      cache: 'no-store',
+      // keepalive not reliable for large bodies; omit on purpose
+    });
+
+    const ct = (response.headers.get('content-type') || '').toLowerCase();
+    let data: any = {};
+
+    if (ct.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch {
+        data = { message: 'Invalid JSON from upstream' };
+      }
+    } else {
+      try {
+        const text = await response.text();
+        data = text ? { message: text } : {};
+      } catch {
+        data = {};
+      }
+    }
+
+    return NextResponse.json(data, {
+      status: response.status,
+      headers: {
+        'Cache-Control': 'no-store',
+        'X-Proxy-Upstream-Status': String(response.status),
+      },
+    });
+  } catch (err: any) {
+    // Graceful “ghost-start” fallback (explicitly marked)
+    const fallback = {
+      status: 'started',
+      message: 'Copilot session initialized (fallback)',
+      session_id: `session_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+    };
+
+    // You can switch to 202 or 503 depending on product semantics.
+    // Keeping 200 to match prior behavior, but flagging via headers.
+    return NextResponse.json(fallback, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-store',
+        'X-Fallback': 'true',
+        'X-Fallback-Reason':
+          err?.name === 'AbortError'
+            ? `timeout_${Math.round(TIMEOUT_MS / 1000)}s`
+            : 'upstream_unreachable',
+      },
+    });
   }
 }

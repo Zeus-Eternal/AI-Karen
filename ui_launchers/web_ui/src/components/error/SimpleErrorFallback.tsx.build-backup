@@ -56,7 +56,7 @@ export const SimpleErrorFallback: React.FC<SimpleErrorFallbackProps> = ({
           </div>
 
           <div className="flex flex-col gap-2">
-            <button onClick={resetError} className="w-full" aria-label="Button">
+            <Button onClick={resetError} className="w-full" aria-label="Button">
               <RefreshCw className="h-4 w-4 mr-2 " />
               Try Again
             </Button>

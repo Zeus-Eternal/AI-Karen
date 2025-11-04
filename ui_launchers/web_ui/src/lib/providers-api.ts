@@ -37,6 +37,7 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
       ...authHeaders
     },
     ...init,
+  });
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');

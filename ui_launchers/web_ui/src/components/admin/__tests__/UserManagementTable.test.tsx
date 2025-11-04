@@ -22,8 +22,8 @@ jest.mock('../UserEditModal', () => ({
   UserEditModal: ({ user, onClose, onUserUpdated }: any) => (
     <div data-testid="user-edit-modal">
       <span>Editing: {user.email}</span>
-      <button onClick={onUserUpdated} aria-label="Button">Update</button>
-      <button onClick={onClose} aria-label="Button">Close</button>
+      <Button onClick={onUserUpdated} aria-label="Button">Update</Button>
+      <Button onClick={onClose} aria-label="Button">Close</Button>
     </div>
   )
 }));
@@ -36,7 +36,7 @@ jest.mock('../UserSearchFilters', () => ({
         value={filters.search || ''}
         onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
       />
-      <button onClick={onRefresh} aria-label="Button">Refresh</button>
+      <Button onClick={onRefresh} aria-label="Button">Refresh</Button>
     </div>
   )
 }));

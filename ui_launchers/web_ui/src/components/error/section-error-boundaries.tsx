@@ -45,11 +45,11 @@ export function SidebarErrorBoundary({ children, onError, className }: SectionEr
           <div className="text-xs text-muted-foreground mb-3 sm:text-sm md:text-base">
             The sidebar encountered an error. You can continue using other parts of the app.
           </div>
-          <button
+          <Button
             onClick={retry}
             className="text-xs bg-destructive text-destructive-foreground px-2 py-1 rounded hover:bg-destructive/90 sm:text-sm md:text-base"
            aria-label="Button">
-          </button>
+          </Button>
         </div>
       )}
     >
@@ -99,11 +99,11 @@ export function RightPanelErrorBoundary({ children, onError, className }: Sectio
             <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
               The right panel encountered an error. The main application is still functional.
             </div>
-            <button
+            <Button
               onClick={retry}
               className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded hover:bg-primary/90 sm:text-sm md:text-base"
              aria-label="Button">
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -134,16 +134,16 @@ export function ChatErrorBoundary({ children, onError, className }: SectionError
             The chat interface encountered an error. Your conversation history is preserved.
           </div>
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={retry}
               className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded hover:bg-primary/90 sm:text-sm md:text-base"
              aria-label="Button">
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => window.location.reload()}
               className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded hover:bg-secondary/90 sm:text-sm md:text-base"
             >
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -173,11 +173,11 @@ export function FormErrorBoundary({ children, onError, className }: SectionError
           <div className="text-xs text-muted-foreground mb-3 sm:text-sm md:text-base">
             The form encountered an error. Your input data may be preserved in your browser.
           </div>
-          <button
+          <Button
             onClick={retry}
             className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded hover:bg-primary/90 sm:text-sm md:text-base"
            aria-label="Button">
-          </button>
+          </Button>
         </div>
       )}
     >
@@ -207,12 +207,12 @@ export function ModalErrorBoundary({ children, onError, className }: SectionErro
             This dialog encountered an error.
           </div>
           <div className="flex justify-center gap-2">
-            <button
+            <Button
               onClick={retry}
               className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded hover:bg-primary/90 sm:text-sm md:text-base"
              aria-label="Button">
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => {
                 // Close modal by dispatching escape key event
                 const escEvent = new KeyboardEvent('keydown', { key: 'Escape' });
@@ -220,7 +220,7 @@ export function ModalErrorBoundary({ children, onError, className }: SectionErro
               }}
               className="text-xs bg-secondary text-secondary-foreground px-3 py-1.5 rounded hover:bg-secondary/90 sm:text-sm md:text-base"
             >
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -250,11 +250,11 @@ export function ChartErrorBoundary({ children, onError, className }: SectionErro
             </div>
             <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
             </div>
-            <button
+            <Button
               onClick={retry}
               className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded hover:bg-primary/90 sm:text-sm md:text-base"
              aria-label="Button">
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -282,11 +282,11 @@ export function WidgetErrorBoundary({ children, onError, className }: SectionErr
           <div className="text-center space-y-2">
             <div className="text-sm font-medium text-muted-foreground md:text-base lg:text-lg">
             </div>
-            <button
+            <Button
               onClick={retry}
               className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded hover:bg-primary/90 sm:text-sm md:text-base"
              aria-label="Button">
-            </button>
+            </Button>
           </div>
         </div>
       )}

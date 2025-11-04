@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {  makeBackendRequest, getTimeoutConfig, getRetryPolicy, checkBackendHealth, getConnectionStatus } from '@/app/api/_utils/backend';
+import {
+  makeBackendRequest,
+  getTimeoutConfig,
+  getRetryPolicy,
+  checkBackendHealth,
+  getConnectionStatus,
+} from '@/app/api/_utils/backend';
 import { ConnectionError } from '@/lib/connection/connection-manager';
+
 interface DatabaseConnectivityResult {
   isConnected: boolean;
   responseTime: number;
   error?: string;
   timestamp: Date;
 }
+
 interface SessionValidationAttempt {
   timestamp: Date;
   success: boolean;
@@ -16,6 +24,7 @@ interface SessionValidationAttempt {
   userAgent?: string;
   ipAddress?: string;
 }
+
 interface ErrorResponse {
   valid: false;
   user: null;
@@ -27,160 +36,174 @@ interface ErrorResponse {
   responseTime?: number;
   timestamp: string;
 }
+
 const timeoutConfig = getTimeoutConfig();
 const retryPolicy = getRetryPolicy();
-// Session validation attempt tracking (in-memory for now)
+
+// In-memory ring buffer of attempts by IP
 const sessionValidationAttempts = new Map<string, SessionValidationAttempt[]>();
-/**
- * Log session validation attempt for monitoring
- */
+
+/** Log session validation attempt for monitoring */
 function logSessionValidationAttempt(attempt: SessionValidationAttempt): void {
   const key = attempt.ipAddress || 'unknown';
   const attempts = sessionValidationAttempts.get(key) || [];
   attempts.push(attempt);
-  // Keep only last 20 attempts per IP
-  if (attempts.length > 20) {
-    attempts.splice(0, attempts.length - 20);
-  }
+  if (attempts.length > 20) attempts.splice(0, attempts.length - 20);
   sessionValidationAttempts.set(key, attempts);
-  // Log to console for monitoring
-  console.log(`[SESSION] ${attempt.success ? 'SUCCESS' : 'FAILED'} validation attempt:`, {
-    errorType: attempt.errorType,
-    responseTime: attempt.responseTime,
-    retryCount: attempt.retryCount,
-    timestamp: attempt.timestamp.toISOString(),
 
+  // lightweight console trace (replace with your logger if desired)
+  console.log(
+    `[SESSION] ${attempt.success ? 'SUCCESS' : 'FAILED'} validation attempt`,
+    {
+      errorType: attempt.errorType,
+      responseTime: attempt.responseTime,
+      retryCount: attempt.retryCount,
+      userAgent: attempt.userAgent,
+      ipAddress: attempt.ipAddress,
+      timestamp: attempt.timestamp.toISOString(),
+    }
+  );
 }
-/**
- * Get error type from exception
- */
-function getErrorType(error: any): 'timeout' | 'network' | 'credentials' | 'database' | 'server' {
-  if (!error) return 'server';
-  const message = String(error.message || error).toLowerCase();
-  if (error.name === 'AbortError' || message.includes('timeout')) {
-    return 'timeout';
-  }
-  if (message.includes('network') || message.includes('connection') || message.includes('fetch')) {
-    return 'network';
-  }
-  if (message.includes('database') || message.includes('db')) {
-    return 'database';
-  }
-  return 'server';
-}
-/**
- * Get error type from HTTP status code
- */
-function getErrorTypeFromStatus(status: number): 'timeout' | 'network' | 'credentials' | 'database' | 'server' {
-  switch (status) {
-    case 401:
-    case 403:
-      return 'credentials';
-    case 408:
-    case 504:
-      return 'timeout';
-    case 502:
-    case 503:
-      return 'network';
-    case 500:
-      return 'database';
-    default:
-      return 'server';
-  }
-}
-/**
- * Check if error is retryable
- */
+
+/** Heuristics for retryable errors */
 function isRetryableError(error: any): boolean {
   if (!error) return false;
-  const message = String(error.message || error).toLowerCase();
-  const isTimeout = error.name === 'AbortError' || message.includes('timeout');
-  const isNetwork = message.includes('network') || message.includes('connection') || message.includes('fetch');
-  const isSocket = message.includes('und_err_socket') || message.includes('other side closed');
-  return isTimeout || isNetwork || isSocket;
+  const msg = String(error.message || error).toLowerCase();
+  const isAbort = error.name === 'AbortError' || msg.includes('timeout');
+  const isNet = msg.includes('network') || msg.includes('connection') || msg.includes('fetch');
+  const isSocket = msg.includes('und_err_socket') || msg.includes('other side closed');
+  return isAbort || isNet || isSocket;
 }
-/**
- * Check if HTTP status is retryable
- */
+
+/** Heuristics for retryable statuses */
 function isRetryableStatus(status: number): boolean {
   return status >= 500 || status === 408 || status === 429;
 }
-/**
- * Test database connectivity for authentication validation using enhanced backend utilities
- */
+
+/** Test database/backend connectivity with circuit-breaker awareness */
 async function testDatabaseConnectivity(): Promise<DatabaseConnectivityResult> {
-  const startTime = Date.now();
+  const start = Date.now();
   try {
-    const isHealthy = await checkBackendHealth();
-    const responseTime = Date.now() - startTime;
-    if (isHealthy) {
+    const healthy = await checkBackendHealth();
+    const responseTime = Date.now() - start;
+
+    if (healthy) {
       return {
         isConnected: true,
         responseTime,
         timestamp: new Date(),
       };
-    } else {
-      const connectionStatus = await getConnectionStatus();
-      return {
-        isConnected: false,
-        responseTime,
-        error: `Backend health check failed. Circuit breaker state: ${connectionStatus.circuitBreakerState}`,
-        timestamp: new Date(),
-      };
     }
-  } catch (error: any) {
-    const responseTime = Date.now() - startTime;
+
+    const connectionStatus = await getConnectionStatus();
     return {
       isConnected: false,
       responseTime,
-      error: error.message || 'Database connectivity test failed',
+      error: `Backend health check failed. Circuit breaker state: ${connectionStatus.circuitBreakerState}`,
+      timestamp: new Date(),
+    };
+  } catch (error: any) {
+    return {
+      isConnected: false,
+      responseTime: Date.now() - start,
+      error: error?.message || 'Database connectivity test failed',
       timestamp: new Date(),
     };
   }
 }
+
+/** User-friendly message builder */
+function getDatabaseConnectionErrorMessage(
+  connectivity: DatabaseConnectivityResult,
+  httpStatus: number
+): string {
+  if (!connectivity.isConnected) {
+    const err = (connectivity.error || '').toLowerCase();
+    if (err.includes('timeout')) {
+      return 'Database authentication is taking longer than expected. Please try again.';
+    }
+    if (err.includes('network') || err.includes('connection')) {
+      return 'Unable to connect to authentication database. Please check your network connection.';
+    }
+    return 'Authentication database is temporarily unavailable. Please try again later.';
+  }
+
+  switch (httpStatus) {
+    case 401:
+      return 'Session has expired. Please log in again.';
+    case 403:
+      return 'Access denied. Please verify your permissions.';
+    case 429:
+      return 'Too many requests. Please wait a moment and try again.';
+    case 500:
+    case 502:
+    case 503:
+      return 'Authentication service temporarily unavailable. Please try again.';
+    default:
+      return 'Session validation failed. Please try logging in again.';
+  }
+}
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const DEBUG_AUTH = Boolean(process.env.DEBUG_AUTH || process.env.NEXT_PUBLIC_DEBUG_AUTH);
-  // Extract request metadata for logging
+
   const userAgent = request.headers.get('user-agent') || 'unknown';
-  const ipAddress = request.headers.get('x-forwarded-for') || 
-                   request.headers.get('x-real-ip') || 
-                   'unknown';
+  const ipAddress =
+    request.headers.get('x-forwarded-for') ||
+    request.headers.get('x-real-ip') ||
+    'unknown';
+
   let retryCount = 0;
+
   try {
-    // Test database connectivity first with enhanced error handling
     const databaseConnectivity = await testDatabaseConnectivity();
-    // Forward the request to the backend using enhanced backend utilities
+
+    // Headers for backend call
     const headers: Record<string, string> = {
-      'X-Request-ID': `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      'X-Request-ID': `session-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
     };
-    // Forward cookies from the request
     const cookieHeader = request.headers.get('cookie');
-    if (cookieHeader) {
-      headers['Cookie'] = cookieHeader;
-    }
+    if (cookieHeader) headers['Cookie'] = cookieHeader;
+
     const connectionOptions = {
       timeout: timeoutConfig.sessionValidation,
       retryAttempts: retryPolicy.maxAttempts,
       retryDelay: retryPolicy.baseDelay,
       exponentialBackoff: retryPolicy.jitterEnabled,
       headers,
+      // extra retry guards for transient failures
+      shouldRetry: (status?: number, error?: any) =>
+        (typeof status === 'number' && isRetryableStatus(status)) || isRetryableError(error),
     };
-    let result;
+
+    let result: {
+      data: any;
+      statusCode?: number;
+      retryCount?: number;
+    };
+
     try {
-      result = await makeBackendRequest('/api/auth/validate-session', {
-        method: 'GET',
-      }, connectionOptions);
+      result = await makeBackendRequest(
+        '/api/auth/validate-session',
+        { method: 'GET' },
+        connectionOptions
+      );
     } catch (error) {
       const totalResponseTime = Date.now() - startTime;
-      // Extract error information from ConnectionError if available
+
       let errorType: 'timeout' | 'network' | 'credentials' | 'database' | 'server' = 'server';
       let statusCode = 502;
       let retryable = true;
+
       if (error instanceof ConnectionError) {
         retryCount = error.retryCount || 0;
         statusCode = error.statusCode || 502;
         retryable = error.retryable;
+
         switch (error.category) {
           case 'timeout_error':
             errorType = 'timeout';
@@ -195,8 +218,8 @@ export async function GET(request: NextRequest) {
             errorType = 'server';
         }
       }
-      // Log failed session validation attempt
-      const attempt: SessionValidationAttempt = {
+
+      logSessionValidationAttempt({
         timestamp: new Date(),
         success: false,
         errorType,
@@ -204,8 +227,8 @@ export async function GET(request: NextRequest) {
         responseTime: totalResponseTime,
         userAgent,
         ipAddress,
-      };
-      logSessionValidationAttempt(attempt);
+      });
+
       const errorResponse: ErrorResponse = {
         valid: false,
         user: null,
@@ -216,33 +239,39 @@ export async function GET(request: NextRequest) {
         responseTime: totalResponseTime,
         timestamp: new Date().toISOString(),
       };
+
       return NextResponse.json(errorResponse, { status: statusCode });
     }
+
     const totalResponseTime = Date.now() - startTime;
     retryCount = result.retryCount || 0;
-    const data = result.data;
-    // Log successful session validation attempt
-    const successAttempt: SessionValidationAttempt = {
+
+    logSessionValidationAttempt({
       timestamp: new Date(),
       success: true,
       retryCount,
       responseTime: totalResponseTime,
       userAgent,
       ipAddress,
-    };
-    logSessionValidationAttempt(successAttempt);
-    // Include database connectivity information in successful response
-    return NextResponse.json({
-      ...data,
+    });
+
+    // Shape successful payload; attach connectivity + perf
+    const payload = {
+      ...(result.data || {}),
       databaseConnectivity,
       responseTime: totalResponseTime,
+      attempts:
+        DEBUG_AUTH && ipAddress
+          ? sessionValidationAttempts.get(ipAddress) ?? []
+          : undefined,
+    };
 
+    return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     const totalResponseTime = Date.now() - startTime;
-    // Test database connectivity even in error cases
     const databaseConnectivity = await testDatabaseConnectivity();
-    // Log failed session validation attempt
-    const attempt: SessionValidationAttempt = {
+
+    logSessionValidationAttempt({
       timestamp: new Date(),
       success: false,
       errorType: 'server',
@@ -250,8 +279,8 @@ export async function GET(request: NextRequest) {
       responseTime: totalResponseTime,
       userAgent,
       ipAddress,
-    };
-    logSessionValidationAttempt(attempt);
+    });
+
     const errorResponse: ErrorResponse = {
       valid: false,
       user: null,
@@ -262,38 +291,7 @@ export async function GET(request: NextRequest) {
       responseTime: totalResponseTime,
       timestamp: new Date().toISOString(),
     };
+
     return NextResponse.json(errorResponse, { status: 500 });
-  }
-}
-/**
- * Get user-friendly error message based on database connectivity status
- */
-function getDatabaseConnectionErrorMessage(
-  connectivity: DatabaseConnectivityResult, 
-  httpStatus: number
-): string {
-  if (!connectivity.isConnected) {
-    if (connectivity.error?.includes('timeout')) {
-      return 'Database authentication is taking longer than expected. Please try again.';
-    } else if (connectivity.error?.includes('network') || connectivity.error?.includes('connection')) {
-      return 'Unable to connect to authentication database. Please check your network connection.';
-    } else {
-      return 'Authentication database is temporarily unavailable. Please try again later.';
-    }
-  }
-  // Database is connected but authentication failed
-  switch (httpStatus) {
-    case 401:
-      return 'Session has expired. Please log in again.';
-    case 403:
-      return 'Access denied. Please verify your permissions.';
-    case 429:
-      return 'Too many requests. Please wait a moment and try again.';
-    case 500:
-    case 502:
-    case 503:
-      return 'Authentication service temporarily unavailable. Please try again.';
-    default:
-      return 'Session validation failed. Please try logging in again.';
   }
 }

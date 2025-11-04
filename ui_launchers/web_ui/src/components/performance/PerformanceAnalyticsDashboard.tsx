@@ -165,7 +165,7 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <button
+          <Button
             variant={isProfilerEnabled ? "default" : "outline"}
             onClick={handleToggleProfiler}
            aria-label="Button">
@@ -548,7 +548,7 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
                     <p className="text-muted-foreground mb-4">
                       Run a comparison to analyze performance changes over time.
                     </p>
-                    <button onClick={handleRunComparison} aria-label="Button">
+                    <Button onClick={handleRunComparison} aria-label="Button">
                       <Play className="h-4 w-4 mr-2 " />
                     </Button>
                   </div>

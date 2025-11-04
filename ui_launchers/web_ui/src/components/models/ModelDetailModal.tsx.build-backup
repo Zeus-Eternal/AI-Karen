@@ -231,7 +231,7 @@ export default function ModelDetailModal({
                     </div>
                     <div className="flex gap-2">
                       {model.status === 'available' && (
-                        <button
+                        <Button
                           onClick={() => handleAction('download')}
                           disabled={actionLoading === 'download'}
                           className="gap-1"
@@ -567,7 +567,7 @@ export default function ModelDetailModal({
                     <p className="text-muted-foreground mb-4">
                       Download this model to view usage information and local details.
                     </p>
-                    <button onClick={() => handleAction('download')}>
+                    <Button onClick={() => handleAction('download')}>
                       <Download className="h-4 w-4 mr-2 " />
                       Download Model
                     </Button>

@@ -612,7 +612,7 @@ export default function ModelMigrationWizard({
                 Cancel
               </Button>
               {currentStep === 0 && (
-                <button onClick={analyzeMigration} disabled={loading} aria-label="Button">
+                <Button onClick={analyzeMigration} disabled={loading} aria-label="Button">
                   {loading ? (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin " />
@@ -634,7 +634,7 @@ export default function ModelMigrationWizard({
                 </Button>
               )}
               {currentStep === 3 && migrationProgress === 0 && (
-                <button onClick={executeMigration} disabled={migrating} aria-label="Button">
+                <Button onClick={executeMigration} disabled={migrating} aria-label="Button">
                   {migrating ? (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin " />

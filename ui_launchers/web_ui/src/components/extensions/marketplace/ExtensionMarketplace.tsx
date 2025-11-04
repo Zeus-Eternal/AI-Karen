@@ -340,7 +340,7 @@ export function ExtensionMarketplace({
                   <h4 className="font-medium mb-2">Categories</h4>
                   <div className="flex flex-wrap gap-2">
                     {categories.map(category => (
-                      <button
+                      <Button
                         key={category.id}
                         onClick={() => setSelectedCategory(category.id)}
                         className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
@@ -350,7 +350,7 @@ export function ExtensionMarketplace({
                         }`}
                       >
                         {category.name} ({category.count})
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>

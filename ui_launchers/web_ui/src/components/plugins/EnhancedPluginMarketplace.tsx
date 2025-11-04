@@ -1,43 +1,61 @@
-
 "use client";
-import React, { useState, useEffect } from "react";
+
+import React, { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { PluginMarketplaceEntry } from "@/types/plugins";
-/**
- * Enhanced Plugin Marketplace Component
- *
- * Advanced marketplace with search, ratings, reviews, and installation from remote sources.
- * Based on requirements: 5.3, 5.5, 9.1, 9.2, 9.4
- */
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
+import {
+  Search,
+  Filter,
+  Grid,
+  List,
+  SortAsc,
+  SortDesc,
+  ArrowLeft,
+  Package,
+  Award,
+  CheckCircle,
+  Bookmark,
+  BookmarkCheck,
+  Eye,
+  ShoppingCart,
+  Download,
+  MessageSquare,
+  ThumbsUp,
+  Flag,
+  Image as ImageIcon,
+  ExternalLink,
+  Share,
+  Star,
+} from "lucide-react";
 
-import { } from "lucide-react";
-
-
-import { } from "@/components/ui/card";
-
-
-
-
-import { } from "@/components/ui/select";
-
-
-
-
-
-
-
-import { } from "@/components/ui/dialog";
-
-
+import type { PluginMarketplaceEntry } from "@/types/plugins";
 
 interface PluginReview {
   id: string;
@@ -70,7 +88,8 @@ interface EnhancedPluginMarketplaceProps {
   onPurchase?: (plugin: PluginMarketplaceEntry) => void;
 }
 
-// Mock enhanced marketplace data
+/* ------------------------- Mock Data ------------------------- */
+
 const mockEnhancedPlugins: PluginMarketplaceEntry[] = [
   {
     id: "slack-integration-pro",
@@ -110,10 +129,7 @@ const mockEnhancedPlugins: PluginMarketplaceEntry[] = [
       category: "integration",
       runtime: { platform: ["node"], nodeVersion: ">=16.0.0" },
       dependencies: [],
-      systemRequirements: {
-        minMemory: 128,
-        minDisk: 50,
-      },
+      systemRequirements: { minMemory: 128, minDisk: 50 },
       permissions: [],
       sandboxed: true,
       securityPolicy: {
@@ -143,10 +159,7 @@ const mockEnhancedPlugins: PluginMarketplaceEntry[] = [
       minVersion: "1.0.0",
       platforms: ["node"],
     },
-    screenshots: [
-      "/screenshots/content-gen-1.png",
-      "/screenshots/content-gen-2.png",
-    ],
+    screenshots: ["/screenshots/content-gen-1.png", "/screenshots/content-gen-2.png"],
     pricing: { type: "freemium", price: 19.99, currency: "USD" },
     installUrl: "https://marketplace.kari.ai/plugins/ai-content-generator",
     manifest: {
@@ -184,7 +197,7 @@ const mockReviews: PluginReview[] = [
     rating: 5,
     title: "Excellent plugin with great AI features",
     content:
-      "This plugin has transformed how our team uses Slack. The AI-powered message analysis is incredibly accurate and the automated responses save us hours every week. The sentiment tracking helps us understand team morale better.",
+      "This plugin has transformed how our team uses Slack. The AI analysis is accurate and the automated responses save hours each week. Sentiment tracking gives real morale insight.",
     timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     helpful: 12,
     verified: true,
@@ -196,9 +209,9 @@ const mockReviews: PluginReview[] = [
     userId: "user-2",
     userName: "Mike Chen",
     rating: 4,
-    title: "Good plugin but could use more customization",
+    title: "Great, could use more customization",
     content:
-      "Works well overall and the integration is smooth. Would love to see more customization options for the automated responses. The analytics dashboard is very helpful for tracking team productivity.",
+      "Smooth integration overall. Would love more options for customizing automated responses. Analytics are helpful.",
     timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     helpful: 8,
     verified: false,
@@ -210,9 +223,9 @@ const mockReviews: PluginReview[] = [
     userId: "user-3",
     userName: "Emily Rodriguez",
     rating: 5,
-    title: "Amazing content quality",
+    title: "Surprisingly strong content",
     content:
-      "The AI-generated content is surprisingly good. I use it for blog posts and social media content. The templates are well-designed and the brand voice customization works perfectly.",
+      "Great for blog and social posts. Templates are solid and brand-voice tuning works really well.",
     timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
     helpful: 15,
     verified: true,
@@ -220,24 +233,24 @@ const mockReviews: PluginReview[] = [
   },
 ];
 
-export const EnhancedPluginMarketplace: React.FC<
-> = ({ onClose, onInstall, onPurchase }) => {
-  const [plugins, setPlugins] =
-    useState<PluginMarketplaceEntry[]>(mockEnhancedPlugins);
-  const [reviews, setReviews] = useState<PluginReview[]>(mockReviews);
-  const [loading, setLoading] = useState(false);
+/* ----------------------- Component ----------------------- */
+
+export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps> = ({
+  onClose,
+  onInstall,
+  onPurchase,
+}) => {
+  const [plugins, setPlugins] = useState<PluginMarketplaceEntry[]>(mockEnhancedPlugins);
+  const [reviews] = useState<PluginReview[]>(mockReviews);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPlugin, setSelectedPlugin] =
-    useState<PluginMarketplaceEntry | null>(null);
+  const [selectedPlugin, setSelectedPlugin] = useState<PluginMarketplaceEntry | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [sortBy, setSortBy] = useState<
-    "popular" | "rating" | "recent" | "name" | "price"
-  >("popular");
+  const [sortBy, setSortBy] = useState<"popular" | "rating" | "recent" | "name" | "price">(
+    "popular"
+  );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showFilters, setShowFilters] = useState(false);
-  const [bookmarkedPlugins, setBookmarkedPlugins] = useState<Set<string>>(
-    new Set()
-  );
+  const [bookmarkedPlugins, setBookmarkedPlugins] = useState<Set<string>>(new Set());
 
   const [filters, setFilters] = useState<MarketplaceFilters>({
     category: [],
@@ -247,171 +260,156 @@ export const EnhancedPluginMarketplace: React.FC<
     featured: false,
     compatibility: [],
     tags: [],
+  });
 
-  // Get unique values for filters
-  const filterOptions = React.useMemo(() => {
+  const filterOptions = useMemo(() => {
     const categories = Array.from(new Set(plugins.map((p) => p.category)));
-    const pricingTypes = Array.from(
-      new Set(plugins.map((p) => p.pricing.type))
-    );
+    const pricingTypes = Array.from(new Set(plugins.map((p) => p.pricing.type)));
     const allTags = Array.from(new Set(plugins.flatMap((p) => p.tags)));
-    const platforms = Array.from(
-      new Set(plugins.flatMap((p) => p.compatibility.platforms))
-    );
-
+    const platforms = Array.from(new Set(plugins.flatMap((p) => p.compatibility.platforms)));
     return { categories, pricingTypes, allTags, platforms };
   }, [plugins]);
 
-  // Filter and sort plugins
-  const filteredPlugins = React.useMemo(() => {
-    let filtered = plugins;
+  const filteredPlugins = useMemo(() => {
+    let filtered = [...plugins];
 
-    // Search filter
+    // Search
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (plugin) =>
-          plugin.name.toLowerCase().includes(query) ||
-          plugin.description.toLowerCase().includes(query) ||
-          plugin.tags.some((tag) => tag.toLowerCase().includes(query)) ||
-          plugin.author.name.toLowerCase().includes(query)
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          p.tags.some((t) => t.toLowerCase().includes(q)) ||
+          p.author.name.toLowerCase().includes(q)
       );
     }
 
-    // Category filter
-    if (filters.category.length > 0) {
-      filtered = filtered.filter((plugin) =>
-        filters.category.includes(plugin.category)
-      );
+    // Category
+    if (filters.category.length) {
+      filtered = filtered.filter((p) => filters.category.includes(p.category));
     }
 
-    // Pricing filter
-    if (filters.pricing.length > 0) {
-      filtered = filtered.filter((plugin) =>
-        filters.pricing.includes(plugin.pricing.type)
-      );
+    // Pricing
+    if (filters.pricing.length) {
+      filtered = filtered.filter((p) => filters.pricing.includes(p.pricing.type));
     }
 
-    // Rating filter
+    // Rating
     if (filters.rating > 0) {
-      filtered = filtered.filter((plugin) => plugin.rating >= filters.rating);
+      filtered = filtered.filter((p) => p.rating >= filters.rating);
     }
 
-    // Verified filter
+    // Verified
     if (filters.verified) {
-      filtered = filtered.filter((plugin) => plugin.verified);
+      filtered = filtered.filter((p) => p.verified);
     }
 
-    // Featured filter
+    // Featured
     if (filters.featured) {
-      filtered = filtered.filter((plugin) => plugin.featured);
+      filtered = filtered.filter((p) => p.featured);
     }
 
-    // Tags filter
-    if (filters.tags.length > 0) {
-      filtered = filtered.filter((plugin) =>
-        filters.tags.some((tag) => plugin.tags.includes(tag))
-      );
+    // Tags (any)
+    if (filters.tags.length) {
+      filtered = filtered.filter((p) => filters.tags.some((t) => p.tags.includes(t)));
     }
 
     // Sort
     filtered.sort((a, b) => {
-      let aValue: any, bValue: any;
-
+      let aVal: any;
+      let bVal: any;
       switch (sortBy) {
         case "popular":
-          aValue = a.downloads;
-          bValue = b.downloads;
+          aVal = a.downloads;
+          bVal = b.downloads;
           break;
         case "rating":
-          aValue = a.rating;
-          bValue = b.rating;
+          aVal = a.rating;
+          bVal = b.rating;
           break;
         case "recent":
-          aValue = a.version;
-          bValue = b.version;
+          aVal = a.version;
+          bVal = b.version;
           break;
         case "name":
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
           break;
         case "price":
-          aValue = a.pricing.price || 0;
-          bValue = b.pricing.price || 0;
+          aVal = a.pricing.price || 0;
+          bVal = b.pricing.price || 0;
           break;
         default:
-          return 0;
+          aVal = 0;
+          bVal = 0;
       }
-
-      if (sortOrder === "asc") {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-      }
+      if (sortOrder === "asc") return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+    });
 
     return filtered;
   }, [plugins, searchQuery, filters, sortBy, sortOrder]);
 
   const handleInstall = (plugin: PluginMarketplaceEntry) => {
-    if (plugin.pricing.type === "paid" && onPurchase) {
-      onPurchase(plugin);
-    } else {
-      onInstall(plugin);
-    }
+    if (plugin.pricing.type === "paid" && onPurchase) onPurchase(plugin);
+    else onInstall(plugin);
     onClose();
   };
 
   const toggleBookmark = (pluginId: string) => {
     setBookmarkedPlugins((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(pluginId)) {
-        newSet.delete(pluginId);
-      } else {
-        newSet.add(pluginId);
-      }
-      return newSet;
-
+      const next = new Set(prev);
+      if (next.has(pluginId)) next.delete(pluginId);
+      else next.add(pluginId);
+      return next;
+    });
   };
 
   const renderStars = (rating: number, size: "sm" | "md" = "sm") => {
     const starSize = size === "sm" ? "w-3 h-3" : "w-4 h-4";
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`${starSize} ${
-          i < Math.floor(rating)
-            ? "text-yellow-500 fill-current"
-            : i < rating
-            ? "text-yellow-500 fill-current opacity-50"
-            : "text-gray-300"
-        }`}
-      />
-    ));
+    return (
+      <div className="flex items-center">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Star
+            key={i}
+            className={`${starSize} ${
+              i < Math.floor(rating)
+                ? "text-yellow-500 fill-yellow-500"
+                : i < rating
+                ? "text-yellow-500 fill-yellow-500 opacity-50"
+                : "text-gray-300"
+            }`}
+          />
+        ))}
+      </div>
+    );
   };
 
   const renderPluginCard = (plugin: PluginMarketplaceEntry) => {
     const isBookmarked = bookmarkedPlugins.has(plugin.id);
-
     return (
       <Card
         key={plugin.id}
-        className="hover:shadow-lg transition-all duration-200 group"
+        className={`transition-all duration-200 ${viewMode === "list" ? "" : "hover:shadow-lg"}`}
       >
         <CardContent className="p-0 sm:p-4 md:p-6">
-          {/* Plugin Image/Icon */}
+          {/* Banner */}
           <div className="relative h-48 bg-gradient-to-br from-blue-500 to-purple-600 rounded-t-lg">
             <div className="absolute inset-0 flex items-center justify-center">
-              <Package className="w-16 h-16 text-white opacity-80 " />
+              <Package className="w-16 h-16 text-white opacity-80" />
             </div>
             <div className="absolute top-3 right-3 flex gap-2">
               {plugin.featured && (
-                <Badge variant="default" className="text-xs sm:text-sm md:text-base">
-                  <Award className="w-3 h-3 mr-1 " />
+                <Badge variant="default" className="flex items-center gap-1">
+                  <Award className="w-3 h-3" />
+                  Featured
                 </Badge>
               )}
               {plugin.verified && (
-                <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
-                  <CheckCircle className="w-3 h-3 mr-1 " />
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Verified
                 </Badge>
               )}
             </div>
@@ -419,34 +417,29 @@ export const EnhancedPluginMarketplace: React.FC<
               variant="ghost"
               size="sm"
               className="absolute top-3 left-3 text-white hover:bg-white/20"
-              onClick={(e) = > {
+              onClick={(e) => {
                 e.stopPropagation();
                 toggleBookmark(plugin.id);
               }}
             >
-              {isBookmarked ? (
-                <BookmarkCheck className="w-4 h-4 " />
-              ) : (
-                <Bookmark className="w-4 h-4 " />
-              )}
+              {isBookmarked ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
             </Button>
           </div>
 
+          {/* Body */}
           <div className="p-4 sm:p-4 md:p-6">
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1">
-                <h3 className="font-semibold text-lg line-clamp-1">
-                  {plugin.name}
-                </h3>
+                <h3 className="font-semibold text-lg line-clamp-1">{plugin.name}</h3>
                 <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
                   by {plugin.author.name}
                 </p>
               </div>
               <div className="text-right">
-                <div className="flex items-center gap-1 mb-1">
+                <div className="flex items-center gap-1 mb-1 justify-end">
                   {renderStars(plugin.rating)}
                   <span className="text-xs text-muted-foreground ml-1 sm:text-sm md:text-base">
-                    {plugin.rating}
+                    {plugin.rating.toFixed(1)}
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
@@ -461,14 +454,12 @@ export const EnhancedPluginMarketplace: React.FC<
 
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
+                <Badge variant="outline" className="capitalize">
                   {plugin.category}
                 </Badge>
                 <Badge
-                  variant={
-                    plugin.pricing.type === "free" ? "secondary" : "default"
-                  }
-                  className="text-xs sm:text-sm md:text-base"
+                  variant={plugin.pricing.type === "free" ? "secondary" : "default"}
+                  className="capitalize"
                 >
                   {plugin.pricing.type === "free"
                     ? "Free"
@@ -482,9 +473,9 @@ export const EnhancedPluginMarketplace: React.FC<
               </div>
             </div>
 
-            <div className="flex items-center gap-1 mb-4">
+            <div className="flex items-center gap-1 mb-4 flex-wrap">
               {plugin.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
+                <Badge key={tag} variant="outline" className="capitalize">
                   {tag}
                 </Badge>
               ))}
@@ -500,28 +491,31 @@ export const EnhancedPluginMarketplace: React.FC<
                 variant="outline"
                 size="sm"
                 className="flex-1"
-                onClick={(e) = > {
+                onClick={(e) => {
                   e.stopPropagation();
                   setSelectedPlugin(plugin);
                 }}
               >
-                <Eye className="w-3 h-3 mr-1 " />
+                <Eye className="w-3 h-3 mr-1" />
+                Preview
               </Button>
-              <button
+              <Button
                 size="sm"
                 className="flex-1"
-                onClick={() => {
+                onClick={(e) => {
                   e.stopPropagation();
                   handleInstall(plugin);
                 }}
               >
                 {plugin.pricing.type === "paid" ? (
                   <>
-                    <ShoppingCart className="w-3 h-3 mr-1 " />
+                    <ShoppingCart className="w-3 h-3 mr-1" />
+                    Buy
                   </>
                 ) : (
                   <>
-                    <Download className="w-3 h-3 mr-1 " />
+                    <Download className="w-3 h-3 mr-1" />
+                    Install
                   </>
                 )}
               </Button>
@@ -534,49 +528,47 @@ export const EnhancedPluginMarketplace: React.FC<
 
   const renderPluginReviews = (pluginId: string) => {
     const pluginReviews = reviews.filter((r) => r.pluginId === pluginId);
-
-    if (pluginReviews.length === 0) {
+    if (!pluginReviews.length) {
       return (
         <div className="text-center py-8">
-          <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50 " />
+          <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <h3 className="text-lg font-medium mb-2">No Reviews Yet</h3>
-          <p className="text-muted-foreground">
-          </p>
+          <p className="text-muted-foreground">Be the first to share your experience.</p>
         </div>
       );
     }
-
     return (
       <div className="space-y-4">
         {pluginReviews.map((review) => (
           <Card key={review.id}>
             <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-start gap-3">
-                <Avatar className="w-10 h-10 ">
+                <Avatar className="w-10 h-10">
                   <AvatarImage src={review.userAvatar} />
                   <AvatarFallback>
                     {review.userName
                       .split(" ")
                       .map((n) => n[0])
-                      .join("")}
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
 
                 <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-start justify-between mb-2">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{review.userName}</span>
                         {review.verified && (
-                          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-                            <CheckCircle className="w-3 h-3 mr-1 " />
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Verified
                           </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <div className="flex items-center gap-1">
-                          {renderStars(review.rating)}
-                        </div>
+                        {renderStars(review.rating)}
                         <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                           v{review.version}
                         </span>
@@ -593,12 +585,13 @@ export const EnhancedPluginMarketplace: React.FC<
                   </p>
 
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" className="text-xs sm:text-sm md:text-base" >
-                      <ThumbsUp className="w-3 h-3 mr-1 " />
+                    <Button variant="ghost" size="sm" className="text-xs sm:text-sm md:text-base">
+                      <ThumbsUp className="w-3 h-3 mr-1" />
                       Helpful ({review.helpful})
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-xs sm:text-sm md:text-base" >
-                      <Flag className="w-3 h-3 mr-1 " />
+                    <Button variant="ghost" size="sm" className="text-xs sm:text-sm md:text-base">
+                      <Flag className="w-3 h-3 mr-1" />
+                      Report
                     </Button>
                   </div>
                 </div>
@@ -614,72 +607,57 @@ export const EnhancedPluginMarketplace: React.FC<
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onClose} >
-          <ArrowLeft className="w-4 h-4 mr-2 " />
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
         </Button>
         <div>
           <h1 className="text-2xl font-bold">Plugin Marketplace</h1>
-          <p className="text-muted-foreground">
-          </p>
+          <p className="text-muted-foreground">Discover, purchase, and install plugins.</p>
         </div>
       </div>
 
-      {/* Search and Filters */}
+      {/* Search + Filters */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col gap-4">
             <div className="flex gap-2">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground " />
-                <input
-                  placeholder="Search plugins..."
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search plugins…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
                 />
               </div>
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter className="w-4 h-4 mr-2 " />
+              <Button variant="outline" onClick={() => setShowFilters((v) => !v)}>
+                <Filter className="w-4 h-4 mr-2" />
+                Filters
               </Button>
             </div>
 
             {showFilters && (
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 bg-muted/50 rounded-lg">
+                {/* Category */}
                 <div>
-                  <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">
-                  </Label>
+                  <Label className="text-sm font-medium mb-2 block">Category</Label>
                   <div className="space-y-2">
                     {filterOptions.categories.map((category) => (
-                      <div
-                        key={category}
-                        className="flex items-center space-x-2"
-                      >
+                      <div key={category} className="flex items-center space-x-2 capitalize">
                         <Checkbox
                           id={`category-${category}`}
                           checked={filters.category.includes(category)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setFilters((prev) => ({
-                                ...prev,
-                                category: [...prev.category, category],
-                              }));
-                            } else {
-                              setFilters((prev) => ({
-                                ...prev,
-                                category: prev.category.filter(
-                                  (c) => c !== category
-                                ),
-                              }));
-                            }
-                          }}
+                          onCheckedChange={(checked) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              category: checked
+                                ? [...prev.category, category]
+                                : prev.category.filter((c) => c !== category),
+                            }))
+                          }
                         />
-                        <Label
-                          htmlFor={`category-${category}`}
-                          className="text-sm capitalize md:text-base lg:text-lg"
-                        >
+                        <Label htmlFor={`category-${category}`} className="text-sm md:text-base lg:text-lg">
                           {category}
                         </Label>
                       </div>
@@ -687,33 +665,25 @@ export const EnhancedPluginMarketplace: React.FC<
                   </div>
                 </div>
 
+                {/* Pricing */}
                 <div>
-                  <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">
-                  </Label>
-                  <div className="space-y-2">
+                  <Label className="text-sm font-medium mb-2 block">Pricing</Label>
+                  <div className="space-y-2 capitalize">
                     {filterOptions.pricingTypes.map((type) => (
                       <div key={type} className="flex items-center space-x-2">
                         <Checkbox
                           id={`pricing-${type}`}
                           checked={filters.pricing.includes(type)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setFilters((prev) => ({
-                                ...prev,
-                                pricing: [...prev.pricing, type],
-                              }));
-                            } else {
-                              setFilters((prev) => ({
-                                ...prev,
-                                pricing: prev.pricing.filter((p) => p !== type),
-                              }));
-                            }
-                          }}
+                          onCheckedChange={(checked) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              pricing: checked
+                                ? [...prev.pricing, type]
+                                : prev.pricing.filter((p) => p !== type),
+                            }))
+                          }
                         />
-                        <Label
-                          htmlFor={`pricing-${type}`}
-                          className="text-sm capitalize md:text-base lg:text-lg"
-                        >
+                        <Label htmlFor={`pricing-${type}`} className="text-sm md:text-base lg:text-lg">
                           {type}
                         </Label>
                       </div>
@@ -721,43 +691,41 @@ export const EnhancedPluginMarketplace: React.FC<
                   </div>
                 </div>
 
+                {/* Rating */}
                 <div>
-                  <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">
-                  </Label>
-                  <select
-                    value={filters.rating.toString()}
-                    onValueChange={(value) = aria-label="Select option">
+                  <Label className="text-sm font-medium mb-2 block">Minimum Rating</Label>
+                  <Select
+                    value={String(filters.rating)}
+                    onValueChange={(value) =>
                       setFilters((prev) => ({ ...prev, rating: Number(value) }))
                     }
                   >
-                    <selectTrigger aria-label="Select option">
-                      <selectValue placeholder="Any rating" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Any rating" />
                     </SelectTrigger>
-                    <selectContent aria-label="Select option">
-                      <selectItem value="0" aria-label="Select option">Any rating</SelectItem>
-                      <selectItem value="4" aria-label="Select option">4+ stars</SelectItem>
-                      <selectItem value="3" aria-label="Select option">3+ stars</SelectItem>
-                      <selectItem value="2" aria-label="Select option">2+ stars</SelectItem>
+                    <SelectContent>
+                      <SelectItem value="0">Any rating</SelectItem>
+                      <SelectItem value="4">4+ stars</SelectItem>
+                      <SelectItem value="3">3+ stars</SelectItem>
+                      <SelectItem value="2">2+ stars</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
+                {/* Flags */}
                 <div>
-                  <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">
-                  </Label>
+                  <Label className="text-sm font-medium mb-2 block">Flags</Label>
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="verified"
                         checked={filters.verified}
                         onCheckedChange={(checked) =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            verified: Boolean(checked),
-                          }))
+                          setFilters((prev) => ({ ...prev, verified: Boolean(checked) }))
                         }
                       />
                       <Label htmlFor="verified" className="text-sm md:text-base lg:text-lg">
+                        Verified only
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -765,50 +733,46 @@ export const EnhancedPluginMarketplace: React.FC<
                         id="featured"
                         checked={filters.featured}
                         onCheckedChange={(checked) =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            featured: Boolean(checked),
-                          }))
+                          setFilters((prev) => ({ ...prev, featured: Boolean(checked) }))
                         }
                       />
                       <Label htmlFor="featured" className="text-sm md:text-base lg:text-lg">
+                        Featured only
                       </Label>
                     </div>
                   </div>
                 </div>
 
+                {/* Sort */}
                 <div>
-                  <Label className="text-sm font-medium mb-2 block md:text-base lg:text-lg">Sort</Label>
+                  <Label className="text-sm font-medium mb-2 block">Sort</Label>
                   <div className="space-y-2">
-                    <select
-                      value={sortBy}
-                      onValueChange={(value: any) = aria-label="Select option"> setSortBy(value)}
-                    >
-                      <selectTrigger aria-label="Select option">
-                        <selectValue />
+                    <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                      <SelectTrigger>
+                        <SelectValue />
                       </SelectTrigger>
-                      <selectContent aria-label="Select option">
-                        <selectItem value="popular" aria-label="Select option">Most Popular</SelectItem>
-                        <selectItem value="rating" aria-label="Select option">Highest Rated</SelectItem>
-                        <selectItem value="recent" aria-label="Select option">Most Recent</SelectItem>
-                        <selectItem value="name" aria-label="Select option">Name</SelectItem>
-                        <selectItem value="price" aria-label="Select option">Price</SelectItem>
+                      <SelectContent>
+                        <SelectItem value="popular">Most Popular</SelectItem>
+                        <SelectItem value="rating">Highest Rated</SelectItem>
+                        <SelectItem value="recent">Most Recent</SelectItem>
+                        <SelectItem value="name">Name</SelectItem>
+                        <SelectItem value="price">Price</SelectItem>
                       </SelectContent>
                     </Select>
                     <div className="flex gap-1">
-                      <button
+                      <Button
                         variant={sortOrder === "desc" ? "default" : "outline"}
                         size="sm"
                         onClick={() => setSortOrder("desc")}
                       >
-                        <SortDesc className="w-3 h-3 " />
+                        <SortDesc className="w-3 h-3" />
                       </Button>
-                      <button
+                      <Button
                         variant={sortOrder === "asc" ? "default" : "outline"}
                         size="sm"
                         onClick={() => setSortOrder("asc")}
                       >
-                        <SortAsc className="w-3 h-3 " />
+                        <SortAsc className="w-3 h-3" />
                       </Button>
                     </div>
                   </div>
@@ -818,27 +782,26 @@ export const EnhancedPluginMarketplace: React.FC<
 
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                {filteredPlugins.length} plugin
-                {filteredPlugins.length !== 1 ? "s" : ""} found
+                {filteredPlugins.length} plugin{filteredPlugins.length !== 1 ? "s" : ""} found
               </p>
 
               <div className="flex items-center gap-2">
                 <div className="flex items-center border rounded-md">
-                  <button
+                  <Button
                     variant={viewMode === "grid" ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setViewMode("grid")}
                     className="rounded-r-none"
                   >
-                    <Grid className="w-4 h-4 " />
+                    <Grid className="w-4 h-4" />
                   </Button>
-                  <button
+                  <Button
                     variant={viewMode === "list" ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setViewMode("list")}
                     className="rounded-l-none"
                   >
-                    <List className="w-4 h-4 " />
+                    <List className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -851,69 +814,52 @@ export const EnhancedPluginMarketplace: React.FC<
       {filteredPlugins.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Package className="w-12 h-12 mx-auto mb-4 opacity-50 " />
+            <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <h3 className="text-lg font-medium mb-2">No plugins found</h3>
-            <p className="text-muted-foreground">
-            </p>
+            <p className="text-muted-foreground">Try adjusting your search or filters.</p>
           </CardContent>
         </Card>
       ) : (
-        <div
-          className={
-            viewMode === "grid"
-              ? "grid gap-6 md:grid-cols-2 lg:grid-cols-3"
-              : "space-y-4"
-          }
-        >
+        <div className={viewMode === "grid" ? "grid gap-6 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
           {filteredPlugins.map((plugin) => renderPluginCard(plugin))}
         </div>
       )}
 
       {/* Plugin Detail Dialog */}
-      <Dialog
-        open={!!selectedPlugin}
-        onOpenChange={() => setSelectedPlugin(null)}
-      >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto ">
+      <Dialog open={!!selectedPlugin} onOpenChange={() => setSelectedPlugin(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selectedPlugin && (
             <>
               <DialogHeader>
                 <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center ">
-                    <Package className="w-8 h-8 text-white " />
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <Package className="w-8 h-8 text-white" />
                   </div>
                   <div className="flex-1">
                     <DialogTitle className="flex items-center gap-2 text-xl">
                       {selectedPlugin.name}
-                      {selectedPlugin.verified && (
-                        <CheckCircle className="w-5 h-5 text-blue-600 " />
-                      )}
+                      {selectedPlugin.verified && <CheckCircle className="w-5 h-5 text-blue-600" />}
                       {selectedPlugin.featured && (
-                        <Badge variant="default" className="text-xs sm:text-sm md:text-base">
-                          <Award className="w-3 h-3 mr-1 " />
+                        <Badge variant="default" className="flex items-center gap-1">
+                          <Award className="w-3 h-3" />
+                          Featured
                         </Badge>
                       )}
                     </DialogTitle>
                     <DialogDescription className="text-base">
-                      by {selectedPlugin.author.name} • v
-                      {selectedPlugin.version}
+                      by {selectedPlugin.author.name} • v{selectedPlugin.version}
                     </DialogDescription>
                     <div className="flex items-center gap-4 mt-2">
                       <div className="flex items-center gap-1">
                         {renderStars(selectedPlugin.rating, "md")}
-                        <span className="ml-1 font-medium">
-                          {selectedPlugin.rating}
-                        </span>
+                        <span className="ml-1 font-medium">{selectedPlugin.rating.toFixed(1)}</span>
                         <span className="text-muted-foreground">
                           ({selectedPlugin.reviewCount} reviews)
                         </span>
                       </div>
                       <Badge
-                        variant={
-                          selectedPlugin.pricing.type === "free"
-                            ? "secondary"
-                            : "default"
-                        }
+                        variant={selectedPlugin.pricing.type === "free" ? "secondary" : "default"}
+                        className="capitalize"
                       >
                         {selectedPlugin.pricing.type === "free"
                           ? "Free"
@@ -924,19 +870,15 @@ export const EnhancedPluginMarketplace: React.FC<
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleBookmark(selectedPlugin.id)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => toggleBookmark(selectedPlugin.id)}>
                       {bookmarkedPlugins.has(selectedPlugin.id) ? (
-                        <BookmarkCheck className="w-4 h-4 " />
+                        <BookmarkCheck className="w-4 h-4" />
                       ) : (
-                        <Bookmark className="w-4 h-4 " />
+                        <Bookmark className="w-4 h-4" />
                       )}
                     </Button>
-                    <Button variant="outline" size="sm" >
-                      <Share className="w-4 h-4 " />
+                    <Button variant="outline" size="sm">
+                      <Share className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -945,29 +887,25 @@ export const EnhancedPluginMarketplace: React.FC<
               <Tabs defaultValue="overview" className="mt-6">
                 <TabsList>
                   <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="reviews">
-                    Reviews ({selectedPlugin.reviewCount})
-                  </TabsTrigger>
+                  <TabsTrigger value="reviews">Reviews ({selectedPlugin.reviewCount})</TabsTrigger>
                   <TabsTrigger value="details">Details</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-6">
-                  <div>
-                    <p className="text-sm leading-relaxed md:text-base lg:text-lg">
-                      {selectedPlugin.description}
-                    </p>
-                  </div>
+                  <p className="text-sm leading-relaxed md:text-base lg:text-lg">
+                    {selectedPlugin.description}
+                  </p>
 
-                  {selectedPlugin.screenshots.length > 0 && (
+                  {!!selectedPlugin.screenshots.length && (
                     <div>
                       <h4 className="font-medium mb-3">Screenshots</h4>
                       <div className="grid grid-cols-2 gap-4">
-                        {selectedPlugin.screenshots.map((screenshot, index) => (
+                        {selectedPlugin.screenshots.map((_, idx) => (
                           <div
-                            key={index}
+                            key={idx}
                             className="aspect-video bg-muted rounded-lg flex items-center justify-center"
                           >
-                            <ImageIcon className="w-8 h-8 text-muted-foreground " />
+                            <ImageIcon className="w-8 h-8 text-muted-foreground" />
                           </div>
                         ))}
                       </div>
@@ -980,13 +918,11 @@ export const EnhancedPluginMarketplace: React.FC<
                       <div className="space-y-2 text-sm md:text-base lg:text-lg">
                         <div className="flex justify-between">
                           <span>Downloads</span>
-                          <span>
-                            {selectedPlugin.downloads.toLocaleString()}
-                          </span>
+                          <span>{selectedPlugin.downloads.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Category</span>
-                          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
+                          <Badge variant="outline" className="capitalize">
                             {selectedPlugin.category}
                           </Badge>
                         </div>
@@ -996,9 +932,7 @@ export const EnhancedPluginMarketplace: React.FC<
                         </div>
                         <div className="flex justify-between">
                           <span>Compatibility</span>
-                          <span>
-                            {selectedPlugin.compatibility.platforms.join(", ")}
-                          </span>
+                          <span>{selectedPlugin.compatibility.platforms.join(", ")}</span>
                         </div>
                       </div>
                     </div>
@@ -1007,11 +941,7 @@ export const EnhancedPluginMarketplace: React.FC<
                       <h4 className="font-medium mb-3">Tags</h4>
                       <div className="flex flex-wrap gap-1">
                         {selectedPlugin.tags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="outline"
-                            className="text-xs sm:text-sm md:text-base"
-                          >
+                          <Badge key={tag} variant="outline" className="capitalize">
                             {tag}
                           </Badge>
                         ))}
@@ -1022,38 +952,41 @@ export const EnhancedPluginMarketplace: React.FC<
                   <div className="flex items-center justify-between pt-4 border-t">
                     <div className="flex items-center gap-2">
                       {selectedPlugin.manifest.homepage && (
-                        <Button variant="outline" size="sm" asChild >
+                        <Button variant="outline" size="sm" asChild>
                           <a
                             href={selectedPlugin.manifest.homepage}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            <ExternalLink className="w-4 h-4 mr-2 " />
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Homepage
                           </a>
                         </Button>
                       )}
                       {selectedPlugin.manifest.repository && (
-                        <Button variant="outline" size="sm" asChild >
+                        <Button variant="outline" size="sm" asChild>
                           <a
                             href={selectedPlugin.manifest.repository}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            <ExternalLink className="w-4 h-4 mr-2 " />
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Repository
                           </a>
                         </Button>
                       )}
                     </div>
 
-                    <button onClick={() => handleInstall(selectedPlugin)}>
+                    <Button onClick={() => handleInstall(selectedPlugin)}>
                       {selectedPlugin.pricing.type === "paid" ? (
                         <>
-                          <ShoppingCart className="w-4 h-4 mr-2 " />
+                          <ShoppingCart className="w-4 h-4 mr-2" />
                           Buy for ${selectedPlugin.pricing.price}
                         </>
                       ) : (
                         <>
-                          <Download className="w-4 h-4 mr-2 " />
+                          <Download className="w-4 h-4 mr-2" />
+                          Install
                         </>
                       )}
                     </Button>
@@ -1071,23 +1004,15 @@ export const EnhancedPluginMarketplace: React.FC<
                       <div className="space-y-2 text-sm md:text-base lg:text-lg">
                         <div className="flex justify-between">
                           <span>Min Memory</span>
-                          <span>
-                            {selectedPlugin.manifest.systemRequirements
-                              .minMemory || "N/A"}{" "}
-                          </span>
+                          <span>{selectedPlugin.manifest.systemRequirements.minMemory ?? "N/A"}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Min Disk</span>
-                          <span>
-                            {selectedPlugin.manifest.systemRequirements
-                              .minDisk || "N/A"}{" "}
-                          </span>
+                          <span>{selectedPlugin.manifest.systemRequirements.minDisk ?? "N/A"}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Platform</span>
-                          <span>
-                            {selectedPlugin.compatibility.platforms.join(", ")}
-                          </span>
+                          <span>{selectedPlugin.compatibility.platforms.join(", ")}</span>
                         </div>
                       </div>
                     </div>
@@ -1097,13 +1022,7 @@ export const EnhancedPluginMarketplace: React.FC<
                       <div className="space-y-2 text-sm md:text-base lg:text-lg">
                         <div className="flex justify-between">
                           <span>Sandboxed</span>
-                          <Badge
-                            variant={
-                              selectedPlugin.manifest.sandboxed
-                                ? "default"
-                                : "destructive"
-                            }
-                          >
+                          <Badge variant={selectedPlugin.manifest.sandboxed ? "default" : "destructive"}>
                             {selectedPlugin.manifest.sandboxed ? "Yes" : "No"}
                           </Badge>
                         </div>
@@ -1111,14 +1030,12 @@ export const EnhancedPluginMarketplace: React.FC<
                           <span>Network Access</span>
                           <Badge
                             variant={
-                              selectedPlugin.manifest.securityPolicy
-                                .allowNetworkAccess
+                              selectedPlugin.manifest.securityPolicy.allowNetworkAccess
                                 ? "destructive"
                                 : "default"
                             }
                           >
-                            {selectedPlugin.manifest.securityPolicy
-                              .allowNetworkAccess
+                            {selectedPlugin.manifest.securityPolicy.allowNetworkAccess
                               ? "Allowed"
                               : "Blocked"}
                           </Badge>
@@ -1127,14 +1044,12 @@ export const EnhancedPluginMarketplace: React.FC<
                           <span>File System</span>
                           <Badge
                             variant={
-                              selectedPlugin.manifest.securityPolicy
-                                .allowFileSystemAccess
+                              selectedPlugin.manifest.securityPolicy.allowFileSystemAccess
                                 ? "destructive"
                                 : "default"
                             }
                           >
-                            {selectedPlugin.manifest.securityPolicy
-                              .allowFileSystemAccess
+                            {selectedPlugin.manifest.securityPolicy.allowFileSystemAccess
                               ? "Allowed"
                               : "Blocked"}
                           </Badge>

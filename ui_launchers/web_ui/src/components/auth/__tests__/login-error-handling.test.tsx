@@ -59,14 +59,14 @@ vi.mock('@/components/ui/form-field', () => ({
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, disabled, onClick, type }: any) => (
-    <button
+    <Button
       type={type}
       disabled={disabled}
       onClick={onClick}
       data-testid="submit-button"
      aria-label="Button">
       {children}
-    </button>
+    </Button>
   ),
 }));
 

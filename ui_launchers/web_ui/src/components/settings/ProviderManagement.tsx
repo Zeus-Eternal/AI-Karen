@@ -11,7 +11,25 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from '@/components/ui/switch';
 
-import { } from 'lucide-react';
+// Import all required Lucide React icons
+import { 
+  Cloud, 
+  CheckCircle2, 
+  AlertCircle, 
+  Loader2, 
+  RefreshCw, 
+  HardDrive, 
+  Globe, 
+  Database, 
+  Key, 
+  Settings, 
+  Eye, 
+  ExternalLink, 
+  Activity, 
+  ChevronUp, 
+  ChevronDown,
+  Info
+} from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { openaiPing } from '@/lib/providers-api';
 import { handleApiError } from '@/lib/error-handler';
@@ -21,16 +39,19 @@ import ProviderConfigurationGuide from './ProviderConfigurationGuide';
 import ProviderDiagnosticsPage from './ProviderDiagnosticsPage';
 import ErrorMessageDisplay from './ErrorMessageDisplay';
 import { useProviderNotifications } from '@/hooks/useProviderNotifications';
+
 // Model Recommendations Component
 interface ModelRecommendationsProps {
   provider: LLMProvider;
 }
+
 function ModelRecommendations({ provider }: ModelRecommendationsProps) {
   const [recommendations, setRecommendations] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
   const backend = getKarenBackend();
+
   const fetchRecommendations = async () => {
     if (!provider.is_llm_provider) return;
     setLoading(true);
@@ -48,19 +69,23 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     if (expanded && !recommendations && !loading) {
       fetchRecommendations();
     }
   }, [expanded]);
+
   if (!provider.is_llm_provider) {
     return null;
   }
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <Label className="text-xs text-muted-foreground flex items-center gap-2 sm:text-sm md:text-base">
-          <Database className="h-3 w-3 " />
+          <Database className="h-3 w-3" />
+          Model Recommendations
         </Label>
         <Button
           variant="ghost"
@@ -68,14 +93,14 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
           onClick={() => setExpanded(!expanded)}
           className="h-6 px-2 text-xs sm:text-sm md:text-base"
         >
-          {expanded ? <ChevronUp className="h-3 w-3 " /> : <ChevronDown className="h-3 w-3 " />}
+          {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </Button>
       </div>
       {expanded && (
         <div className="space-y-2 p-3 bg-muted/30 rounded-lg sm:p-4 md:p-6">
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground md:text-base lg:text-lg">
-              <Loader2 className="h-4 w-4 animate-spin " />
+              <Loader2 className="h-4 w-4 animate-spin" />
               Loading recommendations...
             </div>
           ) : recommendations ? (
@@ -150,22 +175,24 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
                     }}
                     className="text-xs h-7 sm:text-sm md:text-base"
                   >
-                    <Database className="h-3 w-3 mr-1 " />
+                    <Database className="h-3 w-3 mr-1" />
+                    View Models
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={fetchRecommendations}
                     className="text-xs h-7 sm:text-sm md:text-base"
-                   >
-                    <RefreshCw className="h-3 w-3 mr-1 " />
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Refresh
                   </Button>
                 </div>
               )}
               {/* Error State */}
               {recommendations.error && (
                 <Alert>
-                  <AlertCircle className="h-4 w-4 " />
+                  <AlertCircle className="h-4 w-4" />
                   <AlertDescription className="text-xs sm:text-sm md:text-base">
                     {recommendations.error}
                   </AlertDescription>
@@ -174,6 +201,7 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
             </div>
           ) : (
             <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
+              No recommendations available. Click refresh to load.
             </div>
           )}
         </div>
@@ -181,6 +209,7 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
     </div>
   );
 }
+
 interface LLMProvider {
   name: string;
   description: string;
@@ -203,6 +232,7 @@ interface LLMProvider {
     currency?: string;
   };
 }
+
 interface ProviderStats {
   total_models: number;
   healthy_providers: number;
@@ -210,6 +240,7 @@ interface ProviderStats {
   last_sync: number;
   degraded_mode: boolean;
 }
+
 interface ApiKeyValidationResult {
   valid: boolean;
   message: string;
@@ -217,16 +248,19 @@ interface ApiKeyValidationResult {
   models_discovered?: number;
   capabilities_detected?: string[];
 }
+
 interface ProviderManagementProps {
   providers: LLMProvider[];
   setProviders: (providers: LLMProvider[]) => void;
   providerStats: ProviderStats | null;
   setProviderStats: (stats: ProviderStats | null) => void;
 }
+
 const LOCAL_STORAGE_KEYS = {
   providerApiKeys: 'llm_provider_api_keys',
   expandedProviders: 'llm_expanded_providers',
 };
+
 export default function ProviderManagement({
   providers,
   setProviders,
@@ -244,11 +278,13 @@ export default function ProviderManagement({
   const [showDiagnostics, setShowDiagnostics] = useState<string | null>(null);
   const { toast } = useToast();
   const backend = getKarenBackend();
+
   // Provider notifications
   const {
     notifyProviderStatusChange,
     notifyError
   } = useProviderNotifications({ autoToast: false }); // Disable auto-toast to avoid duplicates
+
   // Load API keys from localStorage on mount
   useEffect(() => {
     try {
@@ -261,15 +297,19 @@ export default function ProviderManagement({
         setExpandedProviders(new Set(JSON.parse(storedExpanded)));
       }
     } catch (error) {
+      console.error('Failed to load stored provider data:', error);
     }
   }, []);
+
   // Debounced API key validation
   const validationTimeouts = useMemo(() => new Map<string, NodeJS.Timeout>(), []);
+
   const handleApiKeyChange = (providerName: string, apiKey: string) => {
     const updatedKeys = { ...providerApiKeys, [providerName]: apiKey };
     setProviderApiKeys(updatedKeys);
     // Save to localStorage immediately
     localStorage.setItem(LOCAL_STORAGE_KEYS.providerApiKeys, JSON.stringify(updatedKeys));
+    
     // Clear previous validation result
     setKeyValidationResults(prev => {
       const updated = { ...prev };
@@ -282,6 +322,7 @@ export default function ProviderManagement({
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }
+
     // Validate API key with debouncing
     if (apiKey.trim()) {
       const timeout = setTimeout(() => {
@@ -290,6 +331,7 @@ export default function ProviderManagement({
       validationTimeouts.set(providerName, timeout);
     }
   };
+
   const validateApiKey = async (providerName: string, apiKey: string) => {
     setValidatingKeys(prev => ({ ...prev, [providerName]: true }));
     try {
@@ -299,8 +341,10 @@ export default function ProviderManagement({
           provider: providerName,
           api_key: apiKey
         })
+      });
 
       setKeyValidationResults(prev => ({ ...prev, [providerName]: response }));
+
       if (response.valid) {
         // Update provider health status
         const previousStatus = providers.find(p => p.name === providerName)?.health_status;
@@ -315,14 +359,16 @@ export default function ProviderManagement({
             : p
         );
         setProviders(updatedProviders);
+
         // Notify status change
         if (previousStatus !== 'healthy') {
           notifyProviderStatusChange(providerName, 'healthy', previousStatus);
         }
+
         toast({
           title: "API Key Valid",
           description: `${providerName} API key validated successfully. ${response.models_discovered || 0} models discovered.`,
-
+        });
       } else {
         // Update provider health status
         const previousStatus = providers.find(p => p.name === providerName)?.health_status;
@@ -332,6 +378,7 @@ export default function ProviderManagement({
             : p
         );
         setProviders(updatedProviders);
+
         // Notify error
         notifyError(providerName, response.message, 'API_KEY_INVALID');
       }
@@ -345,6 +392,7 @@ export default function ProviderManagement({
           provider: providerName
         }
       }));
+
       const previousStatus = providers.find(p => p.name === providerName)?.health_status;
       const updatedProviders = providers.map(p =>
         p.name === providerName
@@ -352,12 +400,14 @@ export default function ProviderManagement({
           : p
       );
       setProviders(updatedProviders);
+
       // Notify error
       notifyError(providerName, errorMessage, 'VALIDATION_FAILED');
     } finally {
       setValidatingKeys(prev => ({ ...prev, [providerName]: false }));
     }
   };
+
   const toggleProviderExpansion = (providerName: string) => {
     setExpandedProviders(prev => {
       const newSet = new Set(prev);
@@ -369,14 +419,16 @@ export default function ProviderManagement({
       // Save to localStorage
       localStorage.setItem(LOCAL_STORAGE_KEYS.expandedProviders, JSON.stringify(Array.from(newSet)));
       return newSet;
-
+    });
   };
+
   const runHealthCheck = async () => {
     try {
       setHealthChecking(true);
       const response = await backend.makeRequestPublic<Record<string, any>>('/api/providers/health-check-all', {
         method: 'POST'
       }) || {};
+
       let healthyCount = 0;
       const updatedProviders = providers.map(provider => {
         const healthResult = response[provider.name];
@@ -392,35 +444,40 @@ export default function ProviderManagement({
           };
         }
         return provider;
+      });
 
       setProviders(updatedProviders);
+
       // Update provider stats
       if (providerStats) {
         setProviderStats({
           ...providerStats,
           healthy_providers: healthyCount,
           last_sync: Date.now()
-
+        });
       }
+
       toast({
         title: "Health Check Complete",
         description: `${healthyCount}/${providers.length} providers are healthy.`,
-
+      });
     } catch (error) {
       const info = (error as any)?.errorInfo || handleApiError(error as any, 'runHealthCheck');
       toast({
         title: info.title || "Health Check Failed",
         description: info.message || "Could not check provider health status.",
         variant: "destructive",
-
+      });
     } finally {
       setHealthChecking(false);
     }
   };
+
   const discoverProviderModels = async (providerName: string, forceRefresh: boolean = false) => {
     try {
       const response = await backend.makeRequestPublic<any[]>(`/api/providers/${providerName}/models?force_refresh=${forceRefresh}`);
       const models = response || [];
+
       // Update provider cached model count
       const updatedProviders = providers.map(p =>
         p.name === providerName
@@ -428,18 +485,20 @@ export default function ProviderManagement({
           : p
       );
       setProviders(updatedProviders);
+
       toast({
         title: "Models Discovered",
         description: `Found ${models.length} models for ${providerName}.`,
-
+      });
     } catch (error) {
       toast({
         title: "Discovery Failed",
         description: `Could not discover models for ${providerName}.`,
         variant: "destructive",
-
+      });
     }
   };
+
   const testProvider = async (providerName: string) => {
     try {
       if (providerName === 'openai') {
@@ -458,6 +517,7 @@ export default function ProviderManagement({
       setProviders(providers.map(p => p.name === providerName ? { ...p, health_status: 'unhealthy', last_health_check: Date.now() } : p));
     }
   };
+
   const checkProviderHealth = async (providerName: string) => {
     try {
       const res = await backend.makeRequestPublic<any>(`/api/providers/${providerName}/health`);
@@ -474,15 +534,18 @@ export default function ProviderManagement({
           title: isHealthy ? "Provider Healthy" : "Provider Issues",
           description: res.message || `${providerName} health check completed.`,
           variant: isHealthy ? "default" : "destructive",
-
+        });
       }
     } catch (error) {
+      console.error(`Health check failed for ${providerName}:`, error);
     }
   };
+
   const toggleProviderEnabled = async (providerName: string, enable: boolean) => {
     try {
       const res = await backend.makeRequestPublic<any>(`/api/providers/${providerName}/${enable ? 'enable' : 'disable'}`, {
         method: 'POST'
+      });
 
       if (res?.success) {
         // Update local state; on disable, mark as unknown & disabled in message
@@ -495,16 +558,17 @@ export default function ProviderManagement({
         toast({
           title: enable ? "Provider Enabled" : "Provider Disabled",
           description: `${providerName} has been ${enable ? 'enabled' : 'disabled'}.`,
-
+        });
       }
     } catch (error) {
       toast({
         title: "Operation Failed",
         description: `Could not ${enable ? 'enable' : 'disable'} ${providerName}.`,
         variant: "destructive",
-
+      });
     }
   };
+
   // Convert LLMProvider to ProviderStatus for the new components
   const convertToProviderStatus = (provider: LLMProvider): ProviderStatus => ({
     name: provider.name,
@@ -529,29 +593,32 @@ export default function ProviderManagement({
     api_key_valid: provider.health_status === 'healthy',
     dependencies: {},
     configuration_issues: provider.error_message ? [provider.error_message] : []
+  });
 
   const getHealthIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle2 className="h-4 w-4 text-green-600 " />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
       case 'unhealthy':
-        return <AlertCircle className="h-4 w-4 text-red-600 " />;
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-400 " />;
+        return <AlertCircle className="h-4 w-4 text-gray-400" />;
     }
   };
+
   const getProviderTypeIcon = (type: string) => {
     switch (type) {
       case 'local':
-        return <HardDrive className="h-4 w-4 text-blue-600 " />;
+        return <HardDrive className="h-4 w-4 text-blue-600" />;
       case 'remote':
-        return <Cloud className="h-4 w-4 text-green-600 " />;
+        return <Cloud className="h-4 w-4 text-green-600" />;
       case 'hybrid':
-        return <Globe className="h-4 w-4 text-purple-600 " />;
+        return <Globe className="h-4 w-4 text-purple-600" />;
       default:
-        return <Database className="h-4 w-4 text-gray-600 " />;
+        return <Database className="h-4 w-4 text-gray-600" />;
     }
   };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -560,21 +627,25 @@ export default function ProviderManagement({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Cloud className="h-5 w-5 " />
+                <Cloud className="h-5 w-5" />
+                Provider Management
               </CardTitle>
               <CardDescription>
+                Configure and monitor your LLM providers and API connections
               </CardDescription>
             </div>
-            <button onClick={runHealthCheck} disabled={healthChecking} aria-label="Button">
+            <Button onClick={runHealthCheck} disabled={healthChecking}>
               {healthChecking ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin " />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2 " />
+                <RefreshCw className="h-4 w-4 mr-2" />
               )}
+              Health Check
             </Button>
           </div>
         </CardHeader>
       </Card>
+
       {/* Provider Stats */}
       {providerStats && (
         <Card>
@@ -606,6 +677,7 @@ export default function ProviderManagement({
           </CardContent>
         </Card>
       )}
+
       {/* Provider List */}
       <div className="space-y-4">
         {providers.map((provider) => (
@@ -631,7 +703,8 @@ export default function ProviderManagement({
                     size="sm"
                     onClick={() => checkProviderHealth(provider.name)}
                   >
-                    <Activity className="h-4 w-4 " />
+                    <Activity className="h-4 w-4" />
+                    Health
                   </Button>
                   <Button
                     variant="outline"
@@ -639,14 +712,15 @@ export default function ProviderManagement({
                     onClick={() => toggleProviderExpansion(provider.name)}
                   >
                     {expandedProviders.has(provider.name) ? (
-                      <ChevronUp className="h-4 w-4 " />
+                      <ChevronUp className="h-4 w-4" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 " />
+                      <ChevronDown className="h-4 w-4" />
                     )}
                   </Button>
                 </div>
               </div>
             </CardHeader>
+
             {expandedProviders.has(provider.name) && (
               <CardContent>
                 <div className="space-y-4">
@@ -654,10 +728,11 @@ export default function ProviderManagement({
                   {provider.requires_api_key && (
                     <div className="space-y-2">
                       <Label htmlFor={`api-key-${provider.name}`} className="flex items-center gap-2">
-                        <Key className="h-4 w-4 " />
+                        <Key className="h-4 w-4" />
+                        API Key
                       </Label>
                       <div className="flex gap-2">
-                        <input
+                        <Input
                           id={`api-key-${provider.name}`}
                           type="password"
                           placeholder="Enter API key..."
@@ -665,14 +740,14 @@ export default function ProviderManagement({
                           onChange={(e) => handleApiKeyChange(provider.name, e.target.value)}
                         />
                         {validatingKeys[provider.name] && (
-                          <Button variant="outline" size="sm" disabled >
-                            <Loader2 className="h-4 w-4 animate-spin " />
+                          <Button variant="outline" size="sm" disabled>
+                            <Loader2 className="h-4 w-4 animate-spin" />
                           </Button>
                         )}
                       </div>
                       {keyValidationResults[provider.name] && (
                         <Alert variant={keyValidationResults[provider.name].valid ? "default" : "destructive"}>
-                          <AlertCircle className="h-4 w-4 " />
+                          <AlertCircle className="h-4 w-4" />
                           <AlertDescription>
                             {keyValidationResults[provider.name].message}
                           </AlertDescription>
@@ -680,6 +755,7 @@ export default function ProviderManagement({
                       )}
                     </div>
                   )}
+
                   {/* Provider Info */}
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
@@ -706,15 +782,18 @@ export default function ProviderManagement({
                       </div>
                     </div>
                   </div>
+
                   {/* Error Message */}
                   {provider.error_message && (
                     <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4 " />
+                      <AlertCircle className="h-4 w-4" />
                       <AlertDescription>{provider.error_message}</AlertDescription>
                     </Alert>
                   )}
+
                   {/* Model Recommendations */}
                   <ModelRecommendations provider={provider} />
+
                   {/* Enhanced Provider Status */}
                   <ProviderStatusIndicator
                     provider={convertToProviderStatus(provider)}
@@ -723,6 +802,7 @@ export default function ProviderManagement({
                     showDetails={false}
                     realTimeUpdates={true}
                   />
+
                   {/* Actions */}
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -730,14 +810,15 @@ export default function ProviderManagement({
                       size="sm"
                       onClick={() => discoverProviderModels(provider.name, true)}
                     >
-                      <RefreshCw className="h-4 w-4 mr-2 " />
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Discover Models
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setShowTesting(showTesting === provider.name ? null : provider.name)}
                     >
-                      <Activity className="h-4 w-4 mr-2 " />
+                      <Activity className="h-4 w-4 mr-2" />
                       {showTesting === provider.name ? 'Hide Testing' : 'Test Provider'}
                     </Button>
                     <Button
@@ -745,7 +826,7 @@ export default function ProviderManagement({
                       size="sm"
                       onClick={() => setShowConfigGuide(showConfigGuide === provider.name ? null : provider.name)}
                     >
-                      <Settings className="h-4 w-4 mr-2 " />
+                      <Settings className="h-4 w-4 mr-2" />
                       {showConfigGuide === provider.name ? 'Hide Guide' : 'Setup Guide'}
                     </Button>
                     <Button
@@ -753,7 +834,7 @@ export default function ProviderManagement({
                       size="sm"
                       onClick={() => setShowDiagnostics(showDiagnostics === provider.name ? null : provider.name)}
                     >
-                      <Eye className="h-4 w-4 mr-2 " />
+                      <Eye className="h-4 w-4 mr-2" />
                       {showDiagnostics === provider.name ? 'Hide Diagnostics' : 'Diagnostics'}
                     </Button>
                     {provider.documentation_url && (
@@ -762,10 +843,12 @@ export default function ProviderManagement({
                         size="sm"
                         onClick={() => window.open(provider.documentation_url, '_blank')}
                       >
-                        <ExternalLink className="h-4 w-4 mr-2 " />
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Docs
                       </Button>
                     )}
                   </div>
+
                   {/* Provider Testing Interface */}
                   {showTesting === provider.name && (
                     <div className="mt-4">
@@ -790,12 +873,14 @@ export default function ProviderManagement({
                       />
                     </div>
                   )}
+
                   {/* Configuration Guide */}
                   {showConfigGuide === provider.name && (
                     <div className="mt-4">
                       <ProviderConfigurationGuide
                         providerName={provider.name}
                         onStepComplete={(stepId) => {
+                          // Handle step completion if needed
                         }}
                         onConfigurationComplete={() => {
                           // Refresh provider status after configuration
@@ -805,6 +890,7 @@ export default function ProviderManagement({
                       />
                     </div>
                   )}
+
                   {/* Diagnostics Page */}
                   {showDiagnostics === provider.name && (
                     <div className="mt-4">
@@ -814,6 +900,7 @@ export default function ProviderManagement({
                       />
                     </div>
                   )}
+
                   {/* Error Display */}
                   {provider.error_message && (
                     <div className="mt-4">
@@ -835,9 +922,10 @@ export default function ProviderManagement({
           </Card>
         ))}
       </div>
+
       {/* Information */}
       <Alert>
-        <Info className="h-4 w-4 " />
+        <Info className="h-4 w-4" />
         <AlertTitle>Provider Management</AlertTitle>
         <AlertDescription className="text-sm space-y-2 md:text-base lg:text-lg">
           <p>• Configure API keys for remote providers to enable model access</p>

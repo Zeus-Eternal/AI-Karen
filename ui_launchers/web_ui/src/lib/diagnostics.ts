@@ -58,13 +58,49 @@ export interface NetworkInfo {
   tcpConnection?: boolean;
 }
 
-class DiagnosticLogger {
+type LogLevel = DiagnosticInfo['level'];
+type LogCategory = DiagnosticInfo['category'];
+
+const LEVEL_PRIORITY: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+};
+
+function safeNowISO(): string {
+  try {
+    return new Date().toISOString();
+  } catch {
+    return '' + Date.now();
+  }
+}
+
+function pickLogLevelFromConfig(): LogLevel {
+  const lvl = (webUIConfig as any)?.logLevel;
+  if (lvl === 'debug' || lvl === 'info' || lvl === 'warn' || lvl === 'error') return lvl;
+  return 'info';
+}
+
+function sanitizeForConsole(obj: Record<string, any>): Record<string, any> {
+  const copy: Record<string, any> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined) continue;
+    if (v instanceof Error) {
+      copy[k] = { name: v.name, message: v.message, stack: v.stack };
+    } else {
+      copy[k] = v;
+    }
+  }
+  return copy;
+}
+
+export class DiagnosticLogger {
   private logs: DiagnosticInfo[] = [];
-  private maxLogs: number = 1000;
+  private maxLogs = 1000;
   private listeners: Array<(log: DiagnosticInfo) => void> = [];
 
   constructor() {
-    // Initialize with system info
     this.logSystemInfo();
   }
 
@@ -72,29 +108,42 @@ class DiagnosticLogger {
    * Log system information on startup
    */
   private logSystemInfo(): void {
-    this.log('info', 'config', 'Diagnostic logger initialized', {
-      config: {
-        backendUrl: webUIConfig.backendUrl,
-        environment: webUIConfig.environment,
-        networkMode: webUIConfig.networkMode,
-        debugLogging: webUIConfig.debugLogging,
-        healthChecksEnabled: webUIConfig.enableHealthChecks,
-      },
-      runtime: {
-        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
-        url: typeof window !== 'undefined' ? window.location.href : 'server',
-        online: typeof navigator !== 'undefined' ? navigator.onLine : true,
-        timestamp: new Date().toISOString(),
-      },
+    const runtime = {
+      userAgent:
+        typeof navigator !== 'undefined' && navigator?.userAgent
+          ? navigator.userAgent
+          : 'server',
+      url: typeof window !== 'undefined' && (window as any)?.location?.href
+        ? (window as any).location.href
+        : 'server',
+      online: typeof navigator !== 'undefined' && 'onLine' in navigator ? !!navigator.onLine : true,
+      timestamp: safeNowISO(),
+    };
 
+    this.log(
+      'info',
+      'config',
+      'Diagnostic logger initialized',
+      {
+        config: {
+          backendUrl: webUIConfig.backendUrl,
+          environment: webUIConfig.environment,
+          networkMode: webUIConfig.networkMode,
+          debugLogging: webUIConfig.debugLogging,
+          healthChecksEnabled: webUIConfig.enableHealthChecks,
+          logLevel: pickLogLevelFromConfig(),
+        },
+        runtime,
+      }
+    );
   }
 
   /**
    * Log a diagnostic message
    */
   public log(
-    level: DiagnosticInfo['level'],
-    category: DiagnosticInfo['category'],
+    level: LogLevel,
+    category: LogCategory,
     message: string,
     details?: Record<string, any>,
     endpoint?: string,
@@ -103,7 +152,7 @@ class DiagnosticLogger {
     troubleshooting?: TroubleshootingInfo
   ): void {
     const logEntry: DiagnosticInfo = {
-      timestamp: new Date().toISOString(),
+      timestamp: safeNowISO(),
       level,
       category,
       message,
@@ -114,35 +163,31 @@ class DiagnosticLogger {
       troubleshooting,
     };
 
-    // Add to logs array
+    // Add newest first
     this.logs.unshift(logEntry);
 
-    // Keep only the most recent logs
+    // Trim to maxLogs
     if (this.logs.length > this.maxLogs) {
       this.logs = this.logs.slice(0, this.maxLogs);
     }
 
-    // Console logging based on configuration
+    // Console emission
     if (this.shouldLog(level)) {
       this.consoleLog(logEntry);
     }
 
-    // Notify listeners
+    // Notify listeners (fault-isolated)
     this.notifyListeners(logEntry);
   }
 
   /**
-   * Check if we should log based on configuration
+   * Dynamic logging threshold and debug toggle
    */
-  private shouldLog(level: DiagnosticInfo['level']): boolean {
-    if (!webUIConfig.debugLogging && level === 'debug') {
-      return false;
-    }
+  private shouldLog(level: LogLevel): boolean {
+    if (!webUIConfig.debugLogging && level === 'debug') return false;
 
-    const levelPriority = { debug: 0, info: 1, warn: 2, error: 3 };
-    const configLevelPriority = levelPriority[webUIConfig.logLevel];
-    const logLevelPriority = levelPriority[level];
-
+    const configLevelPriority = LEVEL_PRIORITY[pickLogLevelFromConfig()];
+    const logLevelPriority = LEVEL_PRIORITY[level];
     return logLevelPriority >= configLevelPriority;
   }
 
@@ -151,40 +196,34 @@ class DiagnosticLogger {
    */
   private consoleLog(log: DiagnosticInfo): void {
     const prefix = `🔍 [${log.category.toUpperCase()}]`;
-    const timestamp = new Date(log.timestamp).toLocaleTimeString();
-    const message = `${prefix} ${log.message}`;
+    const t = new Date(log.timestamp);
+    const timestamp = isNaN(t.getTime()) ? log.timestamp : t.toLocaleTimeString();
+    const msg = `${timestamp} ${prefix} ${log.message}`;
 
-    const logData = {
-      timestamp,
+    const payload = sanitizeForConsole({
       endpoint: log.endpoint,
-      duration: log.duration ? `${log.duration}ms` : undefined,
+      duration: typeof log.duration === 'number' ? `${log.duration}ms` : undefined,
       details: log.details,
       error: log.error,
       troubleshooting: log.troubleshooting,
-    };
+    });
 
-    // Remove undefined values
-    Object.keys(logData).forEach(key => {
-      if (logData[key as keyof typeof logData] === undefined) {
-        delete logData[key as keyof typeof logData];
-      }
-
+    // Route based on level (network "error" -> warn to reduce dev noise)
     switch (log.level) {
       case 'debug':
-        console.debug(message, logData);
+        console.debug(msg, payload);
         break;
       case 'info':
-        console.info(message, logData);
+        console.info(msg, payload);
         break;
       case 'warn':
-        console.warn(message, logData);
+        console.warn(msg, payload);
         break;
       case 'error':
         if (log.category === 'network') {
-          // Network errors are common during development; treat them as warnings to reduce noise
-          console.warn(message, logData);
+          console.warn(msg, payload);
         } else {
-          console.error(message, logData);
+          console.error(msg, payload);
         }
         break;
     }
@@ -194,13 +233,14 @@ class DiagnosticLogger {
    * Notify listeners of new log entries
    */
   private notifyListeners(log: DiagnosticInfo): void {
-    this.listeners.forEach(listener => {
+    for (const listener of this.listeners) {
       try {
         listener(log);
-      } catch (error) {
-        console.error('Error in diagnostic log listener:', error);
+      } catch (err) {
+        // Listener failures shouldn't cascade
+        console.error('Error in diagnostic log listener:', err);
       }
-
+    }
   }
 
   /**
@@ -218,25 +258,28 @@ class DiagnosticLogger {
     const duration = Date.now() - startTime;
     const isNetworkIssue = !success && (!statusCode || statusCode === 0);
     const isClientError = !success && statusCode ? Math.floor(statusCode / 100) === 4 : false;
-    const level = success
-      ? 'info'
-      : isNetworkIssue || isClientError
-        ? 'warn'
-        : 'error';
+
+    const level: LogLevel = success ? 'info' : (isNetworkIssue || isClientError ? 'warn' : 'error');
     const message = success
       ? `Endpoint connectivity successful: ${method} ${endpoint}`
       : isNetworkIssue
         ? `Network connectivity failed: ${method} ${endpoint}`
         : `Endpoint connectivity failed: ${method} ${endpoint}`;
 
-    const troubleshooting = success ? undefined : this.generateEndpointTroubleshooting(endpoint, statusCode, error);
+    const troubleshooting = success
+      ? undefined
+      : this.generateEndpointTroubleshooting(endpoint, statusCode, error);
 
-    this.log(level, 'network', message, {
-      method,
-      statusCode,
-      headers,
-      responseTime: duration,
-    }, endpoint, duration, error, troubleshooting);
+    this.log(
+      level,
+      'network',
+      message,
+      { method, statusCode, headers, responseTime: duration },
+      endpoint,
+      duration,
+      error,
+      troubleshooting
+    );
   }
 
   /**
@@ -251,32 +294,37 @@ class DiagnosticLogger {
     const message = `CORS error detected for ${endpoint}`;
     const troubleshooting = this.generateCORSTroubleshooting(origin, corsInfo);
 
-    this.log('error', 'cors', message, {
-      origin,
-      corsInfo,
-    }, endpoint, undefined, error, troubleshooting);
+    this.log('error', 'cors', message, { origin, corsInfo }, endpoint, undefined, error, troubleshooting);
   }
 
   /**
    * Log network diagnostic information
    */
   public logNetworkDiagnostic(diagnostic: NetworkDiagnostic): void {
-    const level = diagnostic.status === 'success' ? 'info' : 'error';
+    const level: LogLevel = diagnostic.status === 'success' ? 'info' : 'error';
     const message = `Network diagnostic: ${diagnostic.method} ${diagnostic.endpoint} - ${diagnostic.status}`;
 
-    const troubleshooting = diagnostic.status !== 'success'
-      ? this.generateNetworkTroubleshooting(diagnostic)
-      : undefined;
+    const troubleshooting =
+      diagnostic.status !== 'success' ? this.generateNetworkTroubleshooting(diagnostic) : undefined;
 
-    this.log(level, 'network', message, {
-      method: diagnostic.method,
-      status: diagnostic.status,
-      statusCode: diagnostic.statusCode,
-      responseTime: diagnostic.responseTime,
-      headers: diagnostic.headers,
-      corsInfo: diagnostic.corsInfo,
-      networkInfo: diagnostic.networkInfo,
-    }, diagnostic.endpoint, diagnostic.responseTime, diagnostic.error, troubleshooting);
+    this.log(
+      level,
+      'network',
+      message,
+      {
+        method: diagnostic.method,
+        status: diagnostic.status,
+        statusCode: diagnostic.statusCode,
+        responseTime: diagnostic.responseTime,
+        headers: diagnostic.headers,
+        corsInfo: diagnostic.corsInfo,
+        networkInfo: diagnostic.networkInfo,
+      },
+      diagnostic.endpoint,
+      diagnostic.responseTime,
+      diagnostic.error,
+      troubleshooting
+    );
   }
 
   /**
@@ -291,7 +339,6 @@ class DiagnosticLogger {
     const suggestedFixes: string[] = [];
     const documentationLinks: string[] = [];
 
-    // Handle generic network connectivity failures where no status code is returned
     if (!statusCode || statusCode === 0) {
       possibleCauses.push('Backend server is not running');
       possibleCauses.push('Incorrect backend URL or port');
@@ -304,7 +351,6 @@ class DiagnosticLogger {
       suggestedFixes.push('Confirm the backend exposes the requested API route');
     }
 
-    // Analyze status code
     if (statusCode) {
       switch (Math.floor(statusCode / 100)) {
         case 4:
@@ -332,7 +378,6 @@ class DiagnosticLogger {
       }
     }
 
-    // Analyze error message
     const errorMessage = error instanceof Error ? error.message : String(error || '');
     if (errorMessage.toLowerCase().includes('cors')) {
       possibleCauses.push('Cross-Origin Resource Sharing (CORS) policy violation');
@@ -354,7 +399,6 @@ class DiagnosticLogger {
       suggestedFixes.push('Check firewall and proxy settings');
     }
 
-    // General suggestions if no specific issues identified
     if (possibleCauses.length === 0) {
       possibleCauses.push('Unknown connectivity issue');
       suggestedFixes.push('Check network connectivity');
@@ -362,7 +406,6 @@ class DiagnosticLogger {
       suggestedFixes.push('Check browser console for additional errors');
     }
 
-    // Add documentation links
     documentationLinks.push('https://developer.mozilla.org/en-US/docs/Web/HTTP/Status');
     documentationLinks.push('https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS');
 
@@ -430,13 +473,11 @@ class DiagnosticLogger {
         suggestedFixes.push('Check network connection quality');
         suggestedFixes.push('Verify backend service performance');
         break;
-
       case 'cors':
         possibleCauses.push('CORS policy violation');
         suggestedFixes.push('Update backend CORS configuration');
         suggestedFixes.push('Check allowed origins and methods');
         break;
-
       case 'network':
         possibleCauses.push('Network connectivity failure');
         possibleCauses.push('DNS resolution issues');
@@ -445,7 +486,6 @@ class DiagnosticLogger {
         suggestedFixes.push('Verify DNS settings');
         suggestedFixes.push('Check firewall and proxy configuration');
         break;
-
       case 'error':
         possibleCauses.push('General request error');
         suggestedFixes.push('Check backend service status');
@@ -466,30 +506,24 @@ class DiagnosticLogger {
   /**
    * Get recent logs
    */
-  public getLogs(limit: number = 100, category?: DiagnosticInfo['category']): DiagnosticInfo[] {
+  public getLogs(limit: number = 100, category?: LogCategory): DiagnosticInfo[] {
     let logs = this.logs;
-
-    if (category) {
-      logs = logs.filter(log => log.category === category);
-    }
-
-    return logs.slice(0, limit);
+    if (category) logs = logs.filter((l) => l.category === category);
+    return logs.slice(0, Math.max(0, limit));
   }
 
   /**
    * Get logs by level
    */
-  public getLogsByLevel(level: DiagnosticInfo['level'], limit: number = 50): DiagnosticInfo[] {
-    return this.logs.filter(log => log.level === level).slice(0, limit);
+  public getLogsByLevel(level: LogLevel, limit: number = 50): DiagnosticInfo[] {
+    return this.logs.filter((l) => l.level === level).slice(0, Math.max(0, limit));
   }
 
   /**
    * Get error logs with troubleshooting info
    */
   public getErrorLogs(limit: number = 50): DiagnosticInfo[] {
-    return this.logs
-      .filter(log => log.level === 'error')
-      .slice(0, limit);
+    return this.logs.filter((l) => l.level === 'error').slice(0, Math.max(0, limit));
   }
 
   /**
@@ -506,10 +540,8 @@ class DiagnosticLogger {
   public onLog(listener: (log: DiagnosticInfo) => void): () => void {
     this.listeners.push(listener);
     return () => {
-      const index = this.listeners.indexOf(listener);
-      if (index > -1) {
-        this.listeners.splice(index, 1);
-      }
+      const idx = this.listeners.indexOf(listener);
+      if (idx > -1) this.listeners.splice(idx, 1);
     };
   }
 
@@ -517,15 +549,20 @@ class DiagnosticLogger {
    * Export logs for debugging
    */
   public exportLogs(): string {
-    return JSON.stringify({
-      exportTime: new Date().toISOString(),
-      config: {
-        backendUrl: webUIConfig.backendUrl,
-        environment: webUIConfig.environment,
-        networkMode: webUIConfig.networkMode,
+    return JSON.stringify(
+      {
+        exportTime: safeNowISO(),
+        config: {
+          backendUrl: webUIConfig.backendUrl,
+          environment: webUIConfig.environment,
+          networkMode: webUIConfig.networkMode,
+          logLevel: pickLogLevelFromConfig(),
+        },
+        logs: this.logs,
       },
-      logs: this.logs,
-    }, null, 2);
+      null,
+      2
+    );
   }
 
   /**
@@ -542,10 +579,11 @@ class DiagnosticLogger {
     let errorCount = 0;
     let warningCount = 0;
 
-    this.logs.forEach(log => {
+    for (const log of this.logs) {
       categories[log.category] = (categories[log.category] || 0) + 1;
       if (log.level === 'error') errorCount++;
       if (log.level === 'warn') warningCount++;
+    }
 
     return {
       totalLogs: this.logs.length,
@@ -557,7 +595,7 @@ class DiagnosticLogger {
   }
 }
 
-// Global diagnostic logger instance
+// Global diagnostic logger instance (singleton)
 let diagnosticLogger: DiagnosticLogger | null = null;
 
 export function getDiagnosticLogger(): DiagnosticLogger {
@@ -572,7 +610,7 @@ export function initializeDiagnosticLogger(): DiagnosticLogger {
   return diagnosticLogger;
 }
 
-// Convenience functions for common logging scenarios
+// Convenience functions
 export function logEndpointAttempt(
   endpoint: string,
   method: string,
@@ -597,7 +635,3 @@ export function logCORSIssue(
 export function logNetworkDiagnostic(diagnostic: NetworkDiagnostic): void {
   getDiagnosticLogger().logNetworkDiagnostic(diagnostic);
 }
-
-// Types are already exported via export interface declarations above
-
-export { DiagnosticLogger };

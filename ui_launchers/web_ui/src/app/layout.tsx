@@ -9,6 +9,7 @@ import { ThemeBridge } from "@/components/theme/ThemeBridge";
 import Script from 'next/script';
 import { HealthStatusBadge } from '@/components/ui/health-status-badge';
 import { SkipLinks, ColorBlindnessFilters } from '@/components/accessibility';
+import { GlobalDegradationBanner } from '@/components/graceful-degradation/GlobalDegradationBanner';
 
 // Import early extension fix first
 import '@/lib/early-extension-fix';
@@ -124,6 +125,7 @@ export default function RootLayout({
         <ColorBlindnessFilters />
         <ThemeBridge>
           <Providers>
+            <GlobalDegradationBanner />
             <HealthStatusBadge />
             <main id="main-content" role="main" className="min-h-dvh focus:outline-none smooth-transition" tabIndex={-1}>
               <div className="modern-layout-root">

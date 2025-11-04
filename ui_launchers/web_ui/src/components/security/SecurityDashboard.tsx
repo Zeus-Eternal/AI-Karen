@@ -1,37 +1,70 @@
-
 "use client";
-import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
-import { enhancedApiClient } from '@/lib/enhanced-api-client';
-import { PermissionGate } from '@/components/rbac';
-import { EvilModeToggle } from './EvilModeToggle';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
 
-import { } from '@/components/ui/select';
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { PermissionGate } from "@/components/rbac";
+import { EvilModeToggle } from "./EvilModeToggle";
 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
 
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RTooltip,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-import { } from '@/components/ui/table';
+import {
+  Shield,
+  RefreshCw,
+  AlertTriangle,
+  TrendingDown,
+  Target,
+  FileText,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Lock,
+  Database,
+  Network,
+  Eye,
+} from "lucide-react";
 
-
-import { } from 'recharts';
-
-
-import { } from 'lucide-react';
-
+/* ====================== Types ====================== */
 interface SecurityDashboardProps {
   className?: string;
 }
 
 interface SecurityMetrics {
   overallSecurityScore: number;
-  threatLevel: 'low' | 'medium' | 'high' | 'critical';
+  threatLevel: "low" | "medium" | "high" | "critical";
   activeThreats: number;
   resolvedThreats: number;
   vulnerabilities: {
@@ -47,21 +80,21 @@ interface SecurityMetrics {
     openIncidents: number;
   };
   systemHealth: {
-    authentication: 'healthy' | 'warning' | 'critical';
-    authorization: 'healthy' | 'warning' | 'critical';
-    dataProtection: 'healthy' | 'warning' | 'critical';
-    networkSecurity: 'healthy' | 'warning' | 'critical';
+    authentication: "healthy" | "warning" | "critical";
+    authorization: "healthy" | "warning" | "critical";
+    dataProtection: "healthy" | "warning" | "critical";
+    networkSecurity: "healthy" | "warning" | "critical";
   };
 }
 
 interface SecurityAlert {
   id: string;
-  type: 'threat' | 'vulnerability' | 'policy_violation' | 'anomaly';
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  type: "threat" | "vulnerability" | "policy_violation" | "anomaly";
+  severity: "low" | "medium" | "high" | "critical";
   title: string;
   description: string;
   timestamp: Date;
-  status: 'open' | 'investigating' | 'resolved' | 'false_positive';
+  status: "open" | "investigating" | "resolved" | "false_positive";
   affectedSystems: string[];
   recommendedActions: string[];
   assignedTo?: string;
@@ -72,70 +105,89 @@ interface ThreatIntelligence {
   source: string;
   threatType: string;
   confidence: number;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   indicators: string[];
   description: string;
   mitigation: string[];
   lastUpdated: Date;
 }
 
+/* ====================== Component ====================== */
 export function SecurityDashboard({ className }: SecurityDashboardProps) {
-  const [timeframe, setTimeframe] = useState<'24h' | '7d' | '30d'>('24h');
-  const [selectedAlert, setSelectedAlert] = useState<SecurityAlert | null>(null);
+  const [timeframe, setTimeframe] = React.useState<"24h" | "7d" | "30d">("24h");
 
-  const timeframeOptions = {
-    '24h': { hours: 24, label: 'Last 24 hours' },
-    '7d': { days: 7, label: 'Last 7 days' },
-    '30d': { days: 30, label: 'Last 30 days' }
+  const timeframeOptions: Record<"24h" | "7d" | "30d", { label: string }> = {
+    "24h": { label: "Last 24 hours" },
+    "7d": { label: "Last 7 days" },
+    "30d": { label: "Last 30 days" },
   };
 
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ['security', 'metrics', timeframe],
+  const {
+    data: metrics,
+    isLoading: metricsLoading,
+    refetch: refetchMetrics,
+  } = useQuery({
+    queryKey: ["security", "metrics", timeframe],
     queryFn: () => getSecurityMetrics(timeframe),
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30_000,
+  });
 
-  const { data: alerts } = useQuery({
-    queryKey: ['security', 'alerts'],
+  const { data: alerts, refetch: refetchAlerts } = useQuery({
+    queryKey: ["security", "alerts"],
     queryFn: () => getSecurityAlerts(),
-    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchInterval: 10_000,
+  });
 
-  const { data: threats } = useQuery({
-    queryKey: ['security', 'threat-intelligence'],
+  const { data: threats, refetch: refetchThreats } = useQuery({
+    queryKey: ["security", "threat-intelligence"],
     queryFn: () => getThreatIntelligence(),
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 60_000,
+  });
+
+  const handleRefresh = () => {
+    void Promise.all([refetchMetrics(), refetchAlerts(), refetchThreats()]);
+  };
 
   return (
     <PermissionGate permission="security:view">
       <div className={className}>
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold flex items-center space-x-2">
               <Shield className="h-6 w-6 text-blue-600 " />
               <span>Security Dashboard</span>
             </h2>
-            <p className="text-muted-foreground">
-            </p>
+            <p className="text-muted-foreground"></p>
           </div>
+
           <div className="flex items-center space-x-2">
-            <select value={timeframe} onValueChange={(value: '24h' | '7d' | '30d') = aria-label="Select option"> setTimeframe(value)}>
-              <selectTrigger className="w-40 " aria-label="Select option">
-                <selectValue />
+            <Select
+              value={timeframe}
+              onValueChange={(v: "24h" | "7d" | "30d") => setTimeframe(v)}
+            >
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Select timeframe" />
               </SelectTrigger>
-              <selectContent aria-label="Select option">
+              <SelectContent>
                 {Object.entries(timeframeOptions).map(([key, { label }]) => (
-                  <selectItem key={key} value={key} aria-label="Select option">{label}</SelectItem>
+                  <SelectItem key={key} value={key}>
+                    {label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" >
+
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 " />
             </Button>
           </div>
         </div>
 
+        {/* Body */}
         {metricsLoading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary "></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary " />
           </div>
         ) : (
           <Tabs defaultValue="overview" className="space-y-4">
@@ -178,6 +230,7 @@ export function SecurityDashboard({ className }: SecurityDashboardProps) {
   );
 }
 
+/* ====================== Overview ====================== */
 interface SecurityOverviewProps {
   metrics: SecurityMetrics | undefined;
   alerts: SecurityAlert[] | undefined;
@@ -186,29 +239,37 @@ interface SecurityOverviewProps {
 function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
   if (!metrics) return <div>Loading...</div>;
 
-  const getThreatLevelColor = (level: string) => {
+  const getThreatLevelColor = (level: SecurityMetrics["threatLevel"]) => {
     switch (level) {
-      case 'critical': return 'text-red-600';
-      case 'high': return 'text-orange-600';
-      case 'medium': return 'text-yellow-600';
-      default: return 'text-green-600';
+      case "critical":
+        return "text-red-600";
+      case "high":
+        return "text-orange-600";
+      case "medium":
+        return "text-yellow-600";
+      default:
+        return "text-green-600";
     }
   };
 
-  const getHealthIcon = (status: string) => {
+  const getHealthIcon = (status: SecurityMetrics["systemHealth"][keyof SecurityMetrics["systemHealth"]]) => {
     switch (status) {
-      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-500 " />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-500 " />;
-      case 'critical': return <XCircle className="h-4 w-4 text-red-500 " />;
-      default: return <Clock className="h-4 w-4 text-gray-500 " />;
+      case "healthy":
+        return <CheckCircle className="h-4 w-4 text-green-500 " />;
+      case "warning":
+        return <AlertTriangle className="h-4 w-4 text-yellow-500 " />;
+      case "critical":
+        return <XCircle className="h-4 w-4 text-red-500 " />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-500 " />;
     }
   };
 
-  const recentAlerts = alerts?.slice(0, 5) || [];
+  const recentAlerts = alerts?.slice(0, 5) ?? [];
 
   return (
     <div className="space-y-6">
-      {/* Security Score and Threat Level */}
+      {/* Top KPIs */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -219,9 +280,13 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
             <div className="text-2xl font-bold">{metrics.overallSecurityScore}%</div>
             <Progress value={metrics.overallSecurityScore} className="mt-2" />
             <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-              {metrics.overallSecurityScore >= 90 ? 'Excellent' :
-               metrics.overallSecurityScore >= 80 ? 'Good' :
-               metrics.overallSecurityScore >= 70 ? 'Fair' : 'Needs Attention'}
+              {metrics.overallSecurityScore >= 90
+                ? "Excellent"
+                : metrics.overallSecurityScore >= 80
+                ? "Good"
+                : metrics.overallSecurityScore >= 70
+                ? "Fair"
+                : "Needs Attention"}
             </p>
           </CardContent>
         </Card>
@@ -237,6 +302,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
             </div>
             <div className="flex items-center text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
               <TrendingDown className="h-3 w-3 mr-1 text-green-500 " />
+              <span>Trend improving</span>
             </div>
           </CardContent>
         </Card>
@@ -262,8 +328,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
           <CardContent>
             <div className="text-2xl font-bold">{metrics.complianceScore}%</div>
             <Progress value={metrics.complianceScore} className="mt-2" />
-            <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-            </p>
+            <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base"></p>
           </CardContent>
         </Card>
       </div>
@@ -272,9 +337,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
       <Card>
         <CardHeader>
           <CardTitle>System Health</CardTitle>
-          <CardDescription>
-            Real-time status of critical security components
-          </CardDescription>
+          <CardDescription>Real-time status of critical security components</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -285,10 +348,15 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
               </div>
               <div className="flex items-center space-x-2">
                 {getHealthIcon(metrics.systemHealth.authentication)}
-                <Badge variant={
-                  metrics.systemHealth.authentication === 'healthy' ? 'default' :
-                  metrics.systemHealth.authentication === 'warning' ? 'secondary' : 'destructive'
-                }>
+                <Badge
+                  variant={
+                    metrics.systemHealth.authentication === "healthy"
+                      ? "default"
+                      : metrics.systemHealth.authentication === "warning"
+                      ? "secondary"
+                      : "destructive"
+                  }
+                >
                   {metrics.systemHealth.authentication}
                 </Badge>
               </div>
@@ -301,10 +369,15 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
               </div>
               <div className="flex items-center space-x-2">
                 {getHealthIcon(metrics.systemHealth.authorization)}
-                <Badge variant={
-                  metrics.systemHealth.authorization === 'healthy' ? 'default' :
-                  metrics.systemHealth.authorization === 'warning' ? 'secondary' : 'destructive'
-                }>
+                <Badge
+                  variant={
+                    metrics.systemHealth.authorization === "healthy"
+                      ? "default"
+                      : metrics.systemHealth.authorization === "warning"
+                      ? "secondary"
+                      : "destructive"
+                  }
+                >
                   {metrics.systemHealth.authorization}
                 </Badge>
               </div>
@@ -317,10 +390,15 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
               </div>
               <div className="flex items-center space-x-2">
                 {getHealthIcon(metrics.systemHealth.dataProtection)}
-                <Badge variant={
-                  metrics.systemHealth.dataProtection === 'healthy' ? 'default' :
-                  metrics.systemHealth.dataProtection === 'warning' ? 'secondary' : 'destructive'
-                }>
+                <Badge
+                  variant={
+                    metrics.systemHealth.dataProtection === "healthy"
+                      ? "default"
+                      : metrics.systemHealth.dataProtection === "warning"
+                      ? "secondary"
+                      : "destructive"
+                  }
+                >
                   {metrics.systemHealth.dataProtection}
                 </Badge>
               </div>
@@ -333,10 +411,15 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
               </div>
               <div className="flex items-center space-x-2">
                 {getHealthIcon(metrics.systemHealth.networkSecurity)}
-                <Badge variant={
-                  metrics.systemHealth.networkSecurity === 'healthy' ? 'default' :
-                  metrics.systemHealth.networkSecurity === 'warning' ? 'secondary' : 'destructive'
-                }>
+                <Badge
+                  variant={
+                    metrics.systemHealth.networkSecurity === "healthy"
+                      ? "default"
+                      : metrics.systemHealth.networkSecurity === "warning"
+                      ? "secondary"
+                      : "destructive"
+                  }
+                >
                   {metrics.systemHealth.networkSecurity}
                 </Badge>
               </div>
@@ -349,45 +432,70 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
       <Card>
         <CardHeader>
           <CardTitle>Recent Security Alerts</CardTitle>
-          <CardDescription>
-          </CardDescription>
+          <CardDescription></CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {recentAlerts.map((alert) => (
-              <div key={alert.id} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
+              <div
+                key={alert.id}
+                className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6"
+              >
                 <div className="flex items-center space-x-3">
-                  <div className={`p-1 rounded-full ${
-                    alert.severity === 'critical' ? 'bg-red-100 dark:bg-red-900/30' :
-                    alert.severity === 'high' ? 'bg-orange-100 dark:bg-orange-900/30' :
-                    alert.severity === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
-                    'bg-blue-100 dark:bg-blue-900/30'
-                  }`} role="alert">
-                    <AlertTriangle className={`h-3 w-3 ${
-                      alert.severity === 'critical' ? 'text-red-600' :
-                      alert.severity === 'high' ? 'text-orange-600' :
-                      alert.severity === 'medium' ? 'text-yellow-600' :
-                      'text-blue-600'
-                    }`} />
+                  <div
+                    className={`p-1 rounded-full ${
+                      alert.severity === "critical"
+                        ? "bg-red-100 dark:bg-red-900/30"
+                        : alert.severity === "high"
+                        ? "bg-orange-100 dark:bg-orange-900/30"
+                        : alert.severity === "medium"
+                        ? "bg-yellow-100 dark:bg-yellow-900/30"
+                        : "bg-blue-100 dark:bg-blue-900/30"
+                    }`}
+                    role="img"
+                    aria-label={`${alert.severity} severity`}
+                  >
+                    <AlertTriangle
+                      className={`h-3 w-3 ${
+                        alert.severity === "critical"
+                          ? "text-red-600"
+                          : alert.severity === "high"
+                          ? "text-orange-600"
+                          : alert.severity === "medium"
+                          ? "text-yellow-600"
+                          : "text-blue-600"
+                      }`}
+                    />
                   </div>
                   <div>
                     <p className="font-medium">{alert.title}</p>
                     <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                      {format(new Date(alert.timestamp), 'MMM dd, HH:mm')} • {alert.affectedSystems.join(', ')}
+                      {format(new Date(alert.timestamp), "MMM dd, HH:mm")} •{" "}
+                      {alert.affectedSystems.join(", ")}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Badge variant={
-                    alert.severity === 'critical' ? 'destructive' :
-                    alert.severity === 'high' ? 'default' : 'secondary'
-                  }>
+                  <Badge
+                    variant={
+                      alert.severity === "critical"
+                        ? "destructive"
+                        : alert.severity === "high"
+                        ? "default"
+                        : "secondary"
+                    }
+                  >
                     {alert.severity}
                   </Badge>
-                  <Badge variant={
-                    alert.status === 'resolved' ? 'default' :
-                    alert.status === 'investigating' ? 'secondary' : 'outline'
-                  }>
+                  <Badge
+                    variant={
+                      alert.status === "resolved"
+                        ? "default"
+                        : alert.status === "investigating"
+                        ? "secondary"
+                        : "outline"
+                    }
+                  >
                     {alert.status}
                   </Badge>
                 </div>
@@ -400,14 +508,15 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
   );
 }
 
+/* ====================== Threats ====================== */
 interface ThreatMonitoringProps {
   alerts: SecurityAlert[] | undefined;
   threats: ThreatIntelligence[] | undefined;
 }
 
 function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
-  const threatAlerts = alerts?.filter(alert => alert.type === 'threat') || [];
-  const activeThreatIntel = threats?.filter(threat => threat.confidence > 70) || [];
+  const threatAlerts = alerts?.filter((a) => a.type === "threat") ?? [];
+  const activeThreatIntel = threats?.filter((t) => t.confidence > 70) ?? [];
 
   return (
     <div className="space-y-6">
@@ -418,7 +527,9 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{threatAlerts.length}</div>
-            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Requiring immediate attention</p>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
+              Requiring immediate attention
+            </p>
           </CardContent>
         </Card>
 
@@ -428,7 +539,9 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeThreatIntel.length}</div>
-            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">High confidence indicators</p>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
+              High confidence indicators
+            </p>
           </CardContent>
         </Card>
 
@@ -438,7 +551,9 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">12m</div>
-            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Average detection to response</p>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
+              Average detection to response
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -451,7 +566,10 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
           <CardContent>
             <div className="space-y-3">
               {threatAlerts.slice(0, 5).map((alert) => (
-                <Alert key={alert.id} variant={alert.severity === 'critical' ? 'destructive' : 'default'}>
+                <Alert
+                  key={alert.id}
+                  variant={alert.severity === "critical" ? "destructive" : "default"}
+                >
                   <AlertTriangle className="h-4 w-4 " />
                   <AlertDescription>
                     <div className="flex items-center justify-between">
@@ -459,10 +577,12 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
                         <strong>{alert.title}</strong>
                         <p className="text-sm md:text-base lg:text-lg">{alert.description}</p>
                         <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                          {format(new Date(alert.timestamp), 'MMM dd, HH:mm')}
+                          {format(new Date(alert.timestamp), "MMM dd, HH:mm")}
                         </p>
                       </div>
-                      <Badge variant={alert.severity === 'critical' ? 'destructive' : 'default'}>
+                      <Badge
+                        variant={alert.severity === "critical" ? "destructive" : "default"}
+                      >
                         {alert.severity}
                       </Badge>
                     </div>
@@ -485,15 +605,17 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
                     <span className="font-medium">{threat.threatType}</span>
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline">{threat.confidence}% confidence</Badge>
-                      <Badge variant={threat.severity === 'critical' ? 'destructive' : 'default'}>
+                      <Badge variant={threat.severity === "critical" ? "destructive" : "default"}>
                         {threat.severity}
                       </Badge>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">{threat.description}</p>
+                  <p className="text-sm text-muted-foreground mb-2 md:text-base lg:text-lg">
+                    {threat.description}
+                  </p>
                   <div className="flex items-center justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
                     <span>Source: {threat.source}</span>
-                    <span>{format(new Date(threat.lastUpdated), 'MMM dd, HH:mm')}</span>
+                    <span>{format(new Date(threat.lastUpdated), "MMM dd, HH:mm")}</span>
                   </div>
                 </div>
               ))}
@@ -505,6 +627,7 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
   );
 }
 
+/* ====================== Vulnerabilities ====================== */
 interface VulnerabilityManagementProps {
   metrics: SecurityMetrics | undefined;
 }
@@ -513,10 +636,10 @@ function VulnerabilityManagement({ metrics }: VulnerabilityManagementProps) {
   if (!metrics) return <div>Loading...</div>;
 
   const vulnerabilityData = [
-    { name: 'Critical', value: metrics.vulnerabilities.critical, color: '#ef4444' },
-    { name: 'High', value: metrics.vulnerabilities.high, color: '#f97316' },
-    { name: 'Medium', value: metrics.vulnerabilities.medium, color: '#eab308' },
-    { name: 'Low', value: metrics.vulnerabilities.low, color: '#22c55e' }
+    { name: "Critical", value: metrics.vulnerabilities.critical, color: "#ef4444" },
+    { name: "High", value: metrics.vulnerabilities.high, color: "#f97316" },
+    { name: "Medium", value: metrics.vulnerabilities.medium, color: "#eab308" },
+    { name: "Low", value: metrics.vulnerabilities.low, color: "#22c55e" },
   ];
 
   return (
@@ -543,7 +666,7 @@ function VulnerabilityManagement({ metrics }: VulnerabilityManagementProps) {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <RTooltip />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -555,17 +678,19 @@ function VulnerabilityManagement({ metrics }: VulnerabilityManagementProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={[
-                { date: '2024-01-01', critical: 5, high: 12, medium: 25, low: 45 },
-                { date: '2024-01-02', critical: 3, high: 10, medium: 22, low: 40 },
-                { date: '2024-01-03', critical: 2, high: 8, medium: 20, low: 38 },
-                { date: '2024-01-04', critical: 1, high: 6, medium: 18, low: 35 },
-                { date: '2024-01-05', critical: 1, high: 5, medium: 15, low: 32 }
-              ]}>
+              <LineChart
+                data={[
+                  { date: "2024-01-01", critical: 5, high: 12, medium: 25, low: 45 },
+                  { date: "2024-01-02", critical: 3, high: 10, medium: 22, low: 40 },
+                  { date: "2024-01-03", critical: 2, high: 8, medium: 20, low: 38 },
+                  { date: "2024-01-04", critical: 1, high: 6, medium: 18, low: 35 },
+                  { date: "2024-01-05", critical: 1, high: 5, medium: 15, low: 32 },
+                ]}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
-                <Tooltip />
+                <RTooltip />
                 <Line type="monotone" dataKey="critical" stroke="#ef4444" strokeWidth={2} />
                 <Line type="monotone" dataKey="high" stroke="#f97316" strokeWidth={2} />
                 <Line type="monotone" dataKey="medium" stroke="#eab308" strokeWidth={2} />
@@ -579,9 +704,7 @@ function VulnerabilityManagement({ metrics }: VulnerabilityManagementProps) {
       <Card>
         <CardHeader>
           <CardTitle>Critical Vulnerabilities</CardTitle>
-          <CardDescription>
-            High-priority vulnerabilities requiring immediate attention
-          </CardDescription>
+          <CardDescription>High-priority vulnerabilities requiring immediate attention</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -628,6 +751,7 @@ function VulnerabilityManagement({ metrics }: VulnerabilityManagementProps) {
   );
 }
 
+/* ====================== Compliance ====================== */
 interface ComplianceMonitoringProps {
   metrics: SecurityMetrics | undefined;
 }
@@ -635,13 +759,13 @@ interface ComplianceMonitoringProps {
 function ComplianceMonitoring({ metrics }: ComplianceMonitoringProps) {
   if (!metrics) return <div>Loading...</div>;
 
-  const complianceFrameworks = [
-    { name: 'SOC 2', score: 95, status: 'compliant' },
-    { name: 'GDPR', score: 88, status: 'compliant' },
-    { name: 'HIPAA', score: 92, status: 'compliant' },
-    { name: 'PCI DSS', score: 85, status: 'partial' },
-    { name: 'ISO 27001', score: 90, status: 'compliant' }
-  ];
+  const frameworks = [
+    { name: "SOC 2", score: 95, status: "compliant" },
+    { name: "GDPR", score: 88, status: "compliant" },
+    { name: "HIPAA", score: 92, status: "compliant" },
+    { name: "PCI DSS", score: 85, status: "partial" },
+    { name: "ISO 27001", score: 90, status: "compliant" },
+  ] as const;
 
   return (
     <div className="space-y-6">
@@ -654,31 +778,31 @@ function ComplianceMonitoring({ metrics }: ComplianceMonitoringProps) {
             <div className="text-4xl font-bold text-green-600">{metrics.complianceScore}%</div>
             <div className="flex-1">
               <Progress value={metrics.complianceScore} className="h-3" />
-              <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
-              </p>
+              <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg"></p>
             </div>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {complianceFrameworks.map((framework) => (
-          <Card key={framework.name}>
+        {frameworks.map((f) => (
+          <Card key={f.name}>
             <CardHeader>
-              <CardTitle className="text-sm md:text-base lg:text-lg">{framework.name}</CardTitle>
+              <CardTitle className="text-sm md:text-base lg:text-lg">{f.name}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold">{framework.score}%</span>
-                  <Badge variant={
-                    framework.status === 'compliant' ? 'default' :
-                    framework.status === 'partial' ? 'secondary' : 'destructive'
-                  }>
-                    {framework.status}
+                  <span className="text-2xl font-bold">{f.score}%</span>
+                  <Badge
+                    variant={
+                      f.status === "compliant" ? "default" : f.status === "partial" ? "secondary" : "destructive"
+                    }
+                  >
+                    {f.status}
                   </Badge>
                 </div>
-                <Progress value={framework.score} className="h-2" />
+                <Progress value={f.score} className="h-2" />
               </div>
             </CardContent>
           </Card>
@@ -710,6 +834,7 @@ function ComplianceMonitoring({ metrics }: ComplianceMonitoringProps) {
   );
 }
 
+/* ====================== Incidents ====================== */
 interface IncidentResponseProps {
   metrics: SecurityMetrics | undefined;
   alerts: SecurityAlert[] | undefined;
@@ -718,7 +843,8 @@ interface IncidentResponseProps {
 function IncidentResponse({ metrics, alerts }: IncidentResponseProps) {
   if (!metrics) return <div>Loading...</div>;
 
-  const openIncidents = alerts?.filter(alert => alert.status === 'open' || alert.status === 'investigating') || [];
+  const openIncidents =
+    alerts?.filter((a) => a.status === "open" || a.status === "investigating") ?? [];
 
   return (
     <div className="space-y-6">
@@ -728,8 +854,12 @@ function IncidentResponse({ metrics, alerts }: IncidentResponseProps) {
             <CardTitle className="text-sm md:text-base lg:text-lg">Open Incidents</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{metrics.incidentResponse.openIncidents}</div>
-            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Requiring attention</p>
+            <div className="text-2xl font-bold text-red-600">
+              {metrics.incidentResponse.openIncidents}
+            </div>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
+              Requiring attention
+            </p>
           </CardContent>
         </Card>
 
@@ -738,8 +868,12 @@ function IncidentResponse({ metrics, alerts }: IncidentResponseProps) {
             <CardTitle className="text-sm md:text-base lg:text-lg">Resolved Today</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{metrics.incidentResponse.resolvedIncidents}</div>
-            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Successfully closed</p>
+            <div className="text-2xl font-bold text-green-600">
+              {metrics.incidentResponse.resolvedIncidents}
+            </div>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
+              Successfully closed
+            </p>
           </CardContent>
         </Card>
 
@@ -748,8 +882,12 @@ function IncidentResponse({ metrics, alerts }: IncidentResponseProps) {
             <CardTitle className="text-sm md:text-base lg:text-lg">Avg Response Time</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.incidentResponse.averageResponseTime}m</div>
-            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Detection to response</p>
+            <div className="text-2xl font-bold">
+              {metrics.incidentResponse.averageResponseTime}m
+            </div>
+            <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
+              Detection to response
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -774,19 +912,21 @@ function IncidentResponse({ metrics, alerts }: IncidentResponseProps) {
               {openIncidents.slice(0, 10).map((incident) => (
                 <TableRow key={incident.id}>
                   <TableCell className="font-mono">{incident.id}</TableCell>
-                  <TableCell className="capitalize">{incident.type.replace('_', ' ')}</TableCell>
+                  <TableCell className="capitalize">{incident.type.replace("_", " ")}</TableCell>
                   <TableCell>
-                    <Badge variant={incident.severity === 'critical' ? 'destructive' : 'default'}>
+                    <Badge variant={incident.severity === "critical" ? "destructive" : "default"}>
                       {incident.severity}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={incident.status === 'investigating' ? 'secondary' : 'outline'}>
+                    <Badge
+                      variant={incident.status === "investigating" ? "secondary" : "outline"}
+                    >
                       {incident.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{incident.assignedTo || 'Unassigned'}</TableCell>
-                  <TableCell>{format(new Date(incident.timestamp), 'MMM dd, HH:mm')}</TableCell>
+                  <TableCell>{incident.assignedTo ?? "Unassigned"}</TableCell>
+                  <TableCell>{format(new Date(incident.timestamp), "MMM dd, HH:mm")}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -797,16 +937,16 @@ function IncidentResponse({ metrics, alerts }: IncidentResponseProps) {
   );
 }
 
+/* ====================== Evil Mode ====================== */
 function EvilModeManagement() {
   return (
     <div className="space-y-6">
       <EvilModeToggle />
-      
+
       <Card>
         <CardHeader>
           <CardTitle>Evil Mode Security Controls</CardTitle>
-          <CardDescription>
-          </CardDescription>
+          <CardDescription></CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2">
@@ -831,7 +971,7 @@ function EvilModeManagement() {
                 </div>
               </div>
             </div>
-            
+
             <div className="space-y-3">
               <h4 className="font-medium">Monitoring Status</h4>
               <div className="space-y-2">
@@ -840,7 +980,7 @@ function EvilModeManagement() {
                   <Badge variant="secondary">0</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Today's Usage</span>
+                  <span>Today&apos;s Usage</span>
                   <Badge variant="outline">2 sessions</Badge>
                 </div>
                 <div className="flex items-center justify-between">
@@ -860,75 +1000,75 @@ function EvilModeManagement() {
   );
 }
 
-// Mock functions - would be replaced with actual API calls
-async function getSecurityMetrics(timeframe: string): Promise<SecurityMetrics> {
+/* ====================== Mock API (replace later) ====================== */
+async function getSecurityMetrics(_timeframe: string): Promise<SecurityMetrics> {
   return {
     overallSecurityScore: 87,
-    threatLevel: 'medium',
+    threatLevel: "medium",
     activeThreats: 3,
     resolvedThreats: 12,
     vulnerabilities: {
       critical: 1,
       high: 5,
       medium: 15,
-      low: 32
+      low: 32,
     },
     complianceScore: 92,
     incidentResponse: {
       averageResponseTime: 12,
       resolvedIncidents: 8,
-      openIncidents: 3
+      openIncidents: 3,
     },
     systemHealth: {
-      authentication: 'healthy',
-      authorization: 'healthy',
-      dataProtection: 'warning',
-      networkSecurity: 'healthy'
-    }
+      authentication: "healthy",
+      authorization: "healthy",
+      dataProtection: "warning",
+      networkSecurity: "healthy",
+    },
   };
 }
 
 async function getSecurityAlerts(): Promise<SecurityAlert[]> {
   return [
     {
-      id: 'alert-1',
-      type: 'threat',
-      severity: 'high',
-      title: 'Suspicious login attempts detected',
-      description: 'Multiple failed login attempts from unusual IP addresses',
-      timestamp: new Date(Date.now() - 1800000),
-      status: 'investigating',
-      affectedSystems: ['Authentication Service'],
-      recommendedActions: ['Block suspicious IPs', 'Enable additional MFA'],
-      assignedTo: 'security-team'
+      id: "alert-1",
+      type: "threat",
+      severity: "high",
+      title: "Suspicious login attempts detected",
+      description: "Multiple failed login attempts from unusual IP addresses",
+      timestamp: new Date(Date.now() - 1_800_000),
+      status: "investigating",
+      affectedSystems: ["Authentication Service"],
+      recommendedActions: ["Block suspicious IPs", "Enable additional MFA"],
+      assignedTo: "security-team",
     },
     {
-      id: 'alert-2',
-      type: 'vulnerability',
-      severity: 'critical',
-      title: 'Critical vulnerability in web server',
-      description: 'CVE-2024-0001 affects the main web server component',
-      timestamp: new Date(Date.now() - 3600000),
-      status: 'open',
-      affectedSystems: ['Web Server'],
-      recommendedActions: ['Apply security patch immediately'],
-      assignedTo: 'devops-team'
-    }
+      id: "alert-2",
+      type: "vulnerability",
+      severity: "critical",
+      title: "Critical vulnerability in web server",
+      description: "CVE-2024-0001 affects the main web server component",
+      timestamp: new Date(Date.now() - 3_600_000),
+      status: "open",
+      affectedSystems: ["Web Server"],
+      recommendedActions: ["Apply security patch immediately"],
+      assignedTo: "devops-team",
+    },
   ];
 }
 
 async function getThreatIntelligence(): Promise<ThreatIntelligence[]> {
   return [
     {
-      id: 'threat-1',
-      source: 'MISP',
-      threatType: 'Malware Campaign',
+      id: "threat-1",
+      source: "MISP",
+      threatType: "Malware Campaign",
       confidence: 85,
-      severity: 'high',
-      indicators: ['192.168.1.100', 'malicious-domain.com'],
-      description: 'New malware campaign targeting financial institutions',
-      mitigation: ['Block IP addresses', 'Update antivirus signatures'],
-      lastUpdated: new Date(Date.now() - 900000)
-    }
+      severity: "high",
+      indicators: ["192.168.1.100", "malicious-domain.com"],
+      description: "New malware campaign targeting financial institutions",
+      mitigation: ["Block IP addresses", "Update antivirus signatures"],
+      lastUpdated: new Date(Date.now() - 900_000),
+    },
   ];
 }

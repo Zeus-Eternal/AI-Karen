@@ -12,7 +12,7 @@ expect.extend(toHaveNoViolations);
 
 // Mock components for testing
 function MockButton({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button {...props}>{children}</button>;
+  return <Button {...props}>{children}</Button>;
 }
 
 function MockForm() {
@@ -24,7 +24,7 @@ function MockForm() {
       <label htmlFor="email">Email</label>
       <input id="email" type="email" required />
       
-      <button type="submit">Submit</button>
+      <Button type="submit">Submit</Button>
     </form>
   );
 }
@@ -48,7 +48,7 @@ function MockModal({ isOpen }: { isOpen: boolean }) {
     <div role="dialog" aria-labelledby="modal-title" aria-modal="true">
       <h2 id="modal-title">Modal Title</h2>
       <p>Modal content</p>
-      <button>Close</button>
+      <Button>Close</Button>
     </div>
   );
 }
@@ -132,7 +132,7 @@ describe('Accessibility Compliance Tests', () => {
     it('should pass keyboard accessibility tests', async () => {
       const { container } = render(
         <div>
-          <button>Button 1</button>
+          <Button>Button 1</Button>
           <a href="#test">Link</a>
           <input type="text" />
           <select>
@@ -170,7 +170,7 @@ describe('Accessibility Compliance Tests', () => {
     it('should pass ARIA tests', async () => {
       const { container } = render(
         <div>
-          <button aria-expanded="false" aria-controls="menu">Menu</button>
+          <Button aria-expanded="false" aria-controls="menu">Menu</Button>
           <ul id="menu" aria-hidden="true">
             <li role="menuitem">Item 1</li>
             <li role="menuitem">Item 2</li>
@@ -193,7 +193,7 @@ describe('Accessibility Compliance Tests', () => {
         <form>
           <input type="text" placeholder="Name" />
           <input type="email" placeholder="Email" />
-          <button type="submit">Submit</button>
+          <Button type="submit">Submit</Button>
         </form>
       );
 
@@ -223,7 +223,7 @@ describe('Accessibility Compliance Tests', () => {
     it('should detect invalid ARIA attributes', async () => {
       const { container } = render(
         <div>
-          <button aria-expanded="invalid">Toggle</button>
+          <Button aria-expanded="invalid">Toggle</Button>
           <div aria-labelledby="non-existent-id">Content</div>
         </div>
       );
@@ -275,21 +275,21 @@ describe('Accessibility Compliance Tests', () => {
                   <input id="lastName" type="text" required />
                 </fieldset>
                 
-                <button type="submit">Submit Form</button>
+                <Button type="submit">Submit Form</Button>
               </form>
             </section>
             
             <section>
               <h2>Interactive Elements</h2>
-              <button aria-expanded="false" aria-controls="collapsible">
-              </button>
+              <Button aria-expanded="false" aria-controls="collapsible">
+              </Button>
               <div id="collapsible" aria-hidden="true">
                 <p>Collapsible content</p>
               </div>
               
               <div role="tablist">
-                <button role="tab" aria-selected="true" aria-controls="panel1">Tab 1</button>
-                <button role="tab" aria-selected="false" aria-controls="panel2">Tab 2</button>
+                <Button role="tab" aria-selected="true" aria-controls="panel1">Tab 1</Button>
+                <Button role="tab" aria-selected="false" aria-controls="panel2">Tab 2</Button>
               </div>
               <div id="panel1" role="tabpanel">Panel 1 content</div>
               <div id="panel2" role="tabpanel" hidden>Panel 2 content</div>

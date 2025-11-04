@@ -229,6 +229,7 @@ export class ExtensionAuthDegradationManager {
       affectedFeatures: affectedFeatures.length,
       availableFeatures: availableFeatures.length,
       recoveryEstimate: recoveryEstimate?.toISOString()
+    });
 
     return this.degradationState;
   }
@@ -321,7 +322,7 @@ export class ExtensionAuthDegradationManager {
       this.evictOldestCacheEntry();
     }
 
-import {     logger.debug(`Cached extension data for ${key} from ${source}`);
+    logger.debug(`Cached extension data for ${key} from ${source}`);
   }
 
   /**

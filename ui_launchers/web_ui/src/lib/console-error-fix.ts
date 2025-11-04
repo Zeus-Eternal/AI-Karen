@@ -1,100 +1,140 @@
 /**
  * Console Error Fix - Prevents Next.js console interceptor issues
+ * - Idempotent (safe to import multiple times)
+ * - Preserves original console bindings
+ * - Filters known interceptor stacks/messages
+ * - Adds global handlers for error & unhandledrejection
  */
+
 let isInitialized = false;
-export function initializeConsoleErrorFix() {
-  if (isInitialized || typeof window === 'undefined') {
-    return;
-  }
-  isInitialized = true;
-  // Store original console methods
-  const originalConsoleError = console.error;
-  const originalConsoleWarn = console.warn;
-  // Override console.error to prevent interceptor issues
-  console.error = function(...args: any[]) {
-    try {
-      // Check if this is a Next.js console interceptor error
-      const errorMessage = args[0]?.toString() || '';
-      // Skip problematic console errors that cause interceptor issues
-      if (
-        errorMessage.includes('console-error.js') ||
-        errorMessage.includes('use-error-handler.js') ||
-        errorMessage.includes('intercept-console-error.js') ||
-        (errorMessage.includes('ChatInterface') && errorMessage.includes('sendMessage'))
-      ) {
-        // Log to original console instead
-        originalConsoleError.apply(console, ['[SAFE]', ...args]);
-        return;
-      }
-      // For all other errors, use original console.error
-      originalConsoleError.apply(console, args);
-    } catch (e) {
-      // Fallback to original console if anything goes wrong
-      originalConsoleError.apply(console, args);
-    }
-  };
-  // Override console.warn for similar issues
-  console.warn = function(...args: any[]) {
-    try {
-      const warnMessage = args[0]?.toString() || '';
-      // Skip problematic console warnings
-      if (
-        warnMessage.includes('console-error.js') ||
-        warnMessage.includes('use-error-handler.js') ||
-        warnMessage.includes('intercept-console-error.js')
-      ) {
-        originalConsoleWarn.apply(console, ['[SAFE]', ...args]);
-        return;
-      }
-      originalConsoleWarn.apply(console, args);
-    } catch (e) {
-      originalConsoleWarn.apply(console, args);
-    }
-  };
-  // Add global error handler to catch unhandled errors
-  window.addEventListener('error', (event) => {
-    // Prevent Next.js console interceptor errors from propagating
-    if (
-      event.error?.stack?.includes('console-error.js') ||
-      event.error?.stack?.includes('use-error-handler.js') ||
-      event.error?.stack?.includes('intercept-console-error.js')
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      // Log safely instead
-      originalConsoleError('[SAFE] Prevented console interceptor error:', {
-        message: event.error?.message,
-        filename: event.filename,
-        lineno: event.lineno,
-        colno: event.colno,
 
-      return false;
-    }
-
-  // Add unhandled promise rejection handler
-  window.addEventListener('unhandledrejection', (event) => {
-    const reason = event.reason;
-    // Check if this is related to console interceptor
-    if (
-      reason?.stack?.includes('console-error.js') ||
-      reason?.stack?.includes('use-error-handler.js') ||
-      reason?.stack?.includes('intercept-console-error.js')
-    ) {
-      event.preventDefault();
-      // Log safely instead
-      originalConsoleError('[SAFE] Prevented console interceptor promise rejection:', {
-        reason: reason?.message || reason,
-        stack: reason?.stack,
-
-    }
-
+function isInterceptorSignature(msgOrStack: unknown): boolean {
+  if (!msgOrStack) return false;
+  const s = typeof msgOrStack === 'string' ? msgOrStack : String((msgOrStack as any) ?? '');
+  return (
+    s.includes('console-error.js') ||
+    s.includes('use-error-handler.js') ||
+    s.includes('intercept-console-error.js')
+  );
 }
-// Auto-initialize in browser environment
+
+export function initializeConsoleErrorFix(): void {
+  if (isInitialized || typeof window === 'undefined') return;
+  isInitialized = true;
+
+  // Store original console methods with bound context
+  const originalConsoleError = console.error.bind(console);
+  const originalConsoleWarn = console.warn.bind(console);
+
+  // ---------------------------
+  // Override console.error
+  // ---------------------------
+  console.error = function patchedConsoleError(...args: any[]) {
+    try {
+      const first = args[0];
+      const msg = typeof first === 'string' ? first : first?.toString?.() ?? '';
+
+      // Known noisy paths or specific component signatures
+      if (
+        isInterceptorSignature(msg) ||
+        (typeof msg === 'string' && msg.includes('ChatInterface') && msg.includes('sendMessage')) ||
+        // also check nested error objects for stack signatures
+        args.some((a) => isInterceptorSignature((a as any)?.stack))
+      ) {
+        // Downshift with a safety marker, but do not rethrow
+        originalConsoleError('[SAFE]', ...args);
+        return;
+      }
+
+      // Default path
+      originalConsoleError(...args);
+    } catch {
+      // Final fallback
+      originalConsoleError(...args);
+    }
+  };
+
+  // ---------------------------
+  // Override console.warn
+  // ---------------------------
+  console.warn = function patchedConsoleWarn(...args: any[]) {
+    try {
+      const first = args[0];
+      const msg = typeof first === 'string' ? first : first?.toString?.() ?? '';
+
+      if (isInterceptorSignature(msg) || args.some((a) => isInterceptorSignature((a as any)?.stack))) {
+        originalConsoleWarn('[SAFE]', ...args);
+        return;
+      }
+
+      originalConsoleWarn(...args);
+    } catch {
+      originalConsoleWarn(...args);
+    }
+  };
+
+  // ---------------------------
+  // Global error handler
+  // ---------------------------
+  window.addEventListener(
+    'error',
+    (event: ErrorEvent) => {
+      try {
+        const stk = (event?.error as any)?.stack || '';
+        if (isInterceptorSignature(stk)) {
+          event.preventDefault();
+          event.stopPropagation?.();
+          (event as any).stopImmediatePropagation?.();
+
+          originalConsoleError('[SAFE] Prevented console interceptor error:', {
+            message: event?.error?.message ?? event.message,
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+            stack: (event?.error as any)?.stack,
+          });
+        }
+      } catch (e) {
+        originalConsoleError('[SAFE] Error in window.onerror filter:', e);
+      }
+    },
+    true // capture early
+  );
+
+  // ---------------------------
+  // Global unhandled promise rejection handler
+  // ---------------------------
+  window.addEventListener(
+    'unhandledrejection',
+    (event: PromiseRejectionEvent) => {
+      try {
+        const reason: any = event.reason;
+        const msg = reason?.message ?? String(reason ?? '');
+        const stk = reason?.stack ?? '';
+
+        if (isInterceptorSignature(stk) || isInterceptorSignature(msg)) {
+          event.preventDefault?.();
+
+          originalConsoleError('[SAFE] Prevented console interceptor promise rejection:', {
+            reason: msg,
+            stack: stk,
+          });
+        }
+      } catch (e) {
+        originalConsoleError('[SAFE] Error in unhandledrejection filter:', e);
+      }
+    },
+    true
+  );
+}
+
+// Auto-initialize in browser environment (after DOM ready)
 if (typeof window !== 'undefined') {
-  // Initialize after DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeConsoleErrorFix);
+    document.addEventListener('DOMContentLoaded', () => initializeConsoleErrorFix());
   } else {
     initializeConsoleErrorFix();
   }
 }
+
+export default initializeConsoleErrorFix;

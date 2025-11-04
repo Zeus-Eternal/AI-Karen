@@ -248,7 +248,7 @@ const ModelConfigurationPanel: React.FC<ModelConfigurationPanelProps> = ({
                >
                 Cancel Changes
               </Button>
-              <button
+              <Button
                 onClick={saveConfiguration}
                 disabled={saving || !hasChanges}
                 size="sm"

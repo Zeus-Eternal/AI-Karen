@@ -1,32 +1,34 @@
 /**
  * Central export file for all type definitions
+ * 
+ * Serves as the single entry point for all TypeScript type exports across the system.
+ * Ensures modular organization while preventing circular imports.
  */
 
-// Karen Alert System Types
+// --- Karen Alert System Types ---
 export * from './karen-alerts';
 
-// Existing auth types
+// --- Authentication & Authorization ---
 export * from './auth';
 export * from './auth-enhanced';
 export * from './auth-feedback';
 export * from './auth-form';
 export * from './auth-utils';
 
-// Admin management system types - explicitly export to avoid conflicts
-export type { 
-import { } from './admin';
+// --- Admin Management System Types ---
+export * from './admin';
 
-// Chat and conversation types
+// --- Chat & Conversation Types ---
 export * from './chat';
 
-// Model and provider types
+// --- Model & Provider Types ---
 export * from './models';
 
-// File management types
+// --- File Management Types ---
 export * from './files';
 
-// Dashboard system types
+// --- Dashboard Types ---
 export * from './dashboard';
 
-// Memory management types
+// --- Memory System Types ---
 export * from './memory';

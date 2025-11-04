@@ -421,7 +421,7 @@ export const AriaTab = React.forwardRef<HTMLButtonElement, AriaTabProps>(
     };
 
     return (
-      <button
+      <Button
         ref={ref}
         className={cn(
           "inline-flex items-center justify-center px-4 py-2 text-sm font-medium",
@@ -442,7 +442,7 @@ export const AriaTab = React.forwardRef<HTMLButtonElement, AriaTabProps>(
         {...props}
       >
         {children}
-      </button>
+      </Button>
     );
   }
 );

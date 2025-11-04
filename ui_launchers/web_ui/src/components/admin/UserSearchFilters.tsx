@@ -87,25 +87,25 @@ export function UserSearchFilters({
         </div>
 
         <div className="flex gap-2">
-          <button
+          <Button
             onClick={applyFilters}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base lg:text-lg"
            aria-label="Button">
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setShowAdvanced(!showAdvanced)}
             className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base lg:text-lg"
           >
             {showAdvanced ? 'Hide' : 'Advanced'}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onRefresh}
             className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base lg:text-lg"
            aria-label="Button">
             <svg className="h-4 w-4 mr-2 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -219,17 +219,17 @@ export function UserSearchFilters({
           {/* Filter Actions */}
           <div className="flex justify-between items-center">
             <div className="flex gap-2">
-              <button
+              <Button
                 onClick={applyFilters}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base lg:text-lg"
                aria-label="Button">
-              </button>
+              </Button>
               {hasActiveFilters() && (
-                <button
+                <Button
                   onClick={clearFilters}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base lg:text-lg"
                  aria-label="Button">
-                </button>
+                </Button>
               )}
             </div>
 
@@ -251,45 +251,45 @@ export function UserSearchFilters({
           {localFilters.search && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 sm:text-sm md:text-base">
               Search: "{localFilters.search}"
-              <button
+              <Button
                 onClick={() => handleFilterChange('search', undefined)}
                 className="ml-2 text-blue-600 hover:text-blue-800"
               >
                 ×
-              </button>
+              </Button>
             </span>
           )}
           {localFilters.role && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 sm:text-sm md:text-base">
               Role: {localFilters.role.replace('_', ' ')}
-              <button
+              <Button
                 onClick={() => handleFilterChange('role', undefined)}
                 className="ml-2 text-green-600 hover:text-green-800"
               >
                 ×
-              </button>
+              </Button>
             </span>
           )}
           {localFilters.is_active !== undefined && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 sm:text-sm md:text-base">
               Status: {localFilters.is_active ? 'Active' : 'Inactive'}
-              <button
+              <Button
                 onClick={() => handleFilterChange('is_active', undefined)}
                 className="ml-2 text-yellow-600 hover:text-yellow-800"
               >
                 ×
-              </button>
+              </Button>
             </span>
           )}
           {localFilters.is_verified !== undefined && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 sm:text-sm md:text-base">
               Verification: {localFilters.is_verified ? 'Verified' : 'Unverified'}
-              <button
+              <Button
                 onClick={() => handleFilterChange('is_verified', undefined)}
                 className="ml-2 text-purple-600 hover:text-purple-800"
               >
                 ×
-              </button>
+              </Button>
             </span>
           )}
         </div>

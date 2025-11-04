@@ -57,9 +57,9 @@ Object.defineProperty(document, 'cookie', {
 // Mock UI components to avoid dependency issues
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, disabled, onClick, type, ...props }: any) => (
-    <button disabled={disabled} onClick={onClick} type={type} {...props}>
+    <Button disabled={disabled} onClick={onClick} type={type} {...props}>
       {children}
-    </button>
+    </Button>
   ),
 }));
 
@@ -100,7 +100,7 @@ const ProtectedContent: React.FC = () => (
   <div data-testid="protected-content">
     <h1>Protected Dashboard</h1>
     <p>This content requires authentication</p>
-    <button 
+    <Button 
       data-testid="api-test-button"
       onClick={async () => {
         try {
@@ -111,7 +111,7 @@ const ProtectedContent: React.FC = () => (
         }
       }}
     >
-    </button>
+    </Button>
   </div>
 );
 

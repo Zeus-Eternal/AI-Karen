@@ -1,16 +1,23 @@
 "use client";
 
-import React from 'react';
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import React, { useEffect, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Code,
+  RotateCcw,
+  Save,
+  Settings,
+  Zap,
+  Info,
+  ExternalLink,
+} from "lucide-react";
 
-import { } from 'lucide-react';
 interface CopilotKitConfig {
   enabled: boolean;
   apiEndpoint: string;
@@ -21,8 +28,8 @@ interface CopilotKitConfig {
     codeReview: boolean;
   };
   ui: {
-    theme: string;
-    position: string;
+    theme: "auto" | "light" | "dark";
+    position: "bottom-right" | "bottom-left" | "top-right" | "top-left";
     showShortcuts: boolean;
     compactMode: boolean;
   };
@@ -32,75 +39,104 @@ interface CopilotKitConfig {
     cacheEnabled: boolean;
   };
 }
+
 const defaultConfig: CopilotKitConfig = {
   enabled: true,
-  apiEndpoint: '/copilot',
+  apiEndpoint: "/copilot",
   features: {
     codeAssistance: true,
     contextualHelp: true,
     autoComplete: true,
-    codeReview: false
+    codeReview: false,
   },
   ui: {
-    theme: 'auto',
-    position: 'bottom-right',
+    theme: "auto",
+    position: "bottom-right",
     showShortcuts: true,
-    compactMode: false
+    compactMode: false,
   },
   performance: {
     debounceMs: 300,
     maxSuggestions: 5,
-    cacheEnabled: true
-  }
+    cacheEnabled: true,
+  },
 };
+
+const STORAGE_KEY = "copilotkit_config";
+
+function clampInt(value: unknown, min: number, max: number, fallback: number) {
+  const n = typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(n)) return fallback;
+  return Math.min(max, Math.max(min, Math.trunc(n)));
+}
+
 export default function CopilotKitSettings() {
+  const { toast } = useToast();
   const [config, setConfig] = useState<CopilotKitConfig>(defaultConfig);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const { toast } = useToast();
-  const handleConfigChange = (path: string, value: any) => {
-    setConfig(prev => {
-      const newConfig = { ...prev };
-      const keys = path.split('.');
-      let current: any = newConfig;
-      for (let i = 0; i < keys.length - 1; i++) {
-        current = current[keys[i]];
+
+  // Load persisted config on mount (fault-tolerant)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<CopilotKitConfig>;
+        // Minimal defensive merge to survive older shapes
+        setConfig((prev) => ({
+          ...prev,
+          ...parsed,
+          features: { ...prev.features, ...(parsed.features ?? {}) },
+          ui: { ...prev.ui, ...(parsed.ui ?? {}) },
+          performance: { ...prev.performance, ...(parsed.performance ?? {}) },
+        }));
       }
-      current[keys[keys.length - 1]] = value;
-      return newConfig;
+    } catch {
+      // Ignore corrupted storage; stick with defaults
+    }
+  }, []);
+
+  const handleConfigChange = (path: string, value: unknown) => {
+    setConfig((prev) => {
+      const next = structuredClone(prev);
+      const keys = path.split(".");
+      let cursor: any = next;
+      for (let i = 0; i < keys.length - 1; i++) cursor = cursor[keys[i]];
+      cursor[keys[keys.length - 1]] = value;
+      return next;
     });
     setHasChanges(true);
   };
+
   const handleSave = async () => {
     try {
       setSaving(true);
-      // Save configuration to localStorage for now
-      // In a real implementation, this would save to the backend
-      localStorage.setItem('copilotkit_config', JSON.stringify(config));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
       setHasChanges(false);
       toast({
-        title: "Settings Saved",
-        description: "CopilotKit configuration has been saved successfully.",
+        title: "Settings saved",
+        description: "CopilotKit configuration has been stored locally.",
       });
-    } catch (error) {
+    } catch {
       toast({
-        title: "Save Failed",
-        description: "Could not save CopilotKit settings. Please try again.",
+        title: "Save failed",
+        description: "Could not persist CopilotKit settings. Try again.",
         variant: "destructive",
       });
     } finally {
       setSaving(false);
     }
   };
+
   const handleReset = () => {
     setConfig(defaultConfig);
     setHasChanges(true);
     toast({
-      title: "Settings Reset",
-      description: "CopilotKit configuration has been reset to defaults.",
+      title: "Settings reset",
+      description: "Reverted to factory defaults (not yet saved).",
     });
-
   };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -109,10 +145,11 @@ export default function CopilotKitSettings() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Code className="h-5 w-5 " />
+                <Code className="h-5 w-5" />
+                CopilotKit Settings
               </CardTitle>
               <CardDescription>
-                Configure CopilotKit UI framework for AI-powered development assistance
+                Configure the UI framework that powers your AI development assistant.
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -120,108 +157,140 @@ export default function CopilotKitSettings() {
                 variant="outline"
                 onClick={handleReset}
                 disabled={saving}
-               >
-                <RotateCcw className="h-4 w-4 mr-2 " />
+                aria-label="Reset to defaults"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={saving || !hasChanges}
-               aria-label="Button">
-                <Save className="h-4 w-4 mr-2 " />
-                {saving ? 'Saving...' : 'Save Changes'}
+                aria-label="Save changes"
+                aria-busy={saving}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>
         </CardHeader>
       </Card>
+
       {/* General Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-4 w-4 " />
+            <Settings className="h-4 w-4" />
+            General
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Enable CopilotKit</Label>
-              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+              <Label htmlFor="enable-copilot">Enable CopilotKit</Label>
+              <p className="text-sm text-muted-foreground">
+                Toggle the entire assistant on/off.
               </p>
             </div>
             <Switch
+              id="enable-copilot"
               checked={config.enabled}
-              onCheckedChange={(checked) => handleConfigChange('enabled', checked)}
+              onCheckedChange={(checked) => handleConfigChange("enabled", checked)}
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="api-endpoint">API Endpoint</Label>
-            <input
+            <Input
               id="api-endpoint"
               value={config.apiEndpoint}
-              onChange={(e) => handleConfigChange('apiEndpoint', e.target.value)}
+              onChange={(e) => handleConfigChange("apiEndpoint", e.target.value)}
               placeholder="/copilot"
+              spellCheck={false}
+              autoComplete="off"
             />
-            <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+            <p className="text-sm text-muted-foreground">
+              Relative or absolute URL for your CopilotKit backend.
             </p>
           </div>
         </CardContent>
       </Card>
+
       {/* Features */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="h-4 w-4 " />
+            <Zap className="h-4 w-4" />
+            Features
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Code Assistance</Label>
-              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Enable AI-powered code suggestions and completions
+              <Label htmlFor="feat-code">Code Assistance</Label>
+              <p className="text-sm text-muted-foreground">
+                AI suggestions and inline completions.
               </p>
             </div>
             <Switch
+              id="feat-code"
               checked={config.features.codeAssistance}
-              onCheckedChange={(checked) => handleConfigChange('features.codeAssistance', checked)}
+              onCheckedChange={(checked) =>
+                handleConfigChange("features.codeAssistance", checked)
+              }
             />
           </div>
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Contextual Help</Label>
-              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+              <Label htmlFor="feat-context">Contextual Help</Label>
+              <p className="text-sm text-muted-foreground">
+                Tips & references based on current file/context.
               </p>
             </div>
             <Switch
+              id="feat-context"
               checked={config.features.contextualHelp}
-              onCheckedChange={(checked) => handleConfigChange('features.contextualHelp', checked)}
+              onCheckedChange={(checked) =>
+                handleConfigChange("features.contextualHelp", checked)
+              }
             />
           </div>
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Auto Complete</Label>
-              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+              <Label htmlFor="feat-autocomplete">Auto Complete</Label>
+              <p className="text-sm text-muted-foreground">
+                Predictive token completion as you type.
               </p>
             </div>
             <Switch
+              id="feat-autocomplete"
               checked={config.features.autoComplete}
-              onCheckedChange={(checked) => handleConfigChange('features.autoComplete', checked)}
+              onCheckedChange={(checked) =>
+                handleConfigChange("features.autoComplete", checked)
+              }
             />
           </div>
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Code Review</Label>
-              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                Enable AI-powered code review suggestions
+              <Label htmlFor="feat-review">Code Review</Label>
+              <p className="text-sm text-muted-foreground">
+                Automated review suggestions & nits.
               </p>
             </div>
             <Switch
+              id="feat-review"
               checked={config.features.codeReview}
-              onCheckedChange={(checked) => handleConfigChange('features.codeReview', checked)}
+              onCheckedChange={(checked) =>
+                handleConfigChange("features.codeReview", checked)
+              }
             />
           </div>
         </CardContent>
       </Card>
+
       {/* UI Settings */}
       <Card>
         <CardHeader>
@@ -233,22 +302,30 @@ export default function CopilotKitSettings() {
               <Label htmlFor="theme">Theme</Label>
               <select
                 id="theme"
-                className="w-full p-2 border rounded-md sm:p-4 md:p-6"
+                className="w-full rounded-md border bg-transparent p-2"
                 value={config.ui.theme}
-                onChange={(e) => handleConfigChange('ui.theme', e.target.value)}
+                onChange={(e) =>
+                  handleConfigChange("ui.theme", e.target.value as CopilotKitConfig["ui"]["theme"])
+                }
               >
                 <option value="auto">Auto</option>
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
               </select>
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="position">Position</Label>
               <select
                 id="position"
-                className="w-full p-2 border rounded-md sm:p-4 md:p-6"
+                className="w-full rounded-md border bg-transparent p-2"
                 value={config.ui.position}
-                onChange={(e) => handleConfigChange('ui.position', e.target.value)}
+                onChange={(e) =>
+                  handleConfigChange(
+                    "ui.position",
+                    e.target.value as CopilotKitConfig["ui"]["position"]
+                  )
+                }
               >
                 <option value="bottom-right">Bottom Right</option>
                 <option value="bottom-left">Bottom Left</option>
@@ -257,30 +334,41 @@ export default function CopilotKitSettings() {
               </select>
             </div>
           </div>
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Show Shortcuts</Label>
-              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+              <Label htmlFor="ui-shortcuts">Show Shortcuts</Label>
+              <p className="text-sm text-muted-foreground">
+                Display quick keys in the UI.
               </p>
             </div>
             <Switch
+              id="ui-shortcuts"
               checked={config.ui.showShortcuts}
-              onCheckedChange={(checked) => handleConfigChange('ui.showShortcuts', checked)}
+              onCheckedChange={(checked) =>
+                handleConfigChange("ui.showShortcuts", checked)
+              }
             />
           </div>
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Compact Mode</Label>
-              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+              <Label htmlFor="ui-compact">Compact Mode</Label>
+              <p className="text-sm text-muted-foreground">
+                Reduce padding and density for small screens.
               </p>
             </div>
             <Switch
+              id="ui-compact"
               checked={config.ui.compactMode}
-              onCheckedChange={(checked) => handleConfigChange('ui.compactMode', checked)}
+              onCheckedChange={(checked) =>
+                handleConfigChange("ui.compactMode", checked)
+              }
             />
           </div>
         </CardContent>
       </Card>
+
       {/* Performance Settings */}
       <Card>
         <CardHeader>
@@ -289,63 +377,94 @@ export default function CopilotKitSettings() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="debounce">Debounce (ms)</Label>
-            <input
+            <Input
               id="debounce"
               type="number"
+              inputMode="numeric"
               value={config.performance.debounceMs}
-              onChange={(e) => handleConfigChange('performance.debounceMs', parseInt(e.target.value))}
-              min="100"
-              max="2000"
+              onChange={(e) =>
+                handleConfigChange(
+                  "performance.debounceMs",
+                  clampInt(e.target.value, 100, 2000, config.performance.debounceMs)
+                )
+              }
+              min={100}
+              max={2000}
             />
-            <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-              Delay before triggering suggestions (100-2000ms)
+            <p className="text-sm text-muted-foreground">
+              Delay before triggering suggestions (100–2000 ms).
             </p>
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="max-suggestions">Max Suggestions</Label>
-            <input
+            <Input
               id="max-suggestions"
               type="number"
+              inputMode="numeric"
               value={config.performance.maxSuggestions}
-              onChange={(e) => handleConfigChange('performance.maxSuggestions', parseInt(e.target.value))}
-              min="1"
-              max="20"
+              onChange={(e) =>
+                handleConfigChange(
+                  "performance.maxSuggestions",
+                  clampInt(e.target.value, 1, 20, config.performance.maxSuggestions)
+                )
+              }
+              min={1}
+              max={20}
             />
-            <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-              Maximum number of suggestions to show (1-20)
+            <p className="text-sm text-muted-foreground">
+              Maximum number of suggestions to display (1–20).
             </p>
           </div>
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Enable Caching</Label>
-              <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+              <Label htmlFor="perf-cache">Enable Caching</Label>
+              <p className="text-sm text-muted-foreground">
+                Cache recent prompts & responses for faster UX.
               </p>
             </div>
             <Switch
+              id="perf-cache"
               checked={config.performance.cacheEnabled}
-              onCheckedChange={(checked) => handleConfigChange('performance.cacheEnabled', checked)}
+              onCheckedChange={(checked) =>
+                handleConfigChange("performance.cacheEnabled", checked)
+              }
             />
           </div>
         </CardContent>
       </Card>
+
       {/* Information */}
       <Alert>
-        <Info className="h-4 w-4 " />
+        <Info className="h-4 w-4" />
         <AlertTitle>About CopilotKit</AlertTitle>
         <AlertDescription className="space-y-2">
           <p>
-            CopilotKit is a UI framework for building AI-powered interfaces, not an LLM provider.
-            It provides components and tools for integrating AI assistance into your development workflow.
+            CopilotKit is a UI framework for building AI-powered interfaces — it’s not an LLM provider.
+            Use it to wire models and features into a cohesive developer experience.
           </p>
           <div className="flex gap-2 mt-2">
-            <Button variant="outline" size="sm" asChild >
-              <a href="https://copilotkit.ai/docs" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3 w-3 mr-1 " />
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href="https://copilotkit.ai/docs"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open CopilotKit documentation"
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Docs
               </a>
             </Button>
-            <Button variant="outline" size="sm" asChild >
-              <a href="https://github.com/CopilotKit/CopilotKit" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3 w-3 mr-1 " />
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href="https://github.com/CopilotKit/CopilotKit"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open CopilotKit GitHub repository"
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                GitHub
               </a>
             </Button>
           </div>

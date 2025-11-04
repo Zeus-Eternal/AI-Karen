@@ -24,6 +24,7 @@ export function useTextSelection(options: UseTextSelectionOptions = {}) {
     selectedText: '',
     selectionRange: null,
     isSelecting: false,
+  });
 
   // Get current text selection
   const getCurrentSelection = useCallback((): TextSelectionState => {
@@ -99,7 +100,7 @@ export function useTextSelection(options: UseTextSelectionOptions = {}) {
       selectedText: '',
       selectionRange: null,
       isSelecting: false,
-
+    });
   }, []);
   // Handle selection change
   const handleSelectionChange = useCallback(() => {
@@ -190,7 +191,7 @@ export function ensureTextSelectable(element: HTMLElement | null) {
       (child.style as any).mozUserSelect = 'auto';
       (child.style as any).msUserSelect = 'auto';
     }
-
+  });
 }
 // Utility function to check if text selection is supported
 export function isTextSelectionSupported(): boolean {

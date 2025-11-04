@@ -159,14 +159,14 @@ export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
           <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(status.status)}`}>
             {status.status}
           </div>
-          <button
+          <Button
             onClick={() => setExpanded(!expanded)}
             className="text-gray-400 hover:text-gray-600"
           >
             <svg className={`w-5 h-5 transform transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
       {expanded && (
@@ -205,13 +205,13 @@ export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
                     </p>
                   )}
                 </div>
-                <button
+                <Button
                   onClick={() => handleExecuteTask('manual_task')}
                   disabled={executing.includes('manual_task')}
                   className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 disabled:opacity-50"
                 >
                   {executing.includes('manual_task') ? 'Executing...' : 'Execute Task'}
-                </button>
+                </Button>
               </div>
             </div>
           )}

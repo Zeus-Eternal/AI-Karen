@@ -741,7 +741,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                 <Button type="button" variant="outline" onClick={handlePreview} >
                 </Button>
               )}
-              <button type="submit" aria-label="Submit form">
+              <Button type="submit" aria-label="Submit form">
               </Button>
             </DialogFooter>
           </form>

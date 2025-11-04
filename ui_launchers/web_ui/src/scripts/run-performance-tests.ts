@@ -1,22 +1,28 @@
 #!/usr/bin/env node
 /**
  * Performance Test Runner
- * 
+ *
  * Runs comprehensive performance tests and benchmarks for the optimization components.
  * Generates performance reports and recommendations.
- * 
- * Requirements: 1.4, 4.4
+ *
+ * Usage:
+ *   ts-node performance-test-runner.ts
+ *   # or after build:
+ *   node dist/performance-test-runner.js
  */
+
 import { execSync } from 'child_process';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
+
 interface TestResult {
   name: string;
   duration: number;
   passed: boolean;
-  metrics?: any;
+  metrics?: Record<string, any>;
   error?: string;
 }
+
 interface PerformanceReport {
   timestamp: string;
   totalTests: number;
@@ -32,86 +38,144 @@ interface PerformanceReport {
     overallRating: string;
   };
 }
+
 class PerformanceTestRunner {
   private results: TestResult[] = [];
-  private startTime: number = 0;
+  private startTime = 0;
+
   async runAllTests(): Promise<PerformanceReport> {
     this.startTime = Date.now();
-    // Run individual test suites
-    await this.runTestSuite('HTTP Connection Pool', 'src/lib/performance/__tests__/http-connection-pool.test.ts');
-    await this.runTestSuite('Request/Response Cache', 'src/lib/performance/__tests__/request-response-cache.test.ts');
-    await this.runTestSuite('Performance Benchmarks', 'src/lib/performance/__tests__/performance-benchmarks.test.ts');
-    // Generate report
+
+    // --- Run individual test suites (update paths as needed) ---
+    await this.runTestSuite(
+      'HTTP Connection Pool',
+      'src/lib/performance/__tests__/http-connection-pool.test.ts',
+    );
+    await this.runTestSuite(
+      'Request/Response Cache',
+      'src/lib/performance/__tests__/request-response-cache.test.ts',
+    );
+    await this.runTestSuite(
+      'Performance Benchmarks',
+      'src/lib/performance/__tests__/performance-benchmarks.test.ts',
+    );
+
+    // --- Generate + persist report ---
     const report = this.generateReport();
-    // Save report
     this.saveReport(report);
-    // Display summary
     this.displaySummary(report);
+
     return report;
   }
+
   private async runTestSuite(name: string, testFile: string): Promise<void> {
+    const suiteStart = Date.now();
     try {
-      const startTime = Date.now();
-      // Run the test file using vitest
+      // --reporter=json gives a single JSON payload describing results
       const command = `npx vitest run ${testFile} --reporter=json`;
-      const output = execSync(command, { 
+      const output = execSync(command, {
         encoding: 'utf8',
         cwd: process.cwd(),
-        timeout: 60000, // 1 minute timeout
+        timeout: 120_000, // 2 minute timeout per suite
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
 
-      const duration = Date.now() - startTime;
-      // Parse test results (simplified)
-      const passed = !output.includes('FAILED') && !output.includes('Error');
+      const duration = Date.now() - suiteStart;
+
+      const parsed = this.safeParseVitestJson(output);
+      const passed = parsed ? parsed.numFailedTests === 0 && parsed.numFailedTestSuites === 0
+                            : this.fallbackPassScan(output);
+
       this.results.push({
         name,
         duration,
         passed,
-        metrics: this.extractMetrics(output),
+        metrics: this.extractMetricsFromOutput(output),
+      });
 
-      console.log(`✅ ${name}: ${passed ? 'PASSED' : 'FAILED'} (${duration}ms)\n`);
-    } catch (error) {
-      const duration = Date.now() - this.startTime;
+      console.log(`${passed ? '✅' : '❌'} ${name}: ${passed ? 'PASSED' : 'FAILED'} (${duration}ms)\n`);
+    } catch (err) {
+      const duration = Date.now() - suiteStart;
+      let msg = 'Unknown error';
+      // Vitest often writes structured output to stdout and the error to stderr
+      if (err && typeof err === 'object') {
+        const anyErr = err as any;
+        msg =
+          anyErr?.message ??
+          anyErr?.stderr?.toString?.() ??
+          anyErr?.stdout?.toString?.() ??
+          'Unknown error';
+      }
+
       this.results.push({
         name,
         duration,
         passed: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: msg,
+      });
 
-      console.log(`❌ ${name}: FAILED (${duration}ms)`);
+      console.log(`❌ ${name}: FAILED (${duration}ms)\n${msg}\n`);
     }
   }
-  private extractMetrics(output: string): any {
-    // Extract performance metrics from test output
-    // This is a simplified implementation - in practice, you'd parse structured output
-    const metrics: any = {};
-    if (output.includes('requests in')) {
-      const match = output.match(/(\d+) requests in (\d+)ms/);
-      if (match) {
-        metrics.requests = parseInt(match[1]);
-        metrics.duration = parseInt(match[2]);
-        metrics.throughput = metrics.requests / (metrics.duration / 1000);
+
+  private safeParseVitestJson(output: string): any | null {
+    // Vitest JSON reporter generally emits a single JSON object.
+    try {
+      // Some environments might prepend log lines; try to locate leading '{'
+      const firstBrace = output.indexOf('{');
+      if (firstBrace >= 0) {
+        const sliced = output.slice(firstBrace);
+        return JSON.parse(sliced);
+      }
+      return JSON.parse(output);
+    } catch {
+      return null;
+    }
+  }
+
+  private fallbackPassScan(output: string): boolean {
+    // Very rough fallback in case JSON parsing fails.
+    // If no "FAILED" and no "Error" tokens are found, assume pass.
+    return !/FAILED|Error/i.test(output);
+    }
+
+  private extractMetricsFromOutput(output: string): Record<string, any> {
+    // Lightweight pattern-based extraction; if your tests print structured
+    // JSON (e.g., with console.log(JSON.stringify(...))), parse that instead.
+    const metrics: Record<string, any> = {};
+
+    // e.g., "1234 requests in 5000ms"
+    if (/requests in/i.test(output)) {
+      const m = output.match(/(\d+)\s+requests\s+in\s+(\d+)ms/i);
+      if (m) {
+        const requests = parseInt(m[1], 10);
+        const durationMs = parseInt(m[2], 10);
+        metrics.requests = requests;
+        metrics.durationMs = durationMs;
+        metrics.throughputRps = durationMs > 0 ? requests / (durationMs / 1000) : 0;
       }
     }
-    if (output.includes('Hit rate:')) {
-      const match = output.match(/Hit rate: ([\d.]+)%/);
-      if (match) {
-        metrics.hitRate = parseFloat(match[1]) / 100;
-      }
+
+    // e.g., "Hit rate: 83.2%"
+    if (/Hit rate:/i.test(output)) {
+      const m = output.match(/Hit rate:\s+([\d.]+)%/i);
+      if (m) metrics.hitRate = parseFloat(m[1]) / 100;
     }
-    if (output.includes('Connection reuse:')) {
-      const match = output.match(/Connection reuse: (\d+)/);
-      if (match) {
-        metrics.connectionReuse = parseInt(match[1]);
-      }
+
+    // e.g., "Connection reuse: 42"
+    if (/Connection reuse:/i.test(output)) {
+      const m = output.match(/Connection reuse:\s+(\d+)/i);
+      if (m) metrics.connectionReuse = parseInt(m[1], 10);
     }
+
     return metrics;
   }
+
   private generateReport(): PerformanceReport {
     const totalDuration = Date.now() - this.startTime;
-    const passedTests = this.results.filter(r => r.passed).length;
+    const passedTests = this.results.filter((r) => r.passed).length;
     const failedTests = this.results.length - passedTests;
-    const recommendations = this.generateRecommendations();
-    const summary = this.generateSummary();
+
     return {
       timestamp: new Date().toISOString(),
       totalTests: this.results.length,
@@ -119,108 +183,140 @@ class PerformanceTestRunner {
       failedTests,
       totalDuration,
       results: this.results,
-      recommendations,
-      summary,
+      recommendations: this.generateRecommendations(),
+      summary: this.generateSummary(),
     };
   }
+
   private generateRecommendations(): string[] {
-    const recommendations: string[] = [];
-    // Analyze results and generate recommendations
-    const failedTests = this.results.filter(r => !r.passed);
-    if (failedTests.length > 0) {
-      recommendations.push(`${failedTests.length} test suite(s) failed - investigate and fix issues`);
+    const recs: string[] = [];
+    const failed = this.results.filter((r) => !r.passed);
+
+    if (failed.length > 0) {
+      recs.push(`${failed.length} test suite(s) failed — investigate and fix issues.`);
     }
-    // Check performance metrics
-    const benchmarkResult = this.results.find(r => r.name === 'Performance Benchmarks');
-    if (benchmarkResult?.metrics) {
-      if (benchmarkResult.metrics.throughput < 10) {
-        recommendations.push('Request throughput is low - consider optimizing connection pool settings');
+
+    const bench = this.results.find((r) => r.name === 'Performance Benchmarks');
+    if (bench?.metrics) {
+      if (typeof bench.metrics.throughputRps === 'number' && bench.metrics.throughputRps < 10) {
+        recs.push('Request throughput is low — tune connection pool, batching, or concurrency.');
       }
-      if (benchmarkResult.metrics.hitRate < 0.7) {
-        recommendations.push('Cache hit rate is below 70% - review caching strategy and TTL settings');
+      if (typeof bench.metrics.hitRate === 'number' && bench.metrics.hitRate < 0.7) {
+        recs.push('Cache hit rate is < 70% — review cache keys, TTLs, warmup strategy, and invalidation.');
       }
     }
-    // General recommendations
-    if (recommendations.length === 0) {
-      recommendations.push('All performance tests passed - system is performing well');
-      recommendations.push('Consider running load tests with higher concurrency');
-      recommendations.push('Monitor performance metrics in production environment');
+
+    if (recs.length === 0) {
+      recs.push('All performance tests passed — system looks healthy.');
+      recs.push('Consider running heavier load tests with increased concurrency.');
+      recs.push('Monitor key metrics (p95 latency, error rate, saturation) in production.');
     }
-    return recommendations;
+
+    return recs;
   }
+
   private generateSummary(): PerformanceReport['summary'] {
-    const connectionPoolResult = this.results.find(r => r.name === 'HTTP Connection Pool');
-    const cacheResult = this.results.find(r => r.name === 'Request/Response Cache');
-    const benchmarkResult = this.results.find(r => r.name === 'Performance Benchmarks');
+    const connectionPool = this.results.find((r) => r.name === 'HTTP Connection Pool');
+    const cache = this.results.find((r) => r.name === 'Request/Response Cache');
+    const benchmarks = this.results.find((r) => r.name === 'Performance Benchmarks');
+
+    const overall =
+      this.results.every((r) => r.passed)
+        ? 'Excellent'
+        : this.results.filter((r) => r.passed).length >= Math.ceil(this.results.length * 0.8)
+        ? 'Good'
+        : 'Poor';
+
     return {
-      connectionPoolPerformance: connectionPoolResult?.passed ? 'Good' : 'Needs Attention',
-      cacheEfficiency: cacheResult?.passed ? 'Good' : 'Needs Attention',
-      queryOptimization: benchmarkResult?.passed ? 'Good' : 'Needs Attention',
-      overallRating: this.results.every(r => r.passed) ? 'Excellent' : 
-                     this.results.filter(r => r.passed).length >= this.results.length * 0.8 ? 'Good' : 'Poor',
+      connectionPoolPerformance: connectionPool?.passed ? 'Good' : 'Needs Attention',
+      cacheEfficiency: cache?.passed ? 'Good' : 'Needs Attention',
+      queryOptimization: benchmarks?.passed ? 'Good' : 'Needs Attention',
+      overallRating: overall,
     };
   }
+
   private saveReport(report: PerformanceReport): void {
-    const reportPath = join(process.cwd(), 'performance-test-report.json');
-    writeFileSync(reportPath, JSON.stringify(report, null, 2));
-    // Also save a human-readable version
-    const readableReport = this.generateReadableReport(report);
-    const readablePath = join(process.cwd(), 'performance-test-report.md');
-    writeFileSync(readablePath, readableReport);
+    const jsonPath = join(process.cwd(), 'performance-test-report.json');
+    writeFileSync(jsonPath, JSON.stringify(report, null, 2));
+
+    const mdPath = join(process.cwd(), 'performance-test-report.md');
+    writeFileSync(mdPath, this.generateReadableReport(report));
   }
+
   private generateReadableReport(report: PerformanceReport): string {
     const { summary, results, recommendations } = report;
-    let markdown = `# Performance Test Report\n\n`;
-    markdown += `**Generated:** ${new Date(report.timestamp).toLocaleString()}\n`;
-    markdown += `**Total Duration:** ${report.totalDuration}ms\n`;
-    markdown += `**Tests:** ${report.passedTests}/${report.totalTests} passed\n\n`;
-    // Summary
-    markdown += `## Summary\n\n`;
-    markdown += `- **Connection Pool Performance:** ${summary.connectionPoolPerformance}\n`;
-    markdown += `- **Cache Efficiency:** ${summary.cacheEfficiency}\n`;
-    markdown += `- **Query Optimization:** ${summary.queryOptimization}\n`;
-    markdown += `- **Overall Rating:** ${summary.overallRating}\n\n`;
-    // Test Results
-    markdown += `## Test Results\n\n`;
-    results.forEach(result => {
-      markdown += `### ${result.name}\n`;
-      markdown += `- **Status:** ${result.passed ? '✅ PASSED' : '❌ FAILED'}\n`;
-      markdown += `- **Duration:** ${result.duration}ms\n`;
-      if (result.metrics) {
-        markdown += `- **Metrics:**\n`;
-        Object.entries(result.metrics).forEach(([key, value]) => {
-          markdown += `  - ${key}: ${value}\n`;
 
+    const lines: string[] = [];
+    lines.push(`# Performance Test Report`);
+    lines.push('');
+    lines.push(`**Generated:** ${new Date(report.timestamp).toLocaleString()}`);
+    lines.push(`**Total Duration:** ${report.totalDuration}ms`);
+    lines.push(`**Tests:** ${report.passedTests}/${report.totalTests} passed`);
+    lines.push('');
+    lines.push(`## Summary`);
+    lines.push('');
+    lines.push(`- **Connection Pool Performance:** ${summary.connectionPoolPerformance}`);
+    lines.push(`- **Cache Efficiency:** ${summary.cacheEfficiency}`);
+    lines.push(`- **Query Optimization:** ${summary.queryOptimization}`);
+    lines.push(`- **Overall Rating:** ${summary.overallRating}`);
+    lines.push('');
+    lines.push(`## Test Results`);
+    lines.push('');
+
+    for (const r of results) {
+      lines.push(`### ${r.name}`);
+      lines.push(`- **Status:** ${r.passed ? '✅ PASSED' : '❌ FAILED'}`);
+      lines.push(`- **Duration:** ${r.duration}ms`);
+      if (r.metrics && Object.keys(r.metrics).length > 0) {
+        lines.push(`- **Metrics:**`);
+        for (const [k, v] of Object.entries(r.metrics)) {
+          lines.push(`  - ${k}: ${v}`);
+        }
       }
-      if (result.error) {
-        markdown += `- **Error:** ${result.error}\n`;
+      if (r.error) {
+        lines.push(`- **Error:** ${r.error}`);
       }
-      markdown += `\n`;
-
-    // Recommendations
-    markdown += `## Recommendations\n\n`;
-    recommendations.forEach((rec, index) => {
-      markdown += `${index + 1}. ${rec}\n`;
-
-    return markdown;
-  }
-  private displaySummary(report: PerformanceReport): void {
-    console.log('=' .repeat(50));
-    if (report.recommendations.length > 0) {
-      report.recommendations.forEach((rec, index) => {
-
+      lines.push('');
     }
+
+    lines.push(`## Recommendations`);
+    lines.push('');
+    recommendations.forEach((rec, i) => lines.push(`${i + 1}. ${rec}`));
+    lines.push('');
+
+    return lines.join('\n');
+  }
+
+  private displaySummary(report: PerformanceReport): void {
+    const line = '='.repeat(60);
+    console.log(line);
+    console.log('Performance Test Summary');
+    console.log(line);
+    console.log(`Total: ${report.totalTests}, Passed: ${report.passedTests}, Failed: ${report.failedTests}`);
+    console.log(`Overall: ${report.summary.overallRating}`);
+    if (report.recommendations.length) {
+      console.log('\nRecommendations:');
+      for (const rec of report.recommendations) {
+        console.log(`- ${rec}`);
+      }
+    }
+    console.log(line);
   }
 }
-// Run the tests if this script is executed directly
+
+// Run if executed directly
 if (require.main === module) {
   const runner = new PerformanceTestRunner();
-  runner.runAllTests()
+  runner
+    .runAllTests()
     .then((report) => {
       process.exit(report.failedTests > 0 ? 1 : 0);
     })
-    .catch((error) => {
+    .catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error('Performance tests crashed:', err instanceof Error ? err.stack || err.message : err);
       process.exit(1);
-
+    });
 }
-export { PerformanceTestRunner, type PerformanceReport };
+
+export { PerformanceTestRunner, type PerformanceReport, type TestResult };

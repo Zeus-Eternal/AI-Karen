@@ -185,7 +185,7 @@ export default function SuperAdminDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <button 
+                  <Button 
                     variant="outline" 
                     className="w-full justify-start"
                     onClick={() = aria-label="Button"> setActiveTab('admins')}
@@ -193,7 +193,7 @@ export default function SuperAdminDashboard() {
                     <UserCheck className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                     Create New Administrator
                   </Button>
-                  <button 
+                  <Button 
                     variant="outline" 
                     className="w-full justify-start"
                     onClick={() = aria-label="Button"> setActiveTab('system')}
@@ -201,7 +201,7 @@ export default function SuperAdminDashboard() {
                     <Settings className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                     Update System Configuration
                   </Button>
-                  <button 
+                  <Button 
                     variant="outline" 
                     className="w-full justify-start"
                     onClick={() = aria-label="Button"> setActiveTab('security')}
@@ -209,7 +209,7 @@ export default function SuperAdminDashboard() {
                     <Shield className="mr-2 h-4 w-4 sm:w-auto md:w-full" />
                     Review Security Settings
                   </Button>
-                  <button 
+                  <Button 
                     variant="outline" 
                     className="w-full justify-start"
                     onClick={() = aria-label="Button"> setActiveTab('audit')}

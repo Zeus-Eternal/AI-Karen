@@ -92,7 +92,7 @@ describe("Button Polymorphic Component", () => {
 
   it("should use Slot when asChild is true", () => {
     render(
-      <button asChild data-testid="as-child" aria-label="Button">
+      <Button asChild data-testid="as-child" aria-label="Button">
         <a href="#">Link as button</a>
       </Button>
     )

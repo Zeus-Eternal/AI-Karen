@@ -10,7 +10,7 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
     <div>
       <h2>Welcome</h2>
       <p>Temporarily disabled for build</p>
-      <button onClick={onNext}>Get Started</button>
+      <Button onClick={onNext}>Get Started</Button>
     </div>
   );
 }

@@ -43,8 +43,8 @@ const CustomFallback: React.FC<ErrorFallbackProps> = ({
   <div data-testid="custom-fallback">
     <div data-testid="error-message">{error?.message}</div>
     <div data-testid="recovery-attempts">{recoveryAttempts}</div>
-    <button data-testid="retry-button" onClick={onRetry}>Retry</button>
-    <button data-testid="recover-button" onClick={onRecover}>Recover</button>
+    <Button data-testid="retry-button" onClick={onRetry}>Retry</Button>
+    <Button data-testid="recover-button" onClick={onRecover}>Recover</Button>
   </div>
 );
 

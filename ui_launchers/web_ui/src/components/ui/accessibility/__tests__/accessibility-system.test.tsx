@@ -34,13 +34,13 @@ describe('Accessibility System', () => {
       
       render(
         <div>
-          <button aria-label="Button">Outside Before</button>
+          <Button aria-label="Button">Outside Before</Button>
           <FocusTrap active data-testid="focus-trap">
-            <button data-testid="first-button" aria-label="Button">First</button>
-            <button data-testid="second-button" aria-label="Button">Second</button>
-            <button data-testid="third-button" aria-label="Button">Third</button>
+            <Button data-testid="first-button" aria-label="Button">First</Button>
+            <Button data-testid="second-button" aria-label="Button">Second</Button>
+            <Button data-testid="third-button" aria-label="Button">Third</Button>
           </FocusTrap>
-          <button aria-label="Button">Outside After</button>
+          <Button aria-label="Button">Outside After</Button>
         </div>
       );
 
@@ -73,17 +73,17 @@ describe('Accessibility System', () => {
         
         return (
           <div>
-            <button 
+            <Button 
               onClick={() => setActive(true)}
               data-testid="trigger"
             >
-            </button>
+            </Button>
             <FocusTrap 
               active={active} 
               onEscape={() => setActive(false)}
               restoreFocus
             >
-              <button data-testid="trapped-button" aria-label="Button">Trapped</button>
+              <Button data-testid="trapped-button" aria-label="Button">Trapped</Button>
             </FocusTrap>
           </div>
         );
@@ -116,7 +116,7 @@ describe('Accessibility System', () => {
     it('should be accessible', async () => {
       const { container } = render(
         <FocusTrap active>
-          <button aria-label="Button">Accessible Button</button>
+          <Button aria-label="Button">Accessible Button</Button>
         </FocusTrap>
       );
 

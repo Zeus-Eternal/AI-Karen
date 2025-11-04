@@ -103,19 +103,19 @@ export class SessionErrorBoundary extends Component<
           </div>
           <div className="space-y-3">
             {isAuthError ? (
-              <button
+              <Button
                 onClick={this.handleLogin}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                aria-label="Button">
                 <LogIn className="h-4 w-4 " />
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 onClick={this.handleRetry}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                aria-label="Button">
                 <RefreshCw className="h-4 w-4 " />
-              </button>
+              </Button>
             )}
           </div>
         </div>

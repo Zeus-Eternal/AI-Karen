@@ -150,47 +150,47 @@ export function ErrorHandlingDemo() {
 
         {/* Demo Controls */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-          <button
+          <Button
             onClick={() => handleErrorDemo(simulateNetworkError, 'Network Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
           >
-          </button>
+          </Button>
           
-          <button
+          <Button
             onClick={() => handleErrorDemo(simulateAuthError, 'Auth Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
           >
-          </button>
+          </Button>
           
-          <button
+          <Button
             onClick={() => handleErrorDemo(simulateDatabaseError, 'Database Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50"
           >
-          </button>
+          </Button>
           
-          <button
+          <Button
             onClick={() => handleErrorDemo(simulateTimeoutError, 'Timeout Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50"
           >
-          </button>
+          </Button>
           
-          <button
+          <Button
             onClick={() => handleDirectErrorDemo(simulateValidationError, 'Validation Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
-          </button>
+          </Button>
           
-          <button
+          <Button
             onClick={() => handleDirectErrorDemo(simulateConfigError, 'Config Error')}
             disabled={state.isLoading}
             className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
           >
-          </button>
+          </Button>
         </div>
 
         {/* Loading State */}
@@ -293,11 +293,11 @@ export function ErrorHandlingDemo() {
           <div className="bg-white border border-gray-200 rounded-md p-6 sm:p-4 md:p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Error History</h3>
-              <button
+              <Button
                 onClick={clearHistory}
                 className="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 md:text-base lg:text-lg"
                aria-label="Button">
-              </button>
+              </Button>
             </div>
             
             <div className="space-y-2">

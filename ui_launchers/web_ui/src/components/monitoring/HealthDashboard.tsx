@@ -180,7 +180,7 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Health Dashboard</h2>
         <div className="flex items-center space-x-2">
-          <button
+          <Button
             onClick={toggleMonitoring}
             variant={isMonitoring ? "destructive" : "default"}
             size="sm"
@@ -188,7 +188,7 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
             <Activity className="w-4 h-4 mr-2 " />
             {isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
           </Button>
-          <button onClick={fetchHealthData} disabled={isLoading} size="sm" aria-label="Button">
+          <Button onClick={fetchHealthData} disabled={isLoading} size="sm" aria-label="Button">
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>

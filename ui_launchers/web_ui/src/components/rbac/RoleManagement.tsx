@@ -44,7 +44,7 @@ export function RoleManagement({ className }: RoleManagementProps) {
             <p className="text-muted-foreground">
             </p>
           </div>
-          <button onClick={() => setIsCreateDialogOpen(true)}>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2 " />
           </Button>
         </div>
@@ -260,7 +260,7 @@ function UserRoleAssignments() {
               </Select>
             </div>
           </div>
-          <button onClick={handleAssignRole} disabled={!selectedUser || !selectedRole} aria-label="Button">
+          <Button onClick={handleAssignRole} disabled={!selectedUser || !selectedRole} aria-label="Button">
             <UserPlus className="h-4 w-4 mr-2 " />
           </Button>
         </CardContent>
@@ -455,7 +455,7 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             </Button>
-            <button type="submit" disabled={createRoleMutation.isPending} aria-label="Submit form">
+            <Button type="submit" disabled={createRoleMutation.isPending} aria-label="Submit form">
             </Button>
           </DialogFooter>
         </form>
@@ -547,7 +547,7 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             </Button>
-            <button type="submit" disabled={updateRoleMutation.isPending} aria-label="Submit form">
+            <Button type="submit" disabled={updateRoleMutation.isPending} aria-label="Submit form">
             </Button>
           </DialogFooter>
         </form>

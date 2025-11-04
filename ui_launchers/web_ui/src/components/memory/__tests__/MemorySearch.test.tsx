@@ -54,7 +54,7 @@ vi.mock('@/components/ui/button', () => ({
     variant?: string;
     className?: string;
   }) => (
-    <button 
+    <Button 
       data-testid="button" 
       onClick={onClick} 
       disabled={disabled}
@@ -62,7 +62,7 @@ vi.mock('@/components/ui/button', () => ({
       className={className}
      aria-label="Button">
       {children}
-    </button>
+    </Button>
   )
 }));
 
@@ -114,7 +114,7 @@ vi.mock('@/components/ui/tabs', () => ({
     <div data-testid="tabs-list">{children}</div>
   ),
   TabsTrigger: ({ children, value }: { children: React.ReactNode; value: string }) => (
-    <button data-testid="tab-trigger" data-value={value} aria-label="Button">{children}</button>
+    <Button data-testid="tab-trigger" data-value={value} aria-label="Button">{children}</Button>
   ),
   TabsContent: ({ children, value }: { children: React.ReactNode; value: string }) => (
     <div data-testid="tab-content" data-value={value}>{children}</div>

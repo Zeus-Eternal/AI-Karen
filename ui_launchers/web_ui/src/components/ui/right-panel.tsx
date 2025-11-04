@@ -295,7 +295,7 @@ export const RightPanelNavigation = forwardRef<HTMLElement, RightPanelNavigation
                 "py-1"
               )}>
                 {views.map((view) => (
-                  <button
+                  <Button
                     key={view.id}
                     variant={activeView === view.id ? "default" : "ghost"}
                     size="sm"

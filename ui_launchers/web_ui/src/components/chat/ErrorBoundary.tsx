@@ -132,7 +132,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
                 </details>
               )}
               <div className="flex gap-2">
-                <button onClick={this.handleRetry} className="flex-1" aria-label="Button">
+                <Button onClick={this.handleRetry} className="flex-1" aria-label="Button">
                   <RefreshCw className="h-4 w-4 mr-2 " />
                 </Button>
                 <Button variant="outline" onClick={this.handleGoHome} >

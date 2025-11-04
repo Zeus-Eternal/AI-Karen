@@ -48,9 +48,9 @@ describe('Accessibility Test Suite', () => {
       const { container } = render(
         <TestWrapper>
           <FlexContainer direction="column" gap="1rem">
-            <button>Button 1</button>
-            <button>Button 2</button>
-            <button>Button 3</button>
+            <Button>Button 1</Button>
+            <Button>Button 2</Button>
+            <Button>Button 3</Button>
           </FlexContainer>
         </TestWrapper>
       );
@@ -88,8 +88,8 @@ describe('Accessibility Test Suite', () => {
             </Card.Content>
             <Card.Footer>
               <Card.Actions>
-                <button>Primary Action</button>
-                <button>Secondary Action</button>
+                <Button>Primary Action</Button>
+                <Button>Secondary Action</Button>
               </Card.Actions>
             </Card.Footer>
           </Card.Root>
@@ -114,8 +114,8 @@ describe('Accessibility Test Suite', () => {
                 <p>Modal content with proper semantic structure.</p>
               </Modal.Body>
               <Modal.Actions>
-                <button>Cancel</button>
-                <button>Confirm</button>
+                <Button>Cancel</Button>
+                <Button>Confirm</Button>
               </Modal.Actions>
             </Modal.Content>
           </Modal.Root>
@@ -154,7 +154,7 @@ describe('Accessibility Test Suite', () => {
             </Form.Field>
             
             <Form.Actions>
-              <button type="submit">Submit Form</button>
+              <Button type="submit">Submit Form</Button>
             </Form.Actions>
           </Form.Root>
         </TestWrapper>
@@ -232,7 +232,7 @@ describe('Accessibility Test Suite', () => {
               required
               error="Please enter a valid email address"
             />
-            <button type="submit">Submit Contact Form</button>
+            <Button type="submit">Submit Contact Form</Button>
           </AriaEnhancedForm>
         </TestWrapper>
       );
@@ -265,9 +265,9 @@ describe('Accessibility Test Suite', () => {
             <div role="dialog" aria-labelledby="dialog-title">
               <h2 id="dialog-title">Dialog Title</h2>
               <p>Dialog content with focus trapped inside.</p>
-              <button>First Button</button>
-              <button>Second Button</button>
-              <button>Close Dialog</button>
+              <Button>First Button</Button>
+              <Button>Second Button</Button>
+              <Button>Close Dialog</Button>
             </div>
           </FocusTrap>
         </TestWrapper>
@@ -394,7 +394,7 @@ describe('Accessibility Test Suite', () => {
               </div>
             </div>
             
-            <button type="submit">Create Account</button>
+            <Button type="submit">Create Account</Button>
           </form>
         </TestWrapper>
       );
@@ -425,8 +425,8 @@ describe('Accessibility Test Suite', () => {
                   <span aria-label="Active user">✓ Active</span>
                 </td>
                 <td>
-                  <button aria-label="Edit John Doe">Edit</button>
-                  <button aria-label="Delete John Doe">Delete</button>
+                  <Button aria-label="Edit John Doe">Edit</Button>
+                  <Button aria-label="Delete John Doe">Delete</Button>
                 </td>
               </tr>
               <tr>
@@ -437,8 +437,8 @@ describe('Accessibility Test Suite', () => {
                   <span aria-label="Inactive user">✗ Inactive</span>
                 </td>
                 <td>
-                  <button aria-label="Edit Jane Smith">Edit</button>
-                  <button aria-label="Delete Jane Smith">Delete</button>
+                  <Button aria-label="Edit Jane Smith">Edit</Button>
+                  <Button aria-label="Delete Jane Smith">Delete</Button>
                 </td>
               </tr>
             </tbody>
@@ -545,7 +545,7 @@ describe('Accessibility Test Suite', () => {
           </style>
           
           <div>
-            <button className="focus-test">Focusable Button</button>
+            <Button className="focus-test">Focusable Button</Button>
             <a href="#" className="focus-test">Focusable Link</a>
             <input type="text" className="focus-test" placeholder="Focusable Input" />
             <select className="focus-test">
@@ -574,12 +574,12 @@ describe('Accessibility Test Suite', () => {
               <p>Critical error messages will appear here</p>
             </div>
             
-            <button 
+            <Button 
               aria-expanded="false"
               aria-controls="collapsible-content"
               aria-describedby="expand-help"
             >
-            </button>
+            </Button>
             <div id="expand-help" className="sr-only">
             </div>
             

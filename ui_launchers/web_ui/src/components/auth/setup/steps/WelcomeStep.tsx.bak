@@ -95,7 +95,7 @@ export const WelcomeStep: React.FC<SetupStepProps> = ({ onNext, isLoading }) => 
 
       {/* Get Started Button */}
       <div className="text-center pt-4">
-        <button
+        <Button
           onClick={onNext}
           disabled={isLoading}
           size="lg"

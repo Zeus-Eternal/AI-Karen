@@ -1,25 +1,57 @@
-import type { /** * Enhanced Authentication Types and Interfaces * * This module exports all enhanced authentication types, interfaces, and utilities * for the comprehensive login feedback system. */  // Re-export all base authentication types export * from './auth';  // Re-export authentication utilities export * from './auth-utils';  // Re-export feedback types (excluding conflicting FeedbackState) export type { SuccessMessageProps, ErrorMessageProps, LoadingIndicatorProps, FeedbackContainerProps, ToastNotificationProps, ProgressIndicatorProps, CountdownTimerProps, AlertBannerProps, StatusIndicatorProps, FeedbackAnimationConfig, FeedbackAction } from './auth-feedback';
-
-export {
-  feedbackReducer,
-  initialFeedbackState
-import { } from './auth-feedback';
-
-// Re-export form management types
-export * from './auth-form';
-
-// Import types for use in this file
-
-import { } from './auth';
-
-
-import { } from './auth-form';
-
-// Additional type definitions for enhanced authentication system
+'use client';
 
 /**
- * Authentication system configuration
+ * Enhanced Authentication Types and Interfaces (barrel + config)
+ *
+ * ✅ Production-grade, tree-shakeable, type-safe re-exports
+ * ✅ Centralizes constants, interfaces, and shared config
+ * ✅ Avoids circular imports — only re-exports from leaf modules
+ * ✅ Safe for Next.js “use client” contexts
  */
+
+// ---------------------------------------------------------------------------
+// Base Authentication Domain
+// ---------------------------------------------------------------------------
+export type {
+  User,
+  AuthenticationState,
+  LoginCredentials,
+  LoginResponse,
+  AuthenticationError,
+  ErrorClassification,
+  SecurityFlags,
+  AuthServiceResponse,
+} from './auth';
+export * from './auth-utils'; // runtime helpers
+
+// ---------------------------------------------------------------------------
+// Feedback System (UI feedback + reducer + props)
+// ---------------------------------------------------------------------------
+export type {
+  SuccessMessageProps,
+  ErrorMessageProps,
+  LoadingIndicatorProps,
+  FeedbackContainerProps,
+  ToastNotificationProps,
+  ProgressIndicatorProps,
+  CountdownTimerProps,
+  AlertBannerProps,
+  StatusIndicatorProps,
+  FeedbackAnimationConfig,
+  FeedbackAction,
+  FeedbackMessage,
+} from './auth-feedback';
+export { feedbackReducer, initialFeedbackState } from './auth-feedback';
+
+// ---------------------------------------------------------------------------
+// Form Types and Helpers
+// ---------------------------------------------------------------------------
+export type { AuthFormState, FormFieldType, ValidationErrors } from './auth-form';
+export * from './auth-form';
+
+// ---------------------------------------------------------------------------
+// System Configuration
+// ---------------------------------------------------------------------------
 export interface AuthSystemConfig {
   enableRealTimeValidation: boolean;
   enableRetryLogic: boolean;
@@ -28,14 +60,11 @@ export interface AuthSystemConfig {
   enableAccessibility: boolean;
   enableLogging: boolean;
   maxRetryAttempts: number;
-  retryBaseDelay: number;
-  feedbackAutoHideDuration: number;
-  validationDebounceDelay: number;
+  retryBaseDelay: number; // ms
+  feedbackAutoHideDuration: number; // ms
+  validationDebounceDelay: number; // ms
 }
 
-/**
- * Default authentication system configuration
- */
 export const DEFAULT_AUTH_SYSTEM_CONFIG: AuthSystemConfig = {
   enableRealTimeValidation: true,
   enableRetryLogic: true,
@@ -44,14 +73,14 @@ export const DEFAULT_AUTH_SYSTEM_CONFIG: AuthSystemConfig = {
   enableAccessibility: true,
   enableLogging: true,
   maxRetryAttempts: 3,
-  retryBaseDelay: 1000,
-  feedbackAutoHideDuration: 5000,
-  validationDebounceDelay: 300
+  retryBaseDelay: 1_000,
+  feedbackAutoHideDuration: 5_000,
+  validationDebounceDelay: 300,
 };
 
-/**
- * Authentication event types for logging and analytics
- */
+// ---------------------------------------------------------------------------
+// Eventing + Telemetry Interfaces
+// ---------------------------------------------------------------------------
 export type AuthEventType =
   | 'login_attempt'
   | 'login_success'
@@ -69,9 +98,19 @@ export type AuthEventType =
   | 'feedback_dismissed'
   | 'retry_attempted';
 
-/**
- * Authentication event data for logging
- */
+import type {
+  AuthenticationError,
+  AuthenticationState,
+  LoginCredentials,
+  LoginResponse,
+  AuthServiceResponse,
+  SecurityFlags,
+  ErrorClassification,
+  User,
+} from './auth';
+import type { AuthFormState, ValidationErrors, FormFieldType } from './auth-form';
+import type { FeedbackMessage } from './auth-feedback';
+
 export interface AuthEvent {
   type: AuthEventType;
   timestamp: Date;
@@ -81,9 +120,6 @@ export interface AuthEvent {
   error?: AuthenticationError;
 }
 
-/**
- * Authentication metrics for monitoring
- */
 export interface AuthMetrics {
   totalAttempts: number;
   successfulAttempts: number;
@@ -93,13 +129,10 @@ export interface AuthMetrics {
   securityBlocks: number;
   rateLimitHits: number;
   twoFactorRequests: number;
-  averageResponseTime: number;
-  errorRate: number;
+  averageResponseTime: number; // ms
+  errorRate: number; // 0..1
 }
 
-/**
- * Authentication session data
- */
 export interface AuthSession {
   sessionId: string;
   startTime: Date;
@@ -111,38 +144,38 @@ export interface AuthSession {
   ipAddress?: string;
 }
 
-/**
- * Enhanced authentication service interface
- */
+// ---------------------------------------------------------------------------
+// Enhanced Auth Service Contract (adapter interface)
+// ---------------------------------------------------------------------------
 export interface EnhancedAuthService {
-  // Core authentication methods
+  // Core authentication
   login(credentials: LoginCredentials): Promise<AuthServiceResponse<LoginResponse>>;
   logout(): Promise<void>;
   refreshToken(): Promise<AuthServiceResponse<LoginResponse>>;
 
-  // Validation methods
+  // Validation
   validateCredentials(credentials: LoginCredentials): Promise<ValidationErrors>;
   validateEmail(email: string): Promise<string | null>;
   validatePassword(password: string): Promise<string | null>;
 
-  // Error handling methods
-  parseError(error: any): AuthenticationError;
+  // Errors
+  parseError(error: unknown): AuthenticationError;
   classifyError(error: AuthenticationError): ErrorClassification;
   shouldRetry(error: AuthenticationError, attemptCount: number): boolean;
 
-  // Security methods
+  // Security
   checkSecurityFlags(credentials: LoginCredentials): Promise<SecurityFlags>;
-  handleRateLimit(error: AuthenticationError): Promise<number>;
+  handleRateLimit(error: AuthenticationError): Promise<number>; // returns backoff ms
 
-  // Logging and monitoring
+  // Telemetry
   logEvent(event: AuthEvent): void;
   getMetrics(): AuthMetrics;
   getSession(): AuthSession;
 }
 
-/**
- * Authentication hook interface for React components
- */
+// ---------------------------------------------------------------------------
+// React Hook Interface
+// ---------------------------------------------------------------------------
 export interface UseAuthenticationHook {
   // State
   authState: AuthenticationState;
@@ -159,15 +192,15 @@ export interface UseAuthenticationHook {
   setFeedback: (message: FeedbackMessage) => void;
   resetForm: () => void;
 
-  // Utilities
+  // Derivations
   canSubmit: boolean;
   hasErrors: boolean;
   isValid: boolean;
 }
 
-/**
- * Component prop types for enhanced authentication components
- */
+// ---------------------------------------------------------------------------
+// Component Prop Types
+// ---------------------------------------------------------------------------
 export interface EnhancedLoginFormProps {
   onSuccess?: (user: User) => void;
   onError?: (error: AuthenticationError) => void;
@@ -180,9 +213,6 @@ export interface EnhancedLoginFormProps {
   showSignUpLink?: boolean;
 }
 
-/**
- * Authentication provider props
- */
 export interface EnhancedAuthProviderProps {
   children: React.ReactNode;
   config?: Partial<AuthSystemConfig>;
@@ -190,40 +220,37 @@ export interface EnhancedAuthProviderProps {
   enableDevMode?: boolean;
 }
 
-/**
- * Type guards and utility functions
- */
+// ---------------------------------------------------------------------------
+// Type Guards
+// ---------------------------------------------------------------------------
 export const AuthTypeGuards = {
-  isUser: (value: any): value is User => {
-    return value && typeof value === 'object' && 'user_id' in value && 'email' in value;
+  isUser(value: unknown): value is User {
+    return !!value && typeof value === 'object' && 'user_id' in (value as any) && 'email' in (value as any);
   },
-
-  isAuthenticationError: (value: any): value is AuthenticationError => {
-    return value && typeof value === 'object' && 'type' in value && 'message' in value;
+  isAuthenticationError(value: unknown): value is AuthenticationError {
+    return !!value && typeof value === 'object' && 'type' in (value as any) && 'message' in (value as any);
   },
-
-  isFeedbackMessage: (value: any): value is FeedbackMessage => {
-    return value && typeof value === 'object' && 'type' in value && 'title' in value && 'message' in value;
+  isFeedbackMessage(value: unknown): value is FeedbackMessage {
+    return !!value && typeof value === 'object' && 'type' in (value as any) && 'title' in (value as any) && 'message' in (value as any);
   },
-
-  isValidationErrors: (value: any): value is ValidationErrors => {
-    return value && typeof value === 'object';
-  }
+  isValidationErrors(value: unknown): value is ValidationErrors {
+    return !!value && typeof value === 'object';
+  },
 };
 
-/**
- * Constants for authentication system
- */
+// ---------------------------------------------------------------------------
+// Constants (timeouts, limits, tunables, storage keys)
+// ---------------------------------------------------------------------------
 export const AUTH_CONSTANTS = {
-  // Timeouts
-  DEFAULT_REQUEST_TIMEOUT: 30000, // 30 seconds
-  DEFAULT_RETRY_DELAY: 1000, // 1 second
-  DEFAULT_FEEDBACK_DURATION: 5000, // 5 seconds
+  // Timeouts (ms)
+  DEFAULT_REQUEST_TIMEOUT: 30_000,
+  DEFAULT_RETRY_DELAY: 1_000,
+  DEFAULT_FEEDBACK_DURATION: 5_000,
 
   // Limits
   MAX_RETRY_ATTEMPTS: 3,
   MAX_VALIDATION_ERRORS: 10,
-  MAX_SESSION_DURATION: 24 * 60 * 60 * 1000, // 24 hours
+  MAX_SESSION_DURATION: 24 * 60 * 60 * 1_000,
 
   // Validation
   MIN_PASSWORD_LENGTH: 8,
@@ -240,13 +267,13 @@ export const AUTH_CONSTANTS = {
   STORAGE_KEYS: {
     REMEMBER_EMAIL: 'auth_remember_email',
     SESSION_ID: 'auth_session_id',
-    LAST_LOGIN: 'auth_last_login'
-  }
+    LAST_LOGIN: 'auth_last_login',
+  },
 } as const;
 
-/**
- * Error codes for specific authentication scenarios
- */
+// ---------------------------------------------------------------------------
+// Error and Success Codes (normalized)
+// ---------------------------------------------------------------------------
 export const AUTH_ERROR_CODES = {
   INVALID_CREDENTIALS: 'AUTH_001',
   NETWORK_ERROR: 'AUTH_002',
@@ -260,16 +287,13 @@ export const AUTH_ERROR_CODES = {
   SERVER_ERROR: 'AUTH_010',
   VALIDATION_ERROR: 'AUTH_011',
   TIMEOUT_ERROR: 'AUTH_012',
-  UNKNOWN_ERROR: 'AUTH_999'
+  UNKNOWN_ERROR: 'AUTH_999',
 } as const;
 
-/**
- * Success codes for authentication events
- */
 export const AUTH_SUCCESS_CODES = {
   LOGIN_SUCCESS: 'AUTH_SUCCESS_001',
   LOGOUT_SUCCESS: 'AUTH_SUCCESS_002',
   TOKEN_REFRESH: 'AUTH_SUCCESS_003',
   VALIDATION_PASSED: 'AUTH_SUCCESS_004',
-  TWO_FACTOR_SUCCESS: 'AUTH_SUCCESS_005'
+  TWO_FACTOR_SUCCESS: 'AUTH_SUCCESS_005',
 } as const;

@@ -430,7 +430,7 @@ export function AccessibilityUserTestingTool({
               <div className="w-2 h-2 bg-red-500 rounded-full mr-2 " />
             </Badge>
           )}
-          <button
+          <Button
             onClick={() => setShowIssueForm(true)}
             variant="outline"
             disabled={!isRecording}
@@ -450,14 +450,14 @@ export function AccessibilityUserTestingTool({
               <span>Time: {formatTime(currentTest.timeSpent)}</span>
               <span>Issues: {currentTest.issues.length}</span>
               <div className="flex gap-2 ml-auto">
-                <button
+                <Button
                   size="sm"
                   onClick={() => completeTest(true, 'Test completed successfully')}
                   variant="outline"
                 >
                   <CheckCircle className="h-4 w-4 mr-1 " />
                 </Button>
-                <button
+                <Button
                   size="sm"
                   onClick={() => completeTest(false, 'Test failed or abandoned')}
                   variant="outline"
@@ -518,7 +518,7 @@ export function AccessibilityUserTestingTool({
                       </ul>
                     </div>
 
-                    <button
+                    <Button
                       onClick={() => startTest(scenario)}
                       disabled={isRecording}
                       className="w-full"
@@ -932,7 +932,7 @@ export function AccessibilityUserTestingTool({
         <TabsContent value="issues" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Reported Issues</h3>
-            <button
+            <Button
               onClick={() => setShowIssueForm(true)}
               variant="outline"
               size="sm"

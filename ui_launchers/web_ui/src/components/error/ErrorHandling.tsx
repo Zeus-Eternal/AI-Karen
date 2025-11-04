@@ -298,7 +298,7 @@ const ErrorHandlingExample: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold mb-3">Service Error Handling</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <button 
+              <Button 
                 onClick={() => handleApiCall(true)}
                 className="flex flex-col items-center p-4 h-auto sm:p-4 md:p-6"
               >

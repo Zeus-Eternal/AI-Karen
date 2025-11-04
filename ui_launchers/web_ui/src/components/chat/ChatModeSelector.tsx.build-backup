@@ -351,7 +351,7 @@ export default function ChatModeSelector({
                 return (
                   <Tooltip key={mode}>
                     <TooltipTrigger asChild>
-                      <button
+                      <Button
                         variant={isActive ? "default" : "outline"}
                         onClick={() => handleModeChange(mode)}
                         disabled={isDisabled}
@@ -556,7 +556,7 @@ export default function ChatModeSelector({
             <Button variant="outline" onClick={handleCancelTransition} >
               Cancel
             </Button>
-            <button onClick={handleConfirmTransition} disabled={isTransitioning} aria-label="Button">
+            <Button onClick={handleConfirmTransition} disabled={isTransitioning} aria-label="Button">
               {isTransitioning ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 " />

@@ -88,13 +88,13 @@ const ComplexAuthComponent: React.FC = () => {
     return (
       <div data-testid="login-form">
         <h1>Login Required</h1>
-        <button 
+        <Button 
           onClick={handleLogin} 
           disabled={loading}
           data-testid="login-button"
         >
           {loading ? 'Logging in...' : 'Login'}
-        </button>
+        </Button>
         {error && <div data-testid="error-message">{error}</div>}
       </div>
     );
@@ -108,8 +108,8 @@ const ComplexAuthComponent: React.FC = () => {
           <span data-testid="user-role">Role: {role}</span>
           <span data-testid="user-id">ID: {user?.userId}</span>
         </div>
-        <button onClick={handleLogout} data-testid="logout-button">
-        </button>
+        <Button onClick={handleLogout} data-testid="logout-button">
+        </Button>
       </header>
 
       <main data-testid="dashboard-content">
@@ -118,9 +118,9 @@ const ComplexAuthComponent: React.FC = () => {
           <section data-testid="super-admin-section">
             <h2>Super Admin Panel</h2>
             <div data-testid="super-admin-actions">
-              <button data-testid="manage-system">Manage System</button>
-              <button data-testid="view-audit-logs">View Audit Logs</button>
-              <button data-testid="security-settings">Security Settings</button>
+              <Button data-testid="manage-system">Manage System</Button>
+              <Button data-testid="view-audit-logs">View Audit Logs</Button>
+              <Button data-testid="security-settings">Security Settings</Button>
             </div>
           </section>
         )}
@@ -129,9 +129,9 @@ const ComplexAuthComponent: React.FC = () => {
           <section data-testid="admin-section">
             <h2>Admin Panel</h2>
             <div data-testid="admin-actions">
-              <button data-testid="manage-users">Manage Users</button>
+              <Button data-testid="manage-users">Manage Users</Button>
               {canManageAdmins && (
-                <button data-testid="manage-admins">Manage Admins</button>
+                <Button data-testid="manage-admins">Manage Admins</Button>
               )}
             </div>
           </section>
@@ -142,9 +142,9 @@ const ComplexAuthComponent: React.FC = () => {
           <section data-testid="user-management-section">
             <h2>User Management</h2>
             <div data-testid="user-management-actions">
-              <button data-testid="create-user">Create User</button>
-              <button data-testid="edit-user">Edit User</button>
-              <button data-testid="delete-user">Delete User</button>
+              <Button data-testid="create-user">Create User</Button>
+              <Button data-testid="edit-user">Edit User</Button>
+              <Button data-testid="delete-user">Delete User</Button>
             </div>
           </section>
         )}
@@ -194,13 +194,13 @@ const AsyncAuthComponent: React.FC = () => {
   return (
     <div data-testid="async-auth-component">
       <div data-testid="current-auth-status">{isAuthenticated.toString()}</div>
-      <button 
+      <Button 
         onClick={handleCheckAuth} 
         disabled={checking}
         data-testid="check-auth-button"
       >
         {checking ? 'Checking...' : 'Check Auth'}
-      </button>
+      </Button>
       {authStatus !== null && (
         <div data-testid="auth-check-result">{authStatus.toString()}</div>
       )}

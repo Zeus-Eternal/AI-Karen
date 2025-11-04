@@ -8,9 +8,9 @@ export * from './performance-tracker';
 export * from './connectivity-logger';
 
 // Re-export main instances for convenience
-import { export { correlationTracker } from './correlation-tracker';
-import { export { performanceTracker } from './performance-tracker';
-import { export { connectivityLogger } from './connectivity-logger';
+export { correlationTracker } from './correlation-tracker';
+export { performanceTracker } from './performance-tracker';
+export { connectivityLogger } from './connectivity-logger';
 
 // Utility functions for common logging scenarios
 export const logAuthAttempt = (

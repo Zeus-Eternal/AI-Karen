@@ -219,7 +219,7 @@ export default function ModelFilters({
             {filterOptions.allTags.slice(0, 50).map(tag => {
               const isSelected = filters.tags?.includes(tag) || false;
               return (
-                <button
+                <Button
                   key={tag}
                   variant={isSelected ? 'default' : 'outline'}
                   size="sm"

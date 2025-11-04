@@ -105,7 +105,8 @@ If you received this email, your email service is configured correctly!`,
           error: testEmailResult.error,
           recipient: testEmail,
         } : null,
-      }
+      },
+    });
 
   } catch (error) {
     return NextResponse.json(

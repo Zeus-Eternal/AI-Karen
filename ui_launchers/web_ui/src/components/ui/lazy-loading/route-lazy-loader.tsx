@@ -76,16 +76,16 @@ const DefaultRouteErrorFallback: React.FC<{ error: Error; resetErrorBoundary: ()
           </pre>
         </details>
         <div className="space-y-3">
-          <button
+          <Button
             onClick={resetErrorBoundary}
             className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
            aria-label="Button">
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => window.location.href = '/'}
             className="w-full px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors"
           >
-          </button>
+          </Button>
         </div>
       </motion.div>
     </div>

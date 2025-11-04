@@ -167,7 +167,7 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
           { id: 'create-user', label: 'Create User', icon: '➕' },
           { id: 'activity', label: 'Activity Monitor', icon: '📈' }
         ].map((tab) => (
-          <button
+          <Button
             key={tab.id}
             onClick={() => handleViewChange(tab.id as DashboardView)}
             className={`py-2 px-1 border-b-2 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-t ${
@@ -182,11 +182,11 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
           >
             <span className="mr-2" aria-hidden="true">{tab.icon}</span>
             {tab.label}
-          </button>
+          </Button>
         ))}
         
         {selectedUsers.length > 0 && (
-          <button
+          <Button
             onClick={() => handleViewChange('bulk-operations')}
             className={`py-2 px-1 border-b-2 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-t ${
               currentView === 'bulk-operations'
@@ -200,7 +200,7 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
           >
             <span className="mr-2" aria-hidden="true">⚡</span>
             Bulk Operations ({selectedUsers.length})
-          </button>
+          </Button>
         )}
       </div>
     </nav>
@@ -319,7 +319,7 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
                 icon: '📈'
               }
             ].map((quickAction, index) => (
-              <button
+              <Button
                 key={index}
                 onClick={quickAction.action}
                 className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:p-4 md:p-6"
@@ -331,7 +331,7 @@ export function EnhancedAdminDashboard({ className = '' }: EnhancedAdminDashboar
                     <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">{quickAction.description}</p>
                   </div>
                 </div>
-              </button>
+              </Button>
             ))}
           </div>
         </div>

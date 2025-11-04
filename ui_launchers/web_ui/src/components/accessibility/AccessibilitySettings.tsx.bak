@@ -274,7 +274,7 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <button
+          <Button
             variant="outline"
             onClick={handleResetSettings}
             className="w-full"

@@ -188,12 +188,12 @@ const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = (props) => {
           {(onCopy || onRegenerate) && (
             <div className="flex gap-2 justify-end pt-1">
               {onCopy && (
-                <button size="sm" variant={isUser ? 'secondary' : 'outline'} onClick={handleCopy} aria-label="Button">
+                <Button size="sm" variant={isUser ? 'secondary' : 'outline'} onClick={handleCopy} aria-label="Button">
                   <Copy className="h-4 w-4 mr-2 " /> Copy
                 </Button>
               )}
               {onRegenerate && (
-                <button size="sm" variant={isUser ? 'secondary' : 'outline'} onClick={onRegenerate} aria-label="Button">
+                <Button size="sm" variant={isUser ? 'secondary' : 'outline'} onClick={onRegenerate} aria-label="Button">
                   <RefreshCw className="h-4 w-4 mr-2 " /> Regenerate
                 </Button>
               )}

@@ -12,31 +12,31 @@ export interface BundleStats {
 
 export interface ChunkInfo {
   name: string;
-  size: number;
+  size: number;         // bytes
   files: string[];
   modules: string[];
 }
 
 export interface AssetInfo {
   name: string;
-  size: number;
+  size: number;         // bytes
   type: 'js' | 'css' | 'image' | 'font' | 'other';
-  gzippedSize?: number;
+  gzippedSize?: number; // bytes
 }
 
 export interface ModuleInfo {
   name: string;
-  size: number;
+  size: number;         // bytes
   chunks: string[];
   reasons: string[];
 }
 
 export interface BundleBudget {
-  maxBundleSize: number; // in bytes
-  maxChunkSize: number;
-  maxAssetSize: number;
-  warningThreshold: number; // percentage
-  errorThreshold: number; // percentage
+  maxBundleSize: number;     // bytes
+  maxChunkSize: number;      // bytes
+  maxAssetSize: number;      // bytes
+  warningThreshold: number;  // %
+  errorThreshold: number;    // %
 }
 
 // Default bundle budgets based on performance best practices
@@ -73,6 +73,40 @@ export const BUNDLE_BUDGETS = {
   },
 } as const;
 
+export type BudgetViolationType = 'bundle-size' | 'chunk-size' | 'asset-size';
+export type BudgetSeverity = 'error' | 'warning';
+
+export interface BudgetViolation {
+  type: BudgetViolationType;
+  severity: BudgetSeverity;
+  message: string;
+  actual: number;      // bytes
+  budget: number;      // bytes
+  percentage: number;  // %
+  target?: string;     // chunk/asset name when applicable
+}
+
+export type BudgetWarning = BudgetViolation;
+
+export interface BundleAnalysisResult {
+  stats: BundleStats;
+  violations: BudgetViolation[];
+  warnings: BudgetWarning[];
+  recommendations: string[];
+  score: number; // 0..100
+}
+
+/** Utility: clamp to [0,100] */
+const clampScore = (n: number) => Math.max(0, Math.min(100, n));
+
+/** Utility: fast duplicate detection (O(n)) */
+function findDuplicates(values: string[]): string[] {
+  const seen = new Set<string>();
+  const dups = new Set<string>();
+  for (const v of values) (seen.has(v) ? dups.add(v) : seen.add(v));
+  return [...dups];
+}
+
 export class BundleAnalyzer {
   private budgets: BundleBudget;
 
@@ -90,34 +124,24 @@ export class BundleAnalyzer {
     // Check total bundle size
     const bundleSizeViolation = this.checkBundleSize(stats.totalSize);
     if (bundleSizeViolation) {
-      if (bundleSizeViolation.severity === 'error') {
-        violations.push(bundleSizeViolation);
-      } else {
-        warnings.push(bundleSizeViolation);
-      }
+      (bundleSizeViolation.severity === 'error' ? violations : warnings).push(bundleSizeViolation);
     }
 
     // Check individual chunks
-    stats.chunks.forEach(chunk => {
+    stats.chunks.forEach((chunk) => {
       const chunkViolation = this.checkChunkSize(chunk);
       if (chunkViolation) {
-        if (chunkViolation.severity === 'error') {
-          violations.push(chunkViolation);
-        } else {
-          warnings.push(chunkViolation);
-        }
+        (chunkViolation.severity === 'error' ? violations : warnings).push(chunkViolation);
       }
+    });
 
     // Check individual assets
-    stats.assets.forEach(asset => {
+    stats.assets.forEach((asset) => {
       const assetViolation = this.checkAssetSize(asset);
       if (assetViolation) {
-        if (assetViolation.severity === 'error') {
-          violations.push(assetViolation);
-        } else {
-          warnings.push(assetViolation);
-        }
+        (assetViolation.severity === 'error' ? violations : warnings).push(assetViolation);
       }
+    });
 
     return {
       stats,
@@ -130,7 +154,7 @@ export class BundleAnalyzer {
 
   private checkBundleSize(size: number): BudgetViolation | null {
     const percentage = (size / this.budgets.maxBundleSize) * 100;
-    
+
     if (percentage >= this.budgets.errorThreshold) {
       return {
         type: 'bundle-size',
@@ -141,7 +165,7 @@ export class BundleAnalyzer {
         percentage,
       };
     }
-    
+
     if (percentage >= this.budgets.warningThreshold) {
       return {
         type: 'bundle-size',
@@ -158,7 +182,7 @@ export class BundleAnalyzer {
 
   private checkChunkSize(chunk: ChunkInfo): BudgetViolation | null {
     const percentage = (chunk.size / this.budgets.maxChunkSize) * 100;
-    
+
     if (percentage >= this.budgets.errorThreshold) {
       return {
         type: 'chunk-size',
@@ -170,7 +194,7 @@ export class BundleAnalyzer {
         target: chunk.name,
       };
     }
-    
+
     if (percentage >= this.budgets.warningThreshold) {
       return {
         type: 'chunk-size',
@@ -188,7 +212,7 @@ export class BundleAnalyzer {
 
   private checkAssetSize(asset: AssetInfo): BudgetViolation | null {
     const percentage = (asset.size / this.budgets.maxAssetSize) * 100;
-    
+
     if (percentage >= this.budgets.errorThreshold) {
       return {
         type: 'asset-size',
@@ -200,7 +224,7 @@ export class BundleAnalyzer {
         target: asset.name,
       };
     }
-    
+
     if (percentage >= this.budgets.warningThreshold) {
       return {
         type: 'asset-size',
@@ -223,50 +247,68 @@ export class BundleAnalyzer {
   ): string[] {
     const recommendations: string[] = [];
 
-    // Analyze large modules
-    const largeModules = stats.modules
-      .filter(module => module.size > 10 * 1024) // > 10KB
+    // Large modules (top 5 > 10KB)
+    const largeModules = [...stats.modules]
+      .filter((m) => (m?.size ?? 0) > 10 * 1024)
       .sort((a, b) => b.size - a.size)
       .slice(0, 5);
 
     if (largeModules.length > 0) {
       recommendations.push(
-        `Consider code splitting or lazy loading for large modules: ${largeModules
-          .map(m => `${m.name} (${this.formatBytes(m.size)})`)
+        `Consider code-splitting or lazy-loading for large modules: ${largeModules
+          .map((m) => `${m.name} (${this.formatBytes(m.size)})`)
           .join(', ')}`
       );
     }
 
-    // Check for duplicate modules
-    const moduleNames = stats.modules.map(m => m.name);
-    const duplicates = moduleNames.filter((name, index) => moduleNames.indexOf(name) !== index);
+    // Duplicate modules (exact name matches)
+    const duplicates = findDuplicates(stats.modules.map((m) => m.name));
     if (duplicates.length > 0) {
       recommendations.push(
-        `Potential duplicate modules detected: ${[...new Set(duplicates)].join(', ')}`
+        `Potential duplicate modules detected: ${duplicates.join(', ')}`
+      );
+      recommendations.push(
+        'Deduplicate via aliasing/resolution, ensure a single version in lockfile, and prefer ESM builds'
       );
     }
 
-    // Bundle-specific recommendations
-    if (violations.some(v => v.type === 'bundle-size')) {
+    // Gzip ratio insight
+    if (stats.totalSize > 0) {
+      const ratio = stats.gzippedSize / stats.totalSize;
+      if (ratio > 0.35) {
+        recommendations.push(
+          `High gzip ratio (${Math.round(ratio * 100)}%). Verify minification/treeshaking; consider Brotli for static hosting`
+        );
+      }
+    }
+
+    // Bundle-level flags
+    if (violations.some((v) => v.type === 'bundle-size')) {
       recommendations.push(
-        'Consider implementing route-based code splitting to reduce initial bundle size'
+        'Adopt route-based code splitting to reduce initial payload'
       );
       recommendations.push(
-        'Review and remove unused dependencies using tools like webpack-bundle-analyzer'
+        'Audit and remove unused dependencies (e.g., webpack-bundle-analyzer / rollup-plugin-visualizer)'
+      );
+      recommendations.push(
+        'Prefer modular imports (e.g., lodash-es, date-fns) and ESM builds over CJS'
       );
     }
 
-    // Chunk-specific recommendations
-    if (violations.some(v => v.type === 'chunk-size')) {
+    // Chunk-level flags
+    if (violations.some((v) => v.type === 'chunk-size')) {
+      recommendations.push('Split large chunks into feature-focused chunks');
+      recommendations.push('Lazy load heavy components/assets below the fold');
+    }
+
+    // Asset-level flags
+    if (violations.some((v) => v.type === 'asset-size')) {
       recommendations.push(
-        'Split large chunks into smaller, more focused chunks'
-      );
-      recommendations.push(
-        'Consider lazy loading heavy components or features'
+        'Optimize large assets: compress images (WebP/AVIF), subset fonts, and remove unused CSS'
       );
     }
 
-    return recommendations;
+    return [...new Set(recommendations)]; // de-dup lines if any overlap
   }
 
   private calculatePerformanceScore(
@@ -276,66 +318,75 @@ export class BundleAnalyzer {
   ): number {
     let score = 100;
 
-    // Deduct points for violations
-    violations.forEach(violation => {
-      if (violation.severity === 'error') {
-        score -= 20;
+    // Violations (errors)
+    for (const v of violations) {
+      if (v.severity === 'error') {
+        // heavier penalty for bundle-size vs asset/chunk
+        score -= v.type === 'bundle-size' ? 25 : 18;
       }
-
-    warnings.forEach(warning => {
-      if (warning.severity === 'warning') {
-        score -= 10;
-      }
-
-    // Bonus points for good practices
-    const hasGoodChunkSplitting = stats.chunks.length > 3 && stats.chunks.length < 10;
-    if (hasGoodChunkSplitting) {
-      score += 5;
     }
 
-    const hasGoodGzipRatio = stats.gzippedSize / stats.totalSize < 0.3;
-    if (hasGoodGzipRatio) {
-      score += 5;
+    // Warnings
+    for (const w of warnings) {
+      if (w.severity === 'warning') {
+        score -= w.type === 'bundle-size' ? 12 : 8;
+      }
     }
 
-    return Math.max(0, Math.min(100, score));
+    // Positive heuristics
+    const chunkCount = stats.chunks.length;
+    const hasGoodChunkSplitting = chunkCount >= 4 && chunkCount <= 12;
+    if (hasGoodChunkSplitting) score += 5;
+
+    // Good gzip ratio bonus
+    if (stats.totalSize > 0) {
+      const ratio = stats.gzippedSize / stats.totalSize;
+      if (ratio < 0.30) score += 5;
+    }
+
+    return clampScore(score);
   }
 
   private formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-    
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 Bytes';
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(k)));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   }
 }
 
-export interface BudgetViolation {
-  type: 'bundle-size' | 'chunk-size' | 'asset-size';
-  severity: 'error' | 'warning';
-  message: string;
-  actual: number;
-  budget: number;
-  percentage: number;
-  target?: string;
-}
-
-export type BudgetWarning = BudgetViolation;
-
-export interface BundleAnalysisResult {
-  stats: BundleStats;
-  violations: BudgetViolation[];
-  warnings: BudgetWarning[];
-  recommendations: string[];
-  score: number;
-}
-
-// Utility function to create bundle analyzer with specific budgets
+/** Factory for a preset analyzer */
 export function createBundleAnalyzer(type: keyof typeof BUNDLE_BUDGETS): BundleAnalyzer {
   return new BundleAnalyzer(BUNDLE_BUDGETS[type]);
 }
 
-// Export default analyzer
+/** Default analyzer export */
 export const bundleAnalyzer = new BundleAnalyzer();
+
+/** Optional: compact summary for dashboards */
+export function summarizeBundle(result: BundleAnalysisResult) {
+  const errors = result.violations.length;
+  const warns = result.warnings.length;
+  const gzipRatio =
+    result.stats.totalSize > 0
+      ? +(result.stats.gzippedSize / result.stats.totalSize).toFixed(2)
+      : 0;
+
+  return {
+    score: result.score,
+    errors,
+    warnings: warns,
+    totalSize: result.stats.totalSize,
+    gzippedSize: result.stats.gzippedSize,
+    gzipRatio,
+    biggestChunks: [...result.stats.chunks]
+      .sort((a, b) => b.size - a.size)
+      .slice(0, 3)
+      .map((c) => ({ name: c.name, size: c.size })),
+    biggestAssets: [...result.stats.assets]
+      .sort((a, b) => b.size - a.size)
+      .slice(0, 3)
+      .map((a) => ({ name: a.name, size: a.size })),
+  };
+}

@@ -1,196 +1,229 @@
+// app/api/chat/runtime/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { withBackendPath } from '@/app/api/_utils/backend';
-const isVerboseLogging = process.env.NODE_ENV !== 'production';
-// Simple fallback responses for degraded mode
-function createFallbackResponse(userMessage: string): any {
-  // Simple keyword-based responses for common queries
-  const message = userMessage.toLowerCase();
-  if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
-    return {
-      content: "Hello! I'm currently running in degraded mode, but I'm still here to help. What can I assist you with?",
-      role: 'assistant',
-      model: 'fallback-mode',
-      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-    };
-  }
-  if (message.includes('help') || message.includes('what can you do')) {
-    return {
-      content: "I'm currently in degraded mode with limited capabilities. I can provide basic information and assistance, but my full AI features are temporarily unavailable due to backend connectivity issues.",
-      role: 'assistant',
-      model: 'fallback-mode',
-      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-    };
-  }
-  if (message.includes('error') || message.includes('problem') || message.includes('issue')) {
-    return {
-      content: "I can see you're experiencing an issue. I'm currently running in degraded mode, so my troubleshooting capabilities are limited. Please try again later when full services are restored.",
-      role: 'assistant',
-      model: 'fallback-mode',
-      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-    };
-  }
-  if (message.includes('status') || message.includes('health')) {
-    return {
-      content: "The system is currently in degraded mode due to backend connectivity issues. Core services are running but AI capabilities are limited. Please check back later for full functionality.",
-      role: 'assistant',
-      model: 'fallback-mode',
-      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-    };
-  }
-  // Default fallback response
-  return {
-    content: "I'm currently running in degraded mode due to backend connectivity issues. I can provide basic assistance, but my full AI capabilities are temporarily limited. Please try again later for full functionality.",
-    role: 'assistant',
+
+const VERBOSE = process.env.NODE_ENV !== 'production';
+const TIMEOUT_NORMAL_MS = 60_000;
+const TIMEOUT_DEGRADED_MS = 10_000;
+
+type ChatMessage = { role: string; content: string };
+type ChatBody = {
+  model?: string;
+  messages?: ChatMessage[];
+  stream?: boolean;
+  [k: string]: unknown;
+};
+
+// --- Fallback, degraded-mode friendly replies ---
+function createFallbackResponse(userMessage: string) {
+  const msg = (userMessage || '').toLowerCase();
+  const base = (content: string) => ({
+    content,
+    role: 'assistant' as const,
     model: 'fallback-mode',
-    usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-  };
+    usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+  });
+
+  if (/(^|\s)(hi|hello|hey)\b/.test(msg)) {
+    return base("Hello! I'm in degraded mode, but still here. What can I help you with?");
+  }
+  if (msg.includes('help') || msg.includes('what can you do')) {
+    return base(
+      "I'm in degraded mode with limited capabilities. I can provide basic info and guidance while core AI services recover."
+    );
+  }
+  if (msg.includes('error') || msg.includes('problem') || msg.includes('issue')) {
+    return base(
+      "Looks like you're hitting an issue. I'm currently limited by degraded mode—try again soon when full services are back."
+    );
+  }
+  if (msg.includes('status') || msg.includes('health')) {
+    return base(
+      "System is in degraded mode due to backend connectivity. Core services run, AI features are limited for now."
+    );
+  }
+  return base(
+    "I'm operating in degraded mode due to backend issues. I can give basic assistance; full AI features will return soon."
+  );
 }
+
+// --- Degraded mode probe (server-side absolute URL via backend path) ---
 async function checkDegradedMode(): Promise<boolean> {
   try {
-    const response = await fetch('/api/health/degraded-mode', {
+    const url = withBackendPath('/api/health/degraded-mode');
+    const resp = await fetch(url, {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(3000)
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(3_000),
+      cache: 'no-store',
+    });
+    if (!resp.ok) return false;
 
-    if (response.ok) {
-      const data = await response.json();
-      return data.is_active || data.degraded_mode;
-    }
-  } catch (error) {
+    const ct = (resp.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) return false;
+
+    const data: any = await resp.json();
+    return Boolean(data?.is_active || data?.degraded_mode);
+  } catch {
+    // If probe fails, do NOT assume degraded; keep normal behavior
+    return false;
   }
-  return false; // Default to not degraded if check fails
 }
+
+function buildForwardHeaders(req: NextRequest): Headers {
+  const h = new Headers({
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  });
+  const auth = req.headers.get('authorization');
+  if (auth) h.set('Authorization', auth);
+  const cookie = req.headers.get('cookie');
+  if (cookie) h.set('Cookie', cookie);
+
+  // Trace headers for observability (optional)
+  const reqId = req.headers.get('x-request-id');
+  if (reqId) h.set('X-Request-ID', reqId);
+  const corrId = req.headers.get('x-correlation-id');
+  if (corrId) h.set('X-Correlation-ID', corrId);
+
+  return h;
+}
+
 export async function POST(request: NextRequest) {
-  if (isVerboseLogging) {
+  if (VERBOSE) {
     console.log('🔍 ChatRuntime API: Request received', {
       url: request.url,
       method: request.method,
-      headers: Object.fromEntries(request.headers.entries())
-
+      headers: Object.fromEntries(request.headers.entries()),
+    });
   }
+
+  // Parse body safely
+  let body: ChatBody;
   try {
-    // Get authorization header from the request
-    const authorization = request.headers.get('authorization');
-    const cookie = request.headers.get('cookie');
-    // Parse the request body for chat data
-    const body = await request.json();
-    if (isVerboseLogging) {
-      console.log('🔍 ChatRuntime API: Request body parsed', {
-        bodyKeys: Object.keys(body),
-        model: body.model,
-        messageCount: body.messages ? body.messages.length : 0,
-        hasStream: body.stream !== undefined,
-        bodyPreview: JSON.stringify(body).substring(0, 500) + (JSON.stringify(body).length > 500 ? '...' : '')
+    body = (await request.json()) as ChatBody;
+  } catch (e) {
+    // Even if the payload is bad, reply with a gentle degraded response
+    const fallback = createFallbackResponse(
+      "I'm experiencing technical difficulties and am running in emergency fallback mode."
+    );
+    if (VERBOSE) console.log('🔍 ChatRuntime API: Body parse failed; returning fallback');
+    return NextResponse.json(fallback, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
+    });
+  }
 
-    }
-    // Check if we should use fallback mode
-    const isDegraded = await checkDegradedMode();
-    // Forward the request to the backend chat runtime endpoint
-    const backendUrl = withBackendPath('/api/chat/runtime');
-    const resolvedBase = backendUrl.replace(/\/api\/chat\/runtime$/, '');
-    if (isVerboseLogging) {
-    }
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-    // Forward auth headers if present
-    if (authorization) {
-      headers['Authorization'] = authorization;
-      if (isVerboseLogging) {
-        console.log('🔍 ChatRuntime API: Authorization header found', {
-          hasAuth: true,
-          authPrefix: authorization.substring(0, 20) + '...'
+  if (VERBOSE) {
+    const preview = JSON.stringify(body);
+    console.log('🔍 ChatRuntime API: Request body parsed', {
+      bodyKeys: Object.keys(body || {}),
+      model: body?.model,
+      messageCount: Array.isArray(body?.messages) ? body!.messages!.length : 0,
+      hasStream: body?.stream !== undefined,
+      bodyPreview: preview.length > 500 ? preview.slice(0, 500) + '...' : preview,
+    });
+  }
 
-      }
-    } else if (isVerboseLogging) {
-    }
-    if (cookie) {
-      headers['Cookie'] = cookie;
-      if (isVerboseLogging) {
-        console.log('🔍 ChatRuntime API: Cookie header found', {
-          hasCookie: true,
-          cookiePrefix: cookie.substring(0, 50) + (cookie.length > 50 ? '...' : '')
+  const isDegraded = await checkDegradedMode();
+  const backendUrl = withBackendPath('/api/chat/runtime');
 
-      }
-    } else if (isVerboseLogging) {
-    }
-    if (isVerboseLogging) {
-    }
-    try {
-      const response = await fetch(backendUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(isDegraded ? 10000 : 60000), // Shorter timeout in degraded mode
+  if (VERBOSE) {
+    console.log('🔍 ChatRuntime API: Degraded probe', { isDegraded, backendUrl });
+  }
 
-      if (isVerboseLogging) {
-        console.log('🔍 ChatRuntime API: Backend response received', {
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries()),
-          ok: response.ok,
-          url: response.url
+  const headers = buildForwardHeaders(request);
 
-      }
-      const data = await response.json();
-      if (isVerboseLogging) {
-        console.log('🔍 ChatRuntime API: Backend response data', {
-          dataKeys: Object.keys(data),
-          hasContent: !!data.content,
-          contentLength: data.content ? data.content.length : 0,
-          hasError: !!data.error,
-          error: data.error,
-          dataPreview: JSON.stringify(data).substring(0, 500) + (JSON.stringify(data).length > 500 ? '...' : '')
+  try {
+    const response = await fetch(backendUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body ?? {}),
+      signal: AbortSignal.timeout(isDegraded ? TIMEOUT_DEGRADED_MS : TIMEOUT_NORMAL_MS),
+      cache: 'no-store',
+    });
 
-      }
-      // Return the backend response with appropriate status
-      return NextResponse.json(data, {
+    if (VERBOSE) {
+      console.log('🔍 ChatRuntime API: Backend response meta', {
         status: response.status,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-
-    } catch (backendError) {
-      // Use fallback response when backend is unavailable
-      const userMessage = body.messages?.[body.messages.length - 1]?.content || body.message || '';
-      const fallbackData = createFallbackResponse(userMessage);
-      if (isVerboseLogging) {
-      }
-      return NextResponse.json(fallbackData, {
-        status: 200,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        ok: response.ok,
+        url: response.url,
+      });
     }
-  } catch (error) {
-    // Return fallback response even for parsing errors
-    try {
-      const fallbackData = createFallbackResponse("I'm experiencing technical difficulties and am running in emergency fallback mode. Please try again later.");
-      if (isVerboseLogging) {
-      }
-      return NextResponse.json(fallbackData, { 
-        status: 200,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
 
-    } catch (fallbackError) {
-      // Last resort: return JSON error
-      const errorResponse = {
-        error: 'Chat service unavailable',
-        message: 'Unable to process chat request',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      };
-      if (isVerboseLogging) {
+    const ct = (response.headers.get('content-type') || '').toLowerCase();
+    let data: unknown;
+
+    // Prefer JSON; if not, wrap text nicely
+    if (ct.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch {
+        data = { message: 'Invalid JSON from upstream' };
       }
-      return NextResponse.json(errorResponse, { status: 503 });
+    } else {
+      try {
+        const text = await response.text();
+        data = text ? { message: text } : {};
+      } catch {
+        data = {};
+      }
     }
+
+    if (VERBOSE) {
+      const str = JSON.stringify(data ?? {});
+      console.log('🔍 ChatRuntime API: Backend response data', {
+        dataKeys: typeof data === 'object' && data ? Object.keys(data as any) : [],
+        hasContent: (data as any)?.content != null,
+        contentLength: ((data as any)?.content ?? '').length ?? 0,
+        hasError: (data as any)?.error != null,
+        dataPreview: str.length > 500 ? str.slice(0, 500) + '...' : str,
+      });
+    }
+
+    return NextResponse.json(data, {
+      status: response.status,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+        'X-Proxy-Upstream-Status': String(response.status),
+      },
+    });
+  } catch (backendError) {
+    // Backend unreachable/timeout → produce graceful fallback
+    const lastUserMsg =
+      (Array.isArray(body?.messages) && body!.messages!.length
+        ? body!.messages![body!.messages!.length - 1]?.content
+        : (body as any)?.message) || '';
+    const fallback = createFallbackResponse(String(lastUserMsg ?? ''));
+    if (VERBOSE) {
+      console.log('🔍 ChatRuntime API: Backend error; returning fallback', {
+        reason:
+          (backendError as any)?.name === 'AbortError'
+            ? 'timeout'
+            : (backendError as Error)?.message || 'unknown',
+        degraded: isDegraded,
+      });
+    }
+    return NextResponse.json(fallback, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+        'X-Fallback': 'true',
+        'X-Fallback-Reason':
+          (backendError as any)?.name === 'AbortError'
+            ? `timeout_${isDegraded ? TIMEOUT_DEGRADED_MS : TIMEOUT_NORMAL_MS}ms`
+            : 'upstream_unreachable',
+      },
+    });
   }
 }

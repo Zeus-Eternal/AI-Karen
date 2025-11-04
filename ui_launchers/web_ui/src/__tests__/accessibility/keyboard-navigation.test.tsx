@@ -53,11 +53,11 @@ function TestComponent() {
       <div data-testid="total-items">{totalItems}</div>
       <div data-testid="enabled">{enabled.toString()}</div>
       
-      <button onClick={moveNext}>Next</button>
-      <button onClick={movePrevious}>Previous</button>
-      <button onClick={moveFirst}>First</button>
-      <button onClick={moveLast}>Last</button>
-      <button onClick={() => setEnabled(!enabled)}>Toggle Enabled</button>
+      <Button onClick={moveNext}>Next</Button>
+      <Button onClick={movePrevious}>Previous</Button>
+      <Button onClick={moveFirst}>First</Button>
+      <Button onClick={moveLast}>Last</Button>
+      <Button onClick={() => setEnabled(!enabled)}>Toggle Enabled</Button>
       
       <NavigationList items={['Item 1', 'Item 2', 'Item 3']} />
     </div>

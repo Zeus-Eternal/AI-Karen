@@ -295,8 +295,8 @@ export const ComplexLayouts: Story = {
                   </p>
                   <FlexContainer justify="between" align="center" className="mt-4">
                     <span className="text-xs text-gray-500 sm:text-sm md:text-base">Category</span>
-                    <button className="px-3 py-1 bg-blue-500 text-white text-xs rounded sm:text-sm md:text-base" aria-label="Button">
-                    </button>
+                    <Button className="px-3 py-1 bg-blue-500 text-white text-xs rounded sm:text-sm md:text-base" aria-label="Button">
+                    </Button>
                   </FlexContainer>
                 </div>
               </div>

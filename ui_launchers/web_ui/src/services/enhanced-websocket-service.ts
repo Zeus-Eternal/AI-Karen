@@ -1,25 +1,34 @@
 /**
- * Enhanced WebSocket Service
- * 
- * Advanced real-time updates with robust connection management, automatic reconnection,
- * and message queuing.
- * Based on requirements: 12.2, 12.3
+ * Enhanced WebSocket Service (Production-Grade)
+ * - SSR-safe (guards for window/document)
+ * - Exponential backoff + jitter, max delay cap
+ * - Heartbeat (ping/pong) with latency + missed-pong handling
+ * - Priority queue with TTL and backpressure (bufferedAmount) awareness
+ * - Duplicate message suppression window
+ * - Subscriptions with filter + once; clean teardown
+ * - Connection metrics + quality mapping
+ * - Visibility + online/offline aware
+ * - Optional auth bootstrap, store hooks, and query invalidation
+ *
+ * Requirements: 12.2, 12.3
  */
+
+import * as React from 'react';
 import { useAppStore } from '@/store/app-store';
-import { queryClient, invalidateQueries } from '@/lib/query-client';
-// Enhanced WebSocket message types
+import { invalidateQueries } from '@/lib/query-client';
+
 export interface WebSocketMessage {
-  type: string;
+  type: WebSocketEventType | string;
   channel: string;
   data: any;
-  timestamp: string;
+  timestamp: string; // ISO
   id: string;
   priority?: 'low' | 'normal' | 'high' | 'critical';
-  ttl?: number; // Time to live in milliseconds
+  ttl?: number;  // ms
   retry?: boolean;
 }
-// WebSocket event types
-export type WebSocketEventType = 
+
+export type WebSocketEventType =
   | 'chat.message'
   | 'chat.typing'
   | 'chat.status'
@@ -38,10 +47,20 @@ export type WebSocketEventType =
   | 'notification'
   | 'workflow.status'
   | 'agent.status'
-  | 'performance.metrics';
-// Connection states
-export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error' | 'reconnecting' | 'suspended';
-// Connection quality metrics
+  | 'performance.metrics'
+  | 'auth'
+  | 'connection.info'
+  | 'ping'
+  | 'pong';
+
+export type ConnectionState =
+  | 'connecting'
+  | 'connected'
+  | 'disconnected'
+  | 'error'
+  | 'reconnecting'
+  | 'suspended';
+
 export interface ConnectionMetrics {
   latency: number;
   messagesSent: number;
@@ -50,38 +69,56 @@ export interface ConnectionMetrics {
   lastConnected: Date | null;
   uptime: number;
   errorCount: number;
+  backpressure: number; // ws.bufferedAmount
 }
-// Message queue item
+
 interface QueuedMessage {
   message: WebSocketMessage;
-  timestamp: Date;
+  enqueuedAt: number;
   attempts: number;
   maxAttempts: number;
 }
-// Subscription
+
 interface Subscription {
   id: string;
-  eventType: WebSocketEventType;
-  callback: (data: any) => void;
-  filter?: (data: any) => boolean;
+  eventType: string; // allow wildcards if needed
+  callback: (data: any, raw: WebSocketMessage) => void;
+  filter?: (data: any, raw: WebSocketMessage) => boolean;
   once?: boolean;
 }
-// Enhanced WebSocket service class
+
+type Timer = ReturnType<typeof setTimeout>;
+type Interval = ReturnType<typeof setInterval>;
+
+const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+
 export class EnhancedWebSocketService {
   private ws: WebSocket | null = null;
   private url: string;
   private protocols?: string[];
+
+  // reconnection/backoff
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
-  private reconnectDelay = 1000;
-  private maxReconnectDelay = 30000;
-  private heartbeatInterval: NodeJS.Timeout | null = null;
-  private reconnectTimeout: NodeJS.Timeout | null = null;
-  private connectionTimeout: NodeJS.Timeout | null = null;
-  private subscriptions: Map<string, Subscription> = new Map();
-  private messageQueue: QueuedMessage[] = [];
+  private readonly maxReconnectAttempts = 10;
+  private readonly baseReconnectDelay = 1000; // 1s
+  private readonly maxReconnectDelay = 30000; // 30s
+  private reconnectTimeout: Timer | null = null;
+  private connectionTimeout: Timer | null = null;
+  private readonly connectTimeoutMs = 10000;
+
+  // heartbeat
+  private heartbeatInterval: Interval | null = null;
+  private readonly heartbeatMs = 30000;
+  private lastPingTs = 0;
+  private missedPongs = 0;
+  private readonly maxMissedPongs = 2;
+
+  // state
   private connectionState: ConnectionState = 'disconnected';
   private isManualClose = false;
+  private connectionStartTime = 0;
+
+  // metrics
   private connectionMetrics: ConnectionMetrics = {
     latency: 0,
     messagesSent: 0,
@@ -90,189 +127,195 @@ export class EnhancedWebSocketService {
     lastConnected: null,
     uptime: 0,
     errorCount: 0,
+    backpressure: 0,
   };
-  private lastPingTime = 0;
-  private connectionStartTime = 0;
-  private messageBuffer: Map<string, WebSocketMessage> = new Map();
-  private duplicateMessageWindow = 5000; // 5 seconds
+
+  // subscriptions & queue
+  private subscriptions: Map<string, Subscription> = new Map();
+  private messageQueue: QueuedMessage[] = [];
+  private readonly maxQueue = 250;
+  private readonly backpressureThreshold = 1_000_000; // bytes; tune per app
+
+  // de-dup
+  private messageBuffer: Map<string, number> = new Map();
+  private readonly duplicateWindowMs = 5000;
+  private dedupCleanupInterval: Interval | null = null;
+
+  // intervals
+  private queueProcessorInterval: Interval | null = null;
+
   constructor(url?: string, protocols?: string[]) {
     this.url = url || this.getWebSocketUrl();
     this.protocols = protocols;
-    this.setupConnectionStateHandlers();
-    this.setupMessageQueueProcessor();
+    if (isBrowser) {
+      this.bindConnectionStateHandlers();
+      this.startMaintenanceLoops();
+    }
   }
-  // Get WebSocket URL based on current location
+
+  // ---------- URLs / Bootstrapping ----------
+
   private getWebSocketUrl(): string {
-    if (typeof window !== 'undefined') {
+    if (isBrowser) {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.host;
       return `${protocol}//${host}/ws`;
     }
     return process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws';
   }
-  // Setup connection state handlers
-  private setupConnectionStateHandlers(): void {
-    // Listen for online/offline events
-    if (typeof window !== 'undefined') {
-      window.addEventListener('online', () => {
-        const { setOnline, setConnectionQuality } = useAppStore.getState();
-        setOnline(true);
-        setConnectionQuality('good');
-        if (this.connectionState === 'disconnected' || this.connectionState === 'suspended') {
-          this.connect();
-        }
 
-      window.addEventListener('offline', () => {
-        const { setOnline, setConnectionQuality } = useAppStore.getState();
-        setOnline(false);
-        setConnectionQuality('offline');
-        this.setConnectionState('suspended');
+  // ---------- Lifecycle & Connection ----------
 
-      // Listen for visibility changes to manage connection
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          if (this.connectionState === 'disconnected' || this.connectionState === 'suspended') {
-            this.connect();
-          }
-        } else {
-          // Optionally suspend connection when tab is hidden to save resources
-          // this.setConnectionState('suspended');
-        }
-
-      // Listen for page unload to clean up
-      window.addEventListener('beforeunload', () => {
-        this.disconnect();
-
-    }
-  }
-  // Setup message queue processor
-  private setupMessageQueueProcessor(): void {
-    // Process message queue every 1 second
-    setInterval(() => {
-      this.processMessageQueue();
-    }, 1000);
-    // Clean up old messages from buffer
-    setInterval(() => {
-      const now = Date.now();
-      for (const [id, message] of this.messageBuffer.entries()) {
-        const messageTime = new Date(message.timestamp).getTime();
-        if (now - messageTime > this.duplicateMessageWindow) {
-          this.messageBuffer.delete(id);
-        }
-      }
-    }, this.duplicateMessageWindow);
-  }
-  // Connect to WebSocket
   public connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      if (!isBrowser) {
+        reject(new Error('WebSocket unavailable on server'));
+        return;
+      }
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         resolve();
         return;
       }
+
       this.isManualClose = false;
-      this.setConnectionState('connecting');
+      this.setConnectionState(this.reconnectAttempts ? 'reconnecting' : 'connecting');
       this.connectionStartTime = Date.now();
-      // Set connection timeout
+
+      // connection timeout
+      this.clearConnectionTimeout();
       this.connectionTimeout = setTimeout(() => {
-        if (this.connectionState === 'connecting') {
+        if (this.connectionState === 'connecting' || this.connectionState === 'reconnecting') {
           this.setConnectionState('error');
-          reject(new Error('Connection timeout'));
+          this.safeStoreSetQuality('poor');
+          reject(new Error('WebSocket connection timeout'));
+          this.safeClose('Connection timeout');
         }
-      }, 10000); // 10 second timeout
+      }, this.connectTimeoutMs);
+
       try {
         this.ws = new WebSocket(this.url, this.protocols);
+
         this.ws.onopen = () => {
-          if (this.connectionTimeout) {
-            clearTimeout(this.connectionTimeout);
-            this.connectionTimeout = null;
-          }
+          this.clearConnectionTimeout();
           this.setConnectionState('connected');
           this.reconnectAttempts = 0;
-          this.reconnectDelay = 1000;
           this.connectionMetrics.lastConnected = new Date();
-          this.connectionMetrics.reconnectCount = Math.max(0, this.connectionMetrics.reconnectCount);
           this.startHeartbeat();
+          this.safeStoreSetQuality('good');
           this.processMessageQueue();
-          const { setConnectionQuality, addNotification } = useAppStore.getState();
-          setConnectionQuality('good');
-          // Send authentication if user is logged in
-          const { user } = useAppStore.getState();
-          if (user) {
-            this.send('auth', { 
-              token: this.getAuthToken(),
-              userId: user.id,
-              timestamp: new Date().toISOString(),
-
-          }
-          // Send connection info
+          this.sendAuthIfAvailable();
           this.send('connection.info', {
             userAgent: navigator.userAgent,
             timestamp: new Date().toISOString(),
             reconnectCount: this.connectionMetrics.reconnectCount,
-
+          });
           resolve();
         };
-        this.ws.onmessage = (event) => {
-          this.handleMessage(event);
-        };
-        this.ws.onclose = (event) => {
-          if (this.connectionTimeout) {
-            clearTimeout(this.connectionTimeout);
-            this.connectionTimeout = null;
-          }
+
+        this.ws.onmessage = (event) => this.handleMessage(event);
+
+        this.ws.onclose = (evt) => {
+          this.clearConnectionTimeout();
           this.stopHeartbeat();
+          this.connectionMetrics.errorCount++;
+          this.connectionMetrics.backpressure = 0;
           if (!this.isManualClose) {
             this.setConnectionState('disconnected');
-            this.connectionMetrics.errorCount++;
-            // Log close reason
             this.scheduleReconnect();
           }
         };
-        this.ws.onerror = (error) => {
-          if (this.connectionTimeout) {
-            clearTimeout(this.connectionTimeout);
-            this.connectionTimeout = null;
-          }
-          this.setConnectionState('error');
+
+        this.ws.onerror = (err) => {
+          this.clearConnectionTimeout();
           this.connectionMetrics.errorCount++;
-          const { setConnectionQuality, addNotification } = useAppStore.getState();
-          setConnectionQuality('poor');
-          reject(error);
+          this.safeStoreSetQuality('poor');
+          // Don't reject if we're in reconnecting loop; resolve/reject only for explicit connect() call
+          reject(err);
         };
       } catch (error) {
-        if (this.connectionTimeout) {
-          clearTimeout(this.connectionTimeout);
-          this.connectionTimeout = null;
-        }
+        this.clearConnectionTimeout();
         this.setConnectionState('error');
         this.connectionMetrics.errorCount++;
         reject(error);
       }
-
+    });
   }
-  // Disconnect from WebSocket
+
   public disconnect(): void {
     this.isManualClose = true;
     this.stopHeartbeat();
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
-    if (this.connectionTimeout) {
-      clearTimeout(this.connectionTimeout);
-      this.connectionTimeout = null;
-    }
-    if (this.ws) {
-      this.ws.close(1000, 'Manual disconnect');
-      this.ws = null;
-    }
+    this.clearReconnectTimeout();
+    this.clearConnectionTimeout();
+    this.safeClose('Manual disconnect');
     this.setConnectionState('disconnected');
-    this.messageQueue = []; // Clear message queue
+    this.messageQueue = [];
   }
-  // Send message through WebSocket
+
+  private safeClose(reason: string) {
+    try {
+      if (this.ws) this.ws.close(1000, reason);
+    } catch {}
+    this.ws = null;
+  }
+
+  private scheduleReconnect(): void {
+    if (this.isManualClose || this.reconnectAttempts >= this.maxReconnectAttempts) {
+      this.setConnectionState('error');
+      this.safeStoreSetQuality('offline');
+      return;
+    }
+    this.reconnectAttempts++;
+    this.connectionMetrics.reconnectCount++;
+    const exp = Math.min(this.maxReconnectDelay, this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1));
+    const jitter = Math.floor(Math.random() * 400); // up to 400ms jitter
+    const delay = exp + jitter;
+
+    this.setConnectionState('reconnecting');
+    this.clearReconnectTimeout();
+    this.reconnectTimeout = setTimeout(() => {
+      this.connect().catch(() => {
+        // will be handled via onclose/onerror, next attempt scheduled there
+      });
+    }, delay);
+  }
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.missedPongs = 0;
+    this.heartbeatInterval = setInterval(() => {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+      this.lastPingTs = Date.now();
+      this.send('ping', { ts: this.lastPingTs }, 'system', { retry: false, priority: 'low' });
+      // if pong not received by next tick, count as missed
+      if (this.missedPongs > this.maxMissedPongs) {
+        // force reconnect to recover a zombie connection
+        this.safeClose('Missed pong threshold');
+      }
+      this.missedPongs++;
+    }, this.heartbeatMs);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+    this.heartbeatInterval = null;
+    this.missedPongs = 0;
+  }
+
+  private clearReconnectTimeout() {
+    if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
+    this.reconnectTimeout = null;
+  }
+
+  private clearConnectionTimeout() {
+    if (this.connectionTimeout) clearTimeout(this.connectionTimeout);
+    this.connectionTimeout = null;
+  }
+
+  // ---------- Messaging ----------
+
   public send(
-    type: string, 
-    data: any, 
+    type: string,
+    data: any,
     channel = 'default',
     options: {
       priority?: 'low' | 'normal' | 'high' | 'critical';
@@ -285,343 +328,401 @@ export class EnhancedWebSocketService {
       channel,
       data,
       timestamp: new Date().toISOString(),
-      id: this.generateMessageId(),
-      priority: options.priority || 'normal',
+      id: this.generateId('msg'),
+      priority: options.priority ?? 'normal',
       ttl: options.ttl,
-      retry: options.retry !== false, // Default to true
+      retry: options.retry !== false,
     };
-    // If not connected, queue the message
+
     if (!this.isConnected()) {
       this.queueMessage(message);
       return false;
     }
     return this.sendMessage(message);
   }
-  // Send message immediately
+
   private sendMessage(message: WebSocketMessage): boolean {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       this.queueMessage(message);
       return false;
     }
+
+    // backpressure: if bufferedAmount is high, requeue
+    this.connectionMetrics.backpressure = this.ws.bufferedAmount;
+    if (this.ws.bufferedAmount > this.backpressureThreshold) {
+      this.queueMessage(message);
+      return false;
+    }
+
     try {
       this.ws.send(JSON.stringify(message));
       this.connectionMetrics.messagesSent++;
       return true;
-    } catch (error) {
+    } catch {
       this.queueMessage(message);
       return false;
     }
   }
-  // Queue message for later sending
+
   private queueMessage(message: WebSocketMessage): void {
-    // Check TTL
+    // TTL check at enqueue time
     if (message.ttl) {
-      const messageTime = new Date(message.timestamp).getTime();
-      if (Date.now() - messageTime > message.ttl) {
-        return; // Message expired
-      }
+      const createdAt = new Date(message.timestamp).getTime();
+      if (Date.now() - createdAt > message.ttl) return;
     }
-    // Add to queue with priority sorting
-    const queuedMessage: QueuedMessage = {
+
+    const item: QueuedMessage = {
       message,
-      timestamp: new Date(),
+      enqueuedAt: Date.now(),
       attempts: 0,
       maxAttempts: message.retry ? 3 : 1,
     };
-    // Insert based on priority
-    const priorityOrder = { critical: 0, high: 1, normal: 2, low: 3 };
-    const messagePriority = priorityOrder[message.priority || 'normal'];
-    let insertIndex = this.messageQueue.length;
+
+    const priorityOrder = { critical: 0, high: 1, normal: 2, low: 3 } as const;
+    const p = priorityOrder[message.priority ?? 'normal'];
+
+    // Insert by priority
+    let idx = this.messageQueue.length;
     for (let i = 0; i < this.messageQueue.length; i++) {
-      const queuePriority = priorityOrder[this.messageQueue[i].message.priority || 'normal'];
-      if (messagePriority < queuePriority) {
-        insertIndex = i;
+      const q = priorityOrder[this.messageQueue[i].message.priority ?? 'normal'];
+      if (p < q) {
+        idx = i;
         break;
       }
     }
-    this.messageQueue.splice(insertIndex, 0, queuedMessage);
-    // Limit queue size
-    if (this.messageQueue.length > 100) {
-      this.messageQueue = this.messageQueue.slice(0, 100);
+    this.messageQueue.splice(idx, 0, item);
+
+    // Cap queue
+    if (this.messageQueue.length > this.maxQueue) {
+      this.messageQueue.length = this.maxQueue;
     }
   }
-  // Process message queue
+
   private processMessageQueue(): void {
-    if (!this.isConnected() || this.messageQueue.length === 0) {
-      return;
-    }
+    if (!this.isConnected() || this.messageQueue.length === 0) return;
+
     const now = Date.now();
-    const messagesToProcess = [...this.messageQueue];
-    this.messageQueue = [];
-    for (const queuedMessage of messagesToProcess) {
-      // Check TTL
-      if (queuedMessage.message.ttl) {
-        const messageTime = new Date(queuedMessage.message.timestamp).getTime();
-        if (now - messageTime > queuedMessage.message.ttl) {
-          continue; // Skip expired message
-        }
+    const pending: QueuedMessage[] = [];
+    for (const qm of this.messageQueue) {
+      // TTL re-check
+      if (qm.message.ttl) {
+        const createdAt = new Date(qm.message.timestamp).getTime();
+        if (now - createdAt > qm.message.ttl) continue;
       }
-      // Try to send message
-      if (this.sendMessage(queuedMessage.message)) {
-        // Message sent successfully
-        continue;
+      if (this.sendMessage(qm.message)) {
+        // sent
       } else {
-        // Failed to send, check attempts
-        queuedMessage.attempts++;
-        if (queuedMessage.attempts < queuedMessage.maxAttempts) {
-          this.messageQueue.push(queuedMessage);
-        }
+        qm.attempts++;
+        if (qm.attempts < qm.maxAttempts) pending.push(qm);
       }
+    }
+    this.messageQueue = pending;
+  }
+
+  private startMaintenanceLoops(): void {
+    // queue processor
+    if (!this.queueProcessorInterval) {
+      this.queueProcessorInterval = setInterval(() => this.processMessageQueue(), 1000);
+    }
+    // dedup cleanup
+    if (!this.dedupCleanupInterval) {
+      this.dedupCleanupInterval = setInterval(() => {
+        const now = Date.now();
+        for (const [id, ts] of this.messageBuffer.entries()) {
+          if (now - ts > this.duplicateWindowMs) this.messageBuffer.delete(id);
+        }
+      }, this.duplicateWindowMs);
     }
   }
-  // Subscribe to WebSocket events
+
+  // ---------- Subscriptions ----------
+
   public subscribe(
-    eventType: WebSocketEventType, 
-    callback: (data: any) => void,
-    options: {
-      filter?: (data: any) => boolean;
-      once?: boolean;
-    } = {}
+    eventType: WebSocketEventType | string,
+    callback: (data: any, raw: WebSocketMessage) => void,
+    options: { filter?: (data: any, raw: WebSocketMessage) => boolean; once?: boolean } = {}
   ): () => void {
-    const subscription: Subscription = {
-      id: this.generateSubscriptionId(),
+    const sub: Subscription = {
+      id: this.generateId('sub'),
       eventType,
       callback,
       filter: options.filter,
       once: options.once,
     };
-    this.subscriptions.set(subscription.id, subscription);
-    // Return unsubscribe function
+    this.subscriptions.set(sub.id, sub);
     return () => {
-      this.subscriptions.delete(subscription.id);
+      this.subscriptions.delete(sub.id);
     };
   }
-  // Get current connection state
-  public getConnectionState(): ConnectionState {
-    return this.connectionState;
-  }
-  // Check if connected
-  public isConnected(): boolean {
-    return this.connectionState === 'connected' && this.ws?.readyState === WebSocket.OPEN;
-  }
-  // Get connection metrics
-  public getConnectionMetrics(): ConnectionMetrics {
-    const metrics = { ...this.connectionMetrics };
-    if (this.connectionStartTime && this.connectionState === 'connected') {
-      metrics.uptime = Date.now() - this.connectionStartTime;
-    }
-    return metrics;
-  }
-  // Handle incoming messages
-  private handleMessage(event: MessageEvent): void {
-    try {
-      const message: WebSocketMessage = JSON.parse(event.data);
-      this.connectionMetrics.messagesReceived++;
-      // Check for duplicate messages
-      if (this.messageBuffer.has(message.id)) {
-        return; // Duplicate message, ignore
-      }
-      this.messageBuffer.set(message.id, message);
-      // Handle system messages
-      if (message.type === 'pong') {
-        this.handlePong();
-        return;
-      }
-      // Emit to subscribers
-      const matchingSubscriptions = Array.from(this.subscriptions.values())
-        .filter(sub => sub.eventType === message.type);
-      for (const subscription of matchingSubscriptions) {
-        try {
-          // Apply filter if present
-          if (subscription.filter && !subscription.filter(message.data)) {
-            continue;
-          }
-          subscription.callback(message.data);
-          // Remove one-time subscriptions
-          if (subscription.once) {
-            this.subscriptions.delete(subscription.id);
-          }
-        } catch (error) {
-        }
-      }
-      // Handle specific message types
-      this.handleSpecificMessage(message);
-    } catch (error) {
-    }
-  }
-  // Handle pong response
-  private handlePong(): void {
-    if (this.lastPingTime) {
-      this.connectionMetrics.latency = Date.now() - this.lastPingTime;
-    }
-  }
-  // Handle specific message types
-  private handleSpecificMessage(message: WebSocketMessage): void {
-    const { addNotification } = useAppStore.getState();
-    switch (message.type) {
-      case 'notification':
-        addNotification({
-          type: message.data.type || 'info',
-          title: message.data.title,
-          message: message.data.message,
 
-        break;
-      case 'system.health':
-        invalidateQueries.system();
-        break;
-      case 'system.alert':
-        addNotification({
-          type: 'warning',
-          title: 'System Alert',
-          message: message.data.message,
-
-        invalidateQueries.system();
-        break;
-      case 'chat.message':
-        invalidateQueries.chat();
-        break;
-      case 'memory.update':
-        invalidateQueries.memory();
-        break;
-      case 'plugin.status':
-        invalidateQueries.plugins();
-        break;
-      case 'plugin.error':
-        addNotification({
-          type: 'error',
-          title: 'Plugin Error',
-          message: message.data.message,
-
-        invalidateQueries.plugins();
-        break;
-      case 'provider.status':
-        invalidateQueries.providers();
-        break;
-      case 'user.presence':
-        // Handle user presence updates
-        break;
-      case 'performance.metrics':
-        // Handle performance metrics updates
-        break;
-      default:
-    }
-  }
-  // Set connection state and update store
-  private setConnectionState(state: ConnectionState): void {
-    this.connectionState = state;
-    const { setConnectionQuality } = useAppStore.getState();
-    switch (state) {
-      case 'connected':
-        setConnectionQuality('good');
-        break;
-      case 'connecting':
-      case 'reconnecting':
-        setConnectionQuality('poor');
-        break;
-      case 'disconnected':
-      case 'error':
-      case 'suspended':
-        setConnectionQuality('offline');
-        break;
-    }
-  }
-  // Schedule reconnection
-  private scheduleReconnect(): void {
-    if (this.isManualClose || this.reconnectAttempts >= this.maxReconnectAttempts) {
-      return;
-    }
-    this.setConnectionState('reconnecting');
-    this.reconnectAttempts++;
-    this.connectionMetrics.reconnectCount++;
-    const delay = Math.min(
-      this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 
-      this.maxReconnectDelay
-    );
-    this.reconnectTimeout = setTimeout(() => {
-      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-      this.connect().catch(() => {
-        // Reconnection failed, will be handled by onclose
-
-    }, delay);
-  }
-  // Start heartbeat
-  private startHeartbeat(): void {
-    this.heartbeatInterval = setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.lastPingTime = Date.now();
-        this.send('ping', { timestamp: this.lastPingTime });
-      }
-    }, 30000); // Send ping every 30 seconds
-  }
-  // Stop heartbeat
-  private stopHeartbeat(): void {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
-  }
-  // Generate unique message ID
-  private generateMessageId(): string {
-    return `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-  // Generate unique subscription ID
-  private generateSubscriptionId(): string {
-    return `sub-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-  // Get authentication token
-  private getAuthToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth-token');
-    }
-    return null;
-  }
-  // Clear all subscriptions
   public clearSubscriptions(): void {
     this.subscriptions.clear();
   }
-  // Get subscription count
+
   public getSubscriptionCount(): number {
     return this.subscriptions.size;
   }
-  // Get message queue size
+
+  // ---------- Incoming messages ----------
+
+  private handleMessage(event: MessageEvent): void {
+    try {
+      const msg: WebSocketMessage = JSON.parse(event.data);
+
+      // duplicate suppression
+      if (this.messageBuffer.has(msg.id)) return;
+      this.messageBuffer.set(msg.id, Date.now());
+
+      this.connectionMetrics.messagesReceived++;
+
+      // pong handling
+      if (msg.type === 'pong') {
+        this.handlePong();
+        return;
+      }
+
+      // emit to subscribers
+      for (const sub of this.subscriptions.values()) {
+        if (sub.eventType === msg.type || sub.eventType === '*') {
+          if (sub.filter && !sub.filter(msg.data, msg)) continue;
+          try {
+            sub.callback(msg.data, msg);
+          } catch {}
+          if (sub.once) this.subscriptions.delete(sub.id);
+        }
+      }
+
+      // app-specific handlers (optional)
+      this.handleSpecificMessage(msg);
+    } catch {
+      // ignore malformed
+    }
+  }
+
+  private handlePong(): void {
+    if (this.lastPingTs) {
+      this.connectionMetrics.latency = Date.now() - this.lastPingTs;
+    }
+    this.missedPongs = 0;
+  }
+
+  private handleSpecificMessage(message: WebSocketMessage): void {
+    // Decoupled invalidation/notifications via app store
+    const store = useAppStore?.getState?.();
+    switch (message.type) {
+      case 'notification':
+        store?.addNotification?.({
+          type: message.data?.type || 'info',
+          title: message.data?.title ?? 'Notification',
+          message: message.data?.message ?? '',
+        });
+        break;
+      case 'system.health':
+      case 'system.metrics':
+        invalidateQueries?.system?.();
+        break;
+      case 'system.alert':
+        store?.addNotification?.({ type: 'warning', title: 'System Alert', message: message.data?.message ?? '' });
+        invalidateQueries?.system?.();
+        break;
+      case 'plugin.status':
+      case 'plugin.install':
+      case 'plugin.error':
+        if (message.type === 'plugin.error') {
+          store?.addNotification?.({ type: 'error', title: 'Plugin Error', message: message.data?.message ?? '' });
+        }
+        invalidateQueries?.plugins?.();
+        break;
+      case 'provider.status':
+      case 'provider.model':
+        invalidateQueries?.providers?.();
+        break;
+      case 'chat.message':
+      case 'chat.status':
+      case 'chat.typing':
+        invalidateQueries?.chat?.();
+        break;
+      case 'memory.update':
+      case 'memory.search':
+        invalidateQueries?.memory?.();
+        break;
+      case 'performance.metrics':
+        // hook for your live perf dashboard
+        break;
+      default:
+        break;
+    }
+  }
+
+  // ---------- State / Metrics ----------
+
+  private setConnectionState(state: ConnectionState): void {
+    this.connectionState = state;
+    const quality =
+      state === 'connected' ? 'good' : state === 'connecting' || state === 'reconnecting' ? 'poor' : 'offline';
+    this.safeStoreSetQuality(quality);
+  }
+
+  private safeStoreSetQuality(quality: 'good' | 'poor' | 'offline') {
+    try {
+      useAppStore.getState().setConnectionQuality?.(quality);
+    } catch {}
+  }
+
+  public getConnectionState(): ConnectionState {
+    return this.connectionState;
+  }
+
+  public isConnected(): boolean {
+    return this.connectionState === 'connected' && !!this.ws && this.ws.readyState === WebSocket.OPEN;
+  }
+
+  public getConnectionMetrics(): ConnectionMetrics {
+    const m = { ...this.connectionMetrics };
+    if (this.connectionStartTime && this.connectionState === 'connected') {
+      m.uptime = Date.now() - this.connectionStartTime;
+    }
+    return m;
+  }
+
   public getMessageQueueSize(): number {
     return this.messageQueue.length;
   }
+
+  // ---------- Environment Hooks ----------
+
+  private bindConnectionStateHandlers(): void {
+    // online/offline
+    window.addEventListener('online', () => {
+      try {
+        useAppStore.getState().setOnline?.(true);
+        this.safeStoreSetQuality('good');
+      } catch {}
+      if (this.connectionState === 'disconnected' || this.connectionState === 'suspended') {
+        this.connect().catch(() => {});
+      }
+    });
+
+    window.addEventListener('offline', () => {
+      try {
+        useAppStore.getState().setOnline?.(false);
+        this.safeStoreSetQuality('offline');
+      } catch {}
+      this.setConnectionState('suspended');
+    });
+
+    // visibility (optional suspend)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        if (this.connectionState === 'disconnected' || this.connectionState === 'suspended') {
+          this.connect().catch(() => {});
+        }
+      }
+    });
+
+    // unload cleanup
+    window.addEventListener('beforeunload', () => {
+      this.disconnect();
+    });
+  }
+
+  private sendAuthIfAvailable(): void {
+    try {
+      const store = useAppStore.getState?.();
+      const user = store?.user;
+      const token = this.getAuthToken();
+      if (user && token) {
+        this.send('auth', { token, userId: user.id, timestamp: new Date().toISOString() }, 'system', {
+          retry: true,
+          priority: 'high',
+        });
+      }
+    } catch {}
+  }
+
+  private getAuthToken(): string | null {
+    if (!isBrowser) return null;
+    try {
+      return localStorage.getItem('auth-token');
+    } catch {
+      return null;
+    }
+  }
+
+  // ---------- Utils ----------
+
+  private generateId(prefix: string): string {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  }
+
+  public destroy(): void {
+    this.disconnect();
+    if (this.queueProcessorInterval) clearInterval(this.queueProcessorInterval);
+    if (this.dedupCleanupInterval) clearInterval(this.dedupCleanupInterval);
+    this.queueProcessorInterval = null;
+    this.dedupCleanupInterval = null;
+    this.clearSubscriptions();
+    this.messageQueue = [];
+    this.messageBuffer.clear();
+  }
 }
-// Create singleton instance
+
+// Singleton
 export const enhancedWebSocketService = new EnhancedWebSocketService();
-// React hook for using enhanced WebSocket
+
+// ---------- React Hooks ----------
+
 export function useEnhancedWebSocket() {
-  const connectionState = enhancedWebSocketService.getConnectionState();
-  const isConnected = enhancedWebSocketService.isConnected();
-  const metrics = enhancedWebSocketService.getConnectionMetrics();
+  const [, force] = React.useReducer((x) => x + 1, 0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    // poll minimal state to trigger re-render (avoid heavy listeners)
+    const interval = setInterval(() => {
+      if (mounted) force();
+    }, 500);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   return {
     connect: () => enhancedWebSocketService.connect(),
     disconnect: () => enhancedWebSocketService.disconnect(),
-    send: (type: string, data: any, channel?: string, options?: any) => 
-      enhancedWebSocketService.send(type, data, channel, options),
-    subscribe: (eventType: WebSocketEventType, callback: (data: any) => void, options?: any) => 
-      enhancedWebSocketService.subscribe(eventType, callback, options),
-    connectionState,
-    isConnected,
-    metrics,
+    send: (
+      type: string,
+      data: any,
+      channel?: string,
+      options?: { priority?: 'low' | 'normal' | 'high' | 'critical'; ttl?: number; retry?: boolean }
+    ) => enhancedWebSocketService.send(type, data, channel, options),
+    subscribe: (
+      eventType: WebSocketEventType | string,
+      callback: (data: any, raw: WebSocketMessage) => void,
+      options?: { filter?: (data: any, raw: WebSocketMessage) => boolean; once?: boolean }
+    ) => enhancedWebSocketService.subscribe(eventType, callback, options),
+    connectionState: enhancedWebSocketService.getConnectionState(),
+    isConnected: enhancedWebSocketService.isConnected(),
+    metrics: enhancedWebSocketService.getConnectionMetrics(),
     queueSize: enhancedWebSocketService.getMessageQueueSize(),
     subscriptionCount: enhancedWebSocketService.getSubscriptionCount(),
   };
 }
-// React hook for subscribing to WebSocket events with enhanced features
+
 export function useEnhancedWebSocketSubscription(
-  eventType: WebSocketEventType,
-  callback: (data: any) => void,
+  eventType: WebSocketEventType | string,
+  callback: (data: any, raw: WebSocketMessage) => void,
   options: {
-    filter?: (data: any) => boolean;
+    filter?: (data: any, raw: WebSocketMessage) => boolean;
     once?: boolean;
     deps?: React.DependencyList;
   } = {}
 ) {
-  const { deps = [], ...subscriptionOptions } = options;
+  const { deps = [], filter, once } = options;
   React.useEffect(() => {
-    const unsubscribe = enhancedWebSocketService.subscribe(eventType, callback, subscriptionOptions);
+    const unsubscribe = enhancedWebSocketService.subscribe(eventType, callback, { filter, once });
     return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }

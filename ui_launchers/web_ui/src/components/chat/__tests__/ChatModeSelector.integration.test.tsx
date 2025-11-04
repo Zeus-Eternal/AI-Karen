@@ -38,9 +38,9 @@ vi.mock('@/components/ui/card', () => ({
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled }: any) => (
-    <button onClick={onClick} disabled={disabled} data-testid="button" aria-label="Button">
+    <Button onClick={onClick} disabled={disabled} data-testid="button" aria-label="Button">
       {children}
-    </button>
+    </Button>
   )
 }));
 

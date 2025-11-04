@@ -335,7 +335,7 @@ const AdvancedTrainingConfig: React.FC = () => {
           <Button onClick={getAIAssistance} disabled={isLoading} variant="outline" >
             <Lightbulb className="h-4 w-4 mr-2 " />
           </Button>
-          <button onClick={saveConfiguration} disabled={isLoading} aria-label="Button">
+          <Button onClick={saveConfiguration} disabled={isLoading} aria-label="Button">
             <Download className="h-4 w-4 mr-2 " />
           </Button>
         </div>
@@ -494,7 +494,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                     ))}
                   </div>
                 </div>
-                <button onClick={applyAISuggestions} className="w-full" aria-label="Button">
+                <Button onClick={applyAISuggestions} className="w-full" aria-label="Button">
                   <Zap className="h-4 w-4 mr-2 " />
                 </Button>
               </CardContent>
@@ -762,7 +762,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={startHyperparameterSweep} disabled={isLoading || sweepStatus.status === 'running'} aria-label="Button">
+                <Button onClick={startHyperparameterSweep} disabled={isLoading || sweepStatus.status === 'running'} aria-label="Button">
                   <Play className="h-4 w-4 mr-2 " />
                 </Button>
                 {sweepStatus.status === 'running' && (
@@ -870,7 +870,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={createABTest} disabled={isLoading || abTestStatus.status === 'running'} aria-label="Button">
+                <Button onClick={createABTest} disabled={isLoading || abTestStatus.status === 'running'} aria-label="Button">
                   <Play className="h-4 w-4 mr-2 " />
                   Start A/B Test
                 </Button>

@@ -183,13 +183,13 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
   return (
     <div className="accessibility-tester">
       <div className="flex items-center gap-2 mb-4">
-        <button
+        <Button
           onClick={runTests}
           disabled={!target || isRunning}
           className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
          aria-label="Button">
           {isRunning ? 'Running Tests...' : 'Run Accessibility Tests'}
-        </button>
+        </Button>
         {testResults && (
           <span className={cn(
             'px-2 py-1 rounded text-sm font-medium',

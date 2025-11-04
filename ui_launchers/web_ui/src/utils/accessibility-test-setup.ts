@@ -1,295 +1,304 @@
+"use client";
 /**
- * Accessibility Test Setup and Configuration
- * 
- * This file provides setup utilities and configurations for accessibility testing
- * across the entire application.
+ * Accessibility Test Setup & Configuration (Vitest + Testing Library + axe-core)
+ *
+ * - Works in JSDOM under Vitest (no jest-axe dependency)
+ * - Ships consistent configs (basic/standard/comprehensive + domain-specific)
+ * - Helpful error output using Testing Library's prettyDOM tree
+ * - Reusable wrapper factory to provide landmarks/skip-links
+ * - One-call runner: runAccessibilityTestSuite(container, "standard")
+ * - Lightweight pattern validators for common A11Y pitfalls
+ * - Optional matcher registration: toHaveNoViolations()
  */
 
-import React from 'react';
-import { configure } from '@testing-library/react';
-// Note: Using axe-core directly instead of jest-axe for Vitest compatibility
-import axe from 'axe-core';
+import React from "react";
+import { configure } from "@testing-library/react";
+import * as dom from "@testing-library/dom";
+import axeCore, { AxeResults, RunOptions } from "axe-core";
 
-// Configure Testing Library for better accessibility testing
+// ---------------------------------------------------------------------------
+// Testing Library configuration
+// ---------------------------------------------------------------------------
 configure({
-  // Use accessible queries by default
   defaultHidden: true,
-  // Increase timeout for accessibility tests
-  asyncUtilTimeout: 10000,
-  // Configure better error messages
+  asyncUtilTimeout: 10_000,
   getElementError: (message, container) => {
+    const tree = dom.prettyDOM(container as HTMLElement, undefined, {
+      highlight: false,
+      maxDepth: 3,
+    });
     const error = new Error(
-      [
-        message,
-        'Here is the accessible tree:',
-        require('@testing-library/dom').prettyDOM(container, undefined, {
-          highlight: false,
-          maxDepth: 3,
-        }),
-      ].join('\n\n')
+      [message, "Accessible subtree:", tree].filter(Boolean).join("\n\n")
     );
-    error.name = 'TestingLibraryElementError';
+    error.name = "TestingLibraryElementError";
     return error;
   },
+});
 
-// Note: toHaveNoViolations would be extended in test setup for Vitest
-
-// Configure axe-core for consistent testing
-// Note: Detailed configuration would be done in actual test files
-
-// Accessibility test configurations for different scenarios
+// ---------------------------------------------------------------------------
+// axe-core configuration presets
+// ---------------------------------------------------------------------------
 export const accessibilityConfigs = {
-  // Basic accessibility test - essential rules only
   basic: {
-    runOnly: {
-      type: 'tag' as const,
-      values: ['wcag2a'],
-    },
+    runOnly: { type: "tag" as const, values: ["wcag2a"] },
   },
-  
-  // Standard accessibility test - WCAG 2.1 AA compliance
   standard: {
-    runOnly: {
-      type: 'tag' as const,
-      values: ['wcag2a', 'wcag2aa'],
-    },
+    runOnly: { type: "tag" as const, values: ["wcag2a", "wcag2aa"] },
   },
-  
-  // Comprehensive accessibility test - all rules and best practices
   comprehensive: {
-    runOnly: {
-      type: 'tag' as const,
-      values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'best-practice'],
-    },
+    runOnly: { type: "tag" as const, values: ["wcag2a", "wcag2aa", "wcag21aa", "best-practice"] },
   },
-  
-  // Form-specific accessibility test
   forms: {
-    runOnly: {
-      type: 'tag' as const,
-      values: ['wcag2a', 'wcag2aa'],
-    },
+    runOnly: { type: "tag" as const, values: ["wcag2a", "wcag2aa"] },
+    rules: { "label": { enabled: true } },
   },
-  
-  // Navigation-specific accessibility test
   navigation: {
-    runOnly: {
-      type: 'tag' as const,
-      values: ['wcag2a', 'wcag2aa'],
-    },
+    runOnly: { type: "tag" as const, values: ["wcag2a", "wcag2aa"] },
   },
-  
-  // Color and visual accessibility test
   visual: {
-    runOnly: {
-      type: 'tag' as const,
-      values: ['wcag2a', 'wcag2aa'],
-    },
+    runOnly: { type: "tag" as const, values: ["wcag2a", "wcag2aa"] },
   },
 };
+export type AccessibilityConfigKey = keyof typeof accessibilityConfigs;
 
-// Helper function to create accessibility test wrapper
+// ---------------------------------------------------------------------------
+// Wrapper factory: provides language, landmarks, and optional skip-links
+// ---------------------------------------------------------------------------
 export const createAccessibilityTestWrapper = (options: {
   lang?: string;
   title?: string;
   skipLinks?: boolean;
 } = {}) => {
-  const { lang = 'en', title = 'Test Page', skipLinks = false } = options;
-  
+  const { lang = "en", title = "Test Page", skipLinks = false } = options;
+
   return function AccessibilityTestWrapper({ children }: { children: React.ReactNode }) {
-    return React.createElement('div', { lang },
-      skipLinks && React.createElement('div', null,
-        React.createElement('a', { 
-          href: '#main-content', 
-          className: 'sr-only focus:not-sr-only' 
-        }, 'Skip to main content'),
-        React.createElement('a', { 
-          href: '#navigation', 
-          className: 'sr-only focus:not-sr-only' 
-        }, 'Skip to navigation')
+    return React.createElement(
+      "div",
+      { lang },
+      skipLinks &&
+        React.createElement(
+          "div",
+          null,
+          React.createElement(
+            "a",
+            { href: "#main-content", className: "sr-only focus:not-sr-only" },
+            "Skip to main content"
+          ),
+          React.createElement(
+            "a",
+            { href: "#navigation", className: "sr-only focus:not-sr-only" },
+            "Skip to navigation"
+          )
+        ),
+      React.createElement(
+        "nav",
+        { id: "navigation", role: "navigation", "aria-label": "Primary" },
+        React.createElement("span", null)
       ),
-      React.createElement('main', { 
-        id: 'main-content', 
-        role: 'main' 
-      },
-        React.createElement('h1', null, title),
+      React.createElement(
+        "main",
+        { id: "main-content", role: "main" },
+        React.createElement("h1", null, title),
         children
       )
     );
   };
 };
 
-// Helper function to run accessibility tests with consistent configuration
+// ---------------------------------------------------------------------------
+// Axe runner (Vitest-compatible). Accepts container and preset key.
+// ---------------------------------------------------------------------------
+export interface A11yRunReport {
+  passed: boolean;
+  violations: AxeResults["violations"];
+  passes: AxeResults["passes"];
+  incomplete: AxeResults["incomplete"];
+  inapplicable: AxeResults["inapplicable"];
+  summary: {
+    violations: number;
+    passes: number;
+    incomplete: number;
+    inapplicable: number;
+  };
+  config: AccessibilityConfigKey;
+  timestamp: string;
+}
+
 export const runAccessibilityTestSuite = async (
   container: Element,
-  config: keyof typeof accessibilityConfigs = 'standard'
-) => {
-  const testConfig = accessibilityConfigs[config];
-  
-  try {
-    const results = await axe.run(container as any, testConfig) as unknown as any;
-    
-    // Create detailed report
-    const report = {
-      passed: results.violations.length === 0,
-      violations: results.violations,
-      passes: results.passes,
-      incomplete: results.incomplete,
-      inapplicable: results.inapplicable,
-      summary: {
-        violations: results.violations.length,
-        passes: results.passes.length,
-        incomplete: results.incomplete.length,
-        inapplicable: results.inapplicable.length,
-      },
-      config: config,
-      timestamp: new Date().toISOString(),
-    };
-    
-    return report;
-  } catch (error) {
-    throw new Error(`Accessibility test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+  config: AccessibilityConfigKey = "standard",
+  overrides?: RunOptions
+): Promise<A11yRunReport> => {
+  // axe requires a real Node; JSDOM Element is fine
+  const options: RunOptions = { ...accessibilityConfigs[config], ...overrides } as RunOptions;
+  const results = (await axeCore.run(container as unknown as Node, options)) as AxeResults;
+
+  return {
+    passed: results.violations.length === 0,
+    violations: results.violations,
+    passes: results.passes,
+    incomplete: results.incomplete,
+    inapplicable: results.inapplicable,
+    summary: {
+      violations: results.violations.length,
+      passes: results.passes.length,
+      incomplete: results.incomplete.length,
+      inapplicable: results.inapplicable.length,
+    },
+    config,
+    timestamp: new Date().toISOString(),
+  };
 };
 
-// Helper function to validate specific accessibility patterns
+// ---------------------------------------------------------------------------
+// Pattern validators (lightweight heuristics for quick checks)
+// ---------------------------------------------------------------------------
 export const validateAccessibilityPattern = {
-  // Validate form accessibility
-  form: (container: Element) => {
+  form(container: Element) {
     const issues: string[] = [];
-    
-    // Check for form labels
-    const inputs = container.querySelectorAll('input, select, textarea');
-    inputs.forEach((input, index) => {
-      const id = input.getAttribute('id');
-      const ariaLabel = input.getAttribute('aria-label');
-      const ariaLabelledBy = input.getAttribute('aria-labelledby');
-      const hasLabel = id && container.querySelector(`label[for="${id}"]`);
-      
-      if (!ariaLabel && !ariaLabelledBy && !hasLabel) {
-        issues.push(`Form control ${index + 1} is missing a label`);
-      }
 
-    // Check for fieldsets with legends
-    const fieldsets = container.querySelectorAll('fieldset');
-    fieldsets.forEach((fieldset, index) => {
-      const legend = fieldset.querySelector('legend');
-      if (!legend) {
-        issues.push(`Fieldset ${index + 1} is missing a legend`);
+    const inputs = container.querySelectorAll("input, select, textarea");
+    inputs.forEach((input, i) => {
+      const id = input.getAttribute("id");
+      const ariaLabel = input.getAttribute("aria-label");
+      const ariaLabelledBy = input.getAttribute("aria-labelledby");
+      const hasLabel = id ? container.querySelector(`label[for="${id}"]`) : null;
+      if (!ariaLabel && !ariaLabelledBy && !hasLabel) {
+        issues.push(`Form control ${i + 1} is missing an accessible name`);
       }
+    });
+
+    const fieldsets = container.querySelectorAll("fieldset");
+    fieldsets.forEach((fs, i) => {
+      if (!fs.querySelector("legend")) issues.push(`Fieldset ${i + 1} is missing a legend`);
+    });
 
     return issues;
   },
-  
-  // Validate heading hierarchy
-  headings: (container: Element) => {
+
+  headings(container: Element) {
     const issues: string[] = [];
-    const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const headings = container.querySelectorAll("h1, h2, h3, h4, h5, h6");
     let previousLevel = 0;
-    
-    headings.forEach((heading, index) => {
-      const level = parseInt(heading.tagName.charAt(1));
-      
-      if (index === 0 && level !== 1) {
-        issues.push('First heading should be h1');
-      }
-      
-      if (level > previousLevel + 1) {
+
+    headings.forEach((el, index) => {
+      const level = parseInt(el.tagName.charAt(1), 10);
+      if (index === 0 && level !== 1) issues.push("First heading should be h1");
+      if (previousLevel && level > previousLevel + 1) {
         issues.push(`Heading level jumps from h${previousLevel} to h${level}`);
       }
-      
-      if (!heading.textContent?.trim()) {
+      if (!el.textContent || !el.textContent.trim()) {
         issues.push(`Heading ${index + 1} is empty`);
       }
-      
       previousLevel = level;
+    });
 
     return issues;
   },
-  
-  // Validate landmark structure
-  landmarks: (container: Element) => {
+
+  landmarks(container: Element) {
     const issues: string[] = [];
-    
-    // Check for main landmark
-    const mainLandmarks = container.querySelectorAll('main, [role="main"]');
-    if (mainLandmarks.length === 0) {
-      issues.push('No main landmark found');
-    } else if (mainLandmarks.length > 1) {
-      issues.push('Multiple main landmarks found');
-    }
-    
-    // Check for navigation landmarks
-    const navLandmarks = container.querySelectorAll('nav, [role="navigation"]');
-    navLandmarks.forEach((nav, index) => {
-      const ariaLabel = nav.getAttribute('aria-label');
-      const ariaLabelledBy = nav.getAttribute('aria-labelledby');
-      
-      if (navLandmarks.length > 1 && !ariaLabel && !ariaLabelledBy) {
-        issues.push(`Navigation landmark ${index + 1} needs aria-label or aria-labelledby`);
+    const main = container.querySelectorAll("main, [role='main']");
+    if (main.length === 0) issues.push("No main landmark found");
+    else if (main.length > 1) issues.push("Multiple main landmarks found");
+
+    const navs = container.querySelectorAll("nav, [role='navigation']");
+    navs.forEach((nav, i) => {
+      const label = nav.getAttribute("aria-label");
+      const labelledBy = nav.getAttribute("aria-labelledby");
+      if (navs.length > 1 && !label && !labelledBy) {
+        issues.push(`Navigation landmark ${i + 1} needs aria-label or aria-labelledby`);
       }
+    });
 
     return issues;
   },
-  
-  // Validate ARIA usage
-  aria: (container: Element) => {
+
+  aria(container: Element) {
     const issues: string[] = [];
-    
-    // Check for ARIA references
-    const elementsWithAriaRefs = container.querySelectorAll('[aria-describedby], [aria-labelledby], [aria-controls]');
-    elementsWithAriaRefs.forEach((element, index) => {
-      const describedBy = element.getAttribute('aria-describedby');
-      const labelledBy = element.getAttribute('aria-labelledby');
-      const controls = element.getAttribute('aria-controls');
-      
-      [describedBy, labelledBy, controls].forEach((attr) => {
-        if (attr) {
-          const ids = attr.split(' ');
-          ids.forEach((id) => {
-            if (id && !container.querySelector(`#${id}`)) {
-              issues.push(`Element ${index + 1} references non-existent ID: ${id}`);
-            }
 
+    const withRefs = container.querySelectorAll(
+      "[aria-describedby], [aria-labelledby], [aria-controls]"
+    );
+    withRefs.forEach((el, index) => {
+      const ids = [
+        el.getAttribute("aria-describedby"),
+        el.getAttribute("aria-labelledby"),
+        el.getAttribute("aria-controls"),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .split(" ")
+        .filter(Boolean);
+
+      ids.forEach((id) => {
+        if (id && !container.querySelector(`#${id}`)) {
+          issues.push(`Element ${index + 1} references non-existent ID: ${id}`);
         }
+      });
+    });
 
-
-    // Check for proper ARIA roles
-    const elementsWithRoles = container.querySelectorAll('[role]');
-    elementsWithRoles.forEach((element, index) => {
-      const role = element.getAttribute('role');
+    const withRoles = container.querySelectorAll("[role]");
+    withRoles.forEach((el, index) => {
+      const role = el.getAttribute("role");
       if (role && !isValidAriaRole(role)) {
         issues.push(`Element ${index + 1} has invalid ARIA role: ${role}`);
       }
+    });
 
     return issues;
   },
 };
 
-// Helper function to validate ARIA roles (simplified)
-function isValidAriaRole(role: string): boolean {
+// ---------------------------------------------------------------------------
+// Minimal ARIA role validator (static allow-list)
+// ---------------------------------------------------------------------------
+export function isValidAriaRole(role: string): boolean {
   const validRoles = [
-    'alert', 'alertdialog', 'application', 'article', 'banner', 'button',
-    'cell', 'checkbox', 'columnheader', 'combobox', 'complementary',
-    'contentinfo', 'definition', 'dialog', 'directory', 'document',
-    'feed', 'figure', 'form', 'grid', 'gridcell', 'group', 'heading',
-    'img', 'link', 'list', 'listbox', 'listitem', 'log', 'main',
-    'marquee', 'math', 'menu', 'menubar', 'menuitem', 'menuitemcheckbox',
-    'menuitemradio', 'navigation', 'none', 'note', 'option', 'presentation',
-    'progressbar', 'radio', 'radiogroup', 'region', 'row', 'rowgroup',
-    'rowheader', 'scrollbar', 'search', 'searchbox', 'separator',
-    'slider', 'spinbutton', 'status', 'switch', 'tab', 'table',
-    'tablist', 'tabpanel', 'term', 'textbox', 'timer', 'toolbar',
-    'tooltip', 'tree', 'treegrid', 'treeitem'
+    "alert","alertdialog","application","article","banner","button","cell","checkbox","columnheader",
+    "combobox","complementary","contentinfo","definition","dialog","directory","document","feed","figure",
+    "form","grid","gridcell","group","heading","img","link","list","listbox","listitem","log","main",
+    "marquee","math","menu","menubar","menuitem","menuitemcheckbox","menuitemradio","navigation","none",
+    "note","option","presentation","progressbar","radio","radiogroup","region","row","rowgroup","rowheader",
+    "scrollbar","search","searchbox","separator","slider","spinbutton","status","switch","tab","table",
+    "tablist","tabpanel","term","textbox","timer","toolbar","tooltip","tree","treegrid","treeitem",
   ];
-  
   return validRoles.includes(role);
 }
 
-// Export default configuration
+// ---------------------------------------------------------------------------
+// Optional: Vitest/Jest-style matcher registration
+// use: expect(await runAccessibilityTestSuite(...))).toHaveNoViolations()
+// ---------------------------------------------------------------------------
+export function registerA11yMatchers() {
+  const g: any = globalThis as any;
+  if (!g.expect || !g.expect.extend) return; // not in a test env
+  g.expect.extend({
+    async toHaveNoViolations(received: A11yRunReport | AxeResults) {
+      const isA11yReport = (o: any) => o && Array.isArray(o.violations);
+      const results = isA11yReport(received)
+        ? (received as any)
+        : ((await axeCore.run(document)) as AxeResults);
+
+      const pass = results.violations.length === 0;
+      const message = () => {
+        if (pass) return "Expected no violations and found none.";
+        const details = results.violations
+          .map((v) => `• ${v.id}: ${v.help} (impact: ${v.impact})\n  nodes: ${v.nodes.length}`)
+          .join("\n");
+        return `Expected 0 violations, found ${results.violations.length}:\n${details}`;
+      };
+
+      return { pass, message } as any;
+    },
+  });
+}
+
+// Default export bundle
 export default {
   configs: accessibilityConfigs,
   createWrapper: createAccessibilityTestWrapper,
   runTestSuite: runAccessibilityTestSuite,
   validatePattern: validateAccessibilityPattern,
+  registerA11yMatchers,
 };

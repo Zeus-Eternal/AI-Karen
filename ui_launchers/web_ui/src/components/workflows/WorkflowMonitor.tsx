@@ -324,7 +324,7 @@ export function WorkflowMonitor({
                                 </>
                               )}
                               {execution.status === 'failed' && (
-                                <button
+                                <Button
                                   size="sm"
                                   onClick={() => {
                                     e.stopPropagation();

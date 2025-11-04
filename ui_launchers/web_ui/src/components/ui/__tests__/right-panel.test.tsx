@@ -270,10 +270,10 @@ describe('useRightPanel Hook', () => {
       <div>
         <div data-testid="is-open">{isOpen.toString()}</div>
         <div data-testid="active-view">{activeView || 'none'}</div>
-        <button onClick={() => openPanel('test-view')}>Open Panel</button>
-        <button onClick={() => openPanel()}>Open Panel No View</button>
-        <button onClick={closePanel} aria-label="Button">Close Panel</button>
-        <button onClick={() => switchView('new-view')}>Switch View</button>
+        <Button onClick={() => openPanel('test-view')}>Open Panel</Button>
+        <Button onClick={() => openPanel()}>Open Panel No View</Button>
+        <Button onClick={closePanel} aria-label="Button">Close Panel</Button>
+        <Button onClick={() => switchView('new-view')}>Switch View</Button>
       </div>
     );
   }

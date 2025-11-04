@@ -26,7 +26,7 @@ describe('Basic Accessibility Tests', () => {
           <label htmlFor="email">Email</label>
           <input id="email" type="email" required />
           
-          <button type="submit">Submit</button>
+          <Button type="submit">Submit</Button>
         </form>
         
         <img src="/test.jpg" alt="Test image description" />
@@ -46,9 +46,9 @@ describe('Basic Accessibility Tests', () => {
   it('should test button accessibility', async () => {
     const { container } = render(
       <div>
-        <button>Default Button</button>
-        <button aria-label="Close dialog">×</button>
-        <button disabled>Disabled Button</button>
+        <Button>Default Button</Button>
+        <Button aria-label="Close dialog">×</Button>
+        <Button disabled>Disabled Button</Button>
       </div>
     );
 
@@ -81,7 +81,7 @@ describe('Basic Accessibility Tests', () => {
           <label htmlFor="phone-pref">Phone</label>
         </fieldset>
         
-        <button type="submit">Submit Form</button>
+        <Button type="submit">Submit Form</Button>
       </form>
     );
 
@@ -120,12 +120,12 @@ describe('Basic Accessibility Tests', () => {
   it('should test ARIA attributes', async () => {
     const { container } = render(
       <div>
-        <button 
+        <Button 
           aria-expanded="false"
           aria-controls="menu"
           aria-haspopup="true"
         >
-        </button>
+        </Button>
         
         <div id="menu" hidden>
           <ul role="menu">
@@ -205,7 +205,7 @@ describe('Basic Accessibility Tests', () => {
   it('should test focus management', async () => {
     const { container } = render(
       <div>
-        <button>First Button</button>
+        <Button>First Button</Button>
         <a href="#content">Skip to content</a>
         <input type="text" placeholder="Text input" />
         <label htmlFor="select-test">Choose option</label>
@@ -214,7 +214,7 @@ describe('Basic Accessibility Tests', () => {
           <option>Option 2</option>
         </select>
         <textarea placeholder="Textarea"></textarea>
-        <button>Last Button</button>
+        <Button>Last Button</Button>
         
         <div id="content">
           <h2>Content Section</h2>

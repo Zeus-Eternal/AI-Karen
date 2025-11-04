@@ -272,7 +272,7 @@ export default function AdminManagementInterface() {
         <div className="flex gap-2">
           <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
             <DialogTrigger asChild>
-              <button aria-label="Button">
+              <Button aria-label="Button">
                 <Mail className="mr-2 h-4 w-4 " />
               </Button>
             </DialogTrigger>

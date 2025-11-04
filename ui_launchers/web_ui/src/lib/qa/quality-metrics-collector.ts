@@ -1,6 +1,10 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+
+/* -----------------------------
+ * Types
+ * --------------------------- */
 export interface QualityMetrics {
   testCoverage: {
     unit: number;
@@ -17,13 +21,13 @@ export interface QualityMetrics {
     flaky: number;
   };
   performance: {
-    loadTime: number;
-    interactionTime: number;
-    memoryUsage: number;
-    errorRate: number;
+    loadTime: number;        // ms
+    interactionTime: number; // ms
+    memoryUsage: number;     // MB
+    errorRate: number;       // 0..1
   };
   accessibility: {
-    score: number;
+    score: number;     // 0..100
     violations: number;
     warnings: number;
     passes: number;
@@ -35,23 +39,25 @@ export interface QualityMetrics {
       medium: number;
       low: number;
     };
-    score: number;
+    score: number; // 0..100
   };
   codeQuality: {
-    maintainabilityIndex: number;
-    technicalDebt: number;
-    duplicateCode: number;
-    complexity: number;
+    maintainabilityIndex: number; // 0..100
+    technicalDebt: number;        // hours (heuristic)
+    duplicateCode: number;        // %
+    complexity: number;           // avg cyclomatic
   };
 }
+
 export interface QualityTrend {
-  date: string;
-  coverage: number;
-  passRate: number;
-  performance: number;
-  accessibility: number;
-  security: number;
+  date: string;        // YYYY-MM-DD
+  coverage: number;    // %
+  passRate: number;    // %
+  performance: number; // 0..100
+  accessibility: number; // 0..100
+  security: number;    // 0..100
 }
+
 export interface QualityGate {
   id: string;
   name: string;
@@ -60,13 +66,113 @@ export interface QualityGate {
   actual: number;
   description: string;
 }
+
+type CacheEntry<T> = { data: T; timestamp: number };
+
+export interface MetricsCollectorConfig {
+  projectRoot?: string;
+  cacheTtlMs?: number;
+  commands?: {
+    coverage?: string;       // e.g., "npm run test:coverage -- --reporter=json"
+    tests?: string;          // e.g., "npm run test:all -- --reporter=json"
+    accessibility?: string;  // e.g., "npm run test:accessibility -- --reporter=json"
+    audit?: string;          // e.g., "npm audit --json"
+  };
+  paths?: {
+    unitCoverage?: string;         // coverage/unit/coverage-summary.json
+    integrationCoverage?: string;  // coverage/integration/coverage-summary.json
+    e2eCoverage?: string;          // coverage/e2e/coverage-summary.json
+    visualTestsDir?: string;       // e2e/visual
+    componentDir?: string;         // src/components
+    testHistory?: string;          // test-results/test-history.json
+    perfReportsDir?: string;       // e2e-artifacts/performance-results
+    trendsDir?: string;            // qa-metrics
+    trendsFile?: string;           // qa-metrics/trends.json
+  };
+}
+
+/* -----------------------------
+ * Helpers
+ * --------------------------- */
+function safePathJoin(...parts: string[]) {
+  return path.join(...parts);
+}
+
+function fileExists(p: string) {
+  try { return fs.existsSync(p); } catch { return false; }
+}
+
+function readFileUtf8(p: string): string | null {
+  try { return fs.readFileSync(p, 'utf8'); } catch { return null; }
+}
+
+function tryJson<T = any>(text: string | null): T | null {
+  if (!text) return null;
+  try { return JSON.parse(text) as T; } catch { return null; }
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function percent(n: number) {
+  return Math.round(n * 100);
+}
+
+function safeDivide(num: number, den: number) {
+  if (!den || Number.isNaN(den)) return 0;
+  return num / den;
+}
+
+function safeExec(cmd: string, cwd: string): { ok: boolean; out: string; err?: string } {
+  try {
+    const out = execSync(cmd, {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 5 * 60 * 1000, // 5 minutes guard
+    });
+    return { ok: true, out };
+  } catch (e: any) {
+    return { ok: false, out: e?.stdout?.toString?.() ?? '', err: e?.stderr?.toString?.() ?? e?.message ?? 'exec error' };
+  }
+}
+
+/* -----------------------------
+ * Collector
+ * --------------------------- */
 export class QualityMetricsCollector {
   private projectRoot: string;
-  private metricsCache: Map<string, any> = new Map();
-  private cacheTimeout = 5 * 60 * 1000; // 5 minutes
-  constructor(projectRoot: string = process.cwd()) {
-    this.projectRoot = projectRoot;
+  private metricsCache = new Map<string, CacheEntry<any>>();
+  private cacheTimeout: number;
+  private commands: Required<MetricsCollectorConfig['commands']>;
+  private paths: Required<MetricsCollectorConfig['paths']>;
+
+  constructor(cfg: MetricsCollectorConfig = {}) {
+    this.projectRoot = cfg.projectRoot ?? process.cwd();
+    this.cacheTimeout = cfg.cacheTtlMs ?? 5 * 60 * 1000;
+
+    this.commands = {
+      coverage: cfg.commands?.coverage ?? 'npm run test:coverage -- --reporter=json',
+      tests: cfg.commands?.tests ?? 'npm run test:all -- --reporter=json',
+      accessibility: cfg.commands?.accessibility ?? 'npm run test:accessibility -- --reporter=json',
+      audit: cfg.commands?.audit ?? 'npm audit --json',
+    };
+
+    this.paths = {
+      unitCoverage: cfg.paths?.unitCoverage ?? 'coverage/unit/coverage-summary.json',
+      integrationCoverage: cfg.paths?.integrationCoverage ?? 'coverage/integration/coverage-summary.json',
+      e2eCoverage: cfg.paths?.e2eCoverage ?? 'coverage/e2e/coverage-summary.json',
+      visualTestsDir: cfg.paths?.visualTestsDir ?? 'e2e/visual',
+      componentDir: cfg.paths?.componentDir ?? 'src/components',
+      testHistory: cfg.paths?.testHistory ?? 'test-results/test-history.json',
+      perfReportsDir: cfg.paths?.perfReportsDir ?? 'e2e-artifacts/performance-results',
+      trendsDir: cfg.paths?.trendsDir ?? 'qa-metrics',
+      trendsFile: cfg.paths?.trendsFile ?? 'qa-metrics/trends.json',
+    };
   }
+
+  /* Public API */
   async collectAllMetrics(): Promise<QualityMetrics> {
     const [
       testCoverage,
@@ -83,381 +189,15 @@ export class QualityMetricsCollector {
       this.collectSecurityMetrics(),
       this.collectCodeQualityMetrics()
     ]);
-    return {
-      testCoverage,
-      testResults,
-      performance,
-      accessibility,
-      security,
-      codeQuality
-    };
-  }
-  private async collectTestCoverage(): Promise<QualityMetrics['testCoverage']> {
-    const cacheKey = 'testCoverage';
-    const cached = this.getCachedMetric(cacheKey);
-    if (cached) return cached;
-    try {
-      // Run coverage collection
-      const coverageCommand = 'npm run test:coverage -- --reporter=json';
-      const coverageOutput = execSync(coverageCommand, { 
-        cwd: this.projectRoot,
-        encoding: 'utf8',
-        stdio: 'pipe'
 
-      const coverageData = JSON.parse(coverageOutput);
-      // Extract coverage data from different test types
-      const unitCoverage = this.extractCoverageFromReport('coverage/unit/coverage-summary.json');
-      const integrationCoverage = this.extractCoverageFromReport('coverage/integration/coverage-summary.json');
-      const e2eCoverage = this.extractCoverageFromReport('coverage/e2e/coverage-summary.json');
-      const visualCoverage = this.extractVisualTestCoverage();
-      const coverage = {
-        unit: unitCoverage,
-        integration: integrationCoverage,
-        e2e: e2eCoverage,
-        visual: visualCoverage,
-        overall: Math.round((unitCoverage + integrationCoverage + e2eCoverage + visualCoverage) / 4)
-      };
-      this.setCachedMetric(cacheKey, coverage);
-      return coverage;
-    } catch (error) {
-      return {
-        unit: 0,
-        integration: 0,
-        e2e: 0,
-        visual: 0,
-        overall: 0
-      };
-    }
+    return { testCoverage, testResults, performance, accessibility, security, codeQuality };
   }
-  private extractCoverageFromReport(reportPath: string): number {
-    try {
-      const fullPath = path.join(this.projectRoot, reportPath);
-      if (!fs.existsSync(fullPath)) return 0;
-      const coverageData = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
-      return Math.round(coverageData.total.lines.pct || 0);
-    } catch (error) {
-      return 0;
-    }
-  }
-  private extractVisualTestCoverage(): number {
-    try {
-      const visualTestDir = path.join(this.projectRoot, 'e2e/visual');
-      if (!fs.existsSync(visualTestDir)) return 0;
-      const testFiles = fs.readdirSync(visualTestDir).filter(f => f.endsWith('.spec.ts'));
-      const componentDir = path.join(this.projectRoot, 'src/components');
-      const componentFiles = this.getAllFiles(componentDir, '.tsx');
-      // Simple heuristic: percentage of components with visual tests
-      const coverage = Math.round((testFiles.length / componentFiles.length) * 100);
-      return Math.min(coverage, 100);
-    } catch (error) {
-      return 0;
-    }
-  }
-  private async collectTestResults(): Promise<QualityMetrics['testResults']> {
-    const cacheKey = 'testResults';
-    const cached = this.getCachedMetric(cacheKey);
-    if (cached) return cached;
-    try {
-      // Run all tests and collect results
-      const testCommand = 'npm run test:all -- --reporter=json';
-      const testOutput = execSync(testCommand, {
-        cwd: this.projectRoot,
-        encoding: 'utf8',
-        stdio: 'pipe'
 
-      const testData = JSON.parse(testOutput);
-      const results = {
-        total: testData.numTotalTests || 0,
-        passed: testData.numPassedTests || 0,
-        failed: testData.numFailedTests || 0,
-        skipped: testData.numPendingTests || 0,
-        flaky: this.detectFlakyTests()
-      };
-      this.setCachedMetric(cacheKey, results);
-      return results;
-    } catch (error) {
-      return {
-        total: 0,
-        passed: 0,
-        failed: 0,
-        skipped: 0,
-        flaky: 0
-      };
-    }
-  }
-  private detectFlakyTests(): number {
-    try {
-      // Analyze test history to detect flaky tests
-      const testHistoryPath = path.join(this.projectRoot, 'test-results/test-history.json');
-      if (!fs.existsSync(testHistoryPath)) return 0;
-      const history = JSON.parse(fs.readFileSync(testHistoryPath, 'utf8'));
-      let flakyCount = 0;
-      // Simple flaky test detection: tests that have both passed and failed in recent runs
-      for (const testName in history) {
-        const results = history[testName].slice(-10); // Last 10 runs
-        const hasPassed = results.some((r: any) => r.status === 'passed');
-        const hasFailed = results.some((r: any) => r.status === 'failed');
-        if (hasPassed && hasFailed) {
-          flakyCount++;
-        }
-      }
-      return flakyCount;
-    } catch (error) {
-      return 0;
-    }
-  }
-  private async collectPerformanceMetrics(): Promise<QualityMetrics['performance']> {
-    const cacheKey = 'performance';
-    const cached = this.getCachedMetric(cacheKey);
-    if (cached) return cached;
-    try {
-      // Collect performance metrics from recent test runs
-      const performanceReportPath = path.join(this.projectRoot, 'e2e-artifacts/performance-results');
-      if (!fs.existsSync(performanceReportPath)) {
-        return {
-          loadTime: 0,
-          interactionTime: 0,
-          memoryUsage: 0,
-          errorRate: 0
-        };
-      }
-      const reportFiles = fs.readdirSync(performanceReportPath)
-        .filter(f => f.endsWith('.json'))
-        .sort()
-        .slice(-5); // Last 5 reports
-      let totalLoadTime = 0;
-      let totalInteractionTime = 0;
-      let totalMemoryUsage = 0;
-      let totalErrorRate = 0;
-      let reportCount = 0;
-      for (const reportFile of reportFiles) {
-        try {
-          const reportData = JSON.parse(
-            fs.readFileSync(path.join(performanceReportPath, reportFile), 'utf8')
-          );
-          if (reportData.metrics) {
-            totalLoadTime += reportData.metrics.averageLoadTime || 0;
-            totalInteractionTime += reportData.metrics.averageInteractionTime || 0;
-            totalMemoryUsage += reportData.metrics.peakMemoryUsage || 0;
-            totalErrorRate += reportData.metrics.errorRate || 0;
-            reportCount++;
-          }
-        } catch (error) {
-        }
-      }
-      const performance = reportCount > 0 ? {
-        loadTime: Math.round(totalLoadTime / reportCount),
-        interactionTime: Math.round(totalInteractionTime / reportCount),
-        memoryUsage: Math.round(totalMemoryUsage / reportCount),
-        errorRate: Math.round((totalErrorRate / reportCount) * 100) / 100
-      } : {
-        loadTime: 0,
-        interactionTime: 0,
-        memoryUsage: 0,
-        errorRate: 0
-      };
-      this.setCachedMetric(cacheKey, performance);
-      return performance;
-    } catch (error) {
-      return {
-        loadTime: 0,
-        interactionTime: 0,
-        memoryUsage: 0,
-        errorRate: 0
-      };
-    }
-  }
-  private async collectAccessibilityMetrics(): Promise<QualityMetrics['accessibility']> {
-    const cacheKey = 'accessibility';
-    const cached = this.getCachedMetric(cacheKey);
-    if (cached) return cached;
-    try {
-      // Run accessibility tests
-      const a11yCommand = 'npm run test:accessibility -- --reporter=json';
-      const a11yOutput = execSync(a11yCommand, {
-        cwd: this.projectRoot,
-        encoding: 'utf8',
-        stdio: 'pipe'
-
-      const a11yData = JSON.parse(a11yOutput);
-      const accessibility = {
-        score: Math.round(a11yData.score || 0),
-        violations: a11yData.violations?.length || 0,
-        warnings: a11yData.warnings?.length || 0,
-        passes: a11yData.passes?.length || 0
-      };
-      this.setCachedMetric(cacheKey, accessibility);
-      return accessibility;
-    } catch (error) {
-      return {
-        score: 0,
-        violations: 0,
-        warnings: 0,
-        passes: 0
-      };
-    }
-  }
-  private async collectSecurityMetrics(): Promise<QualityMetrics['security']> {
-    const cacheKey = 'security';
-    const cached = this.getCachedMetric(cacheKey);
-    if (cached) return cached;
-    try {
-      // Run security audit
-      const auditCommand = 'npm audit --json';
-      const auditOutput = execSync(auditCommand, {
-        cwd: this.projectRoot,
-        encoding: 'utf8',
-        stdio: 'pipe'
-
-      const auditData = JSON.parse(auditOutput);
-      const vulnerabilities = {
-        critical: auditData.metadata?.vulnerabilities?.critical || 0,
-        high: auditData.metadata?.vulnerabilities?.high || 0,
-        medium: auditData.metadata?.vulnerabilities?.medium || 0,
-        low: auditData.metadata?.vulnerabilities?.low || 0
-      };
-      const totalVulns = Object.values(vulnerabilities).reduce((a, b) => a + b, 0);
-      const score = Math.max(0, 100 - (vulnerabilities.critical * 20 + vulnerabilities.high * 10 + vulnerabilities.medium * 5 + vulnerabilities.low * 1));
-      const security = {
-        vulnerabilities,
-        score: Math.round(score)
-      };
-      this.setCachedMetric(cacheKey, security);
-      return security;
-    } catch (error) {
-      return {
-        vulnerabilities: {
-          critical: 0,
-          high: 0,
-          medium: 0,
-          low: 0
-        },
-        score: 100
-      };
-    }
-  }
-  private async collectCodeQualityMetrics(): Promise<QualityMetrics['codeQuality']> {
-    const cacheKey = 'codeQuality';
-    const cached = this.getCachedMetric(cacheKey);
-    if (cached) return cached;
-    try {
-      // Analyze code quality using various metrics
-      const maintainabilityIndex = this.calculateMaintainabilityIndex();
-      const technicalDebt = this.calculateTechnicalDebt();
-      const duplicateCode = this.calculateDuplicateCode();
-      const complexity = this.calculateComplexity();
-      const codeQuality = {
-        maintainabilityIndex,
-        technicalDebt,
-        duplicateCode,
-        complexity
-      };
-      this.setCachedMetric(cacheKey, codeQuality);
-      return codeQuality;
-    } catch (error) {
-      return {
-        maintainabilityIndex: 0,
-        technicalDebt: 0,
-        duplicateCode: 0,
-        complexity: 0
-      };
-    }
-  }
-  private calculateMaintainabilityIndex(): number {
-    try {
-      // Simple heuristic based on file size, complexity, and test coverage
-      const srcDir = path.join(this.projectRoot, 'src');
-      const files = this.getAllFiles(srcDir, '.ts', '.tsx');
-      let totalLines = 0;
-      let totalFiles = files.length;
-      for (const file of files) {
-        const content = fs.readFileSync(file, 'utf8');
-        totalLines += content.split('\n').length;
-      }
-      const avgLinesPerFile = totalLines / totalFiles;
-      const maintainabilityIndex = Math.max(0, 100 - (avgLinesPerFile / 10)); // Penalize large files
-      return Math.round(maintainabilityIndex);
-    } catch (error) {
-      return 0;
-    }
-  }
-  private calculateTechnicalDebt(): number {
-    try {
-      // Estimate technical debt based on TODO comments, code smells, etc.
-      const srcDir = path.join(this.projectRoot, 'src');
-      const files = this.getAllFiles(srcDir, '.ts', '.tsx');
-      let debtHours = 0;
-      for (const file of files) {
-        const content = fs.readFileSync(file, 'utf8');
-        // Count TODO/FIXME comments (1 hour each)
-        const todoMatches = content.match(/\/\/\s*(TODO|FIXME|HACK)/gi) || [];
-        debtHours += todoMatches.length * 1;
-        // Count long functions (0.5 hours each)
-        const functionMatches = content.match(/function\s+\w+[^{]*{[^}]{500,}/g) || [];
-        debtHours += functionMatches.length * 0.5;
-        // Count large files (2 hours each for files > 500 lines)
-        const lines = content.split('\n').length;
-        if (lines > 500) {
-          debtHours += 2;
-        }
-      }
-      return Math.round(debtHours);
-    } catch (error) {
-      return 0;
-    }
-  }
-  private calculateDuplicateCode(): number {
-    try {
-      // Simple duplicate detection based on similar function signatures
-      const srcDir = path.join(this.projectRoot, 'src');
-      const files = this.getAllFiles(srcDir, '.ts', '.tsx');
-      const functionSignatures = new Map<string, number>();
-      let totalFunctions = 0;
-      for (const file of files) {
-        const content = fs.readFileSync(file, 'utf8');
-        const functionMatches = content.match(/(?:function\s+\w+|const\s+\w+\s*=\s*(?:\([^)]*\)\s*=>|\([^)]*\)\s*:\s*[^=]*=>))/g) || [];
-        for (const func of functionMatches) {
-          const signature = func.replace(/\s+/g, ' ').trim();
-          functionSignatures.set(signature, (functionSignatures.get(signature) || 0) + 1);
-          totalFunctions++;
-        }
-      }
-      let duplicateFunctions = 0;
-      for (const [signature, count] of functionSignatures) {
-        if (count > 1) {
-          duplicateFunctions += count - 1; // Count extras as duplicates
-        }
-      }
-      const duplicatePercentage = totalFunctions > 0 ? (duplicateFunctions / totalFunctions) * 100 : 0;
-      return Math.round(duplicatePercentage);
-    } catch (error) {
-      return 0;
-    }
-  }
-  private calculateComplexity(): number {
-    try {
-      // Calculate cyclomatic complexity
-      const srcDir = path.join(this.projectRoot, 'src');
-      const files = this.getAllFiles(srcDir, '.ts', '.tsx');
-      let totalComplexity = 0;
-      let totalFunctions = 0;
-      for (const file of files) {
-        const content = fs.readFileSync(file, 'utf8');
-        // Count decision points (if, while, for, case, catch, &&, ||)
-        const decisionPoints = (content.match(/\b(if|while|for|case|catch)\b|\|\||&&/g) || []).length;
-        const functions = (content.match(/(?:function\s+\w+|const\s+\w+\s*=\s*(?:\([^)]*\)\s*=>|\([^)]*\)\s*:\s*[^=]*=>))/g) || []).length;
-        if (functions > 0) {
-          totalComplexity += decisionPoints + functions; // Base complexity of 1 per function
-          totalFunctions += functions;
-        }
-      }
-      const averageComplexity = totalFunctions > 0 ? totalComplexity / totalFunctions : 0;
-      return Math.round(averageComplexity);
-    } catch (error) {
-      return 0;
-    }
-  }
   async generateQualityGates(metrics: QualityMetrics): Promise<QualityGate[]> {
+    const passRate = metrics.testResults.total > 0
+      ? Math.round((metrics.testResults.passed / metrics.testResults.total) * 100)
+      : 0;
+
     const gates: QualityGate[] = [
       {
         id: 'test-coverage',
@@ -471,18 +211,17 @@ export class QualityMetricsCollector {
         id: 'test-pass-rate',
         name: 'Test Pass Rate',
         threshold: 95,
-        actual: Math.round((metrics.testResults.passed / metrics.testResults.total) * 100),
-        status: (metrics.testResults.passed / metrics.testResults.total) >= 0.95 ? 'passed' : 
-                (metrics.testResults.passed / metrics.testResults.total) >= 0.90 ? 'warning' : 'failed',
+        actual: passRate,
+        status: passRate >= 95 ? 'passed' : passRate >= 90 ? 'warning' : 'failed',
         description: 'Test pass rate must be at least 95%'
       },
       {
         id: 'performance',
         name: 'Performance',
-        threshold: 2000,
+        threshold: 2000, // ms
         actual: metrics.performance.loadTime,
-        status: metrics.performance.loadTime <= 2000 ? 'passed' : 
-                metrics.performance.loadTime <= 3000 ? 'warning' : 'failed',
+        status: metrics.performance.loadTime <= 2000 ? 'passed' :
+               metrics.performance.loadTime <= 3000 ? 'warning' : 'failed',
         description: 'Average page load time must be under 2 seconds'
       },
       {
@@ -490,8 +229,8 @@ export class QualityMetricsCollector {
         name: 'Accessibility',
         threshold: 90,
         actual: metrics.accessibility.score,
-        status: metrics.accessibility.score >= 90 ? 'passed' : 
-                metrics.accessibility.score >= 80 ? 'warning' : 'failed',
+        status: metrics.accessibility.score >= 90 ? 'passed' :
+               metrics.accessibility.score >= 80 ? 'warning' : 'failed',
         description: 'Accessibility score must be at least 90%'
       },
       {
@@ -499,8 +238,8 @@ export class QualityMetricsCollector {
         name: 'Security',
         threshold: 80,
         actual: metrics.security.score,
-        status: metrics.security.score >= 80 ? 'passed' : 
-                metrics.security.score >= 60 ? 'warning' : 'failed',
+        status: metrics.security.score >= 80 ? 'passed' :
+               metrics.security.score >= 60 ? 'warning' : 'failed',
         description: 'Security score must be at least 80%'
       },
       {
@@ -508,85 +247,443 @@ export class QualityMetricsCollector {
         name: 'Maintainability',
         threshold: 70,
         actual: metrics.codeQuality.maintainabilityIndex,
-        status: metrics.codeQuality.maintainabilityIndex >= 70 ? 'passed' : 
-                metrics.codeQuality.maintainabilityIndex >= 50 ? 'warning' : 'failed',
+        status: metrics.codeQuality.maintainabilityIndex >= 70 ? 'passed' :
+               metrics.codeQuality.maintainabilityIndex >= 50 ? 'warning' : 'failed',
         description: 'Maintainability index must be at least 70%'
       }
     ];
     return gates;
   }
+
   async generateTrends(days: number = 30): Promise<QualityTrend[]> {
     try {
-      const trendsPath = path.join(this.projectRoot, 'qa-metrics/trends.json');
-      if (!fs.existsSync(trendsPath)) {
-        return [];
-      }
-      const trendsData = JSON.parse(fs.readFileSync(trendsPath, 'utf8'));
+      const trendsPath = safePathJoin(this.projectRoot, this.paths.trendsFile);
+      if (!fileExists(trendsPath)) return [];
+      const trendsData = tryJson<QualityTrend[]>(readFileUtf8(trendsPath)) ?? [];
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
-      return trendsData.filter((trend: QualityTrend) => 
-        new Date(trend.date) >= cutoffDate
-      ).sort((a: QualityTrend, b: QualityTrend) => 
-        new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-    } catch (error) {
+      return trendsData
+        .filter(t => new Date(t.date) >= cutoffDate)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    } catch {
       return [];
     }
   }
+
   async saveTrend(metrics: QualityMetrics): Promise<void> {
     try {
-      const trendsDir = path.join(this.projectRoot, 'qa-metrics');
-      if (!fs.existsSync(trendsDir)) {
+      const trendsDir = safePathJoin(this.projectRoot, this.paths.trendsDir);
+      const trendsPath = safePathJoin(this.projectRoot, this.paths.trendsFile);
+      if (!fileExists(trendsDir)) {
         fs.mkdirSync(trendsDir, { recursive: true });
       }
-      const trendsPath = path.join(trendsDir, 'trends.json');
       let trends: QualityTrend[] = [];
-      if (fs.existsSync(trendsPath)) {
-        trends = JSON.parse(fs.readFileSync(trendsPath, 'utf8'));
+      if (fileExists(trendsPath)) {
+        trends = tryJson<QualityTrend[]>(readFileUtf8(trendsPath)) ?? [];
       }
+      const today = new Date().toISOString().split('T')[0];
+
+      const passRate = metrics.testResults.total > 0
+        ? Math.round((metrics.testResults.passed / metrics.testResults.total) * 100)
+        : 0;
+
+      // Convert performance (lower is better) to score (higher is better)
+      const performanceScore = clamp(100 - Math.min(100, metrics.performance.loadTime / 50), 0, 100);
+
       const newTrend: QualityTrend = {
-        date: new Date().toISOString().split('T')[0],
+        date: today,
         coverage: metrics.testCoverage.overall,
-        passRate: Math.round((metrics.testResults.passed / metrics.testResults.total) * 100),
-        performance: 100 - Math.min(100, metrics.performance.loadTime / 50), // Convert to score
+        passRate,
+        performance: performanceScore,
         accessibility: metrics.accessibility.score,
         security: metrics.security.score
       };
-      // Remove existing trend for today if it exists
-      trends = trends.filter(t => t.date !== newTrend.date);
+
+      trends = trends.filter(t => t.date !== today);
       trends.push(newTrend);
-      // Keep only last 90 days
-      trends = trends.slice(-90);
+      // keep last 90 entries by date
+      trends.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      if (trends.length > 90) {
+        trends = trends.slice(-90);
+      }
       fs.writeFileSync(trendsPath, JSON.stringify(trends, null, 2));
-    } catch (error) {
+    } catch {
+      // best-effort; ignore
     }
   }
+
+  /* -----------------------------
+   * Metric collectors
+   * --------------------------- */
+
+  private async collectTestCoverage(): Promise<QualityMetrics['testCoverage']> {
+    const cacheKey = 'testCoverage';
+    const cached = this.getCachedMetric<QualityMetrics['testCoverage']>(cacheKey);
+    if (cached) return cached;
+
+    // Run coverage (best-effort)
+    safeExec(this.commands.coverage!, this.projectRoot);
+
+    const unitCoverage = this.extractCoverageFromReport(this.paths.unitCoverage);
+    const integrationCoverage = this.extractCoverageFromReport(this.paths.integrationCoverage);
+    const e2eCoverage = this.extractCoverageFromReport(this.paths.e2eCoverage);
+    const visualCoverage = this.extractVisualTestCoverage();
+
+    const overall = Math.round(
+      (unitCoverage + integrationCoverage + e2eCoverage + visualCoverage) / 4
+    );
+
+    const coverage = {
+      unit: unitCoverage,
+      integration: integrationCoverage,
+      e2e: e2eCoverage,
+      visual: visualCoverage,
+      overall: clamp(overall, 0, 100),
+    };
+
+    this.setCachedMetric(cacheKey, coverage);
+    return coverage;
+  }
+
+  private extractCoverageFromReport(reportPath: string): number {
+    try {
+      const fullPath = safePathJoin(this.projectRoot, reportPath);
+      if (!fileExists(fullPath)) return 0;
+      const coverageData = tryJson<any>(readFileUtf8(fullPath));
+      if (!coverageData?.total?.lines?.pct && !coverageData?.total?.statements?.pct) return 0;
+      // Prefer lines; fallback to statements
+      const pct =
+        Number(coverageData.total.lines?.pct ?? coverageData.total.statements?.pct ?? 0);
+      return clamp(Math.round(pct), 0, 100);
+    } catch {
+      return 0;
+    }
+  }
+
+  private extractVisualTestCoverage(): number {
+    try {
+      const visualTestDir = safePathJoin(this.projectRoot, this.paths.visualTestsDir);
+      const componentDir = safePathJoin(this.projectRoot, this.paths.componentDir);
+      if (!fileExists(visualTestDir) || !fileExists(componentDir)) return 0;
+
+      const testFiles = (fs.readdirSync(visualTestDir) || [])
+        .filter(f => f.endsWith('.spec.ts') || f.endsWith('.spec.tsx'));
+      const componentFiles = this.getAllFiles(componentDir, '.tsx', '.ts');
+
+      if (componentFiles.length === 0) return 0;
+      const coverage = Math.round((testFiles.length / componentFiles.length) * 100);
+      return clamp(coverage, 0, 100);
+    } catch {
+      return 0;
+    }
+  }
+
+  private async collectTestResults(): Promise<QualityMetrics['testResults']> {
+    const cacheKey = 'testResults';
+    const cached = this.getCachedMetric<QualityMetrics['testResults']>(cacheKey);
+    if (cached) return cached;
+
+    const { ok, out } = safeExec(this.commands.tests!, this.projectRoot);
+    const testData = ok ? tryJson<any>(out) : null;
+
+    const total = Number(testData?.numTotalTests ?? 0);
+    const passed = Number(testData?.numPassedTests ?? 0);
+    const failed = Number(testData?.numFailedTests ?? 0);
+    const skipped = Number(testData?.numPendingTests ?? 0);
+    const flaky = this.detectFlakyTests();
+
+    const results = { total, passed, failed, skipped, flaky };
+    this.setCachedMetric(cacheKey, results);
+    return results;
+  }
+
+  private detectFlakyTests(): number {
+    try {
+      const testHistoryPath = safePathJoin(this.projectRoot, this.paths.testHistory);
+      if (!fileExists(testHistoryPath)) return 0;
+      const history = tryJson<Record<string, Array<{ status: string }>>>(readFileUtf8(testHistoryPath)) ?? {};
+      let flakyCount = 0;
+      for (const testName of Object.keys(history)) {
+        const results = (history[testName] || []).slice(-10);
+        const hasPassed = results.some(r => r.status === 'passed');
+        const hasFailed = results.some(r => r.status === 'failed');
+        if (hasPassed && hasFailed) flakyCount++;
+      }
+      return flakyCount;
+    } catch {
+      return 0;
+    }
+  }
+
+  private async collectPerformanceMetrics(): Promise<QualityMetrics['performance']> {
+    const cacheKey = 'performance';
+    const cached = this.getCachedMetric<QualityMetrics['performance']>(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const dir = safePathJoin(this.projectRoot, this.paths.perfReportsDir);
+      if (!fileExists(dir)) {
+        const perf = { loadTime: 0, interactionTime: 0, memoryUsage: 0, errorRate: 0 };
+        this.setCachedMetric(cacheKey, perf);
+        return perf;
+      }
+      const reportFiles = (fs.readdirSync(dir) || [])
+        .filter(f => f.endsWith('.json'))
+        .sort()
+        .slice(-5);
+
+      let totalLoad = 0, totalInter = 0, totalMem = 0, totalErr = 0, n = 0;
+      for (const f of reportFiles) {
+        const data = tryJson<any>(readFileUtf8(safePathJoin(dir, f)));
+        if (data?.metrics) {
+          totalLoad += Number(data.metrics.averageLoadTime ?? 0);
+          totalInter += Number(data.metrics.averageInteractionTime ?? 0);
+          totalMem += Number(data.metrics.peakMemoryUsage ?? 0);
+          totalErr += Number(data.metrics.errorRate ?? 0);
+          n++;
+        }
+      }
+      const perf = n > 0
+        ? {
+            loadTime: Math.round(totalLoad / n),
+            interactionTime: Math.round(totalInter / n),
+            memoryUsage: Math.round(totalMem / n),
+            errorRate: Math.round((totalErr / n) * 100) / 100
+          }
+        : { loadTime: 0, interactionTime: 0, memoryUsage: 0, errorRate: 0 };
+
+      this.setCachedMetric(cacheKey, perf);
+      return perf;
+    } catch {
+      const perf = { loadTime: 0, interactionTime: 0, memoryUsage: 0, errorRate: 0 };
+      this.setCachedMetric(cacheKey, perf);
+      return perf;
+    }
+  }
+
+  private async collectAccessibilityMetrics(): Promise<QualityMetrics['accessibility']> {
+    const cacheKey = 'accessibility';
+    const cached = this.getCachedMetric<QualityMetrics['accessibility']>(cacheKey);
+    if (cached) return cached;
+
+    const { ok, out } = safeExec(this.commands.accessibility!, this.projectRoot);
+    const a11yData = ok ? tryJson<any>(out) : null;
+
+    const accessibility = {
+      score: Math.round(Number(a11yData?.score ?? 0)),
+      violations: Number(a11yData?.violations?.length ?? 0),
+      warnings: Number(a11yData?.warnings?.length ?? 0),
+      passes: Number(a11yData?.passes?.length ?? 0),
+    };
+
+    this.setCachedMetric(cacheKey, accessibility);
+    return accessibility;
+  }
+
+  private async collectSecurityMetrics(): Promise<QualityMetrics['security']> {
+    const cacheKey = 'security';
+    const cached = this.getCachedMetric<QualityMetrics['security']>(cacheKey);
+    if (cached) return cached;
+
+    const { ok, out } = safeExec(this.commands.audit!, this.projectRoot);
+    const auditData = ok ? tryJson<any>(out) : null;
+
+    const vulnerabilities = {
+      critical: Number(auditData?.metadata?.vulnerabilities?.critical ?? 0),
+      high: Number(auditData?.metadata?.vulnerabilities?.high ?? 0),
+      medium: Number(auditData?.metadata?.vulnerabilities?.medium ?? 0),
+      low: Number(auditData?.metadata?.vulnerabilities?.low ?? 0),
+    };
+
+    const score = clamp(
+      Math.round(
+        100 - (vulnerabilities.critical * 20 +
+               vulnerabilities.high * 10 +
+               vulnerabilities.medium * 5 +
+               vulnerabilities.low * 1)
+      ),
+      0,
+      100
+    );
+
+    const security = { vulnerabilities, score };
+    this.setCachedMetric(cacheKey, security);
+    return security;
+  }
+
+  private async collectCodeQualityMetrics(): Promise<QualityMetrics['codeQuality']> {
+    const cacheKey = 'codeQuality';
+    const cached = this.getCachedMetric<QualityMetrics['codeQuality']>(cacheKey);
+    if (cached) return cached;
+
+    const maintainabilityIndex = this.calculateMaintainabilityIndex();
+    const technicalDebt = this.calculateTechnicalDebt();
+    const duplicateCode = this.calculateDuplicateCode();
+    const complexity = this.calculateComplexity();
+
+    const codeQuality = {
+      maintainabilityIndex,
+      technicalDebt,
+      duplicateCode,
+      complexity,
+    };
+
+    this.setCachedMetric(cacheKey, codeQuality);
+    return codeQuality;
+  }
+
+  /* -----------------------------
+   * Heuristics
+   * --------------------------- */
+
+  private calculateMaintainabilityIndex(): number {
+    try {
+      const srcDir = safePathJoin(this.projectRoot, 'src');
+      const files = this.getAllFiles(srcDir, '.ts', '.tsx');
+      if (files.length === 0) return 100;
+
+      let totalLines = 0;
+      for (const file of files) {
+        const content = readFileUtf8(file) ?? '';
+        totalLines += content.split('\n').length;
+      }
+      const avgLinesPerFile = totalLines / files.length;
+      const mi = clamp(Math.round(100 - (avgLinesPerFile / 10)), 0, 100);
+      return mi;
+    } catch {
+      return 0;
+    }
+  }
+
+  private calculateTechnicalDebt(): number {
+    try {
+      const srcDir = safePathJoin(this.projectRoot, 'src');
+      const files = this.getAllFiles(srcDir, '.ts', '.tsx');
+      let debtHours = 0;
+
+      for (const file of files) {
+        const content = readFileUtf8(file) ?? '';
+        const todoMatches = content.match(/\/\/\s*(TODO|FIXME|HACK)/gi) || [];
+        debtHours += todoMatches.length * 1;
+
+        const longFunctions = content.match(/function\s+\w+[^{]*{[^}]{500,}/g) || [];
+        debtHours += longFunctions.length * 0.5;
+
+        const lines = content.split('\n').length;
+        if (lines > 500) debtHours += 2;
+      }
+      return Math.round(debtHours);
+    } catch {
+      return 0;
+    }
+  }
+
+  private calculateDuplicateCode(): number {
+    try {
+      const srcDir = safePathJoin(this.projectRoot, 'src');
+      const files = this.getAllFiles(srcDir, '.ts', '.tsx');
+      const sigs = new Map<string, number>();
+      let totalFunctions = 0;
+
+      const fnRegex = /(?:function\s+\w+|const\s+\w+\s*=\s*(?:\([^)]*\)\s*=>|\([^)]*\)\s*:\s*[^=]*=>))/g;
+
+      for (const file of files) {
+        const content = readFileUtf8(file) ?? '';
+        const matches = content.match(fnRegex) || [];
+        for (const m of matches) {
+          const signature = m.replace(/\s+/g, ' ').trim();
+          sigs.set(signature, (sigs.get(signature) ?? 0) + 1);
+          totalFunctions++;
+        }
+      }
+
+      let duplicateFunctions = 0;
+      for (const [, count] of sigs) {
+        if (count > 1) duplicateFunctions += (count - 1);
+      }
+      const pct = totalFunctions > 0 ? (duplicateFunctions / totalFunctions) * 100 : 0;
+      return Math.round(pct);
+    } catch {
+      return 0;
+    }
+  }
+
+  private calculateComplexity(): number {
+    try {
+      const srcDir = safePathJoin(this.projectRoot, 'src');
+      const files = this.getAllFiles(srcDir, '.ts', '.tsx');
+
+      const decisionRegex = /\b(if|while|for|case|catch)\b|\|\||&&/g;
+      const fnRegex = /(?:function\s+\w+|const\s+\w+\s*=\s*(?:\([^)]*\)\s*=>|\([^)]*\)\s*:\s*[^=]*=>))/g;
+
+      let totalComplexity = 0;
+      let totalFunctions = 0;
+
+      for (const file of files) {
+        const content = readFileUtf8(file) ?? '';
+        const decisions = (content.match(decisionRegex) || []).length;
+        const functions = (content.match(fnRegex) || []).length;
+        if (functions > 0) {
+          totalComplexity += decisions + functions; // base 1 per function + decisions
+          totalFunctions += functions;
+        }
+      }
+      const avg = totalFunctions > 0 ? totalComplexity / totalFunctions : 0;
+      return Math.round(avg);
+    } catch {
+      return 0;
+    }
+  }
+
+  /* -----------------------------
+   * FS + Cache utils
+   * --------------------------- */
+
   private getAllFiles(dir: string, ...extensions: string[]): string[] {
-    const files: string[] = [];
-    if (!fs.existsSync(dir)) return files;
-    const items = fs.readdirSync(dir);
-    for (const item of items) {
-      const fullPath = path.join(dir, item);
-      const stat = fs.statSync(fullPath);
-      if (stat.isDirectory()) {
-        files.push(...this.getAllFiles(fullPath, ...extensions));
-      } else if (extensions.some(ext => item.endsWith(ext))) {
-        files.push(fullPath);
+    const out: string[] = [];
+    if (!fileExists(dir)) return out;
+
+    const stack: string[] = [dir];
+    while (stack.length) {
+      const current = stack.pop()!;
+      const items = fs.readdirSync(current);
+      for (const item of items) {
+        const full = safePathJoin(current, item);
+        const stat = fs.statSync(full);
+        if (stat.isDirectory()) {
+          stack.push(full);
+        } else if (extensions.some(ext => item.endsWith(ext))) {
+          out.push(full);
+        }
       }
     }
-    return files;
+    return out;
   }
-  private getCachedMetric(key: string): any {
-    const cached = this.metricsCache.get(key);
-    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
-      return cached.data;
+
+  private getCachedMetric<T>(key: string): T | null {
+    const entry = this.metricsCache.get(key) as CacheEntry<T> | undefined;
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp < this.cacheTimeout) {
+      return entry.data;
     }
+    this.metricsCache.delete(key);
     return null;
   }
-  private setCachedMetric(key: string, data: any): void {
-    this.metricsCache.set(key, {
-      data,
-      timestamp: Date.now()
 
+  private setCachedMetric<T>(key: string, data: T): void {
+    const entry: CacheEntry<T> = { data, timestamp: Date.now() };
+    this.metricsCache.set(key, entry);
   }
+}
+
+/* -----------------------------
+ * Convenience: one-shot collector
+ * --------------------------- */
+
+export async function collectAll(projectRoot: string = process.cwd()) {
+  const collector = new QualityMetricsCollector({ projectRoot });
+  const metrics = await collector.collectAllMetrics();
+  const gates = await collector.generateQualityGates(metrics);
+  await collector.saveTrend(metrics);
+  return { metrics, gates };
 }

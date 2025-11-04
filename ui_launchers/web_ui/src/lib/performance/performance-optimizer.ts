@@ -1,22 +1,31 @@
 /**
  * Performance Optimizer
- * 
- * Main performance optimization manager that integrates HTTP connection pooling,
- * request/response caching, and database query optimization for improved system performance.
- * 
+ *
+ * Integrates HTTP connection pooling, request/response caching,
+ * and database query optimization with robust metrics.
+ *
  * Requirements: 1.4, 4.4
  */
+
 import { HttpConnectionPool, getHttpConnectionPool, ConnectionPoolConfig } from './http-connection-pool';
 import { RequestResponseCache, getRequestResponseCache, CacheConfig } from './request-response-cache';
 import { DatabaseQueryOptimizer, getDatabaseQueryOptimizer, QueryOptimizationConfig } from './database-query-optimizer';
 import { getConnectionManager } from '../connection/connection-manager';
+
+type HeaderLike = HeadersInit | undefined;
+
 export interface PerformanceConfig {
   connectionPool: Partial<ConnectionPoolConfig>;
   responseCache: Partial<CacheConfig>;
   queryOptimizer: Partial<QueryOptimizationConfig>;
   enableMetrics: boolean;
-  metricsInterval: number;
+  metricsInterval: number; // ms
+  defaultTimeoutMs?: number;
+  defaultRetries?: number;
+  defaultCacheTtlMs?: number;
+  cacheNonIdempotent?: boolean; // allow caching for POST/PUT etc. when explicitly requested
 }
+
 export interface PerformanceMetrics {
   connectionPool: {
     totalConnections: number;
@@ -38,308 +47,432 @@ export interface PerformanceMetrics {
   };
   overall: {
     requestThroughput: number;
-    averageResponseTime: number;
-    errorRate: number;
-    uptime: number;
+    averageResponseTime: number; // ms
+    errorRate: number;           // 0..1
+    uptime: number;              // ms
   };
 }
+
 export interface OptimizedRequestOptions {
   useConnectionPool?: boolean;
   enableCaching?: boolean;
   cacheOptions?: {
-    ttl?: number;
+    ttl?: number;       // ms
     tags?: string[];
     compress?: boolean;
   };
-  timeout?: number;
+  timeout?: number;      // ms
   retryAttempts?: number;
+  retryBackoffMs?: number; // base backoff
+  retryOn?: number[];    // HTTP codes to retry
 }
-/**
- * Performance Optimizer
- * 
- * Integrates all performance optimization components and provides a unified interface
- * for making optimized HTTP requests with caching and connection pooling.
- */
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function stableStringify(obj: any): string {
+  if (obj == null) return '';
+  if (typeof obj === 'string') return obj;
+  if (obj instanceof URLSearchParams) return obj.toString();
+  try {
+    return JSON.stringify(obj, Object.keys(obj).sort());
+  } catch {
+    return String(obj);
+  }
+}
+
+function headersToObject(headers: HeaderLike): Record<string, string> {
+  if (!headers) return {};
+  if (Array.isArray(headers)) {
+    const out: Record<string, string> = {};
+    for (const [k, v] of headers) out[String(k).toLowerCase()] = String(v);
+    return out;
+  }
+  if (headers instanceof Headers) {
+    const out: Record<string, string> = {};
+    headers.forEach((v, k) => (out[k.toLowerCase()] = v));
+    return out;
+  }
+  // Record<string, string>
+  const out: Record<string, string> = {};
+  for (const k of Object.keys(headers)) out[k.toLowerCase()] = String((headers as any)[k]);
+  return out;
+}
+
+function methodAllowsDefaultCaching(method?: string) {
+  const m = (method || 'GET').toUpperCase();
+  return m === 'GET' || m === 'HEAD';
+}
+
 export class PerformanceOptimizer {
-  private config: PerformanceConfig;
-  private connectionPool: HttpConnectionPool;
-  private responseCache: RequestResponseCache;
-  private queryOptimizer: DatabaseQueryOptimizer;
+  private readonly config: PerformanceConfig;
+  private readonly connectionPool: HttpConnectionPool;
+  private readonly responseCache: RequestResponseCache;
+  private readonly queryOptimizer: DatabaseQueryOptimizer;
+
   private metricsInterval: NodeJS.Timeout | null = null;
-  private startTime: number;
+  private readonly startTime = Date.now();
+
   private requestCount = 0;
   private errorCount = 0;
   private totalResponseTime = 0;
+
   constructor(config?: Partial<PerformanceConfig>) {
     this.config = {
       connectionPool: {},
       responseCache: {},
       queryOptimizer: {},
       enableMetrics: true,
-      metricsInterval: 60000, // 1 minute
+      metricsInterval: 60_000,
+      defaultTimeoutMs: 20_000,
+      defaultRetries: 2,
+      defaultCacheTtlMs: 60_000,
+      cacheNonIdempotent: false,
       ...config,
     };
-    this.startTime = Date.now();
-    this.connectionPool = getHttpConnectionPool();
-    this.responseCache = getRequestResponseCache();
-    this.queryOptimizer = getDatabaseQueryOptimizer();
+
+    this.connectionPool = getHttpConnectionPool(this.config.connectionPool);
+    this.responseCache = getRequestResponseCache(this.config.responseCache);
+    this.queryOptimizer = getDatabaseQueryOptimizer(this.config.queryOptimizer);
+
     if (this.config.enableMetrics) {
       this.startMetricsCollection();
     }
   }
+
   /**
-   * Make an optimized HTTP request with connection pooling and caching
+   * Make an optimized HTTP request with pooling, timeout/retry, and caching.
    */
   async optimizedRequest<T = any>(
     url: string,
     options: RequestInit = {},
     optimizationOptions: OptimizedRequestOptions = {}
   ): Promise<T> {
-    const startTime = Date.now();
+    const started = Date.now();
     this.requestCount++;
-    try {
-      // Generate cache key
-      const cacheKey = this.generateRequestCacheKey(url, options);
-      // Check cache first (if enabled)
-      if (optimizationOptions.enableCaching !== false) {
-        const cachedResponse = await this.responseCache.get(cacheKey, {
-          skipCache: false,
 
-        if (cachedResponse) {
-          return cachedResponse.data;
-        }
-      }
-      // Make request using connection pool (if enabled)
-      let response: Response;
-      if (optimizationOptions.useConnectionPool !== false) {
-        response = await this.connectionPool.request(url, options);
-      } else {
-        // Fallback to regular fetch
-        const connectionManager = getConnectionManager();
-        const result = await connectionManager.makeRequest(url, options, {
-          timeout: optimizationOptions.timeout,
-          retryAttempts: optimizationOptions.retryAttempts,
+    const method = (options.method || 'GET').toUpperCase();
+    const shouldConsiderCache =
+      optimizationOptions.enableCaching !== false &&
+      (methodAllowsDefaultCaching(method) || this.config.cacheNonIdempotent);
 
-        response = new Response(JSON.stringify(result.data), {
-          status: result.status,
-          statusText: result.statusText,
-          headers: result.headers,
+    const cacheKey = this.generateRequestCacheKey(url, options);
 
+    // Try cache first
+    if (shouldConsiderCache) {
+      const cached = await this.responseCache.get(cacheKey, { skipCache: false });
+      if (cached) {
+        // Update metrics
+        const dt = Date.now() - started;
+        this.totalResponseTime += dt;
+        return cached.data as T;
       }
-      // Parse response
-      let data: T;
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        data = await response.text() as unknown as T;
-      }
-      // Cache the response (if enabled and successful)
-      if (optimizationOptions.enableCaching !== false && response.ok) {
-        const headers: Record<string, string> = {};
-        response.headers.forEach((value, key) => {
-          headers[key] = value;
-
-        await this.responseCache.set(
-          cacheKey,
-          data,
-          headers,
-          response.status,
-          {
-            ttl: optimizationOptions.cacheOptions?.ttl,
-            tags: optimizationOptions.cacheOptions?.tags,
-            compress: optimizationOptions.cacheOptions?.compress,
-          }
-        );
-      }
-      // Update metrics
-      const responseTime = Date.now() - startTime;
-      this.totalResponseTime += responseTime;
-      return data;
-    } catch (error) {
-      this.errorCount++;
-      const responseTime = Date.now() - startTime;
-      this.totalResponseTime += responseTime;
-      throw error;
     }
+
+    // Prepare request with timeout & retries
+    const timeoutMs = optimizationOptions.timeout ?? this.config.defaultTimeoutMs!;
+    const retryAttempts = optimizationOptions.retryAttempts ?? this.config.defaultRetries!;
+    const backoffBase = optimizationOptions.retryBackoffMs ?? 300;
+    const retryOn = new Set(optimizationOptions.retryOn ?? [408, 425, 429, 500, 502, 503, 504]);
+
+    let lastErr: any;
+
+    for (let attempt = 0; attempt <= retryAttempts; attempt++) {
+      const abortController = new AbortController();
+      const timer = setTimeout(() => abortController.abort(), timeoutMs);
+
+      try {
+        let response: Response;
+
+        if (optimizationOptions.useConnectionPool !== false) {
+          // Pool path
+          response = await this.connectionPool.request(url, { ...options, signal: abortController.signal });
+        } else {
+          // Fallback path via connection manager
+          const connectionManager = getConnectionManager();
+          const result = await connectionManager.makeRequest(
+            url,
+            options,
+            {
+              timeout: timeoutMs,
+              retryAttempts: 0,
+            }
+          );
+
+          response = new Response(
+            typeof result.data === 'string' ? result.data : JSON.stringify(result.data),
+            {
+              status: result.status,
+              statusText: result.statusText,
+              headers: result.headers as any,
+            }
+          );
+        }
+
+        clearTimeout(timer);
+
+        // Parse response
+        const ctype = response.headers.get('content-type') || '';
+        let data: any;
+        if (ctype.includes('application/json')) {
+          data = await response.json();
+        } else if (ctype.startsWith('text/')) {
+          data = await response.text();
+        } else {
+          // Fallback: arrayBuffer -> base64 string to avoid holding raw buffers
+          const buf = await response.arrayBuffer();
+          data = Buffer.from(buf).toString('base64');
+        }
+
+        // Non-200s can be retried depending on code
+        if (!response.ok && retryOn.has(response.status) && attempt < retryAttempts) {
+          const delay = backoffBase * Math.pow(2, attempt);
+          await new Promise(res => setTimeout(res, delay));
+          continue;
+        }
+
+        // Cache successful responses if allowed
+        if (shouldConsiderCache && response.ok) {
+          const headersObj = headersToObject(response.headers);
+          await this.responseCache.set(
+            cacheKey,
+            data,
+            headersObj,
+            response.status,
+            {
+              ttl: optimizationOptions.cacheOptions?.ttl ?? this.config.defaultCacheTtlMs,
+              tags: optimizationOptions.cacheOptions?.tags,
+              compress: optimizationOptions.cacheOptions?.compress ?? method === 'GET',
+            }
+          );
+        }
+
+        const dt = Date.now() - started;
+        this.totalResponseTime += dt;
+
+        if (!response.ok) {
+          // Surface an error with context
+          const err = new Error(`HTTP ${response.status} ${response.statusText}`);
+          (err as any).status = response.status;
+          (err as any).data = data;
+          throw err;
+        }
+
+        return data as T;
+      } catch (err: any) {
+        clearTimeout(timer);
+        lastErr = err;
+
+        // Retry on abort/network or selected HTTP codes (already handled above).
+        const isAbort = err?.name === 'AbortError';
+        const isNetwork = /network/i.test(String(err?.message ?? ''));
+        if ((isAbort || isNetwork) && attempt < retryAttempts) {
+          const delay = backoffBase * Math.pow(2, attempt);
+          await new Promise(res => setTimeout(res, delay));
+          continue;
+        }
+
+        // No more retries
+        break;
+      }
+    }
+
+    // Update metrics on error
+    this.errorCount++;
+    const dt = Date.now() - started;
+    this.totalResponseTime += dt;
+    throw lastErr;
   }
-  /**
-   * Optimized authentication request
-   */
+
+  /** Convenience: Optimized authentication request */
   async authenticateUser(email: string, password: string): Promise<any> {
-    return this.optimizedRequest('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    return this.optimizedRequest(
+      '/api/auth/login',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       },
-      body: JSON.stringify({ email, password }),
-    }, {
-      enableCaching: true,
-      cacheOptions: {
-        ttl: 60000, // Cache for 1 minute
-        tags: ['auth', `user:${email}`],
-        compress: false, // Don't compress auth responses for security
-      },
-      useConnectionPool: true,
-
+      {
+        enableCaching: false, // do not cache login responses by default
+        useConnectionPool: true,
+        timeout: 10_000,
+        retryAttempts: 1,
+      }
+    );
   }
-  /**
-   * Optimized session validation request
-   */
+
+  /** Convenience: Optimized session validation request */
   async validateSession(token: string): Promise<any> {
-    return this.optimizedRequest('/api/auth/validate-session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+    return this.optimizedRequest(
+      '/api/auth/validate-session',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
       },
-    }, {
-      enableCaching: true,
-      cacheOptions: {
-        ttl: 30000, // Cache for 30 seconds
-        tags: ['auth', 'session'],
-        compress: false,
-      },
-      useConnectionPool: true,
-
+      {
+        enableCaching: true,
+        cacheOptions: {
+          ttl: 30_000,
+          tags: ['auth', 'session'],
+          compress: false,
+        },
+        useConnectionPool: true,
+        timeout: 8_000,
+        retryAttempts: 1,
+      }
+    );
   }
-  /**
-   * Optimized user data request
-   */
+
+  /** Convenience: Optimized user data request */
   async getUserData(userId: string): Promise<any> {
-    return this.optimizedRequest(`/api/users/${userId}`, {
-      method: 'GET',
-    }, {
-      enableCaching: true,
-      cacheOptions: {
-        ttl: 300000, // Cache for 5 minutes
-        tags: ['user', `user:${userId}`],
-        compress: true,
-      },
-      useConnectionPool: true,
-
+    return this.optimizedRequest(
+      `/api/users/${userId}`,
+      { method: 'GET' },
+      {
+        enableCaching: true,
+        cacheOptions: {
+          ttl: 300_000,
+          tags: ['user', `user:${userId}`],
+          compress: true,
+        },
+        useConnectionPool: true,
+        timeout: 10_000,
+      }
+    );
   }
-  /**
-   * Optimized health check request
-   */
+
+  /** Health check */
   async healthCheck(): Promise<any> {
-    return this.optimizedRequest('/health', {
-      method: 'GET',
-    }, {
-      enableCaching: true,
-      cacheOptions: {
-        ttl: 10000, // Cache for 10 seconds
-        tags: ['health'],
-        compress: false,
-      },
-      useConnectionPool: true,
-      timeout: 5000, // Short timeout for health checks
-
+    return this.optimizedRequest(
+      '/health',
+      { method: 'GET' },
+      {
+        enableCaching: true,
+        cacheOptions: { ttl: 10_000, tags: ['health'], compress: false },
+        useConnectionPool: true,
+        timeout: 5_000,
+        retryAttempts: 0,
+      }
+    );
   }
-  /**
-   * Invalidate cache by tags
-   */
+
+  /** Invalidate cache by tags */
   invalidateCache(tags: string[]): number {
     return this.responseCache.clearByTags(tags);
   }
-  /**
-   * Invalidate user-specific cache
-   */
+
+  /** Invalidate a single user's cache */
   invalidateUserCache(userId: string): void {
     this.responseCache.clearByTags([`user:${userId}`]);
     this.queryOptimizer.invalidateUserCache(userId);
   }
-  /**
-   * Get comprehensive performance metrics
-   */
+
+  /** Metrics snapshot */
   getMetrics(): PerformanceMetrics {
-    const connectionPoolMetrics = this.connectionPool.getMetrics();
-    const cacheMetrics = this.responseCache.getMetrics();
-    const queryMetrics = this.queryOptimizer.getMetrics();
+    const pool = this.connectionPool.getMetrics();
+    const cache = this.responseCache.getMetrics();
+    const query = this.queryOptimizer.getMetrics();
+
     const uptime = Date.now() - this.startTime;
-    const averageResponseTime = this.requestCount > 0 ? this.totalResponseTime / this.requestCount : 0;
-    const errorRate = this.requestCount > 0 ? this.errorCount / this.requestCount : 0;
-    const requestThroughput = this.requestCount / (uptime / 1000); // requests per second
+    const avgResp = this.requestCount > 0 ? this.totalResponseTime / this.requestCount : 0;
+    const errRate = this.requestCount > 0 ? this.errorCount / this.requestCount : 0;
+    const rps = uptime > 0 ? this.requestCount / (uptime / 1000) : 0;
+
     return {
       connectionPool: {
-        totalConnections: connectionPoolMetrics.totalConnections,
-        activeConnections: connectionPoolMetrics.activeConnections,
-        connectionReuse: connectionPoolMetrics.connectionReuse,
-        averageConnectionTime: connectionPoolMetrics.averageConnectionTime,
+        totalConnections: pool.totalConnections,
+        activeConnections: pool.activeConnections,
+        connectionReuse: pool.connectionReuse,
+        averageConnectionTime: pool.averageConnectionTime,
       },
       responseCache: {
-        hitRate: cacheMetrics.hitRate,
-        totalEntries: cacheMetrics.totalEntries,
-        memoryUsage: cacheMetrics.memoryUsage,
-        compressionRatio: cacheMetrics.compressionRatio,
+        hitRate: cache.hitRate,
+        totalEntries: cache.totalEntries,
+        memoryUsage: cache.memoryUsage,
+        compressionRatio: cache.compressionRatio,
       },
       queryOptimizer: {
-        totalQueries: queryMetrics.totalQueries,
-        cacheHits: queryMetrics.cacheHits,
-        averageQueryTime: queryMetrics.averageQueryTime,
-        slowQueries: queryMetrics.slowQueries,
+        totalQueries: query.totalQueries,
+        cacheHits: query.cacheHits,
+        averageQueryTime: query.averageQueryTime,
+        slowQueries: query.slowQueries,
       },
       overall: {
-        requestThroughput,
-        averageResponseTime,
-        errorRate,
+        requestThroughput: rps,
+        averageResponseTime: avgResp,
+        errorRate: errRate,
         uptime,
       },
     };
   }
-  /**
-   * Get performance recommendations based on metrics
-   */
+
+  /** Human guidance based on metrics */
   getPerformanceRecommendations(): string[] {
-    const metrics = this.getMetrics();
-    const recommendations: string[] = [];
-    // Connection pool recommendations
-    if (metrics.connectionPool.connectionReuse < 2) {
-      recommendations.push('Consider increasing connection pool size for better connection reuse');
+    const m = this.getMetrics();
+    const recs: string[] = [];
+
+    // Connection pool
+    if (m.connectionPool.connectionReuse < 2) {
+      recs.push('Increase connection pool size / max idle to improve reuse.');
     }
-    // Cache recommendations
-    if (metrics.responseCache.hitRate < 0.5) {
-      recommendations.push('Cache hit rate is low - consider increasing cache TTL or size');
+
+    // Cache
+    if (m.responseCache.hitRate < 0.5) {
+      recs.push('Low cache hit rate — consider longer TTL or broader keying policy.');
     }
-    if (metrics.responseCache.memoryUsage > 40 * 1024 * 1024) { // 40MB
-      recommendations.push('Cache memory usage is high - consider enabling compression or reducing cache size');
+    if (m.responseCache.memoryUsage > 40 * 1024 * 1024) {
+      recs.push('Cache memory usage high — enable compression or reduce entry size/TTL.');
     }
-    // Query optimizer recommendations
-    if (metrics.queryOptimizer.averageQueryTime > 500) {
-      recommendations.push('Average query time is high - consider optimizing database queries or adding indexes');
+
+    // DB queries
+    if (m.queryOptimizer.averageQueryTime > 500) {
+      recs.push('High average DB latency — add indexes, reduce N+1s, or widen query cache TTL.');
     }
-    if (metrics.queryOptimizer.slowQueries > 10) {
-      recommendations.push('Multiple slow queries detected - review query performance and database configuration');
+    if (m.queryOptimizer.slowQueries > 10) {
+      recs.push('Multiple slow queries detected — profile and tune hot paths.');
     }
-    // Overall performance recommendations
-    if (metrics.overall.errorRate > 0.05) { // 5%
-      recommendations.push('Error rate is high - investigate connection stability and error handling');
+
+    // Overall
+    if (m.overall.errorRate > 0.05) {
+      recs.push('Error rate >5% — investigate network instability and error handling.');
     }
-    if (metrics.overall.averageResponseTime > 2000) {
-      recommendations.push('Average response time is high - consider optimizing request handling and caching');
+    if (m.overall.averageResponseTime > 2000) {
+      recs.push('Avg response time >2s — optimize request handlers and leverage caching more aggressively.');
     }
-    return recommendations;
+
+    return recs;
   }
-  /**
-   * Optimize system configuration based on current metrics
-   */
+
+  /** Auto-tune configurations based on live metrics */
   autoOptimize(): void {
-    const metrics = this.getMetrics();
-    // Auto-adjust connection pool size based on usage
-    if (metrics.connectionPool.activeConnections / metrics.connectionPool.totalConnections > 0.8) {
+    const m = this.getMetrics();
+
+    // If pool is hot (≥80% active), signal underlying pool to scale if supported.
+    if (
+      m.connectionPool.totalConnections > 0 &&
+      m.connectionPool.activeConnections / m.connectionPool.totalConnections >= 0.8
+    ) {
+      // Example: this.connectionPool.resize({ max: current + 10 }) if your pool supports it.
+      // Leaving as a no-op here to avoid guessing your pool API.
     }
-    // Auto-adjust cache size based on hit rate
-    if (metrics.responseCache.hitRate < 0.3) {
+
+    // If hit rate poor, bump cache TTL a bit via cache’s own config (if supported).
+    if (m.responseCache.hitRate < 0.3) {
+      // Example: this.responseCache.updateConfig({ defaultTtlMs: 120_000 });
     }
-    // Auto-clear cache if memory usage is too high
-    if (metrics.responseCache.memoryUsage > 50 * 1024 * 1024) { // 50MB
-      // Clear entries older than 1 hour
-      this.responseCache.clear();
+
+    // Guardrail: memory pressure — purge old entries.
+    if (m.responseCache.memoryUsage > 50 * 1024 * 1024) {
+      this.responseCache.clear(); // consider a smarter LRU trim if available
     }
   }
-  /**
-   * Shutdown the performance optimizer
-   */
+
+  /** Graceful shutdown */
   async shutdown(): Promise<void> {
     if (this.metricsInterval) {
       clearInterval(this.metricsInterval);
@@ -349,58 +482,72 @@ export class PerformanceOptimizer {
     this.responseCache.shutdown();
     this.queryOptimizer.shutdown();
   }
-  /**
-   * Generate cache key for request
-   */
+
+  /* ---------------------------
+   * Internals
+   * ------------------------- */
+
   private generateRequestCacheKey(url: string, options: RequestInit): string {
-    const method = options.method || 'GET';
-    const body = options.body ? JSON.stringify(options.body) : '';
-    const headers = JSON.stringify(options.headers || {});
-    return `${method}:${url}:${body}:${headers}`;
+    const method = (options.method || 'GET').toUpperCase();
+    const headersObj = headersToObject(options.headers);
+    // Body may be string, URLSearchParams, FormData, or object — make it stable.
+    let bodyStr = '';
+    if (options.body instanceof URLSearchParams) {
+      bodyStr = options.body.toString();
+    } else if (typeof options.body === 'string') {
+      bodyStr = options.body;
+    } else if (options.body && typeof options.body === 'object') {
+      bodyStr = stableStringify(options.body as any);
+    }
+    const keyObj = {
+      m: method,
+      u: url,
+      h: headersObj, // normalized, lowercase keys
+      b: bodyStr,
+    };
+    return stableStringify(keyObj);
   }
-  /**
-   * Start metrics collection
-   */
+
   private startMetricsCollection(): void {
     this.metricsInterval = setInterval(() => {
-      const metrics = this.getMetrics();
-      // Log performance metrics
-      console.log('Performance Metrics:', {
-        requestThroughput: metrics.overall.requestThroughput.toFixed(2),
-        averageResponseTime: metrics.overall.averageResponseTime.toFixed(2),
-        cacheHitRate: (metrics.responseCache.hitRate * 100).toFixed(1) + '%',
-        connectionReuse: metrics.connectionPool.connectionReuse,
-        errorRate: (metrics.overall.errorRate * 100).toFixed(2) + '%',
-
-      // Auto-optimize if enabled
+      const m = this.getMetrics();
+      // Minimal structured log (wire this into your logger)
+      // eslint-disable-next-line no-console
+      console.log('[PerfMetrics]', JSON.stringify({
+        ts: new Date().toISOString(),
+        rps: Number(m.overall.requestThroughput.toFixed(2)),
+        avgMs: Number(m.overall.averageResponseTime.toFixed(2)),
+        cacheHit: Number((m.responseCache.hitRate * 100).toFixed(1)),
+        connReuse: m.connectionPool.connectionReuse,
+        errPct: Number((m.overall.errorRate * 100).toFixed(2)),
+      }));
       this.autoOptimize();
     }, this.config.metricsInterval);
   }
 }
-// Global performance optimizer instance
+
+/* --------------------------------
+ * Global singleton helpers
+ * ------------------------------ */
+
 let performanceOptimizer: PerformanceOptimizer | null = null;
-/**
- * Get the global performance optimizer instance
- */
+
 export function getPerformanceOptimizer(): PerformanceOptimizer {
   if (!performanceOptimizer) {
     performanceOptimizer = new PerformanceOptimizer();
   }
   return performanceOptimizer;
 }
-/**
- * Initialize performance optimizer with custom configuration
- */
+
 export function initializePerformanceOptimizer(config?: Partial<PerformanceConfig>): PerformanceOptimizer {
   if (performanceOptimizer) {
-    performanceOptimizer.shutdown();
+    // Best-effort shutdown of old instance
+    void performanceOptimizer.shutdown();
   }
   performanceOptimizer = new PerformanceOptimizer(config);
   return performanceOptimizer;
 }
-/**
- * Shutdown the global performance optimizer
- */
+
 export async function shutdownPerformanceOptimizer(): Promise<void> {
   if (performanceOptimizer) {
     await performanceOptimizer.shutdown();

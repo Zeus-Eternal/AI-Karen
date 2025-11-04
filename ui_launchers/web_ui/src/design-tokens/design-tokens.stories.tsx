@@ -319,7 +319,7 @@ export const Overview: Story = {
       <div>
         <h2 className="text-2xl font-bold mb-4">Component Examples</h2>
         <div className="flex gap-4">
-          <button 
+          <Button 
             className="px-6 py-3 rounded-lg font-medium transition-all"
             style={{ 
               backgroundColor: designTokens.colors.primary['500'],
@@ -330,7 +330,7 @@ export const Overview: Story = {
               transitionTimingFunction: designTokens.animations.easing.out
             }}
           >
-          </button>
+          </Button>
           
           <div 
             className="p-6 rounded-lg"

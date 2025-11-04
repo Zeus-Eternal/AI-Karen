@@ -161,7 +161,7 @@ describe('Panel Spacing and Alignment Fixes', () => {
       render(
         <PanelHeader
           title="Test Title"
-          actions={<button aria-label="Button">Action</button>}
+          actions={<Button aria-label="Button">Action</Button>}
           showCloseButton={true}
           onClose={mockClose}
         />

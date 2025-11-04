@@ -243,7 +243,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
           <p className="text-sm text-muted-foreground mb-4 md:text-base lg:text-lg">
           </p>
           {onAnalyze && (
-            <button onClick={handleAnalyze} disabled={isAnalyzing} aria-label="Button">
+            <Button onClick={handleAnalyze} disabled={isAnalyzing} aria-label="Button">
               <Zap className="h-4 w-4 mr-2 " />
               {isAnalyzing ? 'Analyzing...' : 'Analyze File'}
             </Button>

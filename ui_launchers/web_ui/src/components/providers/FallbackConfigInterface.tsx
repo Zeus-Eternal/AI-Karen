@@ -296,7 +296,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
           <div>
             <div className="flex items-center justify-between mb-3">
               <Label>Providers (in fallback order)</Label>
-              <button size="sm" onClick={addProvider} aria-label="Button">
+              <Button size="sm" onClick={addProvider} aria-label="Button">
                 <Plus className="w-4 h-4 mr-2 " />
               </Button>
             </div>
@@ -464,7 +464,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
             <div className="flex items-center gap-2">
               <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
                 <DialogTrigger asChild>
-                  <button aria-label="Button">
+                  <Button aria-label="Button">
                     <Plus className="w-4 h-4 mr-2 " />
                   </Button>
                 </DialogTrigger>
@@ -617,7 +617,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                   <TabsContent value="chains" className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium">Fallback Chains</h4>
-                      <button
+                      <Button
                         size="sm"
                         onClick={() => {
                           setEditingChain(null);

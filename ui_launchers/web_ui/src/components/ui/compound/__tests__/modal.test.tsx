@@ -15,8 +15,8 @@ describe("Modal Compound Component", () => {
             <p>Modal body content</p>
           </Modal.Body>
           <Modal.Actions>
-            <button aria-label="Button">Cancel</button>
-            <button aria-label="Button">Confirm</button>
+            <Button aria-label="Button">Cancel</Button>
+            <Button aria-label="Button">Confirm</Button>
           </Modal.Actions>
         </Modal.Content>
       </Modal.Root>
@@ -72,7 +72,7 @@ describe("Modal Compound Component", () => {
       <Modal.Root open={true}>
         <Modal.Content>
           <Modal.Actions justify="center" data-testid="centered-actions">
-            <button aria-label="Button">Centered Action</button>
+            <Button aria-label="Button">Centered Action</Button>
           </Modal.Actions>
         </Modal.Content>
       </Modal.Root>
@@ -86,7 +86,7 @@ describe("Modal Compound Component", () => {
     render(
       <Modal.Root>
         <Modal.Trigger asChild>
-          <button aria-label="Button">Open Modal</button>
+          <Button aria-label="Button">Open Modal</Button>
         </Modal.Trigger>
         <Modal.Content>
           <Modal.Body>Modal content</Modal.Body>

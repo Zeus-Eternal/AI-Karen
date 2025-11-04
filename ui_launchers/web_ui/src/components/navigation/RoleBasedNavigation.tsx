@@ -132,7 +132,7 @@ export const RoleBasedNavigation: React.FC<RoleBasedNavigationProps> = ({
     if (variant === 'header') {
       return (
         <Link key={item.href} href={item.href}>
-          <button
+          <Button
             variant={isActive ? 'secondary' : 'ghost'}
             size="sm"
             className={cn(
@@ -154,7 +154,7 @@ export const RoleBasedNavigation: React.FC<RoleBasedNavigationProps> = ({
 
     return (
       <Link key={item.href} href={item.href}>
-        <button
+        <Button
           variant={isActive ? 'secondary' : 'ghost'}
           className={cn(
             'w-full justify-start h-auto p-3',

@@ -24,9 +24,9 @@ vi.mock('../EnhancedModelSelector', () => ({
   default: ({ onModelChange }: any) => (
     <div data-testid="enhanced-model-selector">
       Enhanced Model Selector
-      <button onClick={() => onModelChange?.({ id: 'test-model', name: 'Test Model' })}>
+      <Button onClick={() => onModelChange?.({ id: 'test-model', name: 'Test Model' })}>
         Select Model
-      </button>
+      </Button>
     </div>
   )
 }));

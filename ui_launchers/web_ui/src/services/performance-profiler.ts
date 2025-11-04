@@ -1,7 +1,8 @@
 /**
  * Performance Profiler and Bottleneck Analyzer
- * Provides detailed execution analysis, bottleneck detection, and optimization recommendations
+ * Production-grade, SSR-safe, with web vitals + long task + resource/nav observers
  */
+
 export interface PerformanceProfile {
   id: string;
   name: string;
@@ -14,27 +15,20 @@ export interface PerformanceProfile {
   bottleneck: boolean;
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
+
 export interface Bottleneck {
   id: string;
   type: 'cpu' | 'memory' | 'network' | 'render' | 'javascript';
   location: string;
   description: string;
   impact: number; // 0-100 scale
-  frequency: number; // How often it occurs
-  duration: number; // Average duration in ms
+  frequency: number; // How often it occurs (recently de-duplicated)
+  duration: number; // Avg duration in ms
   suggestions: string[];
   priority: 'low' | 'medium' | 'high' | 'critical';
   detectedAt: number;
 }
-export interface PerformanceComparison {
-  id: string;
-  name: string;
-  baseline: PerformanceMetrics;
-  current: PerformanceMetrics;
-  improvement: number; // percentage change
-  regression: boolean;
-  significance: number; // statistical significance 0-1
-}
+
 interface PerformanceMetrics {
   duration: number;
   memoryUsage: number;
@@ -43,6 +37,17 @@ interface PerformanceMetrics {
   networkTime: number;
   samples: number;
 }
+
+export interface PerformanceComparison {
+  id: string;
+  name: string;
+  baseline: PerformanceMetrics;
+  current: PerformanceMetrics;
+  improvement: number; // percentage change
+  regression: boolean;
+  significance: number; // 0-1
+}
+
 export interface OptimizationSuggestion {
   id: string;
   type: 'code' | 'architecture' | 'configuration' | 'infrastructure';
@@ -55,6 +60,7 @@ export interface OptimizationSuggestion {
   estimatedGain: number; // percentage improvement
   confidence: number; // 0-100
 }
+
 export interface RegressionTest {
   id: string;
   name: string;
@@ -65,120 +71,311 @@ export interface RegressionTest {
   trend: 'improving' | 'stable' | 'degrading';
   history: Array<{ timestamp: number; value: number }>;
 }
+
+type Listener<T> = (payload: T) => void;
+
+const isBrowser =
+  typeof window !== 'undefined' &&
+  typeof performance !== 'undefined' &&
+  typeof document !== 'undefined';
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function priorityFromImpact(impact: number): Bottleneck['priority'] {
+  if (impact >= 80) return 'critical';
+  if (impact >= 60) return 'high';
+  if (impact >= 30) return 'medium';
+  return 'low';
+}
+
+function nowMs(): number {
+  return isBrowser ? performance.now() : Date.now();
+}
+
 export class PerformanceProfiler {
+  // Data
   private profiles: PerformanceProfile[] = [];
   private bottlenecks: Bottleneck[] = [];
   private comparisons: PerformanceComparison[] = [];
   private suggestions: OptimizationSuggestion[] = [];
   private regressionTests: RegressionTest[] = [];
+
+  // Observers & timers
   private observers: PerformanceObserver[] = [];
+  private mutationObserver: MutationObserver | null = null;
+  private analysisTimer: number | null = null;
+
+  // Active profile map
   private activeProfiles: Map<string, PerformanceProfile> = new Map();
+
+  // Config
   private isEnabled = true;
+  private readonly maxProfiles = 1000;
+  private readonly maxBottlenecks = 100;
+  private readonly analysisIntervalMs = 30_000;
+  private readonly dedupeWindowMs = 60_000;
+  private readonly keepRecent = 50;
+
+  // Subscriptions
+  private bottleneckListeners: Set<Listener<Bottleneck>> = new Set();
+  private suggestionListeners: Set<Listener<OptimizationSuggestion>> = new Set();
+
   constructor() {
-    this.initializeProfiler();
+    if (isBrowser) {
+      this.initializeProfiler();
+    }
   }
-  /**
-   * Initialize the performance profiler
-   */
+
+  // ---------- Lifecycle ----------
+
   private initializeProfiler(): void {
     this.setupPerformanceObservers();
     this.setupUserTimingCapture();
     this.setupLongTaskDetection();
+    this.setupWebVitals();
     this.setupRenderProfiler();
-    this.startBottleneckDetection();
+    this.startPeriodicAnalysis();
   }
-  /**
-   * Set up performance observers
-   */
+
+  public setEnabled(enabled: boolean): void {
+    this.isEnabled = enabled;
+  }
+
+  public destroy(): void {
+    this.clear();
+    this.observers.forEach(o => o.disconnect());
+    this.observers = [];
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+      this.mutationObserver = null;
+    }
+    if (this.analysisTimer != null) {
+      window.clearInterval(this.analysisTimer);
+      this.analysisTimer = null;
+    }
+    this.bottleneckListeners.clear();
+    this.suggestionListeners.clear();
+  }
+
+  public clear(): void {
+    this.profiles = [];
+    this.bottlenecks = [];
+    this.comparisons = [];
+    this.suggestions = [];
+    this.activeProfiles.clear();
+  }
+
+  // ---------- Observers ----------
+
   private setupPerformanceObservers(): void {
-    if (!('PerformanceObserver' in window)) return;
-    // Observe navigation timing
-    try {
-      const navigationObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          this.analyzeNavigationTiming(entry as PerformanceNavigationTiming);
-        }
+    if (!isBrowser || typeof PerformanceObserver === 'undefined') return;
 
-      navigationObserver.observe({ entryTypes: ['navigation'] });
+    // Navigation
+    try {
+      const navigationObserver = new PerformanceObserver(list => {
+        for (const e of list.getEntries()) {
+          this.analyzeNavigationTiming(e as PerformanceNavigationTiming);
+        }
+      });
+      navigationObserver.observe({ type: 'navigation', buffered: true } as any);
       this.observers.push(navigationObserver);
-    } catch (error) {
-    }
-    // Observe resource timing
-    try {
-      const resourceObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          this.analyzeResourceTiming(entry as PerformanceResourceTiming);
-        }
+    } catch {}
 
-      resourceObserver.observe({ entryTypes: ['resource'] });
+    // Resource
+    try {
+      const resourceObserver = new PerformanceObserver(list => {
+        for (const e of list.getEntries()) {
+          this.analyzeResourceTiming(e as PerformanceResourceTiming);
+        }
+      });
+      resourceObserver.observe({ type: 'resource', buffered: true } as any);
       this.observers.push(resourceObserver);
-    } catch (error) {
-    }
-    // Observe paint timing
-    try {
-      const paintObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          this.analyzePaintTiming(entry);
-        }
+    } catch {}
 
-      paintObserver.observe({ entryTypes: ['paint'] });
+    // Paint (FCP lives here for some browsers)
+    try {
+      const paintObserver = new PerformanceObserver(list => {
+        for (const e of list.getEntries()) {
+          this.analyzePaintTiming(e);
+        }
+      });
+      paintObserver.observe({ type: 'paint', buffered: true } as any);
       this.observers.push(paintObserver);
-    } catch (error) {
-    }
+    } catch {}
   }
-  /**
-   * Set up user timing capture
-   */
-  private setupUserTimingCapture(): void {
-    if (!('PerformanceObserver' in window)) return;
-    try {
-      const userTimingObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          this.captureUserTiming(entry);
-        }
 
+  private setupUserTimingCapture(): void {
+    if (!isBrowser || typeof PerformanceObserver === 'undefined') return;
+    try {
+      const userTimingObserver = new PerformanceObserver(list => {
+        for (const e of list.getEntries()) {
+          this.captureUserTiming(e);
+        }
+      });
       userTimingObserver.observe({ entryTypes: ['measure', 'mark'] });
       this.observers.push(userTimingObserver);
-    } catch (error) {
-    }
+    } catch {}
   }
-  /**
-   * Set up long task detection
-   */
-  private setupLongTaskDetection(): void {
-    if (!('PerformanceObserver' in window)) return;
-    try {
-      const longTaskObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          this.detectLongTaskBottleneck(entry);
-        }
 
-      longTaskObserver.observe({ entryTypes: ['longtask'] });
+  private setupLongTaskDetection(): void {
+    if (!isBrowser || typeof PerformanceObserver === 'undefined') return;
+    try {
+      const longTaskObserver = new PerformanceObserver(list => {
+        for (const e of list.getEntries()) {
+          // Long Tasks API entries have .duration and .name === 'self'
+          const duration = (e as any).duration ?? 0;
+          if (duration > 50) {
+            this.detectLongTaskBottleneck(e);
+          }
+        }
+      });
+      // @ts-ignore – 'longtask' is not in TS lib by default
+      longTaskObserver.observe({ type: 'longtask', buffered: true } as any);
       this.observers.push(longTaskObserver);
-    } catch (error) {
-    }
+    } catch {}
   }
-  /**
-   * Set up render profiler
-   */
+
+  private setupWebVitals(): void {
+    if (!isBrowser || typeof PerformanceObserver === 'undefined') return;
+
+    // LCP
+    try {
+      const lcpObserver = new PerformanceObserver(list => {
+        for (const e of list.getEntries()) {
+          const entry = e as any; // LargestContentfulPaint
+          const profile: PerformanceProfile = {
+            id: `lcp-${Date.now()}`,
+            name: 'Largest Contentful Paint',
+            startTime: entry.startTime,
+            endTime: entry.startTime,
+            duration: 0,
+            type: 'render',
+            metadata: { size: entry.size, element: entry.element?.tagName },
+            children: [],
+            bottleneck: false,
+            severity: 'low',
+          };
+          if (entry.startTime > 2500) {
+            this.createBottleneck({
+              type: 'render',
+              location: 'LCP',
+              description: `Slow LCP: ${entry.startTime.toFixed(0)}ms`,
+              impact: clamp(entry.startTime / 40, 0, 100),
+              duration: entry.startTime,
+              suggestions: [
+                'Optimize hero image or first large element',
+                'Defer non-critical JS/CSS',
+                'Serve images in AVIF/WebP',
+                'Preload critical resources',
+              ],
+            });
+            profile.bottleneck = true;
+            profile.severity = entry.startTime > 4000 ? 'critical' : 'high';
+          }
+          this.profiles.push(profile);
+          this.trimProfiles();
+        }
+      });
+      // @ts-ignore
+      lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
+      this.observers.push(lcpObserver);
+    } catch {}
+
+    // CLS
+    try {
+      let cumulativeLayoutShift = 0;
+      const clsObserver = new PerformanceObserver(list => {
+        for (const e of list.getEntries()) {
+          const entry = e as any; // LayoutShift
+          if (!entry.hadRecentInput) {
+            cumulativeLayoutShift += entry.value || 0;
+          }
+        }
+        if (cumulativeLayoutShift > 0.25) {
+          this.createBottleneck({
+            type: 'render',
+            location: 'CLS',
+            description: `High layout shift (CLS=${cumulativeLayoutShift.toFixed(2)})`,
+            impact: clamp(cumulativeLayoutShift * 300, 0, 100),
+            duration: 0,
+            suggestions: [
+              'Always include width/height on images/iframes',
+              'Avoid inserting content above existing content',
+              'Reserve space for dynamic content',
+              'Use font-display: optional/swap',
+            ],
+          });
+        }
+      });
+      // @ts-ignore
+      clsObserver.observe({ type: 'layout-shift', buffered: true });
+      this.observers.push(clsObserver);
+    } catch {}
+  }
+
   private setupRenderProfiler(): void {
-    // Monitor React component renders if React DevTools is available
-    if (typeof window !== 'undefined' && (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__) {
-      this.setupReactProfiler();
+    if (!isBrowser) return;
+
+    // (Optional) React DevTools integration hook placeholder
+    const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+    if (hook && typeof hook.onCommitFiberRoot === 'function') {
+      // You can wire a bridge here if you want component-level timings
+      // Leaving as a no-op placeholder to avoid runtime coupling
     }
-    // Monitor DOM mutations
-    this.setupMutationObserver();
+
+    // DOM mutation storms
+    if (typeof MutationObserver !== 'undefined') {
+      this.mutationObserver = new MutationObserver(mutations => {
+        const count = mutations.length;
+        if (count > 100) {
+          this.createBottleneck({
+            type: 'render',
+            location: 'DOM Mutations',
+            description: `Excessive DOM mutations: ${count} changes`,
+            impact: clamp(count / 10, 0, 100),
+            duration: 0,
+            suggestions: [
+              'Batch DOM updates',
+              'Use DocumentFragment or batched setState',
+              'Virtualize long lists',
+              'Avoid layout thrashing (read/write separation)',
+            ],
+          });
+        }
+      });
+      this.mutationObserver.observe(document.documentElement || document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+      });
+    }
   }
-  /**
-   * Start a performance profile
-   */
-  startProfile(name: string, type: PerformanceProfile['type'] = 'function', metadata: Record<string, any> = {}): string {
-    if (!this.isEnabled) return '';
-    const id = `${name}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  private startPeriodicAnalysis(): void {
+    if (!isBrowser) return;
+    if (this.analysisTimer != null) window.clearInterval(this.analysisTimer);
+    this.analysisTimer = window.setInterval(() => {
+      this.analyzePerformancePatterns();
+      this.generateOptimizationSuggestions();
+      this.updateRegressionTests();
+    }, this.analysisIntervalMs);
+  }
+
+  // ---------- Profiling API ----------
+
+  startProfile(
+    name: string,
+    type: PerformanceProfile['type'] = 'function',
+    metadata: Record<string, any> = {}
+  ): string {
+    if (!this.isEnabled || !isBrowser) return '';
+    const id = `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const profile: PerformanceProfile = {
       id,
       name,
-      startTime: performance.now(),
+      startTime: nowMs(),
       endTime: 0,
       duration: 0,
       type,
@@ -188,45 +385,38 @@ export class PerformanceProfiler {
       severity: 'low',
     };
     this.activeProfiles.set(id, profile);
-    performance.mark(`${name}-start`);
+    try {
+      performance.mark?.(`${name}-start`);
+    } catch {}
     return id;
   }
-  /**
-   * End a performance profile
-   */
+
   endProfile(id: string): PerformanceProfile | null {
-    if (!this.isEnabled || !id) return null;
+    if (!this.isEnabled || !isBrowser || !id) return null;
     const profile = this.activeProfiles.get(id);
     if (!profile) return null;
-    profile.endTime = performance.now();
+    profile.endTime = nowMs();
     profile.duration = profile.endTime - profile.startTime;
-    performance.mark(`${profile.name}-end`);
-    performance.measure(profile.name, `${profile.name}-start`, `${profile.name}-end`);
-    // Analyze for bottlenecks
+    try {
+      performance.mark?.(`${profile.name}-end`);
+      performance.measure?.(profile.name, `${profile.name}-start`, `${profile.name}-end`);
+    } catch {}
     this.analyzeProfileForBottlenecks(profile);
     this.profiles.push(profile);
+    this.trimProfiles();
     this.activeProfiles.delete(id);
-    // Keep only last 1000 profiles
-    if (this.profiles.length > 1000) {
-      this.profiles = this.profiles.slice(-500);
-    }
     return profile;
   }
-  /**
-   * Profile a function execution
-   */
+
   profileFunction<T>(name: string, fn: () => T, metadata?: Record<string, any>): T {
     const id = this.startProfile(name, 'function', metadata);
     try {
-      const result = fn();
-      return result;
+      return fn();
     } finally {
       this.endProfile(id);
     }
   }
-  /**
-   * Profile an async function execution
-   */
+
   async profileAsync<T>(name: string, fn: () => Promise<T>, metadata?: Record<string, any>): Promise<T> {
     const id = this.startProfile(name, 'function', metadata);
     try {
@@ -236,66 +426,71 @@ export class PerformanceProfiler {
       this.endProfile(id);
     }
   }
-  /**
-   * Analyze navigation timing for bottlenecks
-   */
+
+  // ---------- Entry analyzers ----------
+
   private analyzeNavigationTiming(entry: PerformanceNavigationTiming): void {
     const profile: PerformanceProfile = {
-      id: `navigation-${Date.now()}`,
+      id: `nav-${Date.now()}`,
       name: 'Page Navigation',
-      startTime: entry.navigationStart,
-      endTime: entry.loadEventEnd,
-      duration: entry.loadEventEnd - entry.navigationStart,
+      startTime: entry.startTime ?? 0,
+      endTime: entry.loadEventEnd ?? (entry.startTime ?? 0),
+      duration: (entry.loadEventEnd ?? 0) - (entry.startTime ?? 0),
       type: 'api',
       metadata: {
-        domContentLoaded: entry.domContentLoadedEventEnd - entry.navigationStart,
-        firstByte: entry.responseStart - entry.navigationStart,
-        domComplete: entry.domComplete - entry.navigationStart,
-        loadComplete: entry.loadEventEnd - entry.navigationStart,
+        domContentLoaded: (entry.domContentLoadedEventEnd ?? 0) - (entry.startTime ?? 0),
+        firstByte: (entry.responseStart ?? 0) - (entry.startTime ?? 0),
+        domComplete: (entry.domComplete ?? 0) - (entry.startTime ?? 0),
+        loadComplete: (entry.loadEventEnd ?? 0) - (entry.startTime ?? 0),
       },
       children: [],
       bottleneck: false,
       severity: 'low',
     };
-    // Check for navigation bottlenecks
-    if (entry.responseStart - entry.navigationStart > 1000) {
+
+    // TTFB slow
+    const ttfb = (entry.responseStart ?? 0) - (entry.startTime ?? 0);
+    if (ttfb > 1000) {
       this.createBottleneck({
         type: 'network',
         location: 'Navigation',
-        description: `Slow server response time: ${(entry.responseStart - entry.navigationStart).toFixed(0)}ms`,
-        impact: Math.min(100, (entry.responseStart - entry.navigationStart) / 50),
-        duration: entry.responseStart - entry.navigationStart,
+        description: `Slow TTFB: ${ttfb.toFixed(0)}ms`,
+        impact: clamp(ttfb / 50, 0, 100),
+        duration: ttfb,
         suggestions: [
-          'Optimize server response time',
-          'Implement server-side caching',
-          'Use a CDN for static assets',
-          'Optimize database queries',
+          'Enable server-side caching and compression',
+          'Optimize DB queries and N+1 issues',
+          'Use CDN / edge caching for HTML (where safe)',
+          'Warm up cold-started services',
         ],
-
+      });
     }
-    if (entry.domContentLoadedEventEnd - entry.domContentLoadedEventStart > 500) {
+
+    // DOMContentLoaded handler heavy
+    const dclCost = (entry.domContentLoadedEventEnd ?? 0) - (entry.domContentLoadedEventStart ?? 0);
+    if (dclCost > 500) {
       this.createBottleneck({
         type: 'javascript',
-        location: 'DOM Content Loaded',
-        description: `Slow DOM content loading: ${(entry.domContentLoadedEventEnd - entry.domContentLoadedEventStart).toFixed(0)}ms`,
-        impact: Math.min(100, (entry.domContentLoadedEventEnd - entry.domContentLoadedEventStart) / 25),
-        duration: entry.domContentLoadedEventEnd - entry.domContentLoadedEventStart,
+        location: 'DOMContentLoaded',
+        description: `Heavy DCL handlers: ${dclCost.toFixed(0)}ms`,
+        impact: clamp(dclCost / 25, 0, 100),
+        duration: dclCost,
         suggestions: [
-          'Reduce JavaScript execution during DOMContentLoaded',
-          'Defer non-critical JavaScript',
-          'Optimize DOM manipulation',
+          'Defer non-critical JS',
+          'Split bundles and lazy-load',
+          'Avoid synchronous layout thrash during DCL',
         ],
-
+      });
     }
+
     this.analyzeProfileForBottlenecks(profile);
     this.profiles.push(profile);
+    this.trimProfiles();
   }
-  /**
-   * Analyze resource timing for bottlenecks
-   */
+
   private analyzeResourceTiming(entry: PerformanceResourceTiming): void {
     const profile: PerformanceProfile = {
-      id: `resource-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `res-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       name: `Resource: ${entry.name.split('/').pop() || entry.name}`,
       startTime: entry.startTime,
       endTime: entry.responseEnd,
@@ -305,52 +500,48 @@ export class PerformanceProfiler {
         url: entry.name,
         size: entry.transferSize,
         cached: entry.transferSize === 0 && entry.decodedBodySize > 0,
-        dns: entry.domainLookupEnd - entry.domainLookupStart,
-        connect: entry.connectEnd - entry.connectStart,
-        request: entry.responseStart - entry.requestStart,
-        response: entry.responseEnd - entry.responseStart,
+        dns: (entry.domainLookupEnd ?? 0) - (entry.domainLookupStart ?? 0),
+        connect: (entry.connectEnd ?? 0) - (entry.connectStart ?? 0),
+        request: (entry.responseStart ?? 0) - (entry.requestStart ?? 0),
+        response: (entry.responseEnd ?? 0) - (entry.responseStart ?? 0),
       },
       children: [],
       bottleneck: false,
       severity: 'low',
     };
-    // Check for resource bottlenecks
+
     if (entry.duration > 2000) {
       this.createBottleneck({
         type: 'network',
         location: entry.name,
         description: `Slow resource loading: ${entry.duration.toFixed(0)}ms`,
-        impact: Math.min(100, entry.duration / 100),
+        impact: clamp(entry.duration / 100, 0, 100),
         duration: entry.duration,
-        suggestions: [
-          'Optimize resource size',
-          'Enable compression',
-          'Use a CDN',
-          'Implement caching headers',
-        ],
-
+        suggestions: ['Enable HTTP/2 or HTTP/3', 'Compress assets', 'Use CDN', 'Cache aggressively'],
+      });
     }
-    if (entry.transferSize > 1024 * 1024) { // 1MB
+
+    if ((entry.transferSize ?? 0) > 1_048_576) {
       this.createBottleneck({
         type: 'network',
         location: entry.name,
-        description: `Large resource size: ${(entry.transferSize / 1024 / 1024).toFixed(1)}MB`,
-        impact: Math.min(100, entry.transferSize / (1024 * 1024) * 20),
+        description: `Large resource: ${((entry.transferSize ?? 0) / 1024 / 1024).toFixed(1)}MB`,
+        impact: clamp(((entry.transferSize ?? 0) / (1024 * 1024)) * 20, 0, 100),
         duration: entry.duration,
         suggestions: [
-          'Compress images and assets',
-          'Use modern image formats (WebP, AVIF)',
-          'Implement lazy loading',
-          'Split large bundles',
+          'Modern formats (AVIF/WebP)',
+          'Image compression & responsive sizes',
+          'Code splitting & dynamic imports',
+          'Tree-shake unused code',
         ],
-
+      });
     }
+
     this.analyzeProfileForBottlenecks(profile);
     this.profiles.push(profile);
+    this.trimProfiles();
   }
-  /**
-   * Analyze paint timing
-   */
+
   private analyzePaintTiming(entry: PerformanceEntry): void {
     const profile: PerformanceProfile = {
       id: `paint-${entry.name}-${Date.now()}`,
@@ -359,439 +550,284 @@ export class PerformanceProfiler {
       endTime: entry.startTime + entry.duration,
       duration: entry.duration,
       type: 'render',
-      metadata: {
-        paintType: entry.name,
-      },
+      metadata: { paintType: entry.name },
       children: [],
       bottleneck: false,
       severity: 'low',
     };
-    // Check for paint bottlenecks
+
     if (entry.name === 'first-contentful-paint' && entry.startTime > 1800) {
       this.createBottleneck({
         type: 'render',
-        location: 'First Contentful Paint',
-        description: `Slow first contentful paint: ${entry.startTime.toFixed(0)}ms`,
-        impact: Math.min(100, entry.startTime / 90),
+        location: 'FCP',
+        description: `Slow FCP: ${entry.startTime.toFixed(0)}ms`,
+        impact: clamp(entry.startTime / 90, 0, 100),
         duration: entry.startTime,
         suggestions: [
-          'Optimize critical rendering path',
-          'Reduce render-blocking resources',
+          'Reduce render-blocking CSS/JS',
           'Inline critical CSS',
-          'Optimize web fonts loading',
+          'Preload key resources',
+          'Lazy-load non-critical assets',
         ],
+      });
+      profile.bottleneck = true;
+      profile.severity = entry.startTime > 3000 ? 'high' : 'medium';
+    }
 
-    }
     this.profiles.push(profile);
+    this.trimProfiles();
   }
-  /**
-   * Capture user timing marks and measures
-   */
+
   private captureUserTiming(entry: PerformanceEntry): void {
-    if (entry.entryType === 'measure') {
-      const profile: PerformanceProfile = {
-        id: `user-timing-${entry.name}-${Date.now()}`,
-        name: entry.name,
-        startTime: entry.startTime,
-        endTime: entry.startTime + entry.duration,
-        duration: entry.duration,
-        type: 'function',
-        metadata: {
-          userTiming: true,
-        },
-        children: [],
-        bottleneck: false,
-        severity: 'low',
-      };
-      this.analyzeProfileForBottlenecks(profile);
-      this.profiles.push(profile);
-    }
+    if (entry.entryType !== 'measure') return;
+    const profile: PerformanceProfile = {
+      id: `user-timing-${entry.name}-${Date.now()}`,
+      name: entry.name,
+      startTime: entry.startTime,
+      endTime: entry.startTime + entry.duration,
+      duration: entry.duration,
+      type: 'function',
+      metadata: { userTiming: true },
+      children: [],
+      bottleneck: false,
+      severity: 'low',
+    };
+    this.analyzeProfileForBottlenecks(profile);
+    this.profiles.push(profile);
+    this.trimProfiles();
   }
-  /**
-   * Detect long task bottlenecks
-   */
+
   private detectLongTaskBottleneck(entry: PerformanceEntry): void {
+    const duration = (entry as any).duration ?? 0;
+    if (duration <= 50) return;
     this.createBottleneck({
       type: 'javascript',
       location: 'Long Task',
-      description: `Long running task: ${entry.duration.toFixed(0)}ms`,
-      impact: Math.min(100, entry.duration / 10),
-      duration: entry.duration,
+      description: `Long running task: ${duration.toFixed(0)}ms`,
+      impact: clamp(duration / 10, 0, 100),
+      duration,
       suggestions: [
-        'Break up long-running tasks',
+        'Split heavy work (time-slicing)',
+        'Move to Web Worker',
         'Use requestIdleCallback for non-critical work',
-        'Implement time slicing',
-        'Move heavy computation to Web Workers',
+        'Memoize expensive calculations',
       ],
-
+    });
   }
-  /**
-   * Set up React profiler
-   */
-  private setupReactProfiler(): void {
-    const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
-    if (!hook) return;
-    // Monitor React component renders
-    hook.onCommitFiberRoot = (id: any, root: any, priorityLevel: any) => {
-      // This would integrate with React DevTools profiler data
-      // Implementation would depend on React DevTools API
-    };
-  }
-  /**
-   * Set up mutation observer for DOM changes
-   */
-  private setupMutationObserver(): void {
-    if (!('MutationObserver' in window)) return;
-    const observer = new MutationObserver((mutations) => {
-      const mutationCount = mutations.length;
-      if (mutationCount > 100) {
-        this.createBottleneck({
-          type: 'render',
-          location: 'DOM Mutations',
-          description: `Excessive DOM mutations: ${mutationCount} changes`,
-          impact: Math.min(100, mutationCount / 10),
-          duration: 0,
-          suggestions: [
-            'Batch DOM updates',
-            'Use DocumentFragment for multiple insertions',
-            'Minimize DOM manipulation in loops',
-            'Consider virtual DOM or efficient rendering libraries',
-          ],
 
-      }
+  // ---------- Bottlenecks & suggestions ----------
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-
-  }
-  /**
-   * Start bottleneck detection
-   */
-  private startBottleneckDetection(): void {
-    // Periodic analysis of performance patterns
-    setInterval(() => {
-      this.analyzePerformancePatterns();
-      this.generateOptimizationSuggestions();
-      this.updateRegressionTests();
-    }, 30000); // Every 30 seconds
-  }
-  /**
-   * Analyze profile for bottlenecks
-   */
   private analyzeProfileForBottlenecks(profile: PerformanceProfile): void {
-    // Determine if this profile represents a bottleneck
-    let isBottleneck = false;
+    let isB = false;
     let severity: PerformanceProfile['severity'] = 'low';
+
     if (profile.duration > 1000) {
-      isBottleneck = true;
+      isB = true;
       severity = profile.duration > 5000 ? 'critical' : profile.duration > 2000 ? 'high' : 'medium';
     }
-    // Check for memory usage if available
+
     if (profile.metadata.memoryUsage && profile.metadata.memoryUsage > 50 * 1024 * 1024) {
-      isBottleneck = true;
+      isB = true;
       severity = 'high';
     }
-    profile.bottleneck = isBottleneck;
+
+    profile.bottleneck = isB;
     profile.severity = severity;
-    if (isBottleneck) {
+
+    if (isB) {
+      const typeMap: Record<PerformanceProfile['type'], Bottleneck['type']> = {
+        render: 'render',
+        api: 'network',
+        function: 'javascript',
+        component: 'render',
+        'user-interaction': 'javascript',
+      };
       this.createBottleneck({
-        type: profile.type === 'render' ? 'render' : profile.type === 'api' ? 'network' : 'javascript',
+        type: typeMap[profile.type],
         location: profile.name,
         description: `Slow ${profile.type}: ${profile.duration.toFixed(0)}ms`,
-        impact: Math.min(100, profile.duration / 50),
+        impact: clamp(profile.duration / 50, 0, 100),
         duration: profile.duration,
-        suggestions: this.getSuggestionsForProfileType(profile.type, profile.duration),
-
+        suggestions: this.getSuggestionsForProfileType(profile.type),
+      });
     }
   }
-  /**
-   * Get optimization suggestions for profile type
-   */
-  private getSuggestionsForProfileType(type: PerformanceProfile['type'], duration: number): string[] {
-    const suggestions: Record<PerformanceProfile['type'], string[]> = {
-      'function': [
-        'Optimize algorithm complexity',
-        'Use memoization for expensive calculations',
-        'Consider lazy evaluation',
-        'Profile and optimize hot code paths',
+
+  private getSuggestionsForProfileType(type: PerformanceProfile['type']): string[] {
+    const map: Record<PerformanceProfile['type'], string[]> = {
+      function: [
+        'Optimize algorithmic complexity',
+        'Memoize expensive computations',
+        'Lazy-evaluate where possible',
+        'Profile hot paths and inline tight loops',
       ],
-      'component': [
-        'Use React.memo for expensive components',
-        'Optimize render logic',
-        'Reduce prop drilling',
-        'Use useMemo and useCallback appropriately',
+      component: [
+        'Use React.memo for pure components',
+        'Stabilize props with useMemo/useCallback',
+        'Split heavy components and lazy-load',
+        'Avoid prop drilling; use context selectively',
       ],
-      'api': [
-        'Implement request caching',
-        'Use request deduplication',
-        'Optimize API response size',
-        'Consider GraphQL for efficient data fetching',
+      api: [
+        'Cache idempotent responses',
+        'Deduplicate inflight requests',
+        'Minify/reshape response payloads',
+        'Batch & compress requests',
       ],
-      'render': [
-        'Minimize DOM manipulations',
-        'Use CSS transforms for animations',
-        'Implement virtual scrolling for large lists',
-        'Optimize CSS selectors',
+      render: [
+        'Batch DOM updates',
+        'Use transform/opacity for animations',
+        'Virtualize long lists',
+        'Reduce sync layout reads in loops',
       ],
       'user-interaction': [
-        'Debounce user input handlers',
-        'Use passive event listeners',
-        'Optimize event delegation',
-        'Reduce layout thrashing',
+        'Debounce/throttle handlers',
+        'Use passive listeners when possible',
+        'Defer heavy work off the input thread',
+        'Avoid forced reflow during input',
       ],
     };
-    return suggestions[type] || [];
-  }
-  /**
-   * Create a bottleneck entry
-   */
-  private createBottleneck(bottleneck: Omit<Bottleneck, 'id' | 'frequency' | 'priority' | 'detectedAt'>): void {
-    const id = `bottleneck-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    // Check if similar bottleneck already exists
-    const existing = this.bottlenecks.find(b => 
-      b.type === bottleneck.type && 
-      b.location === bottleneck.location &&
-      Date.now() - b.detectedAt < 60000 // Within last minute
+    return map[type] || [];
+    }
+
+  private createBottleneck(b: Omit<Bottleneck, 'id' | 'frequency' | 'priority' | 'detectedAt'>): void {
+    const now = Date.now();
+    const existing = this.bottlenecks.find(
+      x =>
+        x.type === b.type &&
+        x.location === b.location &&
+        now - x.detectedAt < this.dedupeWindowMs
     );
     if (existing) {
       existing.frequency++;
-      existing.duration = (existing.duration + bottleneck.duration) / 2; // Average duration
+      existing.duration = (existing.duration + b.duration) / 2;
       return;
     }
-    const priority = bottleneck.impact > 80 ? 'critical' : 
-                    bottleneck.impact > 60 ? 'high' : 
-                    bottleneck.impact > 30 ? 'medium' : 'low';
-    this.bottlenecks.push({
-      id,
-      frequency: 1,
-      priority,
-      detectedAt: Date.now(),
-      ...bottleneck,
 
-    // Keep only last 100 bottlenecks
-    if (this.bottlenecks.length > 100) {
-      this.bottlenecks = this.bottlenecks.slice(-50);
-    }
+    const item: Bottleneck = {
+      id: `b-${now}-${Math.random().toString(36).slice(2, 9)}`,
+      frequency: 1,
+      priority: priorityFromImpact(b.impact),
+      detectedAt: now,
+      ...b,
+    };
+
+    this.bottlenecks.push(item);
+    this.trimBottlenecks();
+    // notify listeners
+    this.bottleneckListeners.forEach(cb => {
+      try { cb(item); } catch {}
+    });
   }
-  /**
-   * Analyze performance patterns
-   */
+
   private analyzePerformancePatterns(): void {
     if (this.profiles.length < 10) return;
-    const recentProfiles = this.profiles.slice(-50);
-    // Analyze for patterns
-    const patterns = this.identifyPerformancePatterns(recentProfiles);
-    patterns.forEach(pattern => {
-      this.suggestions.push({
-        id: `pattern-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        type: 'architecture',
-        title: pattern.title,
-        description: pattern.description,
-        impact: pattern.impact,
-        effort: pattern.effort,
-        implementation: pattern.implementation,
-        estimatedGain: pattern.estimatedGain,
-        confidence: pattern.confidence,
-
-
-  }
-  /**
-   * Identify performance patterns
-   */
-  private identifyPerformancePatterns(profiles: PerformanceProfile[]): OptimizationSuggestion[] {
-    const patterns: OptimizationSuggestion[] = [];
-    // Pattern: Frequent slow API calls
-    const apiProfiles = profiles.filter(p => p.type === 'api' && p.duration > 1000);
-    if (apiProfiles.length > 5) {
-      patterns.push({
+    const recent = this.profiles.slice(-Math.min(50, this.profiles.length));
+    const apiSlow = recent.filter(p => p.type === 'api' && p.duration > 1000);
+    if (apiSlow.length > 5) {
+      this.pushSuggestion({
         id: 'frequent-slow-api',
         type: 'architecture',
         title: 'Frequent Slow API Calls',
-        description: `Detected ${apiProfiles.length} slow API calls in recent activity`,
+        description: `Detected ${apiSlow.length} slow API calls recently.`,
         impact: 'high',
         effort: 'medium',
-        implementation: 'Implement API response caching and request optimization',
+        implementation:
+          'Introduce client-side caching + request deduplication; consider GraphQL or selective fields; compress & paginate large payloads.',
         estimatedGain: 40,
         confidence: 85,
-
+      });
     }
-    // Pattern: Excessive rendering
-    const renderProfiles = profiles.filter(p => p.type === 'render');
-    if (renderProfiles.length > 20) {
-      patterns.push({
+
+    const renders = recent.filter(p => p.type === 'render');
+    if (renders.length > 20) {
+      this.pushSuggestion({
         id: 'excessive-rendering',
         type: 'code',
-        title: 'Excessive Rendering',
-        description: `Detected ${renderProfiles.length} render operations in short time`,
+        title: 'Excessive Rendering Detected',
+        description: `Observed ${renders.length} render operations in a short window.`,
         impact: 'medium',
         effort: 'low',
-        implementation: 'Optimize component re-renders with memoization',
-        codeExample: `
-// Use React.memo to prevent unnecessary re-renders
-const MyComponent = React.memo(({ data }) => {
-  return <div>{data.value}</div>;
+        implementation:
+          'Memoize components with React.memo; stabilize expensive prop values with useMemo/useCallback; split large views; virtualize long lists.',
+        codeExample: `// React.memo to prevent unnecessary re-renders
+const MyComp = React.memo(({data}) => <div>{data.value}</div>);
 
-// Use useMemo for expensive calculations
-const expensiveValue = useMemo(() => {
-  return heavyCalculation(data);
-}, [data]);
-        `,
+// Expensive calc memoization
+const expensive = useMemo(() => heavyCalc(data), [data]);`,
         estimatedGain: 25,
         confidence: 75,
-
+      });
     }
-    return patterns;
   }
-  /**
-   * Generate optimization suggestions
-   */
+
   private generateOptimizationSuggestions(): void {
-    // Clear old suggestions
-    this.suggestions = this.suggestions.filter(s => Date.now() - parseInt(s.id.split('-')[1]) < 300000); // Keep for 5 minutes
-    // Generate suggestions based on bottlenecks
-    const recentBottlenecks = this.bottlenecks.filter(b => Date.now() - b.detectedAt < 300000);
-    recentBottlenecks.forEach(bottleneck => {
-      if (bottleneck.frequency > 3) { // Recurring bottleneck
-        this.suggestions.push({
-          id: `suggestion-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    // keep suggestions from last 5 min
+    const cutoff = Date.now() - 5 * 60 * 1000;
+    this.suggestions = this.suggestions.filter(s => {
+      const idTime = Number(s.id.split('-')[1]) || 0;
+      return idTime > cutoff;
+    });
+
+    // recurring bottlenecks => focused suggestion
+    const recent = this.bottlenecks.filter(b => Date.now() - b.detectedAt < 5 * 60 * 1000);
+    recent.forEach(b => {
+      if (b.frequency > 3) {
+        this.pushSuggestion({
+          id: `suggestion-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
           type: 'code',
-          title: `Optimize ${bottleneck.location}`,
-          description: `Recurring bottleneck detected: ${bottleneck.description}`,
-          impact: bottleneck.priority === 'critical' ? 'critical' : bottleneck.priority === 'high' ? 'high' : 'medium',
+          title: `Optimize ${b.location}`,
+          description: `Recurring bottleneck: ${b.description}`,
+          impact: b.priority === 'critical' ? 'critical' : b.priority === 'high' ? 'high' : 'medium',
           effort: 'medium',
-          implementation: bottleneck.suggestions.join('. '),
-          estimatedGain: Math.min(50, bottleneck.impact),
-          confidence: Math.min(90, bottleneck.frequency * 20),
-
+          implementation: b.suggestions.join('. '),
+          estimatedGain: Math.min(50, b.impact),
+          confidence: clamp(b.frequency * 20, 0, 90),
+        });
       }
-
+    });
   }
-  /**
-   * Compare performance between two time periods
-   */
+
+  private pushSuggestion(s: OptimizationSuggestion): void {
+    this.suggestions.push(s);
+    this.suggestionListeners.forEach(cb => {
+      try { cb(s); } catch {}
+    });
+  }
+
+  // ---------- Comparisons & regression ----------
+
   comparePerformance(baselineStart: number, baselineEnd: number, currentStart: number, currentEnd: number): PerformanceComparison[] {
-    const baselineProfiles = this.profiles.filter(p => p.startTime >= baselineStart && p.startTime <= baselineEnd);
-    const currentProfiles = this.profiles.filter(p => p.startTime >= currentStart && p.startTime <= currentEnd);
-    const comparisons: PerformanceComparison[] = [];
-    // Group profiles by name for comparison
-    const baselineGroups = this.groupProfilesByName(baselineProfiles);
-    const currentGroups = this.groupProfilesByName(currentProfiles);
-    Object.keys(baselineGroups).forEach(name => {
-      if (currentGroups[name]) {
-        const baseline = this.calculateMetrics(baselineGroups[name]);
-        const current = this.calculateMetrics(currentGroups[name]);
-        const improvement = ((baseline.duration - current.duration) / baseline.duration) * 100;
-        const significance = this.calculateStatisticalSignificance(baselineGroups[name], currentGroups[name]);
-        comparisons.push({
-          id: `comparison-${name}-${Date.now()}`,
-          name,
-          baseline,
-          current,
-          improvement,
-          regression: improvement < -5, // 5% degradation threshold
-          significance,
+    const baseline = this.profiles.filter(p => p.startTime >= baselineStart && p.startTime <= baselineEnd);
+    const current = this.profiles.filter(p => p.startTime >= currentStart && p.startTime <= currentEnd);
 
-      }
+    const groupsBase = this.groupByName(baseline);
+    const groupsCurr = this.groupByName(current);
 
-    this.comparisons = comparisons;
-    return comparisons;
-  }
-  /**
-   * Group profiles by name
-   */
-  private groupProfilesByName(profiles: PerformanceProfile[]): Record<string, PerformanceProfile[]> {
-    return profiles.reduce((groups, profile) => {
-      if (!groups[profile.name]) {
-        groups[profile.name] = [];
-      }
-      groups[profile.name].push(profile);
-      return groups;
-    }, {} as Record<string, PerformanceProfile[]>);
-  }
-  /**
-   * Calculate performance metrics for a group of profiles
-   */
-  private calculateMetrics(profiles: PerformanceProfile[]): PerformanceMetrics {
-    const durations = profiles.map(p => p.duration);
-    const memoryUsages = profiles.map(p => p.metadata.memoryUsage || 0);
-    return {
-      duration: durations.reduce((sum, d) => sum + d, 0) / durations.length,
-      memoryUsage: memoryUsages.reduce((sum, m) => sum + m, 0) / memoryUsages.length,
-      cpuUsage: 0, // Would need CPU profiling data
-      renderTime: 0, // Would need render timing data
-      networkTime: 0, // Would need network timing data
-      samples: profiles.length,
-    };
-  }
-  /**
-   * Calculate statistical significance of performance difference
-   */
-  private calculateStatisticalSignificance(baseline: PerformanceProfile[], current: PerformanceProfile[]): number {
-    // Simplified t-test calculation
-    const baselineDurations = baseline.map(p => p.duration);
-    const currentDurations = current.map(p => p.duration);
-    if (baselineDurations.length < 2 || currentDurations.length < 2) return 0;
-    const baselineMean = baselineDurations.reduce((sum, d) => sum + d, 0) / baselineDurations.length;
-    const currentMean = currentDurations.reduce((sum, d) => sum + d, 0) / currentDurations.length;
-    const baselineVariance = baselineDurations.reduce((sum, d) => sum + Math.pow(d - baselineMean, 2), 0) / (baselineDurations.length - 1);
-    const currentVariance = currentDurations.reduce((sum, d) => sum + Math.pow(d - currentMean, 2), 0) / (currentDurations.length - 1);
-    const pooledStdDev = Math.sqrt(((baselineDurations.length - 1) * baselineVariance + (currentDurations.length - 1) * currentVariance) / (baselineDurations.length + currentDurations.length - 2));
-    const standardError = pooledStdDev * Math.sqrt(1 / baselineDurations.length + 1 / currentDurations.length);
-    if (standardError === 0) return 0;
-    const tStat = Math.abs(baselineMean - currentMean) / standardError;
-    // Convert t-statistic to approximate p-value (simplified)
-    return Math.min(1, Math.max(0, 1 - (tStat / 10)));
-  }
-  /**
-   * Update regression tests
-   */
-  private updateRegressionTests(): void {
-    // Update existing regression tests with new data
-    this.regressionTests.forEach(test => {
-      const recentProfiles = this.profiles.filter(p => 
-        p.name === test.name && 
-        Date.now() - p.startTime < 300000 // Last 5 minutes
-      );
-      if (recentProfiles.length > 0) {
-        const avgDuration = recentProfiles.reduce((sum, p) => sum + p.duration, 0) / recentProfiles.length;
-        test.currentValue = avgDuration;
-        test.history.push({ timestamp: Date.now(), value: avgDuration });
-        // Keep only last 100 history points
-        if (test.history.length > 100) {
-          test.history = test.history.slice(-50);
-        }
-        // Update status
-        const degradation = ((avgDuration - test.baseline) / test.baseline) * 100;
-        if (degradation > test.threshold) {
-          test.status = 'fail';
-        } else if (degradation > test.threshold * 0.7) {
-          test.status = 'warning';
-        } else {
-          test.status = 'pass';
-        }
-        // Update trend
-        if (test.history.length >= 5) {
-          const recent = test.history.slice(-5);
-          const trend = recent[recent.length - 1].value - recent[0].value;
-          if (trend > test.baseline * 0.05) {
-            test.trend = 'degrading';
-          } else if (trend < -test.baseline * 0.05) {
-            test.trend = 'improving';
-          } else {
-            test.trend = 'stable';
-          }
-        }
-      }
+    const results: PerformanceComparison[] = [];
+    Object.keys(groupsBase).forEach(name => {
+      if (!groupsCurr[name]) return;
+      const baseM = this.metricsFor(groupsBase[name]);
+      const currM = this.metricsFor(groupsCurr[name]);
+      const improvement = ((baseM.duration - currM.duration) / baseM.duration) * 100;
+      const significance = this.significance(groupsBase[name], groupsCurr[name]);
+      results.push({
+        id: `cmp-${name}-${Date.now()}`,
+        name,
+        baseline: baseM,
+        current: currM,
+        improvement,
+        regression: improvement < -5,
+        significance,
+      });
+    });
 
+    this.comparisons = results;
+    return results;
   }
-  /**
-   * Add a regression test
-   */
-  addRegressionTest(name: string, baseline: number, threshold: number = 20): void {
+
+  addRegressionTest(name: string, baseline: number, threshold = 20): void {
     const test: RegressionTest = {
-      id: `regression-${name}-${Date.now()}`,
+      id: `reg-${name}-${Date.now()}`,
       name,
       baseline,
       threshold,
@@ -802,66 +838,124 @@ const expensiveValue = useMemo(() => {
     };
     this.regressionTests.push(test);
   }
-  /**
-   * Get performance profiles
-   */
+
+  private updateRegressionTests(): void {
+    const windowMs = 5 * 60 * 1000;
+    const nowAbs = Date.now();
+    this.regressionTests.forEach(test => {
+      const recent = this.profiles.filter(
+        p => p.name === test.name && nowAbs - (performance.timeOrigin + p.startTime) < windowMs
+      );
+      if (recent.length === 0) return;
+      const avg = recent.reduce((s, p) => s + p.duration, 0) / recent.length;
+      test.currentValue = avg;
+      test.history.push({ timestamp: nowAbs, value: avg });
+      if (test.history.length > 100) test.history = test.history.slice(-50);
+
+      const deg = ((avg - test.baseline) / test.baseline) * 100;
+      test.status = deg > test.threshold ? 'fail' : deg > test.threshold * 0.7 ? 'warning' : 'pass';
+
+      if (test.history.length >= 5) {
+        const last = test.history.slice(-5);
+        const trendVal = last[last.length - 1].value - last[0].value;
+        if (trendVal > test.baseline * 0.05) test.trend = 'degrading';
+        else if (trendVal < -test.baseline * 0.05) test.trend = 'improving';
+        else test.trend = 'stable';
+      }
+    });
+  }
+
+  // ---------- Getters ----------
+
   getProfiles(limit?: number): PerformanceProfile[] {
     return limit ? this.profiles.slice(-limit) : [...this.profiles];
   }
-  /**
-   * Get detected bottlenecks
-   */
+
   getBottlenecks(): Bottleneck[] {
     return [...this.bottlenecks].sort((a, b) => {
-      const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
-      return priorityOrder[b.priority] - priorityOrder[a.priority];
-
+      const order = { critical: 4, high: 3, medium: 2, low: 1 };
+      return order[b.priority] - order[a.priority];
+    });
   }
-  /**
-   * Get optimization suggestions
-   */
+
   getOptimizationSuggestions(): OptimizationSuggestion[] {
     return [...this.suggestions].sort((a, b) => {
-      const impactOrder = { critical: 4, high: 3, medium: 2, low: 1 };
-      return impactOrder[b.impact] - impactOrder[a.impact];
-
+      const order = { critical: 4, high: 3, medium: 2, low: 1 };
+      return order[b.impact] - order[a.impact];
+    });
   }
-  /**
-   * Get performance comparisons
-   */
+
   getPerformanceComparisons(): PerformanceComparison[] {
     return [...this.comparisons];
   }
-  /**
-   * Get regression tests
-   */
+
   getRegressionTests(): RegressionTest[] {
     return [...this.regressionTests];
   }
-  /**
-   * Enable or disable profiler
-   */
-  setEnabled(enabled: boolean): void {
-    this.isEnabled = enabled;
+
+  // ---------- Subscriptions (for UI) ----------
+
+  onBottleneck(cb: Listener<Bottleneck>): () => void {
+    this.bottleneckListeners.add(cb);
+    return () => this.bottleneckListeners.delete(cb);
   }
-  /**
-   * Clear all profiling data
-   */
-  clear(): void {
-    this.profiles = [];
-    this.bottlenecks = [];
-    this.comparisons = [];
-    this.suggestions = [];
-    this.activeProfiles.clear();
+
+  onSuggestion(cb: Listener<OptimizationSuggestion>): () => void {
+    this.suggestionListeners.add(cb);
+    return () => this.suggestionListeners.delete(cb);
   }
-  /**
-   * Destroy the profiler
-   */
-  destroy(): void {
-    this.observers.forEach(observer => observer.disconnect());
-    this.observers = [];
-    this.clear();
+
+  // ---------- Internals ----------
+
+  private groupByName(profiles: PerformanceProfile[]): Record<string, PerformanceProfile[]> {
+    return profiles.reduce((acc, p) => {
+      (acc[p.name] = acc[p.name] || []).push(p);
+      return acc;
+    }, {} as Record<string, PerformanceProfile[]>);
+  }
+
+  private metricsFor(profiles: PerformanceProfile[]): PerformanceMetrics {
+    const durations = profiles.map(p => p.duration);
+    const mem = profiles.map(p => p.metadata.memoryUsage || 0);
+    const avg = (arr: number[]) => (arr.length ? arr.reduce((s, n) => s + n, 0) / arr.length : 0);
+    return {
+      duration: avg(durations),
+      memoryUsage: avg(mem),
+      cpuUsage: 0,
+      renderTime: 0,
+      networkTime: 0,
+      samples: profiles.length,
+    };
+  }
+
+  private significance(base: PerformanceProfile[], curr: PerformanceProfile[]): number {
+    const b = base.map(p => p.duration);
+    const c = curr.map(p => p.duration);
+    if (b.length < 2 || c.length < 2) return 0;
+    const mean = (a: number[]) => a.reduce((s, n) => s + n, 0) / a.length;
+    const variance = (a: number[], m: number) => a.reduce((s, n) => s + Math.pow(n - m, 2), 0) / (a.length - 1);
+
+    const mb = mean(b), mc = mean(c);
+    const vb = variance(b, mb), vc = variance(c, mc);
+    const pooled = Math.sqrt(((b.length - 1) * vb + (c.length - 1) * vc) / (b.length + c.length - 2));
+    const se = pooled * Math.sqrt(1 / b.length + 1 / c.length);
+    if (se === 0) return 0;
+    const t = Math.abs(mb - mc) / se;
+    return clamp(1 - t / 10, 0, 1);
+  }
+
+  private trimProfiles() {
+    if (this.profiles.length > this.maxProfiles) {
+      this.profiles = this.profiles.slice(-this.keepRecent);
+    }
+  }
+
+  private trimBottlenecks() {
+    if (this.bottlenecks.length > this.maxBottlenecks) {
+      this.bottlenecks = this.bottlenecks.slice(-this.keepRecent);
+    }
   }
 }
+
 // Singleton instance
 export const performanceProfiler = new PerformanceProfiler();

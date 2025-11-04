@@ -5,7 +5,10 @@
 import { safeError, safeLog } from "@/lib/safe-console";
 import { MemoryCache, CacheKeyGenerator } from "./utils/cache-utils";
 import { formatMemorySize } from "./utils/resource-utils";
-import { ModelSelectionError, ErrorUtils } from "./errors/model-selection-errors";
+import {
+  ModelSelectionError,
+  ErrorUtils,
+} from "./errors/model-selection-errors";
 
 export abstract class BaseModelService {
   // Cache duration constants
@@ -92,7 +95,7 @@ export abstract class BaseModelService {
    */
   protected generateModelDescription(
     metadata: Record<string, any>,
-    type: string
+    _type: string
   ): string {
     const parts: string[] = [];
 
@@ -113,7 +116,7 @@ export abstract class BaseModelService {
     }
 
     const description = parts.join(", ");
-    return description.charAt(0).toUpperCase() + description.slice(1);
+    return description ? description.charAt(0).toUpperCase() + description.slice(1) : "";
   }
 
   /**
@@ -149,7 +152,6 @@ export abstract class BaseModelService {
     if (this.isInitialized) {
       return;
     }
-
     this.log(`Initializing ${this.serviceName} service`);
     this.isInitialized = true;
   }
@@ -182,8 +184,10 @@ export abstract class BaseModelService {
     timeoutMs: number = this.DEFAULT_TIMEOUT_MS,
     operationName?: string
   ): Promise<T> {
+    let timer: NodeJS.Timeout | null = null;
+
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
+      timer = setTimeout(() => {
         reject(
           new ModelSelectionError(
             `Operation timed out after ${timeoutMs}ms`,
@@ -193,12 +197,17 @@ export abstract class BaseModelService {
           )
         );
       }, timeoutMs);
+    });
 
-    return Promise.race([operation, timeoutPromise]);
+    try {
+      return await Promise.race([operation, timeoutPromise]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 
   /**
-   * Execute operation with retry logic
+   * Execute operation with retry logic (exponential backoff)
    */
   protected async withRetry<T>(
     operation: () => Promise<T>,
@@ -213,20 +222,13 @@ export abstract class BaseModelService {
         return await operation();
       } catch (error) {
         lastError = error;
-
-        if (attempt === maxAttempts) {
-          break;
-        }
+        if (attempt === maxAttempts) break;
 
         this.log(
-          `${
-            operationName || "Operation"
-          } failed (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs}ms...`
+          `${operationName || "Operation"} failed (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs}ms...`
         );
         await this.delay(delayMs);
-
-        // Exponential backoff
-        delayMs *= 2;
+        delayMs *= 2; // backoff
       }
     }
 
@@ -234,7 +236,7 @@ export abstract class BaseModelService {
       lastError,
       this.serviceName,
       operationName || "Retry operation",
-      { maxAttempts, finalDelayMs: delayMs / 2 }
+      { maxAttempts }
     );
   }
 
@@ -273,7 +275,7 @@ export abstract class BaseModelService {
   }
 
   /**
-   * Invalidate cache entries by pattern
+   * Invalidate cache entries by pattern (substring match)
    */
   protected invalidateCachePattern(pattern: string): number {
     const keys = this.cache.keys();
@@ -284,6 +286,7 @@ export abstract class BaseModelService {
         this.cache.delete(key);
         invalidated++;
       }
+    });
 
     return invalidated;
   }
@@ -351,13 +354,10 @@ export abstract class BaseModelService {
     let timeoutId: NodeJS.Timeout | null = null;
 
     return (...args: Parameters<T>) => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-
+      if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        func.apply(this, args);
         timeoutId = null;
+        func.apply(this, args);
       }, waitMs);
     };
   }
@@ -381,7 +381,7 @@ export abstract class BaseModelService {
   }
 
   /**
-   * Execute multiple operations concurrently with limit
+   * Execute multiple operations concurrently with limit (stable pool)
    */
   protected async executeConcurrently<T, R>(
     items: T[],
@@ -389,31 +389,26 @@ export abstract class BaseModelService {
     concurrencyLimit: number = this.MAX_CONCURRENT_OPERATIONS
   ): Promise<R[]> {
     const results: R[] = [];
-    const executing: Promise<void>[] = [];
+    let index = 0;
 
-    for (const item of items) {
-      const promise = operation(item).then((result) => {
-        results.push(result);
-
-      executing.push(promise);
-
-      if (executing.length >= concurrencyLimit) {
-        await Promise.race(executing);
-        // Remove completed promises
-        for (let i = executing.length - 1; i >= 0; i--) {
-          if (
-            await Promise.race([
-              executing[i].then(() => true),
-              Promise.resolve(false),
-            ])
-          ) {
-            executing.splice(i, 1);
-          }
+    const worker = async () => {
+      while (index < items.length) {
+        const current = index++;
+        try {
+          const res = await operation(items[current]);
+          results[current] = res;
+        } catch (err) {
+          // Let the caller decide how to handle; rethrow to fail fast
+          throw err;
         }
       }
-    }
+    };
 
-    await Promise.all(executing);
+    const workers = new Array(Math.min(concurrencyLimit, items.length))
+      .fill(null)
+      .map(() => worker());
+
+    await Promise.all(workers);
     return results;
   }
 
@@ -428,7 +423,7 @@ export abstract class BaseModelService {
     return operation().catch((error) => {
       this.handleError(error, operationName || "Safe async operation");
       return fallback;
-
+    });
   }
 
   /**
@@ -471,7 +466,7 @@ export abstract class BaseModelService {
     let lastFailureTime = 0;
     let isOpen = false;
 
-    return ((...args: Parameters<T>) => {
+    return (async (...args: Parameters<T>) => {
       const now = Date.now();
 
       // Reset if enough time has passed
@@ -482,17 +477,17 @@ export abstract class BaseModelService {
 
       // Reject if circuit is open
       if (isOpen) {
-        return Promise.reject(
-          new ModelSelectionError(
-            "Circuit breaker is open",
-            "CIRCUIT_BREAKER_OPEN",
-            this.serviceName,
-            { failures, lastFailureTime }
-          )
+        throw new ModelSelectionError(
+          "Circuit breaker is open",
+          "CIRCUIT_BREAKER_OPEN",
+          this.serviceName,
+          { failures, lastFailureTime }
         );
       }
 
-      return operation(...args).catch((error) => {
+      try {
+        return await operation(...args);
+      } catch (error) {
         failures++;
         lastFailureTime = now;
 
@@ -502,7 +497,7 @@ export abstract class BaseModelService {
         }
 
         throw error;
-
+      }
     }) as T;
   }
 
@@ -525,23 +520,21 @@ export abstract class BaseModelService {
     const processBatch = async () => {
       if (queue.length === 0) return;
 
-      const batch = queue.splice(0, batchSize);
+      const batch = queue.splice(0, Math.min(batchSize, queue.length));
       const items = batch.map((entry) => entry.item);
 
       try {
         const results = await batchOperation(items);
         batch.forEach((entry, index) => {
           entry.resolve(results[index]);
-
+        });
       } catch (error) {
-        batch.forEach((entry) => {
-          entry.reject(error);
-
+        batch.forEach((entry) => entry.reject(error));
       }
     };
 
     return (item: T): Promise<R> => {
-      return new Promise((resolve, reject) => {
+      return new Promise<R>((resolve, reject) => {
         queue.push({ item, resolve, reject });
 
         // Process immediately if batch is full
@@ -550,15 +543,15 @@ export abstract class BaseModelService {
             clearTimeout(batchTimeout);
             batchTimeout = null;
           }
-          processBatch();
+          void processBatch();
         } else if (!batchTimeout) {
           // Set timeout for partial batch
           batchTimeout = setTimeout(() => {
             batchTimeout = null;
-            processBatch();
+            void processBatch();
           }, maxWaitMs);
         }
-
+      });
     };
   }
 
@@ -570,26 +563,35 @@ export abstract class BaseModelService {
     keyGenerator?: (...args: Parameters<T>) => string,
     ttl?: number
   ): T {
-    const cache = new MemoryCache<any>(ttl || this.CACHE_DURATION);
+    const localCache = new MemoryCache<any>(ttl || this.CACHE_DURATION);
+    const pending = new Map<string, Promise<any>>();
 
-    return ((...args: Parameters<T>) => {
+    return (async (...args: Parameters<T>) => {
       const key = keyGenerator
         ? keyGenerator(...args)
         : this.generateCacheKey(...args);
 
-      const cached = cache.get(key);
+      const cached = localCache.get(key);
       if (cached !== undefined) {
-        return Promise.resolve(cached);
+        return cached;
       }
 
-      const promise = func(...args);
-      promise
-        .then((result) => {
-          cache.set(key, result);
-        })
-        .catch(() => {
-          // Don't cache errors
+      if (pending.has(key)) {
+        return pending.get(key)!;
+      }
 
+      const promise = func(...args)
+        .then((result) => {
+          localCache.set(key, result, ttl);
+          pending.delete(key);
+          return result;
+        })
+        .catch((err) => {
+          pending.delete(key);
+          throw err;
+        });
+
+      pending.set(key, promise);
       return promise;
     }) as T;
   }
@@ -614,34 +616,29 @@ export abstract class BaseModelService {
   }
 
   /**
-   * Create a rate limiter for operations
+   * Create a rate limiter for operations (token bucket over time window)
    */
   protected createRateLimiter(
     maxOperations: number,
     windowMs: number = 60000
   ): () => Promise<void> {
-    const operations: number[] = [];
+    const ops: number[] = [];
 
     return async (): Promise<void> => {
       const now = Date.now();
 
-      // Remove operations outside the window
-      while (operations.length > 0 && operations[0] <= now - windowMs) {
-        operations.shift();
+      // Purge old ops
+      while (ops.length > 0 && ops[0] <= now - windowMs) {
+        ops.shift();
       }
 
-      // Check if we're at the limit
-      if (operations.length >= maxOperations) {
-        const oldestOperation = operations[0];
-        const waitTime = windowMs - (now - oldestOperation);
-
-        if (waitTime > 0) {
-          await this.delay(waitTime);
-          return this.createRateLimiter(maxOperations, windowMs)();
-        }
+      if (ops.length >= maxOperations) {
+        const waitTime = windowMs - (now - ops[0]);
+        await this.delay(waitTime);
+        return;
       }
 
-      operations.push(now);
+      ops.push(now);
     };
   }
 

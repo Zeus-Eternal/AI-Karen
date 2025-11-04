@@ -38,16 +38,16 @@ const TestComponent = () => {
   
   return (
     <div>
-      <button onClick={() => showError('Test error message')}>
-      </button>
-      <button onClick={() => {
+      <Button onClick={() => showError('Test error message')}>
+      </Button>
+      <Button onClick={() => {
         const serviceError = new Error('Service error') as any;
         serviceError.severity = 'high';
         serviceError.retryable = true;
         serviceError.userMessage = 'Service is temporarily unavailable';
         showServiceError(serviceError);
       }}>
-      </button>
+      </Button>
       <div data-testid="toast-count">{toasts.length}</div>
     </div>
   );
@@ -452,7 +452,7 @@ describe('Enhanced Error Handling System', () => {
 
         return (
           <div>
-            <button onClick={handleApiCall} aria-label="Button">Make API Call</button>
+            <Button onClick={handleApiCall} aria-label="Button">Make API Call</Button>
           </div>
         );
       };

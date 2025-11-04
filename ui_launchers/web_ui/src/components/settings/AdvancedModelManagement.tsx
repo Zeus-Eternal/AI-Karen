@@ -412,7 +412,7 @@ export default function AdvancedModelManagement() {
                           ))}
                         </div>
                         <div className="mt-4 flex justify-center">
-                          <button onClick={runStorageCleanup} aria-label="Button">
+                          <Button onClick={runStorageCleanup} aria-label="Button">
                             <Trash2 className="h-4 w-4 mr-2 " />
                           </Button>
                         </div>

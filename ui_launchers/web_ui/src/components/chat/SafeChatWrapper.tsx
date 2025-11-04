@@ -61,11 +61,11 @@ export class SafeChatWrapper extends Component<
             <p className="text-muted-foreground mb-4">
               The chat interface encountered an error. Please refresh the page to continue.
             </p>
-            <button
+            <Button
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
             >
-            </button>
+            </Button>
           </div>
         </div>
       );

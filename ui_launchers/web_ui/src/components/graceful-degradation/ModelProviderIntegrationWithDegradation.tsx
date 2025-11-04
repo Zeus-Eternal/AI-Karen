@@ -1,319 +1,239 @@
+// apps/web/src/lib/graceful/model-provider-integration.tsx
+"use client";
+
+import React from "react";
+import { DegradedModeBanner, ServiceUnavailable } from "./fallback-ui";
+import { useModelProviders, useGracefulDegradation } from "./use-graceful-backend";
+import { Button } from "@/components/ui/button";
+
 /**
- * Enhanced ModelProviderIntegration component with graceful degradation
- * This demonstrates how to wrap existing components with graceful degradation capabilities
+ * Fixed Model Provider Integration
+ * - Caching on
+ * - Stale-on-error fallback
+ * - Degraded banner when from cache / stale / flag disabled / error
  */
-
-import React from 'react';
-
-  useProgressiveData,
-  useFeatureFlag
-import { } from '../../lib/graceful-degradation';
-import { EnhancedBackendService } from '../../lib/graceful-degradation/enhanced-backend-service';
-
-interface ModelProvider {
-  id: string;
-  name: string;
-  type: string;
-  status: 'active' | 'inactive' | 'error';
-  models?: string[];
-}
-
-interface ModelProviderIntegrationProps {
-  onProviderSelect?: (provider: ModelProvider) => void;
-  selectedProvider?: string;
-  className?: string;
-}
-
-// Mock data for fallback scenarios
-const mockModelProviders: ModelProvider[] = [
-  {
-    id: 'openai',
-    name: 'OpenAI',
-    type: 'cloud',
-    status: 'active',
-    models: ['gpt-4', 'gpt-3.5-turbo']
-  },
-  {
-    id: 'anthropic',
-    name: 'Anthropic',
-    type: 'cloud',
-    status: 'active',
-    models: ['claude-3-opus', 'claude-3-sonnet']
-  },
-  {
-    id: 'local-llama',
-    name: 'Local Llama',
-    type: 'local',
-    status: 'inactive',
-    models: ['llama-2-7b', 'llama-2-13b']
-  }
-];
-
-// Enhanced component with graceful degradation
-export function ModelProviderIntegrationWithDegradation({
-  onProviderSelect,
-  selectedProvider,
-  className = ''
-}: ModelProviderIntegrationProps) {
-  const { isEnabled, fallbackBehavior } = useFeatureFlag('modelProviderIntegration');
-  const [enhancedService] = React.useState(() => {
-    // In a real implementation, you'd get the original service instance
-    const originalService = (window as any).karenBackendService;
-    return new EnhancedBackendService(originalService);
-
+export function FixedModelProviderIntegration() {
   const {
     data: providers,
     isLoading,
     error,
     isStale,
-    retry
-  } = useProgressiveData(
-    'modelProviderIntegration',
-    async () => {
-      try {
-        return await enhancedService.getModelProviders(true);
-      } catch (err) {
-        // If the enhanced service fails, throw to trigger fallback
-        throw err;
-      }
-    },
-    {
-      cacheKey: 'model-providers',
-      enableCaching: true,
-      useStaleOnError: true,
-      maxStaleAge: 60 * 60 * 1000, // 1 hour
-      refetchInterval: isEnabled ? 5 * 60 * 1000 : undefined // 5 minutes if enabled
-    }
-  );
+    isFromCache,
+    retry,
+    refresh,
+  } = useModelProviders({
+    enableCaching: true,
+    useStaleOnError: true,
+    maxStaleAge: 60 * 60 * 1000, // 1 hour
+  });
 
-  // Show degraded mode banner if using stale data or fallback
-  const showDegradedBanner = isStale || !isEnabled || error;
+  const {
+    isEnabled,
+    showDegradedBanner,
+    dismissBanner,
+    forceRetry,
+  } = useGracefulDegradation("modelProviderIntegration");
+
+  const shouldShowBanner =
+    !isEnabled || showDegradedBanner || Boolean(isStale || isFromCache || error);
 
   return (
-    <ProgressiveFeature
-      featureName="modelProviderIntegration"
-      fallbackComponent={
-        <ModelProviderFallback
-          providers={mockModelProviders}
-          onProviderSelect={onProviderSelect}
-          selectedProvider={selectedProvider}
-          className={className}
-          error={error || undefined}
-          onRetry={retry}
+    <div className="model-provider-integration space-y-4">
+      {shouldShowBanner && (
+        <DegradedModeBanner
+          affectedServices={[
+            "Model Provider Integration",
+            ...(isFromCache ? ["Using Cached Data"] : []),
+            ...(isStale ? ["Stale Cache Window"] : []),
+            ...(error ? ["Recent Request Errors"] : []),
+          ]}
+          onDismiss={dismissBanner}
+          showDetails
         />
-      }
-      loadingComponent={
-        <ModelProviderSkeleton className={className} />
-      }
-    >
-      <div className={`model-provider-integration ${className}`}>
-        {showDegradedBanner && (
-          <DegradedModeBanner
-            affectedServices={['Model Provider Integration']}
-            showDetails={true}
-          />
-        )}
+      )}
 
-        {isLoading && !providers && (
-          <ModelProviderSkeleton className="mb-4" />
-        )}
-
-        {error && !providers && (
-          <ServiceUnavailable
-            serviceName="Model Provider Integration"
-            error={error}
-            onRetry={retry}
-            showRetry={true}
-          />
-        )}
-
-        {providers && (
-          <ModelProviderList
-            providers={providers}
-            onProviderSelect={onProviderSelect}
-            selectedProvider={selectedProvider}
-            isStale={isStale}
-            onRefresh={retry}
-          />
-        )}
-      </div>
-    </ProgressiveFeature>
-  );
-}
-
-// Fallback component when service is unavailable
-function ModelProviderFallback({
-  providers,
-  onProviderSelect,
-  selectedProvider,
-  className,
-  error,
-  onRetry
-}: {
-  providers: ModelProvider[];
-  onProviderSelect?: (provider: ModelProvider) => void;
-  selectedProvider?: string;
-  className: string;
-  error?: Error;
-  onRetry?: () => void;
-}) {
-  return (
-    <div className={`model-provider-fallback ${className}`}>
-      <ExtensionUnavailable
-        serviceName="Model Provider Integration"
-        extensionName="Model Provider Integration"
-        error={error || 'Service temporarily unavailable'}
-        onRetry={onRetry}
-        showFallbackData={true}
-        fallbackData={providers}
-      >
-        <div className="mt-4">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 md:text-base lg:text-lg">
-            Available Providers (Cached):
-          </h4>
-          <ModelProviderList
-            providers={providers}
-            onProviderSelect={onProviderSelect}
-            selectedProvider={selectedProvider}
-            isStale={true}
-            disabled={true}
-          />
+      {isLoading && !providers && (
+        <div className="flex items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+          <span className="ml-2">Loading model providers…</span>
         </div>
-      </ExtensionUnavailable>
-    </div>
-  );
-}
+      )}
 
-// Loading skeleton
-function ModelProviderSkeleton({ className }: { className?: string }) {
-  return (
-    <div className={`model-provider-skeleton ${className}`}>
-      <div className="animate-pulse space-y-3">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 "></div>
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center space-x-3">
-              <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded "></div>
-              <div className="flex-1 space-y-1">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 "></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 "></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Provider list component
-function ModelProviderList({
-  providers,
-  onProviderSelect,
-  selectedProvider,
-  isStale = false,
-  disabled = false,
-  onRefresh
-}: {
-  providers: ModelProvider[];
-  onProviderSelect?: (provider: ModelProvider) => void;
-  selectedProvider?: string;
-  isStale?: boolean;
-  disabled?: boolean;
-  onRefresh?: () => void;
-}) {
-  return (
-    <div className="model-provider-list">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-          {isStale && (
-            <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded sm:text-sm md:text-base">
-            </span>
-          )}
-        </h3>
-        {onRefresh && (
-          <button
-            onClick={onRefresh}
-            className="text-sm text-blue-600 hover:text-blue-700 underline md:text-base lg:text-lg"
-            disabled={disabled}
-           aria-label="Button">
-          </button>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        {providers.map((provider) => (
-          <div
-            key={provider.id}
-            className={`
-              flex items-center justify-between p-3 border rounded-lg cursor-pointer
-              ${selectedProvider === provider.id 
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-              }
-              ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-            `}
-            onClick={() => !disabled && onProviderSelect?.(provider)}
-          >
-            <div className="flex items-center space-x-3">
-              <div className={`
-                w-3 h-3 rounded-full
-                ${provider.status === 'active' ? 'bg-green-500' : 
-                  provider.status === 'inactive' ? 'bg-yellow-500' : 'bg-red-500'}
-              `} />
-              <div>
-                <div className="font-medium text-gray-900 dark:text-gray-100">
-                  {provider.name}
-                </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400 md:text-base lg:text-lg">
-                  {provider.type} • {provider.models?.length || 0} models
-                </div>
-              </div>
-            </div>
-            <div className="text-sm text-gray-400 md:text-base lg:text-lg">
-              {provider.status}
-            </div>
+      {error && !providers && (
+        <ServiceUnavailable
+          serviceName="Model Provider Integration"
+          error={error}
+          onRetry={retry}
+          showRetry
+        >
+          <div className="mt-4 flex gap-2">
+            <Button
+              onClick={forceRetry}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Force Retry
+            </Button>
+            <Button
+              onClick={retry}
+              variant="secondary"
+              className="px-4 py-2"
+            >
+              Try Again
+            </Button>
           </div>
-        ))}
-      </div>
+        </ServiceUnavailable>
+      )}
 
-      {providers.length === 0 && (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+      {providers && providers.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium">
+              Model Providers
+              {isStale && (
+                <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                  Stale (serving cached)
+                </span>
+              )}
+              {isFromCache && (
+                <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  From Cache
+                </span>
+              )}
+            </h3>
+            <Button onClick={refresh} variant="link" className="text-sm">
+              Refresh
+            </Button>
+          </div>
+
+          <div className="grid gap-4">
+            {providers.map((provider: any) => (
+              <div
+                key={provider.id ?? provider.name}
+                className="p-4 border rounded-lg hover:border-gray-300"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">{provider.name}</h4>
+                    {provider.description && (
+                      <p className="text-sm text-gray-600">{provider.description}</p>
+                    )}
+                  </div>
+                  <div
+                    className={`px-2 py-1 rounded text-xs ${
+                      provider.status === "active"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {provider.status ?? "unknown"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {providers && providers.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          No model providers available.
         </div>
       )}
     </div>
   );
 }
 
-// Hook for using the enhanced model provider service
-export function useModelProviders() {
-  const [enhancedService] = React.useState(() => {
-    const originalService = (window as any).karenBackendService;
-    return new EnhancedBackendService(originalService);
+/**
+ * HOC to wrap any component with graceful degradation
+ */
+export function withGracefulDegradation<P extends object>(
+  WrappedComponent: React.ComponentType<P>,
+  featureName: string
+) {
+  return function GracefullyDegradedComponent(props: P) {
+    const { isEnabled, fallbackBehavior, showDegradedBanner, dismissBanner } =
+      useGracefulDegradation(featureName);
 
-  const {
-    data: providers,
-    isLoading,
-    error,
-    isStale,
-    retry
-  } = useProgressiveData(
-    'modelProviderIntegration',
-    () => enhancedService.getModelProviders(true),
-    {
-      cacheKey: 'model-providers',
-      enableCaching: true,
-      useStaleOnError: true,
-      maxStaleAge: 60 * 60 * 1000
+    if (!isEnabled) {
+      switch (fallbackBehavior) {
+        case "hide":
+          return null;
+        case "disable":
+          return (
+            <div className="p-4 bg-gray-100 rounded-lg">
+              <p className="text-gray-600">This feature is currently unavailable.</p>
+            </div>
+          );
+        case "cache":
+        case "mock":
+          return (
+            <div className="relative">
+              {showDegradedBanner && (
+                <DegradedModeBanner affectedServices={[featureName]} onDismiss={dismissBanner} />
+              )}
+              <WrappedComponent {...props} />
+            </div>
+          );
+        default:
+          return null;
+      }
     }
-  );
+
+    return <WrappedComponent {...props} />;
+  };
+}
+
+/**
+ * Graceful wrapper around the fixed implementation
+ */
+export const GracefulModelProviderIntegration = withGracefulDegradation(
+  FixedModelProviderIntegration,
+  "modelProviderIntegration"
+);
+
+export default GracefulModelProviderIntegration;
+
+/**
+ * Hook for safely loading provider model suggestions
+ * (replaces a previous 4xx/5xx throw with sane fallbacks)
+ */
+export function useModelProviderSuggestions() {
+  const { data: suggestions, isLoading, error, retry } = useModelProviders({
+    enableCaching: true,
+    useStaleOnError: true,
+  });
+
+  const loadProviderModelSuggestions = React.useCallback(async () => {
+    try {
+      return suggestions || [];
+    } catch {
+      return [];
+    }
+  }, [suggestions]);
 
   return {
-    providers: providers || [],
+    loadProviderModelSuggestions,
+    suggestions: suggestions || [],
     isLoading,
     error,
-    isStale,
     retry,
-    refreshCache: () => enhancedService.refreshCache('model-providers')
   };
+}
+
+/**
+ * App-level initializer (lazy) — safe dynamic import
+ */
+export async function initializeGracefulDegradationInApp() {
+  const { initGracefulDegradation } = await import("./init-graceful-degradation");
+  initGracefulDegradation({
+    enableCaching: true,
+    enableGlobalErrorHandling: true,
+    developmentMode: process.env.NODE_ENV === "development",
+    logLevel: "warn",
+    featureFlags: {
+      modelProviderIntegration: { enabled: true, fallbackBehavior: "cache" },
+      extensionSystem: { enabled: true, fallbackBehavior: "disable" },
+      backgroundTasks: { enabled: true, fallbackBehavior: "hide" },
+    },
+  });
 }

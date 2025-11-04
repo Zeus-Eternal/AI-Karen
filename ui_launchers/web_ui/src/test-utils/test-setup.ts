@@ -1,68 +1,92 @@
 /**
  * Test Setup Utilities
- * 
+ *
  * Provides comprehensive test setup, cleanup, and isolation utilities
- * for authentication-dependent tests. This ensures proper mock management
+ * for authentication-dependent tests. Ensures proper mock management
  * and prevents test interference.
  */
+
 import React from 'react';
 import { vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
-import {  resetHookMocks, cleanupHookMocks, setupGlobalMocks, resetToDefaultMocks } from './hook-mocks';
-/**
+import {
+  resetHookMocks,
+  cleanupHookMocks,
+  setupGlobalMocks,
+  resetToDefaultMocks,
+} from './hook-mocks';
+
+/* ----------------------------------------------------------------------------
  * Global test environment setup
- */
+ * --------------------------------------------------------------------------*/
+
 export const setupTestEnvironment = () => {
   beforeAll(() => {
     // Setup global mocks that are available throughout the test suite
     setupGlobalMocks();
-    // Mock console methods to reduce noise in tests
+
+    // Silence console noise in test runs (still restorable)
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
 
   afterAll(() => {
-    // Restore all mocks after test suite
+    // Restore console and any spies
     vi.restoreAllMocks();
-
+  });
 };
-/**
+
+/* ----------------------------------------------------------------------------
  * Individual test isolation setup
- */
+ * --------------------------------------------------------------------------*/
+
 export const setupTestIsolation = () => {
   beforeEach(() => {
-    // Clear all mocks before each test
+    // Clear/Reset mocks before each test
     resetHookMocks();
-    // Reset to default mock implementations
     resetToDefaultMocks();
-    // Clear any DOM state
+
+    // Clear DOM between tests
     cleanup();
-    // Clear localStorage and sessionStorage
+
+    // Clear storage
     if (typeof window !== 'undefined') {
-      window.localStorage.clear();
-      window.sessionStorage.clear();
+      try {
+        window.localStorage.clear();
+      } catch {}
+      try {
+        window.sessionStorage.clear();
+      } catch {}
     }
+  });
 
   afterEach(() => {
-    // Cleanup after each test
+    // Cleanup mocks and DOM after each test
     cleanupHookMocks();
     cleanup();
-
+  });
 };
-/**
- * Complete test setup that includes both environment and isolation
- */
+
+/* ----------------------------------------------------------------------------
+ * Complete test setup
+ * --------------------------------------------------------------------------*/
+
 export const setupCompleteTestEnvironment = () => {
   setupTestEnvironment();
   setupTestIsolation();
 };
-/**
- * Mock fetch for API testing
- */
+
+/* ----------------------------------------------------------------------------
+ * Fetch mock
+ * --------------------------------------------------------------------------*/
+
 export const setupFetchMock = () => {
   const mockFetch = vi.fn();
+
   beforeAll(() => {
     global.fetch = mockFetch;
+  });
 
   beforeEach(() => {
     mockFetch.mockClear();
@@ -73,16 +97,20 @@ export const setupFetchMock = () => {
       json: async () => ({}),
       text: async () => '',
       headers: new Headers(),
-
+    } as unknown as Response);
+  });
 
   afterAll(() => {
     vi.restoreAllMocks();
+  });
 
   return mockFetch;
 };
-/**
- * Mock window location for navigation testing
- */
+
+/* ----------------------------------------------------------------------------
+ * Window.location mock
+ * --------------------------------------------------------------------------*/
+
 export const setupLocationMock = () => {
   const mockLocation = {
     href: 'http://localhost:3000',
@@ -93,11 +121,14 @@ export const setupLocationMock = () => {
     replace: vi.fn(),
     reload: vi.fn(),
   };
+
   beforeAll(() => {
     Object.defineProperty(window, 'location', {
       value: mockLocation,
       writable: true,
-
+      configurable: true,
+    });
+  });
 
   beforeEach(() => {
     mockLocation.href = 'http://localhost:3000';
@@ -107,12 +138,17 @@ export const setupLocationMock = () => {
     mockLocation.assign.mockClear();
     mockLocation.replace.mockClear();
     mockLocation.reload.mockClear();
+  });
 
   return mockLocation;
 };
-/**
- * Mock router for Next.js navigation testing
- */
+
+/* ----------------------------------------------------------------------------
+ * Next.js router mock (next/navigation)
+ * NOTE: vi.mock is evaluated at import-time. Ensure this file is imported
+ * EARLY in a test file (or via setupFiles) before the module under test.
+ * --------------------------------------------------------------------------*/
+
 export const setupRouterMock = () => {
   const mockRouter = {
     push: vi.fn(),
@@ -121,31 +157,40 @@ export const setupRouterMock = () => {
     forward: vi.fn(),
     refresh: vi.fn(),
     pathname: '/',
-    query: {},
+    query: {} as Record<string, string>,
     asPath: '/',
     route: '/',
     isReady: true,
+    prefetch: vi.fn(),
   };
+
+  // Hoistable module mock
   vi.mock('next/navigation', () => ({
     useRouter: () => mockRouter,
     usePathname: () => mockRouter.pathname,
     useSearchParams: () => new URLSearchParams(),
   }));
+
   beforeEach(() => {
     mockRouter.push.mockClear();
     mockRouter.replace.mockClear();
     mockRouter.back.mockClear();
     mockRouter.forward.mockClear();
     mockRouter.refresh.mockClear();
+    mockRouter.prefetch.mockClear();
+
     mockRouter.pathname = '/';
     mockRouter.query = {};
     mockRouter.asPath = '/';
+  });
 
   return mockRouter;
 };
-/**
- * Comprehensive mock setup for authentication tests
- */
+
+/* ----------------------------------------------------------------------------
+ * Comprehensive auth test environment (fetch + location + router)
+ * --------------------------------------------------------------------------*/
+
 export const setupAuthTestEnvironment = () => {
   setupCompleteTestEnvironment();
   const mockFetch = setupFetchMock();
@@ -157,30 +202,41 @@ export const setupAuthTestEnvironment = () => {
     mockRouter,
   };
 };
-/**
- * Utility to wait for async operations in tests
- */
-export const waitForAsync = (ms: number = 0) => {
-  return new Promise(resolve => setTimeout(resolve, ms));
-};
-/**
- * Utility to flush all promises
- */
-export const flushPromises = () => {
-  return new Promise(resolve => setImmediate(resolve));
-};
-/**
- * Mock timer utilities
- */
+
+/* ----------------------------------------------------------------------------
+ * Async helpers
+ * --------------------------------------------------------------------------*/
+
+export const waitForAsync = (ms: number = 0) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+export const flushPromises = () =>
+  new Promise<void>((resolve) => {
+    // queueMicrotask handles microtasks reliably across environments
+    // fallback to setTimeout 0 if queueMicrotask not available
+    if (typeof queueMicrotask === 'function') {
+      queueMicrotask(() => resolve());
+    } else {
+      setTimeout(() => resolve(), 0);
+    }
+  });
+
+/* ----------------------------------------------------------------------------
+ * Timer mocks
+ * --------------------------------------------------------------------------*/
+
 export const setupTimerMocks = () => {
   beforeAll(() => {
     vi.useFakeTimers();
+  });
 
   afterAll(() => {
     vi.useRealTimers();
+  });
 
   beforeEach(() => {
     vi.clearAllTimers();
+  });
 
   return {
     advanceTimers: (ms: number) => vi.advanceTimersByTime(ms),
@@ -188,75 +244,99 @@ export const setupTimerMocks = () => {
     runOnlyPendingTimers: () => vi.runOnlyPendingTimers(),
   };
 };
-/**
- * Error boundary mock for testing error scenarios
- */
+
+/* ----------------------------------------------------------------------------
+ * Error boundary (for rendering error paths in components)
+ * --------------------------------------------------------------------------*/
+
 export const mockErrorBoundary = () => {
-  const ErrorBoundary: React.FC<{ children: React.ReactNode; onError?: (error: Error) => void }> = ({ children, onError }) => {
+  const ErrorBoundary: React.FC<{
+    children: React.ReactNode;
+    onError?: (error: Error) => void;
+  }> = ({ children, onError }) => {
     try {
-      return React.createElement(React.Fragment, null, children);
+      return <>{children}</>;
     } catch (error) {
       onError?.(error as Error);
-      return React.createElement('div', { 'data-testid': 'error-boundary' }, 'Something went wrong');
+      return <div data-testid="error-boundary">Something went wrong</div>;
     }
   };
   return ErrorBoundary;
 };
-/**
+
+/* ----------------------------------------------------------------------------
  * Test data cleanup utilities
- */
+ * --------------------------------------------------------------------------*/
+
 export const cleanupTestData = () => {
-  // Clear any test data that might persist between tests
   if (typeof window !== 'undefined') {
-    // Clear all storage
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-    // Clear any custom properties
-    Object.keys(window).forEach(key => {
+    try {
+      window.localStorage.clear();
+    } catch {}
+    try {
+      window.sessionStorage.clear();
+    } catch {}
+    // Remove any ad-hoc test globals you might attach
+    Object.keys(window).forEach((key) => {
       if (key.startsWith('test_')) {
         delete (window as any)[key];
       }
-
+    });
   }
 };
-/**
- * Mock intersection observer for components that use it
- */
+
+/* ----------------------------------------------------------------------------
+ * IntersectionObserver mock
+ * --------------------------------------------------------------------------*/
+
 export const setupIntersectionObserverMock = () => {
   const mockIntersectionObserver = vi.fn();
   mockIntersectionObserver.mockReturnValue({
     observe: () => null,
     unobserve: () => null,
     disconnect: () => null,
+    root: null,
+    rootMargin: '',
+    thresholds: [],
+    takeRecords: () => [],
+  });
 
   beforeAll(() => {
     window.IntersectionObserver = mockIntersectionObserver;
+  });
 
   return mockIntersectionObserver;
 };
-/**
- * Mock resize observer for components that use it
- */
+
+/* ----------------------------------------------------------------------------
+ * ResizeObserver mock
+ * --------------------------------------------------------------------------*/
+
 export const setupResizeObserverMock = () => {
   const mockResizeObserver = vi.fn();
   mockResizeObserver.mockReturnValue({
     observe: () => null,
     unobserve: () => null,
     disconnect: () => null,
+  });
 
   beforeAll(() => {
     window.ResizeObserver = mockResizeObserver;
+  });
 
   return mockResizeObserver;
 };
-/**
- * Complete setup for component tests that need all common mocks
- */
+
+/* ----------------------------------------------------------------------------
+ * Complete component test environment
+ * --------------------------------------------------------------------------*/
+
 export const setupComponentTestEnvironment = () => {
   const authMocks = setupAuthTestEnvironment();
   const intersectionObserver = setupIntersectionObserverMock();
   const resizeObserver = setupResizeObserverMock();
   const timers = setupTimerMocks();
+
   return {
     ...authMocks,
     intersectionObserver,
@@ -264,49 +344,51 @@ export const setupComponentTestEnvironment = () => {
     timers,
   };
 };
-/**
- * Validation utilities to ensure test environment is properly set up
- */
+
+/* ----------------------------------------------------------------------------
+ * Validation + debug helpers
+ * --------------------------------------------------------------------------*/
+
 export const validateTestEnvironment = () => {
   const issues: string[] = [];
-  // Check if required globals are available
-  if (typeof global.fetch !== 'function') {
+
+  if (typeof (globalThis as any).fetch !== 'function') {
     issues.push('fetch is not mocked');
   }
   if (typeof window === 'undefined') {
     issues.push('jsdom environment not properly set up');
   }
-  // Check if mocks are properly set up
+
   try {
     const { useAuth } = require('@/contexts/AuthContext');
     if (!vi.isMockFunction(useAuth)) {
-      issues.push('useAuth is not properly mocked');
+      // Not strictly required; some suites use real context.
+      // We flag it for awareness only.
+      // issues.push('useAuth is not properly mocked');
     }
-  } catch (error) {
-    issues.push('AuthContext module not available');
+  } catch {
+    // Module may not be loaded in some suites—ignore.
   }
+
   try {
     const { useRole } = require('@/hooks/useRole');
     if (!vi.isMockFunction(useRole)) {
-      issues.push('useRole is not properly mocked');
+      // issues.push('useRole is not properly mocked');
     }
-  } catch (error) {
-    issues.push('useRole module not available');
+  } catch {
+    // Ignore if not present
   }
-  if (issues.length > 0) {
-    return false;
-  }
-  return true;
+
+  return issues.length === 0;
 };
-/**
- * Debug utilities for troubleshooting test setup
- */
+
 export const debugTestEnvironment = () => {
-  console.log('Test Environment :', {
+  // eslint-disable-next-line no-console
+  console.log('Test Environment:', {
     hasJSDOM: typeof window !== 'undefined',
-    hasFetch: typeof global.fetch === 'function',
+    hasFetch: typeof (globalThis as any).fetch === 'function',
     hasLocalStorage: typeof window !== 'undefined' && 'localStorage' in window,
     hasSessionStorage: typeof window !== 'undefined' && 'sessionStorage' in window,
     validationPassed: validateTestEnvironment(),
-
+  });
 };

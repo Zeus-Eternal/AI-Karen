@@ -64,14 +64,6 @@ export interface HookContextType {
 
 const HookContext = createContext<HookContextType | undefined>(undefined);
 
-export const useHooks = () => {
-  const context = useContext(HookContext);
-  if (context === undefined) {
-    throw new Error('useHooks must be used within a HookProvider');
-  }
-  return context;
-};
-
 interface HookProviderProps {
   children: ReactNode;
 }
@@ -121,6 +113,7 @@ export const HookProvider: React.FC<HookProviderProps> = ({ children }) => {
         if (hook.conditions && Object.keys(hook.conditions).length > 0) {
           const conditionsMet = Object.entries(hook.conditions).every(([key, value]) => {
             return context[key] === value || userContext?.[key] === value;
+          });
 
           if (!conditionsMet) {
             continue;
@@ -132,12 +125,13 @@ export const HookProvider: React.FC<HookProviderProps> = ({ children }) => {
           hookId: hook.id,
           result,
           success: true
-
+        });
       } catch (error) {
         results.push({
           hookId: hook.id,
           error: error instanceof Error ? error.message : 'Unknown error',
           success: false
+        });
 
       }
     }
@@ -149,7 +143,7 @@ export const HookProvider: React.FC<HookProviderProps> = ({ children }) => {
     setHooks(prev => {
       const newHooks = new Map(prev);
       return newHooks.delete(hookId) ? newHooks : prev;
-
+    });
     return hooks.has(hookId);
   }, [hooks]);
 
@@ -167,7 +161,7 @@ export const HookProvider: React.FC<HookProviderProps> = ({ children }) => {
     return registerHook(`grid_${gridId}_${event}`, handler, {
       sourceType: 'ui',
       conditions: { gridId }
-
+    });
   }, [registerHook]);
 
   const registerChartHook = useCallback((
@@ -178,7 +172,7 @@ export const HookProvider: React.FC<HookProviderProps> = ({ children }) => {
     return registerHook(`chart_${chartId}_${event}`, handler, {
       sourceType: 'ui',
       conditions: { chartId }
-
+    });
   }, [registerHook]);
 
   // Chat enhancement hook registration helpers
@@ -189,7 +183,7 @@ export const HookProvider: React.FC<HookProviderProps> = ({ children }) => {
     return registerHook(`chat_${event}`, handler, {
       sourceType: 'ui',
       priority: event === 'preMessage' ? 50 : 100
-
+    });
   }, [registerHook]);
 
   const contextValue: HookContextType = {
@@ -207,4 +201,12 @@ export const HookProvider: React.FC<HookProviderProps> = ({ children }) => {
       {children}
     </HookContext.Provider>
   );
+};
+
+export const useHooks = () => {
+  const context = useContext(HookContext);
+  if (context === undefined) {
+    throw new Error('useHooks must be used within a HookProvider');
+  }
+  return context;
 };

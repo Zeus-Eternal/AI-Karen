@@ -1,13 +1,14 @@
 /**
  * Session Timeout Manager for Admin Management System
- * 
+ *
  * Implements role-based session timeout management with automatic cleanup,
  * warning notifications, and graceful session extension.
- * 
+ *
  * Requirements: 5.5
  */
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { User, AdminSession } from '@/types/admin';
+
 export interface ConcurrentSessionSummary {
   user_id: string;
   email: string;
@@ -23,12 +24,14 @@ export interface ConcurrentSessionSummary {
     expires_at: string;
   }>;
 }
+
 export interface SessionTimeoutConfig {
   warningThreshold: number; // Seconds before expiry to show warning
   extensionDuration: number; // Seconds to extend session
   maxExtensions: number; // Maximum number of extensions allowed
   cleanupInterval: number; // Interval for cleanup in milliseconds
 }
+
 export interface SessionStatus {
   isValid: boolean;
   expiresAt: Date;
@@ -37,62 +40,81 @@ export interface SessionStatus {
   extensionsUsed: number;
   maxExtensions: number;
 }
+
+type RoleKey = 'super_admin' | 'admin' | 'user';
+
 export class SessionTimeoutManager {
   private adminUtils = getAdminDatabaseUtils();
   private cleanupInterval: NodeJS.Timeout | null = null;
   private sessionWarnings = new Map<string, NodeJS.Timeout>();
+
   // Role-based timeout configurations (in seconds)
-  private readonly TIMEOUT_CONFIG = {
+  private readonly TIMEOUT_CONFIG: Record<RoleKey, { timeout: number } & SessionTimeoutConfig> = {
     super_admin: {
       timeout: 30 * 60, // 30 minutes
       warningThreshold: 5 * 60, // 5 minutes warning
       extensionDuration: 15 * 60, // 15 minutes extension
       maxExtensions: 2, // Maximum 2 extensions
-      cleanupInterval: 60 * 1000 // 1 minute cleanup interval
+      cleanupInterval: 60 * 1000, // 1 minute cleanup interval
     },
     admin: {
       timeout: 30 * 60, // 30 minutes
       warningThreshold: 5 * 60, // 5 minutes warning
       extensionDuration: 15 * 60, // 15 minutes extension
       maxExtensions: 3, // Maximum 3 extensions
-      cleanupInterval: 60 * 1000 // 1 minute cleanup interval
+      cleanupInterval: 60 * 1000, // 1 minute cleanup interval
     },
     user: {
       timeout: 60 * 60, // 60 minutes
       warningThreshold: 10 * 60, // 10 minutes warning
       extensionDuration: 30 * 60, // 30 minutes extension
       maxExtensions: 5, // Maximum 5 extensions
-      cleanupInterval: 5 * 60 * 1000 // 5 minutes cleanup interval
-    }
+      cleanupInterval: 5 * 60 * 1000, // 5 minutes cleanup interval
+    },
   };
+
   // In-memory session storage (use Redis in production)
   private activeSessions = new Map<string, AdminSession & { extensionsUsed: number }>();
+
   constructor() {
     this.startCleanupProcess();
   }
+
   /**
    * Create a new session with role-based timeout
    */
-  async createSession(user: User, sessionToken: string, ipAddress?: string, userAgent?: string): Promise<AdminSession> {
-    const config = this.TIMEOUT_CONFIG[user.role];
+  async createSession(
+    user: User,
+    sessionToken: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<AdminSession> {
+    const role = (user.role as RoleKey) || 'user';
+    const config = this.TIMEOUT_CONFIG[role] ?? this.TIMEOUT_CONFIG.user;
+
     const now = new Date();
     const expiresAt = new Date(now.getTime() + config.timeout * 1000);
+
     const session: AdminSession & { extensionsUsed: number } = {
       session_token: sessionToken,
       user_id: user.user_id,
       user_email: user.email,
-      user_role: user.role,
+      user_role: role,
       ip_address: ipAddress,
       user_agent: userAgent,
       created_at: now,
       last_accessed: now,
       expires_at: expiresAt,
       is_active: true,
-      extensionsUsed: 0
+      extensionsUsed: 0,
     };
+
     this.activeSessions.set(sessionToken, session);
+
     // Schedule warning notification
+    this.clearWarning(sessionToken);
     this.scheduleWarning(sessionToken, config.warningThreshold);
+
     // Log session creation
     await this.adminUtils.createAuditLog({
       user_id: user.user_id,
@@ -102,14 +124,16 @@ export class SessionTimeoutManager {
       details: {
         timeout_seconds: config.timeout,
         expires_at: expiresAt.toISOString(),
-        user_role: user.role,
-        warning_threshold: config.warningThreshold
+        user_role: role,
+        warning_threshold: config.warningThreshold,
       },
       ip_address: ipAddress,
-      user_agent: userAgent
+      user_agent: userAgent,
+    });
 
     return session;
   }
+
   /**
    * Update session last accessed time
    */
@@ -129,22 +153,29 @@ export class SessionTimeoutManager {
     this.activeSessions.set(sessionToken, session);
     return true;
   }
+
   /**
    * Extend session timeout
    */
-  async extendSession(sessionToken: string, userId: string): Promise<{ success: boolean; newExpiryTime?: Date; message?: string }> {
+  async extendSession(
+    sessionToken: string,
+    userId: string
+  ): Promise<{ success: boolean; newExpiryTime?: Date; message?: string }> {
     const session = this.activeSessions.get(sessionToken);
     if (!session || !session.is_active) {
       return { success: false, message: 'Session not found or inactive' };
     }
-    const config = this.TIMEOUT_CONFIG[session.user_role as keyof typeof this.TIMEOUT_CONFIG];
+    const role = (session.user_role as RoleKey) || 'user';
+    const config = this.TIMEOUT_CONFIG[role] ?? this.TIMEOUT_CONFIG.user;
+
     // Check if maximum extensions reached
     if (session.extensionsUsed >= config.maxExtensions) {
-      return { 
-        success: false, 
-        message: `Maximum session extensions (${config.maxExtensions}) reached` 
+      return {
+        success: false,
+        message: `Maximum session extensions (${config.maxExtensions}) reached`,
       };
     }
+
     // Extend session
     const now = new Date();
     const newExpiryTime = new Date(now.getTime() + config.extensionDuration * 1000);
@@ -152,9 +183,11 @@ export class SessionTimeoutManager {
     session.extensionsUsed++;
     session.last_accessed = now;
     this.activeSessions.set(sessionToken, session);
+
     // Clear existing warning and schedule new one
     this.clearWarning(sessionToken);
     this.scheduleWarning(sessionToken, config.warningThreshold);
+
     // Log session extension
     await this.adminUtils.createAuditLog({
       user_id: userId,
@@ -165,15 +198,17 @@ export class SessionTimeoutManager {
         extension_duration: config.extensionDuration,
         new_expiry: newExpiryTime.toISOString(),
         extensions_used: session.extensionsUsed,
-        max_extensions: config.maxExtensions
-      }
+        max_extensions: config.maxExtensions,
+      },
+    });
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       newExpiryTime,
-      message: `Session extended by ${config.extensionDuration / 60} minutes` 
+      message: `Session extended by ${config.extensionDuration / 60} minutes`,
     };
   }
+
   /**
    * Get session status
    */
@@ -183,18 +218,24 @@ export class SessionTimeoutManager {
       return null;
     }
     const now = new Date();
-    const timeRemaining = Math.max(0, Math.floor((session.expires_at.getTime() - now.getTime()) / 1000));
-    const config = this.TIMEOUT_CONFIG[session.user_role as keyof typeof this.TIMEOUT_CONFIG];
+    const timeRemaining = Math.max(
+      0,
+      Math.floor((session.expires_at.getTime() - now.getTime()) / 1000)
+    );
+    const role = (session.user_role as RoleKey) || 'user';
+    const config = this.TIMEOUT_CONFIG[role] ?? this.TIMEOUT_CONFIG.user;
     const warningActive = timeRemaining <= config.warningThreshold && timeRemaining > 0;
+
     return {
       isValid: session.is_active && timeRemaining > 0,
       expiresAt: session.expires_at,
       timeRemaining,
       warningActive,
       extensionsUsed: session.extensionsUsed,
-      maxExtensions: config.maxExtensions
+      maxExtensions: config.maxExtensions,
     };
   }
+
   /**
    * Terminate session manually
    */
@@ -204,6 +245,7 @@ export class SessionTimeoutManager {
       await this.expireSession(sessionToken, reason);
     }
   }
+
   /**
    * Get all active sessions for a user
    */
@@ -216,6 +258,7 @@ export class SessionTimeoutManager {
     }
     return userSessions;
   }
+
   /**
    * Terminate all sessions for a user
    */
@@ -226,6 +269,7 @@ export class SessionTimeoutManager {
     }
     return userSessions.length;
   }
+
   /**
    * Get session statistics
    */
@@ -240,14 +284,15 @@ export class SessionTimeoutManager {
       totalActiveSessions: 0,
       sessionsByRole: {} as Record<string, number>,
       averageSessionDuration: 0,
-      expiringSoon: 0
+      expiringSoon: 0,
     };
     let totalDuration = 0;
     for (const session of this.activeSessions.values()) {
       if (session.is_active) {
         stats.totalActiveSessions++;
         // Count by role
-        stats.sessionsByRole[session.user_role] = (stats.sessionsByRole[session.user_role] || 0) + 1;
+        stats.sessionsByRole[session.user_role] =
+          (stats.sessionsByRole[session.user_role] || 0) + 1;
         // Calculate duration
         const duration = now.getTime() - session.created_at.getTime();
         totalDuration += duration;
@@ -259,10 +304,13 @@ export class SessionTimeoutManager {
       }
     }
     if (stats.totalActiveSessions > 0) {
-      stats.averageSessionDuration = Math.floor(totalDuration / stats.totalActiveSessions / 1000); // in seconds
+      stats.averageSessionDuration = Math.floor(
+        totalDuration / stats.totalActiveSessions / 1000
+      ); // in seconds
     }
     return stats;
   }
+
   getConcurrentSessionsByUser(limit = 10): ConcurrentSessionSummary[] {
     const aggregated = new Map<
       string,
@@ -275,10 +323,10 @@ export class SessionTimeoutManager {
         sessions: Array<AdminSession & { extensionsUsed: number }>;
       }
     >();
+
     for (const session of this.activeSessions.values()) {
-      if (!session.is_active) {
-        continue;
-      }
+      if (!session.is_active) continue;
+
       const existing = aggregated.get(session.user_id);
       if (!existing) {
         aggregated.set(session.user_id, {
@@ -287,16 +335,18 @@ export class SessionTimeoutManager {
           role: session.user_role,
           session_count: 1,
           last_activity: session.last_accessed,
-          sessions: [session]
-
+          sessions: [session],
+        });
         continue;
       }
+
       existing.session_count += 1;
       existing.sessions.push(session);
       if (session.last_accessed > existing.last_activity) {
         existing.last_activity = session.last_accessed;
       }
     }
+
     return Array.from(aggregated.values())
       .sort((a, b) => {
         if (b.session_count !== a.session_count) {
@@ -305,36 +355,43 @@ export class SessionTimeoutManager {
         return b.last_activity.getTime() - a.last_activity.getTime();
       })
       .slice(0, limit)
-      .map(summary => ({
+      .map((summary) => ({
         user_id: summary.user_id,
         email: summary.email,
         role: summary.role,
         session_count: summary.session_count,
         last_activity: summary.last_activity.toISOString(),
-        active_sessions: summary.sessions.map(activeSession => ({
+        active_sessions: summary.sessions.map((activeSession) => ({
           session_token: activeSession.session_token,
           ip_address: activeSession.ip_address,
           user_agent: activeSession.user_agent,
           created_at: activeSession.created_at.toISOString(),
           last_accessed: activeSession.last_accessed.toISOString(),
-          expires_at: activeSession.expires_at.toISOString()
-        }))
+          expires_at: activeSession.expires_at.toISOString(),
+        })),
       }));
   }
+
   /**
    * Schedule warning notification for session expiry
    */
   private scheduleWarning(sessionToken: string, warningThreshold: number): void {
     const session = this.activeSessions.get(sessionToken);
     if (!session) return;
+
     const now = new Date();
     const warningTime = session.expires_at.getTime() - warningThreshold * 1000;
     const delay = Math.max(0, warningTime - now.getTime());
+
     const warningTimeout = setTimeout(() => {
-      this.triggerSessionWarning(sessionToken);
+      this.triggerSessionWarning(sessionToken).catch(() => {
+        // swallow: audit log failures should not crash timers
+      });
     }, delay);
+
     this.sessionWarnings.set(sessionToken, warningTimeout);
   }
+
   /**
    * Clear warning for session
    */
@@ -345,14 +402,19 @@ export class SessionTimeoutManager {
       this.sessionWarnings.delete(sessionToken);
     }
   }
+
   /**
    * Trigger session warning (in production, this would send notifications)
    */
   private async triggerSessionWarning(sessionToken: string): Promise<void> {
     const session = this.activeSessions.get(sessionToken);
     if (!session || !session.is_active) return;
-    const timeRemaining = Math.max(0, Math.floor((session.expires_at.getTime() - Date.now()) / 1000));
-    // Log warning
+
+    const timeRemaining = Math.max(
+      0,
+      Math.floor((session.expires_at.getTime() - Date.now()) / 1000)
+    );
+
     await this.adminUtils.createAuditLog({
       user_id: session.user_id,
       action: 'session.warning',
@@ -362,20 +424,23 @@ export class SessionTimeoutManager {
         time_remaining: timeRemaining,
         expires_at: session.expires_at.toISOString(),
         extensions_used: session.extensionsUsed,
-        warning_triggered_at: new Date().toISOString()
-      }
+        warning_triggered_at: new Date().toISOString(),
+      },
+    });
 
-    // In production, send real-time notification to user
+    // In production, send real-time notification to user here.
   }
+
   /**
    * Expire a session
    */
   private async expireSession(sessionToken: string, reason: string): Promise<void> {
     const session = this.activeSessions.get(sessionToken);
     if (!session) return;
+
     session.is_active = false;
     this.clearWarning(sessionToken);
-    // Log session expiry
+
     await this.adminUtils.createAuditLog({
       user_id: session.user_id,
       action: 'session.expired',
@@ -385,38 +450,43 @@ export class SessionTimeoutManager {
         reason,
         session_duration: Date.now() - session.created_at.getTime(),
         extensions_used: session.extensionsUsed,
-        expired_at: new Date().toISOString()
-      }
+        expired_at: new Date().toISOString(),
+      },
+    });
 
-    // Remove from active sessions
     this.activeSessions.delete(sessionToken);
   }
+
   /**
    * Start automatic cleanup process
    */
   private startCleanupProcess(): void {
-    // Run cleanup every minute
+    // Run cleanup every minute (per-session warnings use role thresholds)
     this.cleanupInterval = setInterval(() => {
-      this.cleanupExpiredSessions();
+      this.cleanupExpiredSessions().catch(() => {
+        // swallow cleanup errors
+      });
     }, 60 * 1000);
   }
+
   /**
    * Clean up expired sessions
    */
   private async cleanupExpiredSessions(): Promise<void> {
     const now = new Date();
     const expiredSessions: string[] = [];
+
     for (const [sessionToken, session] of this.activeSessions.entries()) {
       if (session.is_active && now > session.expires_at) {
         expiredSessions.push(sessionToken);
       }
     }
+
     for (const sessionToken of expiredSessions) {
       await this.expireSession(sessionToken, 'timeout');
     }
-    if (expiredSessions.length > 0) {
-    }
   }
+
   /**
    * Stop cleanup process
    */
@@ -432,5 +502,7 @@ export class SessionTimeoutManager {
     this.sessionWarnings.clear();
   }
 }
+
 // Export singleton instance
 export const sessionTimeoutManager = new SessionTimeoutManager();
+export default sessionTimeoutManager;

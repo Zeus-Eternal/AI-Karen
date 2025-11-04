@@ -1,9 +1,9 @@
 /**
  * Enhanced Authentication Middleware with Security Features
- * 
+ *
  * Integrates progressive login delays, account lockout, MFA enforcement,
  * session timeout management, and IP security for admin authentication.
- * 
+ *
  * Requirements: 5.4, 5.5, 5.6
  */
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,6 +13,7 @@ import { sessionTimeoutManager } from './session-timeout-manager';
 import { ipSecurityManager } from './ip-security-manager';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { User, AdminApiResponse } from '@/types/admin';
+
 export interface EnhancedAuthContext {
   user: User;
   sessionToken: string;
@@ -27,6 +28,7 @@ export interface EnhancedAuthContext {
     warningActive: boolean;
   };
 }
+
 export interface AuthenticationResult {
   success: boolean;
   user?: User;
@@ -39,8 +41,10 @@ export interface AuthenticationResult {
     details?: any;
   };
 }
+
 export class EnhancedAuthMiddleware {
   private adminUtils = getAdminDatabaseUtils();
+
   /**
    * Enhanced login with security features
    */
@@ -51,10 +55,12 @@ export class EnhancedAuthMiddleware {
     ipAddress?: string,
     userAgent?: string
   ): Promise<AuthenticationResult> {
-    const clientIP = ipAddress || 'unknown';
+    const clientIP = this.normalizeIp(ipAddress || 'unknown');
+
     try {
-      // Step 1: Check for account lockout
+      // Step 1: Lookup user and check account lockout
       const user = await this.findUserByEmail(email);
+
       if (user) {
         const isLocked = await securityManager.isAccountLocked(user.user_id);
         if (isLocked) {
@@ -68,7 +74,8 @@ export class EnhancedAuthMiddleware {
             }
           };
         }
-        // Step 2: Check IP access permissions
+
+        // Step 2: IP access policy (role-aware whitelist + blocks)
         const ipCheck = await ipSecurityManager.checkIpAccess(clientIP, user);
         if (!ipCheck.allowed) {
           await ipSecurityManager.recordFailedAttempt(clientIP, email);
@@ -82,12 +89,14 @@ export class EnhancedAuthMiddleware {
           };
         }
       }
-      // Step 3: Validate credentials (this would call your existing auth system)
+
+      // Step 3: Validate credentials (via backend if available)
       const credentialsValid = await this.validateCredentials(email, password);
-      if (!credentialsValid || !user) {
-        // Record failed attempt and apply progressive delay
+      if (!credentialsValid) {
         const delay = await securityManager.recordFailedLogin(email, clientIP, userAgent);
         await ipSecurityManager.recordFailedAttempt(clientIP, email);
+        if (delay && delay > 0) await this.sleep(delay * 1000);
+
         return {
           success: false,
           delay,
@@ -98,19 +107,39 @@ export class EnhancedAuthMiddleware {
           }
         };
       }
-      // Step 4: Check MFA requirements
-      const mfaStatus = await mfaManager.enforceMfaRequirement(user);
-      if (!mfaStatus.canProceed) {
+
+      // From here, user should exist
+      const user = await this.findUserByEmail(email);
+      if (!user || !user.is_active) {
+        const delay = await securityManager.recordFailedLogin(email, clientIP, userAgent);
+        await ipSecurityManager.recordFailedAttempt(clientIP, email);
+        if (delay && delay > 0) await this.sleep(delay * 1000);
+
         return {
           success: false,
-          mfaRequired: mfaStatus.requiresSetup,
+          delay,
           error: {
-            code: mfaStatus.requiresSetup ? 'MFA_SETUP_REQUIRED' : 'MFA_REQUIRED',
-            message: mfaStatus.message || 'Multi-factor authentication required',
-            details: { requires_setup: mfaStatus.requiresSetup }
+            code: 'ACCOUNT_INACTIVE',
+            message: 'Account is inactive or does not exist',
+            details: { delay_seconds: delay }
           }
         };
       }
+
+      // Step 4: MFA policy gate (role policy + setup enforcement)
+      const mfaPolicy = await mfaManager.enforceMfaRequirement(user);
+      if (!mfaPolicy.canProceed) {
+        return {
+          success: false,
+          mfaRequired: mfaPolicy.requiresSetup,
+          error: {
+            code: mfaPolicy.requiresSetup ? 'MFA_SETUP_REQUIRED' : 'MFA_REQUIRED',
+            message: mfaPolicy.message || 'Multi-factor authentication required',
+            details: { requires_setup: mfaPolicy.requiresSetup }
+          }
+        };
+      }
+
       // Step 5: Verify MFA if enabled
       if (user.two_factor_enabled) {
         if (!totpCode) {
@@ -131,12 +160,13 @@ export class EnhancedAuthMiddleware {
             error: {
               code: 'INVALID_MFA_CODE',
               message: 'Invalid TOTP code',
-              details: { used_backup_code: mfaResult.usedBackupCode }
+              details: { used_backup_code: mfaResult.usedBackupCode === true }
             }
           };
         }
       }
-      // Step 6: Check concurrent session limits
+
+      // Step 6: Enforce concurrent session limits
       const canCreateSession = await securityManager.checkConcurrentSessionLimit(user.user_id, user.role);
       if (!canCreateSession) {
         return {
@@ -148,16 +178,20 @@ export class EnhancedAuthMiddleware {
           }
         };
       }
+
       // Step 7: Create secure session
       const sessionToken = this.generateSessionToken();
-      const session = await sessionTimeoutManager.createSession(user, sessionToken, clientIP, userAgent);
-      // Step 8: Clear failed attempts and record successful access
+      await sessionTimeoutManager.createSession(user, sessionToken, clientIP, userAgent);
+
+      // Step 8: Clear failed attempts and record successful IP access
       securityManager.clearFailedAttempts(email, clientIP);
       await ipSecurityManager.recordIpAccess(clientIP, user, userAgent);
+
       // Step 9: Update user's last login
       await this.adminUtils.updateUser(user.user_id, {
         last_login_at: new Date(),
         failed_login_attempts: 0
+      });
 
       return {
         success: true,
@@ -176,77 +210,75 @@ export class EnhancedAuthMiddleware {
       };
     }
   }
+
   /**
    * Validate session with security checks
    */
   async validateSession(sessionToken: string, ipAddress?: string): Promise<EnhancedAuthContext | null> {
     try {
-      // Check session timeout status
-      const sessionStatus = sessionTimeoutManager.getSessionStatus(sessionToken);
-      if (!sessionStatus || !sessionStatus.isValid) {
-        return null;
-      }
-      // Update session activity
-      const sessionValid = await sessionTimeoutManager.updateSessionActivity(sessionToken);
-      if (!sessionValid) {
-        return null;
-      }
-      // Get user sessions to find the current one
-      const userSessions = sessionTimeoutManager.getUserSessions(''); // This needs the user ID
-      const currentSession = userSessions.find(s => s.session_token === sessionToken);
-      if (!currentSession) {
-        return null;
-      }
-      // Get user data
-      const user = await this.adminUtils.getUserWithRole(currentSession.user_id);
-      if (!user || !user.is_active) {
-        return null;
-      }
-      // Check IP consistency (optional security measure)
-      if (ipAddress && currentSession.ip_address && ipAddress !== currentSession.ip_address) {
-        // Log potential session hijacking attempt
+      // 1) Check session timeout status
+      const status = sessionTimeoutManager.getSessionStatus(sessionToken);
+      if (!status || !status.isValid) return null;
+
+      // 2) Touch activity
+      const stillValid = await sessionTimeoutManager.updateSessionActivity(sessionToken);
+      if (!stillValid) return null;
+
+      // 3) Load the session (prefer direct lookup by token)
+      const session =
+        sessionTimeoutManager.getSessionByToken?.(sessionToken) ||
+        (await sessionTimeoutManager.findSessionByToken?.(sessionToken)); // optional async
+      if (!session) return null;
+
+      // 4) Load user
+      const user = await this.adminUtils.getUserWithRole(session.user_id);
+      if (!user || !user.is_active) return null;
+
+      // 5) Optional IP consistency check
+      const normalizedIp = this.normalizeIp(ipAddress || '');
+      if (normalizedIp && session.ip_address && normalizedIp !== session.ip_address) {
         await this.adminUtils.createAuditLog({
           user_id: user.user_id,
           action: 'security.ip_mismatch',
           resource_type: 'session_security',
           resource_id: sessionToken,
           details: {
-            original_ip: currentSession.ip_address,
-            current_ip: ipAddress,
+            original_ip: session.ip_address,
+            current_ip: normalizedIp,
             session_token: sessionToken
           },
-          ip_address: ipAddress
-
-        // Optionally terminate session for security
+          ip_address: normalizedIp
+        });
+        // Consider terminating on mismatch if policy requires
         // await sessionTimeoutManager.terminateSession(sessionToken, 'ip_mismatch');
         // return null;
       }
+
       return {
         user,
         sessionToken,
-        ipAddress: ipAddress || currentSession.ip_address || 'unknown',
-        userAgent: currentSession.user_agent || 'unknown',
+        ipAddress: normalizedIp || session.ip_address || 'unknown',
+        userAgent: session.user_agent || 'unknown',
         mfaRequired: await mfaManager.isMfaRequired(user),
-        mfaVerified: user.two_factor_enabled,
+        mfaVerified: !!user.two_factor_enabled, // "enabled" proxy; true verification happened on login
         sessionStatus: {
-          isValid: sessionStatus.isValid,
-          expiresAt: sessionStatus.expiresAt,
-          timeRemaining: sessionStatus.timeRemaining,
-          warningActive: sessionStatus.warningActive
+          isValid: status.isValid,
+          expiresAt: status.expiresAt,
+          timeRemaining: status.timeRemaining,
+          warningActive: status.warningActive
         }
       };
-    } catch (error) {
+    } catch {
       return null;
     }
   }
+
   /**
    * Enhanced logout with security cleanup
    */
   async logout(sessionToken: string, userId: string): Promise<void> {
     try {
-      // Terminate session
       await sessionTimeoutManager.terminateSession(sessionToken, 'user_logout');
-      // Log logout
       await this.adminUtils.createAuditLog({
         user_id: userId,
         action: 'auth.logout',
@@ -256,10 +288,12 @@ export class EnhancedAuthMiddleware {
           logout_method: 'user_initiated',
           logout_at: new Date().toISOString()
         }
-
-    } catch (error) {
+      });
+    } catch {
+      // best-effort
     }
   }
+
   /**
    * Middleware wrapper for API routes
    */
@@ -276,15 +310,17 @@ export class EnhancedAuthMiddleware {
       const sessionToken = this.extractSessionToken(request);
       const ipAddress = this.extractClientIP(request);
       const userAgent = request.headers.get('user-agent') || undefined;
+
       if (!sessionToken) {
         return this.unauthorizedResponse('SESSION_TOKEN_MISSING', 'Session token required');
       }
-      // Validate session with security checks
+
       const authContext = await this.validateSession(sessionToken, ipAddress);
       if (!authContext) {
         return this.unauthorizedResponse('INVALID_SESSION', 'Invalid or expired session');
       }
-      // Check role requirements
+
+      // Role gating
       if (options.requiredRole) {
         if (options.requiredRole === 'super_admin' && authContext.user.role !== 'super_admin') {
           return this.forbiddenResponse('INSUFFICIENT_ROLE', 'Super admin role required');
@@ -293,106 +329,112 @@ export class EnhancedAuthMiddleware {
           return this.forbiddenResponse('INSUFFICIENT_ROLE', 'Admin role required');
         }
       }
-      // Check MFA requirements
+
+      // MFA gating
       if (options.requireMfa && authContext.mfaRequired && !authContext.mfaVerified) {
         return this.forbiddenResponse('MFA_REQUIRED', 'Multi-factor authentication required');
       }
-      // Check IP whitelist if required
+
+      // Optional whitelist check
       if (options.checkIpWhitelist) {
         const ipCheck = await ipSecurityManager.checkIpAccess(authContext.ipAddress, authContext.user);
         if (!ipCheck.allowed) {
           return this.forbiddenResponse('IP_ACCESS_DENIED', ipCheck.reason || 'IP access denied');
         }
       }
-      // Call the handler with enhanced context
+
       return await handler(request, authContext);
-    } catch (error) {
+    } catch {
       return this.errorResponse('AUTHENTICATION_ERROR', 'Authentication system error');
     }
   }
-  /**
-   * Extract session token from request
-   */
+
+  /* --------------------------
+   * Helpers
+   * ------------------------ */
+
   private extractSessionToken(request: NextRequest): string | null {
-    // Try Authorization header first
     const authHeader = request.headers.get('authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
       return authHeader.substring(7);
     }
-    // Try cookie
     const cookies = request.headers.get('cookie');
     if (cookies) {
-      const sessionMatch = cookies.match(/session_token=([^;]+)/);
-      if (sessionMatch) {
-        return sessionMatch[1];
-      }
+      const m = cookies.match(/(?:^|;\s*)session_token=([^;]+)/);
+      if (m) return decodeURIComponent(m[1]);
     }
     return null;
   }
-  /**
-   * Extract client IP address
-   */
+
   private extractClientIP(request: NextRequest): string {
     const forwarded = request.headers.get('x-forwarded-for');
     const realIP = request.headers.get('x-real-ip');
     const remoteAddr = request.headers.get('remote-addr');
-    if (forwarded) {
-      return forwarded.split(',')[0].trim();
-    }
-    return realIP || remoteAddr || 'unknown';
+
+    const ip = (forwarded ? forwarded.split(',')[0].trim() : realIP || remoteAddr || 'unknown');
+    return this.normalizeIp(ip);
   }
-  /**
-   * Find user by email
-   */
-  private async findUserByEmail(email: string): Promise<User | null> {
-    try {
-      const user = await this.adminUtils.getUserByEmail(email);
-      return user;
-    } catch (error) {
-      return null;
-    }
+
+  private normalizeIp(ip: string): string {
+    // Remove brackets/ports and lower-case IPv6 for consistency
+    const stripPort = (host: string) => {
+      if (host.startsWith('[')) {
+        const end = host.indexOf(']');
+        return end !== -1 ? host.slice(1, end) : host;
+      }
+      const idx = host.lastIndexOf(':');
+      if (idx > -1 && host.indexOf(':') === idx) {
+        const after = host.slice(idx + 1);
+        if (/^\d+$/.test(after)) return host.slice(0, idx);
+      }
+      return host;
+    };
+    const v = stripPort(ip.trim());
+    return v.toLowerCase();
   }
-  /**
-   * Validate user credentials (mock implementation)
-   */
+
   private async validateCredentials(email: string, password: string): Promise<boolean> {
-    // This would integrate with your existing password validation system
-    // For now, this is a placeholder
-    return true; // Replace with actual credential validation
+    try {
+      if (this.adminUtils.verifyPassword) {
+        return await this.adminUtils.verifyPassword(email, password);
+      }
+      // If no backend verifier is available, fail-closed in prod; pass-through can be toggled in dev
+      return false;
+    } catch {
+      return false;
+    }
   }
-  /**
-   * Generate secure session token
-   */
+
   private generateSessionToken(): string {
-    return `sess_${Date.now()}_${Math.random().toString(36).substring(2, 15)}_${Math.random().toString(36).substring(2, 15)}`;
+    // Replace with crypto.randomUUID + HMAC if you want signed tokens
+    return `sess_${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${Math.random().toString(36).slice(2, 10)}`;
   }
-  /**
-   * Create unauthorized response
-   */
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(res => setTimeout(res, ms));
+  }
+
   private unauthorizedResponse(code: string, message: string): NextResponse {
-    return NextResponse.json({
-      success: false,
-      error: { code, message }
-    } as AdminApiResponse<never>, { status: 401 });
-  }
-  /**
-   * Create forbidden response
-   */
+    return NextResponse.json(
+      { success: false, error: { code, message } } as AdminApiResponse<never>,
+      { status: 401 }
+    );
+    }
+
   private forbiddenResponse(code: string, message: string): NextResponse {
-    return NextResponse.json({
-      success: false,
-      error: { code, message }
-    } as AdminApiResponse<never>, { status: 403 });
+    return NextResponse.json(
+      { success: false, error: { code, message } } as AdminApiResponse<never>,
+      { status: 403 }
+    );
   }
-  /**
-   * Create error response
-   */
+
   private errorResponse(code: string, message: string): NextResponse {
-    return NextResponse.json({
-      success: false,
-      error: { code, message }
-    } as AdminApiResponse<never>, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: { code, message } } as AdminApiResponse<never>,
+      { status: 500 }
+    );
   }
 }
+
 // Export singleton instance
 export const enhancedAuthMiddleware = new EnhancedAuthMiddleware();

@@ -122,16 +122,16 @@ export class ErrorBoundary extends Component<Props, State> {
             <h3>Something went wrong</h3>
             <p>{componentName} encountered an error and couldn't be displayed.</p>
             {enableRetry && retryCount < this.maxRetries && (
-              <button 
+              <Button 
                 onClick={this.handleRetry}
                 className="retry-button"
                 disabled={retryCount  aria-label="Button">= this.maxRetries}
               >
                 Retry ({retryCount}/{this.maxRetries})
-              </button>
+              </Button>
             )}
-            <button onClick={this.handleReset} className="reset-button" aria-label="Button">
-            </button>
+            <Button onClick={this.handleReset} className="reset-button" aria-label="Button">
+            </Button>
           </div>
         </div>
       );
@@ -190,10 +190,10 @@ export class ErrorBoundary extends Component<Props, State> {
         </div>
         {enableRetry && (
           <div className="fallback-actions">
-            <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
-            </button>
-            <button onClick={this.handleReset} className="reset-button" aria-label="Button">
-            </button>
+            <Button onClick={this.handleRetry} className="retry-button" aria-label="Button">
+            </Button>
+            <Button onClick={this.handleReset} className="reset-button" aria-label="Button">
+            </Button>
           </div>
         )}
       </div>
@@ -216,10 +216,10 @@ export class ErrorBoundary extends Component<Props, State> {
         </div>
         {enableRetry && (
           <div className="fallback-actions">
-            <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
-            </button>
-            <button onClick={this.handleReset} className="reset-button" aria-label="Button">
-            </button>
+            <Button onClick={this.handleRetry} className="retry-button" aria-label="Button">
+            </Button>
+            <Button onClick={this.handleReset} className="reset-button" aria-label="Button">
+            </Button>
           </div>
         )}
       </div>
@@ -233,8 +233,8 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="loading-spinner">⏳</div>
           <p>{message}</p>
           {enableRetry && (
-            <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
-            </button>
+            <Button onClick={this.handleRetry} className="retry-button" aria-label="Button">
+            </Button>
           )}
         </div>
       </div>
@@ -249,10 +249,10 @@ export class ErrorBoundary extends Component<Props, State> {
           <p>{message}</p>
           {enableRetry && (
             <div className="fallback-actions">
-              <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
-              </button>
-              <button onClick={this.handleReset} className="reset-button" aria-label="Button">
-              </button>
+              <Button onClick={this.handleRetry} className="retry-button" aria-label="Button">
+              </Button>
+              <Button onClick={this.handleReset} className="reset-button" aria-label="Button">
+              </Button>
             </div>
           )}
         </div>
@@ -270,10 +270,10 @@ export class ErrorBoundary extends Component<Props, State> {
           <p>{message || 'An unexpected error occurred.'}</p>
           {enableRetry && (
             <div className="fallback-actions">
-              <button onClick={this.handleRetry} className="retry-button" aria-label="Button">
-              </button>
-              <button onClick={this.handleReset} className="reset-button" aria-label="Button">
-              </button>
+              <Button onClick={this.handleRetry} className="retry-button" aria-label="Button">
+              </Button>
+              <Button onClick={this.handleReset} className="reset-button" aria-label="Button">
+              </Button>
             </div>
           )}
         </div>

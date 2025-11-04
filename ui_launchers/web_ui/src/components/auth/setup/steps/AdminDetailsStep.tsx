@@ -10,8 +10,8 @@ export function AdminDetailsStep({ onNext, onPrevious }: AdminDetailsStepProps) 
     <div>
       <h2>Admin Details Step</h2>
       <p>Temporarily disabled for build</p>
-      <button onClick={onNext}>Next</button>
-      <button onClick={onPrevious}>Back</button>
+      <Button onClick={onNext}>Next</Button>
+      <Button onClick={onPrevious}>Back</Button>
     </div>
   );
 }

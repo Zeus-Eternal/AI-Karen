@@ -123,7 +123,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <button
+          <Button
             onClick={handleApplyOptimizations}
             disabled={isOptimizing || recommendations.length === 0}
             className="flex items-center space-x-2"

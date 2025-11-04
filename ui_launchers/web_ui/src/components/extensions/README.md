@@ -185,9 +185,9 @@ function NavigationExample() {
   };
   
   return (
-    <button onClick={navigateToLLMProviders}>
+    <Button onClick={navigateToLLMProviders}>
       View LLM Providers
-    </button>
+    </Button>
   );
 }
 ```

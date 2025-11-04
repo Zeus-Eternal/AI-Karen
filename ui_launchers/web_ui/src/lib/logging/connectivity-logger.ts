@@ -310,6 +310,7 @@ class ConnectivityLogger {
           timestamp: new Date().toISOString(),
           source: 'frontend'
         })
+      });
 
     } catch (error) {
       console.error('Failed to send logs to remote endpoint:', error);

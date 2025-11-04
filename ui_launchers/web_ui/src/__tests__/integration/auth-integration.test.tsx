@@ -49,9 +49,9 @@ Object.defineProperty(document, 'cookie', {
 // Mock UI components to avoid dependency issues
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, disabled, onClick, type, ...props }: any) => (
-    <button disabled={disabled} onClick={onClick} type={type} {...props}>
+    <Button disabled={disabled} onClick={onClick} type={type} {...props}>
       {children}
-    </button>
+    </Button>
   ),
 }));
 

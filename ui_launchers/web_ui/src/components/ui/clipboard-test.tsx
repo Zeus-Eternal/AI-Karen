@@ -26,11 +26,11 @@ export function ClipboardTest({ className = '' }: ClipboardTestProps) {
   return (
     <div className={`clipboard-test ${className}`}>
       <div className="flex items-center gap-4 p-4 border rounded-lg sm:p-4 md:p-6">
-        <button
+        <Button
           onClick={handleTestClipboard}
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
          aria-label="Button">
-        </button>
+        </Button>
         
         {testResult.tested && (
           <div className={`flex items-center gap-2 ${

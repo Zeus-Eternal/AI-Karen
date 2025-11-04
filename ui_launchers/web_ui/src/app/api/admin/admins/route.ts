@@ -40,6 +40,7 @@ export const GET = requireSuperAdmin(async (request: NextRequest, context) => {
       if (a.role === 'super_admin' && b.role !== 'super_admin') return -1;
       if (b.role === 'super_admin' && a.role !== 'super_admin') return 1;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
     const response: AdminApiResponse<{ admins: typeof sanitizedAdmins; statistics: any }> = {
       success: true,
@@ -69,6 +70,7 @@ export const GET = requireSuperAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
+});
 
 /**
  * POST /api/admin/admins - Create new admin (super admin only)
@@ -126,7 +128,7 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       role: adminRole,
       tenant_id: body.tenant_id || 'default',
       created_by: context.user.user_id
-
+    });
     // Get created user for response
     const createdUser = await adminUtils.getUserWithRole(userId);
     if (!createdUser) {
@@ -147,7 +149,7 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       },
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
-
+    });
     // Remove sensitive information from response
     const responseUser = {
       user_id: createdUser.user_id,
@@ -186,3 +188,4 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
+});

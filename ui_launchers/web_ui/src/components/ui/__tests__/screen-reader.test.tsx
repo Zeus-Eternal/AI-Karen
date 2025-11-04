@@ -23,18 +23,18 @@ const TestAnnouncementComponent = () => {
 
   return (
     <div>
-      <button onClick={() => announce('Test message', 'polite')}>
-      </button>
-      <button onClick={() => announceNavigation('Home page')}>
-      </button>
-      <button onClick={() => announceAction('Save')}>
-      </button>
-      <button onClick={() => announceError('Something went wrong')}>
-      </button>
-      <button onClick={() => announceSuccess('Operation completed')}>
-      </button>
-      <button onClick={() => announceLoading('Loading data')}>
-      </button>
+      <Button onClick={() => announce('Test message', 'polite')}>
+      </Button>
+      <Button onClick={() => announceNavigation('Home page')}>
+      </Button>
+      <Button onClick={() => announceAction('Save')}>
+      </Button>
+      <Button onClick={() => announceError('Something went wrong')}>
+      </Button>
+      <Button onClick={() => announceSuccess('Operation completed')}>
+      </Button>
+      <Button onClick={() => announceLoading('Loading data')}>
+      </Button>
     </div>
   );
 };
@@ -71,8 +71,8 @@ describe('VisuallyHidden', () => {
 describe('ScreenReaderAnnouncer', () => {
   it('should provide announce function to children', () => {
     const TestChild = ({ announce }: { announce: (message: string) => void }) => (
-      <button onClick={() => announce('Test announcement')}>
-      </button>
+      <Button onClick={() => announce('Test announcement')}>
+      </Button>
     );
 
     render(

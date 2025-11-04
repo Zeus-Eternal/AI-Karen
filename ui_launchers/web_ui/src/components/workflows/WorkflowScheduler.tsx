@@ -110,13 +110,13 @@ export function WorkflowScheduler({
         </div>
         
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={() => setShowCreateQueue(true)}
             variant="outline"
           >
             <Plus className="h-4 w-4 mr-2 " />
           </Button>
-          <button
+          <Button
             onClick={() => setShowCreateTrigger(true)}
           >
             <Plus className="h-4 w-4 mr-2 " />

@@ -29,13 +29,13 @@ function fixSyntaxErrors(content) {
   
   // Fix malformed button elements with aria-label issues
   fixed = fixed.replace(
-    /<button([^>]*?)aria-label="Button">([^<]*?)<\/Button>/g,
+    /<Button([^>]*?)aria-label="Button">([^<]*?)<\/Button>/g,
     '<Button$1>$2</Button>'
   );
   
   // Fix button elements that should be Button components
   fixed = fixed.replace(
-    /<button([^>]*?)variant="([^"]*?)"([^>]*?)aria-label="Button">/g,
+    /<Button([^>]*?)variant="([^"]*?)"([^>]*?)aria-label="Button">/g,
     '<Button$1variant="$2"$3>'
   );
   

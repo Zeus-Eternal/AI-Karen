@@ -1,6 +1,12 @@
 import { logger } from '@/lib/logger';
 import { errorHandler, type ErrorInfo } from '@/lib/error-handler';
 import { getExtensionAuthManager } from './extension-auth-manager';
+import {
+  extensionAuthErrorHandler,
+  ExtensionAuthError,
+  ExtensionAuthRecoveryStrategy,
+} from './extension-auth-errors';
+import { extensionAuthDegradationManager } from './extension-auth-degradation';
 /**
  * Extension Authentication Error Recovery Manager
  * 
@@ -14,17 +20,6 @@ import { getExtensionAuthManager } from './extension-auth-manager';
  * - 9.1: Graceful degradation when authentication fails
  * - 9.2: Fallback behavior for extension unavailability
  */
-
-
-
-
-  extensionAuthErrorHandler
-import { } from './extension-auth-errors';
-
-  extensionAuthDegradationManager,
-import { } from './extension-auth-degradation';
-
-
 /**
  * Recovery attempt result
  */
@@ -113,6 +108,7 @@ export class ExtensionAuthRecoveryManager {
       endpoint,
       operation,
       errorCategory: error.category
+    });
 
     let result: RecoveryAttemptResult;
 

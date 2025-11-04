@@ -10,7 +10,7 @@ import { vi } from 'vitest';
 vi.mock('framer-motion', () => ({
   motion: {
     button: React.forwardRef<HTMLButtonElement, any>(({ children, ...props }, ref) => (
-      <button ref={ref} {...props} aria-label="Button">{children}</button>
+      <Button ref={ref} {...props} aria-label="Button">{children}</Button>
     ))
   }
 }));

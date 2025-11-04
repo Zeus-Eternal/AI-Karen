@@ -146,7 +146,7 @@ const KarenToast = React.forwardRef<
             {/* Expandable content */}
             {alert?.expandableContent && (
               <div className="mt-2">
-                <button
+                <Button
                   onClick={() => setIsExpanded(!isExpanded)}
                   className="flex items-center space-x-1 text-xs font-medium opacity-75 hover:opacity-100 transition-opacity sm:text-sm md:text-base"
                   aria-expanded={isExpanded}
@@ -158,7 +158,7 @@ const KarenToast = React.forwardRef<
                   ) : (
                     <ChevronDown className="h-3 w-3 " />
                   )}
-                </button>
+                </Button>
                 
                 {isExpanded && (
                   <div
@@ -177,7 +177,7 @@ const KarenToast = React.forwardRef<
         {alert?.actions && alert.actions.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-2 border-t border-current/10">
             {alert.actions.map((action, index) => (
-              <button
+              <Button
                 key={index}
                 onClick={() => {
                   action.action();
@@ -194,7 +194,7 @@ const KarenToast = React.forwardRef<
               >
                 {action.icon && <span className="mr-1">{action.icon}</span>}
                 {action.label}
-              </button>
+              </Button>
             ))}
           </div>
         )}

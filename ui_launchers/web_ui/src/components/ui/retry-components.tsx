@@ -32,7 +32,7 @@ function RetryButton({
   children = 'Retry',
 }: RetryButtonProps) {
   return (
-    <button
+    <Button
       onClick={onRetry}
       disabled={disabled || isRetrying}
       size={size}
@@ -255,13 +255,13 @@ function InlineRetry({
         {error?.message || 'Failed to load'}
       </span>
       {canRetry && (
-        <button
+        <Button
           onClick={onRetry}
           disabled={isRetrying}
           className="text-primary hover:text-primary/80 underline disabled:opacity-50"
          aria-label="Button">
           {isRetrying ? 'Retrying...' : 'Retry'}
-        </button>
+        </Button>
       )}
     </div>
   );

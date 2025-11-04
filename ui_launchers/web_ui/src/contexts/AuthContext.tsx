@@ -78,6 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     error: null,
     isRefreshing: false,
     lastActivity: null,
+  });
 
   // Connection manager and timeout configuration
   const connectionManager = getConnectionManager();
@@ -204,6 +205,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       error: null,
       isRefreshing: false,
       lastActivity: null,
+    });
 
     // Call session logout to clear server-side session cookie
     sessionLogout().catch((error) => {
@@ -220,6 +222,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         "logout",
         errorObject
       );
+    });
 
     connectivityLogger.logAuthentication(
       "info",
@@ -781,7 +784,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       checkAuth().finally(() => {
         // Ensure loading state is cleared even if checkAuth fails
         setAuthState((prev) => ({ ...prev, isLoading: false }));
-
+      });
     } else {
       // If already authenticated, clear loading state
       setAuthState((prev) => ({ ...prev, isLoading: false }));
@@ -811,11 +814,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     ];
     events.forEach((event) => {
       document.addEventListener(event, updateActivity, { passive: true });
+    });
 
     return () => {
       events.forEach((event) => {
         document.removeEventListener(event, updateActivity);
-
+      });
     };
   }, [isAuthenticated]);
 

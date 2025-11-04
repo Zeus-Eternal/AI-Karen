@@ -1,37 +1,19 @@
-
 "use client";
-import React, { import { Button } from '@/components/ui/button';
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, RefreshCw, RotateCcw, Save, ShieldCheck } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
-
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-import { } from 'react';
-
-import { } from '@/components/ui/card';
-
-
-import { } from '@/components/ui/select';
-
-
-
-
-
-
-import { } from '@/components/ui/alert';
-
-
-
-
 
 interface SystemModelConfig {
   defaultModel?: string;
@@ -271,7 +253,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
 
       logger.info('Loaded system model configuration', {
         modelCount: normalizedModels.length,
-
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logger.error(
@@ -298,6 +280,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
       if (provider) {
         providers.add(provider);
       }
+    });
 
     models.forEach((model) => {
       const compatibility = model.runtime_compatibility ?? [];
@@ -305,7 +288,8 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         if (provider) {
           providers.add(provider);
         }
-
+      });
+    });
 
     return Array.from(providers).sort();
   }, [models, workingConfig?.allowedProviders]);
@@ -337,7 +321,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           ...previous,
           [key]: value,
         };
-
+      });
     },
     [],
   );
@@ -378,7 +362,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           ...previous,
           allowedProviders: Array.from(current).sort(),
         };
-
+      });
     },
     [],
   );
@@ -415,6 +399,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
 
       const updated = normalizeConfig({ ...workingConfig, ...response });
       setConfig(updated);
@@ -423,9 +408,8 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
 
       toast({
         title: 'Configuration updated',
-        description:
-          'System model routing preferences were saved successfully.',
-
+        description: 'System model routing preferences were saved successfully.',
+      });
       logger.info('System configuration saved successfully');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -451,13 +435,13 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
 
   if (loading && !workingConfig) {
     return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 p-8 text-center sm:p-4 md:p-6">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground " />
+      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 p-8 text-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground md:text-base lg:text-lg">
+          <p className="text-sm font-medium text-foreground">
             Loading system configuration…
           </p>
-          <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
+          <p className="text-xs text-muted-foreground">
             Connecting to the Kari orchestration backend.
           </p>
         </div>
@@ -466,13 +450,14 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
   }
 
   return (
-    <div className="space-y-6 p-4 sm:p-4 md:p-6">
+    <div className="space-y-6 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-foreground">
+            Model Configuration
           </h3>
-          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-            Configure Kari’s default reasoning models, fallbacks, and routing
+          <p className="text-sm text-muted-foreground">
+            Configure Kari's default reasoning models, fallbacks, and routing
             preferences for production traffic.
           </p>
         </div>
@@ -482,27 +467,28 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
             size="sm"
             onClick={handleRefresh}
             disabled={loading || saving}
-           >
-            <RefreshCw className="mr-2 h-4 w-4 " /> Refresh
+          >
+            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleReset}
             disabled={!hasChanges || saving}
-           >
-            <RotateCcw className="mr-2 h-4 w-4 " /> Reset
+          >
+            <RotateCcw className="mr-2 h-4 w-4" /> Reset
           </Button>
-          <button
+          <Button
             size="sm"
             onClick={handleSave}
             disabled={!hasChanges || saving}
-           aria-label="Button">
+          >
             {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin " />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Save className="mr-2 h-4 w-4 " />
+              <Save className="mr-2 h-4 w-4" />
             )}
+            Save
           </Button>
         </div>
       </div>
@@ -518,52 +504,52 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         <CardHeader>
           <CardTitle>Routing preferences</CardTitle>
           <CardDescription>
-            and fallback models.
+            Configure default models and fallback models.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="default-model">Primary model</Label>
-              <select
+              <Select
                 value={workingConfig?.defaultModel ?? ''}
                 onValueChange={handleDefaultModelChange}
-               aria-label="Select option">
-                <selectTrigger id="default-model" aria-label="Select option">
-                  <selectValue placeholder="Select a default model" />
+              >
+                <SelectTrigger id="default-model">
+                  <SelectValue placeholder="Select a default model" />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
+                <SelectContent>
                   {models.map((model) => (
-                    <selectItem key={model.id} value={model.id} aria-label="Select option">
+                    <SelectItem key={model.id} value={model.id}>
                       {model.name || model.id}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                persona overrides the selection.
+              <p className="text-xs text-muted-foreground">
+                Persona overrides the selection.
               </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="fallback-model">Fallback model</Label>
-              <select
+              <Select
                 value={workingConfig?.fallbackModel ?? ''}
                 onValueChange={handleFallbackModelChange}
-               aria-label="Select option">
-                <selectTrigger id="fallback-model" aria-label="Select option">
-                  <selectValue placeholder="Select a fallback model" />
+              >
+                <SelectTrigger id="fallback-model">
+                  <SelectValue placeholder="Select a fallback model" />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
-                  <selectItem value="" aria-label="Select option">None</SelectItem>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
                   {models.map((model) => (
-                    <selectItem key={model.id} value={model.id} aria-label="Select option">
+                    <SelectItem key={model.id} value={model.id}>
                       {model.name || model.id}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                unhealthy.
+              <p className="text-xs text-muted-foreground">
+                Used when primary model is unhealthy.
               </p>
             </div>
           </div>
@@ -572,11 +558,11 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
 
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-lg border p-3 sm:p-4 md:p-6">
+              <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="font-medium">Intelligent routing</p>
-                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                    live telemetry.
+                  <p className="text-sm text-muted-foreground">
+                    Use live telemetry for model selection.
                   </p>
                 </div>
                 <Switch
@@ -586,10 +572,10 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                   }
                 />
               </div>
-              <div className="flex items-center justify-between rounded-lg border p-3 sm:p-4 md:p-6">
+              <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="font-medium">Prefer local runtimes</p>
-                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                  <p className="text-sm text-muted-foreground">
                     Route requests to on-premise models before cloud providers
                     when available.
                   </p>
@@ -601,11 +587,11 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                   }
                 />
               </div>
-              <div className="flex items-center justify-between rounded-lg border p-3 sm:p-4 md:p-6">
+              <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="font-medium">Response caching</p>
-                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                    answers.
+                  <p className="text-sm text-muted-foreground">
+                    Cache model responses for similar queries.
                   </p>
                 </div>
                 <Switch
@@ -620,40 +606,43 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="max-concurrent">Concurrent models</Label>
-                <input
+                <Input
                   id="max-concurrent"
                   type="number"
                   min={1}
                   value={workingConfig?.maxConcurrentModels ?? 1}
-                  onChange={handleNumberChange('maxConcurrentModels')} />
-                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  multi-intent orchestration.
+                  onChange={handleNumberChange('maxConcurrentModels')}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Maximum number of models to run concurrently.
                 </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="routing-timeout">Routing timeout (ms)</Label>
-                <input
+                <Input
                   id="routing-timeout"
                   type="number"
                   min={1000}
                   step={500}
                   value={workingConfig?.modelSelectionTimeout ?? 60000}
-                  onChange={handleNumberChange('modelSelectionTimeout')} />
-                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  fallback chain.
+                  onChange={handleNumberChange('modelSelectionTimeout')}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Timeout for model selection and fallback chain.
                 </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cache-ttl">Cache expiration (ms)</Label>
-                <input
+                <Input
                   id="cache-ttl"
                   type="number"
                   min={1000}
                   step={1000}
                   value={workingConfig?.cacheExpirationTime ?? 300000}
-                  onChange={handleNumberChange('cacheExpirationTime')} />
-                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                  fresh inference is required.
+                  onChange={handleNumberChange('cacheExpirationTime')}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Time before cached responses expire and fresh inference is required.
                 </p>
               </div>
             </div>
@@ -663,8 +652,8 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
 
           <div className="space-y-3">
             <p className="font-medium">Allowed providers</p>
-            <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-              security and residency policies.
+            <p className="text-sm text-muted-foreground">
+              Configure allowed providers based on security and residency policies.
             </p>
             <div className="flex flex-wrap gap-2">
               {availableProviders.map((provider) => {
@@ -684,7 +673,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                 );
               })}
               {availableProviders.length === 0 && (
-                <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                <span className="text-sm text-muted-foreground">
                   No providers detected. Configure models to populate this list.
                 </span>
               )}
@@ -698,25 +687,25 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           <div>
             <CardTitle>Active model insight</CardTitle>
             <CardDescription>
-              selected system model.
+              Detailed information about the selected system model.
             </CardDescription>
           </div>
-          <select
+          <Select
             value={activeModelId ?? ''}
-            onValueChange={(value) = aria-label="Select option"> {
+            onValueChange={(value) => {
               setActiveModelId(value || undefined);
               if (value) {
                 onModelChange?.(value);
               }
             }}
           >
-            <selectTrigger className="w-full sm:w-[240px]" aria-label="Select option">
-              <selectValue placeholder="Select a system model" />
+            <SelectTrigger className="w-full sm:w-[240px]">
+              <SelectValue placeholder="Select a system model" />
             </SelectTrigger>
-            <selectContent aria-label="Select option">
-              <selectItem value="" aria-label="Select option">None selected</SelectItem>
+            <SelectContent>
+              <SelectItem value="">None selected</SelectItem>
               {models.map((model) => (
-                <selectItem key={model.id} value={model.id} aria-label="Select option">
+                <SelectItem key={model.id} value={model.id}>
                   {model.name || model.id}
                 </SelectItem>
               ))}
@@ -771,17 +760,17 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
 
               <div className="grid gap-3 md:grid-cols-2">
                 {selectedModel.runtime_compatibility && (
-                  <div className="rounded-lg border p-3 sm:p-4 md:p-6">
-                    <p className="text-sm font-medium md:text-base lg:text-lg">Runtime compatibility</p>
-                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-sm font-medium">Runtime compatibility</p>
+                    <p className="text-sm text-muted-foreground">
                       {(selectedModel.runtime_compatibility ?? []).join(', ') || 'N/A'}
                     </p>
                   </div>
                 )}
                 {selectedModel.last_health_check && (
-                  <div className="rounded-lg border p-3 sm:p-4 md:p-6">
-                    <p className="text-sm font-medium md:text-base lg:text-lg">Last health check</p>
-                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-sm font-medium">Last health check</p>
+                    <p className="text-sm text-muted-foreground">
                       {(() => {
                         const parsed = toDate(selectedModel.last_health_check);
                         return parsed ? parsed.toLocaleString() : 'N/A';
@@ -794,7 +783,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
               {selectedModel.configuration && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-emerald-500 " />
+                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
                     <p className="font-medium">Runtime configuration</p>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
@@ -802,12 +791,12 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                       ([key, value]) => (
                         <div
                           key={key}
-                          className="rounded-lg border bg-muted/40 p-3 sm:p-4 md:p-6"
+                          className="rounded-lg border bg-muted/40 p-3"
                         >
-                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground sm:text-sm md:text-base">
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                             {key.replace(/_/g, ' ')}
                           </p>
-                          <p className="mt-1 text-sm text-foreground whitespace-pre-wrap md:text-base lg:text-lg">
+                          <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
                             {formatConfigValue(value)}
                           </p>
                         </div>
@@ -818,12 +807,12 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
               )}
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed p-6 text-center sm:p-4 md:p-6">
+            <div className="rounded-lg border border-dashed p-6 text-center">
               <p className="font-medium text-foreground">
-                signals.
+                Select a model to view detailed signals.
               </p>
-              <p className="mt-2 text-sm text-muted-foreground md:text-base lg:text-lg">
-                can validate capacity before promoting updates to production.
+              <p className="mt-2 text-sm text-muted-foreground">
+                You can validate capacity before promoting updates to production.
               </p>
             </div>
           )}
@@ -831,7 +820,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
       </Card>
 
       {lastUpdated && (
-        <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
+        <p className="text-xs text-muted-foreground">
           Last synced {lastUpdated.toLocaleString()}
         </p>
       )}

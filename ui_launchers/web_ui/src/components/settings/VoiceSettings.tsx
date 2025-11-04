@@ -3,8 +3,7 @@
 import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
-
-import { } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import type { KarenSettings } from '@/lib/types';
 import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
@@ -12,7 +11,9 @@ import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 const DEFAULT_VOICE_SENTINEL = "_DEFAULT_VOICE_";
+
 /**
  * @file VoiceSettings.tsx
  * @description Component for selecting a preferred Text-To-Speech (TTS) voice.
@@ -25,6 +26,7 @@ export default function VoiceSettings() {
   );
   const [isLoadingVoices, setIsLoadingVoices] = useState(true);
   const { toast } = useToast();
+
   const populateVoiceList = useCallback(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       const voices = window.speechSynthesis.getVoices();
@@ -49,6 +51,7 @@ export default function VoiceSettings() {
       setIsLoadingVoices(false); // Speech synthesis not supported
     }
   }, []); // Empty dependency array: populateVoiceList reference is stable
+
   useEffect(() => {
     populateVoiceList(); // Initial call
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -59,6 +62,7 @@ export default function VoiceSettings() {
       };
     }
   }, [populateVoiceList]); // populateVoiceList is stable due to its own empty dep array
+
   useEffect(() => {
     try {
       const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
@@ -100,9 +104,11 @@ export default function VoiceSettings() {
       try {
         localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
       } catch (lsError) {
+        console.error('Failed to initialize localStorage with default settings:', lsError);
       }
     }
   }, []);
+
   const getFullCurrentSettingsFromStorage = (): KarenSettings => {
     let currentFullSettings = { ...DEFAULT_KAREN_SETTINGS };
     try {
@@ -123,9 +129,11 @@ export default function VoiceSettings() {
         };
       }
     } catch (e) {
+      console.error('Error reading settings from storage:', e);
     }
     return currentFullSettings;
   };
+
   const saveSettings = () => {
     try {
       const currentFullSettings = getFullCurrentSettingsFromStorage();
@@ -146,6 +154,7 @@ export default function VoiceSettings() {
       });
     }
   };
+
   const resetToDefaults = () => {
     setSelectedVoiceURI(DEFAULT_KAREN_SETTINGS.ttsVoiceURI);
     try {
@@ -158,24 +167,25 @@ export default function VoiceSettings() {
       toast({
         title: "Voice Settings Reset",
         description: "Voice preference has been reset to default.",
-
+      });
     } catch (error) {
        toast({
           title: "Error Resetting Voice Settings",
           description: "Could not reset voice preferences.",
           variant: "destructive",
-
+       });
     }
   };
+
   if (typeof window !== 'undefined' && !window.speechSynthesis) {
     return (
-      <Card variant="elevated">
+      <Card>
         <CardHeader>
           <CardTitle className="text-lg">Text-to-Speech Voice</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4 " />
+            <AlertCircle className="h-4 w-4" />
             <AlertTitle>Speech Synthesis Not Supported</AlertTitle>
             <AlertDescription>
               Your browser does not support the Web Speech API, which is required for changing voices.
@@ -185,8 +195,9 @@ export default function VoiceSettings() {
       </Card>
     );
   }
+
   return (
-    <Card variant="elevated" className="interactive">
+    <Card className="interactive">
       <CardHeader>
         <CardTitle className="text-lg">Text-to-Speech Voice</CardTitle>
         <CardDescription>
@@ -198,13 +209,13 @@ export default function VoiceSettings() {
             <div className="px-6 py-4">
                 {isLoadingVoices && (
                 <div className="flex items-center space-x-2 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin " />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                     <span>Loading available voices...</span>
                 </div>
                 )}
                 {!isLoadingVoices && availableVoices.length === 0 && (
                 <Alert variant="default" className="bg-muted/30">
-                    <AlertCircle className="h-4 w-4 !text-accent-foreground " />
+                    <AlertCircle className="h-4 w-4 !text-accent-foreground" />
                     <AlertTitle className="font-semibold text-accent-foreground">No Voices Found</AlertTitle>
                     <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
                     No speech synthesis voices were found in your browser. Voice selection is not available.
@@ -215,25 +226,25 @@ export default function VoiceSettings() {
                 {availableVoices.length > 0 && (
                 <div className="space-y-2">
                     <Label htmlFor="tts-voice">Select Voice</Label>
-                    <select
-                    value={selectedVoiceURI || DEFAULT_VOICE_SENTINEL} 
-                    onValueChange={(value) = aria-label="Select option"> setSelectedVoiceURI(value === DEFAULT_VOICE_SENTINEL ? null : value)}
-                    disabled={availableVoices.length === 0 || isLoadingVoices}
+                    <Select
+                      value={selectedVoiceURI || DEFAULT_VOICE_SENTINEL} 
+                      onValueChange={(value) => setSelectedVoiceURI(value === DEFAULT_VOICE_SENTINEL ? null : value)}
+                      disabled={availableVoices.length === 0 || isLoadingVoices}
                     >
-                    <selectTrigger id="tts-voice" aria-label="Select option">
-                        <selectValue placeholder="Default system voice" />
-                    </SelectTrigger>
-                    <selectContent aria-label="Select option">
-                        <selectItem value={DEFAULT_VOICE_SENTINEL} aria-label="Select option">Default system voice</SelectItem>
+                      <SelectTrigger id="tts-voice">
+                        <SelectValue placeholder="Default system voice" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={DEFAULT_VOICE_SENTINEL}>Default system voice</SelectItem>
                         {availableVoices.map((voice, index) => (
-                        <selectItem
-                            key={`voice-option-${voice.voiceURI}-${index}`} // Ensures unique key
-                            value={voice.voiceURI} // Value should still be voice.voiceURI
-                         aria-label="Select option">
+                          <SelectItem
+                            key={`voice-option-${voice.voiceURI}-${index}`}
+                            value={voice.voiceURI}
+                          >
                             {voice.name} ({voice.lang}) {voice.default ? "[System Default]" : ""}
-                        </SelectItem>
+                          </SelectItem>
                         ))}
-                    </SelectContent>
+                      </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
                     If no voice is selected, or the selected voice is unavailable, the browser's default will be used.
@@ -244,8 +255,8 @@ export default function VoiceSettings() {
         </div>
       </CardContent>
       <CardFooter className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={resetToDefaults} >Reset to Default</Button>
-          <Button onClick={saveSettings} >Save Settings</Button>
+          <Button variant="outline" onClick={resetToDefaults}>Reset to Default</Button>
+          <Button onClick={saveSettings}>Save Settings</Button>
       </CardFooter>
     </Card>
   );

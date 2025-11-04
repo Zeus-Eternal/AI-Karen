@@ -108,37 +108,37 @@ const ModelLibrarySearch = ({ onSearch, onFilter, onSort, onClear }: {
           <option value="date">Date Added</option>
         </select>
         
-        <button
+        <Button
           onClick={handleClear}
           data-testid="clear-filters"
           aria-label="Clear all filters"
         >
-        </button>
+        </Button>
       </div>
       
       <div className="active-filters" data-testid="active-filters">
         {searchQuery && (
           <span className="filter-tag">
             Search: "{searchQuery}"
-            <button onClick={() => handleSearch('')}>×</button>
+            <Button onClick={() => handleSearch('')}>×</Button>
           </span>
         )}
         {selectedProvider && (
           <span className="filter-tag">
             Provider: {selectedProvider}
-            <button onClick={() => setSelectedProvider('')}>×</button>
+            <Button onClick={() => setSelectedProvider('')}>×</Button>
           </span>
         )}
         {selectedCapability && (
           <span className="filter-tag">
             Capability: {selectedCapability}
-            <button onClick={() => setSelectedCapability('')}>×</button>
+            <Button onClick={() => setSelectedCapability('')}>×</Button>
           </span>
         )}
         {selectedSize && (
           <span className="filter-tag">
             Size: {selectedSize}
-            <button onClick={() => setSelectedSize('')}>×</button>
+            <Button onClick={() => setSelectedSize('')}>×</Button>
           </span>
         )}
       </div>

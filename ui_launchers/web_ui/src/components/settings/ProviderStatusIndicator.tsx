@@ -8,7 +8,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 
-import { } from 'lucide-react';
+// Import all required Lucide React icons
+import { 
+  CheckCircle2, 
+  AlertCircle, 
+  AlertTriangle, 
+  Loader2, 
+  Clock, 
+  Wifi, 
+  WifiOff, 
+  HardDrive, 
+  Cloud, 
+  Globe, 
+  Database, 
+  Zap, 
+  RefreshCw, 
+  Shield, 
+  Activity 
+} from 'lucide-react';
 
 export interface ProviderStatus {
   name: string;
@@ -76,13 +93,13 @@ export function ProviderStatusIndicator({
       toast({
         title: "Provider Test Complete",
         description: `${provider.name} connectivity test completed.`,
-
+      });
     } catch (error) {
       toast({
         title: "Test Failed",
         description: `Could not test ${provider.name}: ${(error as Error).message}`,
         variant: "destructive",
-
+      });
     } finally {
       setTesting(false);
     }
@@ -97,13 +114,13 @@ export function ProviderStatusIndicator({
       toast({
         title: "Status Refreshed",
         description: `${provider.name} status updated.`,
-
+      });
     } catch (error) {
       toast({
         title: "Refresh Failed",
         description: `Could not refresh ${provider.name}: ${(error as Error).message}`,
         variant: "destructive",
-
+      });
     } finally {
       setRefreshing(false);
     }
@@ -112,15 +129,15 @@ export function ProviderStatusIndicator({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle2 className="h-4 w-4 text-green-600 " />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
       case 'unhealthy':
-        return <AlertCircle className="h-4 w-4 text-red-600 " />;
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
       case 'degraded':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600 " />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
       case 'testing':
-        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin " />;
+        return <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-400 " />;
+        return <Clock className="h-4 w-4 text-gray-400" />;
     }
   };
 
@@ -142,26 +159,26 @@ export function ProviderStatusIndicator({
   const getConnectivityIcon = (status: string) => {
     switch (status) {
       case 'connected':
-        return <Wifi className="h-3 w-3 text-green-600 " />;
+        return <Wifi className="h-3 w-3 text-green-600" />;
       case 'disconnected':
-        return <WifiOff className="h-3 w-3 text-red-600 " />;
+        return <WifiOff className="h-3 w-3 text-red-600" />;
       case 'timeout':
-        return <Clock className="h-3 w-3 text-yellow-600 " />;
+        return <Clock className="h-3 w-3 text-yellow-600" />;
       default:
-        return <AlertCircle className="h-3 w-3 text-gray-400 " />;
+        return <AlertCircle className="h-3 w-3 text-gray-400" />;
     }
   };
 
   const getProviderTypeIcon = (type: string) => {
     switch (type) {
       case 'local':
-        return <HardDrive className="h-4 w-4 text-blue-600 " />;
+        return <HardDrive className="h-4 w-4 text-blue-600" />;
       case 'remote':
-        return <Cloud className="h-4 w-4 text-green-600 " />;
+        return <Cloud className="h-4 w-4 text-green-600" />;
       case 'hybrid':
-        return <Globe className="h-4 w-4 text-purple-600 " />;
+        return <Globe className="h-4 w-4 text-purple-600" />;
       default:
-        return <Database className="h-4 w-4 text-gray-600 " />;
+        return <Database className="h-4 w-4 text-gray-600" />;
     }
   };
 
@@ -225,24 +242,26 @@ export function ProviderStatusIndicator({
               size="sm"
               onClick={handleTest}
               disabled={testing}
-             >
+            >
               {testing ? (
-                <Loader2 className="h-4 w-4 animate-spin " />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Zap className="h-4 w-4 " />
+                <Zap className="h-4 w-4" />
               )}
+              Test
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={refreshing}
-             >
+            >
               {refreshing ? (
-                <Loader2 className="h-4 w-4 animate-spin " />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <RefreshCw className="h-4 w-4 " />
+                <RefreshCw className="h-4 w-4" />
               )}
+              Refresh
             </Button>
           </div>
         </div>
@@ -281,7 +300,8 @@ export function ProviderStatusIndicator({
         {Object.keys(provider.model_availability).length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
-              <Database className="h-4 w-4 " />
+              <Database className="h-4 w-4" />
+              Model Availability
             </h4>
             <div className="flex flex-wrap gap-1">
               {Object.entries(provider.model_availability).map(([model, available]) => (
@@ -301,7 +321,8 @@ export function ProviderStatusIndicator({
         {Object.keys(provider.capability_status).length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium flex items-center gap-2 md:text-base lg:text-lg">
-              <Shield className="h-4 w-4 " />
+              <Shield className="h-4 w-4" />
+              Capabilities
             </h4>
             <div className="flex flex-wrap gap-1">
               {Object.entries(provider.capability_status).map(([capability, available]) => (
@@ -326,9 +347,9 @@ export function ProviderStatusIndicator({
                 <div key={dep} className="flex items-center justify-between text-sm md:text-base lg:text-lg">
                   <span>{dep}</span>
                   {available ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600 " />
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600 " />
+                    <AlertCircle className="h-4 w-4 text-red-600" />
                   )}
                 </div>
               ))}
@@ -339,7 +360,7 @@ export function ProviderStatusIndicator({
         {/* Configuration Issues */}
         {provider.configuration_issues.length > 0 && (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4 " />
+            <AlertCircle className="h-4 w-4" />
             <AlertTitle>Configuration Issues</AlertTitle>
             <AlertDescription>
               <ul className="list-disc list-inside space-y-1">
@@ -354,7 +375,7 @@ export function ProviderStatusIndicator({
         {/* Last Error */}
         {provider.last_error && (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4 " />
+            <AlertCircle className="h-4 w-4" />
             <AlertTitle>Last Error</AlertTitle>
             <AlertDescription className="text-sm md:text-base lg:text-lg">
               {provider.last_error}
@@ -365,7 +386,7 @@ export function ProviderStatusIndicator({
         {/* Recovery Suggestions */}
         {provider.recovery_suggestions.length > 0 && (
           <Alert>
-            <Activity className="h-4 w-4 " />
+            <Activity className="h-4 w-4" />
             <AlertTitle>Recovery Suggestions</AlertTitle>
             <AlertDescription>
               <ul className="list-disc list-inside space-y-1">

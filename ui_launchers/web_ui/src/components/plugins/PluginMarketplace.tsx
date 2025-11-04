@@ -562,7 +562,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
               <Separator orientation="vertical" className="h-6" />
               
               <div className="flex items-center border rounded-md">
-                <button
+                <Button
                   variant={viewMode === 'grid' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('grid')}
@@ -570,7 +570,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                 >
                   <Grid className="w-4 h-4 " />
                 </Button>
-                <button
+                <Button
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('list')}
@@ -726,7 +726,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                     )}
                   </div>
                   
-                  <button onClick={() => handleInstall(selectedPlugin)}>
+                  <Button onClick={() => handleInstall(selectedPlugin)}>
                     <Download className="w-4 h-4 mr-2 " />
                   </Button>
                 </div>

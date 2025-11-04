@@ -1,27 +1,67 @@
-
 "use client";
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
-import { EvilModeSession, EvilModeAction } from '@/types/rbac';
-import { enhancedApiClient } from '@/lib/enhanced-api-client';
-import { PermissionGate } from '@/components/rbac';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
-import { } from '@/components/ui/select';
+import React, { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { EvilModeSession } from "@/types/rbac";
+// import { enhancedApiClient } from "@/lib/enhanced-api-client"; // not used currently
+import { PermissionGate } from "@/components/rbac";
 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-import { } from '@/components/ui/table';
+import {
+  ResponsiveContainer,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
-
-import { } from 'recharts';
-
-
-import { } from 'lucide-react';
+import {
+  Skull,
+  Activity,
+  Users,
+  Target,
+  Clock,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  Eye,
+  FileText,
+  CheckCircle,
+  XCircle,
+  Shield,
+} from "lucide-react";
 
 interface EvilModeAnalyticsProps {
   className?: string;
@@ -31,7 +71,7 @@ interface EvilModeStats {
   totalSessions: number;
   activeSessions: number;
   totalActions: number;
-  averageSessionDuration: number;
+  averageSessionDuration: number; // seconds
   topUsers: Array<{
     userId: string;
     username: string;
@@ -45,10 +85,10 @@ interface EvilModeStats {
     count: number;
   }>;
   complianceMetrics: {
-    justificationProvided: number;
-    additionalAuthUsed: number;
-    timeoutCompliance: number;
-    auditTrailComplete: number;
+    justificationProvided: number; // %
+    additionalAuthUsed: number; // %
+    timeoutCompliance: number; // %
+    auditTrailComplete: number; // %
   };
   riskAssessment: {
     highRiskActions: number;
@@ -59,26 +99,31 @@ interface EvilModeStats {
 }
 
 export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
-  const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
+  const [timeframe, setTimeframe] = useState<"7d" | "30d" | "90d">("30d");
 
   const timeframeOptions = {
-    '7d': { days: 7, label: 'Last 7 days' },
-    '30d': { days: 30, label: 'Last 30 days' },
-    '90d': { days: 90, label: 'Last 90 days' }
-  };
+    "7d": { days: 7, label: "Last 7 days" },
+    "30d": { days: 30, label: "Last 30 days" },
+    "90d": { days: 90, label: "Last 90 days" },
+  } as const;
 
-  const dateRange = React.useMemo(() => ({
-    start: startOfDay(subDays(new Date(), timeframeOptions[timeframe].days)),
-    end: endOfDay(new Date())
-  }), [timeframe]);
+  const dateRange = useMemo(
+    () => ({
+      start: startOfDay(subDays(new Date(), timeframeOptions[timeframe].days)),
+      end: endOfDay(new Date()),
+    }),
+    [timeframe],
+  );
 
-  const { data: stats, isLoading } = useQuery({
-    queryKey: ['evil-mode', 'analytics', dateRange],
+  const { data: stats, isLoading: isLoadingStats } = useQuery({
+    queryKey: ["evil-mode", "analytics", dateRange],
     queryFn: () => getEvilModeStats(dateRange),
+  });
 
-  const { data: sessions } = useQuery({
-    queryKey: ['evil-mode', 'sessions', dateRange],
+  const { data: sessions, isLoading: isLoadingSessions } = useQuery({
+    queryKey: ["evil-mode", "sessions", dateRange],
     queryFn: () => getEvilModeSessions(dateRange),
+  });
 
   return (
     <PermissionGate permission="security:admin">
@@ -86,29 +131,35 @@ export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold flex items-center space-x-2">
-              <Skull className="h-6 w-6 text-red-600 " />
+              <Skull className="h-6 w-6 text-red-600" />
               <span>Evil Mode Analytics</span>
             </h2>
             <p className="text-muted-foreground">
+              Audit trails, risk posture, and compliance health for elevated sessions.
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <select value={timeframe} onValueChange={(value: '7d' | '30d' | '90d') = aria-label="Select option"> setTimeframe(value)}>
-              <selectTrigger className="w-40 " aria-label="Select option">
-                <selectValue />
+            <Select
+              value={timeframe}
+              onValueChange={(value) => setTimeframe(value as "7d" | "30d" | "90d")}
+            >
+              <SelectTrigger className="w-44" aria-label="Select timeframe">
+                <SelectValue />
               </SelectTrigger>
-              <selectContent aria-label="Select option">
+              <SelectContent>
                 {Object.entries(timeframeOptions).map(([key, { label }]) => (
-                  <selectItem key={key} value={key} aria-label="Select option">{label}</SelectItem>
+                  <SelectItem key={key} value={key}>
+                    {label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {isLoading ? (
+        {isLoadingStats || isLoadingSessions ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary "></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
         ) : (
           <Tabs defaultValue="overview" className="space-y-4">
@@ -155,38 +206,38 @@ function OverviewDashboard({ stats }: OverviewDashboardProps) {
 
   const metrics = [
     {
-      title: 'Total Sessions',
+      title: "Total Sessions",
       value: stats.totalSessions.toString(),
       icon: Activity,
-      trend: '+5%',
+      trend: "+5%",
       trendUp: true,
-      color: 'text-blue-600'
+      color: "text-blue-600",
     },
     {
-      title: 'Active Sessions',
+      title: "Active Sessions",
       value: stats.activeSessions.toString(),
       icon: Users,
-      trend: stats.activeSessions > 0 ? 'Active' : 'None',
+      trend: stats.activeSessions > 0 ? "Active" : "None",
       trendUp: stats.activeSessions === 0,
-      color: stats.activeSessions > 0 ? 'text-red-600' : 'text-green-600'
+      color: stats.activeSessions > 0 ? "text-red-600" : "text-green-600",
     },
     {
-      title: 'Total Actions',
+      title: "Total Actions",
       value: stats.totalActions.toString(),
       icon: Target,
-      trend: '+12%',
+      trend: "+12%",
       trendUp: true,
-      color: 'text-orange-600'
+      color: "text-orange-600",
     },
     {
-      title: 'Avg Duration',
+      title: "Avg Duration",
       value: `${Math.round(stats.averageSessionDuration / 60)}m`,
       icon: Clock,
-      trend: '-8%',
+      trend: "-8%",
       trendUp: false,
-      color: 'text-purple-600'
-    }
-  ];
+      color: "text-purple-600",
+    },
+  ] as const;
 
   return (
     <div className="space-y-6">
@@ -194,18 +245,18 @@ function OverviewDashboard({ stats }: OverviewDashboardProps) {
         {metrics.map((metric) => (
           <Card key={metric.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium md:text-base lg:text-lg">{metric.title}</CardTitle>
+              <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
               <metric.icon className={`h-4 w-4 ${metric.color}`} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metric.value}</div>
-              <div className="flex items-center text-xs text-muted-foreground sm:text-sm md:text-base">
+              <div className="flex items-center text-xs text-muted-foreground">
                 {metric.trendUp ? (
-                  <TrendingUp className="h-3 w-3 mr-1 text-green-500 " />
+                  <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 mr-1 text-red-500 " />
+                  <TrendingDown className="h-3 w-3 mr-1 text-red-500" />
                 )}
-import {                 {metric.trend} from last period
+                <span>{metric.trend}</span>
               </div>
             </CardContent>
           </Card>
@@ -239,7 +290,7 @@ import {                 {metric.trend} from last period
               {stats.topUsers.slice(0, 5).map((user, index) => (
                 <div key={user.userId} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-xs ">
+                    <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-xs">
                       {index + 1}
                     </div>
                     <span className="font-medium">{user.username}</span>
@@ -256,10 +307,10 @@ import {                 {metric.trend} from last period
       </div>
 
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4 " />
+        <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          Evil Mode usage is continuously monitored for security and compliance. 
-          All activities are subject to audit and review.
+          Evil Mode usage is continuously monitored for security and compliance. All activities are
+          subject to audit and review.
         </AlertDescription>
       </Alert>
     </div>
@@ -279,45 +330,40 @@ function SessionAnalysis({ stats, sessions }: SessionAnalysisProps) {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm md:text-base lg:text-lg">Session Duration Distribution</CardTitle>
+            <CardTitle className="text-sm md:text-base">Session Duration Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm md:text-base lg:text-lg">
-                <span>&lt; 15 min</span>
-                <span>45%</span>
-              </div>
-              <div className="flex justify-between text-sm md:text-base lg:text-lg">
-                <span>15-30 min</span>
-                <span>30%</span>
-              </div>
-              <div className="flex justify-between text-sm md:text-base lg:text-lg">
-                <span>30-60 min</span>
-                <span>20%</span>
-              </div>
-              <div className="flex justify-between text-sm md:text-base lg:text-lg">
-                <span>&gt; 60 min</span>
-                <span>5%</span>
-              </div>
+              {[
+                ["< 15 min", "45%"],
+                ["15-30 min", "30%"],
+                ["30-60 min", "20%"],
+                ["> 60 min", "5%"],
+              ].map(([label, val]) => (
+                <div key={label} className="flex justify-between text-sm">
+                  <span>{label}</span>
+                  <span>{val}</span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm md:text-base lg:text-lg">Session Outcomes</CardTitle>
+            <CardTitle className="text-sm md:text-base">Session Outcomes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm md:text-base lg:text-lg">
+              <div className="flex justify-between text-sm">
                 <span>Normal Termination</span>
                 <Badge variant="secondary">85%</Badge>
               </div>
-              <div className="flex justify-between text-sm md:text-base lg:text-lg">
+              <div className="flex justify-between text-sm">
                 <span>Timeout</span>
                 <Badge variant="default">12%</Badge>
               </div>
-              <div className="flex justify-between text-sm md:text-base lg:text-lg">
+              <div className="flex justify-between text-sm">
                 <span>Force Terminated</span>
                 <Badge variant="destructive">3%</Badge>
               </div>
@@ -327,19 +373,19 @@ function SessionAnalysis({ stats, sessions }: SessionAnalysisProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm md:text-base lg:text-lg">Justification Quality</CardTitle>
+            <CardTitle className="text-sm md:text-base">Justification Quality</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm md:text-base lg:text-lg">
+              <div className="flex justify-between text-sm">
                 <span>Detailed</span>
                 <Badge variant="default">60%</Badge>
               </div>
-              <div className="flex justify-between text-sm md:text-base lg:text-lg">
+              <div className="flex justify-between text-sm">
                 <span>Adequate</span>
                 <Badge variant="secondary">30%</Badge>
               </div>
-              <div className="flex justify-between text-sm md:text-base lg:text-lg">
+              <div className="flex justify-between text-sm">
                 <span>Insufficient</span>
                 <Badge variant="destructive">10%</Badge>
               </div>
@@ -366,34 +412,41 @@ function SessionAnalysis({ stats, sessions }: SessionAnalysisProps) {
             </TableHeader>
             <TableBody>
               {sessions.slice(0, 10).map((session) => {
-                const duration = session.endTime ? 
-                  new Date(session.endTime).getTime() - new Date(session.startTime).getTime() :
-                  Date.now() - new Date(session.startTime).getTime();
-                const durationMinutes = Math.floor(duration / (1000 * 60));
-                
-                const highRiskActions = session.actions.filter(a => 
-                  a.impact === 'high' || a.impact === 'critical'
+                const start = new Date(session.startTime);
+                const end = session.endTime ? new Date(session.endTime) : new Date();
+                const durationMinutes = Math.max(
+                  0,
+                  Math.floor((end.getTime() - start.getTime()) / (1000 * 60)),
+                );
+
+                const highRiskActions = session.actions.filter(
+                  (a) => a.impact === "high" || a.impact === "critical",
                 ).length;
-                
-                const riskLevel = highRiskActions > 5 ? 'High' : 
-                                 highRiskActions > 2 ? 'Medium' : 'Low';
+
+                const riskLevel =
+                  highRiskActions > 5 ? "High" : highRiskActions > 2 ? "Medium" : "Low";
 
                 return (
                   <TableRow key={session.sessionId}>
                     <TableCell className="font-medium">{session.userId}</TableCell>
-                    <TableCell>{format(new Date(session.startTime), 'MMM dd, HH:mm')}</TableCell>
+                    <TableCell>{format(start, "MMM dd, HH:mm")}</TableCell>
                     <TableCell>{durationMinutes}m</TableCell>
                     <TableCell>{session.actions.length}</TableCell>
                     <TableCell>
-                      <Badge variant={session.endTime ? 'secondary' : 'destructive'}>
-                        {session.endTime ? 'Ended' : 'Active'}
+                      <Badge variant={session.endTime ? "secondary" : "destructive"}>
+                        {session.endTime ? "Ended" : "Active"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={
-                        riskLevel === 'High' ? 'destructive' :
-                        riskLevel === 'Medium' ? 'default' : 'secondary'
-                      }>
+                      <Badge
+                        variant={
+                          riskLevel === "High"
+                            ? "destructive"
+                            : riskLevel === "Medium"
+                            ? "default"
+                            : "secondary"
+                        }
+                      >
                         {riskLevel}
                       </Badge>
                     </TableCell>
@@ -418,10 +471,18 @@ function ActionAnalysis({ stats, sessions }: ActionAnalysisProps) {
 
   const actionData = Object.entries(stats.actionsByImpact).map(([impact, count]) => ({
     name: impact,
-    value: count
+    value: count,
   }));
 
-  const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e'];
+  const COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e"];
+
+  const highRiskItems = sessions
+    .flatMap((session) =>
+      session.actions
+        .filter((action) => action.impact === "critical" || action.impact === "high")
+        .map((action) => ({ ...action, sessionId: session.sessionId, userId: session.userId })),
+    )
+    .slice(0, 10);
 
   return (
     <div className="space-y-6">
@@ -443,7 +504,7 @@ function ActionAnalysis({ stats, sessions }: ActionAnalysisProps) {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {actionData.map((entry, index) => (
+                  {actionData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -483,45 +544,44 @@ function ActionAnalysis({ stats, sessions }: ActionAnalysisProps) {
       <Card>
         <CardHeader>
           <CardTitle>High-Risk Actions</CardTitle>
-          <CardDescription>
-          </CardDescription>
+          <CardDescription>Recent elevated operations requiring review</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {sessions.flatMap(session => 
-              session.actions.filter(action => 
-                action.impact === 'critical' || action.impact === 'high'
-              ).map(action => ({
-                ...action,
-                sessionId: session.sessionId,
-                userId: session.userId
-              }))
-            ).slice(0, 10).map((action, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded-lg sm:p-4 md:p-6">
+            {highRiskItems.map((action, index) => (
+              <div
+                key={`${action.sessionId}-${index}`}
+                className="flex items-center justify-between p-3 border rounded-lg"
+              >
                 <div className="flex items-center space-x-3">
-                  <div className={`p-1 rounded-full ${
-                    action.impact === 'critical' ? 'bg-red-100 dark:bg-red-900/30' :
-                    'bg-orange-100 dark:bg-orange-900/30'
-                  }`}>
+                  <div
+                    className={`p-1 rounded-full ${
+                      action.impact === "critical"
+                        ? "bg-red-100 dark:bg-red-900/30"
+                        : "bg-orange-100 dark:bg-orange-900/30"
+                    }`}
+                  >
                     {action.reversible ? (
-                      <CheckCircle className="h-3 w-3 text-green-600 " />
+                      <CheckCircle className="h-3 w-3 text-green-600" />
                     ) : (
-                      <XCircle className="h-3 w-3 text-red-600 " />
+                      <XCircle className="h-3 w-3 text-red-600" />
                     )}
                   </div>
                   <div>
                     <p className="font-medium">{action.action}</p>
-                    <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                      {action.resource} • {action.userId} • {format(new Date(action.timestamp), 'MMM dd, HH:mm')}
+                    <p className="text-sm text-muted-foreground">
+                      {action.resource} • {action.userId} •{" "}
+                      {format(new Date(action.timestamp), "MMM dd, HH:mm")}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Badge variant={action.impact === 'critical' ? 'destructive' : 'default'}>
+                  <Badge variant={action.impact === "critical" ? "destructive" : "default"}>
                     {action.impact}
                   </Badge>
                   {!action.reversible && (
                     <Badge variant="outline" className="text-red-600">
+                      irreversible
                     </Badge>
                   )}
                 </div>
@@ -543,9 +603,10 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
 
   const complianceScore = Math.round(
     (stats.complianceMetrics.justificationProvided +
-     stats.complianceMetrics.additionalAuthUsed +
-     stats.complianceMetrics.timeoutCompliance +
-     stats.complianceMetrics.auditTrailComplete) / 4
+      stats.complianceMetrics.additionalAuthUsed +
+      stats.complianceMetrics.timeoutCompliance +
+      stats.complianceMetrics.auditTrailComplete) /
+      4,
   );
 
   return (
@@ -553,23 +614,26 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
       <Card>
         <CardHeader>
           <CardTitle>Compliance Score</CardTitle>
-          <CardDescription>
-          </CardDescription>
+          <CardDescription>Aggregate of key compliance controls</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center space-x-4">
             <div className="text-4xl font-bold text-green-600">{complianceScore}%</div>
             <div className="flex-1">
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-green-600 h-2 rounded-full" 
+                <div
+                  className="bg-green-600 h-2 rounded-full"
                   style={{ width: `${complianceScore}%` }}
-                ></div>
+                />
               </div>
-              <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
-                {complianceScore >= 90 ? 'Excellent' :
-                 complianceScore >= 80 ? 'Good' :
-                 complianceScore >= 70 ? 'Fair' : 'Needs Improvement'}
+              <p className="text-sm text-muted-foreground mt-1">
+                {complianceScore >= 90
+                  ? "Excellent"
+                  : complianceScore >= 80
+                  ? "Good"
+                  : complianceScore >= 70
+                  ? "Fair"
+                  : "Needs Improvement"}
               </p>
             </div>
           </div>
@@ -581,34 +645,34 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
           <CardHeader>
             <CardTitle>Compliance Metrics</CardTitle>
           </CardHeader>
-          <CardContent>
+        <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span>Justification Provided</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.justificationProvided}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500 " />
+                  <CheckCircle className="h-4 w-4 text-green-500" />
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span>Additional Auth Used</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.additionalAuthUsed}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500 " />
+                  <CheckCircle className="h-4 w-4 text-green-500" />
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span>Timeout Compliance</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.timeoutCompliance}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500 " />
+                  <CheckCircle className="h-4 w-4 text-green-500" />
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span>Audit Trail Complete</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="default">{stats.complianceMetrics.auditTrailComplete}%</Badge>
-                  <CheckCircle className="h-4 w-4 text-green-500 " />
+                  <CheckCircle className="h-4 w-4 text-green-500" />
                 </div>
               </div>
             </div>
@@ -622,22 +686,16 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
           <CardContent>
             <div className="space-y-3">
               <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4 " />
-                <AlertDescription>
-                  2 sessions without proper justification
-                </AlertDescription>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>2 sessions without proper justification</AlertDescription>
               </Alert>
               <Alert>
-                <Eye className="h-4 w-4 " />
-                <AlertDescription>
-                  1 session exceeded time limit
-                </AlertDescription>
+                <Eye className="h-4 w-4" />
+                <AlertDescription>1 session exceeded time limit</AlertDescription>
               </Alert>
               <Alert>
-                <FileText className="h-4 w-4 " />
-                <AlertDescription>
-                  3 actions missing audit details
-                </AlertDescription>
+                <FileText className="h-4 w-4" />
+                <AlertDescription>3 actions missing audit details</AlertDescription>
               </Alert>
             </div>
           </CardContent>
@@ -654,8 +712,12 @@ interface RiskAssessmentProps {
 function RiskAssessment({ stats }: RiskAssessmentProps) {
   if (!stats) return <div>Loading...</div>;
 
-  const riskLevel = stats.riskAssessment.highRiskActions > 10 ? 'High' :
-                   stats.riskAssessment.highRiskActions > 5 ? 'Medium' : 'Low';
+  const riskLevel =
+    stats.riskAssessment.highRiskActions > 10
+      ? "High"
+      : stats.riskAssessment.highRiskActions > 5
+      ? "Medium"
+      : "Low";
 
   return (
     <div className="space-y-6">
@@ -665,13 +727,16 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
         </CardHeader>
         <CardContent>
           <div className="flex items-center space-x-4">
-            <Badge variant={
-              riskLevel === 'High' ? 'destructive' :
-              riskLevel === 'Medium' ? 'default' : 'secondary'
-            } className="text-lg px-4 py-2">
+            <Badge
+              variant={
+                riskLevel === "High" ? "destructive" : riskLevel === "Medium" ? "default" : "secondary"
+              }
+              className="text-lg px-4 py-2"
+            >
               {riskLevel} Risk
             </Badge>
-            <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
+            <div className="text-sm text-muted-foreground">
+              Based on recent high/critical actions and incident counts.
             </div>
           </div>
         </CardContent>
@@ -680,7 +745,7 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm md:text-base lg:text-lg">High Risk Actions</CardTitle>
+            <CardTitle className="text-sm">High Risk Actions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
@@ -691,7 +756,7 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm md:text-base lg:text-lg">Irreversible Actions</CardTitle>
+            <CardTitle className="text-sm">Irreversible Actions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
@@ -702,7 +767,7 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm md:text-base lg:text-lg">Compliance Violations</CardTitle>
+            <CardTitle className="text-sm">Compliance Violations</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
@@ -713,7 +778,7 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm md:text-base lg:text-lg">Security Incidents</CardTitle>
+            <CardTitle className="text-sm">Security Incidents</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
@@ -730,19 +795,21 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
         <CardContent>
           <div className="space-y-3">
             <Alert>
-              <Shield className="h-4 w-4 " />
+              <Shield className="h-4 w-4" />
               <AlertDescription>
+                Require second-factor for all critical actions executed under elevation.
               </AlertDescription>
             </Alert>
             <Alert>
-              <Clock className="h-4 w-4 " />
+              <Clock className="h-4 w-4" />
               <AlertDescription>
+                Reduce maximum session timebox for non-admins to 30 minutes.
               </AlertDescription>
             </Alert>
             <Alert>
-              <Eye className="h-4 w-4 " />
+              <Eye className="h-4 w-4" />
               <AlertDescription>
-                Enable real-time monitoring alerts for high-risk actions
+                Enable real-time monitoring alerts for high-risk actions.
               </AlertDescription>
             </Alert>
           </div>
@@ -752,7 +819,10 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
   );
 }
 
-// Mock functions - would be replaced with actual API calls
+/* ============================
+   Mock API — replace with real calls
+   ============================ */
+
 async function getEvilModeStats(dateRange: { start: Date; end: Date }): Promise<EvilModeStats> {
   return {
     totalSessions: 45,
@@ -760,52 +830,77 @@ async function getEvilModeStats(dateRange: { start: Date; end: Date }): Promise<
     totalActions: 234,
     averageSessionDuration: 1800, // 30 minutes
     topUsers: [
-      { userId: 'user-1', username: 'admin', sessionCount: 12, totalActions: 89, averageDuration: 1500 },
-      { userId: 'user-2', username: 'security', sessionCount: 8, totalActions: 45, averageDuration: 2100 }
+      { userId: "user-1", username: "admin", sessionCount: 12, totalActions: 89, averageDuration: 1500 },
+      { userId: "user-2", username: "security", sessionCount: 8, totalActions: 45, averageDuration: 2100 },
     ],
     actionsByImpact: {
       low: 120,
       medium: 80,
       high: 25,
-      critical: 9
+      critical: 9,
     },
     sessionsByTimeOfDay: Array.from({ length: 24 }, (_, i) => ({
       hour: i,
-      count: Math.floor(Math.random() * 10)
+      count: Math.floor(Math.random() * 10),
     })),
     complianceMetrics: {
       justificationProvided: 95,
       additionalAuthUsed: 88,
       timeoutCompliance: 92,
-      auditTrailComplete: 98
+      auditTrailComplete: 98,
     },
     riskAssessment: {
       highRiskActions: 34,
       irreversibleActions: 12,
       complianceViolations: 6,
-      securityIncidents: 2
-    }
+      securityIncidents: 2,
+    },
   };
 }
 
 async function getEvilModeSessions(dateRange: { start: Date; end: Date }): Promise<EvilModeSession[]> {
   return [
     {
-      userId: 'user-1',
-      sessionId: 'session-1',
-      startTime: new Date(Date.now() - 3600000),
-      endTime: new Date(Date.now() - 1800000),
-      justification: 'Emergency system maintenance',
+      userId: "user-1",
+      sessionId: "session-1",
+      startTime: new Date(Date.now() - 3600000).toISOString(),
+      endTime: new Date(Date.now() - 1800000).toISOString(),
+      justification: "Emergency system maintenance",
       actions: [
         {
-          action: 'Modified system configuration',
-          timestamp: new Date(Date.now() - 3000000),
-          resource: 'system.config',
-          impact: 'high',
+          action: "Modified system configuration",
+          timestamp: new Date(Date.now() - 3000000).toISOString(),
+          resource: "system.config",
+          impact: "high",
           reversible: true,
-          details: {}
-        }
-      ]
-    }
+          details: {},
+        },
+      ],
+    },
+    {
+      userId: "user-2",
+      sessionId: "session-2",
+      startTime: new Date(Date.now() - 5400000).toISOString(),
+      endTime: undefined, // active
+      justification: "Incident response",
+      actions: [
+        {
+          action: "Accessed protected data",
+          timestamp: new Date(Date.now() - 1200000).toISOString(),
+          resource: "vault.records",
+          impact: "critical",
+          reversible: false,
+          details: {},
+        },
+        {
+          action: "Adjusted user role",
+          timestamp: new Date(Date.now() - 900000).toISOString(),
+          resource: "rbac.roles",
+          impact: "high",
+          reversible: true,
+          details: {},
+        },
+      ],
+    },
   ];
 }

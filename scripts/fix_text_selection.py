@@ -146,12 +146,12 @@ export default function TextSelectionTest() {
             >
               {text}
             </p>
-            <button 
+            <Button 
               className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm"
               onClick={() => handleTextClick(text)}
             >
               Select This Text
-            </button>
+            </Button>
           </div>
         ))}
       </div>

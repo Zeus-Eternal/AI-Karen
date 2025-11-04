@@ -22,6 +22,7 @@ export function TextSelectionDemo() {
     },
     onTextCopied: (text) => {
     },
+  });
 
   const handleSelectAll = () => {
     if (contentRef.current) {

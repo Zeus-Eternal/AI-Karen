@@ -598,7 +598,7 @@ def render_settings() -> str:
                 <label>Sync Interval (hours)</label>
                 <input type="number" value="4" min="1" max="24" />
             </div>
-            <button type="submit">Save Settings</button>
+            <Button type="submit">Save Settings</Button>
         </form>
     </div>
     """

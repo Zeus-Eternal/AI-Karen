@@ -1,7 +1,15 @@
 /**
  * ARIA Utilities for Enhanced Accessibility
- * Provides comprehensive ARIA attribute management and utilities
+ * ----------------------------------------
+ * Strongly-typed helpers to compose, validate, and merge ARIA props.
+ * - Framework-agnostic TypeScript, React-friendly value shapes
+ * - SSR-safe (no DOM access at import time)
+ * - Opinionated validations for common pitfalls
  */
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export interface AriaLabelProps {
   'aria-label'?: string;
@@ -34,7 +42,15 @@ export interface AriaRelationshipProps {
 export interface AriaLiveProps {
   'aria-live'?: 'off' | 'polite' | 'assertive';
   'aria-atomic'?: boolean;
-  'aria-relevant'?: 'additions' | 'removals' | 'text' | 'all' | 'additions text' | 'additions removals' | 'text removals' | 'additions text removals';
+  'aria-relevant'?:
+    | 'additions'
+    | 'removals'
+    | 'text'
+    | 'all'
+    | 'additions text'
+    | 'additions removals'
+    | 'text removals'
+    | 'additions text removals';
 }
 
 export interface AriaGridProps {
@@ -46,61 +62,71 @@ export interface AriaGridProps {
   'aria-colspan'?: number;
 }
 
-export type AriaProps = AriaLabelProps & 
-  AriaStateProps & 
-  AriaRelationshipProps & 
-  AriaLiveProps & 
+export type AriaProps = AriaLabelProps &
+  AriaStateProps &
+  AriaRelationshipProps &
+  AriaLiveProps &
   AriaGridProps & {
     role?: string;
     tabIndex?: number;
   };
 
-/**
- * Generate unique IDs for ARIA relationships
- */
-let idCounter = 0;
+// ---------------------------------------------------------------------------
+// ID utilities (SSR-safe)
+// ---------------------------------------------------------------------------
+
+let __ariaIdCounter = 0;
+/** Generate unique-ish IDs for ARIA relationships */
 export const generateAriaId = (prefix: string = 'aria'): string => {
-  return `${prefix}-${++idCounter}-${Date.now()}`;
+  // Math.random added to reduce collisions across islands/tests
+  __ariaIdCounter += 1;
+  const rand = Math.random().toString(36).slice(2, 7);
+  return `${prefix}-${__ariaIdCounter}-${rand}`;
 };
 
-/**
- * Create ARIA label attributes with fallback logic
- */
+/** Join a list of id strings into a space-separated value */
+export const joinIds = (...ids: Array<string | undefined | null>): string | undefined => {
+  const list = ids.filter(Boolean).map((s) => String(s).trim()).filter(Boolean);
+  return list.length ? Array.from(new Set(list)).join(' ') : undefined;
+};
+
+// ---------------------------------------------------------------------------
+// Factories
+// ---------------------------------------------------------------------------
+
+/** Create ARIA label attributes with proper precedence */
 export const createAriaLabel = (
   label?: string,
   labelledBy?: string,
   describedBy?: string
 ): AriaLabelProps => {
   const props: AriaLabelProps = {};
-  
-  if (labelledBy) {
-    props['aria-labelledby'] = labelledBy;
-  } else if (label) {
-    props['aria-label'] = label;
-  }
-  
-  if (describedBy) {
-    props['aria-describedby'] = describedBy;
-  }
-  
+  if (labelledBy) props['aria-labelledby'] = labelledBy;
+  else if (label) props['aria-label'] = label;
+  if (describedBy) props['aria-describedby'] = describedBy;
   return props;
 };
 
-/**
- * Create ARIA live region attributes
- */
+/** Create ARIA live region attributes */
 export const createAriaLive = (
   level: 'off' | 'polite' | 'assertive' = 'polite',
   atomic: boolean = false,
-  relevant: 'additions' | 'removals' | 'text' | 'all' | 'additions text' | 'additions removals' | 'text removals' | 'additions text removals' = 'additions text'
+  relevant:
+    | 'additions'
+    | 'removals'
+    | 'text'
+    | 'all'
+    | 'additions text'
+    | 'additions removals'
+    | 'text removals'
+    | 'additions text removals' = 'additions text'
 ): AriaLiveProps => ({
   'aria-live': level,
   'aria-atomic': atomic,
   'aria-relevant': relevant,
+});
 
-/**
- * Create ARIA attributes for interactive elements
- */
+/** Create ARIA attributes for interactive elements */
 export const createInteractiveAria = (
   expanded?: boolean,
   selected?: boolean,
@@ -109,42 +135,31 @@ export const createInteractiveAria = (
   disabled?: boolean
 ): AriaStateProps => {
   const props: AriaStateProps = {};
-  
   if (expanded !== undefined) props['aria-expanded'] = expanded;
   if (selected !== undefined) props['aria-selected'] = selected;
   if (pressed !== undefined) props['aria-pressed'] = pressed;
   if (current !== undefined) props['aria-current'] = current;
   if (disabled !== undefined) props['aria-disabled'] = disabled;
-  
   return props;
 };
 
-/**
- * Create ARIA attributes for form elements
- */
+/** Create ARIA attributes for form elements */
 export const createFormAria = (
   invalid?: boolean | 'grammar' | 'spelling',
   required?: boolean,
   describedBy?: string,
   errorId?: string
 ): AriaStateProps & AriaLabelProps => {
-  const props: AriaStateProps & AriaLabelProps = {};
-  
+  const props: AriaStateProps & AriaLabelProps = {} as any;
   if (invalid !== undefined) props['aria-invalid'] = invalid;
   if (required !== undefined) props['aria-required'] = required;
-  
-  if (invalid && errorId) {
-    props['aria-describedby'] = describedBy ? `${describedBy} ${errorId}` : errorId;
-  } else if (describedBy) {
-    props['aria-describedby'] = describedBy;
-  }
-  
+
+  const composedDescribedBy = invalid && errorId ? joinIds(describedBy, errorId) : describedBy;
+  if (composedDescribedBy) props['aria-describedby'] = composedDescribedBy;
   return props;
 };
 
-/**
- * Create ARIA attributes for grid/table elements
- */
+/** Create ARIA attributes for grid/table elements */
 export const createGridAria = (
   rowIndex?: number,
   colIndex?: number,
@@ -154,37 +169,29 @@ export const createGridAria = (
   colCount?: number
 ): AriaGridProps => {
   const props: AriaGridProps = {};
-  
   if (rowIndex !== undefined) props['aria-rowindex'] = rowIndex;
   if (colIndex !== undefined) props['aria-colindex'] = colIndex;
   if (rowSpan !== undefined) props['aria-rowspan'] = rowSpan;
   if (colSpan !== undefined) props['aria-colspan'] = colSpan;
   if (rowCount !== undefined) props['aria-rowcount'] = rowCount;
   if (colCount !== undefined) props['aria-colcount'] = colCount;
-  
   return props;
 };
 
-/**
- * Create ARIA attributes for navigation elements
- */
+/** Create ARIA attributes for navigation elements */
 export const createNavigationAria = (
   current?: boolean | 'page' | 'step' | 'location' | 'date' | 'time',
   expanded?: boolean,
   hasPopup?: boolean | 'menu' | 'listbox' | 'tree' | 'grid' | 'dialog'
-): AriaStateProps & { 'aria-haspopup'?: boolean | string } => {
-  const props: AriaStateProps & { 'aria-haspopup'?: boolean | string } = {};
-  
+): AriaStateProps => {
+  const props: AriaStateProps = {};
   if (current !== undefined) props['aria-current'] = current;
   if (expanded !== undefined) props['aria-expanded'] = expanded;
   if (hasPopup !== undefined) props['aria-haspopup'] = hasPopup;
-  
   return props;
 };
 
-/**
- * Create ARIA attributes for modal/dialog elements
- */
+/** Create ARIA attributes for modal/dialog elements */
 export const createModalAria = (
   labelledBy?: string,
   describedBy?: string,
@@ -192,10 +199,9 @@ export const createModalAria = (
 ): AriaLabelProps & { 'aria-modal'?: boolean } => ({
   ...createAriaLabel(undefined, labelledBy, describedBy),
   'aria-modal': modal,
+});
 
-/**
- * Create ARIA attributes for loading states
- */
+/** Create ARIA attributes for loading states */
 export const createLoadingAria = (
   busy: boolean = true,
   label: string = 'Loading...',
@@ -204,48 +210,114 @@ export const createLoadingAria = (
   'aria-busy': busy,
   'aria-label': label,
   'aria-live': live,
+});
+
+// ---------------------------------------------------------------------------
+// Merge & Normalize
+// ---------------------------------------------------------------------------
 
 /**
- * Merge multiple ARIA prop objects
+ * Merge multiple ARIA prop objects. Later objects win on key conflicts.
+ * `aria-describedby` and `aria-labelledby` are concatenated intelligently.
  */
-export const mergeAriaProps = (...ariaProps: (AriaProps | undefined)[]): AriaProps => {
-  return ariaProps.reduce((merged: AriaProps, props) => {
-    if (!props) return merged;
-    return { ...merged, ...props };
-  }, {} as AriaProps);
+export const mergeAriaProps = (
+  ...ariaProps: Array<AriaProps | undefined>
+): AriaProps => {
+  const merged: AriaProps = {};
+  for (const props of ariaProps) {
+    if (!props) continue;
+
+    // Merge concatenated references safely
+    const nextDescribedBy = joinIds(merged['aria-describedby'], props['aria-describedby']);
+    const nextLabelledBy = joinIds(merged['aria-labelledby'], props['aria-labelledby']);
+
+    Object.assign(merged, props);
+
+    if (nextDescribedBy) merged['aria-describedby'] = nextDescribedBy;
+    if (nextLabelledBy) merged['aria-labelledby'] = nextLabelledBy;
+  }
+  return merged;
 };
 
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+/** Minimal role requirements map (non-exhaustive, pragmatic) */
+const ROLE_REQUIREMENTS: Record<string, Array<keyof AriaProps>> = {
+  tab: ['aria-selected'],
+  tabpanel: ['aria-labelledby'],
+  tooltip: ['aria-describedby'],
+};
+
+/** Suggested companions for certain attributes */
+const SUGGESTED_COMPANIONS: Array<(p: AriaProps) => string | null> = [
+  (p) => (p['aria-haspopup'] && p.role === 'button' && p['aria-expanded'] === undefined
+    ? 'Button with aria-haspopup should usually reflect disclosure state via aria-expanded.'
+    : null),
+  (p) => (typeof p['aria-current'] !== 'undefined' && !['a', 'link', 'button', 'tab']
+    .includes((p.role || '').toLowerCase())
+    ? 'aria-current is typically used on navigational items (links, tabs, menu items). Ensure role is appropriate.'
+    : null),
+];
+
 /**
- * Validate ARIA attributes for common issues
+ * Validate ARIA attributes for common issues. Returns an array of warnings.
  */
 export const validateAriaProps = (props: AriaProps): string[] => {
   const warnings: string[] = [];
-  
-  // Check for conflicting label attributes
+
+  // 1) Conflicting label sources
   if (props['aria-label'] && props['aria-labelledby']) {
-    warnings.push('Both aria-label and aria-labelledby are present. aria-labelledby takes precedence.');
+    warnings.push('Both aria-label and aria-labelledby present. aria-labelledby takes precedence. Prefer one.');
   }
-  
-  // Check for invalid role combinations
-  if (props.role === 'button' && props['aria-pressed'] === undefined && props['aria-expanded'] === undefined) {
-    // This is fine for regular buttons
+
+  // 2) Role-based required attributes
+  if (props.role) {
+    const role = props.role.toLowerCase();
+    const required = ROLE_REQUIREMENTS[role];
+    if (required) {
+      required.forEach((k) => {
+        if (props[k] === undefined || props[k] === null || props[k] === '') {
+          warnings.push(`Role "${role}" should include attribute "${k}".`);
+        }
+      });
+    }
   }
-  
-  // Check for missing required attributes
-  if (props.role === 'tab' && props['aria-selected'] === undefined) {
-    warnings.push('Tab role requires aria-selected attribute.');
+
+  // 3) State value sanity checks
+  if (typeof props['aria-pressed'] !== 'undefined' && props.role && props.role !== 'button') {
+    warnings.push('aria-pressed is generally used with role="button" (toggle button).');
   }
-  
-  if (props.role === 'tabpanel' && !props['aria-labelledby']) {
-    warnings.push('Tabpanel role should have aria-labelledby pointing to the associated tab.');
+
+  if (props['aria-checked'] === 'mixed' && props.role && !['checkbox', 'menuitemcheckbox', 'treeitem']
+    .includes(props.role)) {
+    warnings.push('aria-checked="mixed" is usually for tri-state controls like checkbox or treeitem.');
   }
-  
+
+  // 4) Relationship integrity (simple string checks; DOM presence validated elsewhere)
+  const idListRegex = /^[A-Za-z][\w\-:.]*(?:\s+[A-Za-z][\w\-:.]*)*$/;
+  ['aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-owns', 'aria-activedescendant']
+    .forEach((attr) => {
+      const v = props[attr as keyof AriaProps];
+      if (typeof v === 'string' && v.trim() && !idListRegex.test(v.trim())) {
+        warnings.push(`${attr} should be a space-separated list of valid IDs.`);
+      }
+    });
+
+  // 5) Suggested companions
+  SUGGESTED_COMPANIONS.forEach((fn) => {
+    const msg = fn(props);
+    if (msg) warnings.push(msg);
+  });
+
   return warnings;
 };
 
-/**
- * Common ARIA role constants
- */
+// ---------------------------------------------------------------------------
+// Role constants
+// ---------------------------------------------------------------------------
+
 export const ARIA_ROLES = {
   // Landmark roles
   BANNER: 'banner',
@@ -255,7 +327,7 @@ export const ARIA_ROLES = {
   CONTENTINFO: 'contentinfo',
   SEARCH: 'search',
   REGION: 'region',
-  
+
   // Widget roles
   BUTTON: 'button',
   CHECKBOX: 'checkbox',
@@ -279,7 +351,7 @@ export const ARIA_ROLES = {
   ROW: 'row',
   COLUMNHEADER: 'columnheader',
   ROWHEADER: 'rowheader',
-  
+
   // Document structure roles
   ARTICLE: 'article',
   DOCUMENT: 'document',
@@ -287,7 +359,7 @@ export const ARIA_ROLES = {
   LIST: 'list',
   LISTITEM: 'listitem',
   TABLE: 'table',
-  
+
   // Live region roles
   ALERT: 'alert',
   ALERTDIALOG: 'alertdialog',
@@ -295,7 +367,7 @@ export const ARIA_ROLES = {
   MARQUEE: 'marquee',
   STATUS: 'status',
   TIMER: 'timer',
-  
+
   // Window roles
   DIALOG: 'dialog',
   TOOLTIP: 'tooltip',

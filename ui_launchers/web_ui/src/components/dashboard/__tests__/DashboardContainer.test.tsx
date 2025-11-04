@@ -23,7 +23,7 @@ vi.mock('@dnd-kit/sortable', () => ({
 // Mock UI components
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, variant, size, disabled, ...props }: any) => (
-    <button 
+    <Button 
       onClick={onClick} 
       disabled={disabled}
       data-variant={variant}
@@ -31,7 +31,7 @@ vi.mock('@/components/ui/button', () => ({
       {...props}
      aria-label="Button">
       {children}
-    </button>
+    </Button>
   )
 }));
 
@@ -61,8 +61,8 @@ vi.mock('../WidgetBase', () => ({
       <div>{config.title}</div>
       {children}
       {onRemove && (
-        <button onClick={() => onRemove()} data-testid={`remove-${config.id}`}>
-        </button>
+        <Button onClick={() => onRemove()} data-testid={`remove-${config.id}`}>
+        </Button>
       )}
     </div>
   )

@@ -70,17 +70,14 @@ function getReadinessState(): GlobalReadinessState {
           : undefined,
     };
   }
-
   return globalScope.__kariReadinessState;
 }
 
 function getEnvironmentManager(): EnvironmentConfigManager {
   const state = getReadinessState();
-
   if (!state.envManager) {
     state.envManager = new EnvironmentConfigManager();
   }
-
   return state.envManager;
 }
 
@@ -98,10 +95,9 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
     const response = await fetch(healthUrl, {
       method: 'GET',
       signal: controller.signal,
-      headers: {
-        Accept: 'application/json',
-      },
+      headers: { Accept: 'application/json' },
       cache: 'no-store',
+    });
 
     const responseTime = Date.now() - startTime;
 
@@ -112,7 +108,7 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
       safeWarn('Readiness check received non-JSON response from backend health endpoint', {
         url: healthUrl,
         statusCode: response.status,
-
+      });
     }
 
     if (!response.ok) {
@@ -143,6 +139,7 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
     safeWarn('Backend health check failed', {
       url: healthUrl,
       error: error instanceof Error ? error.message : String(error),
+    });
 
     return {
       url,
@@ -158,7 +155,6 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
 function getCriticalEnvVars(): string[] {
   const baseVars = ['NODE_ENV', 'KAREN_BACKEND_URL'];
   const optionalVars = ['NEXT_PUBLIC_KAREN_BACKEND_URL', 'KAREN_FALLBACK_BACKEND_URLS'];
-
   return [...baseVars, ...optionalVars];
 }
 
@@ -170,32 +166,27 @@ function checkApplication(): ReadinessCheck {
   const uptimeSeconds = process.uptime();
   const initializationComplete = readinessState.initializationComplete;
 
+  const details = {
+    startupDurationMs: Date.now() - readinessState.startupStartTime,
+    uptimeSeconds: Number(uptimeSeconds.toFixed(2)),
+    initializationComplete,
+    lastDependencyCheckAt: readinessState.lastDependencyCheck ?? null,
+    lastSuccessfulDependencyCheckAt: readinessState.lastSuccessfulDependencyCheck ?? null,
+    lastHealthyBackend: readinessState.lastHealthyBackend ?? null,
+  };
+
   if (!initializationComplete) {
     return {
       status: 'not_ready',
       message: 'Application initialization in progress',
-      details: {
-        startupDurationMs: Date.now() - readinessState.startupStartTime,
-        uptimeSeconds: Number(uptimeSeconds.toFixed(2)),
-        initializationComplete,
-        lastDependencyCheckAt: readinessState.lastDependencyCheck ?? null,
-        lastSuccessfulDependencyCheckAt: readinessState.lastSuccessfulDependencyCheck ?? null,
-        lastHealthyBackend: readinessState.lastHealthyBackend ?? null,
-      },
+      details,
     };
   }
 
   return {
     status: 'ready',
     message: 'Application runtime stable',
-    details: {
-      startupDurationMs: Date.now() - readinessState.startupStartTime,
-      uptimeSeconds: Number(uptimeSeconds.toFixed(2)),
-      initializationComplete,
-      lastDependencyCheckAt: readinessState.lastDependencyCheck ?? null,
-      lastSuccessfulDependencyCheckAt: readinessState.lastSuccessfulDependencyCheck ?? null,
-      lastHealthyBackend: readinessState.lastHealthyBackend ?? null,
-    },
+    details,
   };
 }
 
@@ -209,7 +200,6 @@ async function checkDependencies(): Promise<ReadinessCheck> {
 
   if (!validation.isValid) {
     readinessState.initializationComplete = false;
-
     return {
       status: 'not_ready',
       message: 'Backend configuration invalid',
@@ -222,20 +212,14 @@ async function checkDependencies(): Promise<ReadinessCheck> {
   }
 
   const backendConfig = envManager.getBackendConfig();
-  const candidateUrls = envManager
-    .getAllCandidateUrls()
-    .map(normalizeUrl)
-    .filter(Boolean);
+  const candidateUrls = envManager.getAllCandidateUrls().map(normalizeUrl).filter(Boolean);
 
   if (candidateUrls.length === 0) {
     readinessState.initializationComplete = false;
-
     return {
       status: 'not_ready',
       message: 'No backend endpoints configured',
-      details: {
-        backendConfig,
-      },
+      details: { backendConfig },
     };
   }
 
@@ -246,9 +230,9 @@ async function checkDependencies(): Promise<ReadinessCheck> {
     candidateUrls.map((url) => checkBackendHealth(url, timeoutMs)),
   );
 
-  const healthy = dependencyChecks.filter((result) => result.status === 'healthy');
-  const degraded = dependencyChecks.filter((result) => result.status === 'degraded');
-  const unreachable = dependencyChecks.filter((result) => result.status === 'unreachable');
+  const healthy = dependencyChecks.filter((r) => r.status === 'healthy');
+  const degraded = dependencyChecks.filter((r) => r.status === 'degraded');
+  const unreachable = dependencyChecks.filter((r) => r.status === 'unreachable');
 
   readinessState.lastDependencyCheck = Date.now();
 
@@ -266,29 +250,26 @@ async function checkDependencies(): Promise<ReadinessCheck> {
 
   return {
     status,
-    message:
-      status === 'ready'
-        ? 'Backend services reachable'
-        : 'Unable to reach required backend services',
+    message: status === 'ready' ? 'Backend services reachable' : 'Unable to reach required backend services',
     details: {
       attemptedEndpoints: candidateUrls.length,
-      healthyEndpoints: healthy.map((result) => ({
-        url: result.url,
-        responseTimeMs: result.responseTime,
-        statusCode: result.statusCode,
-        backendStatus: result.rawStatus,
+      healthyEndpoints: healthy.map((r) => ({
+        url: r.url,
+        responseTimeMs: r.responseTime,
+        statusCode: r.statusCode,
+        backendStatus: r.rawStatus,
       })),
-      degradedEndpoints: degraded.map((result) => ({
-        url: result.url,
-        responseTimeMs: result.responseTime,
-        statusCode: result.statusCode,
-        backendStatus: result.rawStatus,
-        message: result.message,
+      degradedEndpoints: degraded.map((r) => ({
+        url: r.url,
+        responseTimeMs: r.responseTime,
+        statusCode: r.statusCode,
+        backendStatus: r.rawStatus,
+        message: r.message,
       })),
-      unreachableEndpoints: unreachable.map((result) => ({
-        url: result.url,
-        responseTimeMs: result.responseTime,
-        message: result.message,
+      unreachableEndpoints: unreachable.map((r) => ({
+        url: r.url,
+        responseTimeMs: r.responseTime,
+        message: r.message,
       })),
       backendConfig,
       warnings: validation.warnings,
@@ -359,9 +340,7 @@ function checkConfiguration(): ReadinessCheck {
     return {
       status: 'not_ready',
       message: `Configuration check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      details: {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
+      details: { error: error instanceof Error ? error.message : 'Unknown error' },
     };
   }
 }
@@ -420,7 +399,6 @@ function checkResources(): ReadinessCheck {
       };
     }
 
-    // Check uptime (application should be running for at least a few seconds)
     const uptime = process.uptime();
     if (uptime < 2) {
       return {
@@ -456,9 +434,7 @@ function checkResources(): ReadinessCheck {
     return {
       status: 'not_ready',
       message: `Resource check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      details: {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
+      details: { error: error instanceof Error ? error.message : 'Unknown error' },
     };
   }
 }
@@ -466,20 +442,15 @@ function checkResources(): ReadinessCheck {
 /**
  * Main readiness check handler
  */
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export async function GET(_request: NextRequest): Promise<NextResponse> {
   try {
-    // Perform all readiness checks
-    const [
-      applicationCheck,
-      dependenciesCheck,
-      configurationCheck,
-      resourcesCheck,
-    ] = await Promise.all([
-      Promise.resolve(checkApplication()),
-      checkDependencies(),
-      Promise.resolve(checkConfiguration()),
-      Promise.resolve(checkResources()),
-    ]);
+    const [applicationCheck, dependenciesCheck, configurationCheck, resourcesCheck] =
+      await Promise.all([
+        Promise.resolve(checkApplication()),
+        checkDependencies(),
+        Promise.resolve(checkConfiguration()),
+        Promise.resolve(checkResources()),
+      ]);
 
     const checks = {
       application: applicationCheck,
@@ -488,9 +459,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       resources: resourcesCheck,
     };
 
-    // Determine overall readiness status
-    const notReadyChecks = Object.values(checks).filter((check) => check.status === 'not_ready');
-    const overallStatus = notReadyChecks.length === 0 ? 'ready' : 'not_ready';
+    const notReadyChecks = Object.values(checks).filter((c) => c.status === 'not_ready');
+    const overallStatus: 'ready' | 'not_ready' = notReadyChecks.length === 0 ? 'ready' : 'not_ready';
 
     const readinessState = getReadinessState();
 
@@ -506,7 +476,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     };
 
-    // Return appropriate HTTP status code
     const httpStatus = overallStatus === 'ready' ? 200 : 503;
 
     return NextResponse.json(readinessResult, {
@@ -516,10 +485,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         Pragma: 'no-cache',
         Expires: '0',
       },
-
+    });
   } catch (error) {
     safeWarn('Readiness endpoint failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
+    });
 
     const readinessState = getReadinessState();
 
@@ -527,22 +497,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       status: 'not_ready',
       timestamp: new Date().toISOString(),
       checks: {
-        application: {
-          status: 'not_ready',
-          message: 'Readiness check failed',
-        },
-        dependencies: {
-          status: 'not_ready',
-          message: 'Unable to check dependencies',
-        },
-        configuration: {
-          status: 'not_ready',
-          message: 'Unable to check configuration',
-        },
-        resources: {
-          status: 'not_ready',
-          message: 'Unable to check resources',
-        },
+        application: { status: 'not_ready', message: 'Readiness check failed' },
+        dependencies: { status: 'not_ready', message: 'Unable to check dependencies' },
+        configuration: { status: 'not_ready', message: 'Unable to check configuration' },
+        resources: { status: 'not_ready', message: 'Unable to check resources' },
       },
       details: {
         startupTime: Date.now() - readinessState.startupStartTime,
@@ -559,6 +517,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         Pragma: 'no-cache',
         Expires: '0',
       },
-
+    });
   }
 }

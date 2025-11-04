@@ -53,9 +53,9 @@ function TestComponent() {
       <div data-testid="reduced-motion">{preferences.reducedMotion.toString()}</div>
       <div data-testid="loading">{isLoading.toString()}</div>
       <div data-testid="error">{error || 'no-error'}</div>
-      <button onClick={() => updatePreference('theme', 'dark')}>Set Dark Theme</button>
-      <button onClick={() => updatePreference('reducedMotion', true)}>Enable Reduced Motion</button>
-      <button onClick={resetPreferences}>Reset</button>
+      <Button onClick={() => updatePreference('theme', 'dark')}>Set Dark Theme</Button>
+      <Button onClick={() => updatePreference('reducedMotion', true)}>Enable Reduced Motion</Button>
+      <Button onClick={resetPreferences}>Reset</Button>
     </div>
   );
 }

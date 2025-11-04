@@ -1,21 +1,30 @@
 /**
- * Comprehensive Performance Monitoring Service
- * Tracks page load times, interaction latency, resource usage, and Web Vitals
+ * Comprehensive Performance Monitoring Service (SSR-safe, INP-ready)
+ * Tracks Web Vitals (CLS, FCP, LCP, TTFB, INP/FID), page load, interactions,
+ * resource usage, long tasks, alerts, and exposes a clean subscription API.
  */
-import { getCLS, getFCP, getFID, getLCP, getTTFB } from 'web-vitals';
+
+import { getCLS, getFCP, getLCP, getTTFB, getINP, onFID } from 'web-vitals';
+
+const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+const hasPO = typeof PerformanceObserver !== 'undefined';
+
 export interface WebVitalsMetrics {
   cls: number;
   fcp: number;
-  fid: number;
   lcp: number;
   ttfb: number;
+  inp: number; // Primary in 2024+
+  fid?: number; // Back-compat when INP not available
 }
+
 export interface PerformanceMetric {
   name: string;
   value: number;
   timestamp: number;
   metadata?: Record<string, any>;
 }
+
 export interface ResourceUsage {
   memory: {
     used: number;
@@ -23,7 +32,7 @@ export interface ResourceUsage {
     percentage: number;
   };
   cpu?: {
-    usage: number;
+    usage: number;   // Estimated (browser cannot read real CPU)
     cores: number;
   };
   network: {
@@ -32,6 +41,7 @@ export interface ResourceUsage {
     rtt: number;
   };
 }
+
 export interface PerformanceAlert {
   id: string;
   type: 'warning' | 'critical';
@@ -41,9 +51,11 @@ export interface PerformanceAlert {
   timestamp: number;
   message: string;
 }
+
 export interface PerformanceThresholds {
   lcp: { warning: number; critical: number };
-  fid: { warning: number; critical: number };
+  inp: { warning: number; critical: number }; // INP (replaces FID)
+  fid: { warning: number; critical: number }; // fallback thresholds
   cls: { warning: number; critical: number };
   fcp: { warning: number; critical: number };
   ttfb: { warning: number; critical: number };
@@ -51,16 +63,23 @@ export interface PerformanceThresholds {
   interaction: { warning: number; critical: number };
   memoryUsage: { warning: number; critical: number };
 }
+
+type AlertListener = (alert: PerformanceAlert) => void;
+
 export class PerformanceMonitor {
   private metrics: PerformanceMetric[] = [];
   private alerts: PerformanceAlert[] = [];
   private observers: PerformanceObserver[] = [];
+  private intervals: number[] = [];
   private thresholds: PerformanceThresholds;
-  private alertCallbacks: ((alert: PerformanceAlert) => void)[] = [];
+  private alertCallbacks: AlertListener[] = [];
+  private vitalsCache: Partial<WebVitalsMetrics> = {};
+
   constructor(thresholds?: Partial<PerformanceThresholds>) {
     this.thresholds = {
       lcp: { warning: 2500, critical: 4000 },
-      fid: { warning: 100, critical: 300 },
+      inp: { warning: 200, critical: 500 },  // good: <200ms, needs-improvement: 200–500, poor: >500
+      fid: { warning: 100, critical: 300 },  // only as fallback
       cls: { warning: 0.1, critical: 0.25 },
       fcp: { warning: 1800, critical: 3000 },
       ttfb: { warning: 800, critical: 1800 },
@@ -69,156 +88,187 @@ export class PerformanceMonitor {
       memoryUsage: { warning: 80, critical: 95 },
       ...thresholds,
     };
-    this.initializeWebVitalsTracking();
-    this.initializeResourceMonitoring();
-    this.initializeInteractionTracking();
+
+    if (isBrowser) {
+      this.initializeWebVitalsTracking();
+      this.initializeResourceMonitoring();
+      this.initializeInteractionTracking();
+      this.setupLifecycleGuards();
+    }
   }
-  /**
-   * Initialize Web Vitals tracking
-   */
+
+  // -------------------- Initialization --------------------
+
   private initializeWebVitalsTracking(): void {
-    getCLS((metric) => {
-      this.recordMetric('cls', metric.value, { id: metric.id });
-      this.checkThreshold('cls', metric.value);
+    // CLS/FCP/LCP/TTFB always available
+    try {
+      getCLS((m) => {
+        this.vitalsCache.cls = m.value;
+        this.recordMetric('cls', m.value, { id: m.id });
+        this.checkThreshold('cls', m.value);
+      });
+      getFCP((m) => {
+        this.vitalsCache.fcp = m.value;
+        this.recordMetric('fcp', m.value, { id: m.id });
+        this.checkThreshold('fcp', m.value);
+      });
+      getLCP((m) => {
+        this.vitalsCache.lcp = m.value;
+        this.recordMetric('lcp', m.value, { id: m.id });
+        this.checkThreshold('lcp', m.value);
+      });
+      getTTFB((m) => {
+        this.vitalsCache.ttfb = m.value;
+        this.recordMetric('ttfb', m.value, { id: m.id });
+        this.checkThreshold('ttfb', m.value);
+      });
+    } catch {}
 
-    getFCP((metric) => {
-      this.recordMetric('fcp', metric.value, { id: metric.id });
-      this.checkThreshold('fcp', metric.value);
-
-    getFID((metric) => {
-      this.recordMetric('fid', metric.value, { id: metric.id });
-      this.checkThreshold('fid', metric.value);
-
-    getLCP((metric) => {
-      this.recordMetric('lcp', metric.value, { id: metric.id });
-      this.checkThreshold('lcp', metric.value);
-
-    getTTFB((metric) => {
-      this.recordMetric('ttfb', metric.value, { id: metric.id });
-      this.checkThreshold('ttfb', metric.value);
-
+    // INP primary
+    try {
+      getINP((m: any) => {
+        // web-vitals returns INP with .value
+        this.vitalsCache.inp = m.value;
+        this.recordMetric('inp', m.value, { id: m.id });
+        this.checkThreshold('inp', m.value);
+      });
+    } catch {
+      // FID fallback for older browsers
+      try {
+        onFID((m: any) => {
+          this.vitalsCache.fid = m.value;
+          this.recordMetric('fid', m.value, { id: m.id });
+          this.checkThreshold('fid', m.value);
+        });
+      } catch {}
+    }
   }
-  /**
-   * Initialize resource monitoring
-   */
+
   private initializeResourceMonitoring(): void {
-    // Monitor memory usage
-    if ('memory' in performance) {
-      setInterval(() => {
-        const memory = (performance as any).memory;
-        const memoryUsage = {
-          used: memory.usedJSHeapSize,
-          total: memory.totalJSHeapSize,
-          percentage: (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100,
-        };
-        this.recordMetric('memory-usage', memoryUsage.percentage, {
-          used: memoryUsage.used,
-          total: memoryUsage.total,
+    // Memory polling (Chrome-only)
+    const memInterval = window.setInterval(() => {
+      const perf: any = performance as any;
+      if (perf && perf.memory) {
+        const used = perf.memory.usedJSHeapSize || 0;
+        const total = perf.memory.totalJSHeapSize || 0;
+        const pct = total > 0 ? (used / total) * 100 : 0;
+        this.recordMetric('memory-usage', pct, { used, total });
+        this.checkThreshold('memoryUsage', pct);
+      }
+    }, 5000);
+    this.intervals.push(memInterval);
 
-        this.checkThreshold('memoryUsage', memoryUsage.percentage);
-      }, 5000);
-    }
-    // Monitor network information
-    if ('connection' in navigator) {
-      const connection = (navigator as any).connection;
-      this.recordMetric('network-downlink', connection.downlink, {
-        effectiveType: connection.effectiveType,
-        rtt: connection.rtt,
-
+    // Network info snapshot + listener
+    const conn: any = (navigator as any).connection;
+    if (conn) {
+      const snapshot = () => {
+        this.recordMetric('network-downlink', conn.downlink ?? 0, {
+          effectiveType: conn.effectiveType,
+          rtt: conn.rtt,
+        });
+      };
+      try {
+        conn.addEventListener?.('change', snapshot);
+      } catch {}
+      snapshot();
     }
   }
-  /**
-   * Initialize interaction tracking
-   */
+
   private initializeInteractionTracking(): void {
-    // Track long tasks
-    if ('PerformanceObserver' in window) {
-      const longTaskObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          this.recordMetric('long-task', entry.duration, {
-            startTime: entry.startTime,
-            name: entry.name,
-
-          if (entry.duration > this.thresholds.interaction.warning) {
-            this.createAlert(
-              'warning',
-              'long-task',
-              entry.duration,
-              this.thresholds.interaction.warning,
-              `Long task detected: ${entry.duration.toFixed(2)}ms`
-            );
+    // Long tasks (UI jank)
+    if (hasPO) {
+      try {
+        const longTaskObserver = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            const dur = (entry as any).duration ?? 0;
+            this.recordMetric('long-task', dur, {
+              startTime: (entry as any).startTime,
+              name: (entry as any).name,
+            });
+            if (dur > this.thresholds.interaction.warning) {
+              this.createAlert(
+                'warning',
+                'long-task',
+                dur,
+                this.thresholds.interaction.warning,
+                `Long task detected: ${dur.toFixed(0)}ms`
+              );
+            }
           }
-        }
-
-      try {
-        longTaskObserver.observe({ entryTypes: ['longtask'] });
+        });
+        longTaskObserver.observe({ entryTypes: ['longtask'] as any });
         this.observers.push(longTaskObserver);
-      } catch (error) {
-      }
+      } catch {}
     }
-    // Track navigation timing
-    if ('PerformanceObserver' in window) {
-      const navigationObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          const navEntry = entry as PerformanceNavigationTiming;
-          const pageLoadTime = navEntry.loadEventEnd - navEntry.navigationStart;
-          this.recordMetric('page-load', pageLoadTime, {
-            domContentLoaded: navEntry.domContentLoadedEventEnd - navEntry.navigationStart,
-            firstByte: navEntry.responseStart - navEntry.navigationStart,
-            domComplete: navEntry.domComplete - navEntry.navigationStart,
 
-          this.checkThreshold('pageLoad', pageLoadTime);
-        }
-
+    // Navigation timing (page load)
+    if (hasPO) {
       try {
-        navigationObserver.observe({ entryTypes: ['navigation'] });
+        const navigationObserver = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            const nav = entry as PerformanceNavigationTiming;
+            const pageLoadTime = nav.loadEventEnd - nav.navigationStart;
+            this.recordMetric('page-load', pageLoadTime, {
+              domContentLoaded: nav.domContentLoadedEventEnd - nav.navigationStart,
+              firstByte: nav.responseStart - nav.navigationStart,
+              domComplete: nav.domComplete - nav.navigationStart,
+            });
+            this.checkThreshold('pageLoad', pageLoadTime);
+          }
+        });
+        navigationObserver.observe({ type: 'navigation', buffered: true } as any);
         this.observers.push(navigationObserver);
-      } catch (error) {
-      }
+      } catch {}
     }
   }
-  /**
-   * Track page load time for specific routes
-   */
-  trackPageLoad(route: string, startTime?: number): void {
-    const loadTime = startTime || (performance.now ? performance.now() : Date.now());
-    this.recordMetric('route-load', loadTime, { route });
-    this.checkThreshold('pageLoad', loadTime);
+
+  private setupLifecycleGuards(): void {
+    // Clear old metrics periodically
+    const trimInterval = window.setInterval(() => {
+      this.clearOldMetrics(24 * 60 * 60 * 1000);
+    }, 60 * 1000);
+    this.intervals.push(trimInterval);
+
+    // Optional: flush point hooks (you can wire to your telemetry here)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        // no-op here, placeholder for flush
+      }
+    });
+    window.addEventListener('pagehide', () => {
+      // no-op here, placeholder for flush
+    });
   }
-  /**
-   * Track user interaction latency
-   */
+
+  // -------------------- Public API --------------------
+
+  trackPageLoad(route: string, startTime?: number): void {
+    const t = typeof startTime === 'number' ? startTime : (performance.now ? performance.now() : Date.now());
+    this.recordMetric('route-load', t, { route });
+    this.checkThreshold('pageLoad', t);
+  }
+
   trackUserInteraction(action: string, duration: number, metadata?: Record<string, any>): void {
     this.recordMetric('user-interaction', duration, { action, ...metadata });
     this.checkThreshold('interaction', duration);
   }
-  /**
-   * Track API call performance
-   */
+
   trackAPICall(endpoint: string, duration: number, status: number, metadata?: Record<string, any>): void {
     this.recordMetric('api-call', duration, {
       endpoint,
       status,
       success: status >= 200 && status < 300,
       ...metadata,
-
-    // Alert on slow API calls
+    });
     if (duration > 2000) {
-      this.createAlert(
-        'warning',
-        'api-call',
-        duration,
-        2000,
-        `Slow API call to ${endpoint}: ${duration.toFixed(2)}ms`
-      );
+      this.createAlert('warning', 'api-call', duration, 2000, `Slow API call: ${endpoint} (${duration.toFixed(0)}ms)`);
     }
   }
-  /**
-   * Get current resource usage
-   */
+
   getCurrentResourceUsage(): ResourceUsage {
-    const memory = (performance as any).memory;
-    const connection = (navigator as any).connection;
+    const perf: any = performance as any;
+    const memory = perf?.memory;
+    const conn: any = (navigator as any).connection;
     return {
       memory: memory
         ? {
@@ -227,124 +277,110 @@ export class PerformanceMonitor {
             percentage: (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100,
           }
         : { used: 0, total: 0, percentage: 0 },
-      network: connection
-        ? {
-            downlink: connection.downlink,
-            effectiveType: connection.effectiveType,
-            rtt: connection.rtt,
-          }
+      network: conn
+        ? { downlink: conn.downlink, effectiveType: conn.effectiveType, rtt: conn.rtt }
         : { downlink: 0, effectiveType: 'unknown', rtt: 0 },
+      // cpu usage cannot be read in the browser; expose hint only if desired
     };
   }
-  /**
-   * Get Web Vitals metrics
-   */
-  getWebVitalsMetrics(): Partial<WebVitalsMetrics> {
-    const vitals: Partial<WebVitalsMetrics> = {};
-    const latestMetrics = this.getLatestMetrics(['cls', 'fcp', 'fid', 'lcp', 'ttfb']);
-    latestMetrics.forEach((metric) => {
-      (vitals as any)[metric.name] = metric.value;
 
-    return vitals;
+  getWebVitalsMetrics(): Partial<WebVitalsMetrics> {
+    // Use last recorded values
+    const result: Partial<WebVitalsMetrics> = {};
+    if (this.vitalsCache.cls != null) result.cls = this.vitalsCache.cls;
+    if (this.vitalsCache.fcp != null) result.fcp = this.vitalsCache.fcp;
+    if (this.vitalsCache.lcp != null) result.lcp = this.vitalsCache.lcp;
+    if (this.vitalsCache.ttfb != null) result.ttfb = this.vitalsCache.ttfb;
+    if (this.vitalsCache.inp != null) result.inp = this.vitalsCache.inp;
+    if (this.vitalsCache.fid != null) (result as any).fid = this.vitalsCache.fid;
+    return result;
   }
-  /**
-   * Get performance metrics by type
-   */
+
   getMetrics(type?: string, limit?: number): PerformanceMetric[] {
     let filtered = type ? this.metrics.filter((m) => m.name === type) : this.metrics;
-    if (limit) {
-      filtered = filtered.slice(-limit);
-    }
+    if (limit) filtered = filtered.slice(-limit);
     return filtered.sort((a, b) => b.timestamp - a.timestamp);
   }
-  /**
-   * Get latest metrics for specified types
-   */
+
   getLatestMetrics(types: string[]): PerformanceMetric[] {
     return types
-      .map((type) => this.metrics.filter((m) => m.name === type).pop())
+      .map((t) => this.metrics.filter((m) => m.name === t).pop())
       .filter(Boolean) as PerformanceMetric[];
   }
-  /**
-   * Get performance alerts
-   */
+
   getAlerts(limit?: number): PerformanceAlert[] {
-    const sorted = this.alerts.sort((a, b) => b.timestamp - a.timestamp);
+    const sorted = [...this.alerts].sort((a, b) => b.timestamp - a.timestamp);
     return limit ? sorted.slice(0, limit) : sorted;
   }
-  /**
-   * Subscribe to performance alerts
-   */
-  onAlert(callback: (alert: PerformanceAlert) => void): () => void {
+
+  onAlert(callback: AlertListener): () => void {
     this.alertCallbacks.push(callback);
     return () => {
-      const index = this.alertCallbacks.indexOf(callback);
-      if (index > -1) {
-        this.alertCallbacks.splice(index, 1);
-      }
+      const idx = this.alertCallbacks.indexOf(callback);
+      if (idx > -1) this.alertCallbacks.splice(idx, 1);
     };
   }
-  /**
-   * Get performance recommendations
-   */
+
   getOptimizationRecommendations(): string[] {
-    const recommendations: string[] = [];
+    const recs: string[] = [];
     const vitals = this.getWebVitalsMetrics();
-    if (vitals.lcp && vitals.lcp > this.thresholds.lcp.warning) {
-      recommendations.push('Consider optimizing images and reducing server response times to improve LCP');
+
+    if (vitals.lcp != null && vitals.lcp > this.thresholds.lcp.warning) {
+      recs.push('Improve LCP: optimize hero image, reduce server response time, inline critical CSS, preconnect origins.');
     }
-    if (vitals.fid && vitals.fid > this.thresholds.fid.warning) {
-      recommendations.push('Reduce JavaScript execution time and break up long tasks to improve FID');
+    if (vitals.inp != null && vitals.inp > this.thresholds.inp.warning) {
+      recs.push('Improve INP: break up long tasks, reduce JS on main thread, defer non-critical work, use Web Workers.');
+    } else if ((vitals as any).fid != null && (vitals as any).fid > this.thresholds.fid.warning) {
+      recs.push('FID high (fallback): reduce JS blocking, split bundles, offload heavy handlers.');
     }
-    if (vitals.cls && vitals.cls > this.thresholds.cls.warning) {
-      recommendations.push('Add size attributes to images and avoid inserting content above existing content to improve CLS');
+    if (vitals.cls != null && vitals.cls > this.thresholds.cls.warning) {
+      recs.push('Reduce CLS: set width/height on images/iframes, avoid layout shifts above the fold.');
     }
-    const memoryMetrics = this.getMetrics('memory-usage', 10);
-    const avgMemoryUsage = memoryMetrics.reduce((sum, m) => sum + m.value, 0) / memoryMetrics.length;
-    if (avgMemoryUsage > this.thresholds.memoryUsage.warning) {
-      recommendations.push('Consider implementing memory optimization strategies and garbage collection');
+
+    const mem = this.getMetrics('memory-usage', 10);
+    if (mem.length) {
+      const avg = mem.reduce((s, m) => s + m.value, 0) / mem.length;
+      if (avg > this.thresholds.memoryUsage.warning) {
+        recs.push('Heap pressure high: release caches on route change, clean subscriptions, reduce object churn.');
+      }
     }
-    return recommendations;
+    return recs;
   }
-  /**
-   * Clear old metrics to prevent memory leaks
-   */
+
   clearOldMetrics(maxAge: number = 24 * 60 * 60 * 1000): void {
     const cutoff = Date.now() - maxAge;
     this.metrics = this.metrics.filter((m) => m.timestamp > cutoff);
     this.alerts = this.alerts.filter((a) => a.timestamp > cutoff);
   }
-  /**
-   * Record a performance metric
-   */
-  private recordMetric(name: string, value: number, metadata?: Record<string, any>): void {
-    this.metrics.push({
-      name,
-      value,
-      timestamp: Date.now(),
-      metadata,
 
-    // Prevent memory leaks by limiting metrics
-    if (this.metrics.length >= 5000) {
-      this.metrics = this.metrics.slice(-2500);
-    }
+  destroy(): void {
+    this.observers.forEach((o) => { try { o.disconnect(); } catch {} });
+    this.observers = [];
+    this.alertCallbacks = [];
+    this.intervals.forEach((id) => clearInterval(id));
+    this.intervals = [];
   }
-  /**
-   * Check if a metric exceeds thresholds and create alerts
-   */
+
+  // -------------------- Internals --------------------
+
+  private recordMetric(name: string, value: number, metadata?: Record<string, any>): void {
+    this.metrics.push({ name, value, timestamp: Date.now(), metadata });
+    // cap storage to avoid leaks
+    if (this.metrics.length >= 5000) this.metrics = this.metrics.slice(-2500);
+  }
+
   private checkThreshold(metricType: keyof PerformanceThresholds, value: number): void {
     const threshold = this.thresholds[metricType];
+    if (!threshold) return;
     if (value > threshold.critical) {
-      this.createAlert('critical', metricType, value, threshold.critical, 
-        `Critical performance issue: ${metricType} is ${value.toFixed(2)}`);
+      this.createAlert('critical', String(metricType), value, threshold.critical,
+        `Critical: ${metricType} = ${value.toFixed(2)}`);
     } else if (value > threshold.warning) {
-      this.createAlert('warning', metricType, value, threshold.warning,
-        `Performance warning: ${metricType} is ${value.toFixed(2)}`);
+      this.createAlert('warning', String(metricType), value, threshold.warning,
+        `Warning: ${metricType} = ${value.toFixed(2)}`);
     }
   }
-  /**
-   * Create a performance alert
-   */
+
   private createAlert(
     type: 'warning' | 'critical',
     metric: string,
@@ -362,20 +398,15 @@ export class PerformanceMonitor {
       message,
     };
     this.alerts.push(alert);
-    this.alertCallbacks.forEach((callback) => callback(alert));
-    // Prevent memory leaks
-    if (this.alerts.length >= 1000) {
-      this.alerts = this.alerts.slice(-500);
-    }
-  }
-  /**
-   * Cleanup observers and intervals
-   */
-  destroy(): void {
-    this.observers.forEach((observer) => observer.disconnect());
-    this.observers = [];
-    this.alertCallbacks = [];
+    // trim
+    if (this.alerts.length >= 1000) this.alerts = this.alerts.slice(-500);
+    // notify
+    this.alertCallbacks.forEach((cb) => {
+      try { cb(alert); } catch {}
+    });
   }
 }
+
 // Singleton instance
 export const performanceMonitor = new PerformanceMonitor();
+export default performanceMonitor;

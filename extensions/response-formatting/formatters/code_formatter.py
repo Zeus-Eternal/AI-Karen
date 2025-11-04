@@ -800,7 +800,7 @@ class CodeResponseFormatter(ResponseFormatter):
         html_parts.append(f'<span class="code-language">{block.language}</span>')
         if block.filename:
             html_parts.append(f'<span class="code-filename">{self._escape_html(block.filename)}</span>')
-        html_parts.append(f'<button class="copy-button" onclick="copyCodeToClipboard(this, {index})">Copy</button>')
+        html_parts.append(f'<Button class="copy-button" onclick="copyCodeToClipboard(this, {index})">Copy</Button>')
         html_parts.append('</div>')
         
         # Code content

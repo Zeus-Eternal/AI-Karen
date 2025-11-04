@@ -495,7 +495,7 @@ const ArtifactCard: React.FC<{
               )}
               
               {onApply && (artifact.status === 'approved' || artifact.status === 'pending') && (
-                <button
+                <Button
                   size="sm"
                   onClick={onApply}
                  aria-label="Button">

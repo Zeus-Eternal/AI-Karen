@@ -261,8 +261,8 @@ describe('Complex Component Example', () => {
     if (!isAuthenticated) {
       return (
         <div data-testid="login-form">
-          <button onClick={() => login({ email: 'test@example.com', password: 'password' })}>
-          </button>
+          <Button onClick={() => login({ email: 'test@example.com', password: 'password' })}>
+          </Button>
         </div>
       );
     }
@@ -270,7 +270,7 @@ describe('Complex Component Example', () => {
     return (
       <div data-testid="dashboard">
         <h1>Welcome, {user?.email}</h1>
-        <button onClick={logout} data-testid="logout-button">Logout</button>
+        <Button onClick={logout} data-testid="logout-button">Logout</Button>
         
         {canManageUsers && (
           <div data-testid="user-management">User Management</div>

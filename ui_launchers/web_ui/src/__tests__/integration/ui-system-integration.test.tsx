@@ -26,7 +26,7 @@ vi.mock('framer-motion', () => ({
       <div ref={ref} {...props}>{children}</div>
     )),
     button: React.forwardRef<HTMLButtonElement, any>(({ children, ...props }, ref) => (
-      <button ref={ref} {...props}>{children}</button>
+      <Button ref={ref} {...props}>{children}</Button>
     )),
     input: React.forwardRef<HTMLInputElement, any>((props, ref) => (
       <input ref={ref} {...props} />

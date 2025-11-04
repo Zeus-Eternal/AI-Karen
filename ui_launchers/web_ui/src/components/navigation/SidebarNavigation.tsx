@@ -439,7 +439,7 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
 
   return (
     <li>
-      <button
+      <Button
         ref={itemRef}
         className={cn(
           "w-full flex items-center gap-[var(--space-sm)] px-[var(--space-md)] py-[var(--space-sm)]",
@@ -506,7 +506,7 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
             )}
           </>
         )}
-      </button>
+      </Button>
 
       {/* Children */}
       {hasChildren && isExpanded && !isCollapsed && (
@@ -542,7 +542,7 @@ const SidebarToggle: React.FC = () => {
   };
 
   return (
-    <button
+    <Button
       className={cn(
         "flex items-center justify-center",
         "w-8 h-8 rounded-[var(--radius-sm)]",
@@ -564,7 +564,7 @@ const SidebarToggle: React.FC = () => {
       ) : (
         <Menu className="h-5 w-5 " />
       )}
-    </button>
+    </Button>
   );
 };
 

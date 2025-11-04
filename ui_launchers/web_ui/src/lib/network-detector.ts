@@ -1,15 +1,21 @@
 /**
- * Network Mode Detection Service
- * Automatically detects the runtime environment and configures appropriate endpoints
+ * Network Mode Detection Service (production-grade)
+ * - SSR-safe guards (no window/document on server)
+ * - Deterministic endpoint probing via endpoint-tester
+ * - Heuristic scoring for localhost / Docker / external
+ * - 5-minute result cache with force re-detect
+ * - ConfigManager integration to apply detected backendUrl/environment/networkMode
  */
+
 import { getConfigManager, type NetworkMode, type Environment } from './endpoint-config';
 import { getEndpointTester } from './endpoint-tester';
+
 export interface NetworkDetectionResult {
   environment: Environment;
   networkMode: NetworkMode;
   detectedHost: string;
   detectedPort: string;
-  confidence: number; // 0-100
+  confidence: number; // 0 - 100
   detectionMethod: string;
   timestamp: string;
   details: {
@@ -23,6 +29,7 @@ export interface NetworkDetectionResult {
     workingEndpoints: string[];
   };
 }
+
 export interface NetworkEnvironmentInfo {
   hostname: string;
   port: string;
@@ -34,6 +41,12 @@ export interface NetworkEnvironmentInfo {
   userAgent: string;
   referrer: string;
 }
+
+type DockerDetection = { isDocker: boolean; confidence: number; indicators: string[] };
+type FlagDetection = { isExternal: boolean; confidence: number; indicators: string[] };
+type LocalhostDetection = { isLocalhost: boolean; confidence: number; indicators: string[] };
+type EndpointTests = { availableEndpoints: string[]; workingEndpoints: string[]; bestEndpoint: string | null };
+
 /**
  * Service for detecting network environment and configuration
  */
@@ -41,25 +54,29 @@ export class NetworkDetectionService {
   private configManager = getConfigManager();
   private endpointTester = getEndpointTester();
   private detectionCache: NetworkDetectionResult | null = null;
-  private readonly CACHE_TTL = 300000; // 5 minutes
+  private readonly CACHE_TTL = 300_000; // 5 minutes
+  private readonly DEFAULT_BACKEND_PORT = '8000';
+
   /**
    * Detect the current network environment
    */
   public async detectNetworkEnvironment(): Promise<NetworkDetectionResult> {
-    // Check cache first
-    if (this.detectionCache &&
-        Date.now() - new Date(this.detectionCache.timestamp).getTime() < this.CACHE_TTL) {
+    if (
+      this.detectionCache &&
+      Date.now() - new Date(this.detectionCache.timestamp).getTime() < this.CACHE_TTL
+    ) {
       return this.detectionCache;
     }
+
     const timestamp = new Date().toISOString();
     const envInfo = this.getCurrentEnvironmentInfo();
-    // Perform various detection methods
+
     const dockerDetection = this.detectDockerEnvironment();
     const externalDetection = this.detectExternalAccess(envInfo);
     const localhostDetection = this.detectLocalhostEnvironment(envInfo);
-    // Test endpoint connectivity to confirm detection
+
     const endpointTests = await this.testPotentialEndpoints(envInfo);
-    // Determine the most likely environment
+
     const result = this.analyzeDetectionResults({
       envInfo,
       dockerDetection,
@@ -67,13 +84,14 @@ export class NetworkDetectionService {
       localhostDetection,
       endpointTests,
       timestamp,
+    });
 
-    // Cache the result
     this.detectionCache = result;
     return result;
   }
+
   /**
-   * Get current environment information from browser
+   * Get current environment information (SSR-safe)
    */
   private getCurrentEnvironmentInfo(): NetworkEnvironmentInfo {
     const defaultInfo: NetworkEnvironmentInfo = {
@@ -87,18 +105,16 @@ export class NetworkDetectionService {
       userAgent: 'server',
       referrer: '',
     };
-    // If we're running on the server (SSR / build), return a safe default
+
     if (typeof window === 'undefined' || typeof document === 'undefined' || typeof navigator === 'undefined') {
       return defaultInfo;
     }
-    // Now safe to access browser globals
-    const win = window as any;
-    const doc = document as any;
-    const nav = navigator as any;
-    const location = win.location;
+
+    const { location } = window;
     const hostname = location?.hostname ?? 'localhost';
     const port = location?.port || (location?.protocol === 'https:' ? '443' : '80');
     const protocol = location?.protocol ?? 'http:';
+
     return {
       hostname,
       port,
@@ -107,17 +123,19 @@ export class NetworkDetectionService {
       isPrivateNetwork: this.isPrivateNetworkIP(hostname),
       isExternalIP: this.isExternalIP(hostname),
       isDockerContainer: this.isDockerHostname(hostname),
-      userAgent: nav?.userAgent ?? 'browser',
-      referrer: doc?.referrer ?? '',
+      userAgent: navigator?.userAgent ?? 'browser',
+      referrer: document?.referrer ?? '',
     };
   }
+
   /**
-   * Detect Docker container environment
+   * Detect Docker/container context (SSR + Browser heuristics)
    */
-  private detectDockerEnvironment(): { isDocker: boolean; confidence: number; indicators: string[] } {
+  private detectDockerEnvironment(): DockerDetection {
     const indicators: string[] = [];
     let confidence = 0;
-    // Check environment variables (safe on server)
+
+    // Server-side env hints
     if (typeof process !== 'undefined' && process.env) {
       if (process.env.DOCKER_CONTAINER) {
         indicators.push('DOCKER_CONTAINER env var');
@@ -132,210 +150,211 @@ export class NetworkDetectionService {
         confidence += 25;
       }
     }
-    // Browser-side heuristics only when running in browser
+
+    // Browser-side hostname heuristics
     if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
       try {
-        const win = window as any;
-        const hostname = win?.location?.hostname ?? '';
+        const hostname = window.location?.hostname ?? '';
         if (hostname && (hostname.includes('docker') || hostname.includes('container'))) {
           indicators.push('Container hostname pattern');
           confidence += 20;
         }
         if (hostname && /^[a-f0-9]{12}$/.test(hostname)) {
-          indicators.push('Container ID hostname');
+          indicators.push('Container ID-like hostname');
           confidence += 25;
         }
         const ua = navigator.userAgent.toLowerCase();
         if (ua.includes('docker') || ua.includes('container')) {
-          indicators.push('Container user agent');
-          confidence += 15;
+          indicators.push('Container user agent token');
+          confidence += 10;
         }
-      } catch (error) {
+      } catch {
+        // ignore client heuristics errors
       }
     }
-    const result = { isDocker: confidence > 30, confidence: Math.min(100, confidence), indicators };
-    return result;
+
+    return {
+      isDocker: confidence > 30,
+      confidence: Math.min(100, confidence),
+      indicators,
+    };
   }
+
   /**
-   * Detect external IP access
+   * Detect whether the page is being accessed externally (public IP / non-private host)
    */
-  private detectExternalAccess(envInfo: NetworkEnvironmentInfo): {
-    isExternal: boolean;
-    confidence: number;
-    indicators: string[];
-  } {
+  private detectExternalAccess(envInfo: NetworkEnvironmentInfo): FlagDetection {
     const indicators: string[] = [];
     let confidence = 0;
-    // Check if hostname is an external IP
+
     if (envInfo.isExternalIP) {
       indicators.push('External IP address');
       confidence += 40;
     }
-    // Check for specific external IP patterns (like the 10.105.235.209 case)
+
+    // Example “known” external IP pattern kept from your draft
     if (envInfo.hostname.match(/^10\.105\.235\.\d+$/)) {
       indicators.push('Known external IP pattern');
       confidence += 30;
     }
-    // Check if not localhost or private network
+
     if (!envInfo.isLocalhost && !envInfo.isPrivateNetwork) {
-      indicators.push('Non-local, non-private network');
+      indicators.push('Non-local, non-private host');
       confidence += 25;
     }
-    // Check referrer for external access patterns
+
     if (envInfo.referrer && !envInfo.referrer.includes('localhost')) {
       indicators.push('External referrer');
-      confidence += 15;
+      confidence += 10;
     }
+
     return {
       isExternal: confidence > 35,
       confidence: Math.min(100, confidence),
       indicators,
     };
   }
+
   /**
-   * Detect localhost environment
+   * Detect localhost/development environment
    */
-  private detectLocalhostEnvironment(envInfo: NetworkEnvironmentInfo): {
-    isLocalhost: boolean;
-    confidence: number;
-    indicators: string[];
-  } {
+  private detectLocalhostEnvironment(envInfo: NetworkEnvironmentInfo): LocalhostDetection {
     const indicators: string[] = [];
     let confidence = 0;
-    // Direct localhost check
+
     if (envInfo.isLocalhost) {
       indicators.push('Localhost hostname');
       confidence += 50;
     }
-    // Check for development environment indicators
-    if (typeof process !== 'undefined' && process.env) {
-    }
-    // Check for local development ports
-    const port = parseInt(envInfo.port, 10);
-    if (port >= 3000 && port <= 9999) {
+
+    const portNum = parseInt(envInfo.port, 10);
+    if (!Number.isNaN(portNum) && portNum >= 3000 && portNum <= 9999) {
       indicators.push('Development port range');
       confidence += 15;
     }
-    // Check user agent for development tools
+
+    // UA signal (weak heuristic, keep low weight)
     if (envInfo.userAgent.includes('Chrome') && envInfo.userAgent.includes('DevTools')) {
-      indicators.push('Development tools detected');
-      confidence += 10;
+      indicators.push('DevTools detected');
+      confidence += 5;
     }
+
     return {
       isLocalhost: confidence > 40,
       confidence: Math.min(100, confidence),
       indicators,
     };
   }
-  /**
-   * Test potential endpoints to confirm detection
-   */
-  private async testPotentialEndpoints(envInfo: NetworkEnvironmentInfo): Promise<{
-    availableEndpoints: string[];
-    workingEndpoints: string[];
-    bestEndpoint: string | null;
-  }> {
-    const potentialEndpoints: string[] = [];
-    // Generate potential backend endpoints based on current environment
-    const backendPort = '8000'; // Default backend port
-    // Localhost variations
-    potentialEndpoints.push(`http://localhost:${backendPort}`);
-    potentialEndpoints.push(`http://127.0.0.1:${backendPort}`);
-    // Same host as current page
-    if (!envInfo.isLocalhost) {
-      potentialEndpoints.push(`${envInfo.protocol}//${envInfo.hostname}:${backendPort}`);
-    }
-    // Docker container networking
-    potentialEndpoints.push(`http://backend:${backendPort}`);
-    potentialEndpoints.push(`http://ai-karen-backend:${backendPort}`);
-    // External IP variations (for the 10.105.235.209 case)
-    if (envInfo.hostname.startsWith('10.105.235.')) {
-      potentialEndpoints.push(`http://10.105.235.209:${backendPort}`);
-    }
-    // Test connectivity to each endpoint
-    const workingEndpoints: string[] = [];
-    const testPromises = potentialEndpoints.map(async (endpoint) => {
-      try {
-        const result = await this.endpointTester.testConnectivity(endpoint);
-        if (result.isReachable) {
-          workingEndpoints.push(endpoint);
-        }
-      } catch {
-        // Endpoint not reachable
-      }
 
-    await Promise.allSettled(testPromises);
-    // Find the best working endpoint
-    let bestEndpoint: string | null = null;
-    if (workingEndpoints.length > 0) {
-      // Prefer localhost, then same host, then others
-      bestEndpoint = workingEndpoints.find(ep => ep.includes('localhost')) ||
-                    workingEndpoints.find(ep => ep.includes(envInfo.hostname)) ||
-                    workingEndpoints[0];
+  /**
+   * Probe a set of potential backends and choose the best working
+   */
+  private async testPotentialEndpoints(envInfo: NetworkEnvironmentInfo): Promise<EndpointTests> {
+    const endpoints: string[] = [];
+    const p = this.DEFAULT_BACKEND_PORT;
+
+    // Local dev variants
+    endpoints.push(`http://localhost:${p}`);
+    endpoints.push(`http://127.0.0.1:${p}`);
+
+    // Same-host variant (if not localhost already)
+    if (!envInfo.isLocalhost) {
+      endpoints.push(`${envInfo.protocol}//${envInfo.hostname}:${p}`);
     }
+
+    // Common Docker network DNS names
+    endpoints.push(`http://backend:${p}`);
+    endpoints.push(`http://ai-karen-backend:${p}`);
+
+    // Specific external subnet you referenced
+    if (envInfo.hostname.startsWith('10.105.235.')) {
+      endpoints.push(`http://10.105.235.209:${p}`);
+    }
+
+    const working: string[] = [];
+    await Promise.allSettled(
+      endpoints.map(async (ep) => {
+        try {
+          const res = await this.endpointTester.testConnectivity(ep);
+          if (res?.isReachable) {
+            working.push(ep);
+          }
+        } catch {
+          // non-reachable; ignore
+        }
+      })
+    );
+
+    let best: string | null = null;
+    if (working.length > 0) {
+      best =
+        working.find((ep) => ep.includes('localhost')) ??
+        working.find((ep) => ep.includes(envInfo.hostname)) ??
+        working[0];
+    }
+
     return {
-      availableEndpoints: potentialEndpoints,
-      workingEndpoints,
-      bestEndpoint,
+      availableEndpoints: endpoints,
+      workingEndpoints: working,
+      bestEndpoint: best,
     };
   }
+
   /**
-   * Analyze all detection results and determine the most likely environment
+   * Combine heuristics + endpoint tests into a single result
    */
   private analyzeDetectionResults(data: {
     envInfo: NetworkEnvironmentInfo;
-    dockerDetection: any;
-    externalDetection: any;
-    localhostDetection: any;
-    endpointTests: any;
+    dockerDetection: DockerDetection;
+    externalDetection: FlagDetection;
+    localhostDetection: LocalhostDetection;
+    endpointTests: EndpointTests;
     timestamp: string;
   }): NetworkDetectionResult {
     let environment: Environment = 'local';
     let networkMode: NetworkMode = 'localhost';
     let detectedHost = 'localhost';
-    let detectedPort = '8000';
+    let detectedPort = this.DEFAULT_BACKEND_PORT;
     let confidence = 0;
     let detectionMethod = 'default';
-    // Analyze Docker detection
+
     if (data.dockerDetection.isDocker && data.dockerDetection.confidence > 50) {
       environment = 'docker';
       networkMode = 'container';
       detectedHost = 'backend';
-      detectedPort = '8000';
-      confidence = data.dockerDetection.confidence;
+      detectedPort = this.DEFAULT_BACKEND_PORT;
+      confidence = Math.max(confidence, data.dockerDetection.confidence);
       detectionMethod = 'docker-detection';
-    }
-    // Analyze external access detection
-    else if (data.externalDetection.isExternal && data.externalDetection.confidence > 50) {
+    } else if (data.externalDetection.isExternal && data.externalDetection.confidence > 50) {
       environment = 'production';
       networkMode = 'external';
       detectedHost = data.envInfo.hostname;
-      detectedPort = '8000';
-      confidence = data.externalDetection.confidence;
+      detectedPort = this.DEFAULT_BACKEND_PORT;
+      confidence = Math.max(confidence, data.externalDetection.confidence);
       detectionMethod = 'external-detection';
-    }
-    // Default to localhost
-    else if (data.localhostDetection.isLocalhost) {
+    } else if (data.localhostDetection.isLocalhost) {
       environment = 'local';
       networkMode = 'localhost';
       detectedHost = 'localhost';
-      detectedPort = '8000';
-      confidence = data.localhostDetection.confidence;
+      detectedPort = this.DEFAULT_BACKEND_PORT;
+      confidence = Math.max(confidence, data.localhostDetection.confidence);
       detectionMethod = 'localhost-detection';
-    } else {
     }
-    // Override with working endpoint if found
+
+    // If we discovered a working endpoint, prefer it
     if (data.endpointTests.bestEndpoint) {
       try {
         const url = new URL(data.endpointTests.bestEndpoint);
         detectedHost = url.hostname;
-        detectedPort = url.port || '8000';
-        confidence = Math.min(100, confidence + 20); // Boost confidence
+        detectedPort = url.port || this.DEFAULT_BACKEND_PORT;
+        confidence = Math.min(100, confidence + 20);
         detectionMethod += '+endpoint-test';
-      } catch (error) {
+      } catch {
+        // ignore URL parsing errors
       }
     }
-    const result = {
+
+    return {
       environment,
       networkMode,
       detectedHost,
@@ -354,107 +373,101 @@ export class NetworkDetectionService {
         workingEndpoints: data.endpointTests.workingEndpoints,
       },
     };
-    return result;
   }
+
   /**
-   * Check if IP is in private network range
-   */
-  private isPrivateNetworkIP(hostname: string): boolean {
-    // Private IP ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-    const privateRanges = [
-      /^10\./,
-      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
-      /^192\.168\./,
-    ];
-    return privateRanges.some(range => range.test(hostname));
-  }
-  /**
-   * Check if hostname is an external IP
-   */
-  private isExternalIP(hostname: string): boolean {
-    // Check if it's an IP address pattern
-    const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-    if (!ipPattern.test(hostname)) {
-      return false; // Not an IP address
-    }
-    // Check if it's not localhost or private network
-    return hostname !== '127.0.0.1' && 
-           hostname !== '0.0.0.0' && 
-           !this.isPrivateNetworkIP(hostname);
-  }
-  /**
-   * Check if hostname indicates Docker container
-   */
-  private isDockerHostname(hostname: string): boolean {
-    // Common Docker hostname patterns
-    const dockerPatterns = [
-      /^[a-f0-9]{12}$/, // Container ID
-      /docker/i,
-      /container/i,
-      /backend$/,
-      /app$/,
-    ];
-    return dockerPatterns.some(pattern => pattern.test(hostname));
-  }
-  /**
-   * Apply detected configuration to config manager
+   * Apply detected configuration to ConfigManager
    */
   public async applyDetectedConfiguration(): Promise<void> {
     const detection = await this.detectNetworkEnvironment();
-    // Update config manager with detected settings
     const backendUrl = `http://${detection.detectedHost}:${detection.detectedPort}`;
+
+    // Be tolerant: update only known fields; ignore others
     this.configManager.updateConfiguration({
       backendUrl,
       environment: detection.environment,
       networkMode: detection.networkMode,
-
+    });
   }
+
   /**
-   * Get recommended backend URL based on detection
+   * Recommended backend URL based on detection
    */
   public async getRecommendedBackendUrl(): Promise<string> {
-    const detection = await this.detectNetworkEnvironment();
-    return `http://${detection.detectedHost}:${detection.detectedPort}`;
+    const d = await this.detectNetworkEnvironment();
+    return `http://${d.detectedHost}:${d.detectedPort}`;
   }
+
   /**
-   * Clear detection cache
+   * Cache ops
    */
   public clearCache(): void {
     this.detectionCache = null;
   }
-  /**
-   * Get cached detection result
-   */
+
   public getCachedDetection(): NetworkDetectionResult | null {
-    if (this.detectionCache && 
-        Date.now() - new Date(this.detectionCache.timestamp).getTime() < this.CACHE_TTL) {
+    if (
+      this.detectionCache &&
+      Date.now() - new Date(this.detectionCache.timestamp).getTime() < this.CACHE_TTL
+    ) {
       return this.detectionCache;
     }
     return null;
   }
-  /**
-   * Force re-detection (bypass cache)
-   */
+
   public async forceDetection(): Promise<NetworkDetectionResult> {
     this.clearCache();
     return this.detectNetworkEnvironment();
   }
-  /**
-   * Get detection confidence for current environment
-   */
+
   public async getDetectionConfidence(): Promise<number> {
-    const detection = await this.detectNetworkEnvironment();
-    return detection.confidence;
+    const d = await this.detectNetworkEnvironment();
+    return d.confidence;
   }
-  /**
-   * Get detailed environment information
-   */
+
   public getDetailedEnvironmentInfo(): NetworkEnvironmentInfo {
     return this.getCurrentEnvironmentInfo();
   }
+
+  // ---------- helpers ----------
+
+  private isPrivateNetworkIP(hostname: string): boolean {
+    // only treat bare IPv4 as eligible
+    const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+    if (!ipPattern.test(hostname)) return false;
+
+    const parts = hostname.split('.').map((n) => parseInt(n, 10));
+    if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return false;
+
+    const [a, b] = parts;
+    if (a === 10) return true; // 10.0.0.0/8
+    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+    if (a === 192 && b === 168) return true; // 192.168.0.0/16
+    return false;
+  }
+
+  private isExternalIP(hostname: string): boolean {
+    const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+    if (!ipPattern.test(hostname)) return false;
+    if (hostname === '127.0.0.1' || hostname === '0.0.0.0') return false;
+    return !this.isPrivateNetworkIP(hostname);
+  }
+
+  private isDockerHostname(hostname: string): boolean {
+    const patterns = [
+      /^[a-f0-9]{12}$/, // short container id
+      /docker/i,
+      /container/i,
+      /backend$/i,
+      /app$/i,
+    ];
+    return patterns.some((p) => p.test(hostname));
+  }
 }
+
 // Singleton instance
 let networkDetector: NetworkDetectionService | null = null;
+
 /**
  * Get the global network detection service instance
  */
@@ -464,13 +477,17 @@ export function getNetworkDetectionService(): NetworkDetectionService {
   }
   return networkDetector;
 }
+
 /**
- * Initialize network detection service
+ * Initialize network detection service (fresh instance)
  */
 export function initializeNetworkDetectionService(): NetworkDetectionService {
   networkDetector = new NetworkDetectionService();
   return networkDetector;
 }
-// Export types
+
+// Explicit re-exports of types (handy for consumers)
 export type {
+  NetworkDetectionResult as TNetworkDetectionResult,
+  NetworkEnvironmentInfo as TNetworkEnvironmentInfo,
 };

@@ -55,12 +55,12 @@ const TestComponent: React.FC = () => {
       <div data-testid="sidebar-collapsed">{sidebarCollapsed.toString()}</div>
       <div data-testid="is-mobile">{isMobile.toString()}</div>
       <div data-testid="is-tablet">{isTablet.toString()}</div>
-      <button data-testid="toggle-sidebar" onClick={toggleSidebar} aria-label="Button">
-      </button>
-      <button data-testid="close-sidebar" onClick={closeSidebar} aria-label="Button">
-      </button>
-      <button data-testid="open-sidebar" onClick={openSidebar} aria-label="Button">
-      </button>
+      <Button data-testid="toggle-sidebar" onClick={toggleSidebar} aria-label="Button">
+      </Button>
+      <Button data-testid="close-sidebar" onClick={closeSidebar} aria-label="Button">
+      </Button>
+      <Button data-testid="open-sidebar" onClick={openSidebar} aria-label="Button">
+      </Button>
     </div>
   );
 };

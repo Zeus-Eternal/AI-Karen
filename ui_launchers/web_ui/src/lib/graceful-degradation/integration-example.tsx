@@ -51,11 +51,11 @@ export function FixedModelProviderIntegration() {
           showRetry={true}
         >
           <div className="mt-4">
-            <button
+            <Button
               onClick={forceRetry}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
-            </button>
+            </Button>
           </div>
         </ServiceUnavailable>
       )}
@@ -72,11 +72,11 @@ export function FixedModelProviderIntegration() {
                 </span>
               )}
             </h3>
-            <button
+            <Button
               onClick={refresh}
               className="text-sm text-blue-600 hover:text-blue-700 underline"
             >
-            </button>
+            </Button>
           </div>
           <div className="grid gap-4">
             {providers.map((provider: any) => (

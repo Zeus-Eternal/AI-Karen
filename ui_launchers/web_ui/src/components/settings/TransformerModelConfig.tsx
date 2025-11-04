@@ -13,8 +13,21 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import { } from 'lucide-react';
+import { 
+  HardDrive, 
+  Lightbulb, 
+  Info, 
+  AlertTriangle, 
+  RotateCcw, 
+  Loader2, 
+  Gauge, 
+  Cpu, 
+  Zap, 
+  Server, 
+  Settings 
+} from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
+
 interface TransformerConfig {
   // Precision settings
   precision: string;
@@ -50,6 +63,7 @@ interface TransformerConfig {
   optimize_for_inference: boolean;
   enable_xformers: boolean;
 }
+
 interface HardwareRecommendations {
   system_info: {
     memory_gb: number;
@@ -66,8 +80,12 @@ interface HardwareRecommendations {
   dynamic_batch_sizes?: Record<string, number>;
   recommended_multi_gpu_strategy?: string;
   recommended_gpu_memory_fraction?: number;
+  recommended_mixed_precision?: boolean;
+  recommended_use_flash_attention?: boolean;
+  recommended_attention_implementation?: string;
   [key: string]: any;
 }
+
 interface MultiGpuConfig {
   gpu_count: number;
   gpu_info: Array<{
@@ -81,6 +99,7 @@ interface MultiGpuConfig {
   device_map: any;
   load_balancing: any;
 }
+
 interface TransformerModelConfigProps {
   modelId: string;
   modelName: string;
@@ -91,6 +110,7 @@ interface TransformerModelConfigProps {
   saving?: boolean;
   validationResult?: any;
 }
+
 export default function TransformerModelConfig({
   modelId,
   modelName,
@@ -107,19 +127,26 @@ export default function TransformerModelConfig({
   const [activeTab, setActiveTab] = useState("precision");
   const { toast } = useToast();
   const backend = getKarenBackend();
+
   useEffect(() => {
     loadRecommendations();
     loadMultiGpuConfig();
   }, [modelId]);
+
   const loadRecommendations = async () => {
     try {
+      setLoading(true);
       const response = await backend.makeRequestPublic<HardwareRecommendations>(
         `/api/models/system/${modelId}/hardware-recommendations`
       );
       setRecommendations(response);
     } catch (error) {
+      console.error('Failed to load hardware recommendations:', error);
+    } finally {
+      setLoading(false);
     }
   };
+
   const loadMultiGpuConfig = async () => {
     try {
       const response = await backend.makeRequestPublic<MultiGpuConfig>(
@@ -127,15 +154,20 @@ export default function TransformerModelConfig({
       );
       setMultiGpuConfig(response);
     } catch (error) {
+      console.error('Failed to load multi-GPU config:', error);
     }
   };
+
   const updateConfigValue = (key: string, value: any) => {
     const newConfig = { ...configuration, [key]: value };
     onConfigurationChange(newConfig);
   };
+
   const applyRecommendations = () => {
     if (!recommendations) return;
+    
     const newConfig = { ...configuration };
+    
     if (recommendations.recommended_device) {
       newConfig.device = recommendations.recommended_device;
     }
@@ -161,24 +193,27 @@ export default function TransformerModelConfig({
     if (recommendations.recommended_attention_implementation) {
       newConfig.attention_implementation = recommendations.recommended_attention_implementation;
     }
+    
     onConfigurationChange(newConfig);
     toast({
       title: "Recommendations Applied",
       description: "Hardware-optimized settings have been applied",
-
+    });
   };
+
   const getDynamicBatchSize = (scenario: string): number => {
     if (!recommendations?.dynamic_batch_sizes) return configuration.batch_size;
     return recommendations.dynamic_batch_sizes[scenario] || configuration.batch_size;
   };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg sm:p-4 md:p-6">
-                <HardDrive className="h-5 w-5 text-primary " />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <HardDrive className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <CardTitle>Transformer Configuration</CardTitle>
@@ -193,45 +228,48 @@ export default function TransformerModelConfig({
                 size="sm"
                 onClick={applyRecommendations}
                 disabled={!recommendations}
-               >
-                <Lightbulb className="h-4 w-4 mr-2 " />
+              >
+                <Lightbulb className="h-4 w-4 mr-2" />
+                Apply Recommendations
               </Button>
             </div>
           </div>
         </CardHeader>
       </Card>
+
       {recommendations && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5 " />
+              <Info className="h-5 w-5" />
+              System Information
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
+              <div className="text-center p-4 bg-muted/50 rounded-lg">
                 <div className="text-2xl font-bold text-primary">
                   {recommendations.system_info.memory_gb.toFixed(1)}GB
                 </div>
-                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">System RAM</div>
+                <div className="text-sm text-muted-foreground">System RAM</div>
               </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
+              <div className="text-center p-4 bg-muted/50 rounded-lg">
                 <div className="text-2xl font-bold text-primary">
                   {recommendations.system_info.cpu_count}
                 </div>
-                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">CPU Cores</div>
+                <div className="text-sm text-muted-foreground">CPU Cores</div>
               </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
+              <div className="text-center p-4 bg-muted/50 rounded-lg">
                 <div className="text-2xl font-bold text-primary">
                   {recommendations.system_info.gpu_count || 0}
                 </div>
-                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">GPUs</div>
+                <div className="text-sm text-muted-foreground">GPUs</div>
               </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
+              <div className="text-center p-4 bg-muted/50 rounded-lg">
                 <div className="text-2xl font-bold text-primary">
                   {recommendations.system_info.gpu_memory_gb?.toFixed(1) || '0'}GB
                 </div>
-                <div className="text-sm text-muted-foreground md:text-base lg:text-lg">GPU Memory</div>
+                <div className="text-sm text-muted-foreground">GPU Memory</div>
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -245,6 +283,7 @@ export default function TransformerModelConfig({
           </CardContent>
         </Card>
       )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="precision">Precision</TabsTrigger>
@@ -253,32 +292,39 @@ export default function TransformerModelConfig({
           <TabsTrigger value="multi-gpu">Multi-GPU</TabsTrigger>
           <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
+
         <TabsContent value="precision" className="space-y-4">
           {renderPrecisionSettings()}
         </TabsContent>
+
         <TabsContent value="device" className="space-y-4">
           {renderDeviceSettings()}
         </TabsContent>
+
         <TabsContent value="performance" className="space-y-4">
           {renderPerformanceSettings()}
         </TabsContent>
+
         <TabsContent value="multi-gpu" className="space-y-4">
           {renderMultiGpuSettings()}
         </TabsContent>
+
         <TabsContent value="advanced" className="space-y-4">
           {renderAdvancedSettings()}
         </TabsContent>
       </Tabs>
+
       {validationResult && !validationResult.valid && (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4 " />
+          <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Configuration Error</AlertTitle>
           <AlertDescription>{validationResult.error}</AlertDescription>
         </Alert>
       )}
+
       {validationResult?.warnings && validationResult.warnings.length > 0 && (
         <Alert>
-          <Info className="h-4 w-4 " />
+          <Info className="h-4 w-4" />
           <AlertTitle>Configuration Warnings</AlertTitle>
           <AlertDescription>
             <ul className="list-disc list-inside space-y-1">
@@ -289,17 +335,19 @@ export default function TransformerModelConfig({
           </AlertDescription>
         </Alert>
       )}
+
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onReset} >
-          <RotateCcw className="h-4 w-4 mr-2 " />
+        <Button variant="outline" onClick={onReset}>
+          <RotateCcw className="h-4 w-4 mr-2" />
+          Reset
         </Button>
-        <button
+        <Button
           onClick={onSave}
           disabled={saving || (validationResult && !validationResult.valid)}
-         aria-label="Button">
+        >
           {saving ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin " />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Saving...
             </>
           ) : (
@@ -309,14 +357,17 @@ export default function TransformerModelConfig({
       </div>
     </div>
   );
+
   function renderPrecisionSettings() {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Gauge className="h-5 w-5 " />
+            <Gauge className="h-5 w-5" />
+            Precision Settings
           </CardTitle>
           <CardDescription>
+            Configure model precision and quantization for optimal performance
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -324,41 +375,41 @@ export default function TransformerModelConfig({
             <div className="space-y-4">
               <div>
                 <Label htmlFor="precision">Precision</Label>
-                <select
+                <Select
                   value={configuration.precision || 'fp16'}
-                  onValueChange={(value) = aria-label="Select option"> updateConfigValue('precision', value)}
+                  onValueChange={(value) => updateConfigValue('precision', value)}
                 >
-                  <selectTrigger aria-label="Select option">
-                    <selectValue />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
-                  <selectContent aria-label="Select option">
-                    <selectItem value="fp32" aria-label="Select option">FP32 (Full Precision)</SelectItem>
-                    <selectItem value="fp16" aria-label="Select option">FP16 (Half Precision)</SelectItem>
-                    <selectItem value="bf16" aria-label="Select option">BF16 (Brain Float)</SelectItem>
-                    <selectItem value="int8" aria-label="Select option">INT8 (8-bit)</SelectItem>
-                    <selectItem value="int4" aria-label="Select option">INT4 (4-bit)</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="fp32">FP32 (Full Precision)</SelectItem>
+                    <SelectItem value="fp16">FP16 (Half Precision)</SelectItem>
+                    <SelectItem value="bf16">BF16 (Brain Float)</SelectItem>
+                    <SelectItem value="int8">INT8 (8-bit)</SelectItem>
+                    <SelectItem value="int4">INT4 (4-bit)</SelectItem>
                   </SelectContent>
                 </Select>
                 {recommendations?.recommended_precision && (
-                  <div className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
+                  <div className="text-xs text-muted-foreground mt-1">
                     Recommended: {recommendations.recommended_precision}
                   </div>
                 )}
               </div>
               <div>
                 <Label htmlFor="torch_dtype">PyTorch Data Type</Label>
-                <select
+                <Select
                   value={configuration.torch_dtype || 'auto'}
-                  onValueChange={(value) = aria-label="Select option"> updateConfigValue('torch_dtype', value)}
+                  onValueChange={(value) => updateConfigValue('torch_dtype', value)}
                 >
-                  <selectTrigger aria-label="Select option">
-                    <selectValue />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
-                  <selectContent aria-label="Select option">
-                    <selectItem value="auto" aria-label="Select option">Auto</SelectItem>
-                    <selectItem value="float32" aria-label="Select option">Float32</SelectItem>
-                    <selectItem value="float16" aria-label="Select option">Float16</SelectItem>
-                    <selectItem value="bfloat16" aria-label="Select option">BFloat16</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto</SelectItem>
+                    <SelectItem value="float32">Float32</SelectItem>
+                    <SelectItem value="float16">Float16</SelectItem>
+                    <SelectItem value="bfloat16">BFloat16</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -382,32 +433,32 @@ export default function TransformerModelConfig({
                 <div className="space-y-3 pl-4 border-l-2 border-muted">
                   <div>
                     <Label htmlFor="bnb_4bit_compute_dtype">4-bit Compute Type</Label>
-                    <select
+                    <Select
                       value={configuration.bnb_4bit_compute_dtype || 'float16'}
-                      onValueChange={(value) = aria-label="Select option"> updateConfigValue('bnb_4bit_compute_dtype', value)}
+                      onValueChange={(value) => updateConfigValue('bnb_4bit_compute_dtype', value)}
                     >
-                      <selectTrigger aria-label="Select option">
-                        <selectValue />
+                      <SelectTrigger>
+                        <SelectValue />
                       </SelectTrigger>
-                      <selectContent aria-label="Select option">
-                        <selectItem value="float16" aria-label="Select option">Float16</SelectItem>
-                        <selectItem value="bfloat16" aria-label="Select option">BFloat16</SelectItem>
-                        <selectItem value="float32" aria-label="Select option">Float32</SelectItem>
+                      <SelectContent>
+                        <SelectItem value="float16">Float16</SelectItem>
+                        <SelectItem value="bfloat16">BFloat16</SelectItem>
+                        <SelectItem value="float32">Float32</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <Label htmlFor="bnb_4bit_quant_type">4-bit Quantization Type</Label>
-                    <select
+                    <Select
                       value={configuration.bnb_4bit_quant_type || 'nf4'}
-                      onValueChange={(value) = aria-label="Select option"> updateConfigValue('bnb_4bit_quant_type', value)}
+                      onValueChange={(value) => updateConfigValue('bnb_4bit_quant_type', value)}
                     >
-                      <selectTrigger aria-label="Select option">
-                        <selectValue />
+                      <SelectTrigger>
+                        <SelectValue />
                       </SelectTrigger>
-                      <selectContent aria-label="Select option">
-                        <selectItem value="nf4" aria-label="Select option">NF4 (Normalized Float 4)</SelectItem>
-                        <selectItem value="fp4" aria-label="Select option">FP4 (Float Point 4)</SelectItem>
+                      <SelectContent>
+                        <SelectItem value="nf4">NF4 (Normalized Float 4)</SelectItem>
+                        <SelectItem value="fp4">FP4 (Float Point 4)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -426,15 +477,17 @@ export default function TransformerModelConfig({
       </Card>
     );
   }
+
   function renderDeviceSettings() {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Cpu className="h-5 w-5 " />
+            <Cpu className="h-5 w-5" />
             Device & Memory Settings
           </CardTitle>
           <CardDescription>
+            Configure device placement and memory optimization
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -442,43 +495,43 @@ export default function TransformerModelConfig({
             <div className="space-y-4">
               <div>
                 <Label htmlFor="device">Device</Label>
-                <select
+                <Select
                   value={configuration.device || 'auto'}
-                  onValueChange={(value) = aria-label="Select option"> updateConfigValue('device', value)}
+                  onValueChange={(value) => updateConfigValue('device', value)}
                 >
-                  <selectTrigger aria-label="Select option">
-                    <selectValue />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
-                  <selectContent aria-label="Select option">
-                    <selectItem value="auto" aria-label="Select option">Auto</SelectItem>
-                    <selectItem value="cpu" aria-label="Select option">CPU</SelectItem>
-                    <selectItem value="cuda" aria-label="Select option">CUDA</SelectItem>
-                    <selectItem value="cuda:0" aria-label="Select option">CUDA:0</SelectItem>
-                    <selectItem value="cuda:1" aria-label="Select option">CUDA:1</SelectItem>
-                    <selectItem value="cuda:2" aria-label="Select option">CUDA:2</SelectItem>
-                    <selectItem value="cuda:3" aria-label="Select option">CUDA:3</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto</SelectItem>
+                    <SelectItem value="cpu">CPU</SelectItem>
+                    <SelectItem value="cuda">CUDA</SelectItem>
+                    <SelectItem value="cuda:0">CUDA:0</SelectItem>
+                    <SelectItem value="cuda:1">CUDA:1</SelectItem>
+                    <SelectItem value="cuda:2">CUDA:2</SelectItem>
+                    <SelectItem value="cuda:3">CUDA:3</SelectItem>
                   </SelectContent>
                 </Select>
                 {recommendations?.recommended_device && (
-                  <div className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
+                  <div className="text-xs text-muted-foreground mt-1">
                     Recommended: {recommendations.recommended_device}
                   </div>
                 )}
               </div>
               <div>
                 <Label htmlFor="device_map">Device Map</Label>
-                <select
+                <Select
                   value={configuration.device_map || 'auto'}
-                  onValueChange={(value) = aria-label="Select option"> updateConfigValue('device_map', value)}
+                  onValueChange={(value) => updateConfigValue('device_map', value)}
                 >
-                  <selectTrigger aria-label="Select option">
-                    <selectValue />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
-                  <selectContent aria-label="Select option">
-                    <selectItem value="auto" aria-label="Select option">Auto</SelectItem>
-                    <selectItem value="balanced" aria-label="Select option">Balanced</SelectItem>
-                    <selectItem value="sequential" aria-label="Select option">Sequential</SelectItem>
-                    <selectItem value="balanced_low_0" aria-label="Select option">Balanced Low 0</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto</SelectItem>
+                    <SelectItem value="balanced">Balanced</SelectItem>
+                    <SelectItem value="sequential">Sequential</SelectItem>
+                    <SelectItem value="balanced_low_0">Balanced Low 0</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -493,7 +546,7 @@ export default function TransformerModelConfig({
                   className="mt-2"
                 />
                 {recommendations?.recommended_batch_size && (
-                  <div className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
+                  <div className="text-xs text-muted-foreground mt-1">
                     Recommended: {recommendations.recommended_batch_size}
                   </div>
                 )}
@@ -527,8 +580,8 @@ export default function TransformerModelConfig({
               </div>
               {configuration.dynamic_batch_size && recommendations?.dynamic_batch_sizes && (
                 <div className="space-y-2 pl-4 border-l-2 border-muted">
-                  <div className="text-sm font-medium md:text-base lg:text-lg">Dynamic Batch Sizes:</div>
-                  <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm md:text-base">
+                  <div className="text-sm font-medium">Dynamic Batch Sizes:</div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>Training: {getDynamicBatchSize('training')}</div>
                     <div>Inference: {getDynamicBatchSize('inference')}</div>
                     <div>Fine-tuning: {getDynamicBatchSize('fine_tuning')}</div>
@@ -542,14 +595,17 @@ export default function TransformerModelConfig({
       </Card>
     );
   }
+
   function renderPerformanceSettings() {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 " />
+            <Zap className="h-5 w-5" />
+            Performance Optimizations
           </CardTitle>
           <CardDescription>
+            Enable performance optimizations for faster inference and training
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -557,21 +613,21 @@ export default function TransformerModelConfig({
             <div className="space-y-4">
               <div>
                 <Label htmlFor="attention_implementation">Attention Implementation</Label>
-                <select
+                <Select
                   value={configuration.attention_implementation || 'eager'}
-                  onValueChange={(value) = aria-label="Select option"> updateConfigValue('attention_implementation', value)}
+                  onValueChange={(value) => updateConfigValue('attention_implementation', value)}
                 >
-                  <selectTrigger aria-label="Select option">
-                    <selectValue />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
-                  <selectContent aria-label="Select option">
-                    <selectItem value="eager" aria-label="Select option">Eager</SelectItem>
-                    <selectItem value="sdpa" aria-label="Select option">SDPA</SelectItem>
-                    <selectItem value="flash_attention_2" aria-label="Select option">Flash Attention 2</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="eager">Eager</SelectItem>
+                    <SelectItem value="sdpa">SDPA</SelectItem>
+                    <SelectItem value="flash_attention_2">Flash Attention 2</SelectItem>
                   </SelectContent>
                 </Select>
                 {recommendations?.recommended_attention_implementation && (
-                  <div className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
+                  <div className="text-xs text-muted-foreground mt-1">
                     Recommended: {recommendations.recommended_attention_implementation}
                   </div>
                 )}
@@ -633,13 +689,14 @@ export default function TransformerModelConfig({
       </Card>
     );
   }
+
   function renderMultiGpuSettings() {
     return (
       <div className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Server className="h-5 w-5 " />
+              <Server className="h-5 w-5" />
               Multi-GPU Configuration
             </CardTitle>
             <CardDescription>
@@ -651,22 +708,22 @@ export default function TransformerModelConfig({
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="multi_gpu_strategy">Multi-GPU Strategy</Label>
-                  <select
+                  <Select
                     value={configuration.multi_gpu_strategy || 'auto'}
-                    onValueChange={(value) = aria-label="Select option"> updateConfigValue('multi_gpu_strategy', value)}
+                    onValueChange={(value) => updateConfigValue('multi_gpu_strategy', value)}
                   >
-                    <selectTrigger aria-label="Select option">
-                      <selectValue />
+                    <SelectTrigger>
+                      <SelectValue />
                     </SelectTrigger>
-                    <selectContent aria-label="Select option">
-                      <selectItem value="auto" aria-label="Select option">Auto</SelectItem>
-                      <selectItem value="data_parallel" aria-label="Select option">Data Parallel</SelectItem>
-                      <selectItem value="model_parallel" aria-label="Select option">Model Parallel</SelectItem>
-                      <selectItem value="pipeline_parallel" aria-label="Select option">Pipeline Parallel</SelectItem>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto</SelectItem>
+                      <SelectItem value="data_parallel">Data Parallel</SelectItem>
+                      <SelectItem value="model_parallel">Model Parallel</SelectItem>
+                      <SelectItem value="pipeline_parallel">Pipeline Parallel</SelectItem>
                     </SelectContent>
                   </Select>
                   {recommendations?.recommended_multi_gpu_strategy && (
-                    <div className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
+                    <div className="text-xs text-muted-foreground mt-1">
                       Recommended: {recommendations.recommended_multi_gpu_strategy}
                     </div>
                   )}
@@ -684,7 +741,7 @@ export default function TransformerModelConfig({
                     className="mt-2"
                   />
                   {recommendations?.recommended_gpu_memory_fraction && (
-                    <div className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
+                    <div className="text-xs text-muted-foreground mt-1">
                       Recommended: {recommendations.recommended_gpu_memory_fraction.toFixed(2)}
                     </div>
                   )}
@@ -693,49 +750,52 @@ export default function TransformerModelConfig({
             </div>
           </CardContent>
         </Card>
+
         {multiGpuConfig && multiGpuConfig.gpu_count > 1 && (
           <Card>
             <CardHeader>
               <CardTitle>GPU Information</CardTitle>
               <CardDescription>
+                Available GPU resources and recommended configuration
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
                     <div className="text-2xl font-bold text-primary">{multiGpuConfig.gpu_count}</div>
-                    <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Total GPUs</div>
+                    <div className="text-sm text-muted-foreground">Total GPUs</div>
                   </div>
-                  <div className="text-center p-4 bg-muted/50 rounded-lg sm:p-4 md:p-6">
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
                     <div className="text-2xl font-bold text-primary">
                       {multiGpuConfig.total_memory_gb.toFixed(1)}GB
                     </div>
-                    <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Total GPU Memory</div>
+                    <div className="text-sm text-muted-foreground">Total GPU Memory</div>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="text-sm font-medium md:text-base lg:text-lg">GPU Details:</div>
+                  <div className="text-sm font-medium">GPU Details:</div>
                   {multiGpuConfig.gpu_info.map((gpu, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded sm:p-4 md:p-6">
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded">
                       <div>
                         <div className="font-medium">GPU {gpu.device_id}: {gpu.name}</div>
-                        <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                        <div className="text-sm text-muted-foreground">
                           Compute: {gpu.compute_capability}
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="font-medium">{gpu.memory_gb.toFixed(1)}GB</div>
-                        <div className="text-sm text-muted-foreground md:text-base lg:text-lg">Memory</div>
+                        <div className="text-sm text-muted-foreground">Memory</div>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg sm:p-4 md:p-6">
-                  <div className="text-sm font-medium text-blue-900 dark:text-blue-100 md:text-base lg:text-lg">
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                  <div className="text-sm font-medium text-blue-900 dark:text-blue-100">
                     Recommended Strategy: {multiGpuConfig.recommended_strategy}
                   </div>
-                  <div className="text-xs text-blue-700 dark:text-blue-300 mt-1 sm:text-sm md:text-base">
+                  <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                    This strategy is optimized for your current GPU configuration
                   </div>
                 </div>
               </div>
@@ -745,14 +805,17 @@ export default function TransformerModelConfig({
       </div>
     );
   }
+
   function renderAdvancedSettings() {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5 " />
+            <Settings className="h-5 w-5" />
+            Advanced Settings
           </CardTitle>
           <CardDescription>
+            Experimental features and advanced optimizations
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -775,7 +838,7 @@ export default function TransformerModelConfig({
             </div>
             <div className="space-y-4">
               <Alert>
-                <Info className="h-4 w-4 " />
+                <Info className="h-4 w-4" />
                 <AlertTitle>Advanced Settings</AlertTitle>
                 <AlertDescription>
                   These settings require additional dependencies and may affect stability.

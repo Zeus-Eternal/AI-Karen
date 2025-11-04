@@ -1,71 +1,71 @@
+'use client';
 /**
- * Performance Alert Service for Karen
- * Handles performance alerts gracefully through Karen's toast system
+ * Performance Alert Service for Karen (production-grade)
+ * - SSR safe (guards window/document)
+ * - Rate limiting per alert type (maxAlertsPerMinute)
+ * - Coalescing: suppress duplicate alerts in a short window
+ * - Per-type enable switches and thresholds
+ * - Toast variants + durations tuned by severity
+ * - Lightweight logs (no big payloads)
  */
 
-import { toast } from '@/hooks/use-toast';
 import type { PerformanceAlert } from './performance-monitor';
+import { toast } from '@/hooks/use-toast';
+
+const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
 export interface PerformanceAlertConfig {
   showSlowRequestAlerts: boolean;
   showErrorRateAlerts: boolean;
   showDegradationAlerts: boolean;
-  slowRequestThreshold: number; // in milliseconds
-  maxAlertsPerMinute: number;
+  slowRequestThreshold: number; // ms
+  maxAlertsPerMinute: number;   // per type
+  dedupeWindowMs: number;       // coalesce same alert type/message
+  suppressEndpoints?: string[]; // optional endpoint patterns to ignore
 }
+
+type AlertType = PerformanceAlert['type'];
 
 class PerformanceAlertService {
   private config: PerformanceAlertConfig = {
     showSlowRequestAlerts: true,
     showErrorRateAlerts: true,
     showDegradationAlerts: true,
-    slowRequestThreshold: 5000, // 5 seconds
+    slowRequestThreshold: 5000,
     maxAlertsPerMinute: 3,
+    dedupeWindowMs: 8000,
+    suppressEndpoints: [],
   };
 
-  private alertHistory: Array<{ timestamp: number; type: string }> = [];
+  // For rate-limit windows
+  private alertHistory: Array<{ timestamp: number; type: AlertType }> = [];
+  // For coalescing duplicates: key = `${type}::${message}`
+  private recentAlerts = new Map<string, number>();
 
-  /**
-   * Handle a performance alert gracefully
-   */
   handleAlert(alert: PerformanceAlert): void {
-    // Check if we should show this type of alert
-    if (!this.shouldShowAlert(alert)) {
-      return;
-    }
+    if (!isBrowser) return; // no-op on server
 
-    // Check rate limiting
-    if (!this.isWithinRateLimit(alert)) {
-      return;
-    }
+    if (!this.shouldShowAlert(alert)) return;
+    if (!this.isWithinRateLimit(alert)) return;
+    if (this.isSuppressedByEndpoint(alert)) return;
+    if (this.isDuplicate(alert)) return;
 
-    // Record the alert
-    this.recordAlert(alert);
-
-    // Show appropriate toast based on alert type and severity
+    this.record(alert);
     this.showToast(alert);
-
-    // Log for debugging (but not as an error)
     this.logAlert(alert);
   }
 
-  /**
-   * Show a toast notification for the performance alert
-   */
+  // -------------------- Toasts --------------------
+
   private showToast(alert: PerformanceAlert): void {
     const { title, description, variant, duration } = this.getToastConfig(alert);
-
-    toast({
-      title,
-      description,
-      variant,
-      duration,
-
+    try {
+      toast({ title, description, variant, duration });
+    } catch {
+      // If the toast system isn't mounted yet, fail silently
+    }
   }
 
-  /**
-   * Get toast configuration based on alert type and severity
-   */
   private getToastConfig(alert: PerformanceAlert): {
     title: string;
     description: string;
@@ -73,30 +73,36 @@ class PerformanceAlertService {
     duration: number;
   } {
     switch (alert.type) {
-      case 'slow_request':
+      case 'slow_request': {
+        // Severity dial: soft nudge unless extremely slow
+        const isHigh = alert.severity === 'high';
         return {
-          title: '⏱️ Karen is thinking...',
-          description: 'Your request is taking longer than usual. Karen is working on it!',
-          variant: 'default',
-          duration: 4000,
+          title: isHigh ? '⏱️ Very Slow Response' : '⏱️ Karen is thinking…',
+          description: isHigh
+            ? 'That request is taking much longer than expected. We’re on it.'
+            : 'This one is a bit slower than usual—hang tight!',
+          variant: isHigh ? 'default' : 'default',
+          duration: isHigh ? 6000 : 4000,
         };
-
-      case 'high_error_rate':
+      }
+      case 'high_error_rate': {
+        const isHigh = alert.severity === 'high';
         return {
           title: '🔧 Connection Issues',
-          description: 'Karen is experiencing some connectivity issues. Please try again.',
-          variant: alert.severity === 'high' ? 'destructive' : 'default',
-          duration: 6000,
+          description: isHigh
+            ? 'High error rate detected. Some features may be degraded.'
+            : 'Seeing elevated errors. Retrying in the background.',
+          variant: isHigh ? 'destructive' : 'default',
+          duration: isHigh ? 7000 : 5000,
         };
-
+      }
       case 'performance_degradation':
         return {
           title: '🐌 Performance Notice',
-          description: 'Karen might be a bit slower than usual. Thanks for your patience!',
+          description: 'Recent requests are slower than the usual baseline.',
           variant: 'default',
           duration: 5000,
         };
-
       default:
         return {
           title: '📊 Performance Notice',
@@ -107,9 +113,8 @@ class PerformanceAlertService {
     }
   }
 
-  /**
-   * Check if we should show this type of alert
-   */
+  // -------------------- Gates & Limits --------------------
+
   private shouldShowAlert(alert: PerformanceAlert): boolean {
     switch (alert.type) {
       case 'slow_request':
@@ -123,60 +128,65 @@ class PerformanceAlertService {
     }
   }
 
-  /**
-   * Check if the alert is within rate limits
-   */
   private isWithinRateLimit(alert: PerformanceAlert): boolean {
     const now = Date.now();
-    const oneMinuteAgo = now - 60000;
+    const oneMinuteAgo = now - 60_000;
 
-    // Clean old alerts
-    this.alertHistory = this.alertHistory.filter(
-      (entry) => entry.timestamp > oneMinuteAgo
-    );
+    // Trim history window
+    this.alertHistory = this.alertHistory.filter(a => a.timestamp > oneMinuteAgo);
 
-    // Check if we're within the rate limit
-    const recentAlerts = this.alertHistory.filter(
-      (entry) => entry.type === alert.type
-    );
-
-    return recentAlerts.length < this.config.maxAlertsPerMinute;
+    const countForType = this.alertHistory.filter(a => a.type === alert.type).length;
+    return countForType < this.config.maxAlertsPerMinute;
   }
 
-  /**
-   * Record the alert in history for rate limiting
-   */
-  private recordAlert(alert: PerformanceAlert): void {
-    this.alertHistory.push({
-      timestamp: Date.now(),
-      type: alert.type,
-
+  private isDuplicate(alert: PerformanceAlert): boolean {
+    const key = `${alert.type}::${alert.message}`;
+    const last = this.recentAlerts.get(key) ?? 0;
+    const now = Date.now();
+    if (now - last < this.config.dedupeWindowMs) {
+      return true;
+    }
+    this.recentAlerts.set(key, now);
+    // opportunistic cleanup
+    for (const [k, ts] of this.recentAlerts) {
+      if (now - ts > this.config.dedupeWindowMs * 4) this.recentAlerts.delete(k);
+    }
+    return false;
   }
 
-  /**
-   * Log the alert for debugging (not as an error)
-   */
+  private isSuppressedByEndpoint(alert: PerformanceAlert): boolean {
+    const endpoint: string | undefined = (alert as any)?.metrics?.endpoint;
+    if (!endpoint || !this.config.suppressEndpoints?.length) return false;
+    return this.config.suppressEndpoints.some(pattern => {
+      // simple substring match or wildcard "*"
+      if (pattern === '*') return true;
+      return endpoint.includes(pattern);
+    });
+  }
+
+  private record(alert: PerformanceAlert): void {
+    this.alertHistory.push({ timestamp: Date.now(), type: alert.type });
+  }
+
+  // -------------------- Logs & Stats --------------------
+
   private logAlert(alert: PerformanceAlert): void {
-    const logLevel = alert.severity === 'high' ? 'warn' : 'info';
+    const level = alert.severity === 'high' ? 'warn' : 'info';
     const emoji = this.getAlertEmoji(alert.type);
-    
-    console[logLevel](
-      `${emoji} Karen Performance: ${alert.message}`,
-      {
-        type: alert.type,
-        severity: alert.severity,
-        timestamp: alert.timestamp,
-        // Don't log the full metrics object to keep logs clean
-        endpoint: (alert.metrics as any)?.endpoint || 'unknown',
-        duration: (alert.metrics as any)?.duration || 'unknown',
-      }
-    );
+    const endpoint = (alert as any)?.metrics?.endpoint ?? 'unknown';
+    const duration = (alert as any)?.metrics?.duration ?? 'unknown';
+
+    // Keep logs clean; no large objects
+    console[level](`${emoji} Karen Performance: ${alert.message}`, {
+      type: alert.type,
+      severity: alert.severity,
+      endpoint,
+      duration,
+      timestamp: alert.timestamp,
+    });
   }
 
-  /**
-   * Get appropriate emoji for alert type
-   */
-  private getAlertEmoji(type: string): string {
+  private getAlertEmoji(type: AlertType): string {
     switch (type) {
       case 'slow_request':
         return '⏱️';
@@ -189,56 +199,41 @@ class PerformanceAlertService {
     }
   }
 
-  /**
-   * Update configuration
-   */
+  // -------------------- Config & Admin --------------------
+
   updateConfig(newConfig: Partial<PerformanceAlertConfig>): void {
     this.config = { ...this.config, ...newConfig };
   }
 
-  /**
-   * Get current configuration
-   */
   getConfig(): PerformanceAlertConfig {
     return { ...this.config };
   }
 
-  /**
-   * Clear alert history (useful for testing)
-   */
   clearHistory(): void {
     this.alertHistory = [];
+    this.recentAlerts.clear();
   }
 
-  /**
-   * Get alert statistics
-   */
   getStats(): {
     totalAlerts: number;
     alertsByType: Record<string, number>;
     recentAlerts: number;
   } {
     const now = Date.now();
-    const oneMinuteAgo = now - 60000;
-    const recentAlerts = this.alertHistory.filter(
-      (entry) => entry.timestamp > oneMinuteAgo
-    );
-
-    const alertsByType = this.alertHistory.reduce((acc, entry) => {
-      acc[entry.type] = (acc[entry.type] || 0) + 1;
+    const oneMinuteAgo = now - 60_000;
+    const recent = this.alertHistory.filter(a => a.timestamp > oneMinuteAgo);
+    const byType = this.alertHistory.reduce<Record<string, number>>((acc, a) => {
+      acc[a.type] = (acc[a.type] ?? 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
-
+    }, {});
     return {
       totalAlerts: this.alertHistory.length,
-      alertsByType,
-      recentAlerts: recentAlerts.length,
+      alertsByType: byType,
+      recentAlerts: recent.length,
     };
   }
 }
 
-// Create and export singleton instance
+// Singleton instance
 export const performanceAlertService = new PerformanceAlertService();
-
-// Export the class for testing
 export { PerformanceAlertService };

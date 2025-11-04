@@ -393,7 +393,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             )}
           </div>
 
-          <button
+          <Button
             onClick={() => handleTemplateSelect(template)}
             className="w-full mt-3"
             size="sm"
@@ -452,7 +452,7 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
           {onTemplateCreate && (
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
-                <button size="sm" aria-label="Button">
+                <Button size="sm" aria-label="Button">
                   <Plus className="h-4 w-4 mr-2 " />
                 </Button>
               </DialogTrigger>

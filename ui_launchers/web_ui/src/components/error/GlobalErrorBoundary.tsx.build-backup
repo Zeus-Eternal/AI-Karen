@@ -202,7 +202,7 @@ Please describe what you were doing when this error occurred:
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3">
                 {canRetry && (
-                  <button onClick={this.handleRetry} className="flex items-center gap-2" aria-label="Button">
+                  <Button onClick={this.handleRetry} className="flex items-center gap-2" aria-label="Button">
                     <RefreshCw className="h-4 w-4 " />
                     Try Again
                   </Button>
@@ -282,12 +282,12 @@ Please describe what you were doing when this error occurred:
           <div className="text-center text-sm text-muted-foreground md:text-base lg:text-lg">
             <p>
               If this error persists, please{' '}
-              <button
+              <Button
                 onClick={this.handleReportBug}
                 className="underline hover:text-foreground transition-colors"
                aria-label="Button">
                 report it to our support team
-              </button>
+              </Button>
               {' '}with the error ID above.
             </p>
           </div>

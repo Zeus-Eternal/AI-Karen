@@ -138,14 +138,14 @@ vi.mock('@/components/ui/button', () => ({
     size?: string;
     variant?: string;
   }) => (
-    <button 
+    <Button 
       data-testid="button" 
       onClick={onClick} 
       data-size={size}
       data-variant={variant}
      aria-label="Button">
       {children}
-    </button>
+    </Button>
   )
 }));
 

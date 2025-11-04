@@ -472,7 +472,7 @@ export default function AdvancedModelConfig({
                >
                 <RotateCcw className="h-4 w-4 mr-2 " />
               </Button>
-              <button
+              <Button
                 size="sm"
                 onClick={saveConfig}
                 disabled={saving || !hasUnsavedChanges}
@@ -802,7 +802,7 @@ export default function AdvancedModelConfig({
                     placeholder="Enter model description..."
                   />
                   <div className="flex gap-2">
-                    <button size="sm" onClick={() => setEditingDescription(false)}>
+                    <Button size="sm" onClick={() => setEditingDescription(false)}>
                       <CheckCircle2 className="h-4 w-4 mr-2 " />
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setEditingDescription(false)}>
@@ -838,7 +838,7 @@ export default function AdvancedModelConfig({
                     placeholder="Enter private notes..."
                   />
                   <div className="flex gap-2">
-                    <button size="sm" onClick={() => setEditingNotes(false)}>
+                    <Button size="sm" onClick={() => setEditingNotes(false)}>
                       <CheckCircle2 className="h-4 w-4 mr-2 " />
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setEditingNotes(false)}>

@@ -78,6 +78,7 @@ export class ChatService {
           },
           tags: [],
           priority: 'normal'
+        });
 
         return {
           conversationId: response.data.conversation.id,
@@ -102,6 +103,7 @@ export class ChatService {
           should_auto_play: message.shouldAutoPlay,
           timestamp: message.timestamp.toISOString(),
         },
+      });
 
     } catch (error) {
     }

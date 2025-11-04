@@ -81,7 +81,7 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
   const renderNavigationTabs = () => (
     <div className="border-b border-gray-200 mb-6">
       <nav className="-mb-px flex space-x-8">
-        <button
+        <Button
           onClick={() => setCurrentView('overview')}
           className={`py-2 px-1 border-b-2 font-medium text-sm ${
             currentView === 'overview'
@@ -89,8 +89,8 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setCurrentView('users')}
           className={`py-2 px-1 border-b-2 font-medium text-sm ${
             currentView === 'users'
@@ -98,8 +98,8 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setCurrentView('create-user')}
           className={`py-2 px-1 border-b-2 font-medium text-sm ${
             currentView === 'create-user'
@@ -107,8 +107,8 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setCurrentView('activity')}
           className={`py-2 px-1 border-b-2 font-medium text-sm ${
             currentView === 'activity'
@@ -116,9 +116,9 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-        </button>
+        </Button>
         {selectedUsers.length > 0 && (
-          <button
+          <Button
             onClick={() => setCurrentView('bulk-operations')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               currentView === 'bulk-operations'
@@ -127,7 +127,7 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
             }`}
           >
             Bulk Operations ({selectedUsers.length})
-          </button>
+          </Button>
         )}
       </nav>
     </div>
@@ -211,27 +211,27 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
       <div className="bg-white p-6 rounded-lg shadow sm:p-4 md:p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
+          <Button
             onClick={() => setCurrentView('create-user')}
             className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-left sm:p-4 md:p-6"
           >
             <h4 className="font-medium text-gray-900">Create New User</h4>
             <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">Add a new user account</p>
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setCurrentView('users')}
             className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-left sm:p-4 md:p-6"
           >
             <h4 className="font-medium text-gray-900">Manage Users</h4>
             <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">View and edit user accounts</p>
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setCurrentView('activity')}
             className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-left sm:p-4 md:p-6"
           >
             <h4 className="font-medium text-gray-900">View Activity</h4>
             <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">Monitor user activity and events</p>
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -281,11 +281,11 @@ export function AdminDashboard({ className = '' }: AdminDashboardProps) {
           {error && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md sm:p-4 md:p-6">
               <p className="text-red-800">{error}</p>
-              <button
+              <Button
                 onClick={loadDashboardData}
                 className="mt-2 text-sm text-red-600 hover:text-red-800 underline md:text-base lg:text-lg"
                aria-label="Button">
-              </button>
+              </Button>
             </div>
           )}
         </div>

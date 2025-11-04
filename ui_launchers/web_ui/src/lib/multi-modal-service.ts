@@ -2,17 +2,19 @@
  * Multi-Modal Service
  *
  * Handles various multi-modal AI providers including:
- * - Image generation (Stable Diffusion, DALL-E, Midjourney, etc.)
- * - Image analysis/vision (GPT-4V, Claude Vision, etc.)
- * - Audio generation (ElevenLabs, OpenAI TTS, etc.)
- * - Video generation (RunwayML, Pika Labs, etc.)
+ * - Image generation (Stable Diffusion, DALL·E, Midjourney)
+ * - Image analysis/vision (GPT-4V, Claude Vision)
+ * - Audio generation (ElevenLabs, OpenAI TTS)
+ * - Video generation (RunwayML, Pika Labs)
  *
- * Features Karen's intelligent prompt enhancement and provider routing.
+ * Features: Karen's intelligent prompt enhancement and provider routing.
+ * SSR-safe, production-grade.
  */
 
 import { getKarenBackend } from "./karen-backend";
 
-// Provider types
+// ---------------------- Types ----------------------
+
 export type ProviderType =
   | "image-generation"
   | "image-analysis"
@@ -37,6 +39,11 @@ export interface MultiModalProvider {
     dailyLimit?: number;
   };
   config?: Record<string, any>;
+  health?: {
+    lastChecked?: string;
+    healthy?: boolean;
+    reason?: string;
+  };
 }
 
 export interface GenerationRequest {
@@ -66,6 +73,7 @@ export interface GenerationRequest {
     seed?: number;
   };
   enhancePrompt?: boolean;
+  timeoutMs?: number;
 }
 
 export interface GenerationResult {
@@ -97,18 +105,24 @@ export interface KarenPromptEnhancement {
   suggestedParameters?: Record<string, any>;
 }
 
+// Optional telemetry hooks (no-op friendly)
+type Telemetry = {
+  track?: (event: string, payload?: Record<string, any>) => void;
+};
+
+// ---------------------- Service ----------------------
+
 class MultiModalService {
   private providers: Map<string, MultiModalProvider> = new Map();
   private activeGenerations: Map<string, GenerationResult> = new Map();
+
+  // optional, attach your telemetry later
+  private telemetry: Telemetry | null = null;
+
   private karenPersonality = {
     imageGeneration: {
       stylePreferences: ["cinematic", "detailed", "professional", "artistic"],
-      qualityEnhancements: [
-        "high resolution",
-        "8k",
-        "masterpiece",
-        "best quality",
-      ],
+      qualityEnhancements: ["high resolution", "8k", "masterpiece", "best quality"],
       technicalTerms: ["depth of field", "perfect lighting", "sharp focus"],
     },
     promptPatterns: {
@@ -126,6 +140,8 @@ class MultiModalService {
     this.initializeProviders();
   }
 
+  // ---------------- Provider Registry ----------------
+
   private initializeProviders() {
     // Local Stable Diffusion
     this.providers.set("stable-diffusion-local", {
@@ -136,16 +152,18 @@ class MultiModalService {
       status: "local",
       pricing: { model: "free" },
       limits: { maxResolution: "1024x1024" },
+    });
 
-    // OpenAI DALL-E
+    // OpenAI DALL·E 3
     this.providers.set("dalle-3", {
       id: "dalle-3",
-      name: "DALL-E 3",
+      name: "DALL·E 3",
       type: "image-generation",
       capabilities: ["text-to-image", "high-quality"],
       status: "api-key-required",
-      pricing: { model: "pay-per-use", cost: "$0.04-0.08 per image" },
+      pricing: { model: "pay-per-use", cost: "$0.04–0.08 per image" },
       limits: { maxResolution: "1024x1024", dailyLimit: 50 },
+    });
 
     // Midjourney (via API)
     this.providers.set("midjourney", {
@@ -156,6 +174,7 @@ class MultiModalService {
       status: "api-key-required",
       pricing: { model: "subscription" },
       limits: { dailyLimit: 200 },
+    });
 
     // GPT-4 Vision
     this.providers.set("gpt4-vision", {
@@ -165,6 +184,7 @@ class MultiModalService {
       capabilities: ["image-to-text", "image-analysis", "ocr"],
       status: "api-key-required",
       pricing: { model: "pay-per-use" },
+    });
 
     // ElevenLabs TTS
     this.providers.set("elevenlabs-tts", {
@@ -174,8 +194,9 @@ class MultiModalService {
       capabilities: ["text-to-speech", "voice-cloning", "multilingual"],
       status: "api-key-required",
       pricing: { model: "credits" },
+    });
 
-    // RunwayML Video
+    // RunwayML Gen-2 Video
     this.providers.set("runway-video", {
       id: "runway-video",
       name: "RunwayML Gen-2",
@@ -184,24 +205,34 @@ class MultiModalService {
       status: "api-key-required",
       pricing: { model: "credits" },
       limits: { maxDuration: 4, maxResolution: "1280x768" },
-
+    });
   }
 
-  /**
-   * Get available providers by type
-   */
+  registerProvider(provider: MultiModalProvider) {
+    this.providers.set(provider.id, provider);
+  }
+
+  removeProvider(id: string) {
+    this.providers.delete(id);
+  }
+
+  updateProvider(id: string, patch: Partial<MultiModalProvider>) {
+    const p = this.providers.get(id);
+    if (p) this.providers.set(id, { ...p, ...patch });
+  }
+
+  getProvider(id: string): MultiModalProvider | undefined {
+    return this.providers.get(id);
+  }
+
   getProviders(type?: ProviderType): MultiModalProvider[] {
-    const allProviders = Array.from(this.providers.values());
-    return type ? allProviders.filter((p) => p.type === type) : allProviders;
+    const all = Array.from(this.providers.values());
+    return type ? all.filter((p) => p.type === type) : all;
   }
 
-  /**
-   * Get the best provider for a request using Karen's intelligence
-   */
-  async getBestProvider(request: {
-    prompt: string;
-    type: ProviderType;
-  }): Promise<string> {
+  // ---------------- Provider Routing ----------------
+
+  async getBestProvider(request: { prompt: string; type: ProviderType }): Promise<string> {
     const availableProviders = this.getProviders(request.type).filter(
       (p) => p.status === "available" || p.status === "local"
     );
@@ -210,74 +241,65 @@ class MultiModalService {
       throw new Error(`No available providers for ${request.type}`);
     }
 
-    // Karen's provider selection logic
     if (request.type === "image-generation") {
-      // Prefer local for privacy and speed
-      const localSD = availableProviders.find(
-        (p) => p.id === "stable-diffusion-local"
-      );
-      if (localSD) return localSD.id;
+      // prefer local first
+      const local = availableProviders.find((p) => p.id === "stable-diffusion-local");
+      if (local) return local.id;
 
-      // For artistic prompts, prefer Midjourney
       if (this.isArtisticPrompt(request.prompt)) {
-        const midjourney = availableProviders.find(
-          (p) => p.id === "midjourney"
-        );
-        if (midjourney) return midjourney.id;
+        const mj = availableProviders.find((p) => p.id === "midjourney");
+        if (mj) return mj.id;
       }
 
-      // For photorealistic, prefer DALL-E 3
       if (this.isPhotorealisticPrompt(request.prompt)) {
-        const dalle = availableProviders.find((p) => p.id === "dalle-3");
-        if (dalle) return dalle.id;
+        const de = availableProviders.find((p) => p.id === "dalle-3");
+        if (de) return de.id;
       }
     }
 
-    // Default to first available
     return availableProviders[0].id;
   }
 
-  /**
-   * Karen's intelligent prompt enhancement
-   */
+  // ---------------- Prompt Enhancement ----------------
+
   async enhancePrompt(
     prompt: string,
     type: ProviderType,
     provider?: string
   ): Promise<KarenPromptEnhancement> {
     try {
-      // Use Karen's backend for sophisticated prompt enhancement
       const karenBackend = getKarenBackend();
-      const response =
-        await karenBackend.makeRequestPublic<KarenPromptEnhancement>(
-          "/api/ai/enhance-prompt",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              prompt,
-              type,
-              provider,
-              personality: "karen",
-              enhancements: {
-                technical: true,
-                artistic: type === "image-generation",
-                professional: true,
-                detailed: true,
-              },
-            }),
-          }
-        );
-
+      const response = await karenBackend.makeRequestPublic<KarenPromptEnhancement>(
+        "/api/ai/enhance-prompt",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            prompt,
+            type,
+            provider,
+            personality: "karen",
+            enhancements: {
+              technical: true,
+              artistic: type === "image-generation",
+              professional: true,
+              detailed: true,
+            },
+          }),
+        }
+      );
+      this.telemetry?.track?.("prompt_enhanced", {
+        type,
+        provider,
+        confidence: response.confidence,
+      });
       return response;
-    } catch (error) {
-      // Fallback to local enhancement
-      return this.localPromptEnhancement(prompt, type);
+    } catch {
+      const local = this.localPromptEnhancement(prompt, type);
+      this.telemetry?.track?.("prompt_enhanced_local_fallback", { type, provider });
+      return local;
     }
   }
 
-  /**
-   * Local prompt enhancement fallback
-   */
   private localPromptEnhancement(
     prompt: string,
     type: ProviderType
@@ -286,30 +308,26 @@ class MultiModalService {
     const improvements: string[] = [];
 
     if (type === "image-generation") {
-      // Detect prompt category
       const category = this.detectPromptCategory(prompt);
-
-      // Apply Karen's enhancements
       if (category && this.karenPersonality.promptPatterns[category]) {
         const pattern = this.karenPersonality.promptPatterns[category];
         enhancedPrompt = this.applyPromptPattern(prompt, pattern);
         improvements.push(`Applied ${category} pattern`);
       }
 
-      // Add quality enhancers
-      const qualityTerms =
-        this.karenPersonality.imageGeneration.qualityEnhancements;
+      const qualityTerms = this.karenPersonality.imageGeneration.qualityEnhancements;
       const hasQuality = qualityTerms.some((term) =>
         prompt.toLowerCase().includes(term.toLowerCase())
       );
-
       if (!hasQuality) {
         enhancedPrompt += ", " + qualityTerms.slice(0, 2).join(", ");
         improvements.push("Added quality enhancers");
       }
 
-      // Add technical improvements
-      if (!prompt.includes("lighting") && !prompt.includes("focus")) {
+      if (
+        !/lighting/i.test(prompt) &&
+        !/focus/i.test(prompt)
+      ) {
         enhancedPrompt += ", perfect lighting, sharp focus";
         improvements.push("Added technical improvements");
       }
@@ -324,35 +342,25 @@ class MultiModalService {
     };
   }
 
-  /**
-   * Generate content using the selected provider
-   */
+  // ---------------- Generation Orchestration ----------------
+
   async generate(request: GenerationRequest): Promise<GenerationResult> {
     const generationId = this.generateId();
 
-    // Enhance prompt if requested
+    // Enhance prompt (default true)
     let finalPrompt = request.prompt;
     let enhancement: KarenPromptEnhancement | undefined;
 
     if (request.enhancePrompt !== false) {
-      enhancement = await this.enhancePrompt(
-        request.prompt,
-        request.type,
-        request.provider
-      );
+      enhancement = await this.enhancePrompt(request.prompt, request.type, request.provider);
       finalPrompt = enhancement.enhancedPrompt;
     }
 
-    // Select provider
-    const providerId =
-      request.provider || (await this.getBestProvider(request));
+    // Provider selection
+    const providerId = request.provider || (await this.getBestProvider({ prompt: finalPrompt, type: request.type }));
     const provider = this.providers.get(providerId);
+    if (!provider) throw new Error(`Provider ${providerId} not found`);
 
-    if (!provider) {
-      throw new Error(`Provider ${providerId} not found`);
-    }
-
-    // Create generation result
     const result: GenerationResult = {
       id: generationId,
       status: "pending",
@@ -362,27 +370,30 @@ class MultiModalService {
       enhancedPrompt: enhancement?.enhancedPrompt,
       createdAt: new Date(),
     };
-
     this.activeGenerations.set(generationId, result);
 
-    // Start generation
-    this.processGeneration(result, finalPrompt, request.parameters || {});
+    // fire-and-forget processing (caller can poll via getGeneration)
+    this.processGeneration(result, finalPrompt, request.parameters || {}, request.timeoutMs).catch(() => {});
 
     return result;
   }
 
-  /**
-   * Process the actual generation
-   */
   private async processGeneration(
     result: GenerationResult,
     prompt: string,
-    parameters: any
+    parameters: Record<string, any>,
+    timeoutMs?: number
   ) {
+    const karenBackend = getKarenBackend();
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : undefined;
+    const timer = timeoutMs
+      ? setTimeout(() => controller?.abort(), timeoutMs)
+      : undefined;
+
     try {
       result.status = "processing";
+      this.activeGenerations.set(result.id, result);
 
-      const karenBackend = getKarenBackend();
       const response = await karenBackend.makeRequestPublic<GenerationResult>(
         "/api/multimodal/generate",
         {
@@ -393,72 +404,87 @@ class MultiModalService {
             prompt,
             parameters,
           }),
+          // @ts-expect-error fetch-compatible options pass-through
+          signal: controller?.signal,
         }
       );
 
       if (response && typeof response === "object" && "status" in response) {
-        const genResponse = response as GenerationResult;
-        if (genResponse.status === "completed") {
+        if (response.status === "completed") {
           result.status = "completed";
-          result.result = genResponse.result;
+          result.result = response.result;
+          result.progress = 100;
           result.completedAt = new Date();
+          this.telemetry?.track?.("generation_completed", {
+            id: result.id,
+            provider: result.provider,
+            type: result.type,
+          });
         } else {
           result.status = "failed";
-          result.error = genResponse.error || "Generation failed";
+          result.error = (response as any).error || "Generation failed";
+          this.telemetry?.track?.("generation_failed", {
+            id: result.id,
+            provider: result.provider,
+            type: result.type,
+            error: result.error,
+          });
         }
       } else {
         result.status = "failed";
         result.error = "Invalid response from server";
       }
-    } catch (error) {
+    } catch (error: any) {
       result.status = "failed";
-      result.error = error instanceof Error ? error.message : "Unknown error";
+      result.error =
+        error?.name === "AbortError" ? "Generation timed out" :
+        error instanceof Error ? error.message : "Unknown error";
+      this.telemetry?.track?.("generation_failed_exception", {
+        id: result.id,
+        provider: result.provider,
+        type: result.type,
+        error: result.error,
+      });
+    } finally {
+      if (timer) clearTimeout(timer);
+      this.activeGenerations.set(result.id, result);
     }
-
-    this.activeGenerations.set(result.id, result);
   }
 
-  /**
-   * Get generation status
-   */
   getGeneration(id: string): GenerationResult | undefined {
     return this.activeGenerations.get(id);
   }
 
-  /**
-   * Get all active generations
-   */
   getActiveGenerations(): GenerationResult[] {
     return Array.from(this.activeGenerations.values());
   }
 
-  /**
-   * Cancel a generation
-   */
   async cancelGeneration(id: string): Promise<boolean> {
     const generation = this.activeGenerations.get(id);
-    if (
-      !generation ||
-      generation.status === "completed" ||
-      generation.status === "failed"
-    ) {
+    if (!generation || generation.status === "completed" || generation.status === "failed") {
       return false;
     }
-
     try {
       const karenBackend = getKarenBackend();
       await karenBackend.makeRequestPublic(`/api/multimodal/cancel/${id}`, {
         method: "POST",
-
+      });
       generation.status = "failed";
       generation.error = "Cancelled by user";
+      this.activeGenerations.set(id, generation);
+      this.telemetry?.track?.("generation_cancelled", { id });
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
 
-  // Helper methods
+  // ---------------- Helpers ----------------
+
+  setTelemetry(telemetry: Telemetry) {
+    this.telemetry = telemetry;
+  }
+
   private generateId(): string {
     return `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
@@ -474,9 +500,7 @@ class MultiModalService {
       "style",
       "illustration",
     ];
-    return artisticKeywords.some((keyword) =>
-      prompt.toLowerCase().includes(keyword)
-    );
+    return artisticKeywords.some((k) => prompt.toLowerCase().includes(k));
   }
 
   private isPhotorealisticPrompt(prompt: string): boolean {
@@ -489,9 +513,7 @@ class MultiModalService {
       "landscape",
       "candid",
     ];
-    return photoKeywords.some((keyword) =>
-      prompt.toLowerCase().includes(keyword)
-    );
+    return photoKeywords.some((k) => prompt.toLowerCase().includes(k));
   }
 
   private detectPromptCategory(
@@ -499,40 +521,22 @@ class MultiModalService {
   ): keyof typeof this.karenPersonality.promptPatterns | null {
     const lower = prompt.toLowerCase();
 
-    if (
-      lower.includes("photo") ||
-      lower.includes("shot") ||
-      lower.includes("camera")
-    ) {
+    if (lower.includes("photo") || lower.includes("shot") || lower.includes("camera")) {
       return "photography";
     }
-    if (
-      lower.includes("character") ||
-      lower.includes("person") ||
-      lower.includes("portrait")
-    ) {
+    if (lower.includes("character") || lower.includes("person") || lower.includes("portrait")) {
       return "character";
     }
-    if (
-      lower.includes("landscape") ||
-      lower.includes("scenery") ||
-      lower.includes("environment")
-    ) {
+    if (lower.includes("landscape") || lower.includes("scenery") || lower.includes("environment")) {
       return "landscape";
     }
-    if (
-      lower.includes("art") ||
-      lower.includes("painting") ||
-      lower.includes("drawing")
-    ) {
+    if (lower.includes("art") || lower.includes("painting") || lower.includes("drawing")) {
       return "art";
     }
-
     return null;
-  }
+    }
 
   private applyPromptPattern(prompt: string, pattern: string): string {
-    // Simple pattern replacement - in a real implementation, this would be more sophisticated
     return pattern
       .replace("{prompt}", prompt)
       .replace("{camera}", "professional DSLR")
@@ -546,10 +550,7 @@ class MultiModalService {
       .replace("{weather}", "clear weather");
   }
 
-  private getSuggestedProvider(
-    prompt: string,
-    type: ProviderType
-  ): string | undefined {
+  private getSuggestedProvider(prompt: string, type: ProviderType): string | undefined {
     if (type === "image-generation") {
       if (this.isArtisticPrompt(prompt)) return "midjourney";
       if (this.isPhotorealisticPrompt(prompt)) return "dalle-3";
@@ -559,6 +560,7 @@ class MultiModalService {
   }
 }
 
-// Export singleton instance
+// ---------------- Exports ----------------
+
 export const multiModalService = new MultiModalService();
 export default multiModalService;

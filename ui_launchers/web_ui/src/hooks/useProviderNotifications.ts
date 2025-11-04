@@ -49,6 +49,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     performance_alerts: false,
     error_notifications: true,
     maintenance_notifications: true
+  });
 
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -76,6 +77,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
             const notification: ProviderNotification = JSON.parse(event.data);
             addNotification(notification);
           } catch (error) {
+            // Handle parsing error silently
           }
         };
         eventSource.onerror = () => {
@@ -124,6 +126,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         return;
       }
     } catch (error) {
+      // Handle error silently
     }
     // Fallback to localStorage
     try {
@@ -132,6 +135,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         setSettings(JSON.parse(savedSettings));
       }
     } catch (error) {
+      // Handle error silently
     }
   };
   const saveSettings = useCallback(async (newSettings: NotificationSettings) => {
@@ -140,13 +144,15 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       await backend.makeRequestPublic('/api/providers/notifications/settings', {
         method: 'POST',
         body: JSON.stringify(newSettings)
-
+      });
     } catch (error) {
+      // Handle error silently
     }
     // Always save to localStorage as backup
     try {
       localStorage.setItem('provider_notification_settings', JSON.stringify(newSettings));
     } catch (error) {
+      // Handle error silently
     }
     setSettings(newSettings);
   }, [backend]);
@@ -169,10 +175,10 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
           title: notification.title,
           description: notification.message,
           variant: notification.priority === 'critical' ? 'destructive' : 'default',
-
+        });
       }
       return updated;
-
+    });
   }, [settings, maxNotifications, autoToast, toast]);
   const markAsRead = useCallback((notificationId: string) => {
     setNotifications(prev =>
@@ -182,7 +188,8 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     backend.makeRequestPublic(`/api/providers/notifications/${notificationId}/read`, {
       method: 'POST'
     }).catch(error => {
-
+      // Handle error silently
+    });
   }, [backend]);
   const dismissNotification = useCallback((notificationId: string) => {
     setNotifications(prev =>
@@ -192,7 +199,8 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     backend.makeRequestPublic(`/api/providers/notifications/${notificationId}/dismiss`, {
       method: 'POST'
     }).catch(error => {
-
+      // Handle error silently
+    });
   }, [backend]);
   const clearAllNotifications = useCallback(() => {
     setNotifications(prev => prev.map(n => ({ ...n, dismissed: true })));
@@ -200,7 +208,8 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     backend.makeRequestPublic('/api/providers/notifications/clear-all', {
       method: 'POST'
     }).catch(error => {
-
+      // Handle error silently
+    });
   }, [backend]);
   const createNotification = useCallback((
     type: ProviderNotification['type'],
@@ -249,7 +258,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         { id: 'configure', label: 'Configure', action: 'configure' },
         { id: 'dismiss', label: 'Dismiss', action: 'dismiss', variant: 'outline' }
       ]
-
+    });
   }, [createNotification]);
   const notifyFallback = useCallback((primaryProvider: string, fallbackProvider: string, reason?: string) => {
     return createNotification('fallback', 'Fallback Provider Active', 
@@ -262,7 +271,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         { id: 'dismiss', label: 'Dismiss', action: 'dismiss', variant: 'outline' }
       ],
       metadata: { primary_provider: primaryProvider, fallback_provider: fallbackProvider, reason }
-
+    });
   }, [createNotification]);
   const notifySystemHealth = useCallback((failedProviders: string[], healthyProviders: string[], degradedMode: boolean = false) => {
     const title = degradedMode ? 'System in Degraded Mode' : 'Multiple Providers Failing';
@@ -275,7 +284,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         { id: 'dismiss', label: 'Dismiss', action: 'dismiss', variant: 'outline' }
       ],
       metadata: { failed_providers: failedProviders, healthy_providers: healthyProviders, degraded_mode: degradedMode }
-
+    });
   }, [createNotification]);
   const notifyError = useCallback((provider: string, error: string, errorType?: string) => {
     return createNotification('error', `${provider} Error`, error, {
@@ -287,7 +296,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         { id: 'dismiss', label: 'Dismiss', action: 'dismiss', variant: 'outline' }
       ],
       metadata: { error_type: errorType }
-
+    });
   }, [createNotification]);
   // Computed values
   const activeNotifications = notifications.filter(n => !n.dismissed);
@@ -317,4 +326,5 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     refresh: loadNotifications
   };
 }
+
 export default useProviderNotifications;

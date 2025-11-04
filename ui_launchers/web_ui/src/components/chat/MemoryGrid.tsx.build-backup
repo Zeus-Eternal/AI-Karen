@@ -408,7 +408,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
           <div className="flex items-center gap-2">
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <button size="sm" aria-label="Button">
+                <Button size="sm" aria-label="Button">
                   <Plus className="h-4 w-4 mr-2 " />
                   Add Memory
                 </Button>

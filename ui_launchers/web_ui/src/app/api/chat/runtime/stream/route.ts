@@ -1,175 +1,321 @@
-import { NextRequest } from 'next/server';
-import { withBackendPath } from '@/app/api/_utils/backend';
-// Simple fallback responses for degraded mode
-const FALLBACK_RESPONSES = [
-  "I'm currently running in degraded mode due to backend connectivity issues. I can provide basic assistance, but my full AI capabilities are temporarily limited.",
-  "The system is experiencing some connectivity issues. I'm operating with reduced functionality but can still help with basic questions.",
-  "I'm currently in fallback mode. While I can't access my full AI capabilities right now, I'm still here to help with what I can.",
-  "The backend services are temporarily unavailable. I'm running in a limited capacity but can still provide some assistance.",
-  "I'm operating in degraded mode due to system issues. My responses may be limited, but I'll do my best to help you."
-];
-function createFallbackResponse(userMessage: string): string {
-  // Simple keyword-based responses for common queries
-  const message = userMessage.toLowerCase();
-  if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
-    return "Hello! I'm currently running in degraded mode, but I'm still here to help. What can I assist you with?";
-  }
-  if (message.includes('help') || message.includes('what can you do')) {
-    return "I'm currently in degraded mode with limited capabilities. I can provide basic information and assistance, but my full AI features are temporarily unavailable due to backend connectivity issues.";
-  }
-  if (message.includes('error') || message.includes('problem') || message.includes('issue')) {
-    return "I can see you're experiencing an issue. I'm currently running in degraded mode, so my troubleshooting capabilities are limited. Please try again later when full services are restored.";
-  }
-  if (message.includes('status') || message.includes('health')) {
-    return "The system is currently in degraded mode due to backend connectivity issues. Core services are running but AI capabilities are limited. Please check back later for full functionality.";
-  }
-  // Default fallback response
-  const randomResponse = FALLBACK_RESPONSES[Math.floor(Math.random() * FALLBACK_RESPONSES.length)];
-  return randomResponse;
-}
-function createStreamingFallbackResponse(message: string): ReadableStream {
-  const response = createFallbackResponse(message);
-  return new ReadableStream({
-    start(controller) {
-      // Simulate streaming by sending chunks
-      const chunks = response.split(' ');
-      let index = 0;
-      const sendChunk = () => {
-        if (index < chunks.length) {
-          const chunk = index === 0 ? chunks[index] : ' ' + chunks[index];
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content: chunk })}\n\n`));
-          index++;
-          setTimeout(sendChunk, 50); // Simulate typing delay
-        } else {
-          controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
-          controller.close();
-        }
-      };
-      sendChunk();
-    }
+import { NextRequest, NextResponse } from 'next/server';
 
-}
-async function checkDegradedMode(): Promise<boolean> {
-  try {
-    const response = await fetch('/api/health/degraded-mode', {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(3000)
+/** ---------------- Types ---------------- */
 
-    if (response.ok) {
-      const data = await response.json();
-      return data.is_active || data.degraded_mode;
-    }
-  } catch (error) {
-  }
-  return false; // Default to not degraded if check fails
+interface ModelCapability {
+  name: string;
+  description: string;
+  supported_parameters?: string[];
+  requirements?: {
+    memory_mb?: number;
+    gpu_required?: boolean;
+    dependencies?: string[];
+  };
 }
-export async function POST(request: NextRequest) {
-  try {
-    // Get authorization header from the request
-    const authorization = request.headers.get('authorization');
-    const cookie = request.headers.get('cookie');
-    // Parse the request body for chat data
-    const body = await request.json();
-    // Check if we should use fallback mode
-    const isDegraded = await checkDegradedMode();
-    // Forward the request to the backend chat runtime stream endpoint
-    const backendUrl = withBackendPath('/api/chat/runtime/stream');
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-    // Forward auth headers if present
-    if (authorization) {
-      headers['Authorization'] = authorization;
-    }
-    if (cookie) {
-      headers['Cookie'] = cookie;
-    }
-    try {
-      const response = await fetch(backendUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(isDegraded ? 10000 : 120000), // Shorter timeout in degraded mode
 
-      // For streaming responses, we need to handle differently
-      if (response.headers.get('content-type')?.includes('text/event-stream') || 
-          response.headers.get('content-type')?.includes('text/plain')) {
-        // Return the streaming response directly
-        return new Response(response.body, {
-          status: response.status,
-          headers: {
-            'Content-Type': response.headers.get('content-type') || 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+interface CapabilitiesResponse {
+  model_id: string;
+  model_name: string;
+  provider: string;
+  type: string;
+  capabilities: ModelCapability[];
+  supported_modes: string[];
+  parameters: {
+    text_generation?: Record<string, any>;
+    image_generation?: Record<string, any>;
+    embedding?: Record<string, any>;
+  };
+  compatibility: {
+    multimodal: boolean;
+    streaming: boolean;
+    batch_processing: boolean;
+  };
+}
+
+/** ---------------- Utilities ---------------- */
+
+function arr(val: any): any[] {
+  return Array.isArray(val) ? val : [];
+}
+
+function hasCap(model: any, cap: string): boolean {
+  return arr(model?.capabilities).includes(cap);
+}
+
+function normType(model: any): string {
+  return (model?.type || 'unknown').toString();
+}
+
+/** Build detailed capabilities for a model based on its type and metadata */
+function buildModelCapabilities(model: any): ModelCapability[] {
+  const capabilities: ModelCapability[] = [];
+  const caps = arr(model?.capabilities);
+
+  for (const cap of caps) {
+    switch (cap) {
+      case 'chat':
+        capabilities.push({
+          name: 'chat',
+          description: 'Interactive conversational AI',
+          supported_parameters: ['temperature', 'top_p', 'max_tokens', 'stop_sequences'],
+        });
+        break;
+
+      case 'text-generation':
+        capabilities.push({
+          name: 'text-generation',
+          description: 'Generate text based on prompts',
+          supported_parameters: ['temperature', 'top_p', 'top_k', 'max_tokens', 'repeat_penalty'],
+        });
+        break;
+
+      case 'text2img':
+        capabilities.push({
+          name: 'text2img',
+          description: 'Generate images from text descriptions',
+          supported_parameters: ['width', 'height', 'steps', 'guidance_scale', 'seed', 'batch_size'],
+          requirements: {
+            memory_mb: 4000,
+            gpu_required: true,
+            dependencies: ['diffusers', 'torch'],
           },
+        });
+        break;
 
-      }
-      // For non-streaming responses, parse as JSON
-      const data = await response.json();
-      return Response.json(data, { 
-        status: response.status,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
+      case 'img2img':
+        capabilities.push({
+          name: 'img2img',
+          description: 'Transform existing images based on text prompts',
+          supported_parameters: ['strength', 'width', 'height', 'steps', 'guidance_scale', 'batch_size'],
+          requirements: {
+            memory_mb: 4000,
+            gpu_required: true,
+            dependencies: ['diffusers', 'torch', 'PIL'],
+          },
+        });
+        break;
 
-    } catch (backendError) {
-      // Use fallback response when backend is unavailable
-      const userMessage = body.messages?.[body.messages.length - 1]?.content || body.message || '';
-      // Return streaming fallback response
-      return new Response(createStreamingFallbackResponse(userMessage), {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        },
+      case 'embedding':
+        capabilities.push({
+          name: 'embedding',
+          description: 'Generate vector embeddings for text',
+          supported_parameters: ['normalize', 'batch_size'],
+        });
+        break;
 
+      case 'code':
+        capabilities.push({
+          name: 'code',
+          description: 'Code generation and analysis',
+          supported_parameters: ['language', 'max_tokens', 'temperature'],
+        });
+        break;
+
+      default:
+        capabilities.push({
+          name: cap,
+          description: `${cap} capability`,
+          supported_parameters: [],
+        });
+        break;
     }
-  } catch (error) {
-    // Return fallback response even for parsing errors
-    try {
-      const fallbackMessage = "I'm experiencing technical difficulties and am running in emergency fallback mode. Please try again later.";
-      return new Response(createStreamingFallbackResponse(fallbackMessage), {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        },
+  }
 
-    } catch (fallbackError) {
-      // Last resort: return JSON error
-      return Response.json(
-        { 
-          error: 'Chat streaming service unavailable',
-          message: 'Unable to process streaming chat request',
-          details: error instanceof Error ? error.message : 'Unknown error'
+  // If model exposes no declared caps, infer a minimum based on type
+  if (capabilities.length === 0) {
+    const t = normType(model);
+    if (t === 'text' || t === 'text_generation') {
+      capabilities.push({
+        name: 'text-generation',
+        description: 'Generate text based on prompts',
+        supported_parameters: ['temperature', 'top_p', 'top_k', 'max_tokens', 'repeat_penalty'],
+      });
+    } else if (t === 'image' || t === 'image_generation') {
+      capabilities.push({
+        name: 'text2img',
+        description: 'Generate images from text descriptions',
+        supported_parameters: ['width', 'height', 'steps', 'guidance_scale', 'seed', 'batch_size'],
+        requirements: { memory_mb: 4000, gpu_required: true, dependencies: ['diffusers', 'torch'] },
+      });
+    } else if (t === 'embedding') {
+      capabilities.push({
+        name: 'embedding',
+        description: 'Generate vector embeddings for text',
+        supported_parameters: ['normalize', 'batch_size'],
+      });
+    }
+  }
+
+  return capabilities;
+}
+
+/** Get supported interaction modes for a model */
+function getSupportedModes(model: any): string[] {
+  const modes: string[] = [];
+  const t = normType(model);
+
+  if (t === 'text' || t === 'text_generation') {
+    modes.push('text');
+    if (hasCap(model, 'chat')) modes.push('chat');
+  }
+  if (t === 'image' || t === 'image_generation') {
+    modes.push('image');
+    if (hasCap(model, 'text2img')) modes.push('text2img');
+    if (hasCap(model, 'img2img')) modes.push('img2img');
+  }
+  if (t === 'embedding') {
+    modes.push('embedding');
+  }
+
+  // If none inferred but capabilities exist, map a sane default
+  if (modes.length === 0) {
+    if (hasCap(model, 'text2img') || hasCap(model, 'img2img')) modes.push('image');
+    if (hasCap(model, 'text-generation') || hasCap(model, 'chat')) modes.push('text');
+    if (hasCap(model, 'embedding')) modes.push('embedding');
+  }
+
+  return Array.from(new Set(modes));
+}
+
+/** Build parameter specifications for different model types */
+function buildParameterSpecs(model: any): Record<string, any> {
+  const params: Record<string, any> = {};
+  const t = normType(model);
+
+  if (t === 'text' || t === 'text_generation' || hasCap(model, 'text-generation') || hasCap(model, 'chat')) {
+    params.text_generation = {
+      temperature: { type: 'float', min: 0.0, max: 2.0, default: 0.7 },
+      top_p: { type: 'float', min: 0.0, max: 1.0, default: 0.9 },
+      top_k: { type: 'integer', min: 1, max: 100, default: 40 },
+      max_tokens: { type: 'integer', min: 1, max: 4096, default: 512 },
+      repeat_penalty: { type: 'float', min: 0.0, max: 2.0, default: 1.1 },
+      stop_sequences: { type: 'array', items: 'string', default: [] },
+    };
+  }
+
+  if (t === 'image' || t === 'image_generation' || hasCap(model, 'text2img') || hasCap(model, 'img2img')) {
+    params.image_generation = {
+      width: { type: 'integer', min: 256, max: 1024, default: 512, step: 64 },
+      height: { type: 'integer', min: 256, max: 1024, default: 512, step: 64 },
+      steps: { type: 'integer', min: 1, max: 100, default: 20 },
+      guidance_scale: { type: 'float', min: 1.0, max: 20.0, default: 7.5 },
+      seed: { type: 'integer', min: -1, max: 2147483647, default: -1 },
+      batch_size: { type: 'integer', min: 1, max: 4, default: 1 },
+    };
+    if (hasCap(model, 'img2img')) {
+      params.image_generation.strength = { type: 'float', min: 0.0, max: 1.0, default: 0.8 };
+    }
+
+    // Provider-aware tuning examples
+    const provider = (model?.provider || '').toLowerCase();
+    const baseModel = (model?.metadata?.base_model || '').toUpperCase();
+
+    if (provider === 'flux') {
+      params.image_generation.guidance_scale.min = 0.0;
+      params.image_generation.guidance_scale.max = 10.0;
+      params.image_generation.guidance_scale.default = 3.5;
+      params.image_generation.width.max = 2048;
+      params.image_generation.height.max = 2048;
+    } else if (provider === 'stable-diffusion' && baseModel === 'SDXL') {
+      params.image_generation.width.max = 1536;
+      params.image_generation.height.max = 1536;
+      params.image_generation.width.default = 1024;
+      params.image_generation.height.default = 1024;
+    }
+  }
+
+  if (t === 'embedding' || hasCap(model, 'embedding')) {
+    params.embedding = {
+      normalize: { type: 'boolean', default: true },
+      batch_size: { type: 'integer', min: 1, max: 64, default: 16 },
+    };
+  }
+
+  return params;
+}
+
+/** Build compatibility information for a model */
+function buildCompatibilityInfo(model: any): {
+  multimodal: boolean;
+  streaming: boolean;
+  batch_processing: boolean;
+} {
+  const provider = (model?.provider || '').toLowerCase();
+  const t = normType(model);
+
+  // Heuristics: many image backends don’t stream tokens; text often can.
+  const streaming =
+    t === 'text' || t === 'text_generation' || hasCap(model, 'chat') || hasCap(model, 'text-generation')
+      ? true
+      : !(provider === 'stable-diffusion' || provider === 'flux');
+
+  return {
+    multimodal: hasCap(model, 'multimodal') || (hasCap(model, 'text2img') && (hasCap(model, 'chat') || hasCap(model, 'text-generation'))) || false,
+    streaming,
+    batch_processing: true,
+  };
+}
+
+/** ---------------- Route ---------------- */
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const modelId = searchParams.get('model_id');
+    const includeParameters = searchParams.get('include_parameters') === 'true';
+    const includeCompatibility = searchParams.get('include_compatibility') === 'true';
+
+    if (!modelId) {
+      return NextResponse.json({ error: 'Missing required parameter: model_id' }, { status: 400 });
+    }
+
+    const { modelSelectionService } = await import('@/lib/model-selection-service');
+
+    // Fetch available models and locate target
+    const models = await modelSelectionService.getAvailableModels();
+    const targetModel = (models || []).find((m: any) => m.id === modelId);
+
+    if (!targetModel) {
+      return NextResponse.json(
+        {
+          error: 'Model not found',
+          message: `Model with ID '${modelId}' not found in available models`,
         },
-        { status: 503 }
+        { status: 404 },
       );
     }
-  }
-}
-// Handle preflight OPTIONS request for CORS
-export async function OPTIONS() {
-  return new Response(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
 
+    const capabilities = buildModelCapabilities(targetModel);
+    const supportedModes = getSupportedModes(targetModel);
+
+    const response: CapabilitiesResponse = {
+      model_id: modelId,
+      model_name: targetModel.name || modelId,
+      provider: targetModel.provider,
+      type: normType(targetModel),
+      capabilities,
+      supported_modes: supportedModes,
+      parameters: includeParameters ? buildParameterSpecs(targetModel) : {},
+      compatibility: includeCompatibility
+        ? buildCompatibilityInfo(targetModel)
+        : { multimodal: false, streaming: false, batch_processing: false },
+    };
+
+    return NextResponse.json(response, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'public, max-age=3600',
+        'X-Model-Type': response.type,
+        'X-Model-Provider': response.provider,
+      },
+    });
+  } catch (capabilityError: any) {
+    return NextResponse.json(
+      {
+        error: 'Failed to fetch model capabilities',
+        message: capabilityError?.message || 'Unknown error',
+      },
+      { status: 500 },
+    );
+  }
 }

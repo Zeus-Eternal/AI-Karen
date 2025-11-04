@@ -34,7 +34,7 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
     <input type="text" id="name" required aria-label="Input">
     <label for="email">Email:</label>
     <input type="email" id="email" required aria-label="Input">
-    <button type="submit" aria-label="Submit form">Submit</button>
+    <Button type="submit" aria-label="Submit form">Submit</Button>
   </form>
   <img src="example.jpg" alt="Example image">
   <nav aria-label="Main navigation">
@@ -290,7 +290,7 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
                 className="min-h-[300px] font-mono text-sm md:text-base lg:text-lg"
               />
               <div className="flex items-center space-x-2">
-                <button
+                <Button
                   onClick={runTest}
                   disabled={isRunning}
                   className="flex-1"

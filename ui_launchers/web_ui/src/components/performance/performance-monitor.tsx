@@ -212,13 +212,13 @@ export function PerformanceMonitor({
   return (
     <>
       {/* Toggle button */}
-      <button
+      <Button
         onClick={() => setIsVisible(!isVisible)}
         className="fixed bottom-4 right-4 z-50 bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors sm:p-4 md:p-6"
         title="Toggle Performance Monitor"
       >
         <Activity className="h-4 w-4 " />
-      </button>
+      </Button>
       {/* Performance overlay */}
       {isVisible && (
         <div className="fixed bottom-16 right-4 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 max-w-sm sm:p-4 md:p-6">
@@ -226,12 +226,12 @@ export function PerformanceMonitor({
             <h3 className="font-semibold text-sm flex items-center md:text-base lg:text-lg">
               <Zap className="h-4 w-4 mr-1 " />
             </h3>
-            <button
+            <Button
               onClick={() => setIsVisible(false)}
               className="text-gray-400 hover:text-gray-600"
             >
               ×
-            </button>
+            </Button>
           </div>
           <div className="space-y-2 text-xs sm:text-sm md:text-base">
             {/* Core Web Vitals */}

@@ -1,6 +1,6 @@
 /**
  * Plugin Store
- * 
+ *
  * Zustand store for plugin management state and operations.
  * Based on requirements: 5.1, 5.2, 5.3, 5.4, 5.5
  */
@@ -8,12 +8,22 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { PluginInfo, PluginInstallationRequest, PluginInstallationProgress, PluginMarketplaceEntry, PluginFilter, PluginConfig, PluginStore, PluginStoreState, PluginStoreActions } from '@/types/plugins';
+import type {
+  PluginInfo,
+  PluginInstallationRequest,
+  PluginMarketplaceEntry,
+  PluginFilter,
+  PluginConfig,
+  PluginStore, // state + actions union
+  PluginStoreState,
+  PluginStoreActions,
+} from '@/types/plugins';
 
-// Mock API service (will be replaced with actual API integration)
+// ────────────────────────────────────────────────────────────────────────────────
+// Mock API service (placeholder — wire to real API client)
+// ────────────────────────────────────────────────────────────────────────────────
 class PluginAPIService {
   async listPlugins(): Promise<PluginInfo[]> {
-    // Mock data for development
     return [
       {
         id: 'weather-plugin',
@@ -210,7 +220,7 @@ class PluginAPIService {
             averageExecutionTime: 1200,
             totalExecutions: 45,
             errorRate: 0.15,
-            lastExecution: new Date(Date.now() - 86400000), // 1 day ago
+            lastExecution: new Date(Date.now() - 86400000),
           },
           resources: {
             memoryUsage: 8.5,
@@ -232,37 +242,41 @@ class PluginAPIService {
         },
         lastError: {
           message: 'Authentication failed: Token expired',
-          timestamp: new Date(Date.now() - 3600000), // 1 hour ago
+          timestamp: new Date(Date.now() - 3600000),
         },
       },
     ];
   }
 
   async installPlugin(request: PluginInstallationRequest): Promise<string> {
+    void request; // placeholder usage
     const installationId = `install-${Date.now()}`;
-    // Mock installation process
     return installationId;
   }
 
   async uninstallPlugin(id: string): Promise<void> {
-    // Mock uninstallation
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    void id;
+    await new Promise((r) => setTimeout(r, 300));
   }
 
   async enablePlugin(id: string): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    void id;
+    await new Promise((r) => setTimeout(r, 200));
   }
 
   async disablePlugin(id: string): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    void id;
+    await new Promise((r) => setTimeout(r, 200));
   }
 
   async configurePlugin(id: string, config: PluginConfig): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 800));
+    void id;
+    void config;
+    await new Promise((r) => setTimeout(r, 250));
   }
 
   async searchMarketplace(query?: string): Promise<PluginMarketplaceEntry[]> {
-    // Mock marketplace data
+    void query;
     return [
       {
         id: 'slack-integration',
@@ -313,82 +327,90 @@ class PluginAPIService {
 
 const pluginAPI = new PluginAPIService();
 
-// Initial state
+// ────────────────────────────────────────────────────────────────────────────────
+// Initial state (make dynamic maps for op-level loading/errors)
+// ────────────────────────────────────────────────────────────────────────────────
 const initialState: PluginStoreState = {
   plugins: [],
   selectedPlugin: null,
-  installations: {},
+  installations: {}, // Record<string, PluginInstallationProgress>
+
   marketplacePlugins: [],
-  
+
+  // Use dynamic maps to support operation-scoped keys: "enable-<id>", etc.
   loading: {
     plugins: false,
     installation: false,
     marketplace: false,
-  },
-  
+  } as Record<string, boolean> & { plugins: boolean; installation: boolean; marketplace: boolean },
+
   errors: {
     plugins: null,
     installation: null,
     marketplace: null,
-  },
-  
+  } as Record<string, string | null> & { plugins: string | null; installation: string | null; marketplace: string | null },
+
   searchQuery: '',
   filters: {},
   sortBy: 'name',
   sortOrder: 'asc',
-  
+
   view: 'list',
   showInstallationWizard: false,
   showMarketplace: false,
 };
 
-// Create the plugin store
+// ────────────────────────────────────────────────────────────────────────────────
 export const usePluginStore = create<PluginStore>()(
   subscribeWithSelector(
-    immer((set, get) => ({
+    immer<PluginStoreState & PluginStoreActions>((set, get) => ({
       ...initialState,
-      
-      // Plugin operations
+
+      // ───────── Plugin operations
       loadPlugins: async () => {
         set((state) => {
           state.loading.plugins = true;
           state.errors.plugins = null;
+        });
 
         try {
           const plugins = await pluginAPI.listPlugins();
           set((state) => {
             state.plugins = plugins;
             state.loading.plugins = false;
-
+          });
         } catch (error) {
           set((state) => {
             state.loading.plugins = false;
-            state.errors.plugins = error instanceof Error ? error.message : 'Failed to load plugins';
-
+            state.errors.plugins =
+              error instanceof Error ? error.message : 'Failed to load plugins';
+          });
         }
       },
-      
-      selectPlugin: (plugin: PluginInfo | null) => set((state) => {
-        state.selectedPlugin = plugin;
-      }),
-      
-      installPlugin: async (request: PluginInstallationRequest) => {
+
+      selectPlugin: (plugin) =>
+        set((state) => {
+          state.selectedPlugin = plugin;
+        }),
+
+      installPlugin: async (request) => {
         set((state) => {
           state.loading.installation = true;
           state.errors.installation = null;
+        });
 
         try {
           const installationId = await pluginAPI.installPlugin(request);
-          
-          // Mock installation progress
+
+          // initialize progress
           set((state) => {
             state.installations[installationId] = {
               stage: 'downloading',
               progress: 0,
               message: 'Starting installation...',
             };
+          });
 
-          // Simulate installation progress
           const progressStages = [
             { stage: 'downloading' as const, progress: 20, message: 'Downloading plugin...' },
             { stage: 'validating' as const, progress: 40, message: 'Validating plugin manifest...' },
@@ -397,9 +419,10 @@ export const usePluginStore = create<PluginStore>()(
             { stage: 'configuring' as const, progress: 90, message: 'Configuring plugin...' },
             { stage: 'complete' as const, progress: 100, message: 'Installation complete!' },
           ];
-          
+
           for (const stage of progressStages) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // simulate step
+            await new Promise((r) => setTimeout(r, 350));
             set((state) => {
               if (state.installations[installationId]) {
                 state.installations[installationId] = {
@@ -407,240 +430,271 @@ export const usePluginStore = create<PluginStore>()(
                   ...stage,
                 };
               }
-
+            });
           }
-          
-          // Reload plugins after installation
+
           await get().loadPlugins();
-          
+
           set((state) => {
             state.loading.installation = false;
             delete state.installations[installationId];
+          });
 
           return installationId;
         } catch (error) {
           set((state) => {
             state.loading.installation = false;
-            state.errors.installation = error instanceof Error ? error.message : 'Installation failed';
-
+            state.errors.installation =
+              error instanceof Error ? error.message : 'Installation failed';
+          });
           throw error;
         }
       },
-      
+
       uninstallPlugin: async (id: string) => {
         set((state) => {
           state.loading[`uninstall-${id}`] = true;
+        });
 
         try {
           await pluginAPI.uninstallPlugin(id);
-          
+
           set((state) => {
-            state.plugins = state.plugins.filter(p => p.id !== id);
+            state.plugins = state.plugins.filter((p) => p.id !== id);
             if (state.selectedPlugin?.id === id) {
               state.selectedPlugin = null;
             }
             delete state.loading[`uninstall-${id}`];
-
+          });
         } catch (error) {
           set((state) => {
             delete state.loading[`uninstall-${id}`];
-            state.errors[`uninstall-${id}`] = error instanceof Error ? error.message : 'Uninstallation failed';
-
+            state.errors[`uninstall-${id}`] =
+              error instanceof Error ? error.message : 'Uninstallation failed';
+          });
           throw error;
         }
       },
-      
+
       enablePlugin: async (id: string) => {
         set((state) => {
           state.loading[`enable-${id}`] = true;
+        });
 
         try {
           await pluginAPI.enablePlugin(id);
-          
+
           set((state) => {
-            const plugin = state.plugins.find(p => p.id === id);
+            const plugin = state.plugins.find((p) => p.id === id);
             if (plugin) {
               plugin.enabled = true;
               plugin.status = 'active';
             }
-            if (state.selectedPlugin?.id === id) {
+            if (state.selectedPlugin?.id === id && state.selectedPlugin) {
               state.selectedPlugin.enabled = true;
               state.selectedPlugin.status = 'active';
             }
             delete state.loading[`enable-${id}`];
-
+          });
         } catch (error) {
           set((state) => {
             delete state.loading[`enable-${id}`];
-            state.errors[`enable-${id}`] = error instanceof Error ? error.message : 'Failed to enable plugin';
-
+            state.errors[`enable-${id}`] =
+              error instanceof Error ? error.message : 'Failed to enable plugin';
+          });
           throw error;
         }
       },
-      
+
       disablePlugin: async (id: string) => {
         set((state) => {
           state.loading[`disable-${id}`] = true;
+        });
 
         try {
           await pluginAPI.disablePlugin(id);
-          
+
           set((state) => {
-            const plugin = state.plugins.find(p => p.id === id);
+            const plugin = state.plugins.find((p) => p.id === id);
             if (plugin) {
               plugin.enabled = false;
               plugin.status = 'inactive';
             }
-            if (state.selectedPlugin?.id === id) {
+            if (state.selectedPlugin?.id === id && state.selectedPlugin) {
               state.selectedPlugin.enabled = false;
               state.selectedPlugin.status = 'inactive';
             }
             delete state.loading[`disable-${id}`];
-
+          });
         } catch (error) {
           set((state) => {
             delete state.loading[`disable-${id}`];
-            state.errors[`disable-${id}`] = error instanceof Error ? error.message : 'Failed to disable plugin';
-
+            state.errors[`disable-${id}`] =
+              error instanceof Error ? error.message : 'Failed to disable plugin';
+          });
           throw error;
         }
       },
-      
+
       configurePlugin: async (id: string, config: PluginConfig) => {
         set((state) => {
           state.loading[`configure-${id}`] = true;
+        });
 
         try {
           await pluginAPI.configurePlugin(id, config);
-          
+
           set((state) => {
-            const plugin = state.plugins.find(p => p.id === id);
+            const plugin = state.plugins.find((p) => p.id === id);
             if (plugin) {
               plugin.config = { ...plugin.config, ...config };
             }
-            if (state.selectedPlugin?.id === id) {
-              state.selectedPlugin.config = { ...state.selectedPlugin.config, ...config };
+            if (state.selectedPlugin?.id === id && state.selectedPlugin) {
+              state.selectedPlugin.config = {
+                ...state.selectedPlugin.config,
+                ...config,
+              };
             }
             delete state.loading[`configure-${id}`];
-
+          });
         } catch (error) {
           set((state) => {
             delete state.loading[`configure-${id}`];
-            state.errors[`configure-${id}`] = error instanceof Error ? error.message : 'Failed to configure plugin';
-
+            state.errors[`configure-${id}`] =
+              error instanceof Error ? error.message : 'Failed to configure plugin';
+          });
           throw error;
         }
       },
-      
-      // Marketplace operations
+
+      // ───────── Marketplace operations
       loadMarketplacePlugins: async (query?: string) => {
         set((state) => {
           state.loading.marketplace = true;
           state.errors.marketplace = null;
+        });
 
         try {
           const plugins = await pluginAPI.searchMarketplace(query);
           set((state) => {
             state.marketplacePlugins = plugins;
             state.loading.marketplace = false;
-
+          });
         } catch (error) {
           set((state) => {
             state.loading.marketplace = false;
-            state.errors.marketplace = error instanceof Error ? error.message : 'Failed to load marketplace';
-
+            state.errors.marketplace =
+              error instanceof Error ? error.message : 'Failed to load marketplace';
+          });
         }
       },
-      
-      // UI operations
-      setSearchQuery: (query: string) => set((state) => {
-        state.searchQuery = query;
-      }),
-      
-      setFilters: (filters: Partial<PluginFilter>) => set((state) => {
-        state.filters = { ...state.filters, ...filters };
-      }),
-      
-      setSorting: (sortBy: string, sortOrder: 'asc' | 'desc') => set((state) => {
-        state.sortBy = sortBy as any;
-        state.sortOrder = sortOrder;
-      }),
-      
-      setView: (view: 'list' | 'grid' | 'details') => set((state) => {
-        state.view = view;
-      }),
-      
-      setShowInstallationWizard: (show: boolean) => set((state) => {
-        state.showInstallationWizard = show;
-      }),
-      
-      setShowMarketplace: (show: boolean) => set((state) => {
-        state.showMarketplace = show;
-      }),
-      
-      // Error handling
-      setError: (key: string, error: string | null) => set((state) => {
-        if (error) {
-          state.errors[key] = error;
-        } else {
-          delete state.errors[key];
-        }
-      }),
-      
-      clearErrors: () => set((state) => {
-        state.errors = {
-          plugins: null,
-          installation: null,
-          marketplace: null,
-        };
-      }),
+
+      // ───────── UI operations
+      setSearchQuery: (query: string) =>
+        set((state) => {
+          state.searchQuery = query;
+        }),
+
+      setFilters: (filters: Partial<PluginFilter>) =>
+        set((state) => {
+          state.filters = { ...state.filters, ...filters };
+        }),
+
+      setSorting: (sortBy: string, sortOrder: 'asc' | 'desc') =>
+        set((state) => {
+          state.sortBy = sortBy as any;
+          state.sortOrder = sortOrder;
+        }),
+
+      setView: (view: 'list' | 'grid' | 'details') =>
+        set((state) => {
+          state.view = view;
+        }),
+
+      setShowInstallationWizard: (show: boolean) =>
+        set((state) => {
+          state.showInstallationWizard = show;
+        }),
+
+      setShowMarketplace: (show: boolean) =>
+        set((state) => {
+          state.showMarketplace = show;
+        }),
+
+      // ───────── Error handling
+      setError: (key: string, error: string | null) =>
+        set((state) => {
+          if (error) state.errors[key] = error;
+          else delete state.errors[key];
+        }),
+
+      clearErrors: () =>
+        set((state) => {
+          state.errors = {
+            plugins: null,
+            installation: null,
+            marketplace: null,
+          } as typeof state.errors;
+        }),
     }))
   )
 );
 
+// ────────────────────────────────────────────────────────────────────────────────
 // Selectors
+// ────────────────────────────────────────────────────────────────────────────────
 export const selectPlugins = (state: PluginStore) => state.plugins;
 export const selectSelectedPlugin = (state: PluginStore) => state.selectedPlugin;
-export const selectPluginLoading = (key: string) => (state: PluginStore) => state.loading[key] || false;
-export const selectPluginError = (key: string) => (state: PluginStore) => state.errors[key] || null;
+export const selectPluginLoading =
+  (key: string) =>
+  (state: PluginStore) =>
+    (state.loading as Record<string, boolean>)[key] ?? false;
+export const selectPluginError =
+  (key: string) =>
+  (state: PluginStore) =>
+    (state.errors as Record<string, string | null>)[key] ?? null;
 export const selectMarketplacePlugins = (state: PluginStore) => state.marketplacePlugins;
-export const selectInstallationProgress = (id: string) => (state: PluginStore) => state.installations[id];
+export const selectInstallationProgress =
+  (id: string) =>
+  (state: PluginStore) =>
+    state.installations[id];
 
-// Filtered and sorted plugins selector
+// Filtered & sorted (no state mutation)
 export const selectFilteredPlugins = (state: PluginStore) => {
   let filtered = state.plugins;
-  
-  // Apply search query
+
+  // Search
   if (state.searchQuery) {
-    const query = state.searchQuery.toLowerCase();
-    filtered = filtered.filter(plugin =>
-      plugin.name.toLowerCase().includes(query) ||
-      plugin.manifest.description.toLowerCase().includes(query) ||
-      plugin.manifest.keywords.some(keyword => keyword.toLowerCase().includes(query))
+    const q = state.searchQuery.toLowerCase();
+    filtered = filtered.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.manifest.description.toLowerCase().includes(q) ||
+        p.manifest.keywords.some((k) => k.toLowerCase().includes(q))
     );
   }
-  
-  // Apply filters
+
+  // Filters
   if (state.filters.status?.length) {
-    filtered = filtered.filter(plugin => state.filters.status!.includes(plugin.status));
+    filtered = filtered.filter((p) => state.filters.status!.includes(p.status));
   }
-  
   if (state.filters.category?.length) {
-    filtered = filtered.filter(plugin => state.filters.category!.includes(plugin.manifest.category));
+    filtered = filtered.filter((p) =>
+      state.filters.category!.includes(p.manifest.category)
+    );
   }
-  
   if (state.filters.enabled !== undefined) {
-    filtered = filtered.filter(plugin => plugin.enabled === state.filters.enabled);
+    filtered = filtered.filter((p) => p.enabled === state.filters.enabled);
   }
-  
   if (state.filters.hasErrors) {
-    filtered = filtered.filter(plugin => !!plugin.lastError);
+    filtered = filtered.filter((p) => !!p.lastError);
   }
-  
-  // Apply sorting
-  filtered.sort((a, b) => {
-    let aValue: any, bValue: any;
-    
+
+  // Sort (copy to avoid mutating state)
+  const sorted = [...filtered].sort((a, b) => {
+    let aValue: any;
+    let bValue: any;
+
     switch (state.sortBy) {
       case 'name':
         aValue = a.name.toLowerCase();
@@ -655,8 +709,8 @@ export const selectFilteredPlugins = (state: PluginStore) => {
         bValue = b.version;
         break;
       case 'installedAt':
-        aValue = a.installedAt.getTime();
-        bValue = b.installedAt.getTime();
+        aValue = a.installedAt?.getTime() ?? 0;
+        bValue = b.installedAt?.getTime() ?? 0;
         break;
       case 'performance':
         aValue = a.metrics.performance.averageExecutionTime;
@@ -665,10 +719,11 @@ export const selectFilteredPlugins = (state: PluginStore) => {
       default:
         return 0;
     }
-    
+
     if (aValue < bValue) return state.sortOrder === 'asc' ? -1 : 1;
     if (aValue > bValue) return state.sortOrder === 'asc' ? 1 : -1;
     return 0;
+  });
 
-  return filtered;
+  return sorted;
 };

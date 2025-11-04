@@ -178,6 +178,7 @@ class HealthMonitor {
       // Check main health endpoint first
       await this.checkEndpoint('/health', async (_signal) => {
         return await backend.healthCheck();
+      });
 
       // Only check other endpoints if health check passes and we're not rate limited
       const healthEndpoint = this.metrics.endpoints['/health'];
@@ -187,12 +188,14 @@ class HealthMonitor {
         if (this.metrics.totalRequests % 2 === 0) {
           await this.checkEndpointSafely('/api/plugins', async (_signal) => {
             return await backend.getAvailablePlugins();
+          });
 
         }
         // Only check analytics endpoint every third health check
         if (this.metrics.totalRequests % 3 === 0) {
           await this.checkEndpointSafely('/api/web/analytics/system', async (_signal) => {
             return await backend.getSystemMetrics();
+          });
 
         }
       }
@@ -258,6 +261,7 @@ class HealthMonitor {
           controller.abort();
           reject(new Error('Health check timeout'));
         }, webUIConfig.healthCheckTimeout);
+      });
 
       const result = await Promise.race([
         checkFunction(controller.signal),
@@ -372,6 +376,7 @@ class HealthMonitor {
         totalRequests: this.metrics.totalRequests,
         failedRequests: this.metrics.failedRequests,
       },
+    });
 
     // Notify alert listeners
     this.alertListeners.forEach(listener => {
@@ -379,6 +384,7 @@ class HealthMonitor {
         listener(alert);
       } catch (error) {
       }
+    });
 
   }
   /**
@@ -390,6 +396,7 @@ class HealthMonitor {
         listener(this.metrics);
       } catch (error) {
       }
+    });
 
   }
   /**

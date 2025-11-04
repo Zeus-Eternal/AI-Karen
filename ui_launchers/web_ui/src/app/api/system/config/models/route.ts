@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
 import { logger } from '@/lib/logger';
 
 const API_PATH = '/api/system/config/models';
-const REQUEST_TIMEOUT_MS = 15000;
+const REQUEST_TIMEOUT_MS = 15_000;
 const RETRYABLE_STATUS = new Set([500, 502, 503, 504]);
+
 const ALLOWED_FIELDS = [
   'defaultModel',
   'fallbackModel',
@@ -19,7 +19,6 @@ const ALLOWED_FIELDS = [
 ] as const;
 
 type AllowedField = (typeof ALLOWED_FIELDS)[number];
-
 type SanitizedPayload = Partial<Record<AllowedField, unknown>>;
 
 type BackendResult = {
@@ -38,44 +37,29 @@ function buildForwardHeaders(
 
   const authorization = request.headers.get('authorization');
   const cookie = request.headers.get('cookie');
-  const requestId = request.headers.get('x-request-id');
+  const requestId = request.headers.get('x-request-id') || request.headers.get('X-Request-ID');
 
-  if (authorization) {
-    headers.Authorization = authorization;
-  }
-
-  if (cookie) {
-    headers.Cookie = cookie;
-  }
-
-  if (requestId) {
-    headers['X-Request-ID'] = requestId;
-  }
+  if (authorization) headers.Authorization = authorization;
+  if (cookie) headers.Cookie = cookie;
+  if (requestId) headers['X-Request-ID'] = requestId;
 
   return headers;
 }
 
 function sanitizePayload(body: unknown): SanitizedPayload {
-  if (!body || typeof body !== 'object') {
-    return {};
-  }
+  if (!body || typeof body !== 'object') return {};
 
   const payload: SanitizedPayload = {};
 
   for (const field of ALLOWED_FIELDS) {
     const value = (body as Record<string, unknown>)[field];
 
-    if (value === undefined || value === null) {
-      continue;
-    }
+    if (value === undefined || value === null) continue;
 
     if (field === 'allowedProviders' && Array.isArray(value)) {
       const providers = value
-        .map((provider) =>
-          typeof provider === 'string' ? provider.trim() : String(provider),
-        )
-        .filter((provider) => provider.length > 0);
-
+        .map((p) => (typeof p === 'string' ? p.trim() : String(p)))
+        .filter((p) => p.length > 0);
       if (providers.length > 0) {
         payload.allowedProviders = Array.from(new Set(providers));
       }
@@ -83,9 +67,7 @@ function sanitizePayload(body: unknown): SanitizedPayload {
     }
 
     if (typeof value === 'number') {
-      if (Number.isFinite(value)) {
-        payload[field] = value;
-      }
+      if (Number.isFinite(value)) payload[field] = value;
       continue;
     }
 
@@ -96,12 +78,11 @@ function sanitizePayload(body: unknown): SanitizedPayload {
 
     if (typeof value === 'string') {
       const trimmed = value.trim();
-      if (trimmed) {
-        payload[field] = trimmed;
-      }
+      if (trimmed) payload[field] = trimmed;
       continue;
     }
 
+    // Fallback for unexpected structured values (kept but passed through)
     payload[field] = value;
   }
 
@@ -110,10 +91,7 @@ function sanitizePayload(body: unknown): SanitizedPayload {
 
 async function parseResponseBody(response: Response): Promise<unknown> {
   const raw = await response.text();
-
-  if (!raw) {
-    return {};
-  }
+  if (!raw) return {};
 
   try {
     return JSON.parse(raw);
@@ -121,7 +99,8 @@ async function parseResponseBody(response: Response): Promise<unknown> {
     logger.warn('Received non-JSON payload from system configuration API', {
       status: response.status,
       error: error instanceof Error ? error.message : String(error),
-
+      preview: raw.slice(0, 256),
+    });
     return { message: raw };
   }
 }
@@ -143,7 +122,7 @@ async function forwardToBackend(
       const response = await fetch(url, {
         ...init,
         signal: controller.signal,
-
+      });
       clearTimeout(timeout);
 
       if (RETRYABLE_STATUS.has(response.status)) {
@@ -157,21 +136,16 @@ async function forwardToBackend(
       clearTimeout(timeout);
       const message = error instanceof Error ? error.message : String(error);
       attempts.push({ url, error: message });
-      logger.warn('System configuration backend request failed', {
-        url,
-        message,
-
+      logger.warn('System configuration backend request failed', { url, message });
     }
   }
 
   if (lastResponse) {
-    logger.warn('All backend candidates returned server errors', {
-      attempts,
-
+    logger.warn('All backend candidates returned server errors', { attempts });
     return lastResponse;
   }
 
-  const failureDetails = attempts.map((attempt) => `${attempt.url}: ${attempt.error}`);
+  const failureDetails = attempts.map((a) => `${a.url}: ${a.error}`);
   throw new Error(
     failureDetails.length > 0
       ? `All backend candidates failed: ${failureDetails.join('; ')}`
@@ -184,23 +158,24 @@ export async function GET(request: NextRequest) {
     const { response, url } = await forwardToBackend(request, {
       method: 'GET',
       headers: buildForwardHeaders(request),
+    });
 
     const payload = await parseResponseBody(response);
 
     logger.info('System model configuration retrieved', {
       url,
       status: response.status,
+    });
 
     return NextResponse.json(payload ?? {}, {
       status: response.status,
       headers: {
         'Cache-Control': response.ok ? 'private, max-age=30' : 'no-store',
       },
-
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    logger.error('Unable to retrieve system configuration from backend', {
-      message,
+    logger.error('Unable to retrieve system configuration from backend', { message });
 
     return NextResponse.json(
       {
@@ -216,13 +191,12 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     let body: unknown = {};
-
     try {
       body = await request.json();
     } catch (error) {
       logger.warn('System configuration update received malformed JSON', {
         error: error instanceof Error ? error.message : String(error),
-
+      });
     }
 
     const payload = sanitizePayload(body);
@@ -233,19 +207,19 @@ export async function PUT(request: NextRequest) {
         'Content-Type': 'application/json',
       }),
       body: JSON.stringify(payload),
+    });
 
     const responseBody = await parseResponseBody(response);
 
     logger.info('System model configuration updated', {
       url,
       status: response.status,
+    });
 
     return NextResponse.json(responseBody ?? { success: response.ok }, {
       status: response.status,
-      headers: {
-        'Cache-Control': 'no-store',
-      },
-
+      headers: { 'Cache-Control': 'no-store' },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error('Failed to update system configuration', { message });

@@ -191,7 +191,7 @@ export const EnhancedBadge = React.forwardRef<HTMLDivElement, EnhancedBadgeProps
         )}
         
         {removable && (
-          <button
+          <Button
             type="button"
             className={cn(
               'flex-shrink-0 ml-1 rounded-full',
@@ -220,7 +220,7 @@ export const EnhancedBadge = React.forwardRef<HTMLDivElement, EnhancedBadgeProps
                 d="M6 18L18 6M6 6l12 12"
               />
             </svg>
-          </button>
+          </Button>
         )}
       </div>
     );

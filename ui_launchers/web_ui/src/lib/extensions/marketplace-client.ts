@@ -1,27 +1,31 @@
+// apps/web/src/services/extensions/marketplace-client.ts
 /**
- * Extension Marketplace Client
- * 
- * This module provides a client for interacting with the extension marketplace API.
+ * Extension Marketplace Client (production-grade)
+ * - Strict typing, safe URL building, predictable formatting
+ * - Null-safe helpers, robust polling, semver-aware utils
+ * - No diffs. Paste and ship.
  */
 
-import { ApiClient } from '../api-client';
+import { ApiClient } from "../api-client";
+
+/** ---------- Types from marketplace domain ---------- */
 
 export interface ExtensionListing {
   id?: number;
-  name: string;
-  display_name: string;
+  name: string;            // machine name / slug
+  display_name: string;    // human title
   description: string;
   author: string;
   category: string;
   tags: string[];
-  status: 'pending' | 'approved' | 'rejected' | 'deprecated' | 'suspended';
-  price: string;
+  status: "pending" | "approved" | "rejected" | "deprecated" | "suspended";
+  price: string;           // "free" | "$9.99" | "9.99"
   license: string;
   support_url?: string;
   documentation_url?: string;
   repository_url?: string;
   download_count: number;
-  rating_average: number;
+  rating_average: number;  // 0..5
   rating_count: number;
   created_at?: string;
   updated_at?: string;
@@ -31,14 +35,14 @@ export interface ExtensionListing {
 
 export interface ExtensionVersion {
   id?: number;
-  version: string;
+  version: string;   // semver preferred
   manifest: Record<string, any>;
   changelog?: string;
   is_stable: boolean;
   min_kari_version?: string;
   max_kari_version?: string;
   package_url?: string;
-  package_size?: number;
+  package_size?: number;   // bytes
   package_hash?: string;
   created_at?: string;
   published_at?: string;
@@ -46,7 +50,7 @@ export interface ExtensionVersion {
 }
 
 export interface ExtensionDependency {
-  dependency_type: 'extension' | 'plugin' | 'system_service';
+  dependency_type: "extension" | "plugin" | "system_service";
   dependency_name: string;
   version_constraint?: string;
   is_optional: boolean;
@@ -58,7 +62,13 @@ export interface ExtensionInstallation {
   version_id: number;
   tenant_id: string;
   user_id: string;
-  status: 'pending' | 'installing' | 'installed' | 'failed' | 'updating' | 'uninstalling';
+  status:
+    | "pending"
+    | "installing"
+    | "installed"
+    | "failed"
+    | "updating"
+    | "uninstalling";
   error_message?: string;
   config: Record<string, any>;
   installed_at?: string;
@@ -69,11 +79,11 @@ export interface ExtensionSearchRequest {
   query?: string;
   category?: string;
   tags?: string[];
-  price_filter?: 'free' | 'paid' | 'all';
-  sort_by?: 'popularity' | 'rating' | 'newest' | 'name';
-  sort_order?: 'asc' | 'desc';
-  page?: number;
-  page_size?: number;
+  price_filter?: "free" | "paid" | "all";
+  sort_by?: "popularity" | "rating" | "newest" | "name";
+  sort_order?: "asc" | "desc";
+  page?: number;       // 1-based
+  page_size?: number;  // default server-side
 }
 
 export interface ExtensionSearchResponse {
@@ -85,8 +95,8 @@ export interface ExtensionSearchResponse {
 }
 
 export interface ExtensionInstallRequest {
-  extension_name: string;
-  version?: string;
+  extension_name: string;       // slug
+  version?: string;             // semver
   config?: Record<string, any>;
 }
 
@@ -98,8 +108,49 @@ export interface ExtensionInstallResponse {
 
 export interface ExtensionUpdateRequest {
   extension_name: string;
-  target_version?: string;
+  target_version?: string;      // semver
 }
+
+/** ---------- Safe helpers ---------- */
+
+const safeStr = (v: unknown) => (typeof v === "string" ? v : "");
+const isFiniteNumber = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+
+function buildQuery(params: Record<string, string | number | boolean | string[] | undefined>) {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    if (Array.isArray(v)) v.forEach((item) => q.append(k, String(item)));
+    else q.append(k, String(v));
+  });
+  return q.toString();
+}
+
+/** Semver compare returns -1/0/1; falls back to string compare if not semver */
+function semverCompare(a: string, b: string) {
+  const parse = (v: string) => {
+    const m = v.trim().match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/);
+    if (!m) return { major: NaN, minor: NaN, patch: NaN, pre: "" };
+    return { major: +m[1], minor: +m[2], patch: +m[3], pre: m[4] ?? "" };
+  };
+  const A = parse(a);
+  const B = parse(b);
+  if ([A.major, A.minor, A.patch, B.major, B.minor, B.patch].some(Number.isNaN)) {
+    return a.localeCompare(b);
+  }
+  if (A.major !== B.major) return A.major < B.major ? -1 : 1;
+  if (A.minor !== B.minor) return A.minor < B.minor ? -1 : 1;
+  if (A.patch !== B.patch) return A.patch < B.patch ? -1 : 1;
+  if (A.pre === B.pre) return 0;
+  if (A.pre === "") return 1;      // stable > pre
+  if (B.pre === "") return -1;
+  return A.pre.localeCompare(B.pre);
+}
+
+/** Compact numbers: 1.2K, 3.4M */
+const fmtCompact = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 });
+
+/** ---------- Client ---------- */
 
 export class ExtensionMarketplaceClient {
   private apiClient: ApiClient;
@@ -108,103 +159,86 @@ export class ExtensionMarketplaceClient {
     this.apiClient = apiClient;
   }
 
-  /**
-   * Search for extensions in the marketplace
-   */
+  /** Search for extensions in the marketplace */
   async searchExtensions(request: ExtensionSearchRequest): Promise<ExtensionSearchResponse> {
-    const params = new URLSearchParams();
-    
-    if (request.query) params.append('query', request.query);
-    if (request.category) params.append('category', request.category);
-    if (request.tags) request.tags.forEach(tag => params.append('tags', tag));
-    if (request.price_filter) params.append('price_filter', request.price_filter);
-    if (request.sort_by) params.append('sort_by', request.sort_by);
-    if (request.sort_order) params.append('sort_order', request.sort_order);
-    if (request.page) params.append('page', request.page.toString());
-    if (request.page_size) params.append('page_size', request.page_size.toString());
-
-    return this.apiClient.get(`/api/extensions/marketplace/search?${params.toString()}`);
+    // Default page to 1 if caller passed 0 or undefined
+    const page = request.page && request.page > 0 ? request.page : 1;
+    const qs = buildQuery({
+      query: request.query,
+      category: request.category,
+      tags: request.tags,
+      price_filter: request.price_filter,
+      sort_by: request.sort_by,
+      sort_order: request.sort_order,
+      page,
+      page_size: request.page_size,
+    });
+    return this.apiClient.get(`/api/extensions/marketplace/search?${qs}`);
   }
 
-  /**
-   * Get detailed information about a specific extension
-   */
+  /** Get detailed information about a specific extension (by slug / name) */
   async getExtensionDetails(extensionName: string): Promise<ExtensionListing> {
-    return this.apiClient.get(`/api/extensions/marketplace/extensions/${extensionName}`);
+    const name = encodeURIComponent(extensionName);
+    return this.apiClient.get(`/api/extensions/marketplace/extensions/${name}`);
   }
 
-  /**
-   * Get all versions of an extension
-   */
+  /** Get all versions of an extension */
   async getExtensionVersions(extensionName: string): Promise<ExtensionVersion[]> {
-    return this.apiClient.get(`/api/extensions/marketplace/extensions/${extensionName}/versions`);
+    const name = encodeURIComponent(extensionName);
+    return this.apiClient.get(`/api/extensions/marketplace/extensions/${name}/versions`);
   }
 
-  /**
-   * Install an extension
-   */
+  /** Install an extension */
   async installExtension(request: ExtensionInstallRequest): Promise<ExtensionInstallResponse> {
-    return this.apiClient.post('/api/extensions/marketplace/install', request);
+    return this.apiClient.post("/api/extensions/marketplace/install", request);
   }
 
-  /**
-   * Update an installed extension
-   */
+  /** Update an installed extension */
   async updateExtension(request: ExtensionUpdateRequest): Promise<ExtensionInstallResponse> {
-    return this.apiClient.post('/api/extensions/marketplace/update', request);
+    return this.apiClient.post("/api/extensions/marketplace/update", request);
   }
 
-  /**
-   * Uninstall an extension
-   */
+  /** Uninstall an extension */
   async uninstallExtension(extensionName: string): Promise<ExtensionInstallResponse> {
-    return this.apiClient.delete(`/api/extensions/marketplace/uninstall/${extensionName}`);
+    const name = encodeURIComponent(extensionName);
+    return this.apiClient.delete(`/api/extensions/marketplace/uninstall/${name}`);
   }
 
-  /**
-   * Get the status of an installation
-   */
+  /** Get the status of an installation */
   async getInstallationStatus(installationId: number): Promise<ExtensionInstallation> {
     return this.apiClient.get(`/api/extensions/marketplace/installations/${installationId}`);
   }
 
-  /**
-   * Get all installed extensions for the current tenant
-   */
+  /** Get all installed extensions for the current tenant */
   async getInstalledExtensions(): Promise<ExtensionInstallation[]> {
-    return this.apiClient.get('/api/extensions/marketplace/installed');
+    return this.apiClient.get("/api/extensions/marketplace/installed");
   }
 
-  /**
-   * Get available extension categories
-   */
+  /** Get available extension categories */
   async getExtensionCategories(): Promise<string[]> {
-    return this.apiClient.get('/api/extensions/marketplace/categories');
+    return this.apiClient.get("/api/extensions/marketplace/categories");
   }
 
-  /**
-   * Get featured extensions
-   */
+  /** Get featured extensions */
   async getFeaturedExtensions(limit: number = 10): Promise<ExtensionListing[]> {
-    return this.apiClient.get(`/api/extensions/marketplace/featured?limit=${limit}`);
+    return this.apiClient.get(`/api/extensions/marketplace/featured?${buildQuery({ limit })}`);
   }
 
-  /**
-   * Get popular extensions
-   */
+  /** Get popular extensions */
   async getPopularExtensions(limit: number = 10): Promise<ExtensionListing[]> {
-    return this.apiClient.get(`/api/extensions/marketplace/popular?limit=${limit}`);
+    return this.apiClient.get(`/api/extensions/marketplace/popular?${buildQuery({ limit })}`);
   }
 
-  /**
-   * Get recently published extensions
-   */
+  /** Get recently published extensions */
   async getRecentExtensions(limit: number = 10): Promise<ExtensionListing[]> {
-    return this.apiClient.get(`/api/extensions/marketplace/recent?limit=${limit}`);
+    return this.apiClient.get(`/api/extensions/marketplace/recent?${buildQuery({ limit })}`);
   }
 
   /**
-   * Poll installation status until completion
+   * Poll installation status until completion.
+   * - Calls onProgress(status) each attempt
+   * - Stops on "installed" | "failed"
+   * - Throws on timeout
    */
   async pollInstallationStatus(
     installationId: number,
@@ -213,158 +247,121 @@ export class ExtensionMarketplaceClient {
     intervalMs: number = 2000
   ): Promise<ExtensionInstallation> {
     let attempts = 0;
-    
     while (attempts < maxAttempts) {
       const status = await this.getInstallationStatus(installationId);
-      
-      if (onProgress) {
-        onProgress(status);
-      }
-      
-      // Check if installation is complete
-      if (['installed', 'failed'].includes(status.status)) {
+      onProgress?.(status);
+      if (status.status === "installed" || status.status === "failed") {
         return status;
       }
-      
-      // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, intervalMs));
+      await new Promise((r) => setTimeout(r, intervalMs));
       attempts++;
     }
-    
-    throw new Error('Installation status polling timed out');
+    throw new Error("Installation status polling timed out");
   }
 
-  /**
-   * Get extension icon URL
-   */
+  /** ---------- Presentation helpers (safe for UI binding) ---------- */
+
+  /** Get extension icon URL (server-served asset) */
   getExtensionIconUrl(extensionName: string): string {
-    return `/api/extensions/marketplace/extensions/${extensionName}/icon`;
+    return `/api/extensions/marketplace/extensions/${encodeURIComponent(extensionName)}/icon`;
   }
 
-  /**
-   * Get extension screenshot URLs
-   */
+  /** Get extension screenshot URLs (server-served assets) */
   getExtensionScreenshotUrls(extensionName: string, screenshots: string[]): string[] {
-    return screenshots.map(screenshot => 
-      `/api/extensions/marketplace/extensions/${extensionName}/screenshots/${screenshot}`
-    );
+    const base = `/api/extensions/marketplace/extensions/${encodeURIComponent(extensionName)}/screenshots`;
+    return (screenshots ?? []).map((s) => `${base}/${encodeURIComponent(s)}`);
   }
 
-  /**
-   * Format extension price for display
-   */
+  /** Format extension price for display */
   formatPrice(price: string): string {
-    if (price === 'free') {
-      return 'Free';
-    }
-    
-    // Handle currency formatting
-    if (price.startsWith('$')) {
-      return price;
-    }
-    
+    const p = safeStr(price).trim().toLowerCase();
+    if (!p) return "Free";
+    if (p === "free") return "Free";
+    if (p.startsWith("$")) return price;        // already formatted USD
+    // naive currency; upgrade to Intl.NumberFormat if multi-currency is needed
     return `$${price}`;
   }
 
-  /**
-   * Format download count for display
-   */
+  /** Format download count (1.2K, 3.4M, etc.) */
   formatDownloadCount(count: number): string {
-    if (count < 1000) {
-      return count.toString();
-    } else if (count < 1000000) {
-      return `${(count / 1000).toFixed(1)}K`;
-    } else {
-      return `${(count / 1000000).toFixed(1)}M`;
-    }
+    return isFiniteNumber(count) ? fmtCompact.format(count) : "0";
   }
 
-  /**
-   * Format rating for display
-   */
+  /** Format rating like "4.7 (23 ratings)" / "No ratings" */
   formatRating(average: number, count: number): string {
-    if (count === 0) {
-      return 'No ratings';
-    }
-    
-    return `${average.toFixed(1)} (${count} ${count === 1 ? 'rating' : 'ratings'})`;
+    if (!isFiniteNumber(count) || count <= 0) return "No ratings";
+    const avg = isFiniteNumber(average) ? average : 0;
+    return `${avg.toFixed(1)} (${count} ${count === 1 ? "rating" : "ratings"})`;
   }
 
-  /**
-   * Get extension status color
-   */
+  /** Map installation status to Tailwind-friendly color label */
   getStatusColor(status: string): string {
     switch (status) {
-      case 'installed':
-        return 'green';
-      case 'installing':
-      case 'updating':
-        return 'blue';
-      case 'failed':
-        return 'red';
-      case 'pending':
-        return 'yellow';
-      case 'uninstalling':
-        return 'orange';
+      case "installed":
+        return "green";
+      case "installing":
+      case "updating":
+        return "blue";
+      case "failed":
+        return "red";
+      case "pending":
+        return "yellow";
+      case "uninstalling":
+        return "orange";
       default:
-        return 'gray';
+        return "gray";
     }
   }
 
-  /**
-   * Get extension status icon
-   */
+  /** Emoji icon (keep UI lightweight; replace with proper icons as needed) */
   getStatusIcon(status: string): string {
     switch (status) {
-      case 'installed':
-        return '✅';
-      case 'installing':
-      case 'updating':
-        return '⏳';
-      case 'failed':
-        return '❌';
-      case 'pending':
-        return '⏸️';
-      case 'uninstalling':
-        return '🗑️';
+      case "installed":
+        return "✅";
+      case "installing":
+      case "updating":
+        return "⏳";
+      case "failed":
+        return "❌";
+      case "pending":
+        return "⏸️";
+      case "uninstalling":
+        return "🗑️";
       default:
-        return '❓';
+        return "❓";
     }
   }
 
   /**
-   * Check if extension can be updated
+   * Check if an installation can be updated against a latest semver.
+   * NOTE: We only have version_id here; call `getExtensionVersions(name)` externally
+   *       to resolve the current version string if you need strict checking.
+   *       This helper falls back to true when in doubt to allow UI affordance,
+   *       while leaving the backend as the source of truth.
    */
-  canUpdate(installation: ExtensionInstallation, latestVersion: string): boolean {
-    if (installation.status !== 'installed') {
-      return false;
-    }
-    
-    // Find current version
-    const currentVersion = installation.version_id; // This would need to be resolved to actual version string
-    
-    // For now, assume any different version can be updated
-    return true;
+  canUpdate(_installation: ExtensionInstallation, _latestVersion: string): boolean {
+    // Without the current version string, we can only allow the action
+    // and let the server validate (idempotent).
+    return _installation.status === "installed";
   }
 
-  /**
-   * Check if extension can be uninstalled
-   */
+  /** Whether the extension can be uninstalled in this state */
   canUninstall(installation: ExtensionInstallation): boolean {
-    return ['installed', 'failed'].includes(installation.status);
+    return ["installed", "failed"].includes(installation.status);
   }
 
-  /**
-   * Validate extension name format
-   */
+  /** Validate slug-friendly extension name (lowercase, digits, _, -) */
   isValidExtensionName(name: string): boolean {
     return /^[a-z0-9_-]+$/.test(name);
   }
 
-  /**
-   * Generate extension slug from name
-   */
+  /** Generate URL/slug-safe identifier from a human name */
   generateSlug(name: string): string {
-    return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    return safeStr(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  /** Compare two semver strings; returns -1/0/1 */
+  compareVersions(a: string, b: string): number {
+    return semverCompare(safeStr(a), safeStr(b));
   }
 }

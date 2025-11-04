@@ -1,91 +1,103 @@
+// app/api/health/degraded-mode/recover/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { withBackendPath } from '@/app/api/_utils/backend';
-const HEALTH_TIMEOUT_MS = 10000; // Longer timeout for recovery operations
-export async function POST(request: NextRequest) {
-  try {
-    // Forward the request to the backend degraded-mode recovery endpoint
-    const url = withBackendPath('/api/health/degraded-mode/recover');
-    // Get request body if present
-    let body: any = null;
-    try {
-      const contentType = request.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        body = await request.json();
-      }
-    } catch {
-      // No body or invalid JSON, continue without body
-    }
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Connection': 'keep-alive',
-          // Forward auth headers if present
-          ...(request.headers.get('authorization') && {
-            'Authorization': request.headers.get('authorization')!
-          }),
-        },
-        ...(body && { body: JSON.stringify(body) }),
-        signal: controller.signal,
-        // @ts-ignore Node/undici hints
-        keepalive: true,
-        cache: 'no-store',
 
-      clearTimeout(timeout);
-      const contentType = response.headers.get('content-type') || '';
-      let data: any = {};
-      if (contentType.includes('application/json')) {
-        try { 
-          data = await response.json(); 
-        } catch { 
-          data = { status: 'unknown' }; 
-        }
-      } else {
-        try { 
-          const text = await response.text(); 
-          data = { status: text || 'ok', message: 'Recovery initiated' };
-        } catch { 
-          data = { status: 'unknown' }; 
-        }
-      }
-      return NextResponse.json(data, { status: response.status });
-    } catch (err: any) {
-      clearTimeout(timeout);
-      // Return error response
-      return NextResponse.json(
-        { 
-          status: 'error', 
-          error: 'Backend unreachable for recovery',
-          message: 'Could not connect to backend to initiate recovery',
-          timestamp: new Date().toISOString()
-        }, 
-        { status: 503 }
-      );
+const HEALTH_TIMEOUT_MS = 10_000;
+
+/** Build upstream headers (auth/cookies/correlation), minimal & explicit */
+function buildForwardHeaders(req: NextRequest): Headers {
+  const h = new Headers({
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  });
+
+  const auth = req.headers.get('authorization');
+  if (auth) h.set('Authorization', auth);
+
+  const cookie = req.headers.get('cookie');
+  if (cookie) h.set('Cookie', cookie);
+
+  const reqId = req.headers.get('x-request-id');
+  if (reqId) h.set('X-Request-ID', reqId);
+
+  const corrId = req.headers.get('x-correlation-id');
+  if (corrId) h.set('X-Correlation-ID', corrId);
+
+  return h;
+}
+
+export async function POST(request: NextRequest) {
+  const upstreamUrl = withBackendPath('/api/health/degraded-mode/recover');
+
+  // Parse JSON body if present; ignore malformed JSON gracefully
+  let body: unknown = undefined;
+  try {
+    const ct = (request.headers.get('content-type') || '').toLowerCase();
+    if (ct.includes('application/json')) {
+      body = await request.json();
     }
-  } catch (error) {
-    return NextResponse.json(
-      { 
-        status: 'error', 
-        error: 'Recovery failed',
-        message: 'Internal server error during recovery operation',
-        timestamp: new Date().toISOString()
+  } catch {
+    // ignore bad JSON
+  }
+
+  try {
+    const response = await fetch(upstreamUrl, {
+      method: 'POST',
+      headers: buildForwardHeaders(request),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
+      cache: 'no-store',
+    });
+
+    const ct = (response.headers.get('content-type') || '').toLowerCase();
+    let data: any;
+
+    if (ct.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch {
+        data = { status: 'unknown', message: 'Invalid JSON from upstream' };
+      }
+    } else {
+      try {
+        const text = (await response.text()).trim();
+        data = { status: text || 'ok', message: 'Recovery initiated' };
+      } catch {
+        data = { status: 'unknown' };
+      }
+    }
+
+    return NextResponse.json(data, {
+      status: response.status,
+      headers: {
+        'Cache-Control': 'no-store',
+        'X-Proxy-Upstream-Status': String(response.status),
       },
-      { status: 500 }
+    });
+  } catch {
+    return NextResponse.json(
+      {
+        status: 'error',
+        error: 'Backend unreachable for recovery',
+        message: 'Could not connect to backend to initiate recovery',
+        timestamp: new Date().toISOString(),
+      },
+      { status: 503 }
     );
   }
 }
-// Also support GET method to check recovery status
-export async function GET(request: NextRequest) {
+
+// Informative GET; advertise allowed method
+export async function GET(_request: NextRequest) {
   return NextResponse.json(
-    { 
+    {
       status: 'info',
-      message: 'Degraded mode recovery endpoint - use POST method to initiate recovery',
-      timestamp: new Date().toISOString()
+      message: 'Degraded mode recovery endpoint. Use POST to initiate recovery.',
+      timestamp: new Date().toISOString(),
     },
-    { status: 405 }
+    {
+      status: 405,
+      headers: { Allow: 'POST', 'Cache-Control': 'no-store' },
+    }
   );
 }

@@ -190,7 +190,7 @@ export default function SystemConfigurationPanel() {
            >
             <RotateCcw className="mr-2 h-4 w-4 " />
           </Button>
-          <button
+          <Button
             onClick={handleSaveConfiguration}
             disabled={!hasChanges || saving}
            aria-label="Button">

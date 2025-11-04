@@ -606,7 +606,7 @@ export default function ImageGenerationControls({
               </Button>
             </div>
 
-            <button
+            <Button
               onClick={handleGenerate}
               disabled={!params.prompt.trim() || isGenerating}
               size="lg"

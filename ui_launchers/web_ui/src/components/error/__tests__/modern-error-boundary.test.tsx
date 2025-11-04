@@ -155,7 +155,7 @@ describe('ModernErrorBoundary', () => {
       <div>
         <div>Custom fallback</div>
         <div>Error: {error.message}</div>
-        <button onClick={retry} aria-label="Button">Custom retry</button>
+        <Button onClick={retry} aria-label="Button">Custom retry</Button>
       </div>
     );
 

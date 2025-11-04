@@ -16,8 +16,8 @@ import { PluginInfo, PluginConfigField } from '@/types/plugins';
 vi.mock('../DynamicPluginConfigForm', () => ({
   DynamicPluginConfigForm: ({ onSave, onValidate }: any) => (
     <div data-testid="dynamic-config-form">
-      <button onClick={() => onSave({ testConfig: 'value' })}>Save Config</button>
-      <button onClick={() => onValidate({ testConfig: 'value' })}>Validate Config</button>
+      <Button onClick={() => onSave({ testConfig: 'value' })}>Save Config</Button>
+      <Button onClick={() => onValidate({ testConfig: 'value' })}>Validate Config</Button>
     </div>
   ),
 }));
@@ -25,9 +25,9 @@ vi.mock('../DynamicPluginConfigForm', () => ({
 vi.mock('../PluginSecurityManager', () => ({
   PluginSecurityManager: ({ onUpdateSecurity, onGrantPermission, onRevokePermission }: any) => (
     <div data-testid="security-manager">
-      <button onClick={() => onUpdateSecurity({ sandboxed: true })}>Update Security</button>
-      <button onClick={() => onGrantPermission('test-permission')}>Grant Permission</button>
-      <button onClick={() => onRevokePermission('test-permission')}>Revoke Permission</button>
+      <Button onClick={() => onUpdateSecurity({ sandboxed: true })}>Update Security</Button>
+      <Button onClick={() => onGrantPermission('test-permission')}>Grant Permission</Button>
+      <Button onClick={() => onRevokePermission('test-permission')}>Revoke Permission</Button>
     </div>
   ),
 }));
@@ -35,8 +35,8 @@ vi.mock('../PluginSecurityManager', () => ({
 vi.mock('../PluginAuditLogger', () => ({
   PluginAuditLogger: ({ onExportAuditLog, onGenerateReport }: any) => (
     <div data-testid="audit-logger">
-      <button onClick={() => onExportAuditLog('csv')}>Export Audit</button>
-      <button onClick={() => onGenerateReport('security')}>Generate Report</button>
+      <Button onClick={() => onExportAuditLog('csv')}>Export Audit</Button>
+      <Button onClick={() => onGenerateReport('security')}>Generate Report</Button>
     </div>
   ),
 }));
@@ -44,8 +44,8 @@ vi.mock('../PluginAuditLogger', () => ({
 vi.mock('../EnhancedPluginMarketplace', () => ({
   EnhancedPluginMarketplace: ({ onClose, onInstall }: any) => (
     <div data-testid="marketplace">
-      <button onClick={() => onInstall({ id: 'test-plugin' })}>Install Plugin</button>
-      <button onClick={onClose} aria-label="Button">Close Marketplace</button>
+      <Button onClick={() => onInstall({ id: 'test-plugin' })}>Install Plugin</Button>
+      <Button onClick={onClose} aria-label="Button">Close Marketplace</Button>
     </div>
   ),
 }));

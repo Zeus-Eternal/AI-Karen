@@ -158,11 +158,11 @@ export function UserEditModal({ user, onClose, onUserUpdated }: UserEditModalPro
             <p className="text-sm text-gray-500 mt-2 md:text-base lg:text-lg">
               You do not have permission to edit this user.
             </p>
-            <button
+            <Button
               onClick={onClose}
               className="mt-4 px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300"
              aria-label="Button">
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -173,14 +173,14 @@ export function UserEditModal({ user, onClose, onUserUpdated }: UserEditModalPro
       <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white ">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-900">Edit User</h3>
-          <button
+          <Button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
            aria-label="Button">
             <svg className="h-6 w-6 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-          </button>
+          </Button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* General Error */}
@@ -301,45 +301,45 @@ export function UserEditModal({ user, onClose, onUserUpdated }: UserEditModalPro
           <div className="border-t border-gray-200 pt-4">
             <h4 className="text-sm font-medium text-gray-900 mb-2 md:text-base lg:text-lg">Password Management</h4>
             {!showPasswordReset ? (
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowPasswordReset(true)}
                 className="text-sm text-blue-600 hover:text-blue-800 md:text-base lg:text-lg"
               >
-              </button>
+              </Button>
             ) : (
               <div className="bg-yellow-50 p-3 rounded-md sm:p-4 md:p-6">
                 <p className="text-sm text-yellow-800 mb-2 md:text-base lg:text-lg">
                   This will send a password reset email to {user.email}. The user will be able to set a new password using the link in the email.
                 </p>
                 <div className="flex space-x-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={handlePasswordReset}
                     disabled={loading}
                     className="text-sm bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700 disabled:opacity-50 md:text-base lg:text-lg"
                    aria-label="Button">
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={() => setShowPasswordReset(false)}
                     className="text-sm text-gray-600 hover:text-gray-800 md:text-base lg:text-lg"
                   >
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
           </div>
           {/* Form Actions */}
           <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-            <button
+            <Button
               type="button"
               onClick={onClose}
               disabled={loading}
               className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
              aria-label="Button">
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={loading}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
@@ -355,7 +355,7 @@ export function UserEditModal({ user, onClose, onUserUpdated }: UserEditModalPro
               ) : (
                 'Update User'
               )}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

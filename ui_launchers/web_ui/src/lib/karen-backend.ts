@@ -221,6 +221,7 @@ class KarenBackendService {
       logLevel: this.logLevel,
       fallbackUrls: webUIConfig.fallbackBackendUrls,
       windowLocation: typeof window !== 'undefined' ? window.location.href : 'server-side',
+    });
 
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.replayOfflineQueue);
@@ -288,6 +289,7 @@ class KarenBackendService {
             attempt: attempt + 1,
             maxRetries,
             httpStatus: response.status
+          });
 
         } else {
           authError = ExtensionAuthErrorFactory.createPermissionDeniedError({
@@ -295,6 +297,7 @@ class KarenBackendService {
             attempt: attempt + 1,
             maxRetries,
             httpStatus: response.status
+          });
 
         }
         // Attempt recovery using the recovery manager
@@ -313,6 +316,7 @@ class KarenBackendService {
           attempt: attempt + 1,
           maxRetries,
           originalError: recoveryError
+        });
 
         // Handle the recovery failure
         extensionAuthErrorHandler.handleError(recoveryFailureError);
@@ -323,6 +327,7 @@ class KarenBackendService {
       try {
         const meResp = await fetch(`${this.config.baseUrl}/api/auth/me`, {
           headers: await this.getAuthHeaders('/api/auth/me'),
+        });
 
         if (meResp.status === 401 && typeof window !== 'undefined') {
           window.location.assign('/login');
@@ -371,6 +376,7 @@ class KarenBackendService {
             endpoint,
             httpStatus: response.status,
             errorDetails
+          });
 
           break;
         case 403:
@@ -378,6 +384,7 @@ class KarenBackendService {
             endpoint,
             httpStatus: response.status,
             errorDetails
+          });
 
           break;
         case 503:
@@ -385,6 +392,7 @@ class KarenBackendService {
             endpoint,
             httpStatus: response.status,
             errorDetails
+          });
 
           break;
         default:
@@ -405,6 +413,7 @@ class KarenBackendService {
         logger.info(`Using fallback data for ${endpoint}:`, {
           strategy: recoveryResult.strategy,
           message: recoveryResult.message
+        });
 
         return recoveryResult.fallbackData;
       }
@@ -462,6 +471,7 @@ class KarenBackendService {
         method: interceptedOptions.method || 'GET',
         hasAuth: !!headers['Authorization'],
         correlationId: headers['X-Correlation-ID'],
+      });
 
     }
     return interceptedOptions;
@@ -535,6 +545,7 @@ class KarenBackendService {
         body: bodyLog,
         correlationId,
         timeoutMs: perRequestTimeout,
+      });
 
     }
     const performanceStart = this.performanceMonitoring ? performance.now() : 0;
@@ -573,7 +584,7 @@ class KarenBackendService {
             response = await fetch(primaryUrl, {
               ...interceptedOptions,
               signal: controller.signal,
-
+            });
             clearTimeout(timeoutId);
           } catch (fetchErr) {
             lastFetchError = fetchErr;
@@ -588,7 +599,7 @@ class KarenBackendService {
               response = await fetch(url, {
                 ...interceptedOptions,
                 signal: controller.signal,
-
+              });
               clearTimeout(timeoutId);
               if (response && response.ok) {
                 // If fallback succeeded, promote it to primary for future requests
@@ -676,7 +687,7 @@ class KarenBackendService {
                 const publicResp = await fetch(`${this.config.baseUrl}${publicEndpoint}`, {
                   ...interceptedOptions,
                   signal: controller.signal,
-
+                });
                 clearTimeout(timeoutId);
                 if (publicResp.ok) {
                   const ct = publicResp.headers.get('content-type') || '';
@@ -761,7 +772,7 @@ class KarenBackendService {
             dataSize: JSON.stringify(data).length,
             cached: useCache,
             correlationId,
-
+          });
         }
         // Cache successful responses
         if (useCache) {
@@ -769,7 +780,7 @@ class KarenBackendService {
             data,
             timestamp: Date.now(),
             ttl: cacheTtl,
-
+          });
         }
         this.failureCount = 0;
         this.circuitOpenUntil = 0;
@@ -951,7 +962,7 @@ class KarenBackendService {
         await this.makeRequest('/api/auth/me', {
           headers: { Authorization: `Bearer ${existingToken}` },
           signal: controller.signal
-
+        });
         clearTimeout(timeoutId);
         if (this.debugLogging) {
         }
@@ -969,7 +980,7 @@ class KarenBackendService {
       const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
       await this.makeRequest('/api/auth/validate-session', {
         signal: controller.signal
-
+      });
       clearTimeout(timeoutId);
       if (this.debugLogging) {
       }
@@ -1006,13 +1017,14 @@ class KarenBackendService {
         session_id: sid,
         metadata: metadata || {},
       };
-  logger.info('Storing memory with payload:', requestPayload);
+      logger.info('Storing memory with payload:', requestPayload);
       // Use the secure memory storage endpoint with proper authentication
       const response = await this.makeRequest<{ memory_id: string }>('/api/memory/commit', {
         method: 'POST',
         body: JSON.stringify(requestPayload),
+      });
 
-  logger.info('Memory store response:', response);
+      logger.info('Memory store response:', response);
       return response.memory_id;
     } catch (error) {
       if (error instanceof APIError) {
@@ -1026,7 +1038,7 @@ class KarenBackendService {
           return null;
         }
       }
-  logger.error('Failed to store memory:', error);
+      logger.error('Failed to store memory:', error);
       return null;
     }
   }
@@ -1049,7 +1061,7 @@ class KarenBackendService {
       const response = await this.makeRequest<{ memories: any[] }>('/api/memory/search', {
         method: 'POST',
         body: JSON.stringify(backendQuery),
-
+      });
       // Transform the response to match the expected format
       const memories = (response.memories || []).map(mem => ({
         id: mem.id,
@@ -1073,7 +1085,7 @@ class KarenBackendService {
           return this.getCachedMemories(query) || [];
         }
       }
-  logger.error('Failed to query memories:', error);
+      logger.error('Failed to query memories:', error);
       return [];
     }
   }
@@ -1096,7 +1108,7 @@ class KarenBackendService {
           return { total_memories: 0, last_updated: new Date().toISOString() };
         }
       }
-  logger.error('Failed to get memory stats:', error);
+      logger.error('Failed to get memory stats:', error);
       return {};
     }
   }
@@ -1113,6 +1125,7 @@ class KarenBackendService {
         data: response,
         timestamp: Date.now(),
         ttl: webUIConfig.cacheTtl,
+      });
 
       return response.plugins || [];
     } catch (error) {
@@ -1121,7 +1134,7 @@ class KarenBackendService {
           return cached.data.plugins || [];
         }
       }
-  logger.error('Failed to get available plugins:', error);
+      logger.error('Failed to get available plugins:', error);
       return [];
     }
   }
@@ -1138,7 +1151,7 @@ class KarenBackendService {
           parameters,
           user_id: userId,
         }),
-
+      });
     } catch (error) {
       let errorMessage = 'Unknown error';
       if (error instanceof APIError) {
@@ -1154,7 +1167,7 @@ class KarenBackendService {
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-  logger.error(`Failed to execute plugin ${pluginName}:`, error);
+      logger.error(`Failed to execute plugin ${pluginName}:`, error);
       return {
         success: false,
         error: errorMessage,
@@ -1286,11 +1299,12 @@ class KarenBackendService {
         // Continue processing without memory features rather than failing completely
       }
       // Log request for debugging
-  logger.info(`[${requestId}] Processing user message:`, {
+      logger.info(`[${requestId}] Processing user message:`, {
         message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
         userId,
         sessionId: sid,
         historyLength: conversationHistory.length,
+      });
 
       // First, query relevant memories
       const relevantMemories = await this.queryMemories({
@@ -1299,6 +1313,7 @@ class KarenBackendService {
         session_id: sid,
         top_k: 5,
         similarity_threshold: 0.7,
+      });
 
       // Use the secure AI orchestrator endpoint with proper authentication
       const startTime = Date.now();
@@ -1339,6 +1354,7 @@ class KarenBackendService {
             preferred_model: llmPreferences?.preferredModel || 'llama3.2:latest',
           },
         }),
+      });
 
       // Transform the AI orchestrator response to match the expected HandleUserMessageResult format
       const response: HandleUserMessageResult = {
@@ -1349,12 +1365,13 @@ class KarenBackendService {
       };
       const responseTime = Date.now() - startTime;
       // Log successful response for debugging
-  logger.info(`[${requestId}] Chat processing successful:`, {
+      logger.info(`[${requestId}] Chat processing successful:`, {
         responseTime: `${responseTime}ms`,
         responseLength: response.finalResponse?.length || 0,
         hasAiData: !!response.aiDataForFinalResponse,
         hasSuggestions: !!response.suggestedNewFacts,
         hasProactiveSuggestion: !!response.proactiveSuggestion,
+      });
 
       // Store the conversation in memory if successful
       if (response.finalResponse) {
@@ -1374,7 +1391,7 @@ class KarenBackendService {
       }
       return response;
     } catch (error) {
-  logger.error(`[${requestId}] Failed to process user message:`, error);
+      logger.error(`[${requestId}] Failed to process user message:`, error);
       // Handle different error types with specific fallback responses
       if (error instanceof APIError) {
         if (error.details?.type === 'CHAT_PROCESSING_ERROR') {
@@ -1439,7 +1456,7 @@ class KarenBackendService {
           return null;
         }
       }
-  logger.error('Failed to get user profile:', error);
+      logger.error('Failed to get user profile:', error);
       return null;
     }
   }
@@ -1451,7 +1468,7 @@ class KarenBackendService {
       await this.makeRequest(`/api/users/${encodeURIComponent(userId)}/preferences`, {
         method: 'PUT',
         body: JSON.stringify(preferences),
-
+      });
       return true;
     } catch (error) {
       if (error instanceof APIError) {
@@ -1461,7 +1478,7 @@ class KarenBackendService {
           return false;
         }
       }
-  logger.error('Failed to update user preferences:', error);
+      logger.error('Failed to update user preferences:', error);
       return false;
     }
   }
@@ -1471,15 +1488,15 @@ class KarenBackendService {
     return await this.makeRequest<LoginResult>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password })
-    })
+    });
   }
   async getCurrentUser(token: string): Promise<CurrentUser | null> {
     try {
       return await this.makeRequest<CurrentUser>('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` }
-      })
+      });
     } catch (error) {
-      return null
+      return null;
     }
   }
   async updateCredentials(
@@ -1580,7 +1597,8 @@ class KarenBackendService {
       return await this.makeRequest('/api/extensions/background-tasks/', {
         method: 'POST',
         body: JSON.stringify(taskData),
-
+        headers: { 'Content-Type': 'application/json' }
+      });
     } catch (error) {
       logger.error('Failed to register extension background task:', error);
       if (error instanceof APIError && error.status === 403) {
@@ -1596,6 +1614,7 @@ class KarenBackendService {
     try {
       return await this.makeRequest(`/api/extensions/${encodeURIComponent(extensionName)}/load`, {
         method: 'POST',
+      });
 
     } catch (error) {
       logger.error(`Failed to load extension ${extensionName}:`, error);
@@ -1612,6 +1631,7 @@ class KarenBackendService {
     try {
       return await this.makeRequest(`/api/extensions/${encodeURIComponent(extensionName)}/unload`, {
         method: 'POST',
+      });
 
     } catch (error) {
       logger.error(`Failed to unload extension ${extensionName}:`, error);
@@ -1809,7 +1829,4 @@ export function initializeKarenBackend(config?: Partial<BackendConfig>): KarenBa
   karenBackend = new KarenBackendService(config);
   return karenBackend;
 }
-// Export types (interfaces are already exported via export interface declarations)
-export type {
-};
 export { KarenBackendService, APIError };

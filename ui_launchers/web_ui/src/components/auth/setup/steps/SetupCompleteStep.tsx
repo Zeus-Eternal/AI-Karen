@@ -12,8 +12,8 @@ export function SetupCompleteStep({ onComplete, onPrevious }: SetupCompleteStepP
     <div>
       <h2>Setup Complete</h2>
       <p>Temporarily disabled for build</p>
-      <button onClick={onComplete}>Finish</button>
-      <button onClick={onPrevious}>Back</button>
+      <Button onClick={onComplete}>Finish</Button>
+      <Button onClick={onPrevious}>Back</Button>
     </div>
   );
 }

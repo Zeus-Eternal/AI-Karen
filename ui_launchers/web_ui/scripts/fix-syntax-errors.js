@@ -43,7 +43,7 @@ class SyntaxErrorFixer {
       content = content.replace(/\s*\/\s*aria-hidden="[^"]*">/g, ' />');
 
       // Fix button elements specifically
-      content = content.replace(/<button([^>]*)\s*\/\s*aria-label="[^"]*">/g, '<button$1 />');
+      content = content.replace(/<Button([^>]*)\s*\/\s*aria-label="[^"]*">/g, '<Button$1 />');
       content = content.replace(/<input([^>]*)\s*\/\s*aria-label="[^"]*">/g, '<input$1 />');
       content = content.replace(/<select([^>]*)\s*\/\s*aria-label="[^"]*">/g, '<select$1 />');
       content = content.replace(/<textarea([^>]*)\s*\/\s*aria-label="[^"]*">/g, '<textarea$1 />');

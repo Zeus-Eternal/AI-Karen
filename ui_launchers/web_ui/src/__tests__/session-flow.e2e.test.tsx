@@ -73,12 +73,12 @@ const TestComponent: React.FC = () => {
       <div data-testid="error-analysis">
         {error.currentAnalysis ? error.currentAnalysis.title : 'No Analysis'}
       </div>
-      <button data-testid="login-button" onClick={handleLogin}>
-      </button>
-      <button data-testid="api-call-button" onClick={handleApiCall}>
-      </button>
-      <button data-testid="logout-button" onClick={handleLogout}>
-      </button>
+      <Button data-testid="login-button" onClick={handleLogin}>
+      </Button>
+      <Button data-testid="api-call-button" onClick={handleApiCall}>
+      </Button>
+      <Button data-testid="logout-button" onClick={handleLogout}>
+      </Button>
       <div data-testid="global-errors">
         {error.globalErrors.length} global errors
       </div>

@@ -262,11 +262,11 @@ export function WorkflowValidationDisplay({
             )}
           </div>
           {onFixError && (
-            <button
+            <Button
               onClick={() => onFixError(error.id)}
               className="text-red-600 hover:text-red-800 text-xs underline sm:text-sm md:text-base"
             >
-            </button>
+            </Button>
           )}
         </div>
       ))}

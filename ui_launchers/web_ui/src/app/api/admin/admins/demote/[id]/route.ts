@@ -95,6 +95,7 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       },
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
       user_agent: request.headers.get('user-agent') || undefined
+    });
 
     // Remove sensitive information from response
     const responseUser = {
@@ -135,3 +136,4 @@ export const POST = requireSuperAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
+});

@@ -264,7 +264,7 @@ export default function ModelBrowser({
                   <span className="text-sm text-green-600 md:text-base lg:text-lg">Downloaded</span>
                 </div>
               ) : (
-                <button
+                <Button
                   size="sm"
                   onClick={() => downloadModel(model)}
                   disabled={downloadingModels.has(model.id)}
@@ -462,7 +462,7 @@ export default function ModelBrowser({
                         Download models from Hugging Face or upload your own.
                       </p>
                       <div className="flex gap-2 justify-center">
-                        <button onClick={() => setActiveTab('huggingface')}>
+                        <Button onClick={() => setActiveTab('huggingface')}>
                           <Cloud className="h-4 w-4 mr-2 " />
                         </Button>
                         <Button variant="outline" onClick={() => setActiveTab('upload')}>
@@ -540,7 +540,7 @@ export default function ModelBrowser({
                     <p className="text-sm text-muted-foreground mb-4 md:text-base lg:text-lg">
                       Select a system or local model to configure its settings.
                     </p>
-                    <button onClick={() => setActiveTab('system')}>
+                    <Button onClick={() => setActiveTab('system')}>
                       <Cpu className="h-4 w-4 mr-2 " />
                     </Button>
                   </CardContent>

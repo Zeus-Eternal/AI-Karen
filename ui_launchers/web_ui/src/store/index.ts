@@ -1,20 +1,43 @@
-// Export the main stores
-import { export { useUIStore } from './ui-store';
-import { export type { UIStore, UIState, UIActions } from './ui-store';
+/**
+ * Central export barrel for all global Zustand stores and selectors
+ *
+ * ✅ Clean syntax — no mixed import/export
+ * ✅ Explicit type re-exports for tree-shaking
+ * ✅ Includes commonly used selectors for convenience
+ */
 
-import { export { useAppStore } from './app-store';
-import { export type { AppStore, AppState, AppActions } from './app-store';
+// ---------------------------------------------------------------------------
+// UI Store
+// ---------------------------------------------------------------------------
+export { useUIStore } from './ui-store';
+export type { UIStore, UIState, UIActions } from './ui-store';
 
-import { export { useDashboardStore } from './dashboard-store';
-import { export type { DashboardStore, DashboardState, DashboardActions } from './dashboard-store';
+// ---------------------------------------------------------------------------
+// App Store
+// ---------------------------------------------------------------------------
+export { useAppStore } from './app-store';
+export type { AppStore, AppState, AppActions } from './app-store';
 
-import { export { usePluginStore } from './plugin-store';
-import { export type { PluginStore } from './plugin-store';
+// ---------------------------------------------------------------------------
+// Dashboard Store
+// ---------------------------------------------------------------------------
+export { useDashboardStore } from './dashboard-store';
+export type { DashboardStore, DashboardState, DashboardActions } from './dashboard-store';
 
-// Export selectors
+// ---------------------------------------------------------------------------
+// Plugin Store
+// ---------------------------------------------------------------------------
+export { usePluginStore } from './plugin-store';
+export type { PluginStore } from './plugin-store';
+
+// ---------------------------------------------------------------------------
+// Selectors
+// ---------------------------------------------------------------------------
 export * from './ui-selectors';
 
-// Re-export commonly used selectors for convenience
+// ---------------------------------------------------------------------------
+// Commonly Used Selectors (explicit re-export)
+// ---------------------------------------------------------------------------
 export {
   selectSidebarState,
   selectRightPanelState,
@@ -22,4 +45,4 @@ export {
   selectAnimationState,
   selectLayoutState,
   selectPreferencesState,
-import { } from './ui-selectors';
+} from './ui-selectors';

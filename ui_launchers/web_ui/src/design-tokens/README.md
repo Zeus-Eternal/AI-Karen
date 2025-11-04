@@ -183,7 +183,7 @@ const textColor = getColorValue(designTokens.colors.neutral, 700); // "#404040"
 <div class="shadow-md hover:shadow-lg">
 
 <!-- Animation utilities -->
-<button class="transition-fast hover-lift">
+<Button class="transition-fast hover-lift">
 ```
 
 ## CSS Architecture

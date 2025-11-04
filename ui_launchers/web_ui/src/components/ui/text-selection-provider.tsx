@@ -38,7 +38,7 @@ export function TextSelectionProvider({
             ensureTextSelectable(element);
           }
         }
-
+      });
     };
     // Run immediately
     ensureGlobalSelection();
@@ -49,12 +49,14 @@ export function TextSelectionProvider({
           if (node instanceof HTMLElement) {
             ensureTextSelectable(node);
           }
-
-
+        });
+      });
+    });
 
     observer.observe(document.body, {
       childList: true,
       subtree: true,
+    });
 
     return () => {
       observer.disconnect();

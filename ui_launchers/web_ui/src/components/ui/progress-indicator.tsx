@@ -121,22 +121,22 @@ export function ProgressIndicator({
         
         <div className="flex items-center space-x-2">
           {progress.canCancel && progress.status === 'running' && onCancel && (
-            <button
+            <Button
               onClick={onCancel}
               className="px-3 py-1 text-sm font-medium text-red-600 border border-red-300 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 md:text-base lg:text-lg"
               aria-label="Cancel operation"
             >
-            </button>
+            </Button>
           )}
           
           {isCompleted && onClose && (
-            <button
+            <Button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
               aria-label="Close progress indicator"
             >
               <X className="h-5 w-5 " />
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -243,7 +243,7 @@ export function ProgressIndicator({
       {progress.errors.length > 0 && (
         <div className="border-t border-gray-200">
           <div className="p-4 sm:p-4 md:p-6">
-            <button
+            <Button
               onClick={() => setShowErrorDetails(!showErrorDetails)}
               className="flex items-center justify-between w-full text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
             >
@@ -253,7 +253,7 @@ export function ProgressIndicator({
               <span className="text-red-600">
                 {showErrorDetails ? '−' : '+'}
               </span>
-            </button>
+            </Button>
             
             {showErrorDetails && (
               <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">

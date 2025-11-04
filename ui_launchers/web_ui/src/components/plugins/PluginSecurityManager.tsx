@@ -445,13 +445,13 @@ export const PluginSecurityManager: React.FC<PluginSecurityManagerProps> = ({
                 >
                   {domain}
                   {!readOnly && (
-                    <button
+                    <Button
                       type="button"
                       className="text-xs text-destructive"
                       onClick={() => handleTrustedDomainRemove(domain)}
                     >
                       Remove
-                    </button>
+                    </Button>
                   )}
                 </Badge>
               ))}

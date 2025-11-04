@@ -62,9 +62,9 @@ vi.mock('@/components/ui/card', () => ({
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled, variant, ...props }: any) => (
-    <button onClick={onClick} disabled={disabled} data-variant={variant} {...props} aria-label="Button">
+    <Button onClick={onClick} disabled={disabled} data-variant={variant} {...props} aria-label="Button">
       {children}
-    </button>
+    </Button>
   )
 }));
 
@@ -77,9 +77,9 @@ vi.mock('@/components/ui/badge', () => ({
 vi.mock('@/components/ui/select', () => ({
   Select: ({ children, value, onValueChange }: any) => (
     <div data-testid="select" data-value={value}>
-      <button onClick={() => onValueChange?.('test-value')}>
+      <Button onClick={() => onValueChange?.('test-value')}>
         {children}
-      </button>
+      </Button>
     </div>
   ),
   SelectContent: ({ children }: any) => <div>{children}</div>,

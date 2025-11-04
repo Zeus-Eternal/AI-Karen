@@ -133,7 +133,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
           isCompleted && 'opacity-75'
         )}
       >
-        <button
+        <Button
           onClick={() => handleActionClick(action, index)}
           disabled={isExecuting || isCompleted}
           variant="outline"
@@ -331,7 +331,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                       </div>
                     </div>
 
-                    <button
+                    <Button
                       onClick={() => handleActionClick(action, index)}
                       disabled={isExecuting || isCompleted}
                       size="sm"

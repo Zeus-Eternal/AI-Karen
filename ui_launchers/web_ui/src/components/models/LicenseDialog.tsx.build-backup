@@ -231,7 +231,7 @@ export function LicenseDialog({
            >
             Decline
           </Button>
-          <button
+          <Button
             onClick={handleAccept}
             disabled={!hasRead || !hasAgreed || isAccepting || isLoading}
            aria-label="Button">

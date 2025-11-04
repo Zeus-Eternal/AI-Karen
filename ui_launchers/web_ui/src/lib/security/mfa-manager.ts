@@ -1,9 +1,9 @@
 /**
  * Multi-Factor Authentication (MFA) Manager
- * 
+ *
  * Implements TOTP-based MFA for admin accounts with QR code generation,
- * backup codes, and MFA enforcement policies.
- * 
+ * backup codes (securely hashed), and MFA enforcement policies.
+ *
  * Requirements: 5.4, 5.5, 5.6
  */
 
@@ -13,10 +13,10 @@ import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { User } from '@/types/admin';
 
 export interface MfaSetupData {
-  secret: string;
-  qrCodeUrl: string;
-  backupCodes: string[];
-  manualEntryKey: string;
+  secret: string;          // base32 secret (display once)
+  qrCodeUrl: string;       // data URL for enrollment
+  backupCodes: string[];   // plaintext codes (display once)
+  manualEntryKey: string;  // same as secret (for manual entry)
 }
 
 export interface MfaVerificationResult {
@@ -33,6 +33,62 @@ export interface MfaStatus {
   lastUsed?: Date;
 }
 
+/* ------------------------------------------------------------------ */
+/* Utilities: crypto-safe ID & hashing (browser + node compatible)    */
+/* ------------------------------------------------------------------ */
+
+async function sha256Hex(input: string): Promise<string> {
+  // Browser WebCrypto
+  // @ts-ignore
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    const enc = new TextEncoder().encode(input);
+    // @ts-ignore
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+  // Node fallback
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const nodeCrypto = require('crypto');
+    return nodeCrypto.createHash('sha256').update(input, 'utf8').digest('hex');
+  } catch {
+    // Last resort (not ideal, but prevents crash)
+    let hash = 0;
+    for (let i = 0; i < input.length; i++) {
+      hash = (hash << 5) - hash + input.charCodeAt(i);
+      hash |= 0;
+    }
+    return `fallback_${Math.abs(hash)}`;
+  }
+}
+
+function randomBytesHex(len: number): string {
+  // @ts-ignore
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const arr = new Uint8Array(len);
+    // @ts-ignore
+    crypto.getRandomValues(arr);
+    return Array.from(arr)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+      .slice(0, len * 2);
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const nodeCrypto = require('crypto');
+    return nodeCrypto.randomBytes(len).toString('hex');
+  } catch {
+    // Weak fallback
+    return Array.from({ length: len }, () =>
+      Math.floor(Math.random() * 256).toString(16).padStart(2, '0')
+    ).join('');
+  }
+}
+
+/* ------------------------------------------------------------------ */
+
 export class MfaManager {
   private adminUtils = getAdminDatabaseUtils();
   private readonly APP_NAME = 'AI Karen Admin';
@@ -40,48 +96,56 @@ export class MfaManager {
 
   /**
    * Generate MFA setup data for a user
+   * - Returns base32 secret + QR code + plaintext backup codes (display once)
+   * - DOES NOT persist until `enableMfa` is called
    */
   async generateMfaSetup(user: User): Promise<MfaSetupData> {
-    // Generate secret
     const secret = speakeasy.generateSecret({
       name: `${this.APP_NAME} (${user.email})`,
       issuer: this.ISSUER,
-      length: 32
+      length: 32,
+    });
 
-    // Generate QR code URL
-    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url!);
-
-    // Generate backup codes
+    const otpauth = secret.otpauth_url!;
+    const qrCodeUrl = await QRCode.toDataURL(otpauth);
     const backupCodes = this.generateBackupCodes();
 
     return {
       secret: secret.base32,
       qrCodeUrl,
       backupCodes,
-      manualEntryKey: secret.base32
+      manualEntryKey: secret.base32,
     };
   }
 
   /**
-   * Enable MFA for a user after verification
+   * Enable MFA for a user after verifying a TOTP code.
+   * - Persists the secret and hashed backup codes.
    */
-  async enableMfa(userId: string, secret: string, verificationCode: string, backupCodes: string[]): Promise<boolean> {
-    // Verify the code first
-    const isValid = this.verifyTotpCode(secret, verificationCode);
-    
-    if (!isValid) {
-      return false;
-    }
+  async enableMfa(
+    userId: string,
+    secretBase32: string,
+    verificationCode: string,
+    backupCodesPlain: string[]
+  ): Promise<boolean> {
+    const isValid = this.verifyTotpCode(secretBase32, verificationCode);
+    if (!isValid) return false;
 
-    // Store MFA data in user record
+    // Hash backup codes before storing
+    const hashed = await Promise.all(
+      backupCodesPlain.map((c) => sha256Hex(c.toUpperCase()))
+    );
+
     await this.adminUtils.updateUser(userId, {
       two_factor_enabled: true,
-      two_factor_secret: secret
+      two_factor_secret: secretBase32,
+      // Store hashed backup codes in preferences (server should encrypt at rest)
+      preferences: {
+        ...(await this.adminUtils.getUserWithRole(userId))?.preferences,
+        mfa_backup_codes_hashed: hashed,
+      },
+    });
 
-    // Store backup codes securely (in production, encrypt these)
-    await this.storeBackupCodes(userId, backupCodes);
-
-    // Log MFA enablement
     await this.adminUtils.createAuditLog({
       user_id: userId,
       action: 'mfa.enabled',
@@ -89,25 +153,30 @@ export class MfaManager {
       resource_id: userId,
       details: {
         method: 'totp',
-        backup_codes_generated: backupCodes.length,
-        enabled_at: new Date().toISOString()
-      }
+        backup_codes_generated: backupCodesPlain.length,
+        enabled_at: new Date().toISOString(),
+      },
+    });
 
     return true;
   }
 
   /**
-   * Disable MFA for a user
+   * Disable MFA (admin action)
+   * - Clears secret + backup codes.
    */
   async disableMfa(userId: string, adminUserId: string): Promise<void> {
+    const user = await this.adminUtils.getUserWithRole(userId);
+    const prefs = { ...(user?.preferences || {}) };
+    delete (prefs as any).mfa_backup_codes_hashed;
+    delete (prefs as any).mfa_backup_codes; // backward-compat cleanup
+
     await this.adminUtils.updateUser(userId, {
       two_factor_enabled: false,
-      two_factor_secret: undefined
+      two_factor_secret: null,
+      preferences: prefs,
+    });
 
-    // Remove backup codes
-    await this.removeBackupCodes(userId);
-
-    // Log MFA disablement
     await this.adminUtils.createAuditLog({
       user_id: adminUserId,
       action: 'mfa.disabled',
@@ -116,44 +185,36 @@ export class MfaManager {
       details: {
         disabled_by: adminUserId,
         disabled_at: new Date().toISOString(),
-        reason: 'admin_action'
-      }
-
+        reason: 'admin_action',
+      },
+    });
   }
 
   /**
-   * Verify TOTP code or backup code
+   * Verify TOTP or backup code (consumes backup code if used)
    */
   async verifyMfaCode(userId: string, code: string): Promise<MfaVerificationResult> {
     const user = await this.adminUtils.getUserWithRole(userId);
-    
     if (!user || !user.two_factor_enabled || !user.two_factor_secret) {
       return { valid: false };
     }
 
-    // First try TOTP verification
+    // TOTP first
     const totpValid = this.verifyTotpCode(user.two_factor_secret, code);
-    
     if (totpValid) {
-      // Log successful MFA verification
       await this.adminUtils.createAuditLog({
         user_id: userId,
         action: 'mfa.verified',
         resource_type: 'user_authentication',
         resource_id: userId,
-        details: {
-          method: 'totp',
-          verified_at: new Date().toISOString()
-        }
-
+        details: { method: 'totp', verified_at: new Date().toISOString() },
+      });
       return { valid: true };
     }
 
-    // Try backup code verification
+    // Backup code (hashed compare)
     const backupResult = await this.verifyBackupCode(userId, code);
-    
     if (backupResult.valid) {
-      // Log backup code usage
       await this.adminUtils.createAuditLog({
         user_id: userId,
         action: 'mfa.backup_code_used',
@@ -162,17 +223,17 @@ export class MfaManager {
         details: {
           method: 'backup_code',
           remaining_codes: backupResult.remainingBackupCodes,
-          used_at: new Date().toISOString()
-        }
+          used_at: new Date().toISOString(),
+        },
+      });
 
       return {
         valid: true,
         usedBackupCode: true,
-        remainingBackupCodes: backupResult.remainingBackupCodes
+        remainingBackupCodes: backupResult.remainingBackupCodes,
       };
     }
 
-    // Log failed MFA verification
     await this.adminUtils.createAuditLog({
       user_id: userId,
       action: 'mfa.verification_failed',
@@ -180,48 +241,55 @@ export class MfaManager {
       resource_id: userId,
       details: {
         failed_at: new Date().toISOString(),
-        code_length: code.length
-      }
+        code_length: code?.length ?? 0,
+      },
+    });
 
     return { valid: false };
   }
 
   /**
-   * Get MFA status for a user
+   * Current MFA status for a user
    */
   async getMfaStatus(userId: string): Promise<MfaStatus> {
     const user = await this.adminUtils.getUserWithRole(userId);
-    
     if (!user) {
       return {
         enabled: false,
         required: false,
         setupComplete: false,
-        backupCodesRemaining: 0
+        backupCodesRemaining: 0,
       };
     }
 
     const required = await this.isMfaRequired(user);
-    const backupCodes = await this.getBackupCodes(userId);
+    const remaining = await this.getBackupCodesCount(userId);
 
     return {
-      enabled: user.two_factor_enabled,
+      enabled: !!user.two_factor_enabled,
       required,
-      setupComplete: user.two_factor_enabled && !!user.two_factor_secret,
-      backupCodesRemaining: backupCodes.length,
-      lastUsed: user.last_login_at
+      setupComplete: !!user.two_factor_enabled && !!user.two_factor_secret,
+      backupCodesRemaining: remaining,
+      lastUsed: user.last_login_at,
     };
   }
 
   /**
-   * Generate new backup codes for a user
+   * Generate & persist new backup codes (hashed).
+   * Returns plaintext codes for display once.
    */
   async regenerateBackupCodes(userId: string, adminUserId: string): Promise<string[]> {
-    const newBackupCodes = this.generateBackupCodes();
-    
-    await this.storeBackupCodes(userId, newBackupCodes);
+    const newCodes = this.generateBackupCodes();
+    const hashed = await Promise.all(newCodes.map((c) => sha256Hex(c.toUpperCase())));
+    const user = await this.adminUtils.getUserWithRole(userId);
 
-    // Log backup code regeneration
+    await this.adminUtils.updateUser(userId, {
+      preferences: {
+        ...(user?.preferences || {}),
+        mfa_backup_codes_hashed: hashed,
+      },
+    });
+
     await this.adminUtils.createAuditLog({
       user_id: adminUserId,
       action: 'mfa.backup_codes_regenerated',
@@ -229,130 +297,116 @@ export class MfaManager {
       resource_id: userId,
       details: {
         regenerated_by: adminUserId,
-        new_codes_count: newBackupCodes.length,
-        regenerated_at: new Date().toISOString()
-      }
+        new_codes_count: newCodes.length,
+        regenerated_at: new Date().toISOString(),
+      },
+    });
 
-    return newBackupCodes;
+    return newCodes;
   }
 
   /**
-   * Check if MFA is required for a user based on role and system policy
+   * MFA policy: required for admins/super_admins if system config says so
    */
   async isMfaRequired(user: User): Promise<boolean> {
-    // Always require MFA for super admins and admins
     if (user.role === 'super_admin' || user.role === 'admin') {
-      const mfaConfigs = await this.adminUtils.getSystemConfig('mfa_required_for_admins');
-      const mfaConfig = mfaConfigs.find(config => config.key === 'mfa_required_for_admins');
-      return mfaConfig?.value === 'true' || mfaConfig?.value === true;
+      // Use consistent API (pull all configs, then find)
+      const configs = await this.adminUtils.getSystemConfig();
+      const cfg = configs.find((c: any) => c.key === 'mfa_required_for_admins');
+      return cfg?.value === 'true' || cfg?.value === true;
     }
-    
     return false;
   }
 
   /**
    * Enforce MFA requirement during login
    */
-  async enforceMfaRequirement(user: User): Promise<{ canProceed: boolean; requiresSetup: boolean; message?: string }> {
+  async enforceMfaRequirement(
+    user: User
+  ): Promise<{ canProceed: boolean; requiresSetup: boolean; message?: string }> {
     const required = await this.isMfaRequired(user);
-    
-    if (!required) {
-      return { canProceed: true, requiresSetup: false };
-    }
+    if (!required) return { canProceed: true, requiresSetup: false };
 
     if (!user.two_factor_enabled) {
       return {
         canProceed: false,
         requiresSetup: true,
-        message: 'Multi-factor authentication is required for admin accounts. Please set up MFA to continue.'
+        message:
+          'Multi-factor authentication is required for admin accounts. Please set up MFA to continue.',
       };
     }
-
     return { canProceed: true, requiresSetup: false };
   }
 
   /**
    * Verify TOTP code using speakeasy
    */
-  private verifyTotpCode(secret: string, code: string): boolean {
+  private verifyTotpCode(secretBase32: string, code: string): boolean {
     return speakeasy.totp.verify({
-      secret,
+      secret: secretBase32,
       encoding: 'base32',
       token: code,
-      window: 2 // Allow 2 time steps (60 seconds) of drift
-
+      window: 2, // allow ±1 step (approx 60s drift)
+    });
   }
 
   /**
-   * Generate backup codes
+   * Generate cryptographically-strong backup codes (default 10)
+   * Format: 4-4-4 alnum (uppercase) for usability, e.g., "9K3D-1TQZ-7MHF"
    */
   private generateBackupCodes(count: number = 10): string[] {
     const codes: string[] = [];
-    
     for (let i = 0; i < count; i++) {
-      // Generate 8-character alphanumeric code
-      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-      codes.push(code);
+      // 12 nibbles (~48 bits) -> mapped to base36 then chunked
+      const hex = randomBytesHex(8); // 64 bits, plenty entropy
+      const base36 = BigInt('0x' + hex).toString(36).toUpperCase().padStart(13, '0');
+      const compact = base36.slice(0, 12); // normalize length
+      const formatted = `${compact.slice(0, 4)}-${compact.slice(4, 8)}-${compact.slice(8, 12)}`;
+      codes.push(formatted);
     }
-    
     return codes;
   }
 
   /**
-   * Store backup codes securely (in production, encrypt these)
+   * Return count of remaining (hashed) backup codes
    */
-  private async storeBackupCodes(userId: string, codes: string[]): Promise<void> {
-    // In a real implementation, these should be encrypted
-    // For now, we'll store them in the user's preferences
+  private async getBackupCodesCount(userId: string): Promise<number> {
     const user = await this.adminUtils.getUserWithRole(userId);
-    if (user) {
-      const preferences = user.preferences || {};
-      preferences.mfa_backup_codes = codes;
-      
-      await this.adminUtils.updateUser(userId, { preferences });
-    }
+    const prefs = user?.preferences || {};
+    const hashed: string[] =
+      (prefs as any).mfa_backup_codes_hashed ||
+      []; // old plaintext list is ignored for security
+    return hashed.length;
   }
 
   /**
-   * Get backup codes for a user
+   * Verify and consume a backup code (hash compare)
    */
-  private async getBackupCodes(userId: string): Promise<string[]> {
+  private async verifyBackupCode(
+    userId: string,
+    code: string
+  ): Promise<{ valid: boolean; remainingBackupCodes?: number }> {
     const user = await this.adminUtils.getUserWithRole(userId);
-    return user?.preferences?.mfa_backup_codes || [];
-  }
+    const prefs = user?.preferences || {};
+    const list: string[] =
+      (prefs as any).mfa_backup_codes_hashed ||
+      (prefs as any).mfa_backup_codes ||
+      [];
 
-  /**
-   * Remove backup codes for a user
-   */
-  private async removeBackupCodes(userId: string): Promise<void> {
-    const user = await this.adminUtils.getUserWithRole(userId);
-    if (user) {
-      const preferences = user.preferences || {};
-      delete preferences.mfa_backup_codes;
-      
-      await this.adminUtils.updateUser(userId, { preferences });
-    }
-  }
+    if (!list.length) return { valid: false };
 
-  /**
-   * Verify and consume a backup code
-   */
-  private async verifyBackupCode(userId: string, code: string): Promise<{ valid: boolean; remainingBackupCodes?: number }> {
-    const backupCodes = await this.getBackupCodes(userId);
-    const codeIndex = backupCodes.indexOf(code.toUpperCase());
-    
-    if (codeIndex === -1) {
-      return { valid: false };
-    }
+    const probe = await sha256Hex(code.toUpperCase());
+    const idx = list.indexOf(probe);
 
-    // Remove the used backup code
-    backupCodes.splice(codeIndex, 1);
-    await this.storeBackupCodes(userId, backupCodes);
+    if (idx === -1) return { valid: false };
 
-    return {
-      valid: true,
-      remainingBackupCodes: backupCodes.length
-    };
+    // consume code
+    const updated = [...list.slice(0, idx), ...list.slice(idx + 1)];
+    await this.adminUtils.updateUser(userId, {
+      preferences: { ...prefs, mfa_backup_codes_hashed: updated, mfa_backup_codes: undefined },
+    });
+
+    return { valid: true, remainingBackupCodes: updated.length };
   }
 }
 

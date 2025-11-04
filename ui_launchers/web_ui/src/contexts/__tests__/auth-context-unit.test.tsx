@@ -53,15 +53,15 @@ const TestComponent: React.FC = () => {
       <div data-testid="user-email">{user?.email || 'null'}</div>
       <div data-testid="user-id">{user?.user_id || 'null'}</div>
       <div data-testid="user-roles">{user?.roles.join(',') || 'null'}</div>
-      <button 
+      <Button 
         data-testid="login-btn" 
         onClick={() => login({ email: 'test@example.com', password: 'password123' })}
       >
-      </button>
-      <button data-testid="logout-btn" onClick={logout}>
-      </button>
-      <button data-testid="check-auth-btn" onClick={() => checkAuth()}>
-      </button>
+      </Button>
+      <Button data-testid="logout-btn" onClick={logout}>
+      </Button>
+      <Button data-testid="check-auth-btn" onClick={() => checkAuth()}>
+      </Button>
     </div>
   );
 };

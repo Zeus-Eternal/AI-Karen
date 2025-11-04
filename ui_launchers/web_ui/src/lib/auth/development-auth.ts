@@ -98,16 +98,16 @@ export class DevelopmentAuthManager {
     this.hotReloadListeners = new Set();
 
     this.initializeMockUsers();
-    this.setupHotReloadSupport();
+   this.setupHotReloadSupport();
 
-    if (this.config.debugLogging) {
-      logger.debug('Development authentication manager initialized', {
-        config: this.config,
-        mockUsers: Array.from(this.mockUsers.keys()),
-
-    } else if (!featuresEnabled) {
-      logger.info('Development authentication disabled for production environment');
-    }
+   if (this.config.debugLogging) {
+     logger.debug('Development authentication manager initialized', {
+       config: this.config,
+       mockUsers: Array.from(this.mockUsers.keys()),
+      });
+   } else if (!featuresEnabled) {
+     logger.info('Development authentication disabled for production environment');
+   }
   }
 
   /**
@@ -199,12 +199,13 @@ export class DevelopmentAuthManager {
 
     mockUsers.forEach(user => {
       this.mockUsers.set(user.user_id, user);
+    });
 
     if (this.config.debugLogging) {
       logger.debug('Mock users initialized', {
         userCount: this.mockUsers.size,
         users: Array.from(this.mockUsers.keys()),
-
+      });
     }
   }
 
@@ -220,23 +221,25 @@ export class DevelopmentAuthManager {
     if ((window as any).module?.hot) {
       (window as any).module.hot.accept(() => {
         this.handleHotReload('webpack-hmr');
-
+      });
     }
 
     // Listen for Vite HMR events
     if ((window as any).__vite_plugin_react_preamble_installed__) {
       window.addEventListener('vite:beforeUpdate', () => {
         this.handleHotReload('vite-hmr');
-
+      });
     }
 
     // Listen for manual reload events
     window.addEventListener('beforeunload', () => {
       this.preserveAuthStateForReload();
+    });
 
     // Restore auth state after reload
     window.addEventListener('load', () => {
       this.restoreAuthStateAfterReload();
+    });
 
     if (this.config.debugLogging) {
       logger.debug('Hot reload support configured');

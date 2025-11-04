@@ -1,7 +1,9 @@
-import { promises as fs } from "fs";
+import * as fs from "fs";
+import { promises as fsp } from "fs";
 import * as path from "path";
 import { BaseModelService } from "./base-service";
 import { DirectoryWatchError } from "./errors/model-selection-errors";
+
 /**
  * Directory Watcher Service
  *
@@ -9,24 +11,67 @@ import { DirectoryWatchError } from "./errors/model-selection-errors";
  * Supports both native file system watching and polling fallback.
  */
 
+// ---- Types ----
+export interface FileSystemChangeEvent {
+  type: "added" | "removed" | "modified";
+  path: string;
+  directory: string;
+  timestamp: number;
+}
 
+export interface DirectoryWatchOptions {
+  directories?: string[];
+  enablePolling?: boolean;
+  pollingInterval?: number;
+  debounceMs?: number;
+}
 
+export interface DirectoryWatcherConfig {
+  debounceMs: number;
+  pollingInterval: number;
+  maxWatchedDirectories: number;
+  enableRecursiveWatching: boolean;
+  ignoredPatterns: string[];
+}
 
+export interface IDirectoryWatcher {
+  startWatching(options?: DirectoryWatchOptions): Promise<void>;
+  stopWatching(): Promise<void>;
+  addChangeListener(
+    listener: (event: FileSystemChangeEvent) => void
+  ): () => void;
+  removeChangeListener(
+    listener: (event: FileSystemChangeEvent) => void
+  ): void;
+  isWatching(): boolean;
+  getWatchedDirectories(): string[];
+  getChangeListenerCount(): number;
+  getLastChangeDetection(): Record<string, number>;
+  refreshWatching(): Promise<void>;
+  getStats(): {
+    isWatching: boolean;
+    watchedDirectories: string[];
+    changeListeners: number;
+    lastChangeDetection: Record<string, number>;
+    nativeWatchers: number;
+    pollingIntervals: number;
+    config: DirectoryWatcherConfig;
+  };
+}
 
-import { } from "./types";
-
-
+// ---- Utils (from your file-utils) ----
+import {
   directoryExists,
   readDirectory,
   getFileModTime,
   normalizePath,
-import { } from "./utils/file-utils";
+} from "./utils/file-utils";
 
 export class DirectoryWatcher
   extends BaseModelService
   implements IDirectoryWatcher
 {
-  private watchers: Map<string, any> = new Map();
+  private watchers: Map<string, fs.FSWatcher> = new Map();
   private changeListeners: Set<(event: FileSystemChangeEvent) => void> =
     new Set();
   private isWatchingActive = false;
@@ -40,21 +85,27 @@ export class DirectoryWatcher
   private debouncedNotify: (event: FileSystemChangeEvent) => void;
   private config: DirectoryWatcherConfig;
 
+  private readonly DEFAULT_DEBOUNCE_MS = 500;
+  private readonly DEFAULT_POLLING_INTERVAL = 15_000;
+
   constructor(config: Partial<DirectoryWatcherConfig> = {}) {
     super("DirectoryWatcher");
 
     this.config = {
-      debounceMs: config.debounceMs || this.DEFAULT_DEBOUNCE_MS,
-      pollingInterval: config.pollingInterval || this.DEFAULT_POLLING_INTERVAL,
-      maxWatchedDirectories: config.maxWatchedDirectories || 10,
-      enableRecursiveWatching: config.enableRecursiveWatching ?? true,
-      ignoredPatterns: config.ignoredPatterns || [
+      debounceMs: config.debounceMs ?? this.DEFAULT_DEBOUNCE_MS,
+      pollingInterval: config.pollingInterval ?? this.DEFAULT_POLLING_INTERVAL,
+      maxWatchedDirectories: config.maxWatchedDirectories ?? 10,
+      enableRecursiveWatching:
+        config.enableRecursiveWatching ?? this.supportsRecursiveWatch(),
+      ignoredPatterns: config.ignoredPatterns ?? [
         "*.tmp",
         "*.temp",
         ".DS_Store",
         "Thumbs.db",
         "*.lock",
         "*.log",
+        ".git",
+        "node_modules",
       ],
     };
 
@@ -64,7 +115,7 @@ export class DirectoryWatcher
       "maxWatchedDirectories",
     ]);
 
-    // Create debounced notification function
+    // Create debounced notifier using BaseModelService.debounce
     this.debouncedNotify = this.debounce(
       this.notifyChangeListeners.bind(this),
       this.config.debounceMs
@@ -85,11 +136,22 @@ export class DirectoryWatcher
     }
 
     const directories =
-      options.directories || (await this.getDefaultDirectories());
+      options.directories && options.directories.length > 0
+        ? options.directories
+        : await this.getDefaultDirectories();
+
     const enablePolling = options.enablePolling ?? false;
     const pollingInterval =
-      options.pollingInterval || this.config.pollingInterval;
-    const debounceMs = options.debounceMs || this.config.debounceMs;
+      options.pollingInterval ?? this.config.pollingInterval;
+
+    // Allow per-call debounce tweak
+    if (options.debounceMs && options.debounceMs !== this.config.debounceMs) {
+      this.config.debounceMs = options.debounceMs;
+      this.debouncedNotify = this.debounce(
+        this.notifyChangeListeners.bind(this),
+        this.config.debounceMs
+      );
+    }
 
     if (directories.length === 0) {
       this.log("No directories specified for watching");
@@ -105,7 +167,9 @@ export class DirectoryWatcher
     }
 
     this.log(
-      `Starting directory watching for ${directories.length} directories`
+      `Starting directory watching for ${directories.length} director${
+        directories.length === 1 ? "y" : "ies"
+      }`
     );
 
     try {
@@ -141,7 +205,6 @@ export class DirectoryWatcher
           } else {
             await this.startNativeWatch(directory);
           }
-
           this.watchedDirectories.add(directory);
           this.lastChangeDetection.set(directory, Date.now());
         } catch (error) {
@@ -166,7 +229,9 @@ export class DirectoryWatcher
 
       this.isWatchingActive = true;
       this.log(
-        `Directory watching started for ${this.watchedDirectories.size} directories`
+        `Directory watching started for ${this.watchedDirectories.size} director${
+          this.watchedDirectories.size === 1 ? "y" : "ies"
+        }`
       );
     } catch (error) {
       await this.stopWatching();
@@ -247,11 +312,8 @@ export class DirectoryWatcher
     listener: (event: FileSystemChangeEvent) => void
   ): () => void {
     this.changeListeners.add(listener);
-
     // Return unsubscribe function
-    return () => {
-      this.removeChangeListener(listener);
-    };
+    return () => this.removeChangeListener(listener);
   }
 
   /**
@@ -297,12 +359,9 @@ export class DirectoryWatcher
    * Refresh watching (restart with current configuration)
    */
   async refreshWatching(): Promise<void> {
-    if (!this.isWatchingActive) {
-      return;
-    }
+    if (!this.isWatchingActive) return;
 
     const currentDirectories = Array.from(this.watchedDirectories);
-
     await this.stopWatching();
     await this.startWatching({ directories: currentDirectories });
   }
@@ -311,8 +370,6 @@ export class DirectoryWatcher
    * Start native file system watching for a directory
    */
   private async startNativeWatch(directory: string): Promise<void> {
-    const fs = await import("fs");
-
     try {
       const watcher = fs.watch(
         directory,
@@ -330,6 +387,7 @@ export class DirectoryWatcher
           error,
           `Native watcher error for directory: ${directory}`
         );
+      });
 
       this.watchers.set(directory, watcher);
     } catch (error) {
@@ -368,43 +426,30 @@ export class DirectoryWatcher
     eventType: string,
     filename: string | null
   ): void {
-    if (!filename) {
-      return;
-    }
+    if (!filename) return;
 
-    // Check if file should be ignored
-    if (this.shouldIgnoreFile(filename)) {
-      return;
-    }
+    // Ignore patterns
+    if (this.shouldIgnoreFile(filename)) return;
 
     const filePath = path.join(directory, filename);
     const normalizedPath = normalizePath(filePath);
 
-    // Map native event types to our event types
-    let changeType: "added" | "removed" | "modified";
-    switch (eventType) {
-      case "rename":
-        // Check if file exists to determine if it was added or removed
-        fs.access(normalizedPath)
-          .then(() => {
-            changeType = "added";
-            this.emitChangeEvent(changeType, normalizedPath, directory);
-          })
-          .catch(() => {
-            changeType = "removed";
-            this.emitChangeEvent(changeType, normalizedPath, directory);
-
-        return;
-
-      case "change":
-        changeType = "modified";
-        break;
-
-      default:
-        changeType = "modified";
+    // Map native event types
+    if (eventType === "rename") {
+      // Determine add/remove
+      fsp
+        .access(normalizedPath)
+        .then(() => {
+          this.emitChangeEvent("added", normalizedPath, directory);
+        })
+        .catch(() => {
+          this.emitChangeEvent("removed", normalizedPath, directory);
+        });
+      return;
     }
 
-    this.emitChangeEvent(changeType, normalizedPath, directory);
+    // change -> modified
+    this.emitChangeEvent("modified", normalizedPath, directory);
   }
 
   /**
@@ -415,43 +460,36 @@ export class DirectoryWatcher
       const currentFiles = await readDirectory(directory, {
         recursive: this.config.enableRecursiveWatching,
         includeStats: true,
+      });
 
       const currentState = new Map<string, { mtime: number; size: number }>();
 
       // Build current state
       for (const file of currentFiles) {
-        if (this.shouldIgnoreFile(file.name)) {
-          continue;
-        }
+        if (this.shouldIgnoreFile(file.name)) continue;
 
         const stats = file.stats;
         if (stats) {
           currentState.set(file.path, {
             mtime: stats.mtime.getTime(),
             size: stats.size,
-
+          });
         }
       }
 
       const previousState = this.fileStates.get(directory) || new Map();
 
-      // Check for added and modified files
-      for (const [filePath, currentFileState] of currentState) {
-        const previousFileState = previousState.get(filePath);
-
-        if (!previousFileState) {
-          // File was added
+      // Added & modified
+      for (const [filePath, curr] of currentState) {
+        const prev = previousState.get(filePath);
+        if (!prev) {
           this.emitChangeEvent("added", filePath, directory);
-        } else if (
-          previousFileState.mtime !== currentFileState.mtime ||
-          previousFileState.size !== currentFileState.size
-        ) {
-          // File was modified
+        } else if (prev.mtime !== curr.mtime || prev.size !== curr.size) {
           this.emitChangeEvent("modified", filePath, directory);
         }
       }
 
-      // Check for removed files
+      // Removed
       for (const filePath of previousState.keys()) {
         if (!currentState.has(filePath)) {
           this.emitChangeEvent("removed", filePath, directory);
@@ -479,20 +517,19 @@ export class DirectoryWatcher
         const files = await readDirectory(directory, {
           recursive: this.config.enableRecursiveWatching,
           includeStats: true,
+        });
 
         const state = new Map<string, { mtime: number; size: number }>();
 
         for (const file of files) {
-          if (this.shouldIgnoreFile(file.name)) {
-            continue;
-          }
+          if (this.shouldIgnoreFile(file.name)) continue;
 
           const stats = file.stats;
           if (stats) {
             state.set(file.path, {
               mtime: stats.mtime.getTime(),
               size: stats.size,
-
+            });
           }
         }
 
@@ -510,30 +547,25 @@ export class DirectoryWatcher
    * Check if a file should be ignored based on patterns
    */
   private shouldIgnoreFile(filename: string): boolean {
-    for (const pattern of this.config.ignoredPatterns) {
-      if (this.matchesPattern(filename, pattern)) {
-        return true;
-      }
-    }
-    return false;
+    return this.config.ignoredPatterns.some((pattern) =>
+      this.matchesPattern(filename, pattern)
+    );
   }
 
   /**
-   * Simple pattern matching (supports * wildcards)
+   * Simple pattern matching (supports * and ? wildcards)
    */
   private matchesPattern(filename: string, pattern: string): boolean {
-    // Convert glob pattern to regex
     const regexPattern = pattern
-      .replace(/\./g, "\\.")
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
       .replace(/\*/g, ".*")
       .replace(/\?/g, ".");
-
     const regex = new RegExp(`^${regexPattern}$`, "i");
     return regex.test(filename);
   }
 
   /**
-   * Emit a change event
+   * Emit a change event (debounced dispatch)
    */
   private emitChangeEvent(
     type: "added" | "removed" | "modified",
@@ -550,7 +582,7 @@ export class DirectoryWatcher
     // Update last change detection time
     this.lastChangeDetection.set(directory, event.timestamp);
 
-    // Use debounced notification to avoid spam
+    // Debounced notify to coalesce bursts
     this.debouncedNotify(event);
   }
 
@@ -558,12 +590,9 @@ export class DirectoryWatcher
    * Notify all change listeners
    */
   private notifyChangeListeners(event: FileSystemChangeEvent): void {
-    if (this.changeListeners.size === 0) {
-      return;
-    }
+    if (this.changeListeners.size === 0) return;
 
-    this.log(`File system change detected: ${event.type} - ${event.path}`);
-
+    this.log(`FS change: ${event.type} -> ${event.path}`);
     for (const listener of this.changeListeners) {
       try {
         listener(event);
@@ -574,10 +603,9 @@ export class DirectoryWatcher
   }
 
   /**
-   * Get default directories to watch (can be overridden)
+   * Get default directories to watch (override if needed)
    */
   private async getDefaultDirectories(): Promise<string[]> {
-    // This could be enhanced to read from configuration or preferences
     const defaultDirs = [
       "./models",
       "./local_models",
@@ -587,16 +615,26 @@ export class DirectoryWatcher
 
     const validDirs: string[] = [];
     for (const dir of defaultDirs) {
-      const expandedDir = dir.startsWith("~")
-        ? path.join(require("os").homedir(), dir.slice(2))
-        : dir;
+      const expanded =
+        dir.startsWith("~/") || dir === "~"
+          ? path.join(require("os").homedir(), dir.replace(/^~\//, ""))
+          : dir;
 
-      if (await directoryExists(expandedDir)) {
-        validDirs.push(normalizePath(expandedDir));
+      if (await directoryExists(expanded)) {
+        validDirs.push(normalizePath(expanded));
       }
     }
-
     return validDirs;
+  }
+
+  /**
+   * Whether the current platform supports recursive fs.watch
+   */
+  private supportsRecursiveWatch(): boolean {
+    // Node supports recursive watch on macOS & Windows; Linux support varies
+    // We'll try to enable and gracefully fallback if it fails.
+    // Here we default to true; failure is handled by fallback -> polling.
+    return true;
   }
 
   /**
@@ -626,10 +664,7 @@ export class DirectoryWatcher
    * Initialize the service
    */
   protected async initialize(): Promise<void> {
-    if (this.isInitialized) {
-      return;
-    }
-
+    if (this.isInitialized) return;
     await super.initialize();
     this.log("Directory watcher service initialized");
   }
@@ -638,10 +673,7 @@ export class DirectoryWatcher
    * Shutdown the service
    */
   protected async shutdown(): Promise<void> {
-    if (this.isShuttingDown) {
-      return;
-    }
-
+    if (this.isShuttingDown) return;
     await this.stopWatching();
     await super.shutdown();
   }

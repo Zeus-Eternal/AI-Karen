@@ -65,11 +65,11 @@ export const SetupRouteGuard: React.FC<SetupRouteGuardProps> = ({
               {error}
             </p>
           </div>
-          <button
+          <Button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
-          </button>
+          </Button>
         </div>
       </div>
     );

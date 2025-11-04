@@ -72,11 +72,11 @@ const TestComponent: React.FC = () => {
       <div data-testid="error">{auth.authState.error?.message || 'none'}</div>
       <div data-testid="user-email">{auth.user?.email || 'none'}</div>
       <div data-testid="user-role">{auth.user?.role || 'none'}</div>
-      <button onClick={() => auth.login({ email: 'test@example.com', password: 'password' })}>
-      </button>
-      <button onClick={() => auth.logout()}>Logout</button>
-      <button onClick={() => auth.refreshSession()}>Refresh</button>
-      <button onClick={() => auth.clearError()}>Clear Error</button>
+      <Button onClick={() => auth.login({ email: 'test@example.com', password: 'password' })}>
+      </Button>
+      <Button onClick={() => auth.logout()}>Logout</Button>
+      <Button onClick={() => auth.refreshSession()}>Refresh</Button>
+      <Button onClick={() => auth.clearError()}>Clear Error</Button>
     </div>
   );
 };
@@ -193,14 +193,14 @@ describe('AuthContext', () => {
       const TestComponentWithTOTP: React.FC = () => {
         const auth = useAuth();
         return (
-          <button 
+          <Button 
             onClick={() => auth.login({ 
               email: 'test@example.com', 
               password: 'password',
               totp_code: '123456'
             })}
           >
-          </button>
+          </Button>
         );
       };
 

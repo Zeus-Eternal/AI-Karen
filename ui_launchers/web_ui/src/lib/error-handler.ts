@@ -186,7 +186,7 @@ export class ErrorHandler {
       description: errorInfo.message,
       variant,
       duration: this.getToastDuration(errorInfo.severity),
-
+    });
   }
   /**
    * Get toast variant based on severity
@@ -220,7 +220,7 @@ export class ErrorHandler {
       description: message,
       variant: "default",
       duration,
-
+    });
   }
   /**
    * Show info notification
@@ -231,7 +231,7 @@ export class ErrorHandler {
       description: message,
       variant: "default",
       duration,
-
+    });
   }
   /**
    * Show warning notification
@@ -242,7 +242,7 @@ export class ErrorHandler {
       description: message,
       variant: "default",
       duration,
-
+    });
   }
   /**
    * Handle download-specific errors

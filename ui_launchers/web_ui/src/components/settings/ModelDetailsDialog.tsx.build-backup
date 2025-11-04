@@ -517,7 +517,7 @@ export default function ModelDetailsDialog({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <button
+                <Button
                   onClick={() => handleAction('validate')}
                   disabled={validating}
                   className="gap-2"
@@ -592,7 +592,7 @@ export default function ModelDetailsDialog({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <button
+                <Button
                   onClick={() => handleAction('security-scan')}
                   disabled={scanning}
                   className="gap-2"

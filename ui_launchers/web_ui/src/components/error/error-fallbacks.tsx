@@ -60,7 +60,7 @@ export function ErrorFallback({
           
           <div className="flex gap-2">
             {canRetry && onRetry && (
-              <button onClick={onRetry} className="flex-1" aria-label="Button">
+              <Button onClick={onRetry} className="flex-1" aria-label="Button">
                 <RefreshCw className="h-4 w-4 mr-2 " />
               </Button>
             )}
@@ -114,7 +114,7 @@ export function NetworkErrorFallback({
           
           <div className="flex gap-2">
             {canRetry && onRetry && (
-              <button onClick={onRetry} className="flex-1" aria-label="Button">
+              <Button onClick={onRetry} className="flex-1" aria-label="Button">
                 <RefreshCw className="h-4 w-4 mr-2 " />
               </Button>
             )}
@@ -169,7 +169,7 @@ export function ServerErrorFallback({
           
           <div className="flex gap-2">
             {canRetry && onRetry && (
-              <button onClick={onRetry} className="flex-1" aria-label="Button">
+              <Button onClick={onRetry} className="flex-1" aria-label="Button">
                 <RefreshCw className="h-4 w-4 mr-2 " />
               </Button>
             )}
@@ -224,7 +224,7 @@ export function DatabaseErrorFallback({
           
           <div className="flex gap-2">
             {canRetry && onRetry && (
-              <button onClick={onRetry} className="flex-1" aria-label="Button">
+              <Button onClick={onRetry} className="flex-1" aria-label="Button">
                 <RefreshCw className="h-4 w-4 mr-2 " />
               </Button>
             )}
@@ -288,11 +288,11 @@ export function InlineErrorFallback({
         {error?.message || 'An error occurred'}
       </span>
       {canRetry && onRetry && (
-        <button
+        <Button
           onClick={onRetry}
           className="text-xs text-primary hover:text-primary/80 underline sm:text-sm md:text-base"
          aria-label="Button">
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -316,11 +316,11 @@ export function LoadingErrorFallback({
         <AlertTriangle className="h-4 w-4 " />
         <span>Failed to load content</span>
         {canRetry && onRetry && (
-          <button
+          <Button
             onClick={onRetry}
             className="text-primary hover:text-primary/80 underline ml-2"
            aria-label="Button">
-          </button>
+          </Button>
         )}
       </div>
     </div>

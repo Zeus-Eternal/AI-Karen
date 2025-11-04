@@ -541,7 +541,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
                     disabled={isLoading}
                     className="flex-1"
                   />
-                  <button
+                  <Button
                     onClick={handleSendMessage}
                     disabled={!inputValue.trim() || isLoading}
                     size="sm"

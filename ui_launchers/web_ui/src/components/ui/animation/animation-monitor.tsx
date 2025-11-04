@@ -87,17 +87,17 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
         
         <div className="flex items-center space-x-2">
           {isMonitoring ? (
-            <button
+            <Button
               onClick={stopMonitoring}
               className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors md:text-base lg:text-lg"
              aria-label="Button">
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               onClick={startMonitoring}
               className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors md:text-base lg:text-lg"
              aria-label="Button">
-            </button>
+            </Button>
           )}
         </div>
       </div>

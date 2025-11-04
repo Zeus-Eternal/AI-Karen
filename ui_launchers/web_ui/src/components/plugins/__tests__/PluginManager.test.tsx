@@ -24,14 +24,14 @@ vi.mock('@/store/plugin-store', () => ({
 // Mock UI components
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled, variant, ...props }: any) => (
-    <button 
+    <Button 
       onClick={onClick} 
       disabled={disabled} 
       data-variant={variant}
       {...props}
      aria-label="Button">
       {children}
-    </button>
+    </Button>
   ),
 }));
 
@@ -82,7 +82,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: any) => <div>{children}</div>,
   DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
   DropdownMenuItem: ({ children, onClick }: any) => (
-    <button onClick={onClick} aria-label="Button">{children}</button>
+    <Button onClick={onClick} aria-label="Button">{children}</Button>
   ),
   DropdownMenuSeparator: () => <hr />,
   DropdownMenuTrigger: ({ children }: any) => <div>{children}</div>,
@@ -97,7 +97,7 @@ vi.mock('../PluginDetailView', () => ({
   PluginDetailView: ({ plugin, onClose }: any) => (
     <div data-testid="plugin-detail-view">
       <h2>{plugin.name} Details</h2>
-      <button onClick={onClose} aria-label="Button">Close</button>
+      <Button onClick={onClose} aria-label="Button">Close</Button>
     </div>
   ),
 }));
@@ -106,8 +106,8 @@ vi.mock('../PluginInstallationWizard', () => ({
   PluginInstallationWizard: ({ onClose, onComplete }: any) => (
     <div data-testid="plugin-installation-wizard">
       <h2>Installation Wizard</h2>
-      <button onClick={onClose} aria-label="Button">Close</button>
-      <button onClick={onComplete} aria-label="Button">Complete</button>
+      <Button onClick={onClose} aria-label="Button">Close</Button>
+      <Button onClick={onComplete} aria-label="Button">Complete</Button>
     </div>
   ),
 }));
@@ -116,7 +116,7 @@ vi.mock('../PluginMarketplace', () => ({
   PluginMarketplace: ({ onClose, onInstall }: any) => (
     <div data-testid="plugin-marketplace">
       <h2>Plugin Marketplace</h2>
-      <button onClick={onClose} aria-label="Button">Close</button>
+      <Button onClick={onClose} aria-label="Button">Close</Button>
     </div>
   ),
 }));

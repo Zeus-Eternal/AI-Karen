@@ -210,7 +210,7 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <button 
+                      <Button 
                         onClick={handleExportSingle}
                         disabled={exportInProgress}
                         className="w-full"
@@ -260,7 +260,7 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                       className="min-h-[200px] font-mono text-xs sm:text-sm md:text-base"
                       placeholder="Export data will appear here..." />
                     <div className="flex gap-2">
-                      <button onClick={handleDownloadExport} className="flex-1" aria-label="Button">
+                      <Button onClick={handleDownloadExport} className="flex-1" aria-label="Button">
                         <Download className="h-4 w-4 mr-2 " />
                       </Button>
                       <Button 
@@ -372,7 +372,7 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
                       </CardContent>
                     </Card>
                   )}
-                  <button
+                  <Button
                     onClick={handleImport}
                     disabled={!importData || !!importValidationError || importInProgress}
                     className="w-full"

@@ -118,7 +118,7 @@ export const EmailVerificationStep: React.FC<SetupStepProps> = ({
         </div>
         {/* Verify Button */}
         <div className="text-center">
-          <button
+          <Button
             type="submit"
             disabled={verificationCode.length !== 6 || isLoading}
             className="px-8 py-3 text-base font-semibold"

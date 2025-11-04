@@ -416,6 +416,7 @@ export function searchHelpContent(query: string, category?: 'modelLibrary' | 'll
     ) {
       results.push(content);
     }
+  });
 
   return results;
 }

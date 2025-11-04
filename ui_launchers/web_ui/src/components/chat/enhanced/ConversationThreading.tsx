@@ -213,7 +213,7 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
             <MessageSquare className="h-5 w-5 " />
           </CardTitle>
           
-          <button
+          <Button
             size="sm"
             onClick={() => setShowCreateForm(true)}
             className="h-8"

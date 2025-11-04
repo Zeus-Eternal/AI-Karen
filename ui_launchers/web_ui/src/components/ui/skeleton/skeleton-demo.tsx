@@ -147,10 +147,10 @@ export function SkeletonDemo() {
                   </p>
                   <div className="flex justify-between items-center pt-4">
                     <div className="flex space-x-2">
-                      <button className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm md:text-base lg:text-lg" aria-label="Button">
-                      </button>
-                      <button className="px-3 py-1 border border-input rounded-md text-sm md:text-base lg:text-lg" aria-label="Button">
-                      </button>
+                      <Button className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm md:text-base lg:text-lg" aria-label="Button">
+                      </Button>
+                      <Button className="px-3 py-1 border border-input rounded-md text-sm md:text-base lg:text-lg" aria-label="Button">
+                      </Button>
                     </div>
                     <span className="text-sm text-muted-foreground md:text-base lg:text-lg">2 min read</span>
                   </div>

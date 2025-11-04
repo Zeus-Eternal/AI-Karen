@@ -54,11 +54,11 @@ const DefaultErrorFallback: React.FC<{ error: Error; retry: () => void }> = ({ e
         {error.message || 'An unexpected error occurred'}
       </p>
     </div>
-    <button
+    <Button
       onClick={retry}
       className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
      aria-label="Button">
-    </button>
+    </Button>
   </motion.div>
 );
 // Enhanced lazy component wrapper with error boundary

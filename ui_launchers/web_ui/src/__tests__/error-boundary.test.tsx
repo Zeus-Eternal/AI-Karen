@@ -44,10 +44,10 @@ const CustomFallback: React.FC<any> = ({
     <h3>Custom Error Fallback</h3>
     <p>Error: {error?.message}</p>
     <p>Retry count: {retryCount}/{maxRetries}</p>
-    <button onClick={onRetry} data-testid="custom-retry">
-    </button>
-    <button onClick={onReset} data-testid="custom-reset">
-    </button>
+    <Button onClick={onRetry} data-testid="custom-retry">
+    </Button>
+    <Button onClick={onReset} data-testid="custom-reset">
+    </Button>
   </div>
 );
 
@@ -369,19 +369,19 @@ describe('ErrorBoundary', () => {
         
         return (
           <div>
-            <button 
+            <Button 
               onClick={() => resetComponent('test')}
               data-testid="hook-reset"
             >
-            </button>
-            <button 
+            </Button>
+            <Button 
               onClick={() => {
                 const health = getComponentHealth('test');
                 console.log(health);
               }}
               data-testid="hook-health"
             >
-            </button>
+            </Button>
           </div>
         );
       };

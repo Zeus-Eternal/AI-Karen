@@ -16,38 +16,81 @@ export interface EndpointTestResult {
 export interface HealthCheckResponse {
   status: 'ok' | 'error' | 'degraded';
   timestamp: string;
-  services?: Record<string, {
-    status: 'ok' | 'error' | 'degraded';
-    responseTime?: number;
-    error?: string;
-  }>;
+  services?: Record<
+    string,
+    {
+      status: 'ok' | 'error' | 'degraded';
+      responseTime?: number;
+      error?: string;
+    }
+  >;
   version?: string;
   uptime?: number;
   environment?: string;
 }
 
 export interface EndpointTestConfig {
-  timeout: number;
+  timeout: number;       // ms
   retries: number;
-  retryDelay: number;
+  retryDelay: number;    // ms (base backoff)
   healthCheckPath: string;
   testApiPath: string;
   userAgent: string;
 }
 
-/**
- * Service for testing endpoint connectivity and health
- */
+/* ---------------------- Internal Utilities ---------------------- */
+
+function isBrowser(): boolean {
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
+
+function nowMs(): number {
+  try {
+    return performance.now();
+  } catch {
+    return Date.now();
+  }
+}
+
+function isoNow(): string {
+  try {
+    return new Date().toISOString();
+  } catch {
+    return String(Date.now());
+  }
+}
+
+function joinUrl(base: string, path: string): string {
+  const b = base.replace(/\/+$/, '');
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `${b}${p}`;
+}
+
+function toReadableError(err: unknown): string {
+  if (err instanceof Error) {
+    const msg = err.message || 'Unknown error';
+    const low = msg.toLowerCase();
+    if (err.name === 'AbortError') return 'Request timeout';
+    if (low.includes('cors')) return 'CORS error - cross-origin requests blocked';
+    if (low.includes('failed to fetch')) return 'Network error - server unreachable';
+    if (low.includes('fetch')) return 'Network error - unable to connect';
+    return msg;
+  }
+  return 'Unknown error';
+}
+
+/* ---------------------- Service ---------------------- */
+
 export class EndpointTester {
   private config: EndpointTestConfig;
   private testCache: Map<string, EndpointTestResult> = new Map();
-  private readonly CACHE_TTL = 30000; // 30 seconds
+  private readonly CACHE_TTL = 30_000; // 30s
 
   constructor(config?: Partial<EndpointTestConfig>) {
     this.config = {
-      timeout: 5000,
+      timeout: 5_000,
       retries: 3,
-      retryDelay: 1000,
+      retryDelay: 1_000,
       healthCheckPath: '/health',
       testApiPath: '/api/health',
       userAgent: 'AI-Karen-WebUI/1.0',
@@ -55,16 +98,15 @@ export class EndpointTester {
     };
   }
 
-  /**
-   * Test basic connectivity to an endpoint
-   */
+  /* ---------------- Connectivity (HEAD) ---------------- */
+
   public async testConnectivity(endpoint: string): Promise<EndpointTestResult> {
     const cacheKey = `connectivity:${endpoint}`;
     const cached = this.getCachedResult(cacheKey);
     if (cached) return cached;
 
-    const startTime = performance.now();
-    const timestamp = new Date().toISOString();
+    const start = nowMs();
+    const timestamp = isoNow();
 
     try {
       const controller = new AbortController();
@@ -78,13 +120,15 @@ export class EndpointTester {
           'Cache-Control': 'no-cache',
         },
         mode: 'cors',
+        credentials: 'same-origin',
+      });
 
       clearTimeout(timeoutId);
-      const responseTime = performance.now() - startTime;
+      const responseTime = Math.max(0, nowMs() - start);
 
       const result: EndpointTestResult = {
         endpoint,
-        isReachable: true,
+        isReachable: response.ok || (response.status >= 200 && response.status < 500),
         responseTime,
         httpStatus: response.status,
         timestamp,
@@ -93,34 +137,31 @@ export class EndpointTester {
 
       this.cacheResult(cacheKey, result);
       return result;
-
     } catch (error) {
-      const responseTime = performance.now() - startTime;
+      const responseTime = Math.max(0, nowMs() - start);
       const result: EndpointTestResult = {
         endpoint,
         isReachable: false,
         responseTime,
-        error: this.parseError(error),
+        error: toReadableError(error),
         timestamp,
         testType: 'connectivity',
       };
-
       this.cacheResult(cacheKey, result);
       return result;
     }
   }
 
-  /**
-   * Test endpoint health using the /health endpoint
-   */
+  /* ---------------- Health (/health) ---------------- */
+
   public async testHealth(endpoint: string): Promise<EndpointTestResult> {
     const cacheKey = `health:${endpoint}`;
     const cached = this.getCachedResult(cacheKey);
     if (cached) return cached;
 
-    const healthUrl = `${endpoint}${this.config.healthCheckPath}`;
-    const startTime = performance.now();
-    const timestamp = new Date().toISOString();
+    const healthUrl = joinUrl(endpoint, this.config.healthCheckPath);
+    const start = nowMs();
+    const timestamp = isoNow();
 
     try {
       const controller = new AbortController();
@@ -130,22 +171,23 @@ export class EndpointTester {
         method: 'GET',
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
           'User-Agent': this.config.userAgent,
           'Cache-Control': 'no-cache',
         },
         mode: 'cors',
+        credentials: 'same-origin',
+      });
 
       clearTimeout(timeoutId);
-      const responseTime = performance.now() - startTime;
+      const responseTime = Math.max(0, nowMs() - start);
 
       if (response.ok) {
-        // Try to parse health response
         let healthData: HealthCheckResponse | null = null;
         try {
-          healthData = await response.json();
+          healthData = (await response.json()) as HealthCheckResponse;
         } catch {
-          // If JSON parsing fails, treat as basic success
+          // Non-JSON or empty → treat as basic success
         }
 
         const result: EndpointTestResult = {
@@ -157,7 +199,6 @@ export class EndpointTester {
           testType: 'health',
         };
 
-        // Add error if health check indicates issues
         if (healthData?.status === 'error') {
           result.error = 'Health check reports error status';
         } else if (healthData?.status === 'degraded') {
@@ -166,49 +207,44 @@ export class EndpointTester {
 
         this.cacheResult(cacheKey, result);
         return result;
-
-      } else {
-        const result: EndpointTestResult = {
-          endpoint,
-          isReachable: false,
-          responseTime,
-          httpStatus: response.status,
-          error: `Health check failed: HTTP ${response.status}`,
-          timestamp,
-          testType: 'health',
-        };
-
-        this.cacheResult(cacheKey, result);
-        return result;
       }
 
-    } catch (error) {
-      const responseTime = performance.now() - startTime;
       const result: EndpointTestResult = {
         endpoint,
         isReachable: false,
         responseTime,
-        error: `Health check error: ${this.parseError(error)}`,
+        httpStatus: response.status,
+        error: `Health check failed: HTTP ${response.status}`,
         timestamp,
         testType: 'health',
       };
-
+      this.cacheResult(cacheKey, result);
+      return result;
+    } catch (error) {
+      const responseTime = Math.max(0, nowMs() - start);
+      const result: EndpointTestResult = {
+        endpoint,
+        isReachable: false,
+        responseTime,
+        error: `Health check error: ${toReadableError(error)}`,
+        timestamp,
+        testType: 'health',
+      };
       this.cacheResult(cacheKey, result);
       return result;
     }
   }
 
-  /**
-   * Test API endpoint functionality
-   */
+  /* ---------------- API (/api/health) ---------------- */
+
   public async testApi(endpoint: string): Promise<EndpointTestResult> {
     const cacheKey = `api:${endpoint}`;
     const cached = this.getCachedResult(cacheKey);
     if (cached) return cached;
 
-    const apiUrl = `${endpoint}${this.config.testApiPath}`;
-    const startTime = performance.now();
-    const timestamp = new Date().toISOString();
+    const apiUrl = joinUrl(endpoint, this.config.testApiPath);
+    const start = nowMs();
+    const timestamp = isoNow();
 
     try {
       const controller = new AbortController();
@@ -218,14 +254,16 @@ export class EndpointTester {
         method: 'GET',
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
           'User-Agent': this.config.userAgent,
           'Cache-Control': 'no-cache',
         },
         mode: 'cors',
+        credentials: 'same-origin',
+      });
 
       clearTimeout(timeoutId);
-      const responseTime = performance.now() - startTime;
+      const responseTime = Math.max(0, nowMs() - start);
 
       const result: EndpointTestResult = {
         endpoint,
@@ -242,35 +280,28 @@ export class EndpointTester {
 
       this.cacheResult(cacheKey, result);
       return result;
-
     } catch (error) {
-      const responseTime = performance.now() - startTime;
+      const responseTime = Math.max(0, nowMs() - start);
       const result: EndpointTestResult = {
         endpoint,
         isReachable: false,
         responseTime,
-        error: `API test error: ${this.parseError(error)}`,
+        error: `API test error: ${toReadableError(error)}`,
         timestamp,
         testType: 'api',
       };
-
       this.cacheResult(cacheKey, result);
       return result;
     }
   }
 
-  /**
-   * Comprehensive endpoint test (connectivity + health + API)
-   */
+  /* ---------------- Comprehensive (all three) ---------------- */
+
   public async testEndpointComprehensive(endpoint: string): Promise<{
     connectivity: EndpointTestResult;
     health: EndpointTestResult;
     api: EndpointTestResult;
-    overall: {
-      isHealthy: boolean;
-      score: number; // 0-100
-      issues: string[];
-    };
+    overall: { isHealthy: boolean; score: number; issues: string[] };
   }> {
     const [connectivity, health, api] = await Promise.all([
       this.testConnectivity(endpoint),
@@ -278,161 +309,121 @@ export class EndpointTester {
       this.testApi(endpoint),
     ]);
 
-    // Calculate overall health score
     let score = 0;
     const issues: string[] = [];
 
-    // Connectivity (40% weight)
+    // Connectivity (40% + 10 bonus for <1s)
     if (connectivity.isReachable) {
       score += 40;
-      if (connectivity.responseTime < 1000) score += 10; // Bonus for fast response
+      if (connectivity.responseTime < 1_000) score += 10;
     } else {
-      issues.push(`Connectivity failed: ${connectivity.error}`);
+      issues.push(`Connectivity failed: ${connectivity.error ?? 'unknown'}`);
     }
 
-    // Health check (30% weight)
+    // Health (30% + 5 bonus for <2s)
     if (health.isReachable) {
       score += 30;
-      if (health.responseTime < 2000) score += 5; // Bonus for fast health check
+      if (health.responseTime < 2_000) score += 5;
+      if (health.error) issues.push(health.error);
     } else {
-      issues.push(`Health check failed: ${health.error}`);
+      issues.push(`Health check failed: ${health.error ?? 'unknown'}`);
     }
 
-    // API test (30% weight)
+    // API (30%)
     if (api.isReachable) {
       score += 30;
     } else {
-      issues.push(`API test failed: ${api.error}`);
+      issues.push(`API test failed: ${api.error ?? 'unknown'}`);
     }
+
+    // Clamp score to 0..100
+    score = Math.max(0, Math.min(100, score));
 
     return {
       connectivity,
       health,
       api,
       overall: {
-        isHealthy: score >= 70, // Consider healthy if score is 70% or higher
+        isHealthy: score >= 70,
         score,
         issues,
       },
     };
   }
 
-  /**
-   * Test multiple endpoints and return the best one
-   */
+  /* ---------------- Best Endpoint Across Many ---------------- */
+
   public async findBestEndpoint(endpoints: string[]): Promise<{
     bestEndpoint: string | null;
-    results: Array<{
-      endpoint: string;
-      score: number;
-      isHealthy: boolean;
-      responseTime: number;
-      issues: string[];
-    }>;
+    results: Array<{ endpoint: string; score: number; isHealthy: boolean; responseTime: number; issues: string[] }>;
   }> {
-    if (endpoints.length === 0) {
+    if (!Array.isArray(endpoints) || endpoints.length === 0) {
       return { bestEndpoint: null, results: [] };
     }
 
-    // Test all endpoints
-    const testPromises = endpoints.map(async (endpoint) => {
-      const comprehensive = await this.testEndpointComprehensive(endpoint);
-      return {
-        endpoint,
-        score: comprehensive.overall.score,
-        isHealthy: comprehensive.overall.isHealthy,
-        responseTime: comprehensive.connectivity.responseTime,
-        issues: comprehensive.overall.issues,
-      };
+    const results = await Promise.all(
+      endpoints.map(async (endpoint) => {
+        const comprehensive = await this.testEndpointComprehensive(endpoint);
+        return {
+          endpoint,
+          score: comprehensive.overall.score,
+          isHealthy: comprehensive.overall.isHealthy,
+          responseTime: comprehensive.connectivity.responseTime,
+          issues: comprehensive.overall.issues,
+        };
+      })
+    );
 
-    const results = await Promise.all(testPromises);
-
-    // Sort by score (descending) and response time (ascending)
     results.sort((a, b) => {
-      if (a.score !== b.score) {
-        return b.score - a.score; // Higher score first
-      }
-      return a.responseTime - b.responseTime; // Faster response first
+      if (a.score !== b.score) return b.score - a.score; // higher score first
+      return a.responseTime - b.responseTime;            // then faster
+    });
 
-    // Find the best healthy endpoint
-    const bestHealthy = results.find(r => r.isHealthy);
-    const bestEndpoint = bestHealthy ? bestHealthy.endpoint : (results[0]?.endpoint || null);
+    const bestHealthy = results.find((r) => r.isHealthy);
+    const bestEndpoint = bestHealthy ? bestHealthy.endpoint : results[0]?.endpoint ?? null;
 
     return { bestEndpoint, results };
   }
 
-  /**
-   * Test endpoint with retry logic
-   */
-  public async testWithRetry(endpoint: string, testType: 'connectivity' | 'health' | 'api' = 'connectivity'): Promise<EndpointTestResult> {
+  /* ---------------- Retry Wrapper ---------------- */
+
+  public async testWithRetry(
+    endpoint: string,
+    testType: 'connectivity' | 'health' | 'api' = 'connectivity'
+  ): Promise<EndpointTestResult> {
     let lastError: string | undefined;
-    
+
     for (let attempt = 1; attempt <= this.config.retries; attempt++) {
       try {
         let result: EndpointTestResult;
-        
-        switch (testType) {
-          case 'health':
-            result = await this.testHealth(endpoint);
-            break;
-          case 'api':
-            result = await this.testApi(endpoint);
-            break;
-          default:
-            result = await this.testConnectivity(endpoint);
-            break;
-        }
+        if (testType === 'health') result = await this.testHealth(endpoint);
+        else if (testType === 'api') result = await this.testApi(endpoint);
+        else result = await this.testConnectivity(endpoint);
 
-        if (result.isReachable) {
-          return result;
-        }
-
+        if (result.isReachable) return result;
         lastError = result.error;
-
       } catch (error) {
-        lastError = this.parseError(error);
+        lastError = toReadableError(error);
       }
 
-      // Wait before retry (except for last attempt)
       if (attempt < this.config.retries) {
-        await this.delay(this.config.retryDelay * attempt); // Exponential backoff
+        // Exponential backoff (linear multiplier)
+        await this.delay(this.config.retryDelay * attempt);
       }
     }
 
-    // All retries failed
     return {
       endpoint,
       isReachable: false,
       responseTime: 0,
-      error: `Failed after ${this.config.retries} attempts. Last error: ${lastError}`,
-      timestamp: new Date().toISOString(),
+      error: `Failed after ${this.config.retries} attempts. Last error: ${lastError ?? 'unknown'}`,
+      timestamp: isoNow(),
       testType,
     };
   }
 
-  /**
-   * Parse error object into readable string
-   */
-  private parseError(error: unknown): string {
-    if (error instanceof Error) {
-      if (error.name === 'AbortError') {
-        return 'Request timeout';
-      } else if (error.message.includes('CORS')) {
-        return 'CORS error - cross-origin requests blocked';
-      } else if (error.message.includes('fetch')) {
-        return 'Network error - unable to connect';
-      } else if (error.message.includes('Failed to fetch')) {
-        return 'Network error - server unreachable';
-      } else {
-        return error.message;
-      }
-    }
-    return 'Unknown error';
-  }
+  /* ---------------- Cache + Config ---------------- */
 
-  /**
-   * Get cached result if still valid
-   */
   private getCachedResult(cacheKey: string): EndpointTestResult | null {
     const cached = this.testCache.get(cacheKey);
     if (cached && Date.now() - new Date(cached.timestamp).getTime() < this.CACHE_TTL) {
@@ -441,74 +432,49 @@ export class EndpointTester {
     return null;
   }
 
-  /**
-   * Cache test result
-   */
   private cacheResult(cacheKey: string, result: EndpointTestResult): void {
     this.testCache.set(cacheKey, result);
   }
 
-  /**
-   * Delay utility for retry logic
-   */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((res) => setTimeout(res, ms));
   }
 
-  /**
-   * Clear test cache
-   */
   public clearCache(): void {
     this.testCache.clear();
   }
 
-  /**
-   * Get cache statistics
-   */
   public getCacheStats(): { size: number; keys: string[] } {
-    return {
-      size: this.testCache.size,
-      keys: Array.from(this.testCache.keys()),
-    };
+    return { size: this.testCache.size, keys: Array.from(this.testCache.keys()) };
   }
 
-  /**
-   * Update configuration
-   */
   public updateConfig(config: Partial<EndpointTestConfig>): void {
     this.config = { ...this.config, ...config };
-    this.clearCache(); // Clear cache when config changes
+    this.clearCache(); // flush cache when behavior changes
   }
 
-  /**
-   * Get current configuration
-   */
   public getConfig(): EndpointTestConfig {
     return { ...this.config };
   }
 }
 
-// Singleton instance
+/* ---------------- Singleton Helpers ---------------- */
+
 let endpointTester: EndpointTester | null = null;
 
-/**
- * Get the global endpoint tester instance
- */
 export function getEndpointTester(): EndpointTester {
-  if (!endpointTester) {
-    endpointTester = new EndpointTester();
-  }
+  if (!endpointTester) endpointTester = new EndpointTester();
   return endpointTester;
 }
 
-/**
- * Initialize endpoint tester with custom configuration
- */
 export function initializeEndpointTester(config?: Partial<EndpointTestConfig>): EndpointTester {
   endpointTester = new EndpointTester(config);
   return endpointTester;
 }
 
-// Export types
+// Re-export types to avoid empty export blocks
 export type {
+  EndpointTestResult as KariEndpointTestResult,
+  EndpointTestConfig as KariEndpointTestConfig,
+  HealthCheckResponse as KariHealthCheckResponse,
 };

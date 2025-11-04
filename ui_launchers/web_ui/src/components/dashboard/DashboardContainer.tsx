@@ -398,7 +398,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             </DropdownMenu>
 
             {/* Edit Mode Toggle */}
-            <button
+            <Button
               variant={isEditing ? "default" : "outline"}
               size="sm"
               onClick={toggleEditMode}
@@ -415,7 +415,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             </Button>
 
             {/* Filters Toggle */}
-            <button
+            <Button
               variant={showFilters ? "default" : "outline"}
               size="sm"
               onClick={() => setShowFilters(!showFilters)}

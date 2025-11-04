@@ -244,7 +244,7 @@ const SidebarMenuAction = React.forwardRef<
   HTMLButtonElement,
   React.ComponentPropsWithoutRef<'button'>
 >(({ className, ...props }, ref) => (
-  <button
+  <Button
     ref={ref}
     type="button"
     className={cn(

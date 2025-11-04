@@ -184,17 +184,17 @@ function DefaultErrorFallback({
       )}
       <div className="flex gap-2">
         {canRetry && (
-          <button
+          <Button
             onClick={retry}
             className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
            aria-label="Button">
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           onClick={reset}
           className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
          aria-label="Button">
-        </button>
+        </Button>
       </div>
       {process.env.NODE_ENV === 'development' && error && (
         <details className="mt-4 w-full max-w-2xl ">

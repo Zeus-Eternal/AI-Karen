@@ -113,19 +113,19 @@ const columns: TableColumn[] = [
     width: 120,
     render: (user, value, helpers) => (
       <div className="flex space-x-2">
-        <button
+        <Button
           onClick={() => helpers.onEdit?.(user)}
           className="text-blue-600 hover:text-blue-800 text-sm md:text-base lg:text-lg"
         >
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => helpers.onToggleStatus?.(user)}
           className={`text-sm ${
             user.is_active ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'
           }`}
         >
           {user.is_active ? 'Deactivate' : 'Activate'}
-        </button>
+        </Button>
       </div>
     )
   }
@@ -416,11 +416,11 @@ export function VirtualizedUserTable({
           <div className="text-red-600 text-center">
             <p className="font-medium">Error loading users</p>
             <p className="text-sm mt-1 md:text-base lg:text-lg">{error}</p>
-            <button
+            <Button
               onClick={() => loadUsers()}
               className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
             >
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -465,7 +465,7 @@ export function VirtualizedUserTable({
             className="flex-shrink-0 px-2"
           >
             {column.sortable ? (
-              <button
+              <Button
                 onClick={() => handleSort(column.key as keyof User)}
                 className="flex items-center space-x-1 hover:text-gray-700"
               >
@@ -475,7 +475,7 @@ export function VirtualizedUserTable({
                     {pagination.sort_order === 'asc' ? '↑' : '↓'}
                   </span>
                 )}
-              </button>
+              </Button>
             ) : (
               <span>{column.label}</span>
             )}
@@ -519,16 +519,16 @@ export function VirtualizedUserTable({
               Editing: {editingUser.email}
             </p>
             <div className="flex justify-end space-x-3">
-              <button
+              <Button
                 onClick={() => setEditingUser(null)}
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
               >
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleUserUpdated}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                aria-label="Button">
-              </button>
+              </Button>
             </div>
           </div>
         </div>

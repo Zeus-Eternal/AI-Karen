@@ -286,7 +286,7 @@ export default function SecuritySettingsPanel() {
           <Button variant="outline" onClick={handleExportSecurityReport} >
             <Download className="mr-2 h-4 w-4 " />
           </Button>
-          <button
+          <Button
             onClick={handleSaveSettings}
             disabled={!hasChanges || saving}
            aria-label="Button">

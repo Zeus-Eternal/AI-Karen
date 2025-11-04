@@ -1,6 +1,12 @@
+'use client';
 /**
- * Performance Monitoring for API Requests
- * Tracks request/response times and provides performance insights
+ * Performance Monitoring for API Requests (production-grade)
+ * - SSR-safe (guards on window/document)
+ * - Percentiles (median/p95/p99)
+ * - Bounded memory (keeps last N + 1h age trim)
+ * - Realtime alerts: slow_request / high_error_rate / performance_degradation
+ * - Listener API for dashboards
+ * - wrapFetch() to auto-record timings & sizes
  */
 
 import { webUIConfig } from './config';
@@ -9,14 +15,14 @@ import { safeError, safeWarn } from './safe-console';
 export interface RequestMetrics {
   endpoint: string;
   method: string;
-  startTime: number;
-  endTime: number;
-  duration: number;
+  startTime: number; // performance.now()
+  endTime: number;   // performance.now()
+  duration: number;  // ms
   status: number;
   success: boolean;
-  size?: number;
+  size?: number;     // bytes, if known (from Content-Length or hint)
   error?: string;
-  timestamp: string;
+  timestamp: string; // ISO time (wall clock)
 }
 
 export interface PerformanceStats {
@@ -29,41 +35,55 @@ export interface PerformanceStats {
   fastestRequest: RequestMetrics | null;
   errorRate: number;
   requestsPerMinute: number;
-  endpointStats: Record<string, {
-    count: number;
-    averageTime: number;
-    errorRate: number;
-    lastRequest: string;
-  }>;
+  endpointStats: Record<
+    string,
+    {
+      count: number;
+      averageTime: number;
+      errorRate: number;
+      lastRequest: string;
+    }
+  >;
 }
+
+export type PerformanceAlertType =
+  | 'slow_request'
+  | 'high_error_rate'
+  | 'performance_degradation';
 
 export interface PerformanceAlert {
   id: string;
-  type: 'slow_request' | 'high_error_rate' | 'performance_degradation';
+  type: PerformanceAlertType;
   message: string;
   severity: 'low' | 'medium' | 'high';
   timestamp: string;
   metrics: RequestMetrics | PerformanceStats;
 }
 
+type MetricsListener = (metrics: RequestMetrics) => void;
+type AlertListener = (alert: PerformanceAlert) => void;
+
+const isBrowser =
+  typeof window !== 'undefined' && typeof document !== 'undefined';
+
 class PerformanceMonitor {
   private metrics: RequestMetrics[] = [];
-  private maxMetrics: number = 1000; // Keep last 1000 requests
-  private listeners: Array<(metrics: RequestMetrics) => void> = [];
-  private alertListeners: Array<(alert: PerformanceAlert) => void> = [];
-  private slowRequestThreshold: number = 5000; // 5 seconds
-  private verySlowRequestThreshold: number = 10000; // 10 seconds
+  private maxMetrics = 1000; // Keep last 1000 requests
+  private listeners: MetricsListener[] = [];
+  private alertListeners: AlertListener[] = [];
+  private slowRequestThreshold = 5000; // 5 seconds
+  private verySlowRequestThreshold = 10000; // 10 seconds
+  private trimTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    // Clean up old metrics periodically
-    setInterval(() => {
-      this.cleanupOldMetrics();
-    }, 60000); // Every minute
+    // Periodic cleanup (browser only)
+    if (isBrowser) {
+      this.trimTimer = setInterval(() => this.cleanupOldMetrics(), 60_000);
+    }
   }
 
-  /**
-   * Record a request metric
-   */
+  // -------------------- Recording --------------------
+
   public recordRequest(
     endpoint: string,
     method: string,
@@ -89,153 +109,139 @@ class PerformanceMonitor {
       timestamp: new Date().toISOString(),
     };
 
-    // Add to metrics array
+    // Add newest first
     this.metrics.unshift(metric);
 
-    // Keep only the most recent metrics
+    // Bound memory
     if (this.metrics.length > this.maxMetrics) {
-      this.metrics = this.metrics.slice(0, this.maxMetrics);
+      this.metrics.length = this.maxMetrics;
     }
 
-    // Check for performance alerts
+    // Alerts + listeners
     this.checkPerformanceAlerts(metric);
-
-    // Notify listeners
     this.notifyListeners(metric);
 
-    // Log slow requests
-    if (webUIConfig.performanceMonitoring && duration > this.slowRequestThreshold) {
-      const logLevel = duration > this.verySlowRequestThreshold ? 'error' : 'warn';
-      console[logLevel](`🐌 Slow request detected: ${method} ${endpoint} took ${duration}ms`, {
-        duration,
-        status,
-        success,
-        size,
-        error,
-
+    // Slow logging (optional)
+    if (webUIConfig?.performanceMonitoring && duration > this.slowRequestThreshold) {
+      const isVerySlow = duration > this.verySlowRequestThreshold;
+      const payload = { duration, status, success, size, error, endpoint, method };
+      if (isVerySlow) {
+        safeWarn('🐌 Very slow request', payload);
+      } else {
+        safeWarn('🐌 Slow request', payload);
+      }
     }
   }
 
-  /**
-   * Check for performance alerts
-   */
+  // -------------------- Alerts --------------------
+
   private checkPerformanceAlerts(metric: RequestMetrics): void {
     // Slow request alert
     if (metric.duration > this.slowRequestThreshold) {
-      const severity = metric.duration > this.verySlowRequestThreshold ? 'high' : 'medium';
+      const severity: 'medium' | 'high' =
+        metric.duration > this.verySlowRequestThreshold ? 'high' : 'medium';
       this.triggerAlert({
         id: `slow_request_${Date.now()}`,
         type: 'slow_request',
-        message: `Slow request: ${metric.method} ${metric.endpoint} took ${metric.duration}ms`,
+        message: `Slow request: ${metric.method} ${metric.endpoint} took ${Math.round(
+          metric.duration
+        )}ms`,
         severity,
         timestamp: new Date().toISOString(),
         metrics: metric,
-
+      });
     }
 
-    // Check for performance degradation (if we have enough data)
-    if (this.metrics.length >= 10) {
-      const recentMetrics = this.metrics.slice(0, 10);
-      const averageRecent = recentMetrics.reduce((sum, m) => sum + m.duration, 0) / recentMetrics.length;
-      
-      const olderMetrics = this.metrics.slice(10, 20);
-      if (olderMetrics.length >= 10) {
-        const averageOlder = olderMetrics.reduce((sum, m) => sum + m.duration, 0) / olderMetrics.length;
-        
-        // If recent requests are 50% slower than older ones
-        if (averageRecent > averageOlder * 1.5 && averageRecent > 2000) {
-          this.triggerAlert({
-            id: `performance_degradation_${Date.now()}`,
-            type: 'performance_degradation',
-            message: `Performance degradation detected: recent requests are ${((averageRecent / averageOlder - 1) * 100).toFixed(0)}% slower`,
-            severity: 'medium',
-            timestamp: new Date().toISOString(),
-            metrics: this.getStats(),
-
-        }
+    // Perf degradation: compare last 10 vs previous 10
+    if (this.metrics.length >= 20) {
+      const recent = this.metrics.slice(0, 10);
+      const older = this.metrics.slice(10, 20);
+      const avgRecent = avg(recent.map((m) => m.duration));
+      const avgOlder = avg(older.map((m) => m.duration));
+      if (avgOlder > 0 && avgRecent > avgOlder * 1.5 && avgRecent > 2000) {
+        this.triggerAlert({
+          id: `performance_degradation_${Date.now()}`,
+          type: 'performance_degradation',
+          message: `Recent requests are ${Math.round(
+            ((avgRecent / avgOlder - 1) * 100)
+          )}% slower`,
+          severity: 'medium',
+          timestamp: new Date().toISOString(),
+          metrics: this.getStats(),
+        });
       }
     }
 
-    // High error rate alert (check last 20 requests)
+    // High error rate (last 20)
     if (this.metrics.length >= 20) {
-      const recentMetrics = this.metrics.slice(0, 20);
-      const errorCount = recentMetrics.filter(m => !m.success).length;
-      const errorRate = errorCount / recentMetrics.length;
-
-      if (errorRate > 0.3) { // 30% error rate
+      const recent = this.metrics.slice(0, 20);
+      const errRate =
+        recent.filter((m) => !m.success).length / recent.length;
+      if (errRate > 0.3) {
         this.triggerAlert({
           id: `high_error_rate_${Date.now()}`,
           type: 'high_error_rate',
-          message: `High error rate detected: ${(errorRate * 100).toFixed(0)}% of recent requests failed`,
+          message: `High error rate: ${Math.round(errRate * 100)}% of last 20 requests`,
           severity: 'high',
           timestamp: new Date().toISOString(),
           metrics: this.getStats(),
-
+        });
       }
     }
   }
 
-  /**
-   * Trigger a performance alert
-   */
   private triggerAlert(alert: PerformanceAlert): void {
-    // Use the performance alert service for graceful handling
-    if (typeof window !== 'undefined') {
-      // Only import and use the alert service in browser environment
-      import('./performance-alert-service').then(({ performanceAlertService }) => { performanceAlertService.handleAlert(alert); }).catch(error => { from "@/lib/placeholder";
-        // Fallback to console logging if alert service fails
-        safeWarn('Performance alert service unavailable, falling back to console:', error);
-        const logLevel = alert.severity === 'high' ? 'warn' : 'info';
-        console[logLevel](`Karen Performance: ${alert.message}`, {
-          type: alert.type,
-          severity: alert.severity,
-          endpoint: (alert.metrics as any)?.endpoint || 'unknown'
-
-
+    if (isBrowser) {
+      // Lazy import service; if missing, fallback to console
+      import('./performance-alert-service')
+        .then(({ performanceAlertService }) => {
+          performanceAlertService.handleAlert(alert);
+        })
+        .catch((err) => {
+          safeWarn('Performance alert service unavailable; falling back to console', err);
+          const level = alert.severity === 'high' ? 'warn' : 'info';
+          console[level](`Karen Performance: ${alert.message}`, {
+            type: alert.type,
+            severity: alert.severity,
+            endpoint: (alert.metrics as any)?.endpoint ?? 'unknown',
+          });
+        });
     } else {
-      // Server-side: just log without the alert service
-      const logLevel = alert.severity === 'high' ? 'warn' : 'info';
-      console[logLevel](`Karen Performance: ${alert.message}`, {
+      const level = alert.severity === 'high' ? 'warn' : 'info';
+      console[level](`Karen Performance: ${alert.message}`, {
         type: alert.type,
         severity: alert.severity,
-        endpoint: (alert.metrics as any)?.endpoint || 'unknown'
-
+        endpoint: (alert.metrics as any)?.endpoint ?? 'unknown',
+      });
     }
 
-    // Notify alert listeners
-    this.alertListeners.forEach(listener => {
+    // Local listeners
+    for (const listener of this.alertListeners) {
       try {
         listener(alert);
-      } catch (error) {
-        safeError('Error in performance alert listener:', error);
+      } catch (e) {
+        safeError('Error in performance alert listener:', e);
       }
-
+    }
   }
 
-  /**
-   * Notify metrics listeners
-   */
   private notifyListeners(metric: RequestMetrics): void {
-    this.listeners.forEach(listener => {
+    for (const listener of this.listeners) {
       try {
         listener(metric);
-      } catch (error) {
-        safeError('Error in performance metrics listener:', error);
+      } catch (e) {
+        safeError('Error in performance metrics listener:', e);
       }
-
+    }
   }
 
-  /**
-   * Clean up old metrics
-   */
   private cleanupOldMetrics(): void {
-    const oneHourAgo = Date.now() - (60 * 60 * 1000);
-    this.metrics = this.metrics.filter(metric => metric.startTime > oneHourAgo);
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    this.metrics = this.metrics.filter((m) => m.startTime > oneHourAgo);
   }
 
-  /**
-   * Get performance statistics
-   */
+  // -------------------- Stats & Queries --------------------
+
   public getStats(): PerformanceStats {
     if (this.metrics.length === 0) {
       return {
@@ -252,175 +258,210 @@ class PerformanceMonitor {
       };
     }
 
-    const durations = this.metrics.map(m => m.duration).sort((a, b) => a - b);
-    const successfulRequests = this.metrics.filter(m => m.success);
-    const failedRequests = this.metrics.filter(m => !m.success);
+    const durations = this.metrics.map((m) => m.duration).sort((a, b) => a - b);
+    const fastest =
+      this.metrics.reduce<RequestMetrics | null>(
+        (acc, cur) => (!acc || cur.duration < acc.duration ? cur : acc),
+        null
+      ) ?? null;
+    const slowest =
+      this.metrics.reduce<RequestMetrics | null>(
+        (acc, cur) => (!acc || cur.duration > acc.duration ? cur : acc),
+        null
+      ) ?? null;
 
-    // Calculate percentiles
-    const p95Index = Math.floor(durations.length * 0.95);
-    const p99Index = Math.floor(durations.length * 0.99);
-    const medianIndex = Math.floor(durations.length * 0.5);
+    // Requests per minute over the observed window
+    const oldestStart = Math.min(...this.metrics.map((m) => m.startTime));
+    const minutes = Math.max((Date.now() - oldestStart) / (1000 * 60), 0.0001);
+    const rpm = this.metrics.length / minutes;
 
-    // Calculate requests per minute
-    const oldestTimestamp = Math.min(...this.metrics.map(m => m.startTime));
-    const timeSpanMinutes = (Date.now() - oldestTimestamp) / (1000 * 60);
-    const requestsPerMinute = timeSpanMinutes > 0 ? this.metrics.length / timeSpanMinutes : 0;
-
-    // Calculate endpoint statistics
-    const endpointStats: Record<string, any> = {};
-    this.metrics.forEach(metric => {
-      const key = `${metric.method} ${metric.endpoint}`;
-      if (!endpointStats[key]) {
-        endpointStats[key] = {
-          count: 0,
-          totalTime: 0,
-          errors: 0,
-          lastRequest: metric.timestamp,
-        };
+    // Endpoint aggregates
+    const map: Record<
+      string,
+      { count: number; totalTime: number; errors: number; lastRequest: string }
+    > = {};
+    for (const m of this.metrics) {
+      const key = `${m.method} ${m.endpoint}`;
+      if (!map[key]) {
+        map[key] = { count: 0, totalTime: 0, errors: 0, lastRequest: m.timestamp };
       }
-      
-      endpointStats[key].count++;
-      endpointStats[key].totalTime += metric.duration;
-      if (!metric.success) {
-        endpointStats[key].errors++;
-      }
-      
-      if (metric.timestamp > endpointStats[key].lastRequest) {
-        endpointStats[key].lastRequest = metric.timestamp;
-      }
-
-    // Transform endpoint stats
-    const transformedEndpointStats: Record<string, any> = {};
-    Object.entries(endpointStats).forEach(([key, stats]: [string, any]) => {
-      transformedEndpointStats[key] = {
-        count: stats.count,
-        averageTime: stats.totalTime / stats.count,
-        errorRate: stats.errors / stats.count,
-        lastRequest: stats.lastRequest,
+      map[key].count++;
+      map[key].totalTime += m.duration;
+      if (!m.success) map[key].errors++;
+      if (m.timestamp > map[key].lastRequest) map[key].lastRequest = m.timestamp;
+    }
+    const endpointStats: PerformanceStats['endpointStats'] = {};
+    for (const [key, v] of Object.entries(map)) {
+      endpointStats[key] = {
+        count: v.count,
+        averageTime: v.totalTime / v.count,
+        errorRate: v.errors / v.count,
+        lastRequest: v.lastRequest,
       };
+    }
 
     return {
       totalRequests: this.metrics.length,
-      averageResponseTime: this.metrics.reduce((sum, m) => sum + m.duration, 0) / this.metrics.length,
-      medianResponseTime: durations[medianIndex] || 0,
-      p95ResponseTime: durations[p95Index] || 0,
-      p99ResponseTime: durations[p99Index] || 0,
-      slowestRequest: this.metrics.reduce((slowest, current) => 
-        !slowest || current.duration > slowest.duration ? current : slowest, null as RequestMetrics | null),
-      fastestRequest: this.metrics.reduce((fastest, current) => 
-        !fastest || current.duration < fastest.duration ? current : fastest, null as RequestMetrics | null),
-      errorRate: failedRequests.length / this.metrics.length,
-      requestsPerMinute,
-      endpointStats: transformedEndpointStats,
+      averageResponseTime: avg(durations),
+      medianResponseTime: percentile(durations, 50),
+      p95ResponseTime: percentile(durations, 95),
+      p99ResponseTime: percentile(durations, 99),
+      slowestRequest: slowest,
+      fastestRequest: fastest,
+      errorRate:
+        this.metrics.filter((m) => !m.success).length / this.metrics.length,
+      requestsPerMinute: rpm,
+      endpointStats,
     };
   }
 
-  /**
-   * Get recent metrics
-   */
-  public getRecentMetrics(limit: number = 50): RequestMetrics[] {
+  public getRecentMetrics(limit = 50): RequestMetrics[] {
     return this.metrics.slice(0, limit);
   }
 
-  /**
-   * Get metrics for a specific endpoint
-   */
   public getEndpointMetrics(endpoint: string, method?: string): RequestMetrics[] {
-    return this.metrics.filter(metric => {
-      const endpointMatch = metric.endpoint === endpoint;
-      const methodMatch = !method || metric.method === method;
-      return endpointMatch && methodMatch;
-
+    return this.metrics.filter(
+      (m) => m.endpoint === endpoint && (!method || m.method === method)
+    );
   }
 
-  /**
-   * Get slow requests
-   */
-  public getSlowRequests(threshold: number = this.slowRequestThreshold): RequestMetrics[] {
-    return this.metrics.filter(metric => metric.duration > threshold);
+  public getSlowRequests(threshold = this.slowRequestThreshold): RequestMetrics[] {
+    return this.metrics.filter((m) => m.duration > threshold);
   }
 
-  /**
-   * Get failed requests
-   */
   public getFailedRequests(): RequestMetrics[] {
-    return this.metrics.filter(metric => !metric.success);
+    return this.metrics.filter((m) => !m.success);
   }
 
-  /**
-   * Add a metrics listener
-   */
-  public onMetrics(listener: (metrics: RequestMetrics) => void): () => void {
+  // -------------------- Listeners & Config --------------------
+
+  public onMetrics(listener: MetricsListener): () => void {
     this.listeners.push(listener);
     return () => {
-      const index = this.listeners.indexOf(listener);
-      if (index > -1) {
-        this.listeners.splice(index, 1);
-      }
+      const i = this.listeners.indexOf(listener);
+      if (i >= 0) this.listeners.splice(i, 1);
     };
   }
 
-  /**
-   * Add an alert listener
-   */
-  public onAlert(listener: (alert: PerformanceAlert) => void): () => void {
+  public onAlert(listener: AlertListener): () => void {
     this.alertListeners.push(listener);
     return () => {
-      const index = this.alertListeners.indexOf(listener);
-      if (index > -1) {
-        this.alertListeners.splice(index, 1);
-      }
+      const i = this.alertListeners.indexOf(listener);
+      if (i >= 0) this.alertListeners.splice(i, 1);
     };
   }
 
-  /**
-   * Clear all metrics
-   */
   public clearMetrics(): void {
     this.metrics = [];
   }
 
-  /**
-   * Set slow request threshold
-   */
-  public setSlowRequestThreshold(threshold: number): void {
-    this.slowRequestThreshold = threshold;
+  public setSlowRequestThreshold(ms: number): void {
+    this.slowRequestThreshold = ms;
   }
 
-  /**
-   * Set very slow request threshold
-   */
-  public setVerySlowRequestThreshold(threshold: number): void {
-    this.verySlowRequestThreshold = threshold;
+  public setVerySlowRequestThreshold(ms: number): void {
+    this.verySlowRequestThreshold = ms;
   }
 
-  /**
-   * Export metrics as JSON
-   */
   public exportMetrics(): string {
-    return JSON.stringify({
-      metrics: this.metrics,
-      stats: this.getStats(),
-      exportedAt: new Date().toISOString(),
-    }, null, 2);
+    return JSON.stringify(
+      {
+        metrics: this.metrics,
+        stats: this.getStats(),
+        exportedAt: new Date().toISOString(),
+      },
+      null,
+      2
+    );
+  }
+
+  public destroy(): void {
+    if (this.trimTimer) {
+      clearInterval(this.trimTimer);
+      this.trimTimer = null;
+    }
+  }
+
+  // -------------------- Helpers --------------------
+
+  /**
+   * Wrap fetch to auto-capture metrics (status, duration, size if available).
+   * Returns the original Response.
+   */
+  public async wrapFetch(
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ): Promise<Response> {
+    const start = performance.now();
+    let status = 0;
+    let size: number | undefined = undefined;
+    let errMsg: string | undefined = undefined;
+
+    const endpoint =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+        ? input.toString()
+        : (input as Request).url ?? 'unknown';
+
+    const method =
+      (init?.method || (input as Request)?.method || 'GET').toUpperCase();
+
+    try {
+      const res = await fetch(input as any, init);
+      status = res.status;
+
+      // Try content-length header
+      const len = res.headers.get('content-length');
+      if (len) {
+        const parsed = parseInt(len, 10);
+        if (Number.isFinite(parsed)) size = parsed;
+      }
+
+      // Record before returning
+      const end = performance.now();
+      this.recordRequest(endpoint, method, start, end, status, size);
+
+      return res;
+    } catch (e: any) {
+      status = 0; // network error
+      errMsg = e?.message ?? String(e);
+      const end = performance.now();
+      this.recordRequest(endpoint, method, start, end, status, size, errMsg);
+      throw e;
+    }
   }
 }
 
-// Global performance monitor instance
-let performanceMonitor: PerformanceMonitor | null = null;
+// -------------------- Utilities --------------------
+
+function avg(arr: number[]): number {
+  if (arr.length === 0) return 0;
+  return arr.reduce((s, v) => s + v, 0) / arr.length;
+}
+
+function percentile(sortedAsc: number[], p: number): number {
+  if (sortedAsc.length === 0) return 0;
+  const rank = (p / 100) * (sortedAsc.length - 1);
+  const low = Math.floor(rank);
+  const high = Math.ceil(rank);
+  if (low === high) return sortedAsc[low];
+  const w = rank - low;
+  return sortedAsc[low] * (1 - w) + sortedAsc[high] * w;
+}
+
+// -------------------- Singleton accessors --------------------
+
+let _perfMon: PerformanceMonitor | null = null;
 
 export function getPerformanceMonitor(): PerformanceMonitor {
-  if (!performanceMonitor) {
-    performanceMonitor = new PerformanceMonitor();
-  }
-  return performanceMonitor;
+  if (!_perfMon) _perfMon = new PerformanceMonitor();
+  return _perfMon;
 }
 
 export function initializePerformanceMonitor(): PerformanceMonitor {
-  performanceMonitor = new PerformanceMonitor();
-  return performanceMonitor;
+  _perfMon = new PerformanceMonitor();
+  return _perfMon;
 }
-
-// Types are already exported via export interface declarations above
 
 export { PerformanceMonitor };

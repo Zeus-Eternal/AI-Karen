@@ -62,21 +62,21 @@ export function ErrorDisplay({
         <span className="ml-2 text-sm font-medium md:text-base lg:text-lg">{error.message}</span>
         <div className="ml-auto flex items-center space-x-2">
           {error.retryable && onRetry && (
-            <button
+            <Button
               onClick={onRetry}
               className="text-sm underline hover:no-underline focus:outline-none md:text-base lg:text-lg"
               aria-label="Retry operation"
             >
-            </button>
+            </Button>
           )}
           {onDismiss && (
-            <button
+            <Button
               onClick={onDismiss}
               className="text-sm hover:opacity-70 focus:outline-none md:text-base lg:text-lg"
               aria-label="Dismiss error"
             >
               <X className="h-4 w-4 " />
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -109,13 +109,13 @@ export function ErrorDisplay({
           )}
           <div className="mt-4 flex items-center space-x-3">
             {error.retryable && onRetry && (
-              <button
+              <Button
                 onClick={onRetry}
                 className="inline-flex items-center text-sm font-medium underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base lg:text-lg"
                 aria-label="Retry the failed operation"
               >
                 <RefreshCw className="h-4 w-4 mr-1 " />
-              </button>
+              </Button>
             )}
             <span className="text-xs opacity-75 sm:text-sm md:text-base">
               Error Code: {error.code}
@@ -124,13 +124,13 @@ export function ErrorDisplay({
         </div>
         {onDismiss && (
           <div className="ml-4 flex-shrink-0">
-            <button
+            <Button
               onClick={onDismiss}
               className="inline-flex text-sm hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base lg:text-lg"
               aria-label="Dismiss this error"
             >
               <X className="h-5 w-5 " />
-            </button>
+            </Button>
           </div>
         )}
       </div>

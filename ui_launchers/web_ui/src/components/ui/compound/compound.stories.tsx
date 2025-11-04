@@ -54,8 +54,8 @@ export const Cards: Story = {
           </Card.Content>
           <Card.Footer>
             <Card.Actions>
-              <button className="px-4 py-2 bg-gray-200 rounded" aria-label="Button">Cancel</button>
-              <button className="px-4 py-2 bg-blue-500 text-white rounded" aria-label="Button">Confirm</button>
+              <Button className="px-4 py-2 bg-gray-200 rounded" aria-label="Button">Cancel</Button>
+              <Button className="px-4 py-2 bg-blue-500 text-white rounded" aria-label="Button">Confirm</Button>
             </Card.Actions>
           </Card.Footer>
         </Card.Root>
@@ -97,8 +97,8 @@ export const Cards: Story = {
           </Card.Content>
           <Card.Footer>
             <Card.Actions justify="end">
-              <button className="px-4 py-2 bg-blue-500 text-white rounded" aria-label="Button">
-              </button>
+              <Button className="px-4 py-2 bg-blue-500 text-white rounded" aria-label="Button">
+              </Button>
             </Card.Actions>
           </Card.Footer>
         </Card.Root>
@@ -128,8 +128,8 @@ export const Cards: Story = {
           </Card.Content>
           <Card.Footer>
             <Card.Actions>
-              <button className="w-full px-4 py-2 bg-green-500 text-white rounded" aria-label="Button">
-              </button>
+              <Button className="w-full px-4 py-2 bg-green-500 text-white rounded" aria-label="Button">
+              </Button>
             </Card.Actions>
           </Card.Footer>
         </Card.Root>
@@ -163,21 +163,21 @@ export const Modals: Story = {
       <div className="p-8 space-y-8 sm:p-4 md:p-6">
         <h1 className="text-3xl font-bold mb-8">Modal Components</h1>
         <div className="flex gap-4">
-          <button 
+          <Button 
             onClick={() => setBasicOpen(true)}
             className="px-4 py-2 bg-blue-500 text-white rounded"
           >
-          </button>
-          <button 
+          </Button>
+          <Button 
             onClick={() => setConfirmOpen(true)}
             className="px-4 py-2 bg-red-500 text-white rounded"
           >
-          </button>
-          <button 
+          </Button>
+          <Button 
             onClick={() => setFormOpen(true)}
             className="px-4 py-2 bg-green-500 text-white rounded"
           >
-          </button>
+          </Button>
         </div>
         {/* Basic Modal */}
         <Modal.Root open={basicOpen} onOpenChange={setBasicOpen}>
@@ -195,11 +195,11 @@ export const Modals: Story = {
               </p>
             </Modal.Body>
             <Modal.Actions>
-              <button 
+              <Button 
                 onClick={() => setBasicOpen(false)}
                 className="px-4 py-2 bg-gray-200 rounded"
               >
-              </button>
+              </Button>
             </Modal.Actions>
           </Modal.Content>
         </Modal.Root>
@@ -218,16 +218,16 @@ export const Modals: Story = {
               </p>
             </Modal.Body>
             <Modal.Actions>
-              <button 
+              <Button 
                 onClick={() => setConfirmOpen(false)}
                 className="px-4 py-2 bg-gray-200 rounded"
               >
-              </button>
-              <button 
+              </Button>
+              <Button 
                 onClick={() => setConfirmOpen(false)}
                 className="px-4 py-2 bg-red-500 text-white rounded"
               >
-              </button>
+              </Button>
             </Modal.Actions>
           </Modal.Content>
         </Modal.Root>
@@ -268,16 +268,16 @@ export const Modals: Story = {
               </div>
             </Modal.Body>
             <Modal.Actions>
-              <button 
+              <Button 
                 onClick={() => setFormOpen(false)}
                 className="px-4 py-2 bg-gray-200 rounded"
               >
-              </button>
-              <button 
+              </Button>
+              <Button 
                 onClick={() => setFormOpen(false)}
                 className="px-4 py-2 bg-blue-500 text-white rounded"
               >
-              </button>
+              </Button>
             </Modal.Actions>
           </Modal.Content>
         </Modal.Root>
@@ -328,8 +328,8 @@ export const Forms: Story = {
                 placeholder="Enter your password" />
             </div>
             <div className="flex justify-end">
-              <button className="px-6 py-2 bg-blue-500 text-white rounded" aria-label="Button">
-              </button>
+              <Button className="px-6 py-2 bg-blue-500 text-white rounded" aria-label="Button">
+              </Button>
             </div>
           </div>
         </Card.Content>
@@ -375,11 +375,11 @@ export const Forms: Story = {
               <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">This field is required and cannot be empty.</p>
             </div>
             <div className="flex justify-end space-x-2">
-              <button className="px-6 py-2 bg-gray-200 rounded" aria-label="Button">
-              </button>
-              <button className="px-6 py-2 bg-blue-500 text-white rounded" aria-label="Button">
+              <Button className="px-6 py-2 bg-gray-200 rounded" aria-label="Button">
+              </Button>
+              <Button className="px-6 py-2 bg-blue-500 text-white rounded" aria-label="Button">
                 Validate & Submit
-              </button>
+              </Button>
             </div>
           </div>
         </Card.Content>
@@ -469,10 +469,10 @@ export const Forms: Story = {
               </div>
             </div>
             <div className="flex justify-end space-x-2">
-              <button className="px-6 py-2 bg-gray-200 rounded" aria-label="Button">
-              </button>
-              <button className="px-6 py-2 bg-blue-500 text-white rounded" aria-label="Button">
-              </button>
+              <Button className="px-6 py-2 bg-gray-200 rounded" aria-label="Button">
+              </Button>
+              <Button className="px-6 py-2 bg-blue-500 text-white rounded" aria-label="Button">
+              </Button>
             </div>
           </div>
         </Card.Content>
@@ -511,8 +511,8 @@ export const Overview: Story = {
             </Card.Content>
             <Card.Footer>
               <Card.Actions>
-                <button className="px-3 py-1 bg-blue-500 text-white text-sm rounded md:text-base lg:text-lg" aria-label="Button">
-                </button>
+                <Button className="px-3 py-1 bg-blue-500 text-white text-sm rounded md:text-base lg:text-lg" aria-label="Button">
+                </Button>
               </Card.Actions>
             </Card.Footer>
           </Card.Root>
@@ -533,8 +533,8 @@ export const Overview: Story = {
                   <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">This is a help message.</p>
                 </div>
                 <div className="flex justify-end">
-                  <button className="px-3 py-1 bg-green-500 text-white text-sm rounded md:text-base lg:text-lg" aria-label="Button">
-                  </button>
+                  <Button className="px-3 py-1 bg-green-500 text-white text-sm rounded md:text-base lg:text-lg" aria-label="Button">
+                  </Button>
                 </div>
               </div>
             </Card.Content>
@@ -548,8 +548,8 @@ export const Overview: Story = {
               <p className="text-sm text-gray-600 mb-4 md:text-base lg:text-lg">
                 Modals provide overlay dialogs with flexible content areas.
               </p>
-              <button className="px-3 py-1 bg-purple-500 text-white text-sm rounded md:text-base lg:text-lg" aria-label="Button">
-              </button>
+              <Button className="px-3 py-1 bg-purple-500 text-white text-sm rounded md:text-base lg:text-lg" aria-label="Button">
+              </Button>
             </Card.Content>
           </Card.Root>
         </div>

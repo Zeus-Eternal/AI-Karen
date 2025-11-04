@@ -15,18 +15,25 @@ import { PreferencesError, ErrorUtils } from "./errors/model-selection-errors";
  * Interface for the preferences service
  */
 export interface IPreferencesService {
+  initialize(): Promise<void>;
   getUserPreferences(): Promise<ModelSelectionPreferences>;
-  saveUserPreferences(
-    preferences: Partial<ModelSelectionPreferences>
-  ): Promise<void>;
+  saveUserPreferences(preferences: Partial<ModelSelectionPreferences>): Promise<void>;
   getDefaultModelConfig(): Promise<{ defaultModel?: string }>;
   updateLastSelectedModel(modelId: string): Promise<void>;
   setDefaultModel(modelId: string): Promise<void>;
   resetToDefaults(): Promise<void>;
   validatePreferences(preferences: Partial<ModelSelectionPreferences>): boolean;
-  mergeWithDefaults(
-    preferences: Partial<ModelSelectionPreferences>
-  ): ModelSelectionPreferences;
+  mergeWithDefaults(preferences: Partial<ModelSelectionPreferences>): ModelSelectionPreferences;
+  getPreferencesStats(): {
+    serviceName: string;
+    isInitialized: boolean;
+    cacheSize: number;
+    config: PreferencesServiceConfig;
+    hasUserPreferences: boolean;
+    hasDefaultConfig: boolean;
+  };
+  clearCache(): void;
+  shutdown(): Promise<void>;
 }
 
 /**
@@ -44,18 +51,12 @@ const DEFAULT_PREFERENCES: ModelSelectionPreferences = {
  * Default service configuration
  */
 const DEFAULT_CONFIG: PreferencesServiceConfig = {
-  cacheTimeout: 30000, // 30 seconds
+  cacheTimeout: 30_000, // 30 seconds
   autoSave: true,
   defaultPreferences: DEFAULT_PREFERENCES,
 };
 
-/**
- * Preferences Service Implementation
- */
-export class PreferencesService
-  extends BaseModelService
-  implements IPreferencesService
-{
+export class PreferencesService extends BaseModelService implements IPreferencesService {
   private config: PreferencesServiceConfig;
   private readonly USER_PREFERENCES_CACHE_KEY = "user_preferences";
   private readonly DEFAULT_CONFIG_CACHE_KEY = "default_config";
@@ -71,17 +72,12 @@ export class PreferencesService
    */
   async initialize(): Promise<void> {
     await super.initialize();
-
     try {
-      // Pre-load preferences into cache
-      await this.getUserPreferences();
-      await this.getDefaultModelConfig();
-
+      await this.getUserPreferences();       // warm cache
+      await this.getDefaultModelConfig();    // warm cache
       this.log("Preferences service initialized successfully");
     } catch (error) {
       this.handleError(error, "initialization");
-      // Don't throw on initialization errors, just log them
-      // The service should still be usable with defaults
       this.log("Preferences service initialized with errors, using defaults");
     }
   }
@@ -101,15 +97,14 @@ export class PreferencesService
             "getUserPreferences"
           );
 
-          const preferences = response || {};
-          const validatedPreferences = this.mergeWithDefaults(preferences);
+          const raw = (response || {}) as Partial<ModelSelectionPreferences>;
+          const cleaned = this.cleanPreferences(raw);
+          const validatedPreferences = this.mergeWithDefaults(cleaned);
 
           this.log("Retrieved user preferences from backend");
           return validatedPreferences;
         } catch (error) {
           this.handleError(error, "getUserPreferences");
-
-          // Return defaults on error
           this.log("Returning default preferences due to error");
           return this.mergeWithDefaults({});
         }
@@ -121,16 +116,16 @@ export class PreferencesService
   /**
    * Save user preferences for model selection
    */
-  async saveUserPreferences(
-    preferences: Partial<ModelSelectionPreferences>
-  ): Promise<void> {
-    // Validate preferences before saving
-    if (!this.validatePreferences(preferences)) {
+  async saveUserPreferences(preferences: Partial<ModelSelectionPreferences>): Promise<void> {
+    const cleaned = this.cleanPreferences(preferences);
+
+    // Validate before saving
+    if (!this.validatePreferences(cleaned)) {
       throw new PreferencesError(
         "Invalid preferences provided",
         undefined,
         "save",
-        ErrorUtils.createContext({ preferences })
+        ErrorUtils.createContext({ preferences: cleaned })
       );
     }
 
@@ -141,23 +136,25 @@ export class PreferencesService
         backend.makeRequestPublic("/api/user/preferences/models", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(preferences),
+          body: JSON.stringify(cleaned),
         }),
         this.DEFAULT_TIMEOUT_MS,
         "saveUserPreferences"
       );
 
-      // Invalidate cache to force refresh on next get
+      // Invalidate caches to force refresh
       this.cache.delete(this.USER_PREFERENCES_CACHE_KEY);
+      // default config might interact with fallback selection logic; safe to invalidate too
+      this.cache.delete(this.DEFAULT_CONFIG_CACHE_KEY);
 
       this.log("Saved user preferences to backend");
     } catch (error) {
-      this.handleError(error, "saveUserPreferences", { preferences });
+      this.handleError(error, "saveUserPreferences", { preferences: cleaned });
       throw new PreferencesError(
         "Failed to save user preferences",
         undefined,
         "save",
-        ErrorUtils.createContext({ preferences, error })
+        ErrorUtils.createContext({ preferences: cleaned, error })
       );
     }
   }
@@ -177,13 +174,15 @@ export class PreferencesService
             "getDefaultModelConfig"
           );
 
-          const config = response || {};
+          const config = (response || {}) as { defaultModel?: string };
+          const cleaned =
+            typeof config.defaultModel === "string" && config.defaultModel.trim().length > 0
+              ? { defaultModel: config.defaultModel.trim() }
+              : {};
           this.log("Retrieved default model config from backend");
-          return config;
+          return cleaned;
         } catch (error) {
           this.handleError(error, "getDefaultModelConfig");
-
-          // Return empty config on error
           this.log("Returning empty default config due to error");
           return {};
         }
@@ -196,7 +195,7 @@ export class PreferencesService
    * Update the last selected model in user preferences
    */
   async updateLastSelectedModel(modelId: string): Promise<void> {
-    if (!modelId || typeof modelId !== "string") {
+    if (!modelId || typeof modelId !== "string" || !modelId.trim()) {
       throw new PreferencesError(
         "Invalid model ID provided",
         "lastSelectedModel",
@@ -207,13 +206,13 @@ export class PreferencesService
 
     try {
       const currentPreferences = await this.getUserPreferences();
-      const updatedPreferences = {
+      const updatedPreferences: Partial<ModelSelectionPreferences> = {
         ...currentPreferences,
-        lastSelectedModel: modelId,
+        lastSelectedModel: modelId.trim(),
       };
 
       await this.saveUserPreferences(updatedPreferences);
-      this.log(`Updated last selected model to: ${modelId}`);
+      this.log(`Updated last selected model to: ${modelId.trim()}`);
     } catch (error) {
       this.handleError(error, "updateLastSelectedModel", { modelId });
       throw new PreferencesError(
@@ -229,7 +228,7 @@ export class PreferencesService
    * Set the default model in user preferences
    */
   async setDefaultModel(modelId: string): Promise<void> {
-    if (!modelId || typeof modelId !== "string") {
+    if (!modelId || typeof modelId !== "string" || !modelId.trim()) {
       throw new PreferencesError(
         "Invalid model ID provided",
         "defaultModel",
@@ -240,13 +239,13 @@ export class PreferencesService
 
     try {
       const currentPreferences = await this.getUserPreferences();
-      const updatedPreferences = {
+      const updatedPreferences: Partial<ModelSelectionPreferences> = {
         ...currentPreferences,
-        defaultModel: modelId,
+        defaultModel: modelId.trim(),
       };
 
       await this.saveUserPreferences(updatedPreferences);
-      this.log(`Set default model to: ${modelId}`);
+      this.log(`Set default model to: ${modelId.trim()}`);
     } catch (error) {
       this.handleError(error, "setDefaultModel", { modelId });
       throw new PreferencesError(
@@ -263,9 +262,7 @@ export class PreferencesService
    */
   async resetToDefaults(): Promise<void> {
     try {
-      await this.saveUserPreferences(
-        this.config.defaultPreferences || DEFAULT_PREFERENCES
-      );
+      await this.saveUserPreferences(this.config.defaultPreferences || DEFAULT_PREFERENCES);
       this.log("Reset preferences to defaults");
     } catch (error) {
       this.handleError(error, "resetToDefaults");
@@ -281,53 +278,40 @@ export class PreferencesService
   /**
    * Validate preferences object
    */
-  validatePreferences(
-    preferences: Partial<ModelSelectionPreferences>
-  ): boolean {
-    if (!preferences || typeof preferences !== "object") {
+  validatePreferences(preferences: Partial<ModelSelectionPreferences>): boolean {
+    if (!preferences || typeof preferences !== "object") return false;
+
+    // lastSelectedModel
+    if (preferences.lastSelectedModel !== undefined) {
+      if (typeof preferences.lastSelectedModel !== "string") return false;
+      if (preferences.lastSelectedModel.trim().length === 0) return false;
+    }
+
+    // defaultModel
+    if (preferences.defaultModel !== undefined) {
+      if (typeof preferences.defaultModel !== "string") return false;
+      if (preferences.defaultModel.trim().length === 0) return false;
+    }
+
+    // preferredProviders
+    if (preferences.preferredProviders !== undefined) {
+      if (!Array.isArray(preferences.preferredProviders)) return false;
+      for (const provider of preferences.preferredProviders) {
+        if (typeof provider !== "string" || provider.trim().length === 0) return false;
+      }
+    }
+
+    // preferLocal
+    if (preferences.preferLocal !== undefined && typeof preferences.preferLocal !== "boolean") {
       return false;
     }
 
-    // Validate lastSelectedModel
-    if (preferences.lastSelectedModel !== undefined) {
-      if (typeof preferences.lastSelectedModel !== "string") {
-        return false;
-      }
-    }
-
-    // Validate defaultModel
-    if (preferences.defaultModel !== undefined) {
-      if (typeof preferences.defaultModel !== "string") {
-        return false;
-      }
-    }
-
-    // Validate preferredProviders
-    if (preferences.preferredProviders !== undefined) {
-      if (!Array.isArray(preferences.preferredProviders)) {
-        return false;
-      }
-      if (
-        !preferences.preferredProviders.every(
-          (provider) => typeof provider === "string"
-        )
-      ) {
-        return false;
-      }
-    }
-
-    // Validate preferLocal
-    if (preferences.preferLocal !== undefined) {
-      if (typeof preferences.preferLocal !== "boolean") {
-        return false;
-      }
-    }
-
-    // Validate autoSelectFallback
-    if (preferences.autoSelectFallback !== undefined) {
-      if (typeof preferences.autoSelectFallback !== "boolean") {
-        return false;
-      }
+    // autoSelectFallback
+    if (
+      preferences.autoSelectFallback !== undefined &&
+      typeof preferences.autoSelectFallback !== "boolean"
+    ) {
+      return false;
     }
 
     return true;
@@ -336,9 +320,7 @@ export class PreferencesService
   /**
    * Merge preferences with defaults
    */
-  mergeWithDefaults(
-    preferences: Partial<ModelSelectionPreferences>
-  ): ModelSelectionPreferences {
+  mergeWithDefaults(preferences: Partial<ModelSelectionPreferences>): ModelSelectionPreferences {
     const defaults = this.config.defaultPreferences || DEFAULT_PREFERENCES;
 
     return {
@@ -346,12 +328,39 @@ export class PreferencesService
         preferences.lastSelectedModel ?? defaults.lastSelectedModel,
       defaultModel: preferences.defaultModel ?? defaults.defaultModel,
       preferredProviders:
-        preferences.preferredProviders ?? defaults.preferredProviders ?? [],
-      preferLocal: preferences.preferLocal ?? defaults.preferLocal ?? false,
-      autoSelectFallback:
-        preferences.autoSelectFallback ?? defaults.autoSelectFallback ?? true,
+        (preferences.preferredProviders && preferences.preferredProviders.length > 0
+          ? Array.from(new Set(preferences.preferredProviders.map((p) => p.trim()).filter(Boolean)))
+          : defaults.preferredProviders) ?? [],
+      preferLocal: preferences.preferLocal ?? (defaults.preferLocal ?? false),
+      autoSelectFallback: preferences.autoSelectFallback ?? (defaults.autoSelectFallback ?? true),
     };
   }
+
+  /**
+   * Internal: light sanitation for inbound preferences
+   */
+  private cleanPreferences(prefs: Partial<ModelSelectionPreferences>): Partial<ModelSelectionPreferences> {
+    const out: Partial<ModelSelectionPreferences> = { ...prefs };
+
+    if (typeof out.lastSelectedModel === "string") {
+      out.lastSelectedModel = out.lastSelectedModel.trim();
+      if (!out.lastSelectedModel) delete out.lastSelectedModel;
+    }
+
+    if (typeof out.defaultModel === "string") {
+      out.defaultModel = out.defaultModel.trim();
+      if (!out.defaultModel) delete out.defaultModel;
+    }
+
+    if (Array.isArray(out.preferredProviders)) {
+      out.preferredProviders = Array.from(
+        new Set(out.preferredProviders.map((p) => (typeof p === "string" ? p.trim() : "")).filter(Boolean))
+      );
+    }
+
+    // Booleans pass-through as-is if provided
+    return out;
+    }
 
   /**
    * Get preferences service statistics
@@ -365,7 +374,6 @@ export class PreferencesService
     hasDefaultConfig: boolean;
   } {
     const baseStats = this.getServiceStats();
-
     return {
       ...baseStats,
       config: this.config,
@@ -411,9 +419,9 @@ export function getPreferencesService(
 /**
  * Reset the preferences service singleton (mainly for testing)
  */
-export function resetPreferencesService(): void {
+export async function resetPreferencesService(): Promise<void> {
   if (preferencesServiceInstance) {
-    preferencesServiceInstance.shutdown();
+    await preferencesServiceInstance.shutdown();
     preferencesServiceInstance = null;
   }
 }

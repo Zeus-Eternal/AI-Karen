@@ -3,6 +3,10 @@
 import React, { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
+/* ========================
+ * Types
+ * ====================== */
+
 type LayoutGap = "none" | "sm" | "md" | "lg" | "xl";
 type LayoutColumns =
   | "auto"
@@ -14,6 +18,7 @@ type LayoutColumns =
   | "6"
   | "auto-fit"
   | "auto-fill";
+
 type Breakpoint = "sm" | "md" | "lg" | "xl";
 type ResponsiveColumnCount = "1" | "2" | "3" | "4" | "5" | "6";
 
@@ -27,7 +32,10 @@ interface LayoutGridProps extends BaseLayoutProps {
   gap?: LayoutGap;
   responsive?: boolean;
   responsiveColumns?: Partial<Record<Breakpoint, ResponsiveColumnCount>>;
+  /** px; only used when columns is auto-fit/auto-fill */
   minItemWidth?: number;
+  /** Pass-through style */
+  style?: React.CSSProperties;
 }
 
 interface LayoutFlexProps extends BaseLayoutProps {
@@ -60,6 +68,10 @@ interface LayoutContainerProps extends BaseLayoutProps {
   className?: string;
 }
 
+/* ========================
+ * Class Maps
+ * ====================== */
+
 const GAP_CLASS_MAP: Record<LayoutGap, string> = {
   none: "gap-0",
   sm: "gap-2",
@@ -89,6 +101,7 @@ const GRID_COLUMN_CLASS_MAP: Record<LayoutColumns, string> = {
 };
 
 const RESPONSIVE_COLUMN_CLASS_MAP: Record<
+  Breakpoint,
   Record<ResponsiveColumnCount, string>
 > = {
   sm: {
@@ -130,8 +143,8 @@ const SECTION_VARIANT_CLASS_MAP: Record<
   string
 > = {
   default: "",
-  card: "modern-card",
-  glass: "glass",
+  card: "modern-card", // assumes a shadcn card preset or your custom class
+  glass: "glass",      // assumes a glassmorphism utility in your CSS
 };
 
 const FLEX_DIRECTION_CLASS_MAP: Record<
@@ -173,40 +186,41 @@ const FLEX_WRAP_CLASS_MAP: Record<"nowrap" | "wrap" | "wrap-reverse", string> = 
   "wrap-reverse": "flex-wrap-reverse",
 };
 
-// Main Layout Container
-export const Layout = forwardRef<HTMLDivElement, BaseLayoutProps>(function Layout(
-  { children, className, ...props }: BaseLayoutProps,
-  ref
-) {
-  return (
-    <div ref={ref} className={cn("container-fluid", className)} {...props}>
-      {children}
-    </div>
-  );
+/* ========================
+ * Components
+ * ====================== */
 
+// Main Layout Container (fluid wrapper)
+export const Layout = forwardRef<HTMLDivElement, BaseLayoutProps>(
+  ({ children, className, ...props }, ref) => {
+    return (
+      <div ref={ref} className={cn("container-fluid", className)} {...props}>
+        {children}
+      </div>
+    );
+  }
+);
 Layout.displayName = "Layout";
 
-// Grid Layout Component
-export const LayoutGrid = forwardRef<HTMLDivElement, LayoutGridProps>(function LayoutGrid(
-  {
-    children,
-    className,
-    columns = "auto-fit",
-    gap = "md",
-    responsive = true,
-    responsiveColumns,
-    minItemWidth,
-    style,
-    ...props
-  }: LayoutGridProps,
-  ref
-) {
+// Grid Layout
+export const LayoutGrid = forwardRef<HTMLDivElement, LayoutGridProps>(
+  (
+    {
+      children,
+      className,
+      columns = "auto-fit",
+      gap = "md",
+      responsive = true,
+      responsiveColumns,
+      minItemWidth,
+      style,
+      ...props
+    },
+    ref
+  ) => {
     const autoLayoutMode =
-      columns === "auto-fit"
-        ? "auto-fit"
-        : columns === "auto-fill"
-          ? "auto-fill"
-          : null;
+      columns === "auto-fit" ? "auto-fit" : columns === "auto-fill" ? "auto-fill" : null;
+
     const shouldUsePresetAutoLayoutClass = !!autoLayoutMode && !minItemWidth;
     const columnClass = GRID_COLUMN_CLASS_MAP[columns];
     const gapClass = GAP_CLASS_MAP[gap];
@@ -216,12 +230,11 @@ export const LayoutGrid = forwardRef<HTMLDivElement, LayoutGridProps>(function L
     if (responsiveColumns) {
       (Object.entries(responsiveColumns) as [Breakpoint, ResponsiveColumnCount][])
         .forEach(([breakpoint, value]) => {
-          const responsiveClass = RESPONSIVE_COLUMN_CLASS_MAP[breakpoint]?.[value];
-          if (responsiveClass) {
-            responsiveClasses.push(responsiveClass);
-          }
-
+          const rc = RESPONSIVE_COLUMN_CLASS_MAP[breakpoint]?.[value];
+          if (rc) responsiveClasses.push(rc);
+        });
     } else if (responsive && autoLayoutMode === "auto-fit") {
+      // sensible defaults when auto-fit is used
       responsiveClasses.push("md:grid-cols-2", "lg:grid-cols-3", "xl:grid-cols-4");
     }
 
@@ -236,39 +249,37 @@ export const LayoutGrid = forwardRef<HTMLDivElement, LayoutGridProps>(function L
       "grid",
       columnClass && (!autoLayoutMode || shouldUsePresetAutoLayoutClass) && columnClass,
       gapClass,
-      responsiveClasses,
+      responsiveClasses.join(" "),
       className
     );
 
-  return (
-    <div ref={ref} className={gridClasses} style={autoLayoutStyle} {...props}>
-      {children}
-    </div>
-  );
-
+    return (
+      <div ref={ref} className={gridClasses} style={autoLayoutStyle} {...props}>
+        {children}
+      </div>
+    );
+  }
+);
 LayoutGrid.displayName = "LayoutGrid";
 
-// Flex Layout Component
-export const LayoutFlex = forwardRef<HTMLDivElement, LayoutFlexProps>(function LayoutFlex(
-  props: LayoutFlexProps,
-  ref
-) {
-  const {
-    children,
-    className,
-    direction = "row",
-    align = "start",
-    justify = "start",
-    wrap = "nowrap",
-    gap = "md",
-    ...otherProps
-  } = props;
+// Flex Layout
+export const LayoutFlex = forwardRef<HTMLDivElement, LayoutFlexProps>(
+  (
+    {
+      children,
+      className,
+      direction = "row",
+      align = "start",
+      justify = "start",
+      wrap = "nowrap",
+      gap = "md",
+      ...otherProps
+    },
+    ref
+  ) => {
+    const normalizedWrap = typeof wrap === "boolean" ? (wrap ? "wrap" : "nowrap") : wrap;
+    const gapClass = GAP_CLASS_MAP[gap];
 
-    const normalizedWrap =
-      typeof wrap === "boolean" ? (wrap ? "wrap" : "nowrap") : wrap;
-    const gapClass = GAP_CLASS_MAP[gap as LayoutGap];
-
-    // Ensure direction, align, justify are non-null with defaults
     const dir = direction as NonNullable<LayoutFlexProps["direction"]>;
     const ali = align as NonNullable<LayoutFlexProps["align"]>;
     const jus = justify as NonNullable<LayoutFlexProps["justify"]>;
@@ -284,91 +295,59 @@ export const LayoutFlex = forwardRef<HTMLDivElement, LayoutFlexProps>(function L
       className
     );
 
-  return (
-    <div ref={ref} className={flexClasses} {...otherProps}>
-      {children}
-    </div>
-  );
-
+    return (
+      <div ref={ref} className={flexClasses} {...otherProps}>
+        {children}
+      </div>
+    );
+  }
+);
 LayoutFlex.displayName = "LayoutFlex";
 
-// Section Component with modern styling
-export const LayoutSection = forwardRef<HTMLElement, LayoutSectionProps>(function LayoutSection(
-  props: LayoutSectionProps,
-  ref
-) {
-  const {
-    children,
-    className,
-    variant = "default",
-    padding = "md",
-    ...otherProps
-  } = props;
-
-    const paddingClass = PADDING_CLASS_MAP[padding as LayoutGap];
-    const varnt = variant as NonNullable<LayoutSectionProps["variant"]>;
-    const variantClass = SECTION_VARIANT_CLASS_MAP[varnt];
-
+// Section
+export const LayoutSection = forwardRef<HTMLElement, LayoutSectionProps>(
+  ({ children, className, variant = "default", padding = "md", ...otherProps }, ref) => {
+    const paddingClass = PADDING_CLASS_MAP[padding];
+    const variantClass = SECTION_VARIANT_CLASS_MAP[variant];
     const sectionClasses = cn(variantClass, paddingClass, className);
 
-  return (
-    <section ref={ref} className={sectionClasses} {...otherProps}>
-      {children}
-    </section>
-  );
-
+    return (
+      <section ref={ref} className={sectionClasses} {...otherProps}>
+        {children}
+      </section>
+    );
+  }
+);
 LayoutSection.displayName = "LayoutSection";
 
-// Page Header Component
-export const LayoutHeader = forwardRef<HTMLElement, LayoutHeaderProps>(function LayoutHeader(
-  props: LayoutHeaderProps,
-  ref
-) {
-  const {
-    children,
-    className,
-    title,
-    description,
-    actions,
-    ...otherProps
-  } = props;
-
-  return (
-    <header
-      ref={ref}
-      className={cn("modern-card-header space-y-4", className)}
-      {...otherProps}
-    >
-      <div className="flex-between">
-        <div className="space-y-1">
-          {title && (
-            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          )}
-          {description && (
-            <p className="text-muted-foreground">{description}</p>
-          )}
+// Page Header
+export const LayoutHeader = forwardRef<HTMLElement, LayoutHeaderProps>(
+  ({ children, className, title, description, actions, ...otherProps }, ref) => {
+    return (
+      <header
+        ref={ref}
+        className={cn("modern-card-header space-y-4", className)}
+        {...otherProps}
+      >
+        <div className={cn("flex items-start justify-between") /* robust replacement for 'flex-between' */}>
+          <div className="space-y-1">
+            {title && (
+              <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            )}
+            {description && <p className="text-muted-foreground">{description}</p>}
+          </div>
+          {actions && <div className="flex items-center gap-2">{actions}</div>}
         </div>
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
-      </div>
-      {children}
-    </header>
-  );
-
+        {children}
+      </header>
+    );
+  }
+);
 LayoutHeader.displayName = "LayoutHeader";
 
-// Responsive Container with max-width constraints
-export const LayoutContainer = forwardRef<HTMLDivElement, LayoutContainerProps>(function LayoutContainer(
-  props: LayoutContainerProps,
-  ref
-) {
-  const {
-    children,
-    className,
-    size = "lg",
-    centered = true,
-    ...otherProps
-  } = props;
-
+// Max-width Container
+export const LayoutContainer = forwardRef<HTMLDivElement, LayoutContainerProps>(
+  ({ children, className, size = "lg", centered = true, ...otherProps }, ref) => {
     const containerClasses = cn(
       "w-full px-4 sm:px-6 lg:px-8",
       {
@@ -377,15 +356,16 @@ export const LayoutContainer = forwardRef<HTMLDivElement, LayoutContainerProps>(
         "max-w-6xl": size === "lg",
         "max-w-7xl": size === "xl",
         "max-w-none": size === "full",
-        "mx-auto": centered,
       },
+      centered && "mx-auto",
       className
     );
 
-  return (
-    <div ref={ref} className={containerClasses} {...otherProps}>
-      {children}
-    </div>
-  );
-
+    return (
+      <div ref={ref} className={containerClasses} {...otherProps}>
+        {children}
+      </div>
+    );
+  }
+);
 LayoutContainer.displayName = "LayoutContainer";

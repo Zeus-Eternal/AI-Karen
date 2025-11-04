@@ -157,6 +157,7 @@ export class ConfigManager {
         KAREN_BACKEND_URL: this.getEnvVar('KAREN_BACKEND_URL', ''),
         KAREN_ENVIRONMENT: this.getEnvVar('KAREN_ENVIRONMENT', ''),
         KAREN_NETWORK_MODE: this.getEnvVar('KAREN_NETWORK_MODE', '')
+      });
 
       return;
     }
@@ -167,6 +168,7 @@ export class ConfigManager {
       console.log('🏠 Forcing localhost configuration for local development', {
         NODE_ENV: this.getEnvVar('NODE_ENV', 'development'),
         KAREN_ENVIRONMENT: this.getEnvVar('KAREN_ENVIRONMENT', 'local')
+      });
 
       this.config.backendUrl = 'http://localhost:8000';
       this.config.networkMode = 'localhost';
@@ -182,6 +184,7 @@ export class ConfigManager {
       isExternal,
       hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
       dockerDetection: this.isRunningInDocker() ? 'DOCKER_CONTAINER=' + process.env.DOCKER_CONTAINER + ', HOSTNAME=' + process.env.HOSTNAME + ', KAREN_CONTAINER_MODE=' + process.env.KAREN_CONTAINER_MODE : 'N/A'
+    });
 
     // Update network mode based on detection
     if (isDocker) {
@@ -393,6 +396,7 @@ export class ConfigManager {
         headers: {
           'Accept': 'application/json',
         },
+      });
 
       clearTimeout(timeoutId);
       const responseTime = performance.now() - startTime;

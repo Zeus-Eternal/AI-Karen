@@ -177,8 +177,8 @@ describe("ThemeProvider", () => {
       const TestComponent = () => {
         const { toggleTheme } = useTheme();
         return (
-          <button onClick={toggleTheme} data-testid="toggle-theme">
-          </button>
+          <Button onClick={toggleTheme} data-testid="toggle-theme">
+          </Button>
         );
       };
 
@@ -195,8 +195,8 @@ describe("ThemeProvider", () => {
       const TestComponent = () => {
         const { toggleTheme } = useTheme();
         return (
-          <button onClick={toggleTheme} data-testid="toggle-theme">
-          </button>
+          <Button onClick={toggleTheme} data-testid="toggle-theme">
+          </Button>
         );
       };
 
@@ -247,11 +247,11 @@ describe("ThemeProvider", () => {
         return (
           <div>
             <span data-testid="density">{density}</span>
-            <button
+            <Button
               onClick={() => setDensity("spacious")}
               data-testid="set-density"
             >
-            </button>
+            </Button>
           </div>
         );
       };
@@ -409,11 +409,11 @@ describe("ThemeProvider", () => {
       const TestComponent = () => {
         const { setDensity } = useTheme();
         return (
-          <button
+          <Button
             onClick={() => setDensity("compact")}
             data-testid="set-density"
           >
-          </button>
+          </Button>
         );
       };
 

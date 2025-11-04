@@ -1,22 +1,46 @@
 /**
- * Comprehensive Memory Interface Component
- * Combines AG-UI grid, network visualization, and CopilotKit-enhanced editing
+ * Comprehensive Memory Interface Component (Production)
+ * - Orchestrates Grid, Network, and Analytics views
+ * - CopilotKit-enhanced editing (MemoryEditor)
+ * - Safe fetch, explicit error surfacing
+ * - Lazy-loaded charts & network viz
+ * - Local refresh on save/delete without page reloads
  */
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
-import { CopilotKit } from '@copilotkit/react-core';
-import dynamic from 'next/dynamic';
-import MemoryGrid from './MemoryGrid';
-// Lazy-load the network visualization and charts only when needed
-const MemoryNetworkVisualization = dynamic(() => import('./MemoryNetworkVisualization'), { ssr: false });
-import MemoryEditor from './MemoryEditor';
-const AgCharts = dynamic(() => import('ag-charts-react').then(m => m.AgCharts), { ssr: false });
-import { AgChartOptions } from 'ag-charts-community';
-import { v4 as uuidv4 } from 'uuid';
+
+"use client";
+
+import React, { useState, useCallback, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
+import { v4 as uuidv4 } from "uuid";
+
+import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import { CopilotKit } from "@copilotkit/react-core";
+import MemoryGrid from "./MemoryGrid";
+import MemoryEditor from "./MemoryEditor";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+import type { AgChartOptions } from "ag-charts-community";
+
+// Lazy-load heavy pieces
+const MemoryNetworkVisualization = dynamic(
+  () => import("./MemoryNetworkVisualization"),
+  { ssr: false }
+);
+const AgCharts = dynamic(() => import("ag-charts-react").then((m) => m.AgCharts), {
+  ssr: false,
+});
+
+/* ============================
+ * Types
+ * ========================== */
+type MemoryType = "fact" | "preference" | "context";
+
 interface MemoryGridRow {
   id: string;
   content: string;
-  type: 'fact' | 'preference' | 'context';
+  type: MemoryType;
   confidence: number;
   last_accessed: string;
   relevance_score: number;
@@ -27,6 +51,7 @@ interface MemoryGridRow {
   session_id?: string;
   tenant_id?: string;
 }
+
 interface MemoryNetworkNode {
   id: string;
   label: string;
@@ -36,6 +61,7 @@ interface MemoryNetworkNode {
   size: number;
   color: string;
 }
+
 interface MemoryAnalytics {
   total_memories: number;
   memories_by_type: Record<string, number>;
@@ -44,545 +70,394 @@ interface MemoryAnalytics {
   access_patterns: Array<{ date: string; count: number }>;
   relationship_stats: Record<string, number>;
 }
+
 interface MemoryInterfaceProps {
   userId: string;
   tenantId?: string;
   copilotApiKey?: string;
   height?: number;
 }
-type ViewMode = 'grid' | 'network' | 'analytics';
+
+type ViewMode = "grid" | "network" | "analytics";
+
+/* ============================
+ * Utils
+ * ========================== */
+async function safeJsonPost<T = any>(url: string, payload: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+/* ============================
+ * Component
+ * ========================== */
 export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
   userId,
   tenantId,
   copilotApiKey,
-  height = 600
+  height = 600,
 }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [selectedMemory, setSelectedMemory] = useState<MemoryGridRow | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+
+  const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<Record<string, any>>({});
+
   const [analytics, setAnalytics] = useState<MemoryAnalytics | null>(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
-  // Generate a unique component instance ID for error tracking
+  const [gridKey, setGridKey] = useState<number>(0); // remount grid on save/delete
+
+  // Unique instance ID (if you want to correlate logs)
   const componentInstanceId = useMemo(() => uuidv4(), []);
-  // Fetch analytics data with proper error handling
+
+  /* ----- Analytics ----- */
   const fetchAnalytics = useCallback(async () => {
     try {
       setIsLoadingAnalytics(true);
       setError(null);
-      const response = await fetch('/api/memory/analytics', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          tenant_id: tenantId,
-          timeframe_days: 30
-        })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await safeJsonPost<MemoryAnalytics>("/api/memory/analytics", {
+        user_id: userId,
+        tenant_id: tenantId,
+        timeframe_days: 30,
+      });
       setAnalytics(data);
     } catch (err) {
-      setError('Failed to load analytics. Please try again later.');
+      setError(
+        (err as Error)?.message || "Failed to load analytics. Please try again later."
+      );
       setAnalytics(null);
     } finally {
       setIsLoadingAnalytics(false);
     }
-  }, [userId, tenantId, componentInstanceId]);
-  // Load analytics when switching to analytics view
+  }, [userId, tenantId]);
+
   useEffect(() => {
-    if (viewMode === 'analytics' && !analytics && !isLoadingAnalytics) {
+    if (viewMode === "analytics" && !analytics && !isLoadingAnalytics) {
       fetchAnalytics();
     }
   }, [viewMode, analytics, isLoadingAnalytics, fetchAnalytics]);
-  // Handle memory selection
+
+  /* ----- Selection / Editor ----- */
   const handleMemorySelect = useCallback((memory: MemoryGridRow) => {
     setSelectedMemory(memory);
   }, []);
-  // Handle memory editing
+
   const handleMemoryEdit = useCallback((memory: MemoryGridRow) => {
     setSelectedMemory(memory);
     setIsEditorOpen(true);
   }, []);
-  // Handle memory save with error handling
-  const handleMemorySave = useCallback(async (updatedMemory: Partial<MemoryGridRow>) => {
-    try {
-      setError(null);
-      if (!selectedMemory?.id && !updatedMemory.content) {
-        throw new Error('Memory content is required');
-      }
-      const response = await fetch('/api/memory/update', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          tenant_id: tenantId,
-          memory_id: selectedMemory?.id || undefined,
-          query: selectedMemory?.content || '',
-          result: updatedMemory.content,
-          metadata: {
-            type: updatedMemory.type || 'fact',
-            confidence: updatedMemory.confidence || 0.8,
-            semantic_cluster: updatedMemory.semantic_cluster || 'default',
-            updated_at: new Date().toISOString()
-          }
-        })
 
-      if (!response.ok) {
-        throw new Error(`Failed to save memory: ${response.statusText}`);
-      }
-      setIsEditorOpen(false);
-      setSelectedMemory(null);
-      // In a real app, you would update local state instead of reloading
-      window.location.reload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save memory');
-      throw err;
-    }
-  }, [selectedMemory, userId, tenantId, componentInstanceId]);
-  // Handle memory deletion with error handling
-  const handleMemoryDelete = useCallback(async (memoryId: string) => {
-    try {
-      setError(null);
-      // In a real implementation, you'd have a proper delete endpoint
-      const response = await fetch('/api/memory/delete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          tenant_id: tenantId,
-          memory_id: memoryId
-        })
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete memory: ${response.statusText}`);
-      }
-      setIsEditorOpen(false);
-      setSelectedMemory(null);
-      // In a real app, you would update local state instead of reloading
-      window.location.reload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete memory');
-      throw err;
-    }
-  }, [userId, tenantId, componentInstanceId]);
-  // Handle editor cancel
   const handleEditorCancel = useCallback(() => {
     setIsEditorOpen(false);
     setSelectedMemory(null);
     setError(null);
   }, []);
-  // Handle node selection in network view
-  const handleNodeSelect = useCallback((node: MemoryNetworkNode) => {
-    // You could show node details or switch to grid view with filters
-  }, []);
-  // Handle search with error handling
+
+  /* ----- Save/Delete ----- */
+  const handleMemorySave = useCallback(
+    async (updatedMemory: Partial<MemoryGridRow>) => {
+      try {
+        setError(null);
+        if (!selectedMemory?.id && !updatedMemory.content) {
+          throw new Error("Memory content is required");
+        }
+        await safeJsonPost("/api/memory/update", {
+          user_id: userId,
+          tenant_id: tenantId,
+          memory_id: selectedMemory?.id || undefined,
+          query: selectedMemory?.content || "",
+          result: updatedMemory.content,
+          metadata: {
+            type: updatedMemory.type || "fact",
+            confidence: updatedMemory.confidence ?? 0.8,
+            semantic_cluster: updatedMemory.semantic_cluster || "default",
+            updated_at: new Date().toISOString(),
+          },
+        });
+        setIsEditorOpen(false);
+        setSelectedMemory(null);
+        // Trigger grid remount to refresh data
+        setGridKey((k) => k + 1);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to save memory";
+        setError(msg);
+        throw err;
+      }
+    },
+    [selectedMemory, userId, tenantId]
+  );
+
+  const handleMemoryDelete = useCallback(
+    async (memoryId: string) => {
+      try {
+        setError(null);
+        await safeJsonPost("/api/memory/delete", {
+          user_id: userId,
+          tenant_id: tenantId,
+          memory_id: memoryId,
+        });
+        setIsEditorOpen(false);
+        setSelectedMemory(null);
+        setGridKey((k) => k + 1);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to delete memory";
+        setError(msg);
+        throw err;
+      }
+    },
+    [userId, tenantId]
+  );
+
+  /* ----- Search ----- */
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
-      setFilters(prev => {
-        const newFilters = {...prev};
-        delete newFilters.search_results;
-        return newFilters;
-
+      // Clear search_results filter if present
+      setFilters((prev) => {
+        const next = { ...prev };
+        delete next.search_results;
+        return next;
+      });
       return;
     }
     try {
       setError(null);
-      const response = await fetch('/api/memory/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          tenant_id: tenantId,
-          query: searchQuery,
-          filters: filters,
-          limit: 50
-        })
-
-      if (!response.ok) {
-        throw new Error(`Search failed: ${response.statusText}`);
-      }
-      const data = await response.json();
+      const data = await safeJsonPost<{ results: any[] }>("/api/memory/search", {
+        user_id: userId,
+        tenant_id: tenantId,
+        query: searchQuery,
+        filters,
+        limit: 50,
+      });
       setFilters({ ...filters, search_results: data.results });
-      setViewMode('grid');
+      setViewMode("grid");
+      setGridKey((k) => k + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Search failed');
+      setError(err instanceof Error ? err.message : "Search failed");
     }
-  }, [searchQuery, filters, userId, tenantId, componentInstanceId]);
-  // Create new memory
+  }, [searchQuery, filters, userId, tenantId]);
+
+  /* ----- Create ----- */
   const handleCreateMemory = useCallback(() => {
     setSelectedMemory(null);
     setIsEditorOpen(true);
     setError(null);
   }, []);
-  // Analytics chart configurations using useMemo for performance
-  const analyticsCharts = useMemo(() => {
-    if (!analytics) return [];
-    const charts = [];
-    // Memory types pie chart
-    if (analytics.memories_by_type) {
-      const typeData = Object.entries(analytics.memories_by_type).map(([type, count]) => ({
-        type: type.charAt(0).toUpperCase() + type.slice(1),
-        count
-      }));
-      charts.push({
-        title: 'Memory Types Distribution',
-        data: typeData,
-        series: [{
-          type: 'pie',
-          angleKey: 'count',
-          labelKey: 'type',
-          label: {
-            enabled: true,
-          },
-        }],
 
+  /* ----- Analytics charts (memoized) ----- */
+  const analyticsCharts = useMemo<AgChartOptions[]>(() => {
+    if (!analytics) return [];
+
+    const charts: AgChartOptions[] = [];
+
+    // Memory Types pie
+    if (analytics.memories_by_type) {
+      const typeData = Object.entries(analytics.memories_by_type).map(
+        ([type, count]) => ({
+          type: type.charAt(0).toUpperCase() + type.slice(1),
+          count,
+        })
+      );
+      charts.push({
+        title: { text: "Memory Types Distribution" },
+        data: typeData,
+        series: [{ type: "pie", angleKey: "count", labelKey: "type" }],
+      });
     }
-    // Confidence distribution bar chart
+
+    // Confidence distribution columns
     if (analytics.confidence_distribution) {
       charts.push({
-        title: 'Confidence Score Distribution',
+        title: { text: "Confidence Score Distribution" },
         data: analytics.confidence_distribution,
         axes: [
-          {
-            type: 'category',
-            position: 'bottom',
-          },
-          {
-            type: 'number',
-            position: 'left',
-          },
+          { type: "category", position: "bottom" },
+          { type: "number", position: "left" },
         ],
-        series: [{
-          type: 'column',
-          xKey: 'range',
-          yKey: 'count',
-        }],
-
+        series: [{ type: "column", xKey: "range", yKey: "count" }],
+      });
     }
-    // Access patterns line chart
+
+    // Access patterns line
     if (analytics.access_patterns) {
       charts.push({
-        title: 'Memory Access Patterns (Last 30 Days)',
+        title: { text: "Memory Access Patterns (Last 30 Days)" },
         data: analytics.access_patterns,
         axes: [
-          {
-            type: 'time',
-            position: 'bottom',
-            label: {
-              format: '%b %d',
-            },
-          },
-          {
-            type: 'number',
-            position: 'left',
-          },
+          { type: "time", position: "bottom", label: { format: "%b %d" } },
+          { type: "number", position: "left" },
         ],
-        series: [{
-          type: 'line',
-          xKey: 'date',
-          yKey: 'count',
-          marker: {
-            enabled: true,
-          },
-        }],
-
+        series: [{ type: "line", xKey: "date", yKey: "count", marker: { enabled: true } }],
+      });
     }
+
     return charts;
   }, [analytics]);
-  // View mode button styles
-  const viewModeButtonStyles = useMemo(() => ({
-    base: {
-      padding: '8px 16px',
-      border: '1px solid #ddd',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-    },
-    active: {
-      backgroundColor: '#2196F3',
-      color: '#fff',
-      borderColor: '#2196F3',
-    },
-    inactive: {
-      backgroundColor: '#fff',
-      color: '#333',
-      borderColor: '#ddd',
-    }
-  }), []);
+
+  /* ----- View Buttons style (inline minimal) ----- */
+  const isActive = (mode: ViewMode) =>
+    viewMode === mode ? "bg-primary text-primary-foreground border-primary" : "bg-background";
+
+  /* ----- Render ----- */
   return (
     <ErrorBoundary fallback={<div>Something went wrong in MemoryInterface</div>}>
-      <CopilotKit>
-      <div className="memory-interface" style={{ 
-        height: `${height}px`, 
-        display: 'flex', 
-        flexDirection: 'column',
-        position: 'relative',
-      }}>
-        {/* Error display */}
-        {error && (
-          <div style={{
-            position: 'absolute',
-            top: '16px',
-            right: '16px',
-            padding: '12px 16px',
-            backgroundColor: '#ffebee',
-            color: '#c62828',
-            borderRadius: '4px',
-            border: '1px solid #ef9a9a',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}>
-            <span>{error}</span>
-            <button 
-              onClick={() => setError(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#c62828',
-                cursor: 'pointer',
-                fontSize: '16px',
-              }}
-            >
-              ×
-            </button>
-          </div>
-        )}
-        {/* Header with controls */}
-        <div style={{ 
-          padding: '16px', 
-          borderBottom: '1px solid #ddd',
-          backgroundColor: '#f8f9fa',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          flexWrap: 'wrap'
-        }}>
-          <h2 style={{ margin: 0, color: '#333' }}>Memory Management</h2>
-          {/* View mode selector */}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => setViewMode('grid')}
-              style={{
-                ...viewModeButtonStyles.base,
-                ...(viewMode === 'grid' ? viewModeButtonStyles.active : viewModeButtonStyles.inactive)
-              }}
-            >
-            </button>
-            <button
-              onClick={() => setViewMode('network')}
-              style={{
-                ...viewModeButtonStyles.base,
-                ...(viewMode === 'network' ? viewModeButtonStyles.active : viewModeButtonStyles.inactive)
-              }}
-            >
-            </button>
-            <button
-              onClick={() => setViewMode('analytics')}
-              style={{
-                ...viewModeButtonStyles.base,
-                ...(viewMode === 'analytics' ? viewModeButtonStyles.active : viewModeButtonStyles.inactive)
-              }}
-            >
-            </button>
-          </div>
-          {/* Search and action buttons */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            marginLeft: 'auto',
-            flexWrap: 'wrap',
-            justifyContent: 'flex-end',
-            flexGrow: 1,
-            minWidth: '300px'
-          }}>
-            <div style={{ display: 'flex', gap: '8px', flexGrow: 1, maxWidth: '400px' }}>
-              <input
-                type="text"
-                placeholder="Search memories..."
+      <CopilotKit apiKey={copilotApiKey}>
+        <div
+          className="memory-interface relative flex flex-col"
+          style={{ height: `${height}px` }}
+          data-kari="memory-interface"
+          data-instance={componentInstanceId}
+        >
+          {/* Error Toast */}
+          {error && (
+            <div className="absolute right-4 top-4 z-50 flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 shadow-sm">
+              <span>{error}</span>
+              <Button variant="ghost" size="icon" aria-label="Dismiss error" onClick={() => setError(null)}>
+                ×
+              </Button>
+            </div>
+          )}
+
+          {/* Header */}
+          <div className="flex flex-wrap items-center gap-3 border-b bg-muted/40 p-4">
+            <h2 className="m-0 text-xl font-semibold">Memory Management</h2>
+
+            <div className="ml-2 flex gap-2">
+              <Button onClick={() => setViewMode("grid")} className={isActive("grid")}>
+                Grid
+              </Button>
+              <Button onClick={() => setViewMode("network")} className={isActive("network")}>
+                Network
+              </Button>
+              <Button onClick={() => setViewMode("analytics")} className={isActive("analytics")}>
+                Analytics
+              </Button>
+            </div>
+
+            <div className="ml-auto flex min-w-[300px] max-w-[500px] flex-1 items-center gap-2">
+              <Input
+                placeholder="Search memories…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  flexGrow: 1,
-                  minWidth: '120px'
-                }}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
-              <button
-                onClick={handleSearch}
-                disabled={!searchQuery.trim()}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#4CAF50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: searchQuery.trim() ? 'pointer' : 'not-allowed',
-                  opacity: searchQuery.trim() ? 1 : 0.6,
-                  whiteSpace: 'nowrap'
-                }}
-               aria-label="Button">
-              </button>
+              <Button onClick={handleSearch} disabled={!searchQuery.trim()}>
+                Search
+              </Button>
+              <Button onClick={handleCreateMemory} variant="secondary">
+                New Memory
+              </Button>
             </div>
-            <button
-              onClick={handleCreateMemory}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#FF9800',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-             aria-label="Button">
-            </button>
           </div>
-        </div>
-        {/* Main content area */}
-        <div style={{ flex: 1, overflow: 'hidden', padding: '16px' }}>
-          {viewMode === 'grid' && (
-            <MemoryGrid
-              userId={userId}
-              tenantId={tenantId}
-              onMemorySelect={handleMemorySelect}
-              onMemoryEdit={handleMemoryEdit}
-              filters={filters}
-              height={height - 120}
-            />
-          )}
-          {viewMode === 'network' && (
-            <MemoryNetworkVisualization
-              userId={userId}
-              tenantId={tenantId}
-              onNodeSelect={handleNodeSelect}
-              onNodeDoubleClick={(node) => console.log('Double clicked:', node)}
-              height={height - 120}
-              width={window.innerWidth - 64}
-            />
-          )}
-          {viewMode === 'analytics' && (
-            <div style={{ height: height - 120, overflow: 'auto' }}>
-              {isLoadingAnalytics ? (
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  height: '200px',
-                  color: '#666'
-                }}>
-                  Loading analytics...
-                </div>
-              ) : analytics ? (
-                <div>
-                  {/* Summary stats */}
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-                    gap: '16px',
-                    marginBottom: '24px'
-                  }}>
-                    <div style={{ 
-                      padding: '16px', 
-                      backgroundColor: '#f8f9fa', 
-                      borderRadius: '8px',
-                      textAlign: 'center'
-                    }}>
-                      <h3 style={{ margin: '0 0 8px 0', color: '#2196F3' }}>
-                        {analytics.total_memories.toLocaleString()}
-                      </h3>
-                      <p style={{ margin: 0, color: '#666' }}>Total Memories</p>
-                    </div>
-                    <div style={{ 
-                      padding: '16px', 
-                      backgroundColor: '#f8f9fa', 
-                      borderRadius: '8px',
-                      textAlign: 'center'
-                    }}>
-                      <h3 style={{ margin: '0 0 8px 0', color: '#4CAF50' }}>
-                        {(analytics.relationship_stats.connected_memories || 0).toLocaleString()}
-                      </h3>
-                      <p style={{ margin: 0, color: '#666' }}>Connected Memories</p>
-                    </div>
-                    <div style={{ 
-                      padding: '16px', 
-                      backgroundColor: '#f8f9fa', 
-                      borderRadius: '8px',
-                      textAlign: 'center'
-                    }}>
-                      <h3 style={{ margin: '0 0 8px 0', color: '#FF9800' }}>
-                        {Object.keys(analytics.memories_by_cluster).length.toLocaleString()}
-                      </h3>
-                      <p style={{ margin: 0, color: '#666' }}>Clusters</p>
-                    </div>
+
+          {/* Main */}
+          <div className="flex-1 overflow-hidden p-4">
+            {viewMode === "grid" && (
+              <MemoryGrid
+                key={gridKey}
+                userId={userId}
+                tenantId={tenantId}
+                onMemorySelect={handleMemorySelect}
+                onMemoryEdit={handleMemoryEdit}
+                filters={filters}
+                height={height - 120}
+              />
+            )}
+
+            {viewMode === "network" && (
+              <MemoryNetworkVisualization
+                userId={userId}
+                tenantId={tenantId}
+                onNodeSelect={(node: MemoryNetworkNode) => {
+                  // Optionally: set filters or focus based on node
+                  void node;
+                }}
+                onNodeDoubleClick={(node: MemoryNetworkNode) => {
+                  // Optional: open editor based on node mapping
+                  console.log("Double clicked:", node);
+                }}
+                height={height - 120}
+                width={undefined /* let component use container width */}
+              />
+            )}
+
+            {viewMode === "analytics" && (
+              <div style={{ height: height - 120, overflow: "auto" }}>
+                {isLoadingAnalytics ? (
+                  <div className="grid h-[200px] place-items-center text-muted-foreground">
+                    Loading analytics…
                   </div>
-                  {/* Charts */}
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', 
-                    gap: '24px'
-                  }}>
-                    {analyticsCharts.map((chartConfig, index) => (
-                      <div key={index} style={{ 
-                        backgroundColor: 'white', 
-                        borderRadius: '8px', 
-                        padding: '16px',
-                        border: '1px solid #ddd'
-                      }}>
-                        <h3 style={{ marginTop: 0, marginBottom: '16px' }}>
-                          {chartConfig.title}
+                ) : analytics ? (
+                  <div>
+                    {/* Summary stats */}
+                    <div className="mb-6 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
+                      <div className="rounded-lg bg-muted/40 p-4 text-center">
+                        <h3 className="mb-1 text-2xl font-bold text-primary">
+                          {analytics.total_memories.toLocaleString()}
                         </h3>
-                        <div style={{ height: '300px' }}>
-                          <AgCharts options={chartConfig as AgChartOptions} />
-                        </div>
+                        <p className="m-0 text-sm text-muted-foreground">Total Memories</p>
                       </div>
-                    ))}
+                      <div className="rounded-lg bg-muted/40 p-4 text-center">
+                        <h3 className="mb-1 text-2xl font-bold text-green-600">
+                          {(analytics.relationship_stats?.connected_memories || 0).toLocaleString()}
+                        </h3>
+                        <p className="m-0 text-sm text-muted-foreground">Connected Memories</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 p-4 text-center">
+                        <h3 className="mb-1 text-2xl font-bold text-amber-600">
+                          {Object.keys(analytics.memories_by_cluster || {}).length.toLocaleString()}
+                        </h3>
+                        <p className="m-0 text-sm text-muted-foreground">Clusters</p>
+                      </div>
+                    </div>
+
+                    {/* Charts */}
+                    <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(380px,1fr))]">
+                      {analyticsCharts.map((opts, i) => (
+                        <div key={i} className="rounded-lg border bg-background p-4">
+                          <h3 className="mb-4 text-base font-semibold">
+                            {opts.title && typeof opts.title !== "string" ? opts.title.text : opts.title}
+                          </h3>
+                          <div className="h-[300px]">
+                            <AgCharts options={opts as AgChartOptions} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  height: '200px',
-                  color: '#666'
-                }}>
-                  {error ? 'Error loading analytics' : 'No analytics data available'}
-                </div>
-              )}
-            </div>
-          )}
+                ) : (
+                  <div className="grid h-[200px] place-items-center text-muted-foreground">
+                    {error ? "Error loading analytics" : "No analytics data available"}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Editor */}
+          <MemoryEditor
+            memory={selectedMemory}
+            onSave={handleMemorySave}
+            onCancel={handleEditorCancel}
+            onDelete={handleMemoryDelete}
+            isOpen={isEditorOpen}
+            userId={userId}
+            tenantId={tenantId}
+          />
         </div>
-        {/* Memory Editor Modal */}
-        <MemoryEditor
-          memory={selectedMemory}
-          onSave={handleMemorySave}
-          onCancel={handleEditorCancel}
-          onDelete={handleMemoryDelete}
-          isOpen={isEditorOpen}
-          userId={userId}
-          tenantId={tenantId}
-        />
-      </div>
-    </CopilotKit>
+      </CopilotKit>
     </ErrorBoundary>
   );
 };
+
 export default MemoryInterface;

@@ -308,19 +308,19 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
             
             {actionLabel && onAction && (
               <div className="mt-3">
-                <button
+                <Button
                   onClick={handleAction}
                   className="text-sm font-medium underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current rounded transition-colors md:text-base lg:text-lg"
                  aria-label="Button">
                   {actionLabel}
-                </button>
+                </Button>
               </div>
             )}
           </div>
           
           {dismissible && (
             <div className="flex-shrink-0">
-              <button
+              <Button
                 onClick={handleClose}
                 className="inline-flex rounded-md p-1.5 hover:bg-black/5 dark:hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current transition-colors sm:p-4 md:p-6"
                 aria-label="Close notification"
@@ -328,7 +328,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
                 <svg className="w-4 h-4 " fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
-              </button>
+              </Button>
             </div>
           )}
         </div>

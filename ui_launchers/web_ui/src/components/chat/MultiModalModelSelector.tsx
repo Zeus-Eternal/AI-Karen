@@ -122,7 +122,7 @@ export default function MultiModalModelSelector({
         </label>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {Object.entries(providerTypeLabels).map(([type, label]) => (
-            <button
+            <Button
               key={type}
               onClick={() => onTypeChange(type as ProviderType)}
               className={`
@@ -137,7 +137,7 @@ export default function MultiModalModelSelector({
                 {providerTypeIcons[type as ProviderType]}
               </span>
               <span className="text-sm font-medium md:text-base lg:text-lg">{label}</span>
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -276,7 +276,7 @@ export default function MultiModalModelSelector({
       )}
       {/* Quick Actions */}
       <div className="mt-4 flex space-x-2">
-        <button
+        <Button
           onClick={() => {
             // Refresh providers
             const refreshedProviders = multiModalService.getProviders(selectedType);
@@ -285,15 +285,15 @@ export default function MultiModalModelSelector({
           className="flex-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors md:text-base lg:text-lg"
         >
           🔄 Refresh
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => {
             // Open provider settings (would open a modal in real implementation)
           }}
           className="flex-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors md:text-base lg:text-lg"
         >
           ⚙️ Settings
-        </button>
+        </Button>
       </div>
     </div>
   );

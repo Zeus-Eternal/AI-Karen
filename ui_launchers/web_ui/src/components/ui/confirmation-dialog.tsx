@@ -10,6 +10,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { AlertTriangle, Trash2, UserX, Shield, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 export interface ConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -154,13 +155,13 @@ export function ConfirmationDialog({
           className={`relative bg-white rounded-lg shadow-xl max-w-md w-full border ${styles.border}`}
         >
           {/* Close button */}
-          <button
+          <Button
             onClick={onClose}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
             aria-label="Close dialog"
           >
             <X className="h-5 w-5 " />
-          </button>
+          </Button>
           <div className="p-6 sm:p-4 md:p-6">
             {/* Icon and Title */}
             <div className="flex items-center mb-4">
@@ -203,7 +204,6 @@ export function ConfirmationDialog({
                     value={typedText}
                     onChange={(e) => setTypedText(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    }
                     autoComplete="off"
                     spellCheck="false"
                   />
@@ -212,15 +212,15 @@ export function ConfirmationDialog({
             </div>
             {/* Actions */}
             <div className="flex justify-end space-x-3">
-              <button
+              <Button
                 ref={cancelButtonRef}
                 onClick={onClose}
                 disabled={loading}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed md:text-base lg:text-lg"
                aria-label="Button">
                 {cancelText}
-              </button>
-              <button
+              </Button>
+              <Button
                 ref={confirmButtonRef}
                 onClick={onConfirm}
                 disabled={!isValid || loading}
@@ -234,7 +234,7 @@ export function ConfirmationDialog({
                 ) : (
                   confirmText
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

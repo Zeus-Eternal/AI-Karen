@@ -1,5 +1,5 @@
+// app/api/auth/login-simple/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-
 import { makeBackendRequest, getTimeoutConfig, getRetryPolicy } from '@/app/api/_utils/backend';
 import { isSimpleAuthEnabled } from '@/lib/auth/env';
 import { ConnectionError } from '@/lib/connection/connection-manager';
@@ -7,7 +7,7 @@ import { logger } from '@/lib/logger';
 
 interface ErrorResponse {
   error: string;
-  errorType: string;
+  errorType: 'timeout' | 'network' | 'credentials' | 'database' | 'server';
   retryable: boolean;
   retryAfter?: number;
   responseTime?: number;
@@ -17,44 +17,10 @@ interface ErrorResponse {
 const timeoutConfig = getTimeoutConfig();
 const retryPolicy = getRetryPolicy();
 
-/**
- * Get error type from exception
- */
-function getErrorType(error: any): 'timeout' | 'network' | 'credentials' | 'database' | 'server' {
-  if (!error) return 'server';
-  
-  const message = String(error.message || error).toLowerCase();
-  
-  if (error.name === 'AbortError' || message.includes('timeout')) {
-    return 'timeout';
-  }
-  if (message.includes('network') || message.includes('connection') || message.includes('fetch')) {
-    return 'network';
-  }
-  if (message.includes('database') || message.includes('db')) {
-    return 'database';
-  }
-  
-  return 'server';
-}
-
-/**
- * Check if error is retryable
- */
-function isRetryableError(error: any): boolean {
-  if (!error) return false;
-  
-  const message = String(error.message || error).toLowerCase();
-  const isTimeout = error.name === 'AbortError' || message.includes('timeout');
-  const isNetwork = message.includes('network') || message.includes('connection') || message.includes('fetch');
-  const isSocket = message.includes('und_err_socket') || message.includes('other side closed');
-  
-  return isTimeout || isNetwork || isSocket;
-}
-
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
-  
+
+  // Feature gate
   if (!isSimpleAuthEnabled()) {
     const errorResponse: ErrorResponse = {
       error: 'Simple auth is disabled',
@@ -66,83 +32,124 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(errorResponse, { status: 404 });
   }
 
+  // Parse JSON body safely
+  let body: any;
   try {
-    const body = await request.json();
-    
-    // Forward the request to the backend using enhanced backend utilities
-    const requestId = `simple-auth-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const headers: Record<string, string> = {
+    body = await request.json();
+  } catch (e) {
+    const errorResponse: ErrorResponse = {
+      error: 'Invalid JSON body',
+      errorType: 'server',
+      retryable: false,
+      responseTime: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+    };
+    return NextResponse.json(errorResponse, { status: 400 });
+  }
+
+  // Optional: basic shape validation (non-fatal if you want pass-through)
+  if (typeof body !== 'object' || body == null) {
+    const errorResponse: ErrorResponse = {
+      error: 'Request body must be a JSON object',
+      errorType: 'server',
+      retryable: false,
+      responseTime: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+    };
+    return NextResponse.json(errorResponse, { status: 400 });
+  }
+
+  const requestId = `simple-auth-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+  const connectionOptions = {
+    timeout: timeoutConfig.authentication,
+    retryAttempts: retryPolicy.maxAttempts,
+    retryDelay: retryPolicy.baseDelay,
+    exponentialBackoff: retryPolicy.jitterEnabled,
+    headers: {
       'X-Request-ID': requestId,
-    };
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    } as Record<string, string>,
+  };
 
-    const connectionOptions = {
-      timeout: timeoutConfig.authentication,
-      retryAttempts: retryPolicy.maxAttempts,
-      retryDelay: retryPolicy.baseDelay,
-      exponentialBackoff: retryPolicy.jitterEnabled,
-      headers,
-    };
-
-    const result = await makeBackendRequest('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }, connectionOptions);
+  try {
+    // Call backend auth
+    const result = await makeBackendRequest(
+      '/api/auth/login',
+      { method: 'POST', body: JSON.stringify(body) },
+      connectionOptions
+    );
 
     const totalResponseTime = Date.now() - startTime;
     const data = result.data;
+    const status = result.status ?? 200;
 
     logger.info('Simple auth proxy success', {
       requestId,
-      backendStatus: result.status,
+      backendStatus: status,
       responseTime: totalResponseTime,
+    });
 
-    // Create the response with the data
-    const nextResponse = NextResponse.json(data);
-    
-    // Forward any Set-Cookie headers from the backend
+    // Build response mirroring backend status
+    const nextResponse = NextResponse.json(data, {
+      status,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+        'X-Proxy-Upstream-Status': String(status),
+      },
+    });
+
+    // Forward Set-Cookie from backend if present (array or string)
     try {
-      if (result.headers && typeof result.headers === 'object') {
-        const setCookieHeader = result.headers['set-cookie'] || result.headers['Set-Cookie'];
-        if (setCookieHeader) {
-          nextResponse.headers.set('Set-Cookie', setCookieHeader);
+      const setCookie =
+        (result.headers as any)?.['set-cookie'] ?? (result.headers as any)?.['Set-Cookie'];
+      if (setCookie) {
+        if (Array.isArray(setCookie)) {
+          // Append each cookie header
+          setCookie.forEach((c: string) => nextResponse.headers.append('Set-Cookie', c));
+        } else if (typeof setCookie === 'string') {
+          nextResponse.headers.set('Set-Cookie', setCookie);
         }
       }
-    } catch (error) {
-      // Ignore header forwarding errors
+    } catch {
+      // ignore header forwarding errors
     }
 
-    // Also set our own auth_token cookie for downstream proxying
-    const token = data?.access_token;
+    // Also set our own auth_token cookie for downstream proxies if token provided
+    const token = data?.access_token as string | undefined;
     const shouldUseSecureCookies = process.env.NODE_ENV === 'production';
-    if (typeof token === 'string' && token.length > 0) {
+
+    if (token && token.length > 0) {
       try {
+        // Use expires_in if provided; default 24h
+        const maxAge =
+          typeof data?.expires_in === 'number' ? Math.max(0, Number(data.expires_in)) : 24 * 60 * 60;
+
         nextResponse.cookies.set('auth_token', token, {
           httpOnly: true,
           sameSite: 'lax',
           secure: shouldUseSecureCookies,
           path: '/',
-          maxAge: data?.expires_in ? Number(data.expires_in) : 24 * 60 * 60,
-
+          maxAge,
+        });
       } catch {
-        // ignore cookie errors when running outside production to keep local development flexible
+        // keep local/dev flexible
       }
     }
-    
-    return nextResponse;
 
-  } catch (error) {
-    logger.error('Login-simple proxy error', error instanceof Error ? error : { message: String(error) });
+    return nextResponse;
+  } catch (error: any) {
+    // Typed failure path
     const totalResponseTime = Date.now() - startTime;
-    
-    // Extract error information from ConnectionError if available
-    let errorType: 'timeout' | 'network' | 'credentials' | 'database' | 'server' = 'server';
+    let errorType: ErrorResponse['errorType'] = 'server';
     let statusCode = 500;
     let retryable = true;
-    
+
     if (error instanceof ConnectionError) {
       statusCode = error.statusCode || 500;
       retryable = error.retryable;
-      
+
       switch (error.category) {
         case 'timeout_error':
           errorType = 'timeout';
@@ -157,7 +164,15 @@ export async function POST(request: NextRequest) {
           errorType = 'server';
       }
     }
-    
+
+    logger.error('Login-simple proxy error', {
+      requestId,
+      statusCode,
+      errorType,
+      retryable,
+      message: error?.message || String(error),
+    });
+
     const errorResponse: ErrorResponse = {
       error: error instanceof Error ? error.message : 'Internal server error',
       errorType,
@@ -165,7 +180,10 @@ export async function POST(request: NextRequest) {
       responseTime: totalResponseTime,
       timestamp: new Date().toISOString(),
     };
-    
-    return NextResponse.json(errorResponse, { status: statusCode });
+
+    return NextResponse.json(errorResponse, {
+      status: statusCode,
+      headers: { 'Cache-Control': 'no-store, max-age=0' },
+    });
   }
 }

@@ -94,8 +94,8 @@ describe('useLiveRegion', () => {
 
     return (
       <div>
-        <button onClick={() => announce('Test announcement')}>
-        </button>
+        <Button onClick={() => announce('Test announcement')}>
+        </Button>
         <LiveRegionComponent />
       </div>
     );

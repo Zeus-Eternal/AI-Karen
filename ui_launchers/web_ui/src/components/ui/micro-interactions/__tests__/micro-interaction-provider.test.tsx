@@ -26,11 +26,11 @@ const TestComponent = () => {
       <div data-testid="reduced-motion">{reducedMotion.toString()}</div>
       <div data-testid="enable-haptics">{enableHaptics.toString()}</div>
       <div data-testid="animation-duration">{animationDuration}</div>
-      <button 
+      <Button 
         onClick={() => updateConfig({ enableHaptics: false })}
         data-testid="update-config"
       >
-      </button>
+      </Button>
     </div>
   );
 };

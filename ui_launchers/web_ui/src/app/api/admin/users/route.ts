@@ -1,98 +1,158 @@
+// app/api/admin/users/route.ts
 /**
  * User Management API Routes
  * GET /api/admin/users - List users with filtering and pagination
  * POST /api/admin/users - Create new user
- * 
+ *
  * Requirements: 4.2, 4.3, 4.4
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import { validateEmail, hashPassword } from '@/lib/auth/setup-validation';
-import type {  AdminApiResponse, CreateUserRequest, UserListFilter, PaginationParams, User } from '@/types/admin';
+import type {
+  AdminApiResponse,
+  CreateUserRequest,
+  UserListFilter,
+  PaginationParams,
+  User,
+} from '@/types/admin';
+
+// ---------- helpers ----------
+const MAX_LIMIT = 100;
+const DEFAULT_LIMIT = 20;
+
+function noStore(init?: ResponseInit): ResponseInit {
+  return {
+    ...(init || {}),
+    headers: {
+      ...(init?.headers || {}),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+  };
+}
+
+function parseDateSafe(value: string | null): Date | undefined {
+  if (!value) return undefined;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+function clampPage(n: number) {
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+}
+function clampLimit(n: number) {
+  const v = Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_LIMIT;
+  return Math.min(v, MAX_LIMIT);
+}
+
+function sanitizeUser(u: User) {
+  return {
+    user_id: u.user_id,
+    email: u.email,
+    full_name: u.full_name,
+    role: u.role,
+    roles: u.roles || [],
+    tenant_id: u.tenant_id || 'default',
+    preferences: u.preferences || {},
+    is_verified: u.is_verified,
+    is_active: u.is_active,
+    created_at: u.created_at,
+    updated_at: u.updated_at,
+    last_login_at: u.last_login_at,
+    two_factor_enabled: u.two_factor_enabled,
+    failed_login_attempts: u.failed_login_attempts,
+    locked_until: u.locked_until,
+  };
+}
+
 /**
  * GET /api/admin/users - List users with filtering and pagination
  */
 export const GET = requireAdmin(async (request: NextRequest, context) => {
   try {
     const { searchParams } = new URL(request.url);
-    // Parse filter parameters
+
+    // Parse filter parameters (date-safe)
     const filter: UserListFilter = {
-      role: searchParams.get('role') as 'super_admin' | 'admin' | 'user' | undefined,
+      role: ((): 'super_admin' | 'admin' | 'user' | undefined => {
+        const r = searchParams.get('role');
+        return r === 'super_admin' || r === 'admin' || r === 'user' ? r : undefined;
+      })(),
       is_active: searchParams.get('is_active') ? searchParams.get('is_active') === 'true' : undefined,
       is_verified: searchParams.get('is_verified') ? searchParams.get('is_verified') === 'true' : undefined,
       search: searchParams.get('search') || undefined,
-      created_after: searchParams.get('created_after') ? new Date(searchParams.get('created_after')!) : undefined,
-      created_before: searchParams.get('created_before') ? new Date(searchParams.get('created_before')!) : undefined,
-      last_login_after: searchParams.get('last_login_after') ? new Date(searchParams.get('last_login_after')!) : undefined,
-      last_login_before: searchParams.get('last_login_before') ? new Date(searchParams.get('last_login_before')!) : undefined,
+      created_after: parseDateSafe(searchParams.get('created_after')),
+      created_before: parseDateSafe(searchParams.get('created_before')),
+      last_login_after: parseDateSafe(searchParams.get('last_login_after')),
+      last_login_before: parseDateSafe(searchParams.get('last_login_before')),
     };
-    // Parse pagination parameters
+
+    // Parse pagination parameters (clamped)
     const pagination: PaginationParams = {
-      page: parseInt(searchParams.get('page') || '1'),
-      limit: Math.min(parseInt(searchParams.get('limit') || '20'), 100), // Max 100 per page
+      page: clampPage(parseInt(searchParams.get('page') || '1', 10)),
+      limit: clampLimit(parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10)),
       sort_by: searchParams.get('sort_by') || 'created_at',
-      sort_order: (searchParams.get('sort_order') as 'asc' | 'desc') || 'desc'
+      sort_order: ((): 'asc' | 'desc' => (searchParams.get('sort_order') === 'asc' ? 'asc' : 'desc'))(),
     };
+
     const adminUtils = getAdminDatabaseUtils();
-    // Non-super admins cannot see super admin users
-    if (!context.isSuperAdmin() && (!filter.role || filter.role === 'super_admin')) {
-      if (filter.role === 'super_admin') {
-        // Explicitly requesting super admins - deny access
-        return NextResponse.json({
+
+    // RBAC: Non-super admins cannot request super_admin explicitly
+    if (!context.isSuperAdmin() && filter.role === 'super_admin') {
+      return NextResponse.json(
+        {
           success: false,
           error: {
             code: 'INSUFFICIENT_PERMISSIONS',
             message: 'Cannot access super admin user data',
-            details: { required_role: 'super_admin' }
-          }
-        } as AdminApiResponse<never>, { status: 403 });
-      }
-      // Filter out super admins from general queries
-      filter.role = filter.role || 'user';
+            details: { required_role: 'super_admin' },
+          },
+        } as AdminApiResponse<never>,
+        noStore({ status: 403 }),
+      );
     }
+
     const result = await adminUtils.getUsersWithRoleFilter(filter, pagination);
-    // Remove sensitive information from response
-    const sanitizedUsers = result.data.map((user: User) => ({
-      user_id: user.user_id,
-      email: user.email,
-      full_name: user.full_name,
-      role: user.role,
-      roles: user.roles || [],
-      tenant_id: user.tenant_id || 'default',
-      preferences: user.preferences || {},
-      is_verified: user.is_verified,
-      is_active: user.is_active,
-      created_at: user.created_at,
-      updated_at: user.updated_at,
-      last_login_at: user.last_login_at,
-      two_factor_enabled: user.two_factor_enabled,
-      failed_login_attempts: user.failed_login_attempts,
-      locked_until: user.locked_until
-    }));
+
+    // RBAC post-filter: if caller is not super_admin, hide any super_admin users from the result set
+    const visible = context.isSuperAdmin()
+      ? result.data
+      : result.data.filter((u: User) => u.role !== 'super_admin');
+
+    const sanitizedUsers = visible.map(sanitizeUser);
+
     const response: AdminApiResponse<typeof result> = {
       success: true,
       data: {
         ...result,
-        data: sanitizedUsers
+        data: sanitizedUsers,
       },
       meta: {
         filter_applied: filter,
         pagination_applied: pagination,
-        total_filtered: result.pagination.total
-      }
+        total_filtered: (result.pagination?.total as number) ?? sanitizedUsers.length,
+      },
     };
-    return NextResponse.json(response);
+
+    return NextResponse.json(response, noStore());
   } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: {
-        code: 'USER_LIST_FAILED',
-        message: 'Failed to retrieve user list',
-        details: { error: error instanceof Error ? error.message : 'Unknown error' }
-      }
-    } as AdminApiResponse<never>, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'USER_LIST_FAILED',
+          message: 'Failed to retrieve user list',
+          details: { error: error instanceof Error ? error.message : 'Unknown error' },
+        },
+      } as AdminApiResponse<never>,
+      noStore({ status: 500 }),
+    );
   }
+});
 
 /**
  * POST /api/admin/users - Create new user
@@ -100,84 +160,122 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
 export const POST = requireAdmin(async (request: NextRequest, context) => {
   try {
     const body: CreateUserRequest = await request.json();
+
     // Validate required fields
     if (!body.email) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Email is required',
-          details: { field: 'email' }
-        }
-      } as AdminApiResponse<never>, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Email is required',
+            details: { field: 'email' },
+          },
+        } as AdminApiResponse<never>,
+        noStore({ status: 400 }),
+      );
     }
+
     // Validate email format
     if (!validateEmail(body.email)) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid email format',
-          details: { field: 'email', value: body.email }
-        }
-      } as AdminApiResponse<never>, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid email format',
+            details: { field: 'email', value: body.email },
+          },
+        } as AdminApiResponse<never>,
+        noStore({ status: 400 }),
+      );
     }
+
     // Validate role permissions
-    const requestedRole = body.role || 'user';
-    if ((requestedRole as string) === 'super_admin') {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'INVALID_ROLE',
-          message: 'Cannot create super admin users through this endpoint',
-          details: { requested_role: requestedRole }
-        }
-      } as AdminApiResponse<never>, { status: 400 });
+    const requestedRole: 'user' | 'admin' = (body.role as any) === 'admin' ? 'admin' : 'user';
+
+    // Disallow creating super_admin via this endpoint (defense in depth)
+    if ((body.role as any) === 'super_admin') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_ROLE',
+            message: 'Cannot create super admin users through this endpoint',
+            details: { requested_role: body.role },
+          },
+        } as AdminApiResponse<never>,
+        noStore({ status: 400 }),
+      );
     }
+
     // Non-super admins cannot create admin users
     if (requestedRole === 'admin' && !context.isSuperAdmin()) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'INSUFFICIENT_PERMISSIONS',
-          message: 'Super admin role required to create admin users',
-          details: { requested_role: requestedRole, user_role: context.user.role }
-        }
-      } as AdminApiResponse<never>, { status: 403 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INSUFFICIENT_PERMISSIONS',
+            message: 'Super admin role required to create admin users',
+            details: { requested_role: requestedRole, user_role: context.user.role },
+          },
+        } as AdminApiResponse<never>,
+        noStore({ status: 403 }),
+      );
     }
+
     const adminUtils = getAdminDatabaseUtils();
-    // Check if email already exists
-    const existingUsers = await adminUtils.getUsersWithRoleFilter({ search: body.email });
-    if (existingUsers.data.length > 0) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'EMAIL_ALREADY_EXISTS',
-          message: 'A user with this email address already exists',
-          details: { email: body.email }
-        }
-      } as AdminApiResponse<never>, { status: 409 });
+
+    // Email uniqueness (prefer exact lookup if available)
+    let emailExists = false;
+    if (typeof (adminUtils as any).findUserByEmail === 'function') {
+      const found = await (adminUtils as any).findUserByEmail(body.email);
+      emailExists = !!found;
+    } else {
+      const existing = await adminUtils.getUsersWithRoleFilter({ search: body.email });
+      emailExists =
+        existing?.data?.some(
+          (u: User) => String(u.email).toLowerCase() === String(body.email).toLowerCase(),
+        ) || false;
     }
+
+    if (emailExists) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'EMAIL_ALREADY_EXISTS',
+            message: 'A user with this email address already exists',
+            details: { email: body.email },
+          },
+        } as AdminApiResponse<never>,
+        noStore({ status: 409 }),
+      );
+    }
+
     // Hash password if provided
     let passwordHash: string | undefined;
     if (body.password) {
       passwordHash = await hashPassword(body.password);
     }
+
     // Create user
-    const userId = await adminUtils.createUserWithRole({
+    const userId: string = await adminUtils.createUserWithRole({
       email: body.email,
       full_name: body.full_name,
       password_hash: passwordHash,
       role: requestedRole,
       tenant_id: body.tenant_id || 'default',
-      created_by: context.user.user_id
+      created_by: context.user.user_id,
+    });
 
-    // Get created user for response
-    const createdUser = await adminUtils.getUserWithRole(userId);
+    // Fetch created user for response
+    const createdUser: User | null = await adminUtils.getUserWithRole(userId);
     if (!createdUser) {
       throw new Error('Failed to retrieve created user');
     }
-    // Log user creation
+
+    // Audit log
     await adminUtils.createAuditLog({
       user_id: context.user.user_id,
       action: 'user.create',
@@ -187,46 +285,42 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         email: body.email,
         role: requestedRole,
         full_name: body.full_name,
-        send_invitation: body.send_invitation
+        send_invitation: body.send_invitation,
       },
       ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
-      user_agent: request.headers.get('user-agent') || undefined
+      user_agent: request.headers.get('user-agent') || undefined,
+    });
 
-    // Remove sensitive information from response
-    const responseUser = {
-      user_id: createdUser.user_id,
-      email: createdUser.email,
-      full_name: createdUser.full_name,
-      role: createdUser.role,
-      is_verified: createdUser.is_verified,
-      is_active: createdUser.is_active,
-      created_at: createdUser.created_at,
-      updated_at: createdUser.updated_at,
-      two_factor_enabled: createdUser.two_factor_enabled
-    };
+    // Build response
+    const responseUser = sanitizeUser(createdUser);
     const response: AdminApiResponse<{ user: typeof responseUser; invitation_sent?: boolean }> = {
       success: true,
       data: {
         user: responseUser,
-        invitation_sent: body.send_invitation || false
+        invitation_sent: body.send_invitation || false,
       },
       meta: {
         message: 'User created successfully',
-        next_steps: body.send_invitation 
+        next_steps: body.send_invitation
           ? ['User will receive invitation email', 'User must verify email and set password']
-          : body.password 
-            ? ['User can log in immediately', 'Recommend enabling two-factor authentication']
-            : ['User needs password set', 'Send invitation or provide temporary password']
-      }
+          : body.password
+          ? ['User can log in immediately', 'Recommend enabling two-factor authentication']
+          : ['User needs password set', 'Send invitation or provide temporary password'],
+      },
     };
-    return NextResponse.json(response, { status: 201 });
+
+    return NextResponse.json(response, noStore({ status: 201 }));
   } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: {
-        code: 'USER_CREATION_FAILED',
-        message: 'Failed to create user',
-        details: { error: error instanceof Error ? error.message : 'Unknown error' }
-      }
-    } as AdminApiResponse<never>, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'USER_CREATION_FAILED',
+          message: 'Failed to create user',
+          details: { error: error instanceof Error ? error.message : 'Unknown error' },
+        },
+      } as AdminApiResponse<never>,
+      noStore({ status: 500 }),
+    );
   }
+});

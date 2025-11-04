@@ -1,115 +1,182 @@
+// app/api/analytics/usage/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
-const BACKEND_BASES = getBackendCandidates();
+
+const BACKEND_BASES = (() => {
+  try {
+    const c = getBackendCandidates();
+    return Array.isArray(c) && c.length > 0 ? c : [process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000'];
+  } catch {
+    return [process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000'];
+  }
+})();
+
 const ANALYTICS_TIMEOUT_MS = Number(
-  process.env.NEXT_PUBLIC_ANALYTICS_PROXY_TIMEOUT_MS ||
-    process.env.KAREN_ANALYTICS_PROXY_TIMEOUT_MS ||
-    process.env.NEXT_PUBLIC_API_PROXY_TIMEOUT_MS ||
-    process.env.KAREN_API_PROXY_TIMEOUT_MS ||
-    15000
+  process.env.NEXT_PUBLIC_ANALYTICS_PROXY_TIMEOUT_MS ??
+  process.env.KAREN_ANALYTICS_PROXY_TIMEOUT_MS ??
+  process.env.NEXT_PUBLIC_API_PROXY_TIMEOUT_MS ??
+  process.env.KAREN_API_PROXY_TIMEOUT_MS ??
+  15_000
 );
+
+const MAX_ATTEMPTS_PER_BASE = 2;
+const RETRY_BACKOFF_MS = 300;
+
+function noStore(init?: ResponseInit): ResponseInit {
+  return {
+    ...(init || {}),
+    headers: {
+      ...(init?.headers || {}),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
+    // Forward auth + cookies so usage is scoped to the current principal/session
     const authHeader = request.headers.get('authorization');
     const cookieHeader = request.headers.get('cookie');
-    const headers: Record<string, string> = {
+
+    const fwdHeaders: Record<string, string> = {
       Accept: 'application/json',
       Connection: 'keep-alive',
     };
-    if (authHeader) {
-      headers.Authorization = authHeader;
-    }
-    if (cookieHeader) {
-      headers.Cookie = cookieHeader;
-    }
-    const maxAttempts = 2;
-    let response: Response | null = null;
+    if (authHeader) fwdHeaders.Authorization = authHeader;
+    if (cookieHeader) fwdHeaders.Cookie = cookieHeader;
+
+    let upstreamResponse: Response | null = null;
+    let upstreamBaseUsed: string | null = null;
     let lastErr: unknown = null;
+
+    // Multi-base, per-base bounded retries (timeout/UND socket)
     for (const base of BACKEND_BASES) {
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS_PER_BASE; attempt++) {
         const url = withBackendPath('/api/analytics/usage', base);
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), ANALYTICS_TIMEOUT_MS);
+        const t = setTimeout(() => controller.abort(), ANALYTICS_TIMEOUT_MS);
+
         try {
-          response = await fetch(url, {
+          const resp = await fetch(url, {
             method: 'GET',
-            headers,
+            headers: fwdHeaders,
             signal: controller.signal,
-            // @ts-ignore keepalive supported in runtime
+            // @ts-ignore keepalive is supported in Node/undici and Edge runtimes
             keepalive: true,
             cache: 'no-store',
+          });
 
-          clearTimeout(timeout);
+          clearTimeout(t);
+          upstreamResponse = resp;
+          upstreamBaseUsed = base;
           lastErr = null;
-          break;
+          break; // success for this base
         } catch (err) {
-          clearTimeout(timeout);
+          clearTimeout(t);
           lastErr = err;
+
           const msg = String((err as Error)?.message ?? err);
           const isAbort = (err as any)?.name === 'AbortError';
-          const isSocket = msg.includes('UND_ERR_SOCKET') || msg.includes('other side closed');
-          if (attempt < maxAttempts && (isAbort || isSocket)) {
-            await new Promise((res) => setTimeout(res, 300));
+          const isSocket =
+            msg.includes('UND_ERR_SOCKET') ||
+            msg.includes('other side closed') ||
+            msg.toLowerCase().includes('socket');
+
+          // Retry only on timeout/socket and only if attempts remain
+          if (attempt < MAX_ATTEMPTS_PER_BASE && (isAbort || isSocket)) {
+            await new Promise((res) => setTimeout(res, RETRY_BACKOFF_MS));
             continue;
           }
+          // Break attempts loop; try next base
           break;
         }
       }
-      if (response) {
-        break;
-      }
+      if (upstreamResponse) break; // don’t try other bases once we have a response
     }
-    if (!response) {
-      return NextResponse.json({ error: 'Analytics request failed' }, { status: 502 });
+
+    if (!upstreamResponse) {
+      // Nothing succeeded; surface a clean 502 with no-store
+      return NextResponse.json(
+        { error: 'Analytics request failed', detail: String((lastErr as Error)?.message || 'unavailable') },
+        noStore({ status: 502 })
+      );
     }
-    const contentType = response.headers.get('content-type') ?? '';
-    let data: any = {};
+
+    // Parse upstream payload
+    const contentType = upstreamResponse.headers.get('content-type') ?? '';
+    let data: any;
+
     if (contentType.includes('application/json')) {
       try {
-        data = await response.json();
+        data = await upstreamResponse.json();
       } catch {
         data = {};
       }
     } else {
+      let textPayload = '';
       try {
-        data = await response.text();
+        textPayload = await upstreamResponse.text();
       } catch {
-        data = '';
+        textPayload = '';
       }
-      if (typeof data === 'string' && response.ok) {
-        data = { message: data };
-      }
+      data = upstreamResponse.ok ? { message: textPayload } : { error: textPayload || 'Upstream error' };
     }
-    if (!response.ok) {
+
+    // Mirror upstream status on errors; enrich on success
+    if (!upstreamResponse.ok) {
       const payload = typeof data === 'string' ? { error: data } : data;
-      return NextResponse.json(payload, { status: response.status });
+      return NextResponse.json(
+        {
+          proxy: 'analytics-gateway',
+          upstream_status: upstreamResponse.status,
+          base: upstreamBaseUsed,
+          ...payload,
+        },
+        noStore({ status: upstreamResponse.status })
+      );
     }
-    const nextResponse = NextResponse.json(data);
+
+    const res = NextResponse.json(
+      {
+        proxy: 'analytics-gateway',
+        base: upstreamBaseUsed,
+        data,
+      },
+      noStore({ status: 200 })
+    );
+
+    // Forward Set-Cookie (array or single) if upstream set any session context
     try {
-      const setCookieHeaders: string[] = [];
-      const headersAny = response.headers as any;
-      if (typeof headersAny.entries === 'function') {
-        for (const [key, value] of headersAny.entries()) {
-          if (String(key).toLowerCase() === 'set-cookie' && value) {
-            setCookieHeaders.push(String(value));
-          }
+      const cookies: string[] = [];
+      const hdrsAny = upstreamResponse.headers as any;
+      if (typeof hdrsAny.entries === 'function') {
+        for (const [k, v] of hdrsAny.entries()) {
+          if (String(k).toLowerCase() === 'set-cookie' && v) cookies.push(String(v));
         }
       }
-      const single = response.headers.get('set-cookie');
-      if (single && !setCookieHeaders.includes(single)) {
-        setCookieHeaders.push(single);
-      }
-      for (const raw of setCookieHeaders) {
-        nextResponse.headers.append('Set-Cookie', raw);
-      }
+      const single = upstreamResponse.headers.get('set-cookie');
+      if (single && !cookies.includes(single)) cookies.push(single);
+      for (const raw of cookies) res.headers.append('Set-Cookie', raw);
     } catch {
-      const single = response.headers.get('set-cookie');
-      if (single) {
-        nextResponse.headers.set('Set-Cookie', single);
-      }
+      const single = upstreamResponse.headers.get('set-cookie');
+      if (single) res.headers.set('Set-Cookie', single);
     }
-    return nextResponse;
-  } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+
+    // Trace headers (optional, safe to expose)
+    res.headers.set('X-Upstream-Base', String(upstreamBaseUsed || 'unknown'));
+    res.headers.set('X-Proxy-Cache', 'no-store');
+
+    return res;
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        detail: error?.message || 'unknown',
+      },
+      noStore({ status: 500 })
+    );
   }
 }

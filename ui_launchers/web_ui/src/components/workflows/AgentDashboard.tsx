@@ -289,7 +289,7 @@ export function AgentDashboard({
                           {/* Action Buttons */}
                           <div className="flex flex-col gap-2 ml-4">
                             {agent.status === 'stopped' || agent.status === 'idle' ? (
-                              <button
+                              <Button
                                 size="sm"
                                 onClick={() => {
                                   e.stopPropagation();

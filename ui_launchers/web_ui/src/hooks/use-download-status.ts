@@ -148,6 +148,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
     try {
       await backend.makeRequestPublic(`/api/models/download/${taskId}`, {
         method: 'DELETE'
+      });
 
       // Update local state
       setDownloadTasks(prev => prev.map(task => 
@@ -190,6 +191,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
       const response = await backend.makeRequestPublic('/api/models/download', {
         method: 'POST',
         body: JSON.stringify({ model_id: task.modelId })
+      });
 
       if (response) {
         const newTask = convertApiResponseToTask(response);
@@ -227,6 +229,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
       // Remove any existing task with the same ID
       const filtered = prev.filter(t => t.id !== task.id);
       return [...filtered, task];
+    });
 
     // Start polling if not already active
     if (!isPolling) {

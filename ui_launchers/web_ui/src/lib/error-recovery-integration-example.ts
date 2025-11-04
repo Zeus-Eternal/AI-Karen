@@ -1,23 +1,26 @@
 /**
- * Extension Error Recovery Integration Example
+ * Extension Error Recovery Integration Example (production-ready)
  *
- * Shows how to integrate the comprehensive error recovery manager
- * with the existing frontend error handling system.
+ * Wires the comprehensive recovery manager into your frontend:
+ * - HTTP / network / auth recovery via backend orchestrator
+ * - Specialized handling for /api/extensions
+ * - Safe fallbacks, structured retries, SSR guards, idempotency
  */
 
 import { logger } from "./logger";
 import { errorHandler } from "./error-handler";
-import { getExtensionAuthErrorHandler } from "./auth/extension-auth-error-handler";
-import { handleExtensionError, shouldUseExtensionFallback } from "./extension-error-integration";
-import "./extension-403-fix"; // Import the 403 fix to ensure it's loaded
+// Remove unused import to avoid bundle bloat
+// import { getExtensionAuthErrorHandler } from "./auth/extension-auth-error-handler";
+import { handleExtensionError } from "./extension-error-integration";
+import "./extension-403-fix"; // keep the hotfix loaded early
 
-// Types for the error recovery system
+// ---------- Types ----------
 interface RecoveryResult {
   success: boolean;
   strategy: string;
   message: string;
   fallback_data?: any;
-  retry_after?: number;
+  retry_after?: number;            // seconds
   requires_user_action: boolean;
   escalated: boolean;
 }
@@ -32,9 +35,12 @@ interface ErrorRecoveryRequest {
   service_name?: string;
 }
 
-/**
- * Enhanced error handler that integrates with the backend error recovery system
- */
+// ---------- Utils ----------
+function isBrowser(): boolean {
+  return typeof window !== "undefined" && typeof document !== "undefined";
+}
+
+// ---------- Enhanced Error Handler ----------
 export class EnhancedErrorHandler {
   private static instance: EnhancedErrorHandler;
   private recoveryEndpoint = "/api/extension-error-recovery";
@@ -54,11 +60,16 @@ export class EnhancedErrorHandler {
     url: string,
     operation: string = "api_call",
     context: Record<string, any> = {}
-  ): Promise<any> {
+  ): Promise<
+    | { retry: true; delay: number }
+    | { fallback_data: any }
+    | { requires_login: true }
+    | { retry: false }
+  > {
     try {
       logger.info(`Attempting error recovery for HTTP ${status} at ${url}`);
 
-      // Special handling for extension API errors
+      // Specialized routing for Extensions API
       if (url.includes("/api/extensions")) {
         return this.handleExtensionApiError(status, url, operation, context);
       }
@@ -72,58 +83,52 @@ export class EnhancedErrorHandler {
         context: {
           ...context,
           timestamp: new Date().toISOString(),
-          user_agent: navigator.userAgent,
+          user_agent: isBrowser() ? navigator.userAgent : "server",
         },
       };
 
       const response = await fetch(`${this.recoveryEndpoint}/handle-error`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ error_data: recoveryRequest }),
+      });
 
       if (!response.ok) {
         logger.warn(`Error recovery service unavailable: ${response.status}`);
         return this.handleFallback(status, url, operation);
       }
 
-      const result = await response.json();
-      const recoveryResult: RecoveryResult = result.recovery_result;
+      const result = (await response.json()) as { recovery_result: RecoveryResult };
+      const recoveryResult = result.recovery_result;
 
       logger.info(
-        `Error recovery result: ${
-          recoveryResult.success ? "SUCCESS" : "FAILED"
-        } - ${recoveryResult.message}`
+        `Error recovery result: ${recoveryResult.success ? "SUCCESS" : "FAILED"} - ${recoveryResult.message}`
       );
 
       if (recoveryResult.success) {
         if (recoveryResult.fallback_data) {
-          // Use fallback data
           logger.info("Using fallback data from error recovery");
-          return recoveryResult.fallback_data;
-        } else {
-          // Recovery successful, can retry original request
-          logger.info("Error recovery successful, can retry original request");
-          return { retry: true, delay: recoveryResult.retry_after || 0 };
+          return { fallback_data: recoveryResult.fallback_data };
         }
-      } else {
-        if (recoveryResult.requires_user_action) {
-          // Show user-friendly error message
-          errorHandler.showWarning("Action Required", recoveryResult.message);
-        } else if (recoveryResult.fallback_data) {
-          // Use fallback data even if recovery "failed"
-          logger.info("Using fallback data despite recovery failure");
-          return recoveryResult.fallback_data;
-        } else if (recoveryResult.retry_after) {
-          // Retry after delay
-          logger.info(`Will retry after ${recoveryResult.retry_after} seconds`);
-          return { retry: true, delay: recoveryResult.retry_after };
-        }
-
-        // No recovery possible
-        return this.handleFallback(status, url, operation);
+        logger.info("Error recovery successful, can retry original request");
+        return { retry: true, delay: recoveryResult.retry_after || 0 };
       }
+
+      // Recovery failed — pick best available action
+      if (recoveryResult.requires_user_action) {
+        errorHandler.showWarning("Action Required", recoveryResult.message);
+        return { retry: false };
+      }
+      if (recoveryResult.fallback_data) {
+        logger.info("Using fallback data despite recovery failure");
+        return { fallback_data: recoveryResult.fallback_data };
+      }
+      if (recoveryResult.retry_after) {
+        logger.info(`Will retry after ${recoveryResult.retry_after} seconds`);
+        return { retry: true, delay: recoveryResult.retry_after };
+      }
+
+      return this.handleFallback(status, url, operation);
     } catch (error) {
       logger.error("Error recovery system failed:", error);
       return this.handleFallback(status, url, operation);
@@ -137,31 +142,26 @@ export class EnhancedErrorHandler {
     status: number,
     url: string,
     operation: string,
-    context: Record<string, any> = {}
-  ): Promise<any> {
-    // Use the dedicated extension error handler
+    _context: Record<string, any> = {}
+  ): Promise<
+    | { fallback_data: any }
+    | { retry: true; delay: number }
+    | { requires_login: true }
+    | { retry: false }
+  > {
     const extensionErrorResult = handleExtensionError(status, url, operation);
-
     logger.info(`Extension API error handled: ${extensionErrorResult.message}`);
 
-    // Return the result in the expected format
     if (extensionErrorResult.fallback_data) {
       return { fallback_data: extensionErrorResult.fallback_data };
     }
-
     if (extensionErrorResult.retry) {
-      return {
-        retry: true,
-        delay: extensionErrorResult.delay || 0,
-      };
+      return { retry: true, delay: extensionErrorResult.delay || 0 };
     }
-
     if (extensionErrorResult.requires_login) {
       return { requires_login: true };
     }
-
-    // Use the standard fallback for other cases
-    return this.handleFallback(status, url, operation);
+    return { retry: false };
   }
 
   /**
@@ -171,48 +171,41 @@ export class EnhancedErrorHandler {
     endpoint: string,
     operation: string = "authentication",
     context: Record<string, any> = {}
-  ): Promise<any> {
+  ): Promise<{ retry: true; delay: number } | { requires_login: true }> {
     try {
       logger.info(`Attempting auth error recovery for ${endpoint}`);
 
-      const response = await fetch(
-        `${this.recoveryEndpoint}/handle-auth-error`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            error_data: {
-              endpoint,
-              operation,
-              context: {
-                ...context,
-                timestamp: new Date().toISOString(),
-              },
+      const response = await fetch(`${this.recoveryEndpoint}/handle-auth-error`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          error_data: {
+            endpoint,
+            operation,
+            context: {
+              ...context,
+              timestamp: new Date().toISOString(),
             },
-          }),
-        }
-      );
+          },
+        }),
+      });
 
       if (!response.ok) {
-        logger.warn(
-          `Auth error recovery service unavailable: ${response.status}`
-        );
+        logger.warn(`Auth error recovery service unavailable: ${response.status}`);
         return { requires_login: true };
       }
 
-      const result = await response.json();
-      const recoveryResult: RecoveryResult = result.recovery_result;
+      const result = (await response.json()) as { recovery_result: RecoveryResult };
+      const recoveryResult = result.recovery_result;
 
       if (recoveryResult.success) {
         logger.info("Auth error recovery successful");
         return { retry: true, delay: recoveryResult.retry_after || 0 };
-      } else if (recoveryResult.requires_user_action) {
+      }
+      if (recoveryResult.requires_user_action) {
         logger.info("Auth error requires user action");
         return { requires_login: true };
       }
-
       return { requires_login: true };
     } catch (error) {
       logger.error("Auth error recovery failed:", error);
@@ -228,112 +221,103 @@ export class EnhancedErrorHandler {
     errorMessage: string,
     operation: string = "network_request",
     context: Record<string, any> = {}
-  ): Promise<any> {
+  ): Promise<{ retry: true; delay: number } | { fallback_data: any } | { retry: false }> {
     try {
       logger.info(`Attempting network error recovery for ${endpoint}`);
 
-      const response = await fetch(
-        `${this.recoveryEndpoint}/handle-network-error`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            error_data: {
-              endpoint,
-              operation,
-              message: errorMessage,
-              context: {
-                ...context,
-                timestamp: new Date().toISOString(),
-                connection_type:
-                  (navigator as any).connection?.effectiveType || "unknown",
-              },
+      const response = await fetch(`${this.recoveryEndpoint}/handle-network-error`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          error_data: {
+            endpoint,
+            operation,
+            message: errorMessage,
+            context: {
+              ...context,
+              timestamp: new Date().toISOString(),
+              connection_type: isBrowser()
+                ? (navigator as any).connection?.effectiveType || "unknown"
+                : "server",
             },
-          }),
-        }
-      );
+          },
+        }),
+      });
 
       if (!response.ok) {
-        logger.warn(
-          `Network error recovery service unavailable: ${response.status}`
-        );
-        return { retry: true, delay: 5 }; // Simple fallback retry
+        logger.warn(`Network error recovery service unavailable: ${response.status}`);
+        return { retry: true, delay: 5 };
       }
 
-      const result = await response.json();
-      const recoveryResult: RecoveryResult = result.recovery_result;
+      const result = (await response.json()) as { recovery_result: RecoveryResult };
+      const recoveryResult = result.recovery_result;
 
       if (recoveryResult.retry_after) {
-        logger.info(
-          `Network error recovery suggests retry after ${recoveryResult.retry_after} seconds`
-        );
+        logger.info(`Network recovery suggests retry after ${recoveryResult.retry_after} seconds`);
         return { retry: true, delay: recoveryResult.retry_after };
-      } else if (recoveryResult.fallback_data) {
-        logger.info("Using fallback data for network error");
-        return recoveryResult.fallback_data;
       }
-
+      if (recoveryResult.fallback_data) {
+        logger.info("Using fallback data for network error");
+        return { fallback_data: recoveryResult.fallback_data };
+      }
       return { retry: false };
     } catch (error) {
       logger.error("Network error recovery failed:", error);
-      return { retry: true, delay: 5 }; // Simple fallback retry
+      return { retry: true, delay: 5 };
     }
   }
 
   /**
    * Get error recovery system status
    */
-  async getRecoveryStatus(): Promise<any> {
+  async getRecoveryStatus(): Promise<{ available: boolean; message?: string } & Record<string, any>> {
     try {
       const response = await fetch(`${this.recoveryEndpoint}/status`);
       if (!response.ok) {
-        return {
-          available: false,
-          message: "Error recovery service unavailable",
-        };
+        return { available: false, message: "Error recovery service unavailable" };
       }
-      return await response.json();
+      const payload = await response.json();
+      return { available: true, ...payload };
     } catch (error) {
       logger.error("Failed to get recovery status:", error);
-      return {
-        available: false,
-        message: "Error recovery service unavailable",
-      };
+      return { available: false, message: "Error recovery service unavailable" };
     }
   }
 
   /**
    * Fallback error handling when recovery system is unavailable
    */
-  private handleFallback(status: number, url: string, operation: string): any {
+  private handleFallback(
+    status: number,
+    url: string,
+    _operation: string
+  ):
+    | { requires_login: true }
+    | { retry: true; delay: number }
+    | { retry: false } {
     logger.warn(`Using fallback error handling for ${status} at ${url}`);
 
-    // Simple fallback logic based on status code
     if (status === 401 || status === 403) {
       return { requires_login: true };
-    } else if (status >= 500) {
-      return { retry: true, delay: 10 }; // Retry server errors after 10 seconds
-    } else if (status === 429) {
-      return { retry: true, delay: 60 }; // Retry rate limited requests after 1 minute
-    } else {
-      // For other 4xx errors, show generic error
-      errorHandler.showWarning(
-        "Request Failed",
-        `The request failed with status ${status}. Please try again.`
-      );
-      return { retry: false };
     }
+    if (status >= 500) {
+      return { retry: true, delay: 10 };
+    }
+    if (status === 429) {
+      return { retry: true, delay: 60 };
+    }
+    errorHandler.showWarning(
+      "Request Failed",
+      `The request failed with status ${status}. Please try again.`
+    );
+    return { retry: false };
   }
 }
 
 // Export singleton instance
 export const enhancedErrorHandler = EnhancedErrorHandler.getInstance();
 
-/**
- * Enhanced fetch wrapper that automatically handles errors with recovery
- */
+// ---------- Enhanced Fetch Wrapper ----------
 export async function fetchWithRecovery(
   url: string,
   options: RequestInit = {},
@@ -347,31 +331,23 @@ export async function fetchWithRecovery(
       const response = await fetch(url, options);
 
       if (!response.ok) {
-        // Handle HTTP errors through recovery system
-        const recoveryResult = await enhancedErrorHandler.handleHttpError(
-          response.status,
-          url,
-          operation,
-          { attempt, maxRetries }
-        );
+        const rr = await enhancedErrorHandler.handleHttpError(response.status, url, operation, {
+          attempt,
+          maxRetries,
+        });
 
-        if (recoveryResult.retry && attempt < maxRetries) {
-          if (recoveryResult.delay > 0) {
-            logger.info(
-              `Retrying request after ${recoveryResult.delay} seconds`
-            );
-            await new Promise((resolve) =>
-              setTimeout(resolve, recoveryResult.delay * 1000)
-            );
+        if ("retry" in rr && rr.retry && attempt < maxRetries) {
+          if (rr.delay > 0) {
+            logger.info(`Retrying request after ${rr.delay} seconds`);
+            await new Promise((res) => setTimeout(res, rr.delay * 1000));
           }
-          continue; // Retry the request
-        } else if (recoveryResult.fallback_data) {
-          // Return a mock response with fallback data
-          return new Response(JSON.stringify(recoveryResult.fallback_data), {
+          continue;
+        } else if ("fallback_data" in rr) {
+          return new Response(JSON.stringify(rr.fallback_data), {
             status: 200,
             headers: { "Content-Type": "application/json" },
-
-        } else if (recoveryResult.requires_login) {
+          });
+        } else if ("requires_login" in rr && rr.requires_login) {
           throw new Error("Authentication required");
         } else {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -379,34 +355,28 @@ export async function fetchWithRecovery(
       }
 
       return response;
-    } catch (error) {
-      lastError = error as Error;
+    } catch (error: any) {
+      lastError = error;
 
       if (attempt < maxRetries) {
-        // Handle network errors through recovery system
-        const recoveryResult = await enhancedErrorHandler.handleNetworkError(
+        const rr = await enhancedErrorHandler.handleNetworkError(
           url,
-          lastError.message,
+          String(lastError.message || lastError),
           operation,
           { attempt, maxRetries }
         );
 
-        if (recoveryResult.retry) {
-          if (recoveryResult.delay > 0) {
-            logger.info(
-              `Retrying request after ${recoveryResult.delay} seconds due to network error`
-            );
-            await new Promise((resolve) =>
-              setTimeout(resolve, recoveryResult.delay * 1000)
-            );
+        if ("retry" in rr && rr.retry) {
+          if (rr.delay > 0) {
+            logger.info(`Retrying request after ${rr.delay} seconds due to network error`);
+            await new Promise((res) => setTimeout(res, rr.delay * 1000));
           }
-          continue; // Retry the request
-        } else if (recoveryResult.fallback_data) {
-          // Return a mock response with fallback data
-          return new Response(JSON.stringify(recoveryResult.fallback_data), {
+          continue;
+        } else if ("fallback_data" in rr) {
+          return new Response(JSON.stringify(rr.fallback_data), {
             status: 200,
             headers: { "Content-Type": "application/json" },
-
+          });
         }
       }
     }
@@ -416,73 +386,68 @@ export async function fetchWithRecovery(
   throw lastError || new Error("Request failed after all retries");
 }
 
-/**
- * Example usage in existing code
- */
-export function integrateWithExistingErrorHandling() {
-  // Example of how to integrate with existing KarenBackendService
-  const originalFetch = window.fetch;
+// ---------- Integrations ----------
+export function integrateWithExistingErrorHandling(): void {
+  if (!isBrowser()) return;
+
+  // Idempotent guard
+  const __key = "__RECOVERY_FETCH_WRAP__";
+  if ((window as any)[__key]) return;
+
+  const originalFetch = window.fetch.bind(window);
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    try {
-      const url = typeof input === "string" ? input : input.toString();
+    const url = typeof input === "string" ? input : input.toString();
 
-      // Use enhanced fetch for API calls
+    try {
+      // Use enhanced pipeline for all API calls
       if (url.includes("/api/")) {
         return await fetchWithRecovery(url, init, "api_call");
       }
-
-      // Use original fetch for other requests
-      return await originalFetch(input, init);
+      // Non-API → pass through
+      return await originalFetch(input as any, init);
     } catch (error) {
       logger.error("Enhanced fetch failed:", error);
       throw error;
     }
   };
+
+  (window as any)[__key] = true;
+  logger.info("Integrated enhanced fetch with recovery pipeline");
 }
 
-/**
- * Integrate with KarenBackend service specifically for extension errors
- */
-export function integrateWithKarenBackend() {
-  // This would be called by the KarenBackend service when it encounters errors
-  const errorHandler = enhancedErrorHandler;
+export function integrateWithKarenBackend(): void {
+  if (!isBrowser()) return;
 
-  // Export a function that KarenBackend can use
   (window as any).handleKarenBackendError = async (
     status: number,
     url: string,
     operation: string = "api_call",
     context: Record<string, any> = {}
   ) => {
-    return await errorHandler.handleHttpError(status, url, operation, context);
+    return await enhancedErrorHandler.handleHttpError(status, url, operation, context);
   };
 
   logger.info("KarenBackend error integration enabled");
 }
 
-// Auto-initialize integration
-if (typeof window !== "undefined") {
-  // Always integrate with KarenBackend for extension error handling
+// ---------- Auto-init ----------
+if (isBrowser()) {
+  // Always enable KarenBackend bridge for extension errors
   integrateWithKarenBackend();
 
-  // Check if error recovery system is available
+  // Probe recovery status, then opt-in to global fetch wrapping if available
   enhancedErrorHandler
     .getRecoveryStatus()
     .then((status) => {
       if (status.available !== false) {
-        logger.info(
-          "Error recovery system is available, integrating with existing error handling"
-        );
-        // Enable automatic integration for extension errors
+        logger.info("Error recovery system available; integrating with fetch");
         integrateWithExistingErrorHandling();
       } else {
-        logger.warn(
-          "Error recovery system is not available, using fallback error handling"
-        );
+        logger.warn("Error recovery system not available; using fallback handling");
       }
     })
     .catch((error) => {
       logger.warn("Could not check error recovery system status:", error);
-
+    });
 }

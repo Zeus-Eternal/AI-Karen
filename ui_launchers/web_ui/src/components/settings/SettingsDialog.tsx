@@ -14,7 +14,18 @@ import LLMSettings from "./LLMSettings";
 import ModelLibrary from "./ModelLibrary";
 import CopilotKitSettings from "./CopilotKitSettings";
 
-import { } from "lucide-react";
+import { 
+  Brain, 
+  Library, 
+  MessageSquare, 
+  KeyRound, 
+  Cog, 
+  UserCog, 
+  BookText, 
+  Speaker, 
+  Bell, 
+  Shield 
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
@@ -45,12 +56,14 @@ export default function SettingsDialog() {
       window.removeEventListener('navigate-to-llm-settings', handleNavigateToLLMSettings);
     };
   }, []);
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">
+          Settings
         </h2>
-        <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+        <p className="text-sm text-muted-foreground">
           Customize Karen AI's behavior, API connections, personal knowledge,
           notifications, and more. Your preferences are saved locally in your
           browser.
@@ -109,25 +122,39 @@ export default function SettingsDialog() {
             </ErrorBoundary>
           </TabsContent>
           <TabsContent value="api-key">
-            <ApiKeyManager />
+            <ErrorBoundary>
+              <ApiKeyManager />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="behavior">
-            <BehaviorSettings />
+            <ErrorBoundary>
+              <BehaviorSettings />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="personal-facts">
-            <PersonalFactsSettings />
+            <ErrorBoundary>
+              <PersonalFactsSettings />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="notifications">
-            <NotificationSettings />
+            <ErrorBoundary>
+              <NotificationSettings />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="privacy">
-            <PrivacySettings />
+            <ErrorBoundary>
+              <PrivacySettings />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="voice">
-            <VoiceSettings />
+            <ErrorBoundary>
+              <VoiceSettings />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="persona">
-            <PersonaSettings />
+            <ErrorBoundary>
+              <PersonaSettings />
+            </ErrorBoundary>
           </TabsContent>
         </div>
       </Tabs>

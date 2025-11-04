@@ -86,7 +86,7 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <button 
+          <Button 
             onClick={() => window.location.reload()} 
             className="w-full"
             size="lg"
@@ -150,7 +150,7 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
             </div>
           )}
           <div className="flex gap-2">
-            <button 
+            <Button 
               onClick={onRetry} 
               disabled={isRecovering || autoRetryCountdown !== null}
               className="flex-1"
@@ -266,7 +266,7 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button 
+            <Button 
               onClick={onRetry} 
               disabled={isRecovering || autoRetryCountdown !== null}
               size="lg"

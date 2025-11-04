@@ -147,7 +147,7 @@ const MyComponent = () => {
   return (
     <div {...focusManager.containerProps}>
       <input className="first-input" />
-      <button onClick={focusManager.focusFirst}>Focus First</button>
+      <Button onClick={focusManager.focusFirst}>Focus First</Button>
     </div>
   );
 };
@@ -225,7 +225,7 @@ const MyComponent = () => {
 
   return (
     <div>
-      <button onClick={handleAction}>Perform Action</button>
+      <Button onClick={handleAction}>Perform Action</Button>
       <AriaLiveRegion politeness="polite" />
     </div>
   );
@@ -340,7 +340,7 @@ Start with semantic HTML elements before adding ARIA:
 
 ```typescript
 // Good
-<button onClick={handleClick}>Click me</button>
+<Button onClick={handleClick}>Click me</Button>
 
 // Avoid
 <div role="button" onClick={handleClick}>Click me</div>
@@ -365,7 +365,7 @@ Build accessibility in from the start:
 // Base functionality works without JavaScript
 <form action="/submit" method="post">
   <input name="email" required />
-  <button type="submit">Submit</button>
+  <Button type="submit">Submit</Button>
 </form>
 
 // Enhanced with JavaScript

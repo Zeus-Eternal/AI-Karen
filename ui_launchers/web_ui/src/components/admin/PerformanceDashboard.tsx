@@ -118,11 +118,11 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
         <div className="text-red-600 text-center">
           <p className="font-medium">Error loading performance data</p>
           <p className="text-sm mt-1 md:text-base lg:text-lg">{error}</p>
-          <button
+          <Button
             onClick={loadPerformanceData}
             className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
            aria-label="Button">
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -148,16 +148,16 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
               />
               Auto-refresh
             </label>
-            <button
+            <Button
               onClick={loadPerformanceData}
               className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 md:text-base lg:text-lg"
              aria-label="Button">
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={clearMetrics}
               className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 md:text-base lg:text-lg"
              aria-label="Button">
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -314,27 +314,27 @@ export function PerformanceDashboard({ className = '' }: PerformanceDashboardPro
               <div className="text-sm text-gray-500 md:text-base lg:text-lg">
               </div>
               <div className="flex space-x-2">
-                <button
+                <Button
                   onClick={() => exportReport('json')}
                   className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 md:text-base lg:text-lg"
                 >
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => exportReport('csv')}
                   className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 md:text-base lg:text-lg"
                 >
-                </button>
+                </Button>
               </div>
             </div>
           </>
         ) : (
           <div className="text-center py-8">
             <p className="text-gray-500">No performance data available</p>
-            <button
+            <Button
               onClick={loadPerformanceData}
               className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
              aria-label="Button">
-            </button>
+            </Button>
           </div>
         )}
       </div>

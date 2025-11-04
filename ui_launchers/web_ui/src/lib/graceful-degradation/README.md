@@ -108,7 +108,7 @@ function ModelProviderIntegration() {
       {error && (
         <div className="error-banner">
           Service temporarily unavailable. Showing cached data.
-          <button onClick={retry}>Retry</button>
+          <Button onClick={retry}>Retry</Button>
         </div>
       )}
       {/* Your existing UI code */}

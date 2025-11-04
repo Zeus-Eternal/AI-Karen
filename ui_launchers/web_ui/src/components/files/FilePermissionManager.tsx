@@ -374,7 +374,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
             {!readOnly && (
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
-                  <button aria-label="Button">
+                  <Button aria-label="Button">
                     <Plus className="mr-2 h-4 w-4 " />
                   </Button>
                 </DialogTrigger>

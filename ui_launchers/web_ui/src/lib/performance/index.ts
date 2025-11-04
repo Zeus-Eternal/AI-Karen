@@ -1,178 +1,271 @@
 /**
  * Performance Optimization Library
- * 
- * Exports all performance optimization components including HTTP connection pooling,
- * request/response caching, database query optimization, and integrated performance management.
- * 
+ *
+ * Exports all performance optimization components:
+ *  - HTTP connection pooling
+ *  - Request/response caching
+ *  - Database query optimization
+ *  - Integrated performance manager
+ *
  * Requirements: 1.4, 4.4
  */
-// HTTP Connection Pool
+
+/* ----------------------------------------
+ * HTTP Connection Pool (static re-exports)
+ * -------------------------------------- */
 export {
   getHttpConnectionPool,
   initializeHttpConnectionPool,
   shutdownHttpConnectionPool,
-  type ConnectionPoolConfig,
-  type ConnectionMetrics,
-  type PooledConnection,
-  type QueuedRequest,
-import { } from './http-connection-pool';
-// Request/Response Cache
+} from './http-connection-pool';
+
+export type {
+  ConnectionPoolConfig,
+  ConnectionMetrics,
+  PooledConnection,
+  QueuedRequest,
+} from './http-connection-pool';
+
+/* ----------------------------------------
+ * Request/Response Cache (static re-exports)
+ * -------------------------------------- */
 export {
   getRequestResponseCache,
   initializeRequestResponseCache,
   shutdownRequestResponseCache,
-  type CacheConfig,
-  type CacheEntry,
-  type CacheMetrics,
-  type CacheOptions,
-import { } from './request-response-cache';
-// Database Query Optimizer
+} from './request-response-cache';
+
+export type {
+  CacheConfig,
+  CacheEntry,
+  CacheMetrics,
+  CacheOptions,
+} from './request-response-cache';
+
+/* ----------------------------------------
+ * Database Query Optimizer (static re-exports)
+ * -------------------------------------- */
 export {
   getDatabaseQueryOptimizer,
   initializeDatabaseQueryOptimizer,
   shutdownDatabaseQueryOptimizer,
-  type QueryOptimizationConfig,
-  type QueryMetrics,
-  type QueryCacheEntry,
-  type PreparedStatement,
-  type QueryPlan,
-import { } from './database-query-optimizer';
-// Performance Optimizer (Main Integration)
+} from './database-query-optimizer';
+
+export type {
+  QueryOptimizationConfig,
+  QueryMetrics,
+  QueryCacheEntry,
+  PreparedStatement,
+  QueryPlan,
+} from './database-query-optimizer';
+
+/* ----------------------------------------
+ * Performance Optimizer (integration layer)
+ * -------------------------------------- */
 export {
   getPerformanceOptimizer,
   initializePerformanceOptimizer,
   shutdownPerformanceOptimizer,
-  type PerformanceConfig,
-  type PerformanceMetrics,
-  type OptimizedRequestOptions,
-import { } from './performance-optimizer';
-// Utility functions for performance optimization
+} from './performance-optimizer';
+
+export type {
+  PerformanceConfig,
+  PerformanceMetrics,
+  OptimizedRequestOptions,
+} from './performance-optimizer';
+
+/* ----------------------------------------
+ * PerformanceUtils (runtime helpers)
+ * - Uses dynamic imports to avoid circular deps
+ * - Safe to call from anywhere
+ * -------------------------------------- */
+
 export const PerformanceUtils = {
   /**
-   * Initialize all performance optimization components
+   * Initialize all performance optimization components.
+   * Returns the initialized PerformanceOptimizer singleton.
    */
   async initializeAll(config?: {
     connectionPool?: Partial<import('./http-connection-pool').ConnectionPoolConfig>;
     responseCache?: Partial<import('./request-response-cache').CacheConfig>;
     queryOptimizer?: Partial<import('./database-query-optimizer').QueryOptimizationConfig>;
+    enableMetrics?: boolean;
+    metricsInterval?: number;
   }) {
-    const { initializeHttpConnectionPool } = await import('./http-connection-pool');
-    const { initializeRequestResponseCache } = await import('./request-response-cache');
-    const { initializeDatabaseQueryOptimizer } = await import('./database-query-optimizer');
-    const { initializePerformanceOptimizer } = await import('./performance-optimizer');
-    // Initialize individual components
+    const [
+      poolMod,
+      cacheMod,
+      dbqMod,
+      perfMod,
+    ] = await Promise.all([
+      import('./http-connection-pool'),
+      import('./request-response-cache'),
+      import('./database-query-optimizer'),
+      import('./performance-optimizer'),
+    ]);
+
+    // Initialize leaf components first (idempotent in your impls)
     if (config?.connectionPool) {
-      initializeHttpConnectionPool(config.connectionPool);
+      poolMod.initializeHttpConnectionPool(config.connectionPool);
     }
     if (config?.responseCache) {
-      initializeRequestResponseCache(config.responseCache);
+      cacheMod.initializeRequestResponseCache(config.responseCache);
     }
     if (config?.queryOptimizer) {
-      initializeDatabaseQueryOptimizer(config.queryOptimizer);
+      dbqMod.initializeDatabaseQueryOptimizer(config.queryOptimizer);
     }
-    // Initialize main performance optimizer
-    return initializePerformanceOptimizer({
-      connectionPool: config?.connectionPool || {},
-      responseCache: config?.responseCache || {},
-      queryOptimizer: config?.queryOptimizer || {},
-      enableMetrics: true,
 
+    // Initialize the integrated optimizer last
+    return perfMod.initializePerformanceOptimizer({
+      connectionPool: config?.connectionPool ?? {},
+      responseCache: config?.responseCache ?? {},
+      queryOptimizer: config?.queryOptimizer ?? {},
+      enableMetrics: config?.enableMetrics ?? true,
+      metricsInterval: config?.metricsInterval ?? 60_000,
+    });
   },
+
   /**
-   * Shutdown all performance optimization components
+   * Shutdown all components gracefully.
+   * Order: integrated optimizer → individual subsystems (best-effort).
    */
   async shutdownAll() {
-    const { shutdownHttpConnectionPool } = await import('./http-connection-pool');
-    const { shutdownRequestResponseCache } = await import('./request-response-cache');
-    const { shutdownDatabaseQueryOptimizer } = await import('./database-query-optimizer');
-    const { shutdownPerformanceOptimizer } = await import('./performance-optimizer');
-    await Promise.all([
-      shutdownHttpConnectionPool(),
-      shutdownPerformanceOptimizer(),
+    const [poolMod, cacheMod, dbqMod, perfMod] = await Promise.all([
+      import('./http-connection-pool'),
+      import('./request-response-cache'),
+      import('./database-query-optimizer'),
+      import('./performance-optimizer'),
     ]);
-    shutdownRequestResponseCache();
-    shutdownDatabaseQueryOptimizer();
+
+    // The performance optimizer may already call its own sub-shutdowns;
+    // we still best-effort close the leaves for safety.
+    try { await perfMod.shutdownPerformanceOptimizer(); } catch {}
+    try { await poolMod.shutdownHttpConnectionPool(); } catch {}
+    try { cacheMod.shutdownRequestResponseCache(); } catch {}
+    try { dbqMod.shutdownDatabaseQueryOptimizer(); } catch {}
   },
+
   /**
-   * Get comprehensive performance metrics from all components
+   * Get comprehensive, point-in-time metrics across all components.
    */
-  getComprehensiveMetrics() {
-    const { getHttpConnectionPool } = require('./http-connection-pool');
-    const { getRequestResponseCache } = require('./request-response-cache');
-    const { getDatabaseQueryOptimizer } = require('./database-query-optimizer');
-    const { getPerformanceOptimizer } = require('./performance-optimizer');
+  async getComprehensiveMetrics() {
     try {
-      const connectionPool = getHttpConnectionPool();
-      const responseCache = getRequestResponseCache();
-      const queryOptimizer = getDatabaseQueryOptimizer();
-      const performanceOptimizer = getPerformanceOptimizer();
+      const [
+        poolMod,
+        cacheMod,
+        dbqMod,
+        perfMod,
+      ] = await Promise.all([
+        import('./http-connection-pool'),
+        import('./request-response-cache'),
+        import('./database-query-optimizer'),
+        import('./performance-optimizer'),
+      ]);
+
+      const pool = poolMod.getHttpConnectionPool();
+      const cache = cacheMod.getRequestResponseCache();
+      const dbq  = dbqMod.getDatabaseQueryOptimizer();
+      const perf = perfMod.getPerformanceOptimizer();
+
       return {
-        connectionPool: connectionPool.getMetrics(),
-        responseCache: responseCache.getMetrics(),
-        queryOptimizer: queryOptimizer.getMetrics(),
-        overall: performanceOptimizer.getMetrics(),
+        connectionPool: pool.getMetrics(),
+        responseCache: cache.getMetrics(),
+        queryOptimizer: dbq.getMetrics(),
+        overall: perf.getMetrics(),
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
       return {
-        error: 'Failed to collect metrics',
+        error: (error as Error)?.message ?? 'Failed to collect metrics',
         timestamp: new Date().toISOString(),
       };
     }
   },
+
   /**
-   * Get performance recommendations from all components
+   * Get current performance recommendations (human-readable).
    */
-  getPerformanceRecommendations() {
+  async getPerformanceRecommendations(): Promise<string[]> {
     try {
-      const { getPerformanceOptimizer } = require('./performance-optimizer');
-      const performanceOptimizer = getPerformanceOptimizer();
-      return performanceOptimizer.getPerformanceRecommendations();
-    } catch (error) {
-      return ['Performance optimization not initialized'];
+      const perfMod = await import('./performance-optimizer');
+      const perf = perfMod.getPerformanceOptimizer();
+      return perf.getPerformanceRecommendations();
+    } catch {
+      return ['Performance optimization is not initialized'];
     }
   },
+
   /**
-   * Auto-optimize all components based on current metrics
+   * Auto-optimize tunables across components based on live metrics.
    */
-  autoOptimizeAll() {
+  async autoOptimizeAll() {
     try {
-      const { getPerformanceOptimizer } = require('./performance-optimizer');
-      const performanceOptimizer = getPerformanceOptimizer();
-      performanceOptimizer.autoOptimize();
-    } catch (error) {
+      const perfMod = await import('./performance-optimizer');
+      const perf = perfMod.getPerformanceOptimizer();
+      perf.autoOptimize();
+    } catch {
+      // Silently ignore if not initialized
     }
   },
+
   /**
-   * Clear all caches
+   * Clear all caches (response cache + DB query cache).
    */
-  clearAllCaches() {
+  async clearAllCaches() {
     try {
-      const { getRequestResponseCache } = require('./request-response-cache');
-      const { getDatabaseQueryOptimizer } = require('./database-query-optimizer');
-      const responseCache = getRequestResponseCache();
-      const queryOptimizer = getDatabaseQueryOptimizer();
-      responseCache.clear();
-      queryOptimizer.clearCache();
+      const [cacheMod, dbqMod] = await Promise.all([
+        import('./request-response-cache'),
+        import('./database-query-optimizer'),
+      ]);
+      cacheMod.getRequestResponseCache().clear();
+      dbqMod.getDatabaseQueryOptimizer().clearCache?.();
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   },
+
   /**
-   * Invalidate caches for a specific user
+   * Invalidate caches that relate to a specific user.
    */
-  invalidateUserCaches(userId: string) {
+  async invalidateUserCaches(userId: string) {
     try {
-      const { getPerformanceOptimizer } = require('./performance-optimizer');
-      const performanceOptimizer = getPerformanceOptimizer();
-      performanceOptimizer.invalidateUserCache(userId);
+      const perfMod = await import('./performance-optimizer');
+      const perf = perfMod.getPerformanceOptimizer();
+      perf.invalidateUserCache(userId);
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   },
 };
-// Default export for convenience
-export default {
+
+/* ----------------------------------------
+ * Default export: names + utils
+ * -------------------------------------- */
+const _default = {
+  // Pools
+  getHttpConnectionPool,
+  initializeHttpConnectionPool,
+  shutdownHttpConnectionPool,
+
+  // Cache
+  getRequestResponseCache,
+  initializeRequestResponseCache,
+  shutdownRequestResponseCache,
+
+  // DB Query Optimizer
+  getDatabaseQueryOptimizer,
+  initializeDatabaseQueryOptimizer,
+  shutdownDatabaseQueryOptimizer,
+
+  // Integrated Optimizer
+  getPerformanceOptimizer,
+  initializePerformanceOptimizer,
+  shutdownPerformanceOptimizer,
+
+  // Utils
+  PerformanceUtils,
 };
+
+export default _default;

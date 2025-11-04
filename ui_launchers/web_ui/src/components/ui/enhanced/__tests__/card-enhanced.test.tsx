@@ -321,7 +321,7 @@ describe('Complete Card Example', () => {
           <p>This is the card content</p>
         </CardContentEnhanced>
         <CardFooterEnhanced>
-          <button aria-label="Button">Action</button>
+          <Button aria-label="Button">Action</Button>
         </CardFooterEnhanced>
       </CardEnhanced>
     );

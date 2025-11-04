@@ -50,7 +50,7 @@ vi.mock('@/store/plugin-store', () => ({
 
 // Mock UI components
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, ...props }: any) => <button {...props} aria-label="Button">{children}</button>,
+  Button: ({ children, ...props }: any) => <Button {...props} aria-label="Button">{children}</Button>,
 }));
 
 vi.mock('@/components/ui/input', () => ({

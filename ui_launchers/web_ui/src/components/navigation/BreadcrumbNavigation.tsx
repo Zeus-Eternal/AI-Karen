@@ -294,7 +294,7 @@ const BreadcrumbItem: React.FC<BreadcrumbItemProps> = ({ item, onClick }) => {
 
   if (isClickable) {
     return (
-      <button
+      <Button
         className={cn(
           'flex items-center',
           'text-[var(--color-neutral-600)] dark:text-[var(--color-neutral-400)]',
@@ -307,7 +307,7 @@ const BreadcrumbItem: React.FC<BreadcrumbItemProps> = ({ item, onClick }) => {
         aria-current={item.current ? 'page' : undefined}
        aria-label="Button">
         {content}
-      </button>
+      </Button>
     );
   }
 

@@ -49,10 +49,10 @@ function TestComponent() {
       <div data-testid="text-scale">{textScale}</div>
       <div data-testid="color-blindness">{colorBlindnessFilter}</div>
       
-      <button onClick={toggleHighContrast} aria-label="Button">Toggle High Contrast</button>
-      <button onClick={() => announceMessage('Test message')}>Announce</button>
-      <button onClick={() => setTextScale(1.5)}>Set Text Scale</button>
-      <button onClick={() => setColorBlindnessFilter('protanopia')}>Set Color Blindness</button>
+      <Button onClick={toggleHighContrast} aria-label="Button">Toggle High Contrast</Button>
+      <Button onClick={() => announceMessage('Test message')}>Announce</Button>
+      <Button onClick={() => setTextScale(1.5)}>Set Text Scale</Button>
+      <Button onClick={() => setColorBlindnessFilter('protanopia')}>Set Color Blindness</Button>
     </div>
   );
 }

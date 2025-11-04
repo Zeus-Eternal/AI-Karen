@@ -41,15 +41,45 @@ export interface ConnectivityTestResult {
   timestamp: string;
 }
 
-/**
- * Configuration validation service for endpoint management
- */
+function isBrowser(): boolean {
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
+
+function safeNowISO(): string {
+  try {
+    return new Date().toISOString();
+  } catch {
+    // Extremely unlikely, but keep service fail-soft
+    return '' + Date.now();
+  }
+}
+
+function validHttpProtocol(protocol: string): boolean {
+  return protocol === 'http:' || protocol === 'https:';
+}
+
+function tryParseUrl(u: string): URL | null {
+  try {
+    return new URL(u);
+  } catch {
+    return null;
+  }
+}
+
+function perfNow(): number {
+  try {
+    return performance.now();
+  } catch {
+    return Date.now();
+  }
+}
+
 export class EndpointValidationService {
   private configManager = getConfigManager();
   private healthCheckCache: Map<string, HealthCheckResult> = new Map();
   private connectivityCache: Map<string, ConnectivityTestResult> = new Map();
-  private readonly HEALTH_CACHE_TTL = 30000; // 30 seconds
-  private readonly CONNECTIVITY_CACHE_TTL = 60000; // 1 minute
+  private readonly HEALTH_CACHE_TTL = 30_000; // 30s
+  private readonly CONNECTIVITY_CACHE_TTL = 60_000; // 60s
 
   /**
    * Validate the current endpoint configuration
@@ -60,22 +90,11 @@ export class EndpointValidationService {
     const warnings: ValidationError[] = [];
     const info: ValidationError[] = [];
 
-    // Validate backend URL
     this.validateBackendUrl(config.backendUrl, errors, warnings);
-
-    // Validate fallback URLs
-    this.validateFallbackUrls(config.fallbackUrls, errors, warnings);
-
-    // Validate health check configuration
+    this.validateFallbackUrls(config.fallbackUrls ?? [], errors, warnings);
     this.validateHealthCheckConfig(config, errors, warnings);
-
-    // Validate CORS origins
-    this.validateCorsOrigins(config.corsOrigins, errors, warnings);
-
-    // Validate environment consistency
+    this.validateCorsOrigins(config.corsOrigins ?? [], errors, warnings);
     this.validateEnvironmentConsistency(config, warnings, info);
-
-    // Validate timeout values
     this.validateTimeoutValues(config, warnings);
 
     return {
@@ -87,7 +106,7 @@ export class EndpointValidationService {
   }
 
   /**
-   * Validate backend URL format and accessibility
+   * Validate backend URL format and accessibility (format only here)
    */
   private validateBackendUrl(backendUrl: string, errors: ValidationError[], warnings: ValidationError[]): void {
     if (!backendUrl) {
@@ -95,60 +114,56 @@ export class EndpointValidationService {
         field: 'backendUrl',
         message: 'Backend URL is required',
         severity: 'error',
-
+      });
       return;
     }
 
-    try {
-      const url = new URL(backendUrl);
-      
-      // Check protocol
-      if (!['http:', 'https:'].includes(url.protocol)) {
-        errors.push({
-          field: 'backendUrl',
-          message: `Invalid protocol: ${url.protocol}. Only HTTP and HTTPS are supported`,
-          severity: 'error',
-
-      }
-
-      // Check for localhost in production
-      if (this.configManager.getEnvironmentInfo().environment === 'production' && 
-          (url.hostname === 'localhost' || url.hostname === '127.0.0.1')) {
-        warnings.push({
-          field: 'backendUrl',
-          message: 'Using localhost in production environment may cause connectivity issues',
-          severity: 'warning',
-
-      }
-
-      // Check for HTTP in production
-      if (this.configManager.getEnvironmentInfo().environment === 'production' && 
-          url.protocol === 'http:') {
-        warnings.push({
-          field: 'backendUrl',
-          message: 'Using HTTP in production is not recommended for security reasons',
-          severity: 'warning',
-
-      }
-
-      // Check port range
-      if (url.port) {
-        const port = parseInt(url.port, 10);
-        if (port < 1 || port > 65535) {
-          errors.push({
-            field: 'backendUrl',
-            message: `Invalid port number: ${port}. Must be between 1 and 65535`,
-            severity: 'error',
-
-        }
-      }
-
-    } catch (error) {
+    const url = tryParseUrl(backendUrl);
+    if (!url) {
       errors.push({
         field: 'backendUrl',
         message: `Invalid URL format: ${backendUrl}`,
         severity: 'error',
+      });
+      return;
+    }
 
+    // Protocol
+    if (!validHttpProtocol(url.protocol)) {
+      errors.push({
+        field: 'backendUrl',
+        message: `Invalid protocol: ${url.protocol}. Only HTTP and HTTPS are supported`,
+        severity: 'error',
+      });
+    }
+
+    // Prod checks
+    const env = this.configManager.getEnvironmentInfo().environment;
+    if (env === 'production' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')) {
+      warnings.push({
+        field: 'backendUrl',
+        message: 'Using localhost in production environment may cause connectivity issues',
+        severity: 'warning',
+      });
+    }
+    if (env === 'production' && url.protocol === 'http:') {
+      warnings.push({
+        field: 'backendUrl',
+        message: 'Using HTTP in production is not recommended for security reasons',
+        severity: 'warning',
+      });
+    }
+
+    // Port range
+    if (url.port) {
+      const port = parseInt(url.port, 10);
+      if (Number.isNaN(port) || port < 1 || port > 65_535) {
+        errors.push({
+          field: 'backendUrl',
+          message: `Invalid port number: ${url.port}. Must be between 1 and 65535`,
+          severity: 'error',
+        });
+      }
     }
   }
 
@@ -156,44 +171,52 @@ export class EndpointValidationService {
    * Validate fallback URLs
    */
   private validateFallbackUrls(fallbackUrls: string[], errors: ValidationError[], warnings: ValidationError[]): void {
-    if (fallbackUrls.length === 0) {
+    if (!Array.isArray(fallbackUrls) || fallbackUrls.length === 0) {
       warnings.push({
         field: 'fallbackUrls',
         message: 'No fallback URLs configured. Consider adding fallback endpoints for better reliability',
         severity: 'warning',
-
+      });
       return;
     }
 
-    fallbackUrls.forEach((url, index) => {
-      try {
-        const parsedUrl = new URL(url);
-        
-        // Check protocol
-        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-          errors.push({
-            field: `fallbackUrls[${index}]`,
-            message: `Invalid protocol in fallback URL: ${parsedUrl.protocol}`,
-            severity: 'error',
-
-        }
-
-      } catch (error) {
+    fallbackUrls.forEach((u, index) => {
+      const parsed = tryParseUrl(u);
+      if (!parsed) {
         errors.push({
           field: `fallbackUrls[${index}]`,
-          message: `Invalid fallback URL format: ${url}`,
+          message: `Invalid fallback URL format: ${u}`,
           severity: 'error',
-
+        });
+        return;
       }
+      if (!validHttpProtocol(parsed.protocol)) {
+        errors.push({
+          field: `fallbackUrls[${index}]`,
+          message: `Invalid protocol in fallback URL: ${parsed.protocol}`,
+          severity: 'error',
+        });
+      }
+      if (parsed.port) {
+        const p = parseInt(parsed.port, 10);
+        if (Number.isNaN(p) || p < 1 || p > 65_535) {
+          errors.push({
+            field: `fallbackUrls[${index}]`,
+            message: `Invalid port number: ${parsed.port}. Must be between 1 and 65535`,
+            severity: 'error',
+          });
+        }
+      }
+    });
 
-    // Check for duplicate URLs
-    const uniqueUrls = new Set(fallbackUrls);
-    if (uniqueUrls.size !== fallbackUrls.length) {
+    // Duplicate detection
+    const unique = new Set(fallbackUrls);
+    if (unique.size !== fallbackUrls.length) {
       warnings.push({
         field: 'fallbackUrls',
         message: 'Duplicate fallback URLs detected',
         severity: 'warning',
-
+      });
     }
   }
 
@@ -201,40 +224,38 @@ export class EndpointValidationService {
    * Validate health check configuration
    */
   private validateHealthCheckConfig(config: EndpointConfig, errors: ValidationError[], warnings: ValidationError[]): void {
-    if (config.healthCheckEnabled) {
-      // Validate interval
-      if (config.healthCheckInterval < 5000) {
-        warnings.push({
-          field: 'healthCheckInterval',
-          message: `Health check interval is very low (${config.healthCheckInterval}ms). This may impact performance`,
-          severity: 'warning',
+    if (!config.healthCheckEnabled) return;
 
-      }
+    if (config.healthCheckInterval < 5_000) {
+      warnings.push({
+        field: 'healthCheckInterval',
+        message: `Health check interval is very low (${config.healthCheckInterval}ms). This may impact performance`,
+        severity: 'warning',
+      });
+    }
 
-      if (config.healthCheckInterval > 300000) { // 5 minutes
-        warnings.push({
-          field: 'healthCheckInterval',
-          message: `Health check interval is very high (${config.healthCheckInterval}ms). Issues may not be detected quickly`,
-          severity: 'warning',
+    if (config.healthCheckInterval > 300_000) {
+      warnings.push({
+        field: 'healthCheckInterval',
+        message: `Health check interval is very high (${config.healthCheckInterval}ms). Issues may not be detected quickly`,
+        severity: 'warning',
+      });
+    }
 
-      }
+    if (config.healthCheckTimeout < 1_000) {
+      warnings.push({
+        field: 'healthCheckTimeout',
+        message: `Health check timeout is very low (${config.healthCheckTimeout}ms). May cause false negatives`,
+        severity: 'warning',
+      });
+    }
 
-      // Validate timeout
-      if (config.healthCheckTimeout < 1000) {
-        warnings.push({
-          field: 'healthCheckTimeout',
-          message: `Health check timeout is very low (${config.healthCheckTimeout}ms). May cause false negatives`,
-          severity: 'warning',
-
-      }
-
-      if (config.healthCheckTimeout >= config.healthCheckInterval) {
-        errors.push({
-          field: 'healthCheckTimeout',
-          message: `Health check timeout (${config.healthCheckTimeout}ms) must be less than interval (${config.healthCheckInterval}ms)`,
-          severity: 'error',
-
-      }
+    if (config.healthCheckTimeout >= config.healthCheckInterval) {
+      errors.push({
+        field: 'healthCheckTimeout',
+        message: `Health check timeout (${config.healthCheckTimeout}ms) must be less than interval (${config.healthCheckInterval}ms)`,
+        severity: 'error',
+      });
     }
   }
 
@@ -242,12 +263,12 @@ export class EndpointValidationService {
    * Validate CORS origins
    */
   private validateCorsOrigins(corsOrigins: string[], errors: ValidationError[], warnings: ValidationError[]): void {
-    if (corsOrigins.length === 0) {
+    if (!Array.isArray(corsOrigins) || corsOrigins.length === 0) {
       warnings.push({
         field: 'corsOrigins',
         message: 'No CORS origins configured. This may cause cross-origin request issues',
         severity: 'warning',
-
+      });
       return;
     }
 
@@ -257,20 +278,18 @@ export class EndpointValidationService {
           field: `corsOrigins[${index}]`,
           message: 'Wildcard CORS origin (*) is not recommended for production',
           severity: 'warning',
-
+        });
         return;
       }
-
-      try {
-        new URL(origin);
-      } catch (error) {
+      const parsed = tryParseUrl(origin);
+      if (!parsed) {
         errors.push({
           field: `corsOrigins[${index}]`,
           message: `Invalid CORS origin format: ${origin}`,
           severity: 'error',
-
+        });
       }
-
+    });
   }
 
   /**
@@ -279,43 +298,47 @@ export class EndpointValidationService {
   private validateEnvironmentConsistency(config: EndpointConfig, warnings: ValidationError[], info: ValidationError[]): void {
     const envInfo = this.configManager.getEnvironmentInfo();
 
-    // Check for environment/URL mismatches
-    if (envInfo.environment === 'docker' && !config.backendUrl.includes('docker') && 
-        !config.backendUrl.includes('container') && !config.backendUrl.includes('backend')) {
+    if (
+      envInfo.environment === 'docker' &&
+      !config.backendUrl.includes('docker') &&
+      !config.backendUrl.includes('container') &&
+      !config.backendUrl.includes('backend')
+    ) {
       warnings.push({
         field: 'environment',
-        message: 'Docker environment detected but backend URL does not appear to use container networking',
+        message: 'Docker environment detected but backend URL may not use container networking',
         severity: 'warning',
-
+      });
     }
 
-    if (envInfo.networkMode === 'external' && 
-        (config.backendUrl.includes('localhost') || config.backendUrl.includes('127.0.0.1'))) {
+    if (
+      envInfo.networkMode === 'external' &&
+      (config.backendUrl.includes('localhost') || config.backendUrl.includes('127.0.0.1'))
+    ) {
       warnings.push({
         field: 'networkMode',
         message: 'External network mode detected but backend URL uses localhost',
         severity: 'warning',
-
+      });
     }
 
-    // Provide environment info
     info.push({
       field: 'environment',
       message: `Detected environment: ${envInfo.environment}, network mode: ${envInfo.networkMode}`,
       severity: 'info',
-
+    });
   }
 
   /**
    * Validate timeout values
    */
   private validateTimeoutValues(config: EndpointConfig, warnings: ValidationError[]): void {
-    if (config.healthCheckTimeout > 30000) {
+    if (config.healthCheckTimeout > 30_000) {
       warnings.push({
         field: 'healthCheckTimeout',
         message: `Health check timeout is very high (${config.healthCheckTimeout}ms). Consider reducing for better responsiveness`,
         severity: 'warning',
-
+      });
     }
   }
 
@@ -325,37 +348,37 @@ export class EndpointValidationService {
   public async performHealthCheck(endpoint: string): Promise<HealthCheckResult> {
     const cacheKey = `health:${endpoint}`;
     const cached = this.healthCheckCache.get(cacheKey);
-    
     if (cached && Date.now() - new Date(cached.timestamp).getTime() < this.HEALTH_CACHE_TTL) {
       return cached;
     }
 
-    const startTime = performance.now();
-    const timestamp = new Date().toISOString();
+    const startTime = perfNow();
+    const timestamp = safeNowISO();
 
     try {
-      const healthUrl = `${endpoint}/health`;
+      const healthUrl = endpoint.replace(/\/+$/, '') + '/health';
       const config = this.configManager.getConfiguration();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), config.healthCheckTimeout);
+      const timeoutId = setTimeout(() => controller.abort(), Math.max(1_000, config.healthCheckTimeout));
 
       const response = await fetch(healthUrl, {
         method: 'GET',
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
           'Cache-Control': 'no-cache',
         },
+        credentials: 'same-origin',
+      });
 
       clearTimeout(timeoutId);
-      const responseTime = performance.now() - startTime;
+      const responseTime = Math.max(0, perfNow() - startTime);
 
       if (response.ok) {
         let healthData: any = {};
         try {
           healthData = await response.json();
         } catch {
-          // If JSON parsing fails, treat as basic health check
           healthData = { status: 'ok' };
         }
 
@@ -373,30 +396,27 @@ export class EndpointValidationService {
 
         this.healthCheckCache.set(cacheKey, result);
         return result;
-
-      } else {
-        const result: HealthCheckResult = {
-          endpoint,
-          status: 'unhealthy',
-          responseTime,
-          timestamp,
-          details: {
-            error: `HTTP ${response.status}: ${response.statusText}`,
-          },
-        };
-
-        this.healthCheckCache.set(cacheKey, result);
-        return result;
       }
 
-    } catch (error) {
-      const responseTime = performance.now() - startTime;
+      const result: HealthCheckResult = {
+        endpoint,
+        status: 'unhealthy',
+        responseTime,
+        timestamp,
+        details: {
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        },
+      };
+      this.healthCheckCache.set(cacheKey, result);
+      return result;
+    } catch (error: any) {
+      const responseTime = Math.max(0, perfNow() - startTime);
       let errorMessage = 'Unknown error';
 
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorMessage = 'Health check timeout';
-        } else if (error.message.includes('fetch')) {
+      if (error?.name === 'AbortError') {
+        errorMessage = 'Health check timeout';
+      } else if (typeof error?.message === 'string') {
+        if (error.message.toLowerCase().includes('fetch')) {
           errorMessage = 'Network error - unable to connect';
         } else {
           errorMessage = error.message;
@@ -408,11 +428,8 @@ export class EndpointValidationService {
         status: 'unhealthy',
         responseTime,
         timestamp,
-        details: {
-          error: errorMessage,
-        },
+        details: { error: errorMessage },
       };
-
       this.healthCheckCache.set(cacheKey, result);
       return result;
     }
@@ -422,36 +439,24 @@ export class EndpointValidationService {
    * Determine health status based on response data and performance
    */
   private determineHealthStatus(healthData: any, responseTime: number): 'healthy' | 'degraded' | 'unhealthy' {
-    // Check if response time is too high
-    if (responseTime > 10000) { // 10 seconds
-      return 'degraded';
-    }
+    // Latency heuristic
+    if (responseTime > 10_000) return 'degraded';
 
-    // Check service status if available
-    if (healthData.services) {
-      const services = Object.values(healthData.services);
-      const unhealthyServices = services.filter((service: any) => 
-        service.status === 'error' || service.status === 'unhealthy'
-      );
-      
-      if (unhealthyServices.length > 0) {
-        return services.length === unhealthyServices.length ? 'unhealthy' : 'degraded';
+    // Service map heuristic
+    if (healthData?.services) {
+      const services = Object.values(healthData.services) as any[];
+      const unhealthy = services.filter((s) => s?.status === 'error' || s?.status === 'unhealthy');
+      if (unhealthy.length > 0) {
+        return unhealthy.length === services.length ? 'unhealthy' : 'degraded';
       }
     }
 
-    // Check overall status if provided
-    if (healthData.status) {
-      switch (healthData.status.toLowerCase()) {
-        case 'ok':
-        case 'healthy':
-          return 'healthy';
-        case 'degraded':
-        case 'warning':
-          return 'degraded';
-        case 'error':
-        case 'unhealthy':
-          return 'unhealthy';
-      }
+    // Explicit status
+    if (typeof healthData?.status === 'string') {
+      const s = healthData.status.toLowerCase();
+      if (s === 'ok' || s === 'healthy') return 'healthy';
+      if (s === 'degraded' || s === 'warning') return 'degraded';
+      if (s === 'error' || s === 'unhealthy') return 'unhealthy';
     }
 
     return 'healthy';
@@ -463,25 +468,26 @@ export class EndpointValidationService {
   public async testConnectivity(endpoint: string): Promise<ConnectivityTestResult> {
     const cacheKey = `connectivity:${endpoint}`;
     const cached = this.connectivityCache.get(cacheKey);
-    
     if (cached && Date.now() - new Date(cached.timestamp).getTime() < this.CONNECTIVITY_CACHE_TTL) {
       return cached;
     }
 
-    const startTime = performance.now();
-    const timestamp = new Date().toISOString();
+    const startTime = perfNow();
+    const timestamp = safeNowISO();
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10_000);
 
       const response = await fetch(endpoint, {
-        method: 'HEAD', // Use HEAD to minimize data transfer
+        method: 'HEAD',
         signal: controller.signal,
-        mode: 'cors', // Test CORS
+        mode: 'cors',
+        credentials: 'same-origin',
+      });
 
       clearTimeout(timeoutId);
-      const responseTime = performance.now() - startTime;
+      const responseTime = Math.max(0, perfNow() - startTime);
 
       const result: ConnectivityTestResult = {
         endpoint,
@@ -494,22 +500,15 @@ export class EndpointValidationService {
 
       this.connectivityCache.set(cacheKey, result);
       return result;
+    } catch (error: any) {
+      const responseTime = Math.max(0, perfNow() - startTime);
 
-    } catch (error) {
-      const responseTime = performance.now() - startTime;
       let errorMessage = 'Unknown error';
-
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorMessage = 'Connection timeout';
-        } else if (error.message.includes('CORS')) {
-          errorMessage = 'CORS error - cross-origin requests blocked';
-        } else if (error.message.includes('fetch')) {
-          errorMessage = 'Network error - unable to connect';
-        } else {
-          errorMessage = error.message;
-        }
-      }
+      const msg = String(error?.message || '');
+      if (error?.name === 'AbortError') errorMessage = 'Connection timeout';
+      else if (msg.toLowerCase().includes('cors')) errorMessage = 'CORS error - cross-origin requests blocked';
+      else if (msg.toLowerCase().includes('fetch')) errorMessage = 'Network error - unable to connect';
+      else if (msg) errorMessage = msg;
 
       const result: ConnectivityTestResult = {
         endpoint,
@@ -528,30 +527,31 @@ export class EndpointValidationService {
    * Validate all configured endpoints
    */
   public async validateAllEndpoints(): Promise<{
-    primary: EndpointValidationResult;
+    primary: EndpointValidationResult | null;
     fallbacks: EndpointValidationResult[];
     healthChecks: HealthCheckResult[];
     connectivity: ConnectivityTestResult[];
   }> {
     const config = this.configManager.getConfiguration();
-    const allEndpoints = [config.backendUrl, ...config.fallbackUrls];
+    const allEndpoints = [config.backendUrl, ...(config.fallbackUrls ?? [])];
 
-    // Get basic validation results
+    // Basic validation results from config manager
     const validationResults = await this.configManager.validateEndpoints();
-    
-    // Perform health checks
+
     const healthChecks = await Promise.all(
-      allEndpoints.map(endpoint => this.performHealthCheck(endpoint))
+      allEndpoints.map((endpoint) => this.performHealthCheck(endpoint))
     );
 
-    // Test connectivity
     const connectivity = await Promise.all(
-      allEndpoints.map(endpoint => this.testConnectivity(endpoint))
+      allEndpoints.map((endpoint) => this.testConnectivity(endpoint))
     );
+
+    const primary = validationResults.length > 0 ? validationResults[0] : null;
+    const fallbacks = validationResults.length > 1 ? validationResults.slice(1) : [];
 
     return {
-      primary: validationResults[0],
-      fallbacks: validationResults.slice(1),
+      primary,
+      fallbacks,
       healthChecks,
       connectivity,
     };
@@ -609,6 +609,10 @@ export function initializeEndpointValidationService(): EndpointValidationService
   return validationService;
 }
 
-// Export types with unique names to avoid conflicts
+// Re-export types (keep explicit; avoid empty export blocks that break TS)
 export type {
+  ConfigValidationResult as EndpointConfigValidationResult,
+  HealthCheckResult as EndpointHealthCheckResult,
+  ConnectivityTestResult as EndpointConnectivityTestResult,
+  ValidationError as EndpointValidationError,
 };

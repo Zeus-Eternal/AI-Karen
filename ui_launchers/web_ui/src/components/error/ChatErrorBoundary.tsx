@@ -334,7 +334,7 @@ const ErrorFallbackUI: React.FC<ErrorFallbackUIProps> = ({
         )}
         <div className="flex flex-wrap gap-3 justify-center">
           {canRetry && (
-            <button
+            <Button
               onClick={onRetry}
               disabled={isRetrying}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-md transition-colors flex items-center gap-2"
@@ -353,20 +353,20 @@ const ErrorFallbackUI: React.FC<ErrorFallbackUIProps> = ({
                   Try Again {retryCount > 0 && `(${retryCount}/${maxRetries})`}
                 </>
               )}
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             onClick={onReload}
             className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors"
             type="button"
            aria-label="Button">
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onReportIssue}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
             type="button"
            aria-label="Button">
-          </button>
+          </Button>
         </div>
         {errorId && (
           <div className="text-sm text-red-600 dark:text-red-400 space-y-1 md:text-base lg:text-lg">

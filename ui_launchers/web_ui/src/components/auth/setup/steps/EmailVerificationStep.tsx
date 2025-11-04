@@ -10,8 +10,8 @@ export function EmailVerificationStep({ onNext, onPrevious }: EmailVerificationS
     <div>
       <h2>Email Verification Step</h2>
       <p>Temporarily disabled for build</p>
-      <button onClick={onNext}>Next</button>
-      <button onClick={onPrevious}>Back</button>
+      <Button onClick={onNext}>Next</Button>
+      <Button onClick={onPrevious}>Back</Button>
     </div>
   );
 }

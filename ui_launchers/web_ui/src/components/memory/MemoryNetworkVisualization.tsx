@@ -1,30 +1,36 @@
+"use client";
+
 /**
- * AG-UI Memory Network Visualization Component
- * Displays memory relationships as an interactive network graph
+ * AG-UI Memory Network Visualization Component (Production)
+ * Displays memory relationships as an interactive network graph (HTML Canvas)
  */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AgCharts } from 'ag-charts-react';
-import { AgChartOptions } from 'ag-charts-community';
+
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+
 interface MemoryNetworkNode {
   id: string;
   label: string;
   type: string;
-  confidence: number;
+  confidence: number; // 0..1
   cluster: string;
-  size: number;
-  color: string;
+  size: number; // px radius
+  color: string; // fallback color for node
 }
+
 interface MemoryNetworkEdge {
   source: string;
   target: string;
-  weight: number;
+  weight: number; // 0..1 preferred
   type: string;
   label: string;
 }
+
 interface MemoryNetworkData {
   nodes: MemoryNetworkNode[];
   edges: MemoryNetworkEdge[];
 }
+
 interface MemoryNetworkVisualizationProps {
   userId: string;
   tenantId?: string;
@@ -34,7 +40,11 @@ interface MemoryNetworkVisualizationProps {
   height?: number;
   width?: number;
 }
-// Custom network chart component using AG-Charts
+
+/** -------------------- Canvas Network -------------------- */
+
+type XY = { x: number; y: number };
+
 const NetworkChart: React.FC<{
   data: MemoryNetworkData;
   onNodeSelect?: (node: MemoryNetworkNode) => void;
@@ -43,205 +53,280 @@ const NetworkChart: React.FC<{
   width: number;
 }> = ({ data, onNodeSelect, onNodeDoubleClick, height, width }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  // Simple force-directed layout calculation
-  const calculateLayout = useCallback((nodes: MemoryNetworkNode[], edges: MemoryNetworkEdge[]) => {
-    const positions = new Map<string, { x: number; y: number }>();
-    // Initialize random positions
-    nodes.forEach(node => {
-      positions.set(node.id, {
-        x: Math.random() * (width - 100) + 50,
-        y: Math.random() * (height - 100) + 50
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
+  // Cache layout positions; recompute only when data/size changes
+  const positionsRef = useRef<Map<string, XY>>(new Map());
 
-    // Simple force simulation (simplified)
-    for (let iteration = 0; iteration < 50; iteration++) {
-      const forces = new Map<string, { fx: number; fy: number }>();
-      // Initialize forces
-      nodes.forEach(node => {
-        forces.set(node.id, { fx: 0, fy: 0 });
+  const PR = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
 
-      // Repulsion between all nodes
-      for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-          const node1 = nodes[i];
-          const node2 = nodes[j];
-          const pos1 = positions.get(node1.id)!;
-          const pos2 = positions.get(node2.id)!;
-          const dx = pos1.x - pos2.x;
-          const dy = pos1.y - pos2.y;
-          const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-          const repulsion = 1000 / (distance * distance);
-          const fx = (dx / distance) * repulsion;
-          const fy = (dy / distance) * repulsion;
-          const force1 = forces.get(node1.id)!;
-          const force2 = forces.get(node2.id)!;
-          force1.fx += fx;
-          force1.fy += fy;
-          force2.fx -= fx;
-          force2.fy -= fy;
+  // Deterministic-ish random for stable layout per dataset
+  const seededRandom = (seedStr: string) => {
+    let seed = 0;
+    for (let i = 0; i < seedStr.length; i++) seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0;
+    return () => {
+      // xorshift32
+      seed ^= seed << 13;
+      seed ^= seed >>> 17;
+      seed ^= seed << 5;
+      // 0..1
+      return ((seed >>> 0) % 1_000_000) / 1_000_000;
+    };
+  };
+
+  const calculateLayout = useCallback(
+    (nodes: MemoryNetworkNode[], edges: MemoryNetworkEdge[]): Map<string, XY> => {
+      const positions = new Map<string, XY>();
+      if (nodes.length === 0) return positions;
+
+      const rand = seededRandom(JSON.stringify(nodes.map((n) => n.id)) + "|" + JSON.stringify(edges.map((e) => e.id)));
+
+      // Initialize positions
+      nodes.forEach((n) => {
+        positions.set(n.id, {
+          x: 50 + rand() * Math.max(1, width - 100),
+          y: 50 + rand() * Math.max(1, height - 100),
+        });
+      });
+
+      // Simple force simulation (bounded, few iterations)
+      const ITER = Math.min(120, 30 + Math.floor(Math.sqrt(nodes.length) * 20));
+      const REPULSION = 1800; // bigger => more spread
+      const ATTR_K = 0.015; // spring strength (multiplied by edge.weight)
+      const STEP = 0.12; // integrate
+
+      for (let t = 0; t < ITER; t++) {
+        const forces = new Map<string, { fx: number; fy: number }>();
+        nodes.forEach((n) => forces.set(n.id, { fx: 0, fy: 0 }));
+
+        // Node-node repulsion (O(N^2) but OK for <= few hundred)
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const a = nodes[i];
+            const b = nodes[j];
+            const pa = positions.get(a.id)!;
+            const pb = positions.get(b.id)!;
+            let dx = pa.x - pb.x;
+            let dy = pa.y - pb.y;
+            let dist = Math.hypot(dx, dy) || 1;
+            const minDist = Math.max(a.size, b.size) + 6; // avoid overlap
+            if (dist < 1) dist = 1;
+            const rep = REPULSION / (dist * dist);
+            const fx = (dx / dist) * rep;
+            const fy = (dy / dist) * rep;
+            const Fa = forces.get(a.id)!;
+            const Fb = forces.get(b.id)!;
+            Fa.fx += fx;
+            Fa.fy += fy;
+            Fb.fx -= fx;
+            Fb.fy -= fy;
+
+            // Gentle collision push-out if too close
+            if (dist < minDist) {
+              const push = (minDist - dist) * 0.5;
+              const px = (dx / dist) * push;
+              const py = (dy / dist) * push;
+              Fa.fx += px;
+              Fa.fy += py;
+              Fb.fx -= px;
+              Fb.fy -= py;
+            }
+          }
         }
+
+        // Edge attraction
+        for (const e of edges) {
+          const p1 = positions.get(e.source);
+          const p2 = positions.get(e.target);
+          if (!p1 || !p2) continue;
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const k = ATTR_K * Math.max(0.1, e.weight || 0.1);
+          const fx = (dx / dist) * dist * k;
+          const fy = (dy / dist) * dist * k;
+          const F1 = forces.get(e.source)!;
+          const F2 = forces.get(e.target)!;
+          F1.fx += fx;
+          F1.fy += fy;
+          F2.fx -= fx;
+          F2.fy -= fy;
+        }
+
+        // Integrate + keep inside bounds
+        nodes.forEach((n) => {
+          const p = positions.get(n.id)!;
+          const F = forces.get(n.id)!;
+          p.x = Math.max(n.size, Math.min(width - n.size, p.x + F.fx * STEP));
+          p.y = Math.max(n.size, Math.min(height - n.size, p.y + F.fy * STEP));
+        });
       }
-      // Attraction along edges
-      edges.forEach(edge => {
-        const pos1 = positions.get(edge.source);
-        const pos2 = positions.get(edge.target);
-        if (pos1 && pos2) {
-          const dx = pos2.x - pos1.x;
-          const dy = pos2.y - pos1.y;
-          const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-          const attraction = distance * 0.01 * edge.weight;
-          const fx = (dx / distance) * attraction;
-          const fy = (dy / distance) * attraction;
-          const force1 = forces.get(edge.source);
-          const force2 = forces.get(edge.target);
-          if (force1) {
-            force1.fx += fx;
-            force1.fy += fy;
-          }
-          if (force2) {
-            force2.fx -= fx;
-            force2.fy -= fy;
-          }
-        }
 
-      // Apply forces
-      nodes.forEach(node => {
-        const pos = positions.get(node.id)!;
-        const force = forces.get(node.id)!;
-        pos.x += force.fx * 0.1;
-        pos.y += force.fy * 0.1;
-        // Keep within bounds
-        pos.x = Math.max(node.size, Math.min(width - node.size, pos.x));
-        pos.y = Math.max(node.size, Math.min(height - node.size, pos.y));
+      return positions;
+    },
+    [width, height]
+  );
 
-    }
-    return positions;
-  }, [width, height]);
-  // Draw the network
-  const drawNetwork = useCallback(() => {
+  const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    // Clear canvas
+
+    const logicalW = width * PR;
+    const logicalH = height * PR;
+
+    // handle HiDPI
+    canvas.width = logicalW;
+    canvas.height = logicalH;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(PR, 0, 0, PR, 0, 0);
+
+    // Clear
     ctx.clearRect(0, 0, width, height);
+
     if (data.nodes.length === 0) {
-      // Draw empty state
-      ctx.fillStyle = '#666';
-      ctx.font = '16px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('No memory relationships to display', width / 2, height / 2);
+      ctx.fillStyle = "#666";
+      ctx.font = "16px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("No memory relationships to display", width / 2, height / 2);
       return;
     }
-    const positions = calculateLayout(data.nodes, data.edges);
-    // Draw edges first
-    ctx.strokeStyle = '#ccc';
+
+    const positions = positionsRef.current;
+
+    // Edges
     ctx.lineWidth = 1;
-    data.edges.forEach(edge => {
-      const pos1 = positions.get(edge.source);
-      const pos2 = positions.get(edge.target);
-      if (pos1 && pos2) {
-        ctx.beginPath();
-        ctx.moveTo(pos1.x, pos1.y);
-        ctx.lineTo(pos2.x, pos2.y);
-        ctx.stroke();
-        // Draw edge label
-        const midX = (pos1.x + pos2.x) / 2;
-        const midY = (pos1.y + pos2.y) / 2;
-        ctx.fillStyle = '#999';
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(edge.label, midX, midY);
-      }
-
-    // Draw nodes
-    data.nodes.forEach(node => {
-      const pos = positions.get(node.id);
-      if (!pos) return;
-      // Draw node circle
+    data.edges.forEach((e) => {
+      const p1 = positions.get(e.source);
+      const p2 = positions.get(e.target);
+      if (!p1 || !p2) return;
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, node.size, 0, 2 * Math.PI);
-      ctx.fillStyle = selectedNode === node.id ? '#ff6b6b' : node.color;
-      ctx.fill();
-      // Draw node border
-      ctx.strokeStyle = selectedNode === node.id ? '#ff0000' : '#333';
-      ctx.lineWidth = selectedNode === node.id ? 3 : 1;
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.strokeStyle = "rgba(0,0,0,0.15)";
       ctx.stroke();
-      // Draw node label
-      ctx.fillStyle = '#333';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(node.label, pos.x, pos.y + node.size + 15);
-      // Draw confidence indicator
-      ctx.fillStyle = '#666';
-      ctx.font = '10px Arial';
-      ctx.fillText(`${Math.round(node.confidence * 100)}%`, pos.x, pos.y + node.size + 28);
 
-  }, [data, selectedNode, calculateLayout, width, height]);
-  // Handle canvas clicks
-  const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    const positions = calculateLayout(data.nodes, data.edges);
-    // Find clicked node
-    for (const node of data.nodes) {
-      const pos = positions.get(node.id);
-      if (!pos) continue;
-      const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
-      if (distance <= node.size) {
-        setSelectedNode(node.id);
-        if (onNodeSelect) {
-          onNodeSelect(node);
-        }
-        return;
-      }
-    }
-    // No node clicked, clear selection
-    setSelectedNode(null);
-  }, [data, calculateLayout, onNodeSelect]);
-  const handleCanvasDoubleClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    const positions = calculateLayout(data.nodes, data.edges);
-    // Find double-clicked node
-    for (const node of data.nodes) {
-      const pos = positions.get(node.id);
-      if (!pos) continue;
-      const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
-      if (distance <= node.size) {
-        if (onNodeDoubleClick) {
-          onNodeDoubleClick(node);
-        }
-        return;
-      }
-    }
-  }, [data, calculateLayout, onNodeDoubleClick]);
-  // Redraw when data changes
+      // edge label
+      const midX = (p1.x + p2.x) / 2;
+      const midY = (p1.y + p2.y) / 2;
+      ctx.fillStyle = "#999";
+      ctx.font = "10px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(e.label, midX, midY);
+    });
+
+    // Nodes
+    data.nodes.forEach((n) => {
+      const p = positions.get(n.id);
+      if (!p) return;
+
+      // node fill/border
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, n.size, 0, 2 * Math.PI);
+      ctx.fillStyle = selectedNodeId === n.id ? "#ff6b6b" : n.color || "#45B7D1";
+      ctx.fill();
+      ctx.lineWidth = selectedNodeId === n.id ? 3 : 1;
+      ctx.strokeStyle = selectedNodeId === n.id ? "#ff0000" : "#333";
+      ctx.stroke();
+
+      // label
+      ctx.fillStyle = "#333";
+      ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(n.label, p.x, p.y + n.size + 14);
+
+      // confidence
+      ctx.fillStyle = "#666";
+      ctx.font = "10px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      ctx.fillText(`${Math.round(n.confidence * 100)}%`, p.x, p.y + n.size + 26);
+    });
+  }, [data, selectedNodeId, height, width, PR]);
+
+  // Compute layout when data/size changes
   useEffect(() => {
-    drawNetwork();
-  }, [drawNetwork]);
+    positionsRef.current = calculateLayout(data.nodes, data.edges);
+    draw();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, calculateLayout, height, width]);
+
+  // Redraw on selection change
+  useEffect(() => {
+    draw();
+  }, [selectedNodeId, draw]);
+
+  // Hit-test utilities
+  const getNodeAt = useCallback(
+    (x: number, y: number): MemoryNetworkNode | null => {
+      const pos = positionsRef.current;
+      for (let i = data.nodes.length - 1; i >= 0; i--) {
+        // iterate backwards to prioritize topmost node in draw order
+        const n = data.nodes[i];
+        const p = pos.get(n.id);
+        if (!p) continue;
+        const d = Math.hypot(x - p.x, y - p.y);
+        if (d <= n.size) return n;
+      }
+      return null;
+    },
+    [data.nodes]
+  );
+
+  // Events
+  const handleCanvasClick = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left);
+      const y = (event.clientY - rect.top);
+      const node = getNodeAt(x, y);
+      if (node) {
+        setSelectedNodeId(node.id);
+        onNodeSelect?.(node);
+      } else {
+        setSelectedNodeId(null);
+      }
+    },
+    [getNodeAt, onNodeSelect]
+  );
+
+  const handleCanvasDoubleClick = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left);
+      const y = (event.clientY - rect.top);
+      const node = getNodeAt(x, y);
+      if (node) onNodeDoubleClick?.(node);
+    },
+    [getNodeAt, onNodeDoubleClick]
+  );
+
   return (
     <canvas
       ref={canvasRef}
-      width={width}
-      height={height}
+      width={width * PR}
+      height={height * PR}
       onClick={handleCanvasClick}
       onDoubleClick={handleCanvasDoubleClick}
-      style={{ 
-        border: '1px solid #ddd', 
-        borderRadius: '4px',
-        cursor: 'pointer'
+      style={{
+        width,
+        height,
+        border: "1px solid #ddd",
+        borderRadius: 8,
+        cursor: "pointer",
+        display: "block",
+        background: "#fff",
       }}
     />
   );
 };
+
+/** -------------------- Container/Fetcher -------------------- */
+
 export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProps> = ({
   userId,
   tenantId,
@@ -249,148 +334,142 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
   onNodeSelect,
   onNodeDoubleClick,
   height = 500,
-  width = 800
+  width = 800,
 }) => {
-  const [networkData, setNetworkData] = useState<MemoryNetworkData>({ nodes: [], edges: [] });
+  const [networkData, setNetworkData] = useState<MemoryNetworkData>({
+    nodes: [],
+    edges: [],
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
-  // Fetch network data
+
   const fetchNetworkData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/memory/network', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch("/api/memory/network", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: userId,
           tenant_id: tenantId,
-          max_nodes: maxNodes
-        })
-
+          max_nodes: maxNodes,
+        }),
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const data = await response.json();
+      const data: MemoryNetworkData = await response.json();
       setNetworkData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load network data');
+      setError(err instanceof Error ? err.message : "Failed to load network data");
+      setNetworkData({ nodes: [], edges: [] });
     } finally {
       setLoading(false);
     }
   }, [userId, tenantId, maxNodes]);
-  // Load data on mount
+
   useEffect(() => {
     fetchNetworkData();
   }, [fetchNetworkData]);
-  // Filter data by cluster
-  const filteredData = React.useMemo(() => {
-    if (!networkData?.nodes || !networkData?.edges) return { nodes: [], edges: [] };
+
+  const filteredData = useMemo<MemoryNetworkData>(() => {
     if (!selectedCluster) return networkData;
-    const filteredNodes = networkData.nodes.filter(node => node.cluster === selectedCluster);
-    const nodeIds = new Set(filteredNodes.map(node => node.id));
-    const filteredEdges = networkData.edges.filter(edge => 
-      nodeIds.has(edge.source) && nodeIds.has(edge.target)
-    );
-    return { nodes: filteredNodes, edges: filteredEdges };
+    const nodes = networkData.nodes.filter((n) => n.cluster === selectedCluster);
+    const ids = new Set(nodes.map((n) => n.id));
+    const edges = networkData.edges.filter((e) => ids.has(e.source) && ids.has(e.target));
+    return { nodes, edges };
   }, [networkData, selectedCluster]);
-  // Get unique clusters for filter
-  const clusters = React.useMemo(() => {
-    if (!networkData?.nodes) return [];
-    const clusterSet = new Set(networkData.nodes.map(node => node.cluster));
-    return Array.from(clusterSet).sort();
-  }, [networkData?.nodes]);
+
+  const clusters = useMemo(() => {
+    const set = new Set(networkData.nodes.map((n) => n.cluster));
+    return Array.from(set).sort();
+  }, [networkData.nodes]);
+
   if (error) {
     return (
-      <div className="network-error" style={{ 
-        padding: '20px', 
-        textAlign: 'center', 
-        color: '#f44336',
-        border: '1px solid #f44336',
-        borderRadius: '4px',
-        backgroundColor: '#ffebee'
-      }}>
+      <div
+        className="network-error"
+        style={{
+          padding: 20,
+          textAlign: "center",
+          color: "#f44336",
+          border: "1px solid #f44336",
+          borderRadius: 8,
+          backgroundColor: "#ffebee",
+        }}
+      >
         <h3>Error Loading Network Data</h3>
-        <p>{error}</p>
-        <button 
-          onClick={fetchNetworkData}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#f44336',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-         aria-label="Button">
-        </button>
+        <p style={{ marginBottom: 12 }}>{error}</p>
+        <Button onClick={fetchNetworkData} aria-label="Retry">
+          Retry
+        </Button>
       </div>
     );
   }
+
   return (
     <div className="memory-network-container">
       {/* Controls */}
-      <div style={{ 
-        marginBottom: '16px', 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '16px',
-        padding: '12px',
-        backgroundColor: '#f5f5f5',
-        borderRadius: '4px'
-      }}>
-        <label style={{ fontWeight: 'bold' }}>Filter by Cluster:</label>
+      <div
+        style={{
+          marginBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          padding: 12,
+          backgroundColor: "#f5f5f5",
+          borderRadius: 8,
+        }}
+      >
+        <label style={{ fontWeight: 600 }}>Filter by Cluster:</label>
         <select
-          value={selectedCluster || ''}
+          value={selectedCluster || ""}
           onChange={(e) => setSelectedCluster(e.target.value || null)}
           style={{
-            padding: '4px 8px',
-            borderRadius: '4px',
-            border: '1px solid #ccc'
+            padding: "6px 10px",
+            borderRadius: 6,
+            border: "1px solid #ccc",
           }}
         >
           <option value="">All Clusters</option>
-          {clusters.map(cluster => (
-            <option key={cluster} value={cluster}>
-              {cluster.charAt(0).toUpperCase() + cluster.slice(1)}
+          {clusters.map((c) => (
+            <option key={c} value={c}>
+              {c.charAt(0).toUpperCase() + c.slice(1)}
             </option>
           ))}
         </select>
-        <div style={{ marginLeft: 'auto', fontSize: '14px', color: '#666' }}>
+
+        <div style={{ marginLeft: "auto", fontSize: 14, color: "#666" }}>
           Nodes: {filteredData.nodes.length} | Edges: {filteredData.edges.length}
         </div>
-        <button
+
+        <Button
           onClick={fetchNetworkData}
           disabled={loading}
-          style={{
-            padding: '6px 12px',
-            backgroundColor: '#2196F3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.6 : 1
-          }}
-         aria-label="Button">
-          {loading ? 'Loading...' : 'Refresh'}
-        </button>
+          aria-label="Refresh"
+          style={{ opacity: loading ? 0.7 : 1 }}
+        >
+          {loading ? "Loading..." : "Refresh"}
+        </Button>
       </div>
-      {/* Network Visualization */}
-      <div style={{ position: 'relative' }}>
+
+      {/* Network */}
+      <div style={{ position: "relative" }}>
         {loading && (
-          <div style={{ 
-            position: 'absolute', 
-            top: '50%', 
-            left: '50%', 
-            transform: 'translate(-50%, -50%)',
-            zIndex: 1000,
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            padding: '20px',
-            borderRadius: '4px'
-          }}>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1,
+              backgroundColor: "rgba(255,255,255,0.85)",
+              borderRadius: 8,
+            }}
+          >
             Loading network visualization...
           </div>
         )}
@@ -402,38 +481,43 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
           width={width}
         />
       </div>
+
       {/* Legend */}
-      <div style={{ 
-        marginTop: '16px', 
-        padding: '12px',
-        backgroundColor: '#f9f9f9',
-        borderRadius: '4px',
-        fontSize: '12px'
-      }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Legend:</div>
-        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#FF6B6B' }} />
-            <span>Technical</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#4ECDC4' }} />
-            <span>Personal</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#45B7D1' }} />
-            <span>Work</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#96CEB4' }} />
-            <span>General</span>
-          </div>
-          <div style={{ marginLeft: '16px' }}>
-            <span>Node size = confidence level</span>
-          </div>
+      <div
+        style={{
+          marginTop: 16,
+          padding: 12,
+          backgroundColor: "#f9f9f9",
+          borderRadius: 8,
+          fontSize: 12,
+        }}
+      >
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>Legend:</div>
+        <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+          <LegendDot color="#FF6B6B" label="Technical" />
+          <LegendDot color="#4ECDC4" label="Personal" />
+          <LegendDot color="#45B7D1" label="Work" />
+          <LegendDot color="#96CEB4" label="General" />
+          <div style={{ marginLeft: 16 }}>Node size = confidence level</div>
         </div>
       </div>
     </div>
   );
 };
+
+const LegendDot: React.FC<{ color: string; label: string }> = ({ color, label }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+    <div
+      style={{
+        width: 12,
+        height: 12,
+        borderRadius: "50%",
+        backgroundColor: color,
+        border: "1px solid rgba(0,0,0,0.2)",
+      }}
+    />
+    <span>{label}</span>
+  </div>
+);
+
 export default MemoryNetworkVisualization;

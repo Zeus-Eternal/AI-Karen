@@ -10,7 +10,22 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 
-import { } from 'lucide-react';
+import { 
+  Bell, 
+  Settings, 
+  X, 
+  BellOff, 
+  Clock, 
+  RefreshCw,
+  AlertCircle,
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  Shield,
+  Zap,
+  Info
+} from 'lucide-react';
+
 interface NotificationSettings {
   provider_status_changes: boolean;
   fallback_notifications: boolean;
@@ -20,6 +35,7 @@ interface NotificationSettings {
   error_notifications: boolean;
   maintenance_notifications: boolean;
 }
+
 interface ProviderNotification {
   id: string;
   type: 'status_change' | 'fallback' | 'recovery' | 'system_health' | 'performance' | 'error' | 'maintenance';
@@ -38,10 +54,12 @@ interface ProviderNotification {
   }>;
   metadata?: Record<string, any>;
 }
+
 interface ProviderNotificationSystemProps {
   onNotificationAction?: (notificationId: string, actionId: string) => void;
   realTimeUpdates?: boolean;
 }
+
 export function ProviderNotificationSystem({
   onNotificationAction,
   realTimeUpdates = true
@@ -60,11 +78,13 @@ export function ProviderNotificationSystem({
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const { toast } = useToast();
+
   // Load notifications and settings
   useEffect(() => {
     loadNotifications();
     loadSettings();
   }, []);
+
   // Real-time updates via WebSocket or polling
   useEffect(() => {
     if (!realTimeUpdates) return;
@@ -73,6 +93,7 @@ export function ProviderNotificationSystem({
     }, 30000); // Check every 30 seconds
     return () => clearInterval(interval);
   }, [realTimeUpdates]);
+
   const loadNotifications = async () => {
     try {
       // Mock data - in real implementation, this would come from the backend
@@ -128,10 +149,12 @@ export function ProviderNotificationSystem({
       ];
       setNotifications(mockNotifications);
     } catch (error) {
+      console.error('Failed to load notifications:', error);
     } finally {
       setLoading(false);
     }
   };
+
   const loadSettings = async () => {
     try {
       // Load from localStorage or backend
@@ -140,8 +163,10 @@ export function ProviderNotificationSystem({
         setSettings(JSON.parse(savedSettings));
       }
     } catch (error) {
+      console.error('Failed to load settings:', error);
     }
   };
+
   const saveSettings = useCallback(async (newSettings: NotificationSettings) => {
     try {
       localStorage.setItem('provider_notification_settings', JSON.stringify(newSettings));
@@ -155,24 +180,29 @@ export function ProviderNotificationSystem({
         title: "Save Failed",
         description: "Could not save notification settings.",
         variant: "destructive",
-
+      });
     }
   }, [toast]);
+
   const markAsRead = (notificationId: string) => {
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
   };
+
   const dismissNotification = (notificationId: string) => {
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, dismissed: true } : n)
     );
   };
+
   const handleNotificationAction = (notificationId: string, actionId: string) => {
     const notification = notifications.find(n => n.id === notificationId);
     if (!notification) return;
+
     const action = notification.actions?.find(a => a.id === actionId);
     if (!action) return;
+
     switch (action.action) {
       case 'dismiss':
         dismissNotification(notificationId);
@@ -194,36 +224,39 @@ export function ProviderNotificationSystem({
         break;
     }
   };
+
   const clearAllNotifications = () => {
     setNotifications(prev => prev.map(n => ({ ...n, dismissed: true })));
     toast({
       title: "Notifications Cleared",
       description: "All notifications have been dismissed.",
-
+    });
   };
+
   const getNotificationIcon = (type: string, priority: string) => {
     if (priority === 'critical') {
-      return <AlertCircle className="h-4 w-4 text-red-600 " />;
+      return <AlertCircle className="h-4 w-4 text-red-600" />;
     }
     switch (type) {
       case 'status_change':
-        return <Activity className="h-4 w-4 text-blue-600 " />;
+        return <Activity className="h-4 w-4 text-blue-600" />;
       case 'fallback':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600 " />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
       case 'recovery':
-        return <CheckCircle2 className="h-4 w-4 text-green-600 " />;
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
       case 'system_health':
-        return <Shield className="h-4 w-4 text-red-600 " />;
+        return <Shield className="h-4 w-4 text-red-600" />;
       case 'performance':
-        return <Zap className="h-4 w-4 text-orange-600 " />;
+        return <Zap className="h-4 w-4 text-orange-600" />;
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-600 " />;
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
       case 'maintenance':
-        return <Settings className="h-4 w-4 text-gray-600 " />;
+        return <Settings className="h-4 w-4 text-gray-600" />;
       default:
-        return <Info className="h-4 w-4 text-blue-600 " />;
+        return <Info className="h-4 w-4 text-blue-600" />;
     }
   };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical':
@@ -236,20 +269,23 @@ export function ProviderNotificationSystem({
         return 'bg-blue-100 text-blue-800 border-blue-200';
     }
   };
+
   const activeNotifications = notifications.filter(n => !n.dismissed);
   const unreadCount = activeNotifications.filter(n => !n.read).length;
+
   if (loading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-8">
           <div className="text-center space-y-2">
-            <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary " />
-            <p className="text-sm text-muted-foreground md:text-base lg:text-lg">Loading notifications...</p>
+            <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary" />
+            <p className="text-sm text-muted-foreground">Loading notifications...</p>
           </div>
         </CardContent>
       </Card>
     );
   }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -257,10 +293,10 @@ export function ProviderNotificationSystem({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5 " />
+              <Bell className="h-5 w-5" />
               <CardTitle>Provider Notifications</CardTitle>
               {unreadCount > 0 && (
-                <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
+                <Badge variant="destructive" className="text-xs">
                   {unreadCount} new
                 </Badge>
               )}
@@ -271,33 +307,36 @@ export function ProviderNotificationSystem({
                 size="sm"
                 onClick={() => setShowSettings(!showSettings)}
               >
-                <Settings className="h-4 w-4 " />
+                <Settings className="h-4 w-4" />
               </Button>
               {activeNotifications.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={clearAllNotifications}
-                 >
+                >
+                  Clear All
                 </Button>
               )}
             </div>
           </div>
         </CardHeader>
       </Card>
+
       {/* Notification Settings */}
       {showSettings && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Notification Settings</CardTitle>
             <CardDescription>
+              Configure which types of provider notifications you want to receive
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(settings).map(([key, value]) => (
                 <div key={key} className="flex items-center justify-between">
-                  <Label htmlFor={key} className="text-sm capitalize md:text-base lg:text-lg">
+                  <Label htmlFor={key} className="text-sm capitalize">
                     {key.replace(/_/g, ' ')}
                   </Label>
                   <Switch
@@ -314,15 +353,16 @@ export function ProviderNotificationSystem({
           </CardContent>
         </Card>
       )}
+
       {/* Notifications List */}
       <div className="space-y-3">
         {activeNotifications.length === 0 ? (
           <Card>
             <CardContent className="flex items-center justify-center py-8">
               <div className="text-center space-y-2">
-                <BellOff className="h-8 w-8 mx-auto text-muted-foreground " />
-                <p className="text-sm text-muted-foreground md:text-base lg:text-lg">No notifications</p>
-                <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
+                <BellOff className="h-8 w-8 mx-auto text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">No notifications</p>
+                <p className="text-xs text-muted-foreground">
                   You'll see provider status updates and alerts here
                 </p>
               </div>
@@ -347,16 +387,16 @@ export function ProviderNotificationSystem({
                           {notification.priority}
                         </Badge>
                         {notification.provider && (
-                          <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
+                          <Badge variant="outline" className="text-xs">
                             {notification.provider}
                           </Badge>
                         )}
                       </div>
-                      <CardDescription className="text-sm md:text-base lg:text-lg">
+                      <CardDescription className="text-sm">
                         {notification.message}
                       </CardDescription>
-                      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground sm:text-sm md:text-base">
-                        <Clock className="h-3 w-3 " />
+                      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
                         <span>{new Date(notification.timestamp).toLocaleString()}</span>
                       </div>
                     </div>
@@ -366,10 +406,11 @@ export function ProviderNotificationSystem({
                     size="sm"
                     onClick={() => dismissNotification(notification.id)}
                   >
-                    <X className="h-4 w-4 " />
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
               </CardHeader>
+              
               {/* Actions */}
               {notification.actions && notification.actions.length > 0 && (
                 <CardContent className="pt-0">
@@ -387,10 +428,11 @@ export function ProviderNotificationSystem({
                   </div>
                 </CardContent>
               )}
+              
               {/* Metadata */}
               {notification.metadata && (
                 <CardContent className="pt-0">
-                  <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
+                  <div className="text-xs text-muted-foreground">
                     {notification.type === 'fallback' && notification.metadata.fallback_provider && (
                       <p>Using fallback: {notification.metadata.fallback_provider}</p>
                     )}
@@ -404,38 +446,40 @@ export function ProviderNotificationSystem({
           ))
         )}
       </div>
+
       {/* System Status Summary */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-4 w-4 " />
+            <Activity className="h-4 w-4" />
+            System Status Summary
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div className="p-3 bg-green-50 rounded-lg sm:p-4 md:p-6">
+            <div className="p-3 bg-green-50 rounded-lg">
               <div className="text-lg font-semibold text-green-600">
                 {notifications.filter(n => n.type === 'recovery' && !n.dismissed).length}
               </div>
-              <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Recoveries</div>
+              <div className="text-xs text-muted-foreground">Recoveries</div>
             </div>
-            <div className="p-3 bg-yellow-50 rounded-lg sm:p-4 md:p-6">
+            <div className="p-3 bg-yellow-50 rounded-lg">
               <div className="text-lg font-semibold text-yellow-600">
                 {notifications.filter(n => n.type === 'fallback' && !n.dismissed).length}
               </div>
-              <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Fallbacks</div>
+              <div className="text-xs text-muted-foreground">Fallbacks</div>
             </div>
-            <div className="p-3 bg-red-50 rounded-lg sm:p-4 md:p-6">
+            <div className="p-3 bg-red-50 rounded-lg">
               <div className="text-lg font-semibold text-red-600">
                 {notifications.filter(n => n.priority === 'critical' && !n.dismissed).length}
               </div>
-              <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Critical</div>
+              <div className="text-xs text-muted-foreground">Critical</div>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg sm:p-4 md:p-6">
+            <div className="p-3 bg-blue-50 rounded-lg">
               <div className="text-lg font-semibold text-blue-600">
                 {activeNotifications.length}
               </div>
-              <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Total Active</div>
+              <div className="text-xs text-muted-foreground">Total Active</div>
             </div>
           </div>
         </CardContent>
@@ -443,4 +487,5 @@ export function ProviderNotificationSystem({
     </div>
   );
 }
+
 export default ProviderNotificationSystem;

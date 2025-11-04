@@ -307,7 +307,7 @@ export function EnhancedBulkUserOperations({
   const renderOperationButton = (operation: BulkOperationConfig) => {
     const isDisabled = progress?.status === 'running';
     return (
-      <button
+      <Button
         key={operation.id}
         onClick={() => handleOperationSelect(operation.id)}
         disabled={isDisabled}
@@ -332,7 +332,7 @@ export function EnhancedBulkUserOperations({
             Estimated time: {estimateOperationTime(operation)}
           </p>
         </div>
-      </button>
+      </Button>
     );
   };
   if (selectedUserIds.length === 0) {
@@ -343,11 +343,11 @@ export function EnhancedBulkUserOperations({
           <p className="text-gray-600 mb-4">
             Please select one or more users to perform bulk operations.
           </p>
-          <button
+          <Button
             onClick={onCancel}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 md:text-base lg:text-lg"
            aria-label="Button">
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -364,13 +364,13 @@ export function EnhancedBulkUserOperations({
               {selectedUserIds.length} user{selectedUserIds.length === 1 ? '' : 's'} selected
             </p>
           </div>
-          <button
+          <Button
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
             aria-label="Close bulk operations"
           >
             ×
-          </button>
+          </Button>
         </div>
       </div>
       {/* Error Display */}
@@ -405,11 +405,11 @@ export function EnhancedBulkUserOperations({
             {getAvailableOperations().map(renderOperationButton)}
           </div>
           <div className="mt-6 flex justify-end space-x-3">
-            <button
+            <Button
               onClick={onCancel}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 md:text-base lg:text-lg"
              aria-label="Button">
-            </button>
+            </Button>
           </div>
         </div>
       )}

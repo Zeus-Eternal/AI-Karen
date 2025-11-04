@@ -189,7 +189,7 @@ const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
               />
             )}
             {showPasswordToggle && type === 'password' && (
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className={cn(
@@ -206,7 +206,7 @@ const InputEnhanced = React.forwardRef<HTMLInputElement, InputEnhancedProps>(
                 ) : (
                   <Eye className="h-4 w-4 " />
                 )}
-              </button>
+              </Button>
             )}
             {rightIcon && !StatusIcon && (
               <div className="text-muted-foreground">

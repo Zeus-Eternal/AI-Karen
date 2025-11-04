@@ -829,7 +829,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                         }}
                       >
                       </Button>
-                      <button onClick={handleSave} disabled={saving} aria-label="Button">
+                      <Button onClick={handleSave} disabled={saving} aria-label="Button">
                         {saving ? (
                           <RefreshCw className="w-4 h-4 mr-2 animate-spin " />
                         ) : (

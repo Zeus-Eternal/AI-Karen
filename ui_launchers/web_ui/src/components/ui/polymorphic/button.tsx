@@ -117,7 +117,7 @@ Button.displayName = "Button"
 const IconButton = React.forwardRef<
   ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement> & { icon: React.ReactNode; "aria-label": string }
 >(({ icon, children, className, size = "md", ...props }, ref) => (
-  <button
+  <Button
     ref={ref}
     size={size}
     className={cn(
@@ -152,28 +152,28 @@ LinkButton.displayName = "LinkButton"
 const SubmitButton = React.forwardRef<
   ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ type = "submit", variant = "default", ...props }, ref) => (
-  <button ref={ref} type={type} variant={variant} {...props} />
+  <Button ref={ref} type={type} variant={variant} {...props} />
 ))
 SubmitButton.displayName = "SubmitButton"
 
 const ResetButton = React.forwardRef<
   ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ type = "reset", variant = "outline", ...props }, ref) => (
-  <button ref={ref} type={type} variant={variant} {...props} />
+  <Button ref={ref} type={type} variant={variant} {...props} />
 ))
 ResetButton.displayName = "ResetButton"
 
 const CancelButton = React.forwardRef<
   ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ variant = "ghost", ...props }, ref) => (
-  <button ref={ref} variant={variant} {...props} />
+  <Button ref={ref} variant={variant} {...props} />
 ))
 CancelButton.displayName = "CancelButton"
 
 const DestructiveButton = React.forwardRef<
   ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ variant = "destructive", ...props }, ref) => (
-  <button ref={ref} variant={variant} {...props} />
+  <Button ref={ref} variant={variant} {...props} />
 ))
 DestructiveButton.displayName = "DestructiveButton"
 

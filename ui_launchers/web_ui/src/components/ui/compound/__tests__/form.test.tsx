@@ -24,8 +24,8 @@ describe("Form Compound Component", () => {
           </Form.Item>
         </Form.Group>
         <Form.Actions>
-          <button type="button" aria-label="Button">Cancel</button>
-          <button type="submit" aria-label="Submit form">Submit</button>
+          <Button type="button" aria-label="Button">Cancel</Button>
+          <Button type="submit" aria-label="Submit form">Submit</Button>
         </Form.Actions>
       </TestFormWrapper>
     )
@@ -75,7 +75,7 @@ describe("Form Compound Component", () => {
     render(
       <TestFormWrapper>
         <Form.Actions justify="center" data-testid="centered-actions">
-          <button aria-label="Button">Centered Action</button>
+          <Button aria-label="Button">Centered Action</Button>
         </Form.Actions>
       </TestFormWrapper>
     )
@@ -88,7 +88,7 @@ describe("Form Compound Component", () => {
     render(
       <TestFormWrapper>
         <Form.Actions sticky data-testid="sticky-actions">
-          <button aria-label="Button">Sticky Action</button>
+          <Button aria-label="Button">Sticky Action</Button>
         </Form.Actions>
       </TestFormWrapper>
     )

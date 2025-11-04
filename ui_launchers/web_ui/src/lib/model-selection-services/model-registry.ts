@@ -1,5 +1,6 @@
 import { BaseModelService } from "./base-service";
 import type { Model } from "../model-utils";
+
 /**
  * Model Registry Service
  *
@@ -7,12 +8,56 @@ import type { Model } from "../model-utils";
  * Provides efficient categorization and filtering of models by various attributes.
  */
 
+// ---------------------------
+// Local types / errors (self-contained, no external imports required)
+// ---------------------------
 
+export interface DirectoryWatchOptions {
+  directories?: string[];
+}
 
-import { } from "./types";
+export interface ModelLookupOptions {
+  type?: string;
+  provider?: string;
+  capability?: string;
+  status?: string;
+  healthyOnly?: boolean;
+  sortBy?: "name" | "size" | "performance" | "health" | "recent";
+  limit?: number;
+}
 
+export interface ModelCategories {
+  byType: Record<string, Model[]>;
+  byProvider: Record<string, Model[]>;
+  byCapability: Record<string, Model[]>;
+  byStatus: Record<string, Model[]>;
+  byHealth: Record<string, Model[]>;
+}
 
-import { } from "./errors/model-selection-errors";
+export class ModelRegistryError extends Error {
+  public operation?: string;
+  public field?: string;
+  public context?: any;
+  constructor(
+    message: string,
+    operation?: string,
+    field?: string,
+    context?: any
+  ) {
+    super(message);
+    this.name = "ModelRegistryError";
+    this.operation = operation;
+    this.field = field;
+    this.context = context;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+export const ErrorUtils = {
+  createContext(ctx: any) {
+    return ctx;
+  },
+};
 
 // Define ModelRegistry interface locally to avoid conflicts
 export interface ModelRegistryData {
@@ -52,7 +97,7 @@ export class ModelRegistryService
   implements IModelRegistry
 {
   private modelRegistry: ModelRegistryData | null = null;
-  protected readonly REGISTRY_CACHE_DURATION = 45000; // 45 seconds
+  protected readonly REGISTRY_CACHE_DURATION = 45_000; // 45 seconds
   private readonly REGISTRY_CACHE_KEY = "model_registry";
 
   constructor(cacheTimeout?: number) {
@@ -75,7 +120,6 @@ export class ModelRegistryService
     scanOptions?: DirectoryWatchOptions
   ): Promise<void> {
     try {
-      // Create categorized model registry
       const categories = this.categorizeModels(models);
       const latestScan = this.getLatestScanStats(scanOptions);
 
@@ -117,7 +161,9 @@ export class ModelRegistryService
     }
 
     // Try to get from cache
-    const cached = this.cache.get(this.REGISTRY_CACHE_KEY) as ModelRegistryData;
+    const cached = this.cache.get(this.REGISTRY_CACHE_KEY) as
+      | ModelRegistryData
+      | undefined;
     if (!forceRefresh && cached) {
       this.modelRegistry = cached;
       return cached;
@@ -153,15 +199,15 @@ export class ModelRegistryService
       }
 
       if (options.provider) {
+        const p = options.provider.toLowerCase();
         models = models.filter(
-          (model) =>
-            model.provider?.toLowerCase() === options.provider?.toLowerCase()
+          (model) => (model.provider || "").toLowerCase() === p
         );
       }
 
       if (options.capability) {
         models = models.filter((model) =>
-          model.capabilities?.includes(options.capability as string)
+          (model.capabilities || []).includes(options.capability as string)
         );
       }
 
@@ -183,10 +229,7 @@ export class ModelRegistryService
         models = models.slice(0, options.limit);
       }
 
-      this.log(
-        `Lookup returned ${models.length} models with options:`,
-        options
-      );
+      this.log(`Lookup returned ${models.length} models with options:`, options);
       return models;
     } catch (error) {
       this.handleError(error, "lookupModels", { options });
@@ -308,15 +351,16 @@ export class ModelRegistryService
 
       // Categorize by provider
       const provider = model.provider || "unknown";
-      if (!categories.byProvider[provider])
-        categories.byProvider[provider] = [];
+      if (!categories.byProvider[provider]) categories.byProvider[provider] = [];
       categories.byProvider[provider].push(model);
 
       // Categorize by capabilities
-      model.capabilities?.forEach((capability) => {
-        if (!categories.byCapability[capability])
+      (model.capabilities || []).forEach((capability) => {
+        if (!categories.byCapability[capability]) {
           categories.byCapability[capability] = [];
+        }
         categories.byCapability[capability].push(model);
+      });
 
       // Categorize by status
       const status = model.status || "unknown";
@@ -324,10 +368,13 @@ export class ModelRegistryService
       categories.byStatus[status].push(model);
 
       // Categorize by health
-      const healthStatus = model.health?.is_healthy ? "healthy" : "unhealthy";
-      if (!categories.byHealth[healthStatus])
+      const healthStatus =
+        model.health?.is_healthy === true ? "healthy" : "unhealthy";
+      if (!categories.byHealth[healthStatus]) {
         categories.byHealth[healthStatus] = [];
+      }
       categories.byHealth[healthStatus].push(model);
+    });
 
     return categories;
   }
@@ -342,24 +389,29 @@ export class ModelRegistryService
           return (a.name || "").localeCompare(b.name || "");
         case "size":
           return (a.size || 0) - (b.size || 0);
-        case "performance":
-          // Sort by health status since performance metrics aren't available on Model interface
+        case "performance": {
+          // Proxy: health first (1 healthy, 0 not), then newer usage
           const aPerf = a.health?.is_healthy ? 1 : 0;
           const bPerf = b.health?.is_healthy ? 1 : 0;
-          return bPerf - aPerf; // Healthy models first
-        case "health":
+          if (bPerf !== aPerf) return bPerf - aPerf;
+          const aTime = new Date(a.last_used || a.last_scanned || 0).getTime();
+          const bTime = new Date(b.last_used || b.last_scanned || 0).getTime();
+          return bTime - aTime;
+        }
+        case "health": {
           const aHealth = a.health?.is_healthy ? 1 : 0;
           const bHealth = b.health?.is_healthy ? 1 : 0;
-          return bHealth - aHealth; // Healthy models first
-        case "recent":
-          // Use last_used property from Model interface, fallback to last_scanned
+          return bHealth - aHealth; // Healthy first
+        }
+        case "recent": {
           const aTime = new Date(a.last_used || a.last_scanned || 0).getTime();
           const bTime = new Date(b.last_used || b.last_scanned || 0).getTime();
           return bTime - aTime; // Most recent first
+        }
         default:
           return 0;
       }
-
+    });
   }
 
   /**

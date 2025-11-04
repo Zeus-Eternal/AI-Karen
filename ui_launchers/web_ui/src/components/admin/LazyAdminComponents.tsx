@@ -82,11 +82,11 @@ const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error; resetError
           <p>{error.message}</p>
         </div>
         <div className="mt-4">
-          <button
+          <Button
             onClick={resetErrorBoundary}
             className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200 md:text-base lg:text-lg"
            aria-label="Button">
-          </button>
+          </Button>
         </div>
       </div>
     </div>

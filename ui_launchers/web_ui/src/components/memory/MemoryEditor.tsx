@@ -1,15 +1,28 @@
 /**
- * CopilotKit-enhanced Memory Editor Component
- * Provides AI-powered suggestions for memory editing and enhancement
+ * CopilotKit-enhanced Memory Editor Component (Production)
+ * - Fixes unclosed hooks/blocks
+ * - Strong typing + accessibility
+ * - Debounced AI suggestions
+ * - Clean Tailwind UI (shadcn/ui compatible)
+ * - Safe fetch + errors surfaced
  */
-import React, { useState, useEffect, useCallback } from 'react';
-import { CopilotTextarea } from '@copilotkit/react-textarea';
-import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
+
+"use client";
+
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { CopilotTextarea } from "@copilotkit/react-textarea";
+import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+
+type MemoryType = "fact" | "preference" | "context";
+
 interface MemoryGridRow {
   id: string;
   content: string;
-  type: 'fact' | 'preference' | 'context';
-  confidence: number;
+  type: MemoryType;
+  confidence: number; // 0..1
   last_accessed: string;
   relevance_score: number;
   semantic_cluster: string;
@@ -19,6 +32,7 @@ interface MemoryGridRow {
   session_id?: string;
   tenant_id?: string;
 }
+
 interface MemoryEditorProps {
   memory: MemoryGridRow | null;
   onSave: (updatedMemory: Partial<MemoryGridRow>) => Promise<void>;
@@ -28,12 +42,18 @@ interface MemoryEditorProps {
   userId: string;
   tenantId?: string;
 }
+
+type AISuggestionType = "enhancement" | "categorization" | "relationship" | "correction";
+
 interface AISuggestion {
-  type: 'enhancement' | 'categorization' | 'relationship' | 'correction';
+  type: AISuggestionType;
   content: string;
   confidence: number;
   reasoning: string;
 }
+
+const CLUSTERS = ["technical", "personal", "work", "general"] as const;
+
 export const MemoryEditor: React.FC<MemoryEditorProps> = ({
   memory,
   onSave,
@@ -41,497 +61,417 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
   onDelete,
   isOpen,
   userId,
-  tenantId
+  tenantId,
 }) => {
-  const [editedContent, setEditedContent] = useState('');
-  const [editedType, setEditedType] = useState<'fact' | 'preference' | 'context'>('context');
+  const [editedContent, setEditedContent] = useState("");
+  const [editedType, setEditedType] = useState<MemoryType>("context");
   const [editedConfidence, setEditedConfidence] = useState(0.8);
-  const [editedCluster, setEditedCluster] = useState('general');
+  const [editedCluster, setEditedCluster] = useState<string>("general");
+
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Initialize form when memory changes
+
+  // Initialize form when memory changes / modal opens
   useEffect(() => {
+    if (!isOpen) return;
     if (memory) {
-      setEditedContent(memory.content);
-      setEditedType(memory.type);
-      setEditedConfidence(memory.confidence);
-      setEditedCluster(memory.semantic_cluster);
-      setError(null);
+      setEditedContent(memory.content ?? "");
+      setEditedType(memory.type ?? "context");
+      setEditedConfidence(
+        typeof memory.confidence === "number" ? memory.confidence : 0.8
+      );
+      setEditedCluster(memory.semantic_cluster ?? "general");
     } else {
-      // Reset form for new memory
-      setEditedContent('');
-      setEditedType('context');
+      setEditedContent("");
+      setEditedType("context");
       setEditedConfidence(0.8);
-      setEditedCluster('general');
-      setError(null);
+      setEditedCluster("general");
     }
-  }, [memory]);
-  // Make memory data readable by CopilotKit
+    setError(null);
+    setAiSuggestions([]);
+  }, [memory, isOpen]);
+
+  // Expose current memory context to CopilotKit
   useCopilotReadable({
-    description: "Current memory being edited",
-    value: memory ? {
-      id: memory.id,
-      content: memory.content,
-      type: memory.type,
-      cluster: memory.semantic_cluster,
-      relationships: memory.relationships
-    } : null
+    description: "Current memory being edited in the MemoryEditor modal",
+    value: memory
+      ? {
+          id: memory.id,
+          content: memory.content,
+          type: memory.type,
+          cluster: memory.semantic_cluster,
+          relationships: memory.relationships,
+        }
+      : null,
+  });
 
-  // CopilotKit action for memory enhancement
-  useCopilotAction({
-    name: "enhanceMemory",
-    description: "Enhance and improve memory content with AI suggestions",
-    parameters: [
-      {
-        name: "content",
-        type: "string",
-        description: "The memory content to enhance"
-      },
-      {
-        name: "context",
-        type: "string", 
-        description: "Additional context about the memory"
+  // Fetch helpers
+  const safeJsonPost = useCallback(
+    async (url: string, payload: unknown) => {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
       }
-    ],
-    handler: async ({ content, context }) => {
-      await generateAISuggestions(content, context);
-    }
-
-  // CopilotKit action for memory categorization
-  useCopilotAction({
-    name: "categorizeMemory",
-    description: "Suggest the best category and cluster for a memory",
-    parameters: [
-      {
-        name: "content",
-        type: "string",
-        description: "The memory content to categorize"
-      }
-    ],
-    handler: async ({ content }) => {
-      const suggestions = await getCategorySuggestions(content);
-      if (suggestions.type) {
-        setEditedType(suggestions.type);
-      }
-      if (suggestions.cluster) {
-        setEditedCluster(suggestions.cluster);
-      }
-    }
+      return res.json();
+    },
+    []
+  );
 
   // Generate AI suggestions for memory enhancement
-  const generateAISuggestions = useCallback(async (content?: string, context?: string) => {
-    try {
-      setIsLoadingSuggestions(true);
-      setError(null);
-      const response = await fetch('/api/memory/ai-suggestions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: content || editedContent,
-          context: context || '',
+  const generateAISuggestions = useCallback(
+    async (content?: string, context?: string) => {
+      try {
+        if (!(content || editedContent).trim()) return;
+        setIsLoadingSuggestions(true);
+        setError(null);
+        const data = await safeJsonPost("/api/memory/ai-suggestions", {
+          content: content ?? editedContent,
+          context: context ?? "",
           memory_id: memory?.id,
           user_id: userId,
           tenant_id: tenantId,
           current_type: editedType,
-          current_cluster: editedCluster
-        })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+          current_cluster: editedCluster,
+        });
+        setAiSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to generate AI suggestions"
+        );
+      } finally {
+        setIsLoadingSuggestions(false);
       }
-      const data = await response.json();
-      setAiSuggestions(data.suggestions || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate AI suggestions');
-    } finally {
-      setIsLoadingSuggestions(false);
-    }
-  }, [editedContent, memory?.id, userId, tenantId, editedType, editedCluster]);
+    },
+    [editedContent, editedType, editedCluster, memory?.id, tenantId, userId, safeJsonPost]
+  );
+
   // Get category suggestions from AI
-  const getCategorySuggestions = useCallback(async (content: string) => {
-    try {
-      const response = await fetch('/api/memory/categorize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+  const getCategorySuggestions = useCallback(
+    async (content: string) => {
+      if (!content.trim()) return;
+      try {
+        const data = await safeJsonPost("/api/memory/categorize", {
           content,
           user_id: userId,
-          tenant_id: tenantId
-        })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+          tenant_id: tenantId,
+        });
+        const suggestedType = (data?.suggested_type ?? "").toLowerCase();
+        const suggestedCluster = (data?.suggested_cluster ?? "").toLowerCase();
+        if (["fact", "preference", "context"].includes(suggestedType)) {
+          setEditedType(suggestedType as MemoryType);
+        }
+        if (suggestedCluster) {
+          setEditedCluster(suggestedCluster);
+        }
+        return {
+          type: suggestedType as MemoryType | undefined,
+          cluster: suggestedCluster || undefined,
+          confidence: data?.confidence as number | undefined,
+        };
+      } catch {
+        // Soft-fail: keep UI smooth
+        return {};
       }
-      const data = await response.json();
-      return {
-        type: data.suggested_type,
-        cluster: data.suggested_cluster,
-        confidence: data.confidence
-      };
-    } catch (err) {
-      return {};
-    }
-  }, [userId, tenantId]);
-  // Apply AI suggestion
+    },
+    [tenantId, userId, safeJsonPost]
+  );
+
+  // CopilotKit actions
+  useCopilotAction({
+    name: "enhanceMemory",
+    description: "Enhance and improve memory content with AI suggestions",
+    parameters: [
+      { name: "content", type: "string", description: "The memory content to enhance" },
+      { name: "context", type: "string", description: "Additional context about the memory" },
+    ],
+    handler: async ({ content, context }) => {
+      await generateAISuggestions(content, context);
+    },
+  });
+
+  useCopilotAction({
+    name: "categorizeMemory",
+    description: "Suggest the best category and cluster for a memory",
+    parameters: [{ name: "content", type: "string", description: "The memory to categorize" }],
+    handler: async ({ content }) => {
+      await getCategorySuggestions(content);
+    },
+  });
+
+  // Debounced autosuggest while typing
+  useEffect(() => {
+    if (!editedContent.trim()) return;
+    const handle = setTimeout(() => {
+      // Passive suggestions; do not block typing
+      generateAISuggestions(editedContent, "");
+    }, 800);
+    return () => clearTimeout(handle);
+  }, [editedContent, generateAISuggestions]);
+
+  // Apply an AI suggestion
   const applySuggestion = useCallback((suggestion: AISuggestion) => {
     switch (suggestion.type) {
-      case 'enhancement':
+      case "enhancement":
+      case "correction":
         setEditedContent(suggestion.content);
         break;
-      case 'categorization':
-        // Parse categorization suggestion
-        const lines = suggestion.content.split('\n');
-        lines.forEach(line => {
-          if (line.startsWith('Type:')) {
-            const type = line.split(':')[1].trim().toLowerCase();
-            if (['fact', 'preference', 'context'].includes(type)) {
-              setEditedType(type as 'fact' | 'preference' | 'context');
+      case "categorization": {
+        // Expected simple "Type: X\nCluster: Y" format (fallback-safe)
+        const lines = suggestion.content.split("\n");
+        for (const line of lines) {
+          if (line.toLowerCase().startsWith("type:")) {
+            const v = line.split(":")[1]?.trim().toLowerCase();
+            if (v && ["fact", "preference", "context"].includes(v)) {
+              setEditedType(v as MemoryType);
             }
-          } else if (line.startsWith('Cluster:')) {
-            const cluster = line.split(':')[1].trim().toLowerCase();
-            setEditedCluster(cluster);
+          } else if (line.toLowerCase().startsWith("cluster:")) {
+            const c = line.split(":")[1]?.trim();
+            if (c) setEditedCluster(c);
           }
-
+        }
         break;
-      case 'correction':
-        setEditedContent(suggestion.content);
+      }
+      case "relationship":
+        // Could open a relationship editor in a future pass
         break;
     }
   }, []);
-  // Handle save
+
+  // Save
   const handleSave = useCallback(async () => {
     try {
       setIsSaving(true);
       setError(null);
-      const updatedMemory: Partial<MemoryGridRow> = {
+      const payload: Partial<MemoryGridRow> = {
         content: editedContent,
         type: editedType,
-        confidence: editedConfidence,
+        confidence: Math.max(0, Math.min(1, editedConfidence)),
         semantic_cluster: editedCluster,
-        last_accessed: new Date().toISOString()
+        last_accessed: new Date().toISOString(),
       };
-      await onSave(updatedMemory);
+      await onSave(payload);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save memory');
+      setError(err instanceof Error ? err.message : "Failed to save memory");
     } finally {
       setIsSaving(false);
     }
   }, [editedContent, editedType, editedConfidence, editedCluster, onSave]);
-  // Handle delete
+
+  // Delete
   const handleDelete = useCallback(async () => {
     if (!memory || !onDelete) return;
-    if (window.confirm('Are you sure you want to delete this memory? This action cannot be undone.')) {
+    // eslint-disable-next-line no-alert
+    if (window.confirm("Delete this memory? This cannot be undone.")) {
       try {
         await onDelete(memory.id);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete memory');
+        setError(err instanceof Error ? err.message : "Failed to delete memory");
       }
     }
   }, [memory, onDelete]);
+
   if (!isOpen) return null;
+
   return (
-    <div className="memory-editor-overlay" style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000
-    }}>
-      <div className="memory-editor-modal" style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: '24px',
-        maxWidth: '800px',
-        width: '90%',
-        maxHeight: '90%',
-        overflow: 'auto',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
-      }} role="dialog">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, color: '#333' }}>
-            {memory ? 'Edit Memory' : 'Create New Memory'}
-          </h2>
-          <button
-            onClick={onCancel}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: '#666'
-            }}
-           aria-label="Button">
-            ×
-          </button>
-        </div>
-        {error && (
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#ffebee',
-            color: '#c62828',
-            borderRadius: '4px',
-            marginBottom: '16px',
-            border: '1px solid #ffcdd2'
-          }}>
-            {error}
-          </div>
-        )}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-          {/* Main editing area */}
+    <div
+      data-kari="memory-editor"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="memory-editor-title"
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+
+      {/* Modal */}
+      <div className="relative z-10 w-full max-w-4xl rounded-2xl bg-background shadow-xl ring-1 ring-border focus:outline-none">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b p-5">
           <div>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-              </label>
+            <h2 id="memory-editor-title" className="m-0 text-xl font-semibold">
+              {memory ? "Edit Memory" : "Create New Memory"}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              AI-assisted editing with CopilotKit autosuggestions.
+            </p>
+          </div>
+          <Button variant="ghost" size="icon" aria-label="Close" onClick={onCancel}>
+            ×
+          </Button>
+        </div>
+
+        {/* Body */}
+        <div className="grid gap-6 p-5 md:grid-cols-[2fr_1fr]">
+          {/* Main editor */}
+          <div>
+            <div className="mb-4 space-y-2">
+              <Label htmlFor="memory-content">Content</Label>
               <CopilotTextarea
-                className="memory-content-textarea"
+                id="memory-content"
+                className={cn(
+                  "min-h-[140px] w-full resize-y rounded-md border p-3 text-sm",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                )}
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
-                placeholder="Enter memory content... (AI suggestions will appear as you type)"
+                placeholder="Enter memory content... (AI suggestions appear as you type)"
                 autosuggestionsConfig={{
                   textareaPurpose: "Memory content editing with AI enhancement",
                   chatApiConfigs: {
                     suggestionsApiConfig: {
                       maxTokens: 250,
-                      stop: [".", "\n"],
+                      stop: ["\n"],
                     },
                   },
                 }}
-                style={{
-                  width: '100%',
-                  minHeight: '120px',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  fontFamily: 'inherit',
-                  resize: 'vertical'
-                }}
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                </label>
+
+            <div className="mb-4 grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="memory-type">Type</Label>
                 <select
+                  id="memory-type"
                   value={editedType}
-                  onChange={(e) => setEditedType(e.target.value as 'fact' | 'preference' | 'context')}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px'
-                  }}
+                  onChange={(e) => setEditedType(e.target.value as MemoryType)}
+                  className="h-9 w-full rounded-md border bg-background px-3 text-sm"
                 >
                   <option value="fact">Fact</option>
                   <option value="preference">Preference</option>
                   <option value="context">Context</option>
                 </select>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+
+              <div className="space-y-2">
+                <Label htmlFor="memory-confidence">
                   Confidence ({Math.round(editedConfidence * 100)}%)
-                </label>
+                </Label>
                 <input
+                  id="memory-confidence"
                   type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
+                  min={0}
+                  max={1}
+                  step={0.05}
                   value={editedConfidence}
                   onChange={(e) => setEditedConfidence(parseFloat(e.target.value))}
-                  style={{ width: '100%' }}
+                  className="w-full"
                 />
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                </label>
+
+              <div className="space-y-2">
+                <Label htmlFor="memory-cluster">Cluster</Label>
                 <select
+                  id="memory-cluster"
                   value={editedCluster}
                   onChange={(e) => setEditedCluster(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px'
-                  }}
+                  className="h-9 w-full rounded-md border bg-background px-3 text-sm"
                 >
-                  <option value="technical">Technical</option>
-                  <option value="personal">Personal</option>
-                  <option value="work">Work</option>
-                  <option value="general">General</option>
+                  {CLUSTERS.map((c) => (
+                    <option key={c} value={c}>
+                      {c[0].toUpperCase() + c.slice(1)}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-              <button
+
+            <div className="mb-2 flex gap-2">
+              <Button
                 onClick={() => generateAISuggestions()}
                 disabled={isLoadingSuggestions || !editedContent.trim()}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#2196F3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: isLoadingSuggestions ? 'not-allowed' : 'pointer',
-                  opacity: isLoadingSuggestions || !editedContent.trim() ? 0.6 : 1
-                }}
               >
-                {isLoadingSuggestions ? 'Generating...' : 'Get AI Suggestions'}
-              </button>
-              <button
+                {isLoadingSuggestions ? "Generating…" : "Get AI Suggestions"}
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={() => getCategorySuggestions(editedContent)}
                 disabled={!editedContent.trim()}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#FF9800',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: !editedContent.trim() ? 'not-allowed' : 'pointer',
-                  opacity: !editedContent.trim() ? 0.6 : 1
-                }}
               >
                 Auto-Categorize
-              </button>
+              </Button>
             </div>
+
+            {error && (
+              <div className="mt-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+                {error}
+              </div>
+            )}
           </div>
-          {/* AI Suggestions panel */}
+
+          {/* Suggestions panel */}
           <div>
-            <h3 style={{ marginTop: 0, marginBottom: '16px' }}>AI Suggestions</h3>
+            <h3 className="mb-3 text-base font-semibold">AI Suggestions</h3>
             {isLoadingSuggestions ? (
-              <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
-                Generating AI suggestions...
+              <div className="rounded-md border p-4 text-center text-sm text-muted-foreground">
+                Generating AI suggestions…
               </div>
             ) : aiSuggestions.length > 0 ? (
-              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                {aiSuggestions.map((suggestion, index) => (
+              <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                {aiSuggestions.map((s, i) => (
                   <div
-                    key={index}
-                    style={{
-                      padding: '12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      marginBottom: '8px',
-                      backgroundColor: '#f9f9f9'
-                    }}
+                    key={`${s.type}-${i}`}
+                    className="rounded-md border bg-muted/30 p-3"
                   >
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center',
-                      marginBottom: '8px'
-                    }}>
-                      <span style={{
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        color: '#666',
-                        textTransform: 'uppercase'
-                      }}>
-                        {suggestion.type}
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase text-muted-foreground">
+                        {s.type}
                       </span>
-                      <span style={{
-                        fontSize: '12px',
-                        color: '#666'
-                      }}>
-                        {Math.round(suggestion.confidence * 100)}% confidence
+                      <span className="text-xs text-muted-foreground">
+                        {Math.round(s.confidence * 100)}% confidence
                       </span>
                     </div>
-                    <div style={{ fontSize: '14px', marginBottom: '8px' }}>
-                      {suggestion.content}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-                      {suggestion.reasoning}
-                    </div>
-                    <button
-                      onClick={() => applySuggestion(suggestion)}
-                      style={{
-                        padding: '4px 8px',
-                        backgroundColor: '#4CAF50',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        cursor: 'pointer'
-                      }}
+                    <div className="mb-2 text-sm">{s.content}</div>
+                    {s.reasoning && (
+                      <div className="mb-2 text-xs text-muted-foreground">
+                        {s.reasoning}
+                      </div>
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={() => applySuggestion(s)}
+                      className="h-7 px-2 text-xs"
                     >
-                    </button>
+                      Apply
+                    </Button>
                   </div>
                 ))}
               </div>
             ) : (
-              <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
-                Click "Get AI Suggestions" to see enhancement recommendations
+              <div className="rounded-md border p-4 text-center text-sm text-muted-foreground">
+                Click <em>Get AI Suggestions</em> to see enhancement recommendations.
               </div>
             )}
           </div>
         </div>
-        {/* Action buttons */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          marginTop: '24px',
-          paddingTop: '16px',
-          borderTop: '1px solid #eee'
-        }}>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t p-5">
           <div>
             {memory && onDelete && (
-              <button
-                onClick={handleDelete}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#f44336',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-               aria-label="Button">
-              </button>
+              <Button variant="destructive" onClick={handleDelete}>
+                Delete
+              </Button>
             )}
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              onClick={onCancel}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#666',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-             aria-label="Button">
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving || !editedContent.trim()}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: isSaving || !editedContent.trim() ? 'not-allowed' : 'pointer',
-                opacity: isSaving || !editedContent.trim() ? 0.6 : 1
-              }}
-             aria-label="Button">
-              {isSaving ? 'Saving...' : 'Save Memory'}
-            </button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving || !editedContent.trim()}>
+              {isSaving ? "Saving…" : "Save Memory"}
+            </Button>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
 export default MemoryEditor;

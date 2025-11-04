@@ -122,7 +122,7 @@ class ExtensionErrorBoundary extends React.Component<
       errorInfo,
       extensionId: this.props.extensionId,
       routePath: this.props.routePath
-
+    });
   }
 
   render() {
@@ -185,16 +185,16 @@ function ExtensionErrorFallback({
         )}
         
         <div className="flex gap-3 justify-center">
-          <button
+          <Button
             onClick={handleRetry}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => window.history.back()}
             className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
           >
-          </button>
+          </Button>
         </div>
       </div>
     </div>

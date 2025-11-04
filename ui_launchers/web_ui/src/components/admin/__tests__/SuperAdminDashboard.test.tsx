@@ -81,9 +81,9 @@ vi.mock('@/components/ui/card', () => ({
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, className, variant }: any) => (
-    <button onClick={onClick} className={className} data-variant={variant} aria-label="Button">
+    <Button onClick={onClick} className={className} data-variant={variant} aria-label="Button">
       {children}
-    </button>
+    </Button>
   ),
 }));
 
@@ -98,9 +98,9 @@ vi.mock('@/components/ui/tabs', () => ({
   ),
   TabsList: ({ children }: any) => <div data-testid="tabs-list">{children}</div>,
   TabsTrigger: ({ children, value, onClick }: any) => (
-    <button data-testid={`tab-trigger-${value}`} onClick={onClick} aria-label="Button">
+    <Button data-testid={`tab-trigger-${value}`} onClick={onClick} aria-label="Button">
       {children}
-    </button>
+    </Button>
   ),
 }));
 

@@ -55,7 +55,7 @@ export function HapticSettings({
             </p>
           </div>
         </div>
-        <button
+        <Button
           onClick={handleToggle}
           className={cn(
             'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
@@ -68,7 +68,7 @@ export function HapticSettings({
               enabled ? 'translate-x-6' : 'translate-x-1'
             )}
           />
-        </button>
+        </Button>
       </div>
 
       {/* Test Patterns */}
@@ -79,7 +79,7 @@ export function HapticSettings({
             {testPatterns.map((pattern) => {
               const info = getHapticPatternInfo(pattern);
               return (
-                <button
+                <Button
                   key={pattern}
                   onClick={() => handleTestPattern(pattern)}
                   className={cn(
@@ -102,7 +102,7 @@ export function HapticSettings({
                       {info.intensity}
                     </span>
                   </div>
-                </button>
+                </Button>
               );
             })}
           </div>

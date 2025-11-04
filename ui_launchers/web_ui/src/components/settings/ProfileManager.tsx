@@ -3,7 +3,8 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 interface LLMProvider {
   name: string;
@@ -22,6 +23,7 @@ interface ProfileManagerProps {
   activeProfile: LLMProfile | null;
   setActiveProfile: (profile: LLMProfile | null) => void;
   providers: LLMProvider[];
+  onClose?: () => void; // Added optional onClose prop
 }
 
 /**
@@ -35,6 +37,7 @@ export default function ProfileManager({
   activeProfile,
   setActiveProfile,
   providers,
+  onClose,
 }: ProfileManagerProps) {
   const [creating, setCreating] = useState(false);
 
@@ -65,35 +68,36 @@ export default function ProfileManager({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-
   return (
     <ErrorBoundary fallback={<div>Something went wrong in ProfileManager</div>}>
       <Card>
-      <CardHeader>
-        <CardTitle>Profiles</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {safeProfiles.length === 0 ? (
-          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">No profiles defined.</p>
-        ) : (
-          <ul className="space-y-2">
-            {safeProfiles.map(p => (
-              <li key={p.id} className="flex items-center justify-between">
-                <span>{p.name}</span>
-                {activeProfile?.id === p.id ? (
-                  <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Active</span>
-                ) : (
-                  <Button size="sm" variant="secondary" onClick={() => setActiveProfile(p)}>
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        <Button size="sm" onClick={handleCreate} disabled={creating} >
-        </Button>
-      </CardContent>
-    </Card>
+        <CardHeader>
+          <CardTitle>Profiles</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {safeProfiles.length === 0 ? (
+            <p className="text-sm text-muted-foreground md:text-base lg:text-lg">No profiles defined.</p>
+          ) : (
+            <ul className="space-y-2">
+              {safeProfiles.map(p => (
+                <li key={p.id} className="flex items-center justify-between">
+                  <span>{p.name}</span>
+                  {activeProfile?.id === p.id ? (
+                    <span className="text-sm text-muted-foreground md:text-base lg:text-lg">Active</span>
+                  ) : (
+                    <Button size="sm" variant="secondary" onClick={() => setActiveProfile(p)}>
+                      Activate
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button size="sm" onClick={handleCreate} disabled={creating}>
+            {creating ? "Creating..." : "Create New Profile"}
+          </Button>
+        </CardContent>
+      </Card>
     </ErrorBoundary>
   );
 }

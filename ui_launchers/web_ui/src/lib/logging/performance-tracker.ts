@@ -28,6 +28,7 @@ class PerformanceTracker {
       operation: operationName,
       startTime,
       metadata
+    });
 
   }
   /**
@@ -175,6 +176,7 @@ class PerformanceTracker {
           type: 'network',
           url,
           method
+        });
 
       },
       end: (statusCode?: number, error?: Error) => {

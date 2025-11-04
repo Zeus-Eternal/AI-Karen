@@ -520,7 +520,7 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                   onChange={(e) => setCustomEndpoint(e.target.value)}
                   className="flex-1"
                 />
-                <button
+                <Button
                   onClick={handleTestCustomEndpoint}
                   disabled={!customEndpoint.trim() || isRunningDiagnostics}
                  aria-label="Button">
@@ -627,7 +627,7 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                 <div className="text-center">
                   <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2 " />
                   <p className="text-muted-foreground mb-4">No diagnostic report available</p>
-                  <button onClick={handleRunComprehensiveDiagnostics} disabled={isRunningDiagnostics} aria-label="Button">
+                  <Button onClick={handleRunComprehensiveDiagnostics} disabled={isRunningDiagnostics} aria-label="Button">
                     {isRunningDiagnostics ? (
                       <RefreshCw className="h-4 w-4 animate-spin mr-2 " />
                     ) : (

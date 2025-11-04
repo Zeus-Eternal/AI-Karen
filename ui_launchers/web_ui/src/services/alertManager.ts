@@ -248,6 +248,7 @@ class AlertManager {
       priority: 'normal',
       source: 'user-action',
       ...options,
+    });
 
   }
   public async showError(title: string, message: string, options?: Partial<KarenAlert>): Promise<AlertResult> {
@@ -260,6 +261,7 @@ class AlertManager {
       priority: 'high',
       source: 'system',
       ...options,
+    });
 
   }
   public async showWarning(title: string, message: string, options?: Partial<KarenAlert>): Promise<AlertResult> {
@@ -272,6 +274,7 @@ class AlertManager {
       priority: 'normal',
       source: 'system',
       ...options,
+    });
 
   }
   public async showInfo(title: string, message: string, options?: Partial<KarenAlert>): Promise<AlertResult> {
@@ -284,6 +287,7 @@ class AlertManager {
       priority: 'low',
       source: 'system',
       ...options,
+    });
 
   }
   // Private methods
@@ -357,6 +361,7 @@ class AlertManager {
       description: alert.message,
       variant: alert.variant === 'karen-error' ? 'destructive' : 'default',
       duration,
+    });
 
     // Store the toast instance for dismissal
     this.toastInstances.set(alert.id, toastInstance);
@@ -435,7 +440,7 @@ class AlertManager {
           listener.callback(data);
         } catch (error) {
         }
-
+      });
   }
   private cleanupExpiredHistory(): void {
     if (!this.history.alerts || !Array.isArray(this.history.alerts)) {
