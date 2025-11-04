@@ -380,7 +380,7 @@ services:
     ports:
       - "8010:8010"
     volumes:
-      - ./ui_launchers/web_ui:/app
+      - ./ui_launchers/KAREN-Theme-Default:/app
       - ./.env.local:/app/.env.local:ro
       - node_modules_cache:/app/node_modules
     command: sh -c "rm -rf /app/node_modules/.cache && npm install && npx next dev -p 8010"

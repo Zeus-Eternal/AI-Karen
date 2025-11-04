@@ -47,7 +47,7 @@ def run_test_suite(test_type="all", verbose=False, coverage=False, parallel=Fals
     if coverage:
         cmd.extend([
             "--cov=server/extension_error_recovery_manager",
-            "--cov=ui_launchers/web_ui/src/lib/graceful-degradation",
+            "--cov=ui_launchers/KAREN-Theme-Default/src/lib/graceful-degradation",
             "--cov-report=html:htmlcov/error_recovery",
             "--cov-report=term-missing"
         ])
@@ -133,7 +133,7 @@ def validate_test_environment():
         "tests/performance/error_recovery",
         "tests/reliability/error_recovery",
         "server",
-        "ui_launchers/web_ui/src/lib"
+        "ui_launchers/KAREN-Theme-Default/src/lib"
     ]
     
     missing_dirs = []

@@ -21,7 +21,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
 from server.extension_error_recovery_manager import ExtensionErrorRecoveryManager
-from ui_launchers.web_ui.src.lib.graceful_degradation.enhanced_backend_service import EnhancedBackendService
+from ui_launchers.KAREN-Theme-Default.src.lib.graceful_degradation.enhanced_backend_service import EnhancedBackendService
 
 
 class TestErrorHandlingPerformance:

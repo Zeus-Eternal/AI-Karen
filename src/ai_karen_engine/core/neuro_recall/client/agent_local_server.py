@@ -1,591 +1,413 @@
 """
-AgentFly - A Hierarchical AI Agent System
+AgentFly — Kari-aligned Hierarchical Agent (SR/ICE Integrated)
 
-This module implements a hierarchical AI system with two main components:
-1. META-PLANNER: Breaks down high-level questions into executable tasks
-2. EXECUTOR: Executes individual tasks using available tools
+Design:
+- META-PLANNER (prompt-first): decomposes query into minimal tasks
+- EXECUTOR: executes tasks with MCP tools and SR context
+- SR: SoftReasoningEngine (dual-embedding recall + novelty/TTL heuristics)
+- ICE: PremiumICEWrapper (policy-driven synthesis, cost/latency-aware)
+- Local-first: LLMUtils + registry; external providers only if enabled
 
-The system uses OpenAI models and MCP (Model Context Protocol) for tool integration.
+Observability:
+- Prometheus counters/histograms (graceful if not installed)
+- Optional OpenTelemetry spans (if your stack enables it)
+
+Security/RBAC:
+- External tool/LLM usage gated by ENV flags
+- Audit hook piped from ICE policy
+
+Author: Kari CORTEX v3.2
 """
 
 from __future__ import annotations
-import asyncio
-import argparse
+
 import os
+import re
 import uuid
+import json
+import time
+import asyncio
+import logging
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
+
+# ----- Logging (colored if available) -----
+try:
+    import colorlog
+    LOG_FORMAT = '%(log_color)s%(levelname)-8s%(reset)s %(message)s'
+    colorlog.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+    logger = logging.getLogger("agentfly")
+except Exception:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("agentfly")
+
+# ----- Prometheus (graceful if missing) -----
+try:
+    from prometheus_client import Counter, Histogram  # type: ignore
+    METRICS = True
+    M_LAT = Histogram("agentfly_cycle_latency_ms", "Cycle latency (ms)", buckets=(50,100,200,400,800,1600,3200))
+    M_TASK = Counter("agentfly_tasks_total", "Tasks executed", labelnames=("kind",))
+    M_TOOL = Counter("agentfly_tool_calls_total", "Tool calls", labelnames=("name", "status"))
+except Exception:  # pragma: no cover
+    METRICS = False
+    class _Noop:
+        def labels(self, *_, **__): return self
+        def observe(self, *_): pass
+        def inc(self, *_): pass
+    M_LAT = M_TASK = M_TOOL = _Noop()
+
+# ----- MCP client (tools) -----
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from openai import AsyncOpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
-import logging
-import colorlog
-import json
-import tiktoken
 
-# ---------------------------------------------------------------------------
-#   Logging setup
-# ---------------------------------------------------------------------------
-# Configure colored logging for better visibility of log levels
-LOG_FORMAT = '%(log_color)s%(levelname)-8s%(reset)s %(message)s'
-colorlog.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-logger = logging.getLogger(__name__)
+# ----- Kari: SR / ICE / LLM -----
+from ai_karen_engine.core.reasoning.soft_reasoning_engine import (
+    SoftReasoningEngine, RecallConfig, WritebackConfig
+)
+from ai_karen_engine.core.reasoning.ice_integration import (
+    PremiumICEWrapper, ICEWritebackPolicy
+)
+from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+from ai_karen_engine.integrations.llm_utils import LLMUtils
 
-# ---------------------------------------------------------------------------
-#   Constants & templates
-# ---------------------------------------------------------------------------
-# System prompt for the meta-planner agent that breaks down complex problems
+# ----- Local/Direct model backends (optional) -----
+from openai import AsyncOpenAI  # For local OpenAI-compatible servers only
+
+
+# -------------------------------
+# Prompt Templates (Prompt-First)
+# -------------------------------
+
 META_SYSTEM_PROMPT = (
-    "You are the META‑PLANNER in a hierarchical AI system. A user will ask a\n"
-    "high‑level question. **First**: break the problem into a *minimal sequence*\n"
-    "of executable tasks. Reply ONLY in JSON with the schema:\n"
-    "{ \"plan\": [ {\"id\": INT, \"description\": STRING} … ] }\n\n"
+    "You are the META-PLANNER in a hierarchical AI system. A user will ask a "
+    "high-level question. First: break the problem into a minimal sequence of executable tasks. "
+    "Reply ONLY in JSON with the schema:\n"
+    '{ "plan": [ {"id": INT, "description": STRING} ... ] }\n\n'
     "After each task is executed by the EXECUTOR you will receive its result.\n"
-    "Please carefully consider the descriptions of the time of web pages and events in the task, and take these factors into account when planning and giving the final answer.\n"
+    "Carefully consider dates/timestamps of sources and events when planning and finalizing.\n"
     "If the final answer is complete, output it with the template:\n"
-    "FINAL ANSWER: <answer>\n\n" \
-    " YOUR FINAL ANSWER should be a number OR as few words as possible OR a comma separated list of numbers and/or strings. If you are asked for a number, don't use comma to write your number neither use units such as $ or percent sign unless specified otherwise. If you are asked for a string, don't use articles, neither abbreviations (e.g. for cities), and write the digits in plain text unless specified otherwise. If you are asked for a comma separated list, apply the above rules depending of whether the element to be put in the list is a number or a string.\n"
-    "Please ensure that the final answer strictly follows the question requirements, without any additional analysis.\n"
-    "If the final ansert is not complete, emit a *new* JSON plan for the remaining work. Keep cycles as\n"
-    "few as possible. Never call tools yourself — that's the EXECUTOR's job."\
-    "⚠️  Reply with *pure JSON only*."
+    "FINAL ANSWER: <answer>\n\n"
+    "YOUR FINAL ANSWER must strictly follow the question requirements, minimal words/numbers, "
+    "no extra analysis. If incomplete, output a new JSON plan for remaining work.\n"
+    "Never call tools yourself — that's the EXECUTOR's job.\n"
+    "⚠️ Reply with pure JSON only, unless it is the FINAL ANSWER line."
 )
 
-# System prompt for the executor agent that handles individual tasks
 EXEC_SYSTEM_PROMPT = (
-    "You are the EXECUTOR sub-agent. You receive one task description at a time\n"
-    "from the meta-planner. Your job is to complete the task, using available\n"
-    "tools via function calling if needed. Always think step by step but reply\n"
-    "with the minimal content needed for the meta-planner. If you must call a\n"
-    "tool, produce the appropriate function call instead of natural language.\n"
-    "When done, output a concise result. Do NOT output FINAL ANSWER."
+    "You are the EXECUTOR. You receive one task at a time from the planner. "
+    "Use available tools via function calling if needed. Think step by step but reply with the "
+    "minimal content needed for the planner. Do NOT output FINAL ANSWER."
 )
 
-# Maximum context length for token management
-MAX_CTX = 175000
-# Default executor model
-EXE_MODEL = "qwen3-8b"
+# -------------------------------
+# RBAC / ENV Toggles
+# -------------------------------
+ENABLE_EXTERNAL_WORKFLOWS = os.getenv("ENABLE_EXTERNAL_WORKFLOWS", "false").lower() in ("1","true","yes")
+DIRECT_BASE_URL = os.getenv("DIRECT_BASE_URL", "http://localhost:11434/v1")  # example ollama/openai-compatible
+DIRECT_API_KEY = os.getenv("DIRECT_API_KEY", "EMPTY")
 
-# ---------------------------------------------------------------------------
-#   OpenAI backend
-# ---------------------------------------------------------------------------
-class ChatBackend:
-    """Abstract base class for chat backends."""
-    async def chat(self, *_, **__) -> Dict[str, Any]:
-        raise NotImplementedError
-
-class OpenAIBackend(ChatBackend):
-    """OpenAI API backend for chat completions with retry logic."""
-    
-    def __init__(self, model: str):
-        """
-        Initialize OpenAI backend with specified model.
-        
-        Args:
-            model: The OpenAI model to use (e.g., 'gpt-4', 'o3')
-        """
-        self.model = model
-        # Initialize OpenAI client with API key and base URL from environment
-        self.client = AsyncOpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            base_url=os.getenv("OPENAI_BASE_URL"),
-        )
-
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        reraise=True,
-        before_sleep=before_sleep_log(logger, logging.WARNING),
-    )
-    async def chat(
-        self,
-        messages: List[Dict[str, Any]],
-        tools: List[Dict[str, Any]] | None = None,
-        tool_choice: str | None = "auto",
-        max_tokens: int = 15000,
-    ) -> Dict[str, Any]:
-        """
-        Send chat completion request to OpenAI with optional tool calling.
-        
-        Args:
-            messages: List of message dictionaries with role and content
-            tools: Optional list of available tools for function calling
-            tool_choice: How to handle tool selection ('auto', 'none', or specific tool)
-            max_tokens: Maximum tokens in the response
-            
-        Returns:
-            Dictionary containing response content and tool calls if any
-            
-        Raises:
-            Various OpenAI API errors (handled by retry decorator)
-        """
-        payload: Dict[str, Any] = {
-            "model": self.model,
-            "messages": messages,
-            "max_tokens": max_tokens,
-        }
-        # Add tools to payload if provided
-        if tools:
-            payload["tools"] = tools
-            payload["tool_choice"] = tool_choice
-            
-        # Make API call to OpenAI
-        resp = await self.client.chat.completions.create(**payload)  # type: ignore[arg-type]
-        msg = resp.choices[0].message
-        
-        # Extract tool calls if present
-        raw_calls = getattr(msg, "tool_calls", None)
-        tool_calls = None
-        if raw_calls:
-            # Convert tool calls to standardized format
-            tool_calls = [
-                {
-                    "id": tc.id,
-                    "type": tc.type,
-                    "function": {
-                        "name": tc.function.name,
-                        "arguments": tc.function.arguments,
-                    },
-                }
-                for tc in raw_calls
-            ]
-        return {"content": msg.content, "tool_calls": tool_calls}
-
-class DirectModelBackend(ChatBackend):
-    """
-    Backend that talks to a local OpenAI-compatible server (e.g., your vLLM at
-    http://localhost:port/v1) and returns tool_calls parsed from the stream.
-    """
-
-    def __init__(
-        self,
-        model: str = "qwen3-8b",
-        server_url: str | None = None,
-        api_key: str | None = None,
-        default_search_tool: bool = True,
-    ):
-        self.model = model
-        self.server_url = server_url or os.getenv("DIRECT_BASE_URL", "http://localhost:port/v1")
-        self.api_key = api_key or os.getenv("DIRECT_API_KEY", "EMPTY")
-        self.default_search_tool = default_search_tool
-
-        self._fallback_tools = [
-            {
-                "type": "function",
-                "function": {
-                    "name": "search",
-                    "description": "Get external knowledge using search engine",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {"type": "string"},
-                            "top_k": {"type": "integer"},
-                        },
-                        "required": ["query"],
-                    },
-                },
-            }
-        ]
-
-    async def chat(
-        self,
-        messages: List[Dict[str, Any]],
-        tools: List[Dict[str, Any]] | None = None,
-        tool_choice: str | None = "auto",
-        max_tokens: int = 10240,
-    ) -> Dict[str, Any]:
-        
-        client = AsyncOpenAI(base_url=self.server_url, api_key=self.api_key)
-
-        payload: Dict[str, Any] = {
-            "model": self.model,
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "stream": True,
-        }
-
-        if tools and len(tools) > 0:
-            payload["tools"] = tools
-        elif self.default_search_tool:
-            payload["tools"] = self._fallback_tools
-
-        payload["tool_choice"] = tool_choice or "auto"
-
-        stream = await client.chat.completions.create(**payload)
-
-        aggregated_text = ""
-        tool_call_buffers: Dict[int, Dict[str, Any]] = {}
-        finish_reason = None
-
-        async for chunk in stream:
-            choice = chunk.choices[0]
-            delta = choice.delta
-
-            if getattr(choice, "finish_reason", None):
-                finish_reason = choice.finish_reason
-
-            if getattr(delta, "content", None):
-                aggregated_text += delta.content
-
-            if getattr(delta, "tool_calls", None):
-                for tc in delta.tool_calls:
-                    idx = getattr(tc, "index", 0) or 0
-                    b = tool_call_buffers.setdefault(
-                        idx,
-                        {"id": None, "type": "function", "function": {"name": "", "arguments": ""}},
-                    )
-                    if getattr(tc, "id", None):
-                        b["id"] = tc.id
-                    func = getattr(tc, "function", None)
-                    if func is not None:
-                        if getattr(func, "name", None):
-                            b["function"]["name"] = func.name
-                        if getattr(func, "arguments", None):
-                            b["function"]["arguments"] += func.arguments
-
-        tool_calls = list(tool_call_buffers.values()) if tool_call_buffers else None
-
-        content = None if tool_calls else (aggregated_text or None)
-        return {"content": content, "tool_calls": tool_calls}
-
-# ---------------------------------------------------------------------------
-#   Hierarchical client (trimmed: only essentials kept)
-# ---------------------------------------------------------------------------
-# Maximum number of conversation turns to keep in memory
 MAX_TURNS_MEMORY = 50
+MAX_CTX_TOKENS_EXEC = int(os.getenv("AGENT_EXEC_MAX_TOK", "8192"))
+MAX_CYCLES = int(os.getenv("AGENT_MAX_CYCLES", "3"))
+
+DEFAULT_META_MODEL = os.getenv("AGENT_META_MODEL", "local-meta")
+DEFAULT_EXEC_MODEL = os.getenv("AGENT_EXEC_MODEL", "local-exec")
+
+
+# -------------------------------
+# Utility: message trimming (token-approx by words for local-first)
+# -------------------------------
+def _trim_messages(messages: List[Dict[str, Any]], max_items: int = MAX_TURNS_MEMORY) -> List[Dict[str, Any]]:
+    """Keep most recent messages within memory cap, always preserving first system msg."""
+    if len(messages) <= max_items:
+        return messages
+    sys = messages[0:1]
+    rest = messages[1:]
+    rest = rest[-(max_items-1):]
+    return sys + rest
+
 
 def _strip_fences(text: str) -> str:
-    """
-    Remove markdown code fences and extract JSON content.
-    
-    Args:
-        text: Text that may contain markdown fences or JSON
-        
-    Returns:
-        Cleaned text with fences removed
-    """
-    import re
     text = text.strip()
-    # Remove markdown code fences if present
     if text.startswith("```"):
         text = re.sub(r"^```[^\n]*\n", "", text)
         text = re.sub(r"\n?```$", "", text)
-        return text.strip()
-    # Extract JSON content if wrapped in braces
-    m = re.search(r"{[\\s\\S]*}", text)
+    m = re.search(r"{[\s\S]*}", text)
     return m.group(0) if m else text
 
-def _count_tokens(msg: Dict[str, str], enc) -> int:
-    """
-    Count tokens in a message for context management.
-    
-    Args:
-        msg: Message dictionary with role and content
-        enc: Tokenizer encoding object
-        
-    Returns:
-        Number of tokens in the message
-    """
-    role_tokens = 4  # OpenAI adds 4 tokens for role
-    content = msg.get("content") or ""
-    return role_tokens + len(enc.encode(content))
 
-def _get_tokenizer(model: str):
-    """
-    Return a tokenizer for the specified model.
-    
-    Args:
-        model: Model name to get tokenizer for
-        
-    Returns:
-        Tokenizer encoding object, falls back to cl100k_base if model unknown
-    """
-    try:
-        return tiktoken.encoding_for_model(model)
-    except KeyError:
-        return tiktoken.get_encoding("cl100k_base")
-    
-def trim_messages(messages: List[Dict[str, str]], max_tokens: int, model="gpt-3.5-turbo"):
-    """
-    Trim message history to fit within token limit while preserving system message.
-    
-    Args:
-        messages: List of message dictionaries
-        max_tokens: Maximum allowed tokens
-        model: Model name for token counting
-        
-    Returns:
-        Trimmed list of messages that fit within token limit
-    """
-    enc = _get_tokenizer(model)
-    total = sum(_count_tokens(m, enc) for m in messages) + 2
-    
-    # If already within limit, return as is
-    if total <= max_tokens:
-        return messages
-        
-    # Always keep system message (first message)
-    system_msg = messages[0]
-    kept: List[Dict[str, str]] = [system_msg]
-    total = _count_tokens(system_msg, enc) + 2
-    
-    # Add messages from most recent to oldest until limit is reached
-    for msg in reversed(messages[1:]):
-        t = _count_tokens(msg, enc)
-        if total + t > max_tokens:
-            break
-        kept.insert(1, msg)  # Insert after system message
-        total += t
-    return kept
+# -------------------------------
+# Backends: Local-first LLM facade
+# -------------------------------
 
-class HierarchicalClient:
+class KariLLMBackend:
+    """Local-first facade. Uses LLMUtils/registry; optionally routes to a local OpenAI-compatible server
+    when ENABLE_EXTERNAL_WORKFLOWS is true and model name matches a policy.
     """
-    Main client class that orchestrates the hierarchical AI system.
-    
-    Manages communication between meta-planner and executor agents,
-    handles tool connections, and processes user queries through
-    multiple planning and execution cycles.
-    """
-    
-    # Maximum number of planning cycles before giving up
-    MAX_CYCLES = 3
 
-    def __init__(self, meta_model: str, exec_model: str):
-        """
-        Initialize the hierarchical client.
-        
-        Args:
-            meta_model: Model name for the meta-planner agent
-            exec_model: Model name for the executor agent
-        """
-        self.meta_llm = OpenAIBackend(meta_model)
+    def __init__(self, model_alias: str, role: str):
+        self.role = role
+        self.model_alias = model_alias
+        # Try Kari registry first
+        self.kari_llm: Optional[LLMUtils] = llm_registry.get_active() or LLMUtils()
+        self.direct_client: Optional[AsyncOpenAI] = None
 
-        if exec_model.lower().startswith("qwen3"):
-            self.exec_llm = DirectModelBackend(model=exec_model)
-        else:
-            self.exec_llm = OpenAIBackend(exec_model)
+        if ENABLE_EXTERNAL_WORKFLOWS:
+            # Only spin direct client if explicitly allowed
+            self.direct_client = AsyncOpenAI(base_url=DIRECT_BASE_URL, api_key=DIRECT_API_KEY)
 
-        self.exec_model = exec_model  
+    async def chat(self, messages: List[Dict[str, Any]], *, max_tokens: int = 1024,
+                   tools: Optional[List[Dict[str, Any]]] = None,
+                   tool_choice: Optional[str] = "auto") -> Dict[str, Any]:
+        """Minimal wrapper supporting non-stream chat and optional tool schema."""
+        # If tools are provided and external workflows enabled, try local OpenAI-compatible
+        if tools and self.direct_client:
+            payload = {
+                "model": self.model_alias,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "tools": tools,
+                "tool_choice": tool_choice or "auto",
+            }
+            resp = await self.direct_client.chat.completions.create(**payload)
+            msg = resp.choices[0].message
+            raw_calls = getattr(msg, "tool_calls", None)
+            tool_calls = None
+            if raw_calls:
+                tool_calls = [
+                    {
+                        "id": tc.id,
+                        "type": tc.type,
+                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                    } for tc in raw_calls
+                ]
+            return {"content": msg.content, "tool_calls": tool_calls}
+
+        # Otherwise, use Kari's LLMUtils in prompt-first single-shot mode (no tools)
+        # Synthesize a simple prompt from last user + assistant messages
+        text = "\n".join(
+            [f"{m['role'].upper()}: {m.get('content','')}" for m in messages[-8:]]
+        )
+        out = self.kari_llm.generate_text(text, max_tokens=max_tokens)
+        return {"content": out, "tool_calls": None}
+
+
+# -------------------------------
+# MCP Tool Hub
+# -------------------------------
+
+class ToolHub:
+    def __init__(self):
         self.sessions: Dict[str, ClientSession] = {}
-        self.shared_history: List[Dict[str, str]] = []
+        self.exit_stack = None
 
-    def _resolve_tool_name(self, requested: str) -> str:
-        if requested in self.sessions:
-            return requested
-
-        aliases = {
-            "search": ["serp_search"],
-        }
-        for cand in aliases.get(requested, []):
-            if cand in self.sessions:
-                return cand
-
-        for name in self.sessions.keys():
-            if requested in name or name in requested:
-                return name
-
-        raise KeyError(f"No matching tool for '{requested}'. Available: {list(self.sessions.keys())}")
-
-    def _massage_args_for_tool(self, tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
-        patched = dict(args)
-        ln = tool_name.lower()
-        if ln == "serp_search":
-            if "q" not in patched and "query" in patched:
-                patched["q"] = patched["query"]
-            if "num_results" not in patched and "top_k" in patched:
-                patched["num_results"] = patched["top_k"]
-        return patched
-
-    # ---------- Tool management ----------
-    async def connect_to_servers(self, scripts: List[str]):
-        """
-        Connect to MCP tool servers specified by script paths.
-        
-        Args:
-            scripts: List of paths to tool server scripts
-            
-        Raises:
-            RuntimeError: If duplicate tool names are found
-        """
+    async def connect(self, scripts: List[str]) -> None:
         from contextlib import AsyncExitStack
         self.exit_stack = AsyncExitStack()
-        
         for script in scripts:
             path = Path(script)
-            # Determine command based on file extension
             cmd = "python" if path.suffix == ".py" else "node"
             params = StdioServerParameters(command=cmd, args=[str(path)])
-            
-            # Create stdio client and session
             stdio, write = await self.exit_stack.enter_async_context(stdio_client(params))
             session = await self.exit_stack.enter_async_context(ClientSession(stdio, write))
             await session.initialize()
-            
-            # Register tools from this session
-            for tool in (await session.list_tools()).tools:
-                if tool.name in self.sessions:
-                    raise RuntimeError(f"Duplicate tool name '{tool.name}'.")
-                self.sessions[tool.name] = session
-                
-        print("Connected tools:", list(self.sessions.keys()))
+            tools = await session.list_tools()
+            for tool in tools.tools:
+                name = tool.name
+                if name in self.sessions:
+                    raise RuntimeError(f"Duplicate tool '{name}' from {script}")
+                self.sessions[name] = session
+        logger.info("Connected MCP tools: %s", list(self.sessions.keys()))
 
-    async def _tools_schema(self) -> List[Dict[str, Any]]:
-        """
-        Get the schema for all available tools in a format suitable for OpenAI.
-        
-        Returns:
-            List of tool schemas in OpenAI function calling format
-        """
+    async def tools_schema(self) -> List[Dict[str, Any]]:
         result, cached = [], {}
         for session in self.sessions.values():
-            # Cache tool listings to avoid repeated calls
             tools_resp = cached.get(id(session)) or await session.list_tools()
             cached[id(session)] = tools_resp
-            
-            # Convert MCP tool format to OpenAI function calling format
             for tool in tools_resp.tools:
-                result.append(
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": tool.name,
-                            "description": tool.description,
-                            "parameters": tool.inputSchema,
-                        },
-                    }
-                )
+                result.append({
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.inputSchema,
+                    },
+                })
         return result
 
-    # ---------- Main processing ----------
-    async def process_query(self, query: str, file: str, task_id: str = "interactive") -> str:
-        """
-        Process a user query through the hierarchical AI system.
-        
-        This is the main method that:
-        1. Gets the meta-planner to break down the query into tasks
-        2. Executes each task using the executor agent
-        3. Continues planning cycles until a final answer is reached
-        
-        Args:
-            query: User's question or request
-            file: Optional file path context
-            task_id: Unique identifier for this query session
-            
-        Returns:
-            Final answer to the user's query
-        """
-        tools_schema = await self._tools_schema()
-        self.shared_history = []
-        
-        # Initialize conversation with user query
-        self.shared_history.append({
-            "role": "user", 
-            "content": f"{query}\ntask_id: {task_id}\nfile_path: {file}\n"
-        })
-        planner_msgs = [{"role": "system", "content": META_SYSTEM_PROMPT}] + self.shared_history
+    def resolve(self, requested: str) -> str:
+        if requested in self.sessions:
+            return requested
+        # simple contains fallback
+        for name in self.sessions.keys():
+            if requested in name or name in requested:
+                return name
+        raise KeyError(f"No tool named like '{requested}'. Available: {list(self.sessions.keys())}")
 
-        # Main planning and execution loop
-        for cycle in range(self.MAX_CYCLES):
-            # Get plan from meta-planner
-            meta_reply = await self.meta_llm.chat(planner_msgs)
-            meta_content = meta_reply["content"] or ""
-            self.shared_history.append({"role": "assistant", "content": meta_content})
+    async def call(self, tool_name: str, args: Dict[str, Any]) -> str:
+        session = self.sessions[self.resolve(tool_name)]
+        result = await session.call_tool(tool_name, args)
+        return str(result.content)
 
-            # Check if we have a final answer
-            if meta_content.startswith("FINAL ANSWER:"):
-                return meta_content[len("FINAL ANSWER:"):].strip()
-
-            # Parse the plan from meta-planner's response
-            try:
-                tasks = json.loads(_strip_fences(meta_content))["plan"]
-            except Exception as e:
-                return f"[planner error] {e}: {meta_content}"
-
-            # Execute each task in the plan
-            for task in tasks:
-                task_desc = f"Task {task['id']}: {task['description']}"
-                exec_msgs = (
-                    [{"role": "system", "content": EXEC_SYSTEM_PROMPT}] +
-                    self.shared_history +
-                    [{"role": "user", "content": task_desc}]
-                )
-                
-                # Execute task with potential tool calls
-                while True:
-                    # Trim messages to fit within token limit
-                    exec_msgs = trim_messages(exec_msgs, MAX_CTX, model=EXE_MODEL)
-                    exec_reply = await self.exec_llm.chat(exec_msgs, tools_schema)
-                    
-                    # If executor has a direct response, use it
-                    if exec_reply["content"]:
-                        result_text = str(exec_reply["content"])
-                        self.shared_history.append({
-                            "role": "assistant", 
-                            "content": f"Task {task['id']} result: {result_text}"
-                        })
-                        break
-                        
-                    # Handle tool calls from executor
-                    for call in exec_reply.get("tool_calls") or []:
-                        t_name = call["function"]["name"]
-                        t_args = json.loads(call["function"].get("arguments") or "{}")
-
-                        try:
-                            resolved = self._resolve_tool_name(t_name)
-                        except KeyError as e:
-                            error_msg = f"[tool resolution error] {e}"
-                            exec_msgs.extend([
-                                {"role": "assistant", "content": None, "tool_calls": [call]},
-                                {"role": "tool", "tool_call_id": call.get("id", str(uuid.uuid4())), "name": t_name, "content": error_msg},
-                            ])
-                            continue
-
-                        session = self.sessions[resolved]
-                        patched_args = self._massage_args_for_tool(resolved, t_args)
-
-                        result_msg = await session.call_tool(resolved, patched_args)
-                        result_text = str(result_msg.content)
-
-                        exec_msgs.extend([
-                            {"role": "assistant", "content": None, "tool_calls": [call]},
-                            {
-                                "role": "tool",
-                                "tool_call_id": call.get("id", str(uuid.uuid4())),
-                                "name": resolved,
-                                "content": result_text
-                            },
-                        ])
-
-            # Update planner messages with execution results for next cycle
-            planner_msgs = [{"role": "system", "content": META_SYSTEM_PROMPT}] + self.shared_history
-            
-        # If we've exhausted cycles, return the last meta-planner response
-        return meta_content.strip()
-
-    async def cleanup(self):
-        """Clean up resources and close tool server connections."""
-        if hasattr(self, "exit_stack"):
+    async def close(self) -> None:
+        if self.exit_stack:
             await self.exit_stack.aclose()
 
-# ---------------------------------------------------------------------------
-#   Command‑line & main routine
-# ---------------------------------------------------------------------------
 
-def parse_args():
-    """
-    Parse command line arguments for the AgentFly client.
-    
-    Returns:
-        Parsed arguments namespace
-    """
-    parser = argparse.ArgumentParser(description="AgentFly – interactive version")
+# -------------------------------
+# AgentFly (Kari-aligned)
+# -------------------------------
+
+class AgentFly:
+    """Hierarchical agent with SR context weaving and ICE synthesis."""
+    def __init__(
+        self,
+        meta_model: str = DEFAULT_META_MODEL,
+        exec_model: str = DEFAULT_EXEC_MODEL,
+        sr: Optional[SoftReasoningEngine] = None,
+        ice: Optional[PremiumICEWrapper] = None,
+    ):
+        # LLMs
+        self.meta_llm = KariLLMBackend(meta_model, role="planner")
+        self.exec_llm = KariLLMBackend(exec_model, role="executor")
+
+        # Tools
+        self.tools = ToolHub()
+
+        # SR (retrieval + novelty)
+        self.sr = sr or SoftReasoningEngine(
+            recall=RecallConfig(fast_top_k=24, final_top_k=5, recency_alpha=0.65, min_score=0.0, use_dual_embedding=True),
+            writeback=WritebackConfig(novelty_gate=0.18, default_ttl_seconds=3600.0, long_ttl_seconds=86400.0, max_len_chars=5000),
+        )
+
+        # ICE (policy synthesis + writeback gate is handled by ICE up the stack if needed)
+        self.ice = ice or PremiumICEWrapper(
+            policy=ICEWritebackPolicy(
+                base_entropy_threshold=0.30,
+                include_confidence=True,
+                include_alternatives=False,
+                actor_role="agentfly",
+            )
+        )
+
+        self.shared_history: List[Dict[str, Any]] = []  # planner/executor dialog memory (bounded)
+
+    async def connect_tools(self, scripts: List[str]) -> None:
+        await self.tools.connect(scripts)
+
+    async def _plan(self, question: str, file: str, task_id: str) -> str:
+        msgs = [{"role": "system", "content": META_SYSTEM_PROMPT}] + self.shared_history + [
+            {"role": "user", "content": f"{question}\ntask_id: {task_id}\nfile_path: {file}\n"}
+        ]
+        msgs = _trim_messages(msgs)
+        out = await self.meta_llm.chat(msgs, max_tokens=1024)
+        return out["content"] or ""
+
+    async def _exec_one(self, task_id: int, description: str, tools_schema: List[Dict[str, Any]]) -> str:
+        """Execute a single task, weaving SR context before tool use."""
+        # SR context recall (pre-tool)
+        sr_matches = self.sr.query(description, top_k=5)
+        context = "\n".join(f"- {m.get('payload',{}).get('text','')}" for m in sr_matches if m.get("payload"))
+
+        # ICE synthesis for a crisp execution hint (policy-driven)
+        trace = self.ice.process(f"Task {task_id}: {description}", metadata={"role": "executor"})
+        exec_hint = trace.synthesis
+
+        # Build executor messages (context → hint → instruction)
+        exec_msgs = [
+            {"role": "system", "content": EXEC_SYSTEM_PROMPT},
+            {"role": "assistant", "content": f"SR Context:\n{context}\n"},
+            {"role": "assistant", "content": f"ICE Hint:\n{exec_hint}\n"},
+            {"role": "user", "content": f"Task {task_id}: {description}"},
+        ]
+        exec_msgs = _trim_messages(self.shared_history + exec_msgs)
+
+        # Try tools (if available via external workflow), else plain LLM
+        reply = await self.exec_llm.chat(exec_msgs, tools=tools_schema, max_tokens=1024)
+        if reply.get("tool_calls"):
+            # execute tool calls in a simple loop
+            for call in reply["tool_calls"]:
+                name = call["function"]["name"]
+                args = json.loads(call["function"].get("arguments") or "{}")
+                try:
+                    result_text = await self.tools.call(name, args)
+                    M_TOOL.labels(name=name, status="ok").inc() if METRICS else None
+                    # feed back to the conversation
+                    exec_msgs.extend([
+                        {"role": "assistant", "content": None, "tool_calls": [call]},
+                        {"role": "tool", "tool_call_id": call.get("id", str(uuid.uuid4())), "name": name, "content": result_text},
+                    ])
+                except Exception as e:
+                    M_TOOL.labels(name=name, status="error").inc() if METRICS else None
+                    exec_msgs.extend([
+                        {"role": "assistant", "content": None, "tool_calls": [call]},
+                        {"role": "tool", "tool_call_id": call.get("id", str(uuid.uuid4())), "name": name, "content": f"[tool error] {e}"},
+                    ])
+
+            # final assistant turn (no more tool calls)
+            reply = await self.exec_llm.chat(exec_msgs, tools=None, max_tokens=512)
+
+        result_text = (reply.get("content") or "").strip()
+        self.shared_history.append({"role": "assistant", "content": f"Task {task_id} result: {result_text}"})
+        M_TASK.labels(kind="exec").inc() if METRICS else None
+        return result_text
+
+    async def ask(self, question: str, file: str = "", task_id: Optional[str] = None) -> str:
+        """Top-level entrypoint."""
+        tools_schema = await self.tools.tools_schema()
+        self.shared_history = []
+        task_id = task_id or str(uuid.uuid4())
+
+        # Initial user turn
+        self.shared_history.append({"role": "user", "content": f"{question}\ntask_id: {task_id}\nfile_path: {file}\n"})
+
+        final_answer = ""
+        for cycle in range(MAX_CYCLES):
+            t0 = time.time()
+
+            plan = await self._plan(question, file, task_id)
+            self.shared_history.append({"role": "assistant", "content": plan})
+
+            if plan.startswith("FINAL ANSWER:"):
+                final_answer = plan[len("FINAL ANSWER:"):].strip()
+                break
+
+            # Parse plan JSON
+            try:
+                tasks = json.loads(_strip_fences(plan))["plan"]
+            except Exception as e:
+                final_answer = f"[planner error] {e}: {plan}"
+                break
+
+            # Execute tasks
+            for t in tasks:
+                desc = str(t.get("description",""))
+                tid = int(t.get("id", 0))
+                await self._exec_one(tid, desc, tools_schema)
+
+            if METRICS:
+                M_LAT.observe((time.time() - t0) * 1000.0)
+
+        return final_answer or plan.strip()
+
+    async def close(self) -> None:
+        await self.tools.close()
+
+
+# -------------------------------
+# CLI Entrypoint
+# -------------------------------
+
+async def _main():
+    load_dotenv()
+    import argparse
+    parser = argparse.ArgumentParser(description="AgentFly — Kari SR/ICE aligned")
     parser.add_argument("-q", "--question", type=str, help="Your question")
     parser.add_argument("-f", "--file", type=str, default="", help="Optional file path")
-    parser.add_argument("-m", "--meta_model", type=str, default="gpt-4.1", help="Meta‑planner model")
-    parser.add_argument("-e", "--exec_model", type=str, default="qwen3-8b", help="Executor model")
+    parser.add_argument("-m", "--meta_model", type=str, default=DEFAULT_META_MODEL, help="Meta-planner model alias")
+    parser.add_argument("-e", "--exec_model", type=str, default=DEFAULT_EXEC_MODEL, help="Executor model alias")
     parser.add_argument("-s", "--servers", type=str, nargs="*", default=[
         "../server/code_agent.py",
         "../server/documents_tool.py",
@@ -594,54 +416,26 @@ def parse_args():
         "../server/ai_crawl.py",
         "../server/serp_search.py",
     ], help="Paths of tool server scripts")
-    return parser.parse_args()
+    args = parser.parse_args()
 
-async def run_single_query(client: HierarchicalClient, question: str, file_path: str):
-    """
-    Execute a single query and display the result.
-    
-    Args:
-        client: Initialized HierarchicalClient instance
-        question: User's question
-        file_path: Optional file path for context
-    """
-    answer = await client.process_query(question, file_path, str(uuid.uuid4()))
-    print("\nFINAL ANSWER:", answer)
-
-async def main_async(args):
-    """
-    Main async function that sets up and runs the AgentFly client.
-    
-    Args:
-        args: Parsed command line arguments
-    """
-    # Load environment variables (API keys, etc.)
-    load_dotenv()
-    
-    # Initialize the hierarchical client
-    client = HierarchicalClient(args.meta_model, args.exec_model)
-    
-    # Connect to tool servers
-    await client.connect_to_servers(args.servers)
+    agent = AgentFly(meta_model=args.meta_model, exec_model=args.exec_model)
+    await agent.connect_tools(args.servers)
 
     try:
         if args.question:
-            # Run single query mode
-            await run_single_query(client, args.question, args.file)
+            ans = await agent.ask(args.question, file=args.file)
+            print("\nFINAL ANSWER:", ans)
         else:
-            # Interactive mode
-            print("Enter 'exit' to quit.")
+            print("Interactive mode. Type 'exit' to quit.")
             while True:
                 q = input("\nQuestion: ").strip()
-                if q.lower() in {"exit", "quit", "q"}:
+                if q.lower() in {"exit","quit","q"}:
                     break
                 f = input("File path (optional): ").strip()
-                await run_single_query(client, q, f)
+                ans = await agent.ask(q, file=f)
+                print("\nFINAL ANSWER:", ans)
     finally:
-        # Ensure cleanup happens even if errors occur
-        await client.cleanup()
+        await agent.close()
 
 if __name__ == "__main__":
-    # Parse arguments and run the main async function
-    arg_ns = parse_args()
-    asyncio.run(main_async(arg_ns))
+    asyncio.run(_main())

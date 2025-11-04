@@ -641,7 +641,7 @@ export MILVUS_PORT=19530
 | Linting | `ruff check .` |
 | Run tests | `pytest` |
 | Start API | `uvicorn main:create_app --factory --reload` |
-| Build web UI | `cd ui_launchers/web_ui && npm run build` |
+| Build web UI | `cd ui_launchers/KAREN-Theme-Default && npm run build` |
 | Build desktop | `cd ui_launchers/desktop_ui && npm run tauri build` |
 
 ### Test Environment Setup
@@ -921,7 +921,7 @@ docker compose up -d --force-recreate
 **Solution**:
 ```bash
 # Clear node modules
-cd ui_launchers/web_ui
+cd ui_launchers/KAREN-Theme-Default
 rm -rf node_modules package-lock.json
 npm install
 
@@ -1008,7 +1008,7 @@ See [LICENSE.md](LICENSE.md) and [LICENSE-commercial.txt](LICENSE-commercial.txt
 ## Documentation
 
 ### Component Documentation
-- [Web UI Documentation](ui_launchers/web_ui/README.md) - Next.js web interface
+- [Web UI Documentation](ui_launchers/KAREN-Theme-Default/README.md) - Next.js web interface
 - [Desktop UI Documentation](ui_launchers/desktop_ui/README.md) - Tauri desktop application
 - [Streamlit UI Documentation](ui_launchers/streamlit_ui/README.md) - Modern Streamlit interface
 - [Database Documentation](docker/database/README.md) - Multi-database setup

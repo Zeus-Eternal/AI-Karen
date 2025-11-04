@@ -98,3 +98,6 @@ archives/
 coverage.xml
 htmlcov/
 /venv
+
+# Ignore Theme active related development files
+# /ui_launchers/KAREN-Theme-Default

@@ -39,7 +39,7 @@ The AI Karen UI Launchers ecosystem offers three distinct interface options, eac
 
 ### Web UI (Recommended for most users)
 ```bash
-cd ui_launchers/web_ui
+cd ui_launchers/KAREN-Theme-Default
 npm install
 npm run dev
 # Access at http://localhost:9002
@@ -252,7 +252,7 @@ npm run dev:desktop   # Desktop application
 #### Web UI Deployment
 ```bash
 # Build for production
-cd ui_launchers/web_ui
+cd ui_launchers/KAREN-Theme-Default
 npm run build
 npm start
 

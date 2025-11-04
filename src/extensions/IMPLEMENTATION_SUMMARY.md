@@ -515,7 +515,7 @@ This section covers the implementation of extension integration with the Next.js
 
 ## ✅ Completed Sub-Tasks
 
-### 1. Extended existing extension utilities in `ui_launchers/web_ui/src/lib/extensions/`
+### 1. Extended existing extension utilities in `ui_launchers/KAREN-Theme-Default/src/lib/extensions/`
 **Implementation:** Enhanced the existing extension utilities with new integration capabilities
 
 **Features:**
@@ -525,7 +525,7 @@ This section covers the implementation of extension integration with the Next.js
 - Maintained consistency with existing extension architecture
 
 ### 2. Created extension component registration system for React components
-**Implementation:** `ui_launchers/web_ui/src/lib/extensions/extension-integration.ts` - `ExtensionIntegrationService`
+**Implementation:** `ui_launchers/KAREN-Theme-Default/src/lib/extensions/extension-integration.ts` - `ExtensionIntegrationService`
 
 **Features:**
 - Dynamic React component registration for extensions
@@ -557,7 +557,7 @@ This section covers the implementation of extension integration with the Next.js
 - Navigation sorting and filtering by permissions
 
 ### 4. Built real-time extension status dashboard using existing utilities
-**Implementation:** `ui_launchers/web_ui/src/lib/extensions/components.tsx` - Dashboard components
+**Implementation:** `ui_launchers/KAREN-Theme-Default/src/lib/extensions/components.tsx` - Dashboard components
 
 **Features:**
 - Real-time extension status monitoring with 30-second updates
@@ -591,7 +591,7 @@ This section covers the implementation of extension integration with the Next.js
 ## ✅ React Hooks System
 
 ### Custom Hooks for Extension Management
-**Implementation:** `ui_launchers/web_ui/src/lib/extensions/hooks.ts`
+**Implementation:** `ui_launchers/KAREN-Theme-Default/src/lib/extensions/hooks.ts`
 
 **Features:**
 - `useExtensionStatuses()` - Real-time extension status monitoring

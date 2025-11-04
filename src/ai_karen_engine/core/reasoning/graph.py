@@ -1,63 +1,133 @@
 from __future__ import annotations
 
-from collections import defaultdict, deque
-from typing import Any, Dict, List, Optional
+import logging
+from typing import Any, Dict, Optional
+
+from ai_karen_engine.core.reasoning.ice_integration import (
+    KariICEWrapper,
+    ICEWritebackPolicy,
+    ReasoningTrace,
+)
+from ai_karen_engine.core.reasoning.soft_reasoning_engine import (
+    SoftReasoningEngine,
+    RecallConfig,
+    WritebackConfig,
+)
+from ai_karen_engine.core.reasoning.graph_core import CapsuleGraph
+from ai_karen_engine.integrations.llm_utils import LLMUtils
+from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+
+logger = logging.getLogger("ai_karen.reasoning.graph")
 
 
 class ReasoningGraph:
-    """Lightweight in-memory graph for capsule reasoning."""
+    """ICE façade with optional CapsuleGraph mirroring for explainability."""
 
-    def __init__(self) -> None:
-        self.nodes: Dict[str, Dict[str, Any]] = {}
-        self.edges: Dict[tuple[str, str], Dict[str, Any]] = {}
-        self.adj: Dict[str, List[str]] = defaultdict(list)
+    def __init__(
+        self,
+        *,
+        engine: Optional[SoftReasoningEngine] = None,
+        llm: Optional[LLMUtils] = None,
+        policy: Optional[ICEWritebackPolicy] = None,
+        enable_graph_mirroring: bool = True,
+    ) -> None:
+        self.engine = engine or SoftReasoningEngine(
+            ttl_seconds=3600,
+            recall=RecallConfig(
+                fast_top_k=24,
+                final_top_k=5,
+                recency_alpha=0.65,
+                min_score=0.0,
+                use_dual_embedding=True,
+            ),
+            writeback=WritebackConfig(
+                novelty_gate=0.18,
+                importance_gate=0.30,
+                default_ttl_seconds=3600,
+                long_ttl_seconds=86400,
+                max_len_chars=5000,
+            ),
+        )
+        self.llm = llm or (llm_registry.get_active() or LLMUtils())
+        self.policy = policy or ICEWritebackPolicy()
+        self._ice = KariICEWrapper(engine=self.engine, llm=self.llm, policy=self.policy)
 
-    def add_node(self, name: str, **attrs: Any) -> None:
-        self.nodes[name] = attrs
+        self._capsule_graph = CapsuleGraph() if enable_graph_mirroring else None
 
-    def add_edge(self, src: str, dst: str, **attrs: Any) -> None:
-        self.adj[src].append(dst)
-        self.edges[(src, dst)] = attrs
+    # --------------------------
+    # Public API
+    # --------------------------
+    def run(
+        self,
+        text: str,
+        *,
+        metadata: Optional[Dict[str, Any]] = None,
+        policy_overrides: Optional[Dict[str, Any]] = None,
+    ) -> ReasoningTrace:
+        trace = self._run_internal(text, metadata=metadata, policy_overrides=policy_overrides)
+        self._mirror_to_graph(text, trace)
+        return trace
 
-    def get_node(self, name: str) -> Dict[str, Any] | None:
-        return self.nodes.get(name)
+    async def arun(
+        self,
+        text: str,
+        *,
+        metadata: Optional[Dict[str, Any]] = None,
+        policy_overrides: Optional[Dict[str, Any]] = None,
+    ) -> ReasoningTrace:
+        import asyncio
+        trace = await asyncio.to_thread(self._run_internal, text, metadata, policy_overrides)
+        self._mirror_to_graph(text, trace)
+        return trace
 
-    def get_edge(self, src: str, dst: str) -> Dict[str, Any] | None:
-        return self.edges.get((src, dst))
+    # --------------------------
+    # CapsuleGraph utilities
+    # --------------------------
+    @property
+    def capsule_graph(self) -> Optional[CapsuleGraph]:
+        return self._capsule_graph
 
-    def delete_node(self, name: str) -> None:
-        self.nodes.pop(name, None)
-        self.adj.pop(name, None)
-        for neighbors in self.adj.values():
-            if name in neighbors:
-                neighbors.remove(name)
-        for key in list(self.edges.keys()):
-            if name in key:
-                del self.edges[key]
+    def visualize_capsule_cli(self) -> Optional[str]:
+        if not self._capsule_graph:
+            return None
+        return self._capsule_graph.visualize_cli()
 
-    def delete_edge(self, src: str, dst: str) -> None:
-        if dst in self.adj.get(src, []):
-            self.adj[src].remove(dst)
-        self.edges.pop((src, dst), None)
+    def capsule_dot(self) -> Optional[str]:
+        if not self._capsule_graph:
+            return None
+        return self._capsule_graph.to_dot()
 
-    def multi_hop(self, start: str, end: str, max_hops: int = 3) -> Optional[List[str]]:
-        queue: deque[tuple[str, List[str]]] = deque([(start, [start])])
-        visited = {start}
-        while queue:
-            node, path = queue.popleft()
-            if len(path) - 1 > max_hops:
+    # --------------------------
+    # Internals
+    # --------------------------
+    def _run_internal(
+        self,
+        text: str,
+        metadata: Optional[Dict[str, Any]],
+        policy_overrides: Optional[Dict[str, Any]],
+    ) -> ReasoningTrace:
+        if policy_overrides:
+            p = ICEWritebackPolicy(**{**self.policy.__dict__, **policy_overrides})
+            tmp = KariICEWrapper(engine=self.engine, llm=self.llm, policy=p)
+            return tmp.process(text, metadata=metadata)
+        return self._ice.process(text, metadata=metadata)
+
+    def _mirror_to_graph(self, text: str, trace: ReasoningTrace) -> None:
+        if not self._capsule_graph:
+            return
+        q = f"query::{hash(text)}"
+        self._capsule_graph.upsert_node(q, type="query", entropy=trace.entropy, top_score=trace.top_score)
+        for idx, m in enumerate(trace.memory_matches):
+            payload = m.get("payload", {})
+            mem_text = payload.get("text", "")
+            if not mem_text:
                 continue
-            if node == end:
-                return path
-            for nxt in self.adj.get(node, []):
-                if nxt not in visited:
-                    visited.add(nxt)
-                    queue.append((nxt, path + [nxt]))
-        return None
-
-    def visualize_cli(self) -> str:
-        lines = []
-        for src, dsts in self.adj.items():
-            for dst in dsts:
-                lines.append(f"{src} -> {dst}")
-        return "\n".join(sorted(lines))
+            node_name = f"mem::{hash(mem_text)}"
+            self._capsule_graph.upsert_node(
+                node_name,
+                type="memory",
+                ts=payload.get("timestamp"),
+                score=m.get("score", 0.0),
+            )
+            weight = max(0.001, 1.0 - float(m.get("score", 0.0)))
+            self._capsule_graph.upsert_edge(q, node_name, weight=weight, rank=idx)

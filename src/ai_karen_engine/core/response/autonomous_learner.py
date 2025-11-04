@@ -197,9 +197,9 @@ class ConversationMetadataCollector:
         """Collect metadata from a single conversation turn."""
         try:
             # Analyze user input
-            intent = await self.spacy_analyzer._detect_intent_async(user_text)
-            sentiment = await self.spacy_analyzer._sentiment_async(user_text)
-            entities_data = await self.spacy_analyzer._entities_async(user_text)
+            intent = await self.spacy_analyzer.detect_intent(user_text)
+            sentiment = await self.spacy_analyzer.sentiment(user_text)
+            entities_data = await self.spacy_analyzer.entities(user_text)
             entities = [(e["text"], e["label"]) for e in entities_data.get("entities", [])]
             
             # Select persona based on analysis
@@ -571,9 +571,9 @@ class ModelValidator:
             for example in validation_examples:
                 try:
                     # Get model predictions
-                    predicted_intent = await self.spacy_analyzer._detect_intent_async(example.text)
-                    predicted_sentiment = await self.spacy_analyzer._sentiment_async(example.text)
-                    predicted_entities = await self.spacy_analyzer._entities_async(example.text)
+                    predicted_intent = await self.spacy_analyzer.detect_intent(example.text)
+                    predicted_sentiment = await self.spacy_analyzer.sentiment(example.text)
+                    predicted_entities = await self.spacy_analyzer.entities(example.text)
                     
                     # Check intent accuracy
                     intent_match = predicted_intent == example.expected_intent

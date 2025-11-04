@@ -18,9 +18,9 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
-from ui_launchers.web_ui.src.lib.graceful_degradation.enhanced_backend_service import EnhancedBackendService
-from ui_launchers.web_ui.src.lib.graceful_degradation.cache_manager import CacheManager
-from ui_launchers.web_ui.src.lib.graceful_degradation.feature_flags import FeatureFlags
+from ui_launchers.KAREN-Theme-Default.src.lib.graceful_degradation.enhanced_backend_service import EnhancedBackendService
+from ui_launchers.KAREN-Theme-Default.src.lib.graceful_degradation.cache_manager import CacheManager
+from ui_launchers.KAREN-Theme-Default.src.lib.graceful_degradation.feature_flags import FeatureFlags
 
 
 class TestGracefulDegradationIntegration:

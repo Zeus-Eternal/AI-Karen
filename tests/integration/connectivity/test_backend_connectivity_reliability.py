@@ -22,10 +22,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 # Import connection management components
 try:
-    from ui_launchers.web_ui.src.lib.connection.connection_manager import ConnectionManager
-    from ui_launchers.web_ui.src.lib.connection.health_monitor import HealthMonitor
-    from ui_launchers.web_ui.src.lib.connection.timeout_manager import TimeoutManager
-    from ui_launchers.web_ui.src.lib.config.environment_config_manager import EnvironmentConfigManager
+    from ui_launchers.KAREN-Theme-Default.src.lib.connection.connection_manager import ConnectionManager
+    from ui_launchers.KAREN-Theme-Default.src.lib.connection.health_monitor import HealthMonitor
+    from ui_launchers.KAREN-Theme-Default.src.lib.connection.timeout_manager import TimeoutManager
+    from ui_launchers.KAREN-Theme-Default.src.lib.config.environment_config_manager import EnvironmentConfigManager
 except ImportError:
     # Fallback for test environment
     ConnectionManager = None
