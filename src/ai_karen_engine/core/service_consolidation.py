@@ -65,8 +65,8 @@ class OverlapAnalysis:
     consolidation_potential: float = 0.0  # 0.0 to 1.0
     estimated_savings: Dict[str, float] = field(default_factory=dict)
 
-@datac
-lass
+
+@dataclass
 class ConsolidationPlan:
     """Plan for consolidating services."""
     consolidation_id: str
@@ -444,9 +444,9 @@ class ServiceMerger:
         )
         
         self.consolidation_plans[plan.consolidation_id] = plan
-        return plan    
-   
- async def _select_primary_service(self, service_names: List[str]) -> str:
+        return plan
+
+    async def _select_primary_service(self, service_names: List[str]) -> str:
         """Select the primary service for consolidation based on various criteria."""
         best_service = service_names[0]
         best_score = 0.0
