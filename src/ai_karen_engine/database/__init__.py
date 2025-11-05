@@ -1,5 +1,13 @@
 # mypy: ignore-errors
-"""Database package for AI-Karen multi-tenant architecture."""
+"""
+Database package for AI-Karen multi-tenant architecture.
+
+Provides production-ready database services:
+- Multi-tenant database client with connection pooling
+- Migration management
+- Conversation, memory, and tenant managers
+- Factory for centralized initialization
+"""
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
@@ -14,6 +22,18 @@ from ai_karen_engine.database.models import (
     TenantConversation,
     TenantMemoryItem,
     TenantMemoryEntry,
+)
+
+# Import factory for centralized database initialization
+from ai_karen_engine.database.factory import (
+    DatabaseServiceConfig,
+    DatabaseServiceFactory,
+    get_database_service_factory,
+    get_database_client,
+    get_conversation_manager,
+    get_memory_manager,
+    get_tenant_manager,
+    initialize_database_for_production,
 )
 
 _default_client: Optional[MultiTenantPostgresClient] = None
@@ -49,6 +69,7 @@ async def get_postgres_session() -> AsyncGenerator:
 
 
 __all__ = [
+    # Models
     "Base",
     "Tenant",
     "AuthUser",
@@ -56,7 +77,18 @@ __all__ = [
     "TenantMemoryItem",
     "TenantMemoryEntry",
     "AuditLog",
+    # Clients
     "MultiTenantPostgresClient",
     "MigrationManager",
     "get_postgres_session",
+    # Factory
+    "DatabaseServiceConfig",
+    "DatabaseServiceFactory",
+    "get_database_service_factory",
+    # Factory convenience functions
+    "get_database_client",
+    "get_conversation_manager",
+    "get_memory_manager",
+    "get_tenant_manager",
+    "initialize_database_for_production",
 ]
