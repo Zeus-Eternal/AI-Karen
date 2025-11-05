@@ -243,7 +243,7 @@ class StartupChecker:
         
         return issues
     
-    async def get_system_status(self) -> Dict[str, any]:
+    async def get_system_status(self) -> Dict[str, Any]:
         """Get comprehensive system status information."""
         status = {
             "startup_checks_passed": False,
@@ -323,24 +323,16 @@ async def perform_startup_checks(auto_fix: bool = True) -> Tuple[bool, List[str]
     return await checker.perform_startup_checks(auto_fix)
 
 
-# Auto-check on import (can be disabled)
-if os.getenv("KARI_SKIP_STARTUP_CHECK", "false").lower() != "true":
-    def _auto_startup_check():
-        """Perform automatic startup check."""
-        try:
-            # Quick check if we need to run startup checks
-            config_exists = Path("config.json").exists()
-            models_dir_exists = Path(os.getenv("KARI_MODEL_DIR", "models")).exists()
-            
-            if not config_exists or not models_dir_exists:
-                logger.info("🔍 Running automatic startup checks...")
-                # Schedule startup check
-                asyncio.create_task(perform_startup_checks(auto_fix=True))
-            
-        except Exception as e:
-            logger.debug(f"Auto startup check failed: {e}")
-    
-    try:
-        _auto_startup_check()
-    except Exception:
-        pass  # Don't fail imports
+# NOTE: Auto-check on import was removed due to race conditions.
+# Applications should explicitly call perform_startup_checks() during their startup sequence.
+# Example:
+#
+#   @app.on_event("startup")
+#   async def startup():
+#       from ai_karen_engine.core.startup_check import perform_startup_checks
+#       passed, issues = await perform_startup_checks(auto_fix=True)
+#       if not passed:
+#           logger.error(f"Startup checks failed: {issues}")
+#       logger.info("Startup checks complete")
+#
+# For migration from auto-check, set KARI_SKIP_STARTUP_CHECK=true in your environment.
