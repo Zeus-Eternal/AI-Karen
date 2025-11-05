@@ -398,6 +398,7 @@ export class EnvironmentConfigManager {
     this.validationCache.set(cacheKey, {
       result,
       timestamp: Date.now(),
+    });
 
     return result;
   }

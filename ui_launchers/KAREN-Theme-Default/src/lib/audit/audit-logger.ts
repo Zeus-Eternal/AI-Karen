@@ -233,7 +233,7 @@ export class AuditLogger {
         count: resourceIds.length,
       },
       request,
-
+    });
   }
 
   /**

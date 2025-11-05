@@ -462,20 +462,53 @@ export interface PerformanceReport {
   database: {
     queryCount: number;
     avgQueryTime: number;
+    avgQueryTimeMs?: number;
     slowQueries: number;
     p95QueryTime: number;
+    connections?: {
+      poolUtilization?: number;
+      active?: number;
+      idle?: number;
+    };
   };
   api: {
     requestCount: number;
     avgResponseTime: number;
     slowRequests: number;
     p95ResponseTime: number;
+    p95?: number;
+    p99?: number;
+    rps?: number;
+    errorRate?: number;
   };
   components: {
     renderCount: number;
     avgRenderTime: number;
     slowRenders: number;
     p95RenderTime: number;
+  };
+  cache?: {
+    hitRate?: number;
+    missRate?: number;
+    evictionRate?: number;
+    size?: number;
+  };
+  jobs?: {
+    backlog?: number;
+    processed?: number;
+    failed?: number;
+    avgProcessingTime?: number;
+  };
+  frontend?: {
+    ssr?: {
+      avgRenderMs?: number;
+      p95?: number;
+      slowRenders?: number;
+    };
+    clientMetrics?: {
+      avgLoadTime?: number;
+      avgInteractionDelay?: number;
+    };
   };
   recommendations: string[];
 }

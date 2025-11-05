@@ -18,7 +18,7 @@ export {
   type EnvironmentInfoType,
   type ValidationResult,
   type ValidationResultType,
-import { } from './environment-config-manager';
+} from './environment-config-manager';
 
 // Re-export existing config for backward compatibility
 export {

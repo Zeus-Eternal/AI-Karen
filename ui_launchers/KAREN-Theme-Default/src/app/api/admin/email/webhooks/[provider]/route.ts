@@ -105,9 +105,8 @@ export async function POST(
       await webhookHandler.processIncomingWebhook(
         provider,
         evt.event_type,
-        evt.body,
-        headers,
-        evt.event_id // optional extra arg if your handler supports it
+        { ...evt.body, event_id: evt.event_id }, // Include event_id in body for idempotency
+        headers
       );
     }
 

@@ -397,3 +397,15 @@ export interface EmailError {
   details?: Record<string, any>;
   retry_after?: number;
 }
+
+// Template validation result (alias for EmailTemplateValidation)
+export type TemplateValidationResult = EmailTemplateValidation;
+
+// Template render result
+export interface TemplateRenderResult {
+  html: string;
+  text: string;
+  subject: string;
+  success: boolean;
+  error?: string;
+}
