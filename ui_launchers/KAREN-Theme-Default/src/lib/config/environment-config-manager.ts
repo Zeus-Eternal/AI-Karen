@@ -325,6 +325,7 @@ export class EnvironmentConfigManager {
       } catch {
         errors.push(`Invalid fallback URL[${index}]: ${url}`);
       }
+    });
 
     // Validate timeout values
     if (this.timeouts.authentication < 1000) {

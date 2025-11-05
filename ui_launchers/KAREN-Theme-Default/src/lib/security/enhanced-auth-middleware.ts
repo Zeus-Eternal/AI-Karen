@@ -108,8 +108,7 @@ export class EnhancedAuthMiddleware {
         };
       }
 
-      // From here, user should exist
-      const user = await this.findUserByEmail(email);
+      // From here, user should exist - verify it's still valid
       if (!user || !user.is_active) {
         const delay = await securityManager.recordFailedLogin(email, clientIP, userAgent);
         await ipSecurityManager.recordFailedAttempt(clientIP, email);

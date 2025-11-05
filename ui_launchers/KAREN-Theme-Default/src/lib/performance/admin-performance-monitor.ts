@@ -263,7 +263,8 @@ export class PerformanceReporter {
             JSON.stringify(metric.metadata)
           ].map(field => `"${field.replace(/"/g, '""')}"`).join(',');
           csvRows.push(row);
-
+        });
+      });
 
       return csvRows.join('\n');
     }
