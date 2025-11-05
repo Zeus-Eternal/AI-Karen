@@ -14,14 +14,21 @@ from ai_karen_engine.chat.chat_orchestrator import (
 )
 from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
 from ai_karen_engine.chat.stream_processor import StreamProcessor
+from ai_karen_engine.chat.factory import (
+    ChatServiceFactory,
+    ChatServiceConfig,
+    get_chat_service_factory,
+    get_chat_orchestrator,
+    get_chat_hub,
+)
 
 __all__ = [
-    "ChatHub", 
-    "SlashCommand", 
+    "ChatHub",
+    "SlashCommand",
     "NeuroVault",
     "ChatOrchestrator",
     "ChatRequest",
-    "ChatResponse", 
+    "ChatResponse",
     "ChatStreamChunk",
     "ProcessingContext",
     "ProcessingResult",
@@ -30,4 +37,9 @@ __all__ = [
     "ErrorType",
     "WebSocketGateway",
     "StreamProcessor",
+    "ChatServiceFactory",
+    "ChatServiceConfig",
+    "get_chat_service_factory",
+    "get_chat_orchestrator",
+    "get_chat_hub",
 ]
