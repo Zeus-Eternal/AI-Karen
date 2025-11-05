@@ -17,8 +17,11 @@ class AuthStateManager {
       if (stored) {
         try {
           this.state = JSON.parse(stored);
-        } catch {
-          /* ignore */
+        } catch (error) {
+          console.error('Failed to parse auth state from sessionStorage:', error);
+          // Clear corrupted data
+          window.sessionStorage.removeItem('auth_state');
+          this.state = { isAuthenticated: false, user: null };
         }
       }
     }
