@@ -36,6 +36,20 @@ from ai_karen_engine.database.factory import (
     initialize_database_for_production,
 )
 
+# Import dependencies for FastAPI dependency injection
+from ai_karen_engine.database.dependencies import (
+    get_database_client_dependency,
+    get_conversation_manager_dependency,
+    get_memory_manager_dependency,
+    get_tenant_manager_dependency,
+    get_db_session,
+    get_async_db_session_dependency,
+    get_database_health_check,
+    get_current_tenant_id,
+    DatabaseTransaction,
+    get_database_transaction,
+)
+
 _default_client: Optional[MultiTenantPostgresClient] = None
 _import_error: Optional[Exception] = None
 
@@ -91,4 +105,15 @@ __all__ = [
     "get_memory_manager",
     "get_tenant_manager",
     "initialize_database_for_production",
+    # Dependencies (FastAPI)
+    "get_database_client_dependency",
+    "get_conversation_manager_dependency",
+    "get_memory_manager_dependency",
+    "get_tenant_manager_dependency",
+    "get_db_session",
+    "get_async_db_session_dependency",
+    "get_database_health_check",
+    "get_current_tenant_id",
+    "DatabaseTransaction",
+    "get_database_transaction",
 ]
