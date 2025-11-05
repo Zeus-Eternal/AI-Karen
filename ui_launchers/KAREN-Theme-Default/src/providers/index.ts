@@ -1,5 +1,5 @@
 // Theme Provider
-import { export { ThemeProvider, useTheme } from './theme-provider';
+export { ThemeProvider, useTheme } from './theme-provider';
 
 // Preferences Provider
 export {
@@ -7,13 +7,13 @@ export {
   useThemePreference,
   useAnimationPreference,
   useAccessibilityPreference,
-import { } from './preferences-provider';
+} from './preferences-provider';
 
 // Motion Provider
 export {
   useMotion,
   useAnimationVariants,
-import { } from './motion-provider';
+} from './motion-provider';
 
 // Accessibility Provider
 export {
@@ -21,4 +21,13 @@ export {
   useAnnounce,
   useScreenReader,
   useAccessibilitySettings,
-import { } from './accessibility-provider';
+} from './accessibility-provider';
+
+// i18n Provider
+export { useI18n, useTranslation, useLocale, useFormatting } from './i18n-provider';
+
+// RBAC Provider
+export { useRBAC } from './rbac-provider';
+
+// Combined Provider
+export { CombinedProvider } from './combined-provider';

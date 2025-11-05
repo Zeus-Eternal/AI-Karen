@@ -85,14 +85,24 @@ export interface Role {
   };
 }
 
+/**
+ * Restriction configuration for role-based access control
+ */
 export interface Restriction {
   type: 'time_limit' | 'resource_quota' | 'feature_limit' | 'ip_restriction';
   description: string;
-  config: Record<string, any>;
+  config: Record<string, string | number | boolean>;
   active: boolean;
 }
 
-export interface User {
+/**
+ * RBAC-specific user representation for permission evaluation
+ *
+ * Note: This is different from the main User interface in auth.ts.
+ * This representation is optimized for RBAC permission checking and
+ * may have a different structure than the canonical User type.
+ */
+export interface RBACUser {
   id: string;
   username: string;
   email: string;
@@ -106,6 +116,12 @@ export interface User {
     requiresPasswordChange: boolean;
   };
 }
+
+/**
+ * Alias for backward compatibility
+ * @deprecated Use RBACUser to avoid confusion with the canonical User type
+ */
+export type User = RBACUser;
 
 export interface AccessContext {
   userId: string;

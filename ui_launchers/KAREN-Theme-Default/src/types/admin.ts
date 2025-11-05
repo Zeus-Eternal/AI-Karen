@@ -1,30 +1,35 @@
 /**
  * Admin Management System Type Definitions
- * 
+ *
  * This file contains all TypeScript interfaces and types for the admin management system,
  * including enhanced user models, audit logging, system configuration, and permissions.
  */
 
-// Enhanced User interface with role-based access control
-export interface User {
-  user_id: string;
-  email: string;
-  full_name?: string;
+import type { User as BaseUser, UserPreferences } from './auth';
+
+/**
+ * Enhanced admin user interface extending the base User with admin-specific fields
+ */
+export interface AdminUser extends BaseUser {
+  // Override to make role required (not optional)
   role: 'super_admin' | 'admin' | 'user';
-  roles: string[]; // Legacy field for backward compatibility
-  tenant_id: string;
-  preferences: Record<string, any>;
+  // Override to make these required for admin users
   is_verified: boolean;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
-  last_login_at?: Date;
+  // Admin-specific fields
   failed_login_attempts: number;
   locked_until?: Date;
-  two_factor_enabled: boolean;
   two_factor_secret?: string;
   created_by?: string; // ID of admin who created this user
 }
+
+/**
+ * Alias for backward compatibility - use AdminUser instead
+ * @deprecated Use AdminUser for admin-specific user data
+ */
+export type User = AdminUser;
 
 // Audit Log interface for tracking administrative actions
 export interface AuditLog {
@@ -287,12 +292,23 @@ export interface AdminMenuItem {
   order: number;
 }
 
-// Dashboard widget interface
+/**
+ * Dashboard widget data union type for admin dashboard
+ */
+export type DashboardWidgetData =
+  | { type: 'stat'; value: number; label: string; change?: number; trend?: 'up' | 'down' | 'stable' }
+  | { type: 'chart'; series: Array<{ name: string; data: number[] }>; labels: string[] }
+  | { type: 'table'; columns: string[]; rows: Array<Record<string, string | number>> }
+  | { type: 'alert'; severity: 'info' | 'warning' | 'error'; message: string; count: number };
+
+/**
+ * Dashboard widget interface for admin dashboard components
+ */
 export interface DashboardWidget {
   id: string;
   title: string;
   type: 'stat' | 'chart' | 'table' | 'alert';
-  data: any;
+  data: DashboardWidgetData;
   required_permission?: string;
   refresh_interval?: number;
   order: number;

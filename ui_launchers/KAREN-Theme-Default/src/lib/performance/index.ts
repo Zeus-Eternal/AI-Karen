@@ -139,10 +139,26 @@ export const PerformanceUtils = {
 
     // The performance optimizer may already call its own sub-shutdowns;
     // we still best-effort close the leaves for safety.
-    try { await perfMod.shutdownPerformanceOptimizer(); } catch {}
-    try { await poolMod.shutdownHttpConnectionPool(); } catch {}
-    try { cacheMod.shutdownRequestResponseCache(); } catch {}
-    try { dbqMod.shutdownDatabaseQueryOptimizer(); } catch {}
+    try {
+      await perfMod.shutdownPerformanceOptimizer();
+    } catch (err) {
+      console.warn('[PERF] Performance optimizer shutdown failed:', err);
+    }
+    try {
+      await poolMod.shutdownHttpConnectionPool();
+    } catch (err) {
+      console.warn('[PERF] HTTP connection pool shutdown failed:', err);
+    }
+    try {
+      cacheMod.shutdownRequestResponseCache();
+    } catch (err) {
+      console.warn('[PERF] Response cache shutdown failed:', err);
+    }
+    try {
+      dbqMod.shutdownDatabaseQueryOptimizer();
+    } catch (err) {
+      console.warn('[PERF] Database query optimizer shutdown failed:', err);
+    }
   },
 
   /**

@@ -111,7 +111,7 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({
 
   // Add global error
   const addGlobalError = useCallback((
-    error: Error | string, 
+    error: Error | string,
     context?: Partial<ErrorAnalysisRequest>
   ): string => {
     const id = generateErrorId();
@@ -127,8 +127,9 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({
       const updated = [newError, ...prev];
       // Limit the number of global errors
       return updated.slice(0, maxGlobalErrors);
+    });
 
-    // Analyze the error
+    // Analyze the error after state update
     intelligentError.analyzeError(error, context);
 
     return id;

@@ -132,8 +132,9 @@ class TestStructuredLogger:
         assert log_data["message"] == "Error occurred"
         assert log_data["error_type"] == "ValueError"
         assert log_data["error_details"]["message"] == "Test error"
-        assert "stack_trace" in log_data    def
- test_user_action_logging(self, mock_logger):
+        assert "stack_trace" in log_data
+
+    def test_user_action_logging(self, mock_logger):
         """Test user action logging"""
         logger = StructuredLogger("test-service")
         

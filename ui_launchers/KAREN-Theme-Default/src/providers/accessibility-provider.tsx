@@ -64,15 +64,23 @@ export function AccessibilityProvider({
         setReducedMotion(mergedSettings.reducedMotion);
       }
     } catch (error) {
+      console.error('[AccessibilityProvider] Failed to parse stored settings:', error);
+      // Reset to defaults on parse error
+      setSettings(defaultSettings);
     }
     setMounted(true);
   }, [storageKey, setReducedMotion]);
+
   // Save settings to localStorage
   useEffect(() => {
     if (!mounted) return;
     try {
       localStorage.setItem(storageKey, JSON.stringify(settings));
     } catch (error) {
+      console.error('[AccessibilityProvider] Failed to save settings to localStorage:', error);
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
+        console.warn('[AccessibilityProvider] localStorage quota exceeded');
+      }
     }
   }, [settings, storageKey, mounted]);
   // Sync reduced motion with UI store

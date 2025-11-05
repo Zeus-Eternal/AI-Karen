@@ -65,6 +65,7 @@ export function generateTypographyProperties(): Record<string, string> {
   // Font sizes
   Object.entries(designTokens.typography.fontSize).forEach(([size, value]) => {
     properties[`--text-${size}`] = value;
+  });
 
   // Font weights
   Object.entries(designTokens.typography.fontWeight).forEach(([weight, value]) => {
@@ -102,9 +103,10 @@ export function generateShadowProperties(): Record<string, string> {
  */
 export function generateRadiusProperties(): Record<string, string> {
   const properties: Record<string, string> = {};
-  
+
   Object.entries(designTokens.radius).forEach(([size, value]) => {
     properties[`--radius-${size}`] = value;
+  });
 
   return properties;
 }
@@ -118,10 +120,12 @@ export function generateAnimationProperties(): Record<string, string> {
   // Durations
   Object.entries(designTokens.animations.duration).forEach(([speed, value]) => {
     properties[`--duration-${speed}`] = value;
+  });
 
   // Easing curves
   Object.entries(designTokens.animations.easing).forEach(([curve, value]) => {
     properties[`--ease-${curve}`] = value;
+  });
 
   return properties;
 }
@@ -137,14 +141,16 @@ export function generateComponentProperties(): Record<string, string> {
       if (typeof value === 'string' && value.length > 0) {
         properties[`--component-${prefix}-${toKebabCase(key)}`] = value;
       }
-
+    });
   };
 
   Object.entries(designTokens.components.button).forEach(([variant, tokens]) => {
     assignTokens(`button-${variant}`, tokens as unknown as Record<string, string | undefined>);
+  });
 
   Object.entries(designTokens.components.badge).forEach(([variant, tokens]) => {
     assignTokens(`badge-${variant}`, tokens as unknown as Record<string, string | undefined>);
+  });
 
   assignTokens('card', designTokens.components.card as unknown as Record<string, string | undefined>);
 

@@ -18,310 +18,101 @@ import type {
   PluginStoreState,
   PluginStoreActions,
 } from '@/types/plugins';
+import { enhancedApiClient } from '@/lib/enhanced-api-client';
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Mock API service (placeholder — wire to real API client)
+// Real API service using enhanced API client
 // ────────────────────────────────────────────────────────────────────────────────
 class PluginAPIService {
+  /**
+   * List all installed plugins
+   */
   async listPlugins(): Promise<PluginInfo[]> {
-    return [
-      {
-        id: 'weather-plugin',
-        name: 'Weather Service',
-        version: '1.2.0',
-        status: 'active',
-        enabled: true,
-        autoStart: true,
-        restartCount: 0,
-        installedAt: new Date('2024-01-15'),
-        updatedAt: new Date('2024-01-20'),
-        installedBy: 'admin',
-        manifest: {
-          id: 'weather-plugin',
-          name: 'Weather Service',
-          version: '1.2.0',
-          description: 'Provides current weather information for specified locations',
-          author: { name: 'Kari AI Team' },
-          license: 'MIT',
-          keywords: ['weather', 'api', 'location'],
-          category: 'integration',
-          runtime: { platform: ['node'] },
-          dependencies: [],
-          systemRequirements: {},
-          permissions: [
-            {
-              id: 'network-access',
-              name: 'Network Access',
-              description: 'Access to external weather APIs',
-              category: 'network',
-              level: 'read',
-              required: true,
-            },
-          ],
-          sandboxed: true,
-          securityPolicy: {
-            allowNetworkAccess: true,
-            allowFileSystemAccess: false,
-            allowSystemCalls: false,
-            trustedDomains: ['api.openweathermap.org'],
-          },
-          configSchema: [
-            {
-              key: 'apiKey',
-              type: 'password',
-              label: 'API Key',
-              description: 'OpenWeatherMap API key',
-              required: true,
-            },
-            {
-              key: 'units',
-              type: 'select',
-              label: 'Temperature Units',
-              required: false,
-              default: 'metric',
-              options: [
-                { label: 'Celsius', value: 'metric' },
-                { label: 'Fahrenheit', value: 'imperial' },
-                { label: 'Kelvin', value: 'standard' },
-              ],
-            },
-          ],
-          apiVersion: '1.0',
-        },
-        config: {
-          apiKey: '***hidden***',
-          units: 'metric',
-        },
-        permissions: [
-          {
-            id: 'network-access',
-            name: 'Network Access',
-            description: 'Access to external weather APIs',
-            category: 'network',
-            level: 'read',
-            required: true,
-          },
-        ],
-        metrics: {
-          performance: {
-            averageExecutionTime: 250,
-            totalExecutions: 1247,
-            errorRate: 0.02,
-            lastExecution: new Date(),
-          },
-          resources: {
-            memoryUsage: 15.2,
-            cpuUsage: 0.5,
-            diskUsage: 2.1,
-            networkUsage: 0.8,
-          },
-          health: {
-            status: 'healthy',
-            uptime: 99.8,
-            lastHealthCheck: new Date(),
-            issues: [],
-          },
-        },
-        dependencyStatus: {
-          satisfied: true,
-          missing: [],
-          conflicts: [],
-        },
-      },
-      {
-        id: 'gmail-plugin',
-        name: 'Gmail Integration',
-        version: '2.1.0',
-        status: 'inactive',
-        enabled: false,
-        autoStart: false,
-        restartCount: 2,
-        installedAt: new Date('2024-01-10'),
-        updatedAt: new Date('2024-01-25'),
-        installedBy: 'admin',
-        manifest: {
-          id: 'gmail-plugin',
-          name: 'Gmail Integration',
-          version: '2.1.0',
-          description: 'Read and compose Gmail messages through AI chat interface',
-          author: { name: 'Kari AI Team' },
-          license: 'MIT',
-          keywords: ['gmail', 'email', 'google'],
-          category: 'integration',
-          runtime: { platform: ['node'] },
-          dependencies: [],
-          systemRequirements: {},
-          permissions: [
-            {
-              id: 'gmail-read',
-              name: 'Gmail Read Access',
-              description: 'Read Gmail messages and metadata',
-              category: 'data',
-              level: 'read',
-              required: true,
-            },
-            {
-              id: 'gmail-compose',
-              name: 'Gmail Compose Access',
-              description: 'Send emails through Gmail',
-              category: 'data',
-              level: 'write',
-              required: false,
-            },
-          ],
-          sandboxed: true,
-          securityPolicy: {
-            allowNetworkAccess: true,
-            allowFileSystemAccess: false,
-            allowSystemCalls: false,
-            trustedDomains: ['gmail.googleapis.com'],
-          },
-          configSchema: [
-            {
-              key: 'clientId',
-              type: 'string',
-              label: 'Google Client ID',
-              required: true,
-            },
-            {
-              key: 'clientSecret',
-              type: 'password',
-              label: 'Google Client Secret',
-              required: true,
-            },
-            {
-              key: 'maxResults',
-              type: 'number',
-              label: 'Max Results per Query',
-              required: false,
-              default: 10,
-              validation: { min: 1, max: 100 },
-            },
-          ],
-          apiVersion: '1.0',
-        },
-        config: {
-          clientId: 'your-client-id',
-          clientSecret: '***hidden***',
-          maxResults: 10,
-        },
-        permissions: [
-          {
-            id: 'gmail-read',
-            name: 'Gmail Read Access',
-            description: 'Read Gmail messages and metadata',
-            category: 'data',
-            level: 'read',
-            required: true,
-          },
-        ],
-        metrics: {
-          performance: {
-            averageExecutionTime: 1200,
-            totalExecutions: 45,
-            errorRate: 0.15,
-            lastExecution: new Date(Date.now() - 86400000),
-          },
-          resources: {
-            memoryUsage: 8.5,
-            cpuUsage: 0.2,
-            diskUsage: 1.2,
-            networkUsage: 0.3,
-          },
-          health: {
-            status: 'warning',
-            uptime: 85.2,
-            lastHealthCheck: new Date(),
-            issues: ['Authentication token expired', 'Rate limit approaching'],
-          },
-        },
-        dependencyStatus: {
-          satisfied: true,
-          missing: [],
-          conflicts: [],
-        },
-        lastError: {
-          message: 'Authentication failed: Token expired',
-          timestamp: new Date(Date.now() - 3600000),
-        },
-      },
-    ];
+    try {
+      const response = await enhancedApiClient.get<PluginInfo[]>('/plugins');
+      return response.data;
+    } catch (error) {
+      console.error('[PluginAPI] Failed to list plugins:', error);
+      throw new Error('Failed to load plugins. Please check your connection and try again.');
+    }
   }
 
+  /**
+   * Install a plugin from the marketplace or URL
+   */
   async installPlugin(request: PluginInstallationRequest): Promise<string> {
-    void request; // placeholder usage
-    const installationId = `install-${Date.now()}`;
-    return installationId;
+    try {
+      const response = await enhancedApiClient.post<{ installationId: string }>(
+        '/plugins/install',
+        request
+      );
+      return response.data.installationId;
+    } catch (error) {
+      console.error('[PluginAPI] Failed to install plugin:', error);
+      throw new Error('Failed to install plugin. Please check the plugin source and try again.');
+    }
   }
 
+  /**
+   * Uninstall a plugin by ID
+   */
   async uninstallPlugin(id: string): Promise<void> {
-    void id;
-    await new Promise((r) => setTimeout(r, 300));
+    try {
+      await enhancedApiClient.delete(`/plugins/${id}`);
+    } catch (error) {
+      console.error(`[PluginAPI] Failed to uninstall plugin ${id}:`, error);
+      throw new Error('Failed to uninstall plugin. Please try again.');
+    }
   }
 
+  /**
+   * Enable a plugin by ID
+   */
   async enablePlugin(id: string): Promise<void> {
-    void id;
-    await new Promise((r) => setTimeout(r, 200));
+    try {
+      await enhancedApiClient.post(`/plugins/${id}/enable`);
+    } catch (error) {
+      console.error(`[PluginAPI] Failed to enable plugin ${id}:`, error);
+      throw new Error('Failed to enable plugin. Please try again.');
+    }
   }
 
+  /**
+   * Disable a plugin by ID
+   */
   async disablePlugin(id: string): Promise<void> {
-    void id;
-    await new Promise((r) => setTimeout(r, 200));
+    try {
+      await enhancedApiClient.post(`/plugins/${id}/disable`);
+    } catch (error) {
+      console.error(`[PluginAPI] Failed to disable plugin ${id}:`, error);
+      throw new Error('Failed to disable plugin. Please try again.');
+    }
   }
 
+  /**
+   * Update plugin configuration
+   */
   async configurePlugin(id: string, config: PluginConfig): Promise<void> {
-    void id;
-    void config;
-    await new Promise((r) => setTimeout(r, 250));
+    try {
+      await enhancedApiClient.put(`/plugins/${id}/config`, config);
+    } catch (error) {
+      console.error(`[PluginAPI] Failed to configure plugin ${id}:`, error);
+      throw new Error('Failed to update plugin configuration. Please try again.');
+    }
   }
 
+  /**
+   * Search marketplace for plugins
+   */
   async searchMarketplace(query?: string): Promise<PluginMarketplaceEntry[]> {
-    void query;
-    return [
-      {
-        id: 'slack-integration',
-        name: 'Slack Integration',
-        description: 'Connect with Slack workspaces and manage messages',
-        version: '1.0.0',
-        author: { name: 'Community Developer', verified: false },
-        category: 'integration',
-        tags: ['slack', 'messaging', 'team'],
-        downloads: 1250,
-        rating: 4.5,
-        reviewCount: 23,
-        featured: false,
-        verified: false,
-        compatibility: {
-          minVersion: '1.0.0',
-          platforms: ['node'],
-        },
-        screenshots: [],
-        pricing: { type: 'free' },
-        installUrl: 'https://marketplace.kari.ai/plugins/slack-integration',
-        manifest: {
-          id: 'slack-integration',
-          name: 'Slack Integration',
-          version: '1.0.0',
-          description: 'Connect with Slack workspaces and manage messages',
-          author: { name: 'Community Developer' },
-          license: 'MIT',
-          keywords: ['slack', 'messaging'],
-          category: 'integration',
-          runtime: { platform: ['node'] },
-          dependencies: [],
-          systemRequirements: {},
-          permissions: [],
-          sandboxed: true,
-          securityPolicy: {
-            allowNetworkAccess: true,
-            allowFileSystemAccess: false,
-            allowSystemCalls: false,
-          },
-          configSchema: [],
-          apiVersion: '1.0',
-        },
-      },
-    ];
+    try {
+      const endpoint = query ? `/plugins/marketplace?q=${encodeURIComponent(query)}` : '/plugins/marketplace';
+      const response = await enhancedApiClient.get<PluginMarketplaceEntry[]>(endpoint);
+      return response.data;
+    } catch (error) {
+      console.error('[PluginAPI] Failed to search marketplace:', error);
+      throw new Error('Failed to load marketplace plugins. Please try again.');
+    }
   }
 }
 
@@ -358,6 +149,39 @@ const initialState: PluginStoreState = {
   view: 'list',
   showInstallationWizard: false,
   showMarketplace: false,
+};
+
+// ────────────────────────────────────────────────────────────────────────────────
+// Debounce helper to prevent race conditions
+// ────────────────────────────────────────────────────────────────────────────────
+let loadPluginsTimeout: NodeJS.Timeout | null = null;
+let isLoadingPlugins = false;
+
+const debouncedLoadPlugins = async (loadPluginsFn: () => Promise<void>, delay: number = 500) => {
+  // Clear any pending debounced call
+  if (loadPluginsTimeout) {
+    clearTimeout(loadPluginsTimeout);
+    loadPluginsTimeout = null;
+  }
+
+  // If already loading, skip this call
+  if (isLoadingPlugins) {
+    return;
+  }
+
+  // Debounce the call
+  return new Promise<void>((resolve) => {
+    loadPluginsTimeout = setTimeout(async () => {
+      isLoadingPlugins = true;
+      try {
+        await loadPluginsFn();
+      } finally {
+        isLoadingPlugins = false;
+        loadPluginsTimeout = null;
+      }
+      resolve();
+    }, delay);
+  });
 };
 
 // ────────────────────────────────────────────────────────────────────────────────
@@ -433,7 +257,8 @@ export const usePluginStore = create<PluginStore>()(
             });
           }
 
-          await get().loadPlugins();
+          // Use debounced loadPlugins to prevent race conditions
+          await debouncedLoadPlugins(() => get().loadPlugins());
 
           set((state) => {
             state.loading.installation = false;
@@ -602,8 +427,18 @@ export const usePluginStore = create<PluginStore>()(
 
       setSorting: (sortBy: string, sortOrder: 'asc' | 'desc') =>
         set((state) => {
-          state.sortBy = sortBy as any;
-          state.sortOrder = sortOrder;
+          // Validate sortBy against allowed values
+          const validSortFields = ['name', 'status', 'version', 'installedAt', 'lastUsed', 'performance'] as const;
+          type ValidSortField = typeof validSortFields[number];
+
+          if (validSortFields.includes(sortBy as ValidSortField)) {
+            state.sortBy = sortBy as ValidSortField;
+            state.sortOrder = sortOrder;
+          } else {
+            console.warn(`[PluginStore] Invalid sortBy field: ${sortBy}. Using default: name`);
+            state.sortBy = 'name';
+            state.sortOrder = sortOrder;
+          }
         }),
 
       setView: (view: 'list' | 'grid' | 'details') =>

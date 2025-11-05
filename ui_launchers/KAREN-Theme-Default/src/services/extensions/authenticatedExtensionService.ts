@@ -13,13 +13,13 @@ import { logger } from '@/lib/logger';
  * - 9.2: User-friendly error messages and recovery suggestions
  */
 
+import {
+  getEnhancedKarenBackendService,
+} from '@/lib/auth/enhanced-karen-backend-service';
 
-  getEnhancedKarenBackendService, 
-import { } from '@/lib/auth/enhanced-karen-backend-service';
-
+import {
   getExtensionAuthErrorHandler,
-import { } from '@/lib/auth/extension-auth-error-handler';
-
+} from '@/lib/auth/extension-auth-error-handler';
 
 // Extension interfaces
 export interface ExtensionInfo {
@@ -318,7 +318,7 @@ export class AuthenticatedExtensionService {
         // This would need to be implemented in the backend service
         // For now, we'll create a placeholder
         const events: ExtensionEvent[] = [];
-        
+
         if (events.length > 0) {
           this.eventCallbacks.forEach(callback => {
             try {
@@ -326,7 +326,7 @@ export class AuthenticatedExtensionService {
             } catch (error) {
               logger.error('Error in event callback:', error);
             }
-
+          });
         }
       } catch (error) {
         logger.warn('Failed to poll extension events:', error);

@@ -16,10 +16,7 @@ import { getKarenBackend } from '@/lib/karen-backend';
 import {
   getCurrentDate,
   getCurrentTime,
-  getWeather,
-  mockQueryBookDatabase,
-  mockCheckGmailUnread,
-  mockComposeGmail
+  getWeather
 } from '@/ai/tools/core-tools';
 
 import type {
@@ -159,10 +156,7 @@ export async function handleUserMessage(
         tools: {
           getCurrentDate,
           getCurrentTime,
-          getWeather,
-          mockQueryBookDatabase,
-          mockCheckGmailUnread,
-          mockComposeGmail
+          getWeather
         }
       }
     );
@@ -243,10 +237,7 @@ export async function handleUserMessageWithKarenBackend(
         tools: {
           getCurrentDate,
           getCurrentTime,
-          getWeather,
-          mockQueryBookDatabase,
-          mockCheckGmailUnread,
-          mockComposeGmail
+          getWeather
         }
       }
     );

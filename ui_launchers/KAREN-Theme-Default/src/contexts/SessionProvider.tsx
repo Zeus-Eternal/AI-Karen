@@ -10,16 +10,16 @@
 "use client";
 
 import React, { createContext, useContext, ReactNode } from 'react';
-
-  isAuthenticated, 
-  getCurrentUser, 
-  hasRole, 
-  login as sessionLogin, 
+import {
+  isAuthenticated,
+  getCurrentUser,
+  hasRole,
+  login as sessionLogin,
   logout as sessionLogout,
   getSession,
   clearSession,
   type SessionData
-import { } from '@/lib/auth/session';
+} from '@/lib/auth/session';
 
 export interface SessionUser {
   userId: string;
@@ -68,21 +68,44 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   children,
 }) => {
   // Simplified session provider - just provides basic state
+  const refreshSession = async () => {
+    try {
+      const currentUser = getCurrentUser();
+      if (currentUser && isAuthenticated()) {
+        // Validate session with backend
+        const response = await fetch('/api/auth/validate-session', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          // Session invalid, clear state
+          await sessionLogout();
+        }
+        return response.ok;
+      }
+      return false;
+    } catch (error) {
+      console.error('Session refresh failed:', error);
+      return false;
+    }
+  };
+
   const contextValue: SessionContextType = {
     // Session state
     isAuthenticated: isAuthenticated(),
     user: getCurrentUser(),
     isLoading: false,
     isInitialized: true,
-    
+
     // Session actions
     login: sessionLogin,
     logout: sessionLogout,
-    refreshSession: () => {}, // No-op
-    
+    refreshSession,
+
     // Session utilities
     hasRole,
-    
+
     // Session data
     sessionData: getSession(),
   };

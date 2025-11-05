@@ -1,4 +1,4 @@
-import type { AuthenticationError, AuthenticationErrorType, ValidationErrors, ValidationRule, ValidationConfig, LoginCredentials, ErrorClassification, ErrorMessageConfig, RetryConfig } from './auth';
+import type { AuthenticationError, AuthenticationErrorType, ValidationErrors, ValidationRule, ValidationConfig, LoginCredentials, ErrorClassification, ErrorMessageConfig, RetryConfig, ErrorDetails } from './auth';
 
 /**
  * Utility functions for authentication error handling and validation
@@ -173,12 +173,12 @@ export const ERROR_CLASSIFICATIONS: Record<AuthenticationErrorType, ErrorClassif
 };
 
 /**
- * Creates a standardized authentication error
+ * Creates a standardized authentication error with type-safe error details
  */
 export function createAuthError(
   type: AuthenticationErrorType,
   message?: string,
-  details?: any,
+  details?: ErrorDetails,
   retryAfter?: number
 ): AuthenticationError {
   return {
@@ -413,21 +413,47 @@ export function canRetryAfter(
 }
 
 /**
- * Parses backend error response into AuthenticationError
+ * Common error shape from backend or fetch API
  */
-export function parseBackendError(error: any): AuthenticationError {
+interface BackendError {
+  name?: string;
+  message?: string;
+  code?: string;
+  status?: number;
+  response?: {
+    data?: {
+      message?: string;
+      code?: string;
+      details?: ErrorDetails;
+    };
+    status?: number;
+  };
+}
+
+/**
+ * Parses backend error response into AuthenticationError with type safety
+ */
+export function parseBackendError(error: BackendError | Error | unknown): AuthenticationError {
+  // Type guard to check if error has a name property
+  const hasName = (err: unknown): err is { name: string } =>
+    typeof err === 'object' && err !== null && 'name' in err && typeof (err as any).name === 'string';
+
+  // Type guard to check if error has a message property
+  const hasMessage = (err: unknown): err is { message: string } =>
+    typeof err === 'object' && err !== null && 'message' in err && typeof (err as any).message === 'string';
+
   // Handle network errors
-  if (error.name === 'TypeError' && error.message.includes('fetch')) {
+  if (hasName(error) && error.name === 'TypeError' && hasMessage(error) && error.message.includes('fetch')) {
     return createAuthError('network_error', 'Network connection failed');
   }
 
   // Handle timeout errors
-  if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+  if ((hasName(error) && error.name === 'AbortError') || (hasMessage(error) && error.message.includes('timeout'))) {
     return createAuthError('timeout_error', 'Request timed out');
   }
 
   // Handle HTTP errors with response
-  if (error.message) {
+  if (hasMessage(error)) {
     const message = error.message.toLowerCase();
     
     if (message.includes('invalid') && (message.includes('credential') || message.includes('password'))) {

@@ -57,16 +57,18 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     queryKey: ['rbac', 'config'],
     queryFn: () => enhancedApiClient.get<RBACConfig>('/api/rbac/config'),
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   // Fetch Evil Mode configuration
   const { data: evilModeConfig = getDefaultEvilModeConfig() } = useQuery({
     queryKey: ['rbac', 'evil-mode-config'],
     queryFn: () => enhancedApiClient.get<EvilModeConfig>('/api/rbac/evil-mode/config'),
     staleTime: 5 * 60 * 1000,
+  });
 
   // Fetch user roles and permissions
-  const { 
-    data: userRoles = [], 
+  const {
+    data: userRoles = [],
     isLoading: rolesLoading,
     isError: rolesError,
     error: rolesErrorData
@@ -75,6 +77,7 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     queryFn: () => currentUser ? enhancedApiClient.get<Role[]>(`/api/rbac/users/${currentUser.id}/roles`) : [],
     enabled: !!currentUser,
     staleTime: 2 * 60 * 1000, // 2 minutes
+  });
 
   // Fetch role hierarchy for permission resolution
   const { data: roleHierarchy } = useQuery({
@@ -84,6 +87,7 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     }),
     enabled: userRoles.length > 0,
     staleTime: 5 * 60 * 1000,
+  });
 
   // Fetch current Evil Mode session
   const { data: evilModeSession } = useQuery({
@@ -91,6 +95,7 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     queryFn: () => currentUser ? enhancedApiClient.get<EvilModeSession | null>(`/api/rbac/evil-mode/session/${currentUser.id}`) : null,
     enabled: !!currentUser,
     refetchInterval: 30000, // Check every 30 seconds
+  });
 
   // Calculate effective permissions
   const effectivePermissions = useMemo(() => {
@@ -225,6 +230,7 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rbac', 'user-roles'] });
     }
+  });
 
   const removeRoleMutation = useMutation({
     mutationFn: ({ userId, roleId }: { userId: string; roleId: string }) =>
@@ -232,6 +238,7 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rbac', 'user-roles'] });
     }
+  });
 
   // Evil Mode mutations
   const enableEvilModeMutation = useMutation({
@@ -240,12 +247,14 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rbac', 'evil-mode-session'] });
     }
+  });
 
   const disableEvilModeMutation = useMutation({
     mutationFn: () => enhancedApiClient.post('/api/rbac/evil-mode/disable'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rbac', 'evil-mode-session'] });
     }
+  });
 
   // Helper functions
   const getUserRoles = useCallback(async (userId: string): Promise<Role[]> => {

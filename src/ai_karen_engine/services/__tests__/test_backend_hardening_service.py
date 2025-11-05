@@ -216,7 +216,7 @@ API_URL = "http://localhost:8000"
         assert "NotImplementedError" not in fixed
         assert "RuntimeError" in fixed
     
-    def test_backup_functionality(self, service, temp_file):
+    async def test_backup_functionality(self, service, temp_file):
         """Test file backup functionality."""
         service.dry_run = False
         await service.initialize()

@@ -62,8 +62,25 @@ export interface PluginConfigField {
     custom?: (value: any) => string | null;
   };
 }
+/**
+ * Type-safe plugin configuration with common fields and extensibility
+ *
+ * Plugins can define custom configuration fields. Use unknown for better type safety
+ * and validate at runtime using the plugin's configSchema.
+ */
 export interface PluginConfig {
-  [key: string]: any;
+  /** Enable/disable the plugin */
+  enabled?: boolean;
+  /** Debug mode for verbose logging */
+  debug?: boolean;
+  /** API keys and credentials (should be encrypted) */
+  apiKey?: string;
+  apiSecret?: string;
+  /** Connection settings */
+  timeout?: number;
+  retryAttempts?: number;
+  /** Custom plugin-specific configuration */
+  [key: string]: unknown;
 }
 // Plugin Manifest Types
 export interface PluginManifest {

@@ -160,33 +160,22 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
   }, [memoryService, userId, tenantId]);
 
   const loadBackups = useCallback(async () => {
-    // Replace with backend call in production
-    const mockBackups: MemoryBackup[] = [
-      {
-        id: "backup-1",
-        name: "Daily Backup - 2024-01-15",
-        description: "Automated daily backup",
+    try {
+      const backupsData = await memoryService.getMemoryBackups(userId);
+      const formattedBackups: MemoryBackup[] = backupsData.map(backup => ({
+        ...backup,
+        description: `Memory backup from ${backup.timestamp.toLocaleDateString()}`,
         userId,
-        createdAt: new Date(Date.now() - 86400000),
-        memoryCount: 150,
-        size: 2_048_000,
+        createdAt: backup.timestamp,
         version: "1.0",
         metadata: { type: "automatic" },
-      },
-      {
-        id: "backup-2",
-        name: "Manual Backup - Before Cleanup",
-        description: "Manual backup before memory cleanup",
-        userId,
-        createdAt: new Date(Date.now() - 172800000),
-        memoryCount: 200,
-        size: 2_560_000,
-        version: "1.0",
-        metadata: { type: "manual" },
-      },
-    ];
-    setBackups(mockBackups);
-  }, [userId]);
+      }));
+      setBackups(formattedBackups);
+    } catch (error) {
+      console.error('Failed to load backups:', error);
+      setBackups([]);
+    }
+  }, [userId, memoryService]);
 
   useEffect(() => {
     if (isOpen) {
@@ -445,19 +434,14 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
         setError(null);
         assertNonEmpty(name, "Backup name is required");
 
-        // TODO: call backend to persist backup
-        const backup: MemoryBackup = {
-          id: `backup-${Date.now()}`,
-          name,
-          description,
-          userId,
-          createdAt: new Date(),
-          memoryCount: memories.length,
-          size: memories.reduce((sum, m) => sum + (m.content?.length || 0), 0),
-          version: "1.0",
-          metadata: { type: "manual" },
-        };
-        setBackups((prev) => [backup, ...prev]);
+        const result = await memoryService.createBackup(userId, name);
+
+        if (result) {
+          // Reload backups to get the updated list
+          await loadBackups();
+        } else {
+          setError("Failed to create backup - backend returned null");
+        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to create backup";
         setError(errorMessage);
@@ -465,7 +449,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
         setLoading(false);
       }
     },
-    [memories, userId]
+    [userId, memoryService, loadBackups]
   );
 
   const restoreBackup = useCallback(
@@ -474,9 +458,14 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
         setLoading(true);
         setError(null);
         void options;
-        // TODO: call backend to restore
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-        await loadMemories();
+
+        const success = await memoryService.restoreBackup(userId, backup.id);
+
+        if (success) {
+          await loadMemories();
+        } else {
+          setError("Failed to restore backup - backend returned false");
+        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to restore backup";
         setError(errorMessage);
@@ -484,7 +473,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
         setLoading(false);
       }
     },
-    [loadMemories]
+    [userId, memoryService, loadMemories]
   );
 
   /* --------------------------------------------- */

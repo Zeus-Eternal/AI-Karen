@@ -685,15 +685,27 @@ export class PerformanceTracker {
       this.intervalId = null;
     }
     if (this.browserPerfObserver) {
-      try { this.browserPerfObserver.disconnect(); } catch {}
+      try {
+        this.browserPerfObserver.disconnect();
+      } catch (err) {
+        console.warn('[PERF_TRACKER] Failed to disconnect browser performance observer:', err);
+      }
       this.browserPerfObserver = null;
     }
     if (this.nodeGCObserver) {
-      try { this.nodeGCObserver.disconnect(); } catch {}
+      try {
+        this.nodeGCObserver.disconnect();
+      } catch (err) {
+        console.warn('[PERF_TRACKER] Failed to disconnect Node GC observer:', err);
+      }
       this.nodeGCObserver = null;
     }
     if (this.eld) {
-      try { this.eld.disable?.(); } catch {}
+      try {
+        this.eld.disable?.();
+      } catch (err) {
+        console.warn('[PERF_TRACKER] Failed to disable event loop delay monitor:', err);
+      }
       this.eld = null;
     }
     this.stopFrameRateLoop();

@@ -1,3 +1,31 @@
+/**
+ * User preference types for type-safe preference management
+ */
+export interface UserPreferences {
+  theme?: 'light' | 'dark' | 'auto';
+  language?: string;
+  timezone?: string;
+  notifications?: {
+    email?: boolean;
+    push?: boolean;
+    sms?: boolean;
+  };
+  dashboard?: {
+    layout?: 'grid' | 'list';
+    widgets?: string[];
+    refreshInterval?: number;
+  };
+  accessibility?: {
+    reducedMotion?: boolean;
+    highContrast?: boolean;
+    fontSize?: 'small' | 'medium' | 'large';
+  };
+  [key: string]: unknown; // Allow custom preferences with unknown type (safer than any)
+}
+
+/**
+ * Core user interface representing an authenticated user
+ */
 export interface User {
   user_id: string;
   email: string;
@@ -5,7 +33,7 @@ export interface User {
   role?: 'super_admin' | 'admin' | 'user'; // New role field for admin system
   roles: string[]; // Legacy field for backward compatibility
   tenant_id: string;
-  preferences?: Record<string, any>;
+  preferences?: UserPreferences;
   is_verified?: boolean;
   is_active?: boolean;
   created_at?: Date;
@@ -25,6 +53,9 @@ export interface LoginCredentials {
   totp_code?: string;
 }
 
+/**
+ * Login response from authentication service
+ */
 export interface LoginResponse {
   token: string;
   access_token?: string;
@@ -33,7 +64,7 @@ export interface LoginResponse {
   email: string;
   roles: string[];
   tenant_id: string;
-  preferences: any;
+  preferences: UserPreferences;
   two_factor_enabled: boolean;
 }
 
@@ -116,12 +147,28 @@ export type UserAction =
   | 'check_connection';
 
 /**
+ * Error details providing structured context for debugging and logging
+ */
+export interface ErrorDetails {
+  code?: string;
+  field?: string;
+  constraint?: string;
+  context?: Record<string, string | number | boolean>;
+  stack?: string;
+  originalError?: {
+    message: string;
+    code?: string;
+    status?: number;
+  };
+}
+
+/**
  * Authentication error interface with detailed information
  */
 export interface AuthenticationError {
   type: AuthenticationErrorType;
   message: string;
-  details?: any;
+  details?: ErrorDetails;
   retryAfter?: number;
   timestamp?: Date;
   requestId?: string;

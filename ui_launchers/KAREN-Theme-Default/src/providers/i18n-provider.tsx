@@ -67,8 +67,11 @@ export function I18nProvider({
         setMounted(true);
         return unsubscribe;
       } catch (error) {
+        console.error('[I18nProvider] Failed to initialize i18n:', error);
         setIsLoading(false);
         setMounted(true);
+        // Return a no-op unsubscribe function
+        return () => {};
       }
     };
     const cleanup = initI18n();
