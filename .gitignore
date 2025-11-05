@@ -101,3 +101,6 @@ htmlcov/
 
 # Ignore Theme active related development files
 # /ui_launchers/KAREN-Theme-Default
+
+ui_launchers/KAREN-Theme-Default/.gitattributes
+ui_launchers/KAREN-Theme-Default/.gitignore
