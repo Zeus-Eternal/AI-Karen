@@ -184,9 +184,25 @@ export function formatUptime(uptimeSeconds: number): string {
 
 /**
  * Checks if an extension is compatible with current system
- * TODO: Replace with real checks once system requirements / API versions are exposed.
+ *
+ * PRODUCTION WARNING: This function currently returns true for all extensions
+ * without performing real compatibility checks. System requirements and API
+ * version validation should be implemented before production deployment.
+ *
+ * TODO: Implement real compatibility checks:
+ * - Verify API version compatibility
+ * - Check system requirements (OS, Node version, etc.)
+ * - Validate dependency versions
+ * - Check for conflicting extensions
  */
-export function isExtensionCompatible(_extension: ExtensionBase): boolean {
+export function isExtensionCompatible(extension: ExtensionBase): boolean {
+  if (typeof console !== 'undefined' && console.debug) {
+    console.debug(
+      `[EXTENSION] Compatibility check bypassed for extension "${extension.id}". ` +
+      `Real compatibility validation not yet implemented.`
+    );
+  }
+  // PLACEHOLDER: Always returns true - implement real checks for production
   return true;
 }
 

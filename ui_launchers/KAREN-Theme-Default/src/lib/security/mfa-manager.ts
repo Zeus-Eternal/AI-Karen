@@ -38,22 +38,28 @@ export interface MfaStatus {
 /* ------------------------------------------------------------------ */
 
 async function sha256Hex(input: string): Promise<string> {
-  // Browser WebCrypto
-  // @ts-ignore
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    const enc = new TextEncoder().encode(input);
-    // @ts-ignore
-    const buf = await crypto.subtle.digest('SHA-256', enc);
-    return Array.from(new Uint8Array(buf))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
+  // Browser WebCrypto with proper type checking
+  if (typeof globalThis !== 'undefined' &&
+      globalThis.crypto &&
+      typeof globalThis.crypto.subtle !== 'undefined') {
+    try {
+      const enc = new TextEncoder().encode(input);
+      const buf = await globalThis.crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(buf))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    } catch (err) {
+      console.warn('[MFA] Browser crypto.subtle failed, falling back to Node:', err);
+    }
   }
+
   // Node fallback
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const nodeCrypto = require('crypto');
     return nodeCrypto.createHash('sha256').update(input, 'utf8').digest('hex');
-  } catch {
+  } catch (err) {
+    console.error('[MFA] Node crypto failed, using weak fallback:', err);
     // Last resort (not ideal, but prevents crash)
     let hash = 0;
     for (let i = 0; i < input.length; i++) {
@@ -65,21 +71,29 @@ async function sha256Hex(input: string): Promise<string> {
 }
 
 function randomBytesHex(len: number): string {
-  // @ts-ignore
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    const arr = new Uint8Array(len);
-    // @ts-ignore
-    crypto.getRandomValues(arr);
-    return Array.from(arr)
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('')
-      .slice(0, len * 2);
+  // Browser crypto with proper type checking
+  if (typeof globalThis !== 'undefined' &&
+      globalThis.crypto &&
+      typeof globalThis.crypto.getRandomValues === 'function') {
+    try {
+      const arr = new Uint8Array(len);
+      globalThis.crypto.getRandomValues(arr);
+      return Array.from(arr)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+        .slice(0, len * 2);
+    } catch (err) {
+      console.warn('[MFA] Browser crypto.getRandomValues failed, falling back to Node:', err);
+    }
   }
+
+  // Node fallback
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const nodeCrypto = require('crypto');
     return nodeCrypto.randomBytes(len).toString('hex');
-  } catch {
+  } catch (err) {
+    console.error('[MFA] Node crypto failed, using weak fallback for random bytes:', err);
     // Weak fallback
     return Array.from({ length: len }, () =>
       Math.floor(Math.random() * 256).toString(16).padStart(2, '0')

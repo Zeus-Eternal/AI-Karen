@@ -298,7 +298,13 @@ export function DegradedModeBanner({
   );
 }
 
-/** Progressive enhancement wrapper */
+/**
+ * Progressive enhancement wrapper
+ *
+ * IMPORTANT: The default `detect` function is a placeholder that optimistically
+ * returns true after 600ms. Callers should provide their own feature detection
+ * logic via the `detect` parameter for production use.
+ */
 export function ProgressiveEnhancement({
   featureName,
   fallbackComponent,
@@ -306,9 +312,15 @@ export function ProgressiveEnhancement({
   loadingComponent,
   errorComponent,
   detect = async () => {
-    // TODO: plug real detection; default to “available” after 600ms
+    // Default placeholder detection - callers should override this
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn(
+        `[GRACEFUL_DEGRADATION] Using default placeholder detection for feature "${featureName}". ` +
+        `Provide a custom detect() function for production use.`
+      );
+    }
     await new Promise((r) => setTimeout(r, 600));
-    return true;
+    return true; // Optimistically assume available
   },
 }: {
   featureName: string;

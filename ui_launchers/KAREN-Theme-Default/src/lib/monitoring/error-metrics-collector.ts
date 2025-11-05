@@ -78,7 +78,12 @@ function makeId(): string {
   try {
     const g = (globalThis as any);
     if (g?.crypto?.randomUUID) return 'err-' + g.crypto.randomUUID();
-  } catch {}
+  } catch (err) {
+    // Expected in older browsers/environments, fall through to backup
+    if (typeof console !== 'undefined' && console.debug) {
+      console.debug('[ERROR_METRICS] crypto.randomUUID not available, using fallback:', err);
+    }
+  }
   // Fallback
   return `err-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
