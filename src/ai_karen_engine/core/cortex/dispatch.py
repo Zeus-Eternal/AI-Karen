@@ -6,7 +6,10 @@ Kari CORTEX Dispatch Core
 - 100% backend: no UI, no Streamlit, no mercy
 """
 
+import logging
 from typing import Any, Dict, Optional, List
+
+logger = logging.getLogger(__name__)
 # Prefer routing-aware resolver which defers to base intent if no routing match
 from ai_karen_engine.core.cortex.routing_intents import resolve_routing_intent as resolve_intent
 from ai_karen_engine.core.plugin_registry import plugin_registry
@@ -87,6 +90,7 @@ async def dispatch(
                 trace.append({"stage": "plugin_executed", "plugin": intent})
                 success = True
             except Exception as ex:  # pragma: no cover - plugin error path
+                logger.warning(f"Plugin '{intent}' execution failed: {ex}", exc_info=True)
                 result = {"error": str(ex)}
                 trace.append({"stage": "plugin_error", "error": str(ex)})
                 success = False
