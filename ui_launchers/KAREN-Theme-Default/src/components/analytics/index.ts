@@ -8,9 +8,11 @@ export type { MemoryNode, MemoryEdge, MemoryNetworkData } from './MemoryNetworkV
 export { UserEngagementGrid } from './UserEngagementGrid';
 export type { UserEngagementRow } from './UserEngagementGrid';
 
-// Re-export existing chat analytics for backward compatibility
-export { ChatAnalyticsChart } from '../chat/ChatAnalyticsChart';
-export type { ChatAnalyticsData } from '../chat/ChatAnalyticsChart';
+export { AuditLogTable } from './AuditLogTable';
 
-export { MemoryGrid } from '../chat/MemoryGrid';
-export type { MemoryRow } from '../chat/MemoryGrid';
+export { AnalyticsChart } from './AnalyticsChart';
+
+export { UsageAnalyticsCharts } from './UsageAnalyticsCharts';
+
+// Note: ChatAnalyticsChart uses default export
+// If needed, import it directly: import ChatAnalyticsChart from '../chat/ChatAnalyticsChart'
