@@ -1,0 +1,315 @@
+# Prometheus Alert Rules for Kari AI Web UI
+# Comprehensive alerting for system health, performance, and business metrics
+
+groups:
+  # High Priority Alerts
+  - name: kari.critical
+    interval: 30s
+    rules:
+      - alert: ApplicationDown
+        expr: up{job="kari-web-ui"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: web-ui
+          team: platform
+        annotations:
+          summary: "Kari Web UI is down"
+          description: "The Kari Web UI application has been down for more than 1 minute."
+          runbook_url: "https://docs.kari.ai/runbooks/application-down"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{job="kari-web-ui",status=~"5.."}[5m]) / rate(http_requests_total{job="kari-web-ui"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          service: web-ui
+          team: platform
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes."
+          runbook_url: "https://docs.kari.ai/runbooks/high-error-rate"
+
+      - alert: DatabaseConnectionFailure
+        expr: kari_database_connections_failed_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+          team: platform
+        annotations:
+          summary: "Database connection failures detected"
+          description: "{{ $value }} database connection failures in the last minute."
+          runbook_url: "https://docs.kari.ai/runbooks/database-connection-failure"
+
+      - alert: MemoryUsageCritical
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          service: system
+          team: platform
+        annotations:
+          summary: "Critical memory usage"
+          description: "Memory usage is above 95% for more than 2 minutes."
+          runbook_url: "https://docs.kari.ai/runbooks/memory-usage-critical"
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_size_bytes{fstype!="tmpfs"} - node_filesystem_free_bytes{fstype!="tmpfs"}) / node_filesystem_size_bytes{fstype!="tmpfs"} > 0.95
+        for: 5m
+        labels:
+          severity: critical
+          service: system
+          team: platform
+        annotations:
+          summary: "Critical disk space usage"
+          description: "Disk usage is above 95% on {{ $labels.device }} for more than 5 minutes."
+          runbook_url: "https://docs.kari.ai/runbooks/disk-space-critical"
+
+  # High Priority Alerts
+  - name: kari.high
+    interval: 60s
+    rules:
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="kari-web-ui"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: high
+          service: web-ui
+          team: platform
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s for the last 5 minutes."
+          runbook_url: "https://docs.kari.ai/runbooks/high-response-time"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: high
+          service: system
+          team: platform
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }} for more than 5 minutes."
+          runbook_url: "https://docs.kari.ai/runbooks/high-cpu-usage"
+
+      - alert: RedisConnectionFailure
+        expr: kari_redis_connections_failed_total > 0
+        for: 2m
+        labels:
+          severity: high
+          service: redis
+          team: platform
+        annotations:
+          summary: "Redis connection failures detected"
+          description: "{{ $value }} Redis connection failures in the last 2 minutes."
+          runbook_url: "https://docs.kari.ai/runbooks/redis-connection-failure"
+
+      - alert: ErrorBoundaryTriggered
+        expr: increase(kari_error_boundary_triggered_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: high
+          service: web-ui
+          team: frontend
+        annotations:
+          summary: "Multiple error boundaries triggered"
+          description: "{{ $value }} error boundaries triggered in the last 5 minutes."
+          runbook_url: "https://docs.kari.ai/runbooks/error-boundary-triggered"
+
+      - alert: HealthCheckFailure
+        expr: kari_health_check_status{status!="healthy"} == 1
+        for: 3m
+        labels:
+          severity: high
+          service: web-ui
+          team: platform
+        annotations:
+          summary: "Health check failure"
+          description: "Health check {{ $labels.check_name }} is failing for {{ $labels.instance }}."
+          runbook_url: "https://docs.kari.ai/runbooks/health-check-failure"
+
+  # Medium Priority Alerts
+  - name: kari.medium
+    interval: 120s
+    rules:
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.80
+        for: 10m
+        labels:
+          severity: medium
+          service: system
+          team: platform
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} for more than 10 minutes."
+          runbook_url: "https://docs.kari.ai/runbooks/high-memory-usage"
+
+      - alert: HighDiskUsage
+        expr: (node_filesystem_size_bytes{fstype!="tmpfs"} - node_filesystem_free_bytes{fstype!="tmpfs"}) / node_filesystem_size_bytes{fstype!="tmpfs"} > 0.80
+        for: 15m
+        labels:
+          severity: medium
+          service: system
+          team: platform
+        annotations:
+          summary: "High disk usage"
+          description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.device }}."
+          runbook_url: "https://docs.kari.ai/runbooks/high-disk-usage"
+
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(kari_database_query_duration_seconds_bucket[5m])) > 1
+        for: 10m
+        labels:
+          severity: medium
+          service: database
+          team: backend
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile database query time is {{ $value }}s."
+          runbook_url: "https://docs.kari.ai/runbooks/slow-database-queries"
+
+      - alert: HighErrorRecoveryRate
+        expr: rate(kari_error_recovery_attempts_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: medium
+          service: web-ui
+          team: frontend
+        annotations:
+          summary: "High error recovery rate"
+          description: "Error recovery rate is {{ $value }} attempts per second."
+          runbook_url: "https://docs.kari.ai/runbooks/high-error-recovery-rate"
+
+      - alert: ContainerRestarts
+        expr: increase(kube_pod_container_status_restarts_total[1h]) > 3
+        for: 0m
+        labels:
+          severity: medium
+          service: kubernetes
+          team: platform
+        annotations:
+          summary: "Container restarting frequently"
+          description: "Container {{ $labels.container }} in pod {{ $labels.pod }} has restarted {{ $value }} times in the last hour."
+          runbook_url: "https://docs.kari.ai/runbooks/container-restarts"
+
+  # Low Priority Alerts
+  - name: kari.low
+    interval: 300s
+    rules:
+      - alert: LowDiskSpace
+        expr: (node_filesystem_size_bytes{fstype!="tmpfs"} - node_filesystem_free_bytes{fstype!="tmpfs"}) / node_filesystem_size_bytes{fstype!="tmpfs"} > 0.70
+        for: 30m
+        labels:
+          severity: low
+          service: system
+          team: platform
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.device }}."
+          runbook_url: "https://docs.kari.ai/runbooks/low-disk-space"
+
+      - alert: HighNetworkTraffic
+        expr: rate(node_network_receive_bytes_total[5m]) > 100000000  # 100MB/s
+        for: 15m
+        labels:
+          severity: low
+          service: network
+          team: platform
+        annotations:
+          summary: "High network traffic"
+          description: "Network receive traffic is {{ $value | humanize }}B/s on {{ $labels.device }}."
+          runbook_url: "https://docs.kari.ai/runbooks/high-network-traffic"
+
+      - alert: UnusualUserActivity
+        expr: rate(kari_user_sessions_total[1h]) > 1000
+        for: 30m
+        labels:
+          severity: low
+          service: web-ui
+          team: product
+        annotations:
+          summary: "Unusual user activity detected"
+          description: "User session creation rate is {{ $value }} sessions per second."
+          runbook_url: "https://docs.kari.ai/runbooks/unusual-user-activity"
+
+  # Business Logic Alerts
+  - name: kari.business
+    interval: 300s
+    rules:
+      - alert: LowConversionRate
+        expr: rate(kari_user_conversions_total[1h]) / rate(kari_user_sessions_total[1h]) < 0.05
+        for: 1h
+        labels:
+          severity: medium
+          service: web-ui
+          team: product
+        annotations:
+          summary: "Low conversion rate"
+          description: "User conversion rate is {{ $value | humanizePercentage }} for the last hour."
+          runbook_url: "https://docs.kari.ai/runbooks/low-conversion-rate"
+
+      - alert: HighBounceRate
+        expr: rate(kari_user_bounces_total[1h]) / rate(kari_user_sessions_total[1h]) > 0.70
+        for: 2h
+        labels:
+          severity: low
+          service: web-ui
+          team: product
+        annotations:
+          summary: "High bounce rate"
+          description: "User bounce rate is {{ $value | humanizePercentage }} for the last hour."
+          runbook_url: "https://docs.kari.ai/runbooks/high-bounce-rate"
+
+      - alert: APIRateLimitHit
+        expr: rate(kari_api_rate_limit_exceeded_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: medium
+          service: api
+          team: backend
+        annotations:
+          summary: "API rate limit exceeded"
+          description: "API rate limit exceeded {{ $value }} times per second."
+          runbook_url: "https://docs.kari.ai/runbooks/api-rate-limit-hit"
+
+  # Security Alerts
+  - name: kari.security
+    interval: 60s
+    rules:
+      - alert: SuspiciousLoginActivity
+        expr: rate(kari_failed_login_attempts_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: high
+          service: auth
+          team: security
+        annotations:
+          summary: "Suspicious login activity"
+          description: "{{ $value }} failed login attempts per second from {{ $labels.source_ip }}."
+          runbook_url: "https://docs.kari.ai/runbooks/suspicious-login-activity"
+
+      - alert: UnauthorizedAPIAccess
+        expr: rate(http_requests_total{job="kari-web-ui",status="401"}[5m]) > 5
+        for: 1m
+        labels:
+          severity: high
+          service: api
+          team: security
+        annotations:
+          summary: "High rate of unauthorized API access"
+          description: "{{ $value }} unauthorized API requests per second."
+          runbook_url: "https://docs.kari.ai/runbooks/unauthorized-api-access"
+
+      - alert: EvilModeActivated
+        expr: kari_evil_mode_activations_total > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: web-ui
+          team: security
+        annotations:
+          summary: "Evil Mode activated"
+          description: "Evil Mode has been activated {{ $value }} times."
+          runbook_url: "https://docs.kari.ai/runbooks/evil-mode-activated"
