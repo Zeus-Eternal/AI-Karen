@@ -503,21 +503,21 @@ export class EnvironmentConfigManager {
         from: 'API_BASE_URL',
         to: 'KAREN_BACKEND_URL',
         action: 'Rename environment variable for server-side backend URL',
-
+      });
     }
     if (this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', '')) {
       recommendations.push({
         from: 'NEXT_PUBLIC_API_BASE_URL',
         to: 'NEXT_PUBLIC_KAREN_BACKEND_URL',
         action: 'Rename environment variable for client-side backend URL',
-
+      });
     }
     if (this.getEnvVar('BACKEND_PORT', '')) {
       recommendations.push({
         from: 'BACKEND_PORT',
         to: 'KAREN_BACKEND_PORT',
         action: 'Rename environment variable for backend port (optional, defaults to 8000)',
-
+      });
     }
     return recommendations;
   }

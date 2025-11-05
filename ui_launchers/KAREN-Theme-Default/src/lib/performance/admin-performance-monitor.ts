@@ -347,8 +347,9 @@ export class AdminPerformanceMonitor {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(report)
-
+      });
     } catch (error) {
+      // Silently fail - don't block on reporting errors
     }
   }
   getMetricsStore(): PerformanceMetricsStore {
