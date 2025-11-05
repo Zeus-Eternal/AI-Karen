@@ -873,3 +873,16 @@ export class IpSecurityManager {
 
   // Continue with the rest of the methods following the same pattern...
   // [The rest of the methods would follow the same improved error handling and validation pattern]
+}
+
+/**
+ * Get the singleton instance of IPSecurityManager
+ */
+export function getIPSecurityManager(): IPSecurityManager {
+  if (!ipSecurityManagerInstance) {
+    ipSecurityManagerInstance = new IPSecurityManager();
+  }
+  return ipSecurityManagerInstance;
+}
+
+let ipSecurityManagerInstance: IPSecurityManager | null = null;

@@ -28,4 +28,4 @@ export {
   getRuntimeInfo,
   webUIConfig,
   type WebUIConfig,
-import { } from '../config';
+} from '../config';

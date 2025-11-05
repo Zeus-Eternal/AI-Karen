@@ -263,7 +263,8 @@ export class PerformanceReporter {
             JSON.stringify(metric.metadata)
           ].map(field => `"${field.replace(/"/g, '""')}"`).join(',');
           csvRows.push(row);
-
+        });
+      });
 
       return csvRows.join('\n');
     }
@@ -346,8 +347,9 @@ export class AdminPerformanceMonitor {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(report)
-
+      });
     } catch (error) {
+      // Silently fail - don't block on reporting errors
     }
   }
   getMetricsStore(): PerformanceMetricsStore {
@@ -368,5 +370,5 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     reportInterval: 30000, // 30 seconds in dev
     enableConsoleReports: true,
     enableRemoteReporting: false
-
+  });
 }

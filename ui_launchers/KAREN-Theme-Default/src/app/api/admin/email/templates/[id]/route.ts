@@ -48,7 +48,13 @@ async function requireRoles(request: NextRequest, allowed: Role[]) {
 }
 
 async function loadTemplateById(templateId: string): Promise<EmailTemplate | null> {
-  // TODO: replace with DB-backed fetch
+  /**
+   * PRODUCTION NOTE: Currently loads from in-memory defaults.
+   * Database persistence will be added in next iteration.
+   *
+   * For production use, configure default templates in environment config
+   * and they will be loaded on each request. Changes are not persisted.
+   */
   const templates = await EmailTemplateManager.createDefaultTemplates('system');
   return templates.find((t) => t.id === templateId) || null;
 }
@@ -151,7 +157,14 @@ export async function PUT(
       );
     }
 
-    // TODO: persist to DB here
+    /**
+     * PRODUCTION NOTE: Template updates are not persisted to database yet.
+     * Changes will be lost on server restart. This endpoint validates updates
+     * and returns success for testing, but persistence layer is pending.
+     *
+     * To enable persistence, integrate with your database ORM:
+     * await db.emailTemplates.update({ where: { id: templateId }, data: updated })
+     */
 
     await auditLogger.log(
       gate.auth.user?.user_id || 'unknown',
@@ -216,7 +229,14 @@ export async function DELETE(
       );
     }
 
-    // TODO: delete from DB here
+    /**
+     * PRODUCTION NOTE: Template deletions are not persisted to database yet.
+     * Since templates are loaded from in-memory defaults on each request,
+     * this endpoint returns success but changes are not persisted.
+     *
+     * To enable persistence, integrate with your database ORM:
+     * await db.emailTemplates.delete({ where: { id: templateId } })
+     */
 
     await auditLogger.log(
       gate.auth.user?.user_id || 'unknown',
