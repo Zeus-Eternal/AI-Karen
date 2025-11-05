@@ -531,37 +531,14 @@ async def initialize_system(force_reinstall: bool = False) -> Dict[str, bool]:
     return await initializer.initialize_system(force_reinstall)
 
 
-# Auto-initialization on import (can be disabled with environment variable)
-if os.getenv("KARI_SKIP_AUTO_INIT", "false").lower() != "true":
-    def _auto_initialize():
-        """Auto-initialize system if needed."""
-        try:
-            # Quick check if system needs initialization
-            models_dir = Path(os.getenv("KARI_MODEL_DIR", "models"))
-            config_file = Path("config.json")
-            
-            needs_init = not models_dir.exists() or not config_file.exists()
-            
-            if needs_init:
-                logger.info("🚀 Auto-initializing AI Karen Engine system...")
-                # Try to run initialization if event loop is available
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        # Schedule for later execution
-                        asyncio.create_task(initialize_system())
-                    else:
-                        # Run immediately if no loop is running
-                        asyncio.run(initialize_system())
-                except RuntimeError:
-                    # No event loop available, skip auto-init
-                    logger.debug("No event loop available for auto-initialization")
-            
-        except Exception as e:
-            logger.debug(f"Auto-initialization check failed: {e}")
-    
-    # Schedule auto-initialization
-    try:
-        _auto_initialize()
-    except Exception:
-        pass  # Don't fail imports if auto-init has issues
+# NOTE: Auto-initialization at import time was removed due to race conditions.
+# Applications should explicitly call initialize_system() during their startup sequence.
+# Example:
+#
+#   @app.on_event("startup")
+#   async def startup():
+#       from ai_karen_engine.core.initialization import initialize_system
+#       results = await initialize_system()
+#       logger.info(f"System initialization complete: {results}")
+#
+# For migration from auto-init, set KARI_SKIP_AUTO_INIT=true in your environment.

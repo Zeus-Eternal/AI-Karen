@@ -6,7 +6,7 @@ and other components that need access to the integrated services.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 try:
     from fastapi import Depends, HTTPException, Request
