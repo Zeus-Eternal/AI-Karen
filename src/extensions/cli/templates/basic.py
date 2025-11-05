@@ -64,7 +64,7 @@ class BasicTemplate(BaseTemplate):
                         "permissions": ["user", "admin"]
                     }
                 ],
-                "streamlit_pages": []
+                # "streamlit_pages": [] # Streamlit no longer supported
             },
             "api": {
                 "endpoints": [

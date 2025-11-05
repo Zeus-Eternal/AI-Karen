@@ -199,7 +199,6 @@ class BaseExtension(ABC):
         
         components = {
             'control_room_pages': [],
-            'streamlit_pages': [],
             'metadata': {
                 'extension': self.manifest.name,
                 'display_name': self.manifest.display_name,
@@ -207,22 +206,13 @@ class BaseExtension(ABC):
                 'version': self.manifest.version
             }
         }
-        
+
         # Add control room pages
         for page in self.manifest.ui.control_room_pages:
             components['control_room_pages'].append({
                 'name': page.name,
                 'path': page.path,
                 'icon': page.icon,
-                'permissions': page.permissions,
-                'extension': self.manifest.name
-            })
-        
-        # Add streamlit pages
-        for page in self.manifest.ui.streamlit_pages:
-            components['streamlit_pages'].append({
-                'name': page.name,
-                'module': page.module,
                 'permissions': page.permissions,
                 'extension': self.manifest.name
             })

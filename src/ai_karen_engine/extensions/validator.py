@@ -246,18 +246,7 @@ class ExtensionValidator:
                 path = page['path']
                 if not path.startswith('/'):
                     self.errors.append(f"Control Room page path must start with '/': {path}")
-        
-        # Streamlit pages
-        for page in manifest.ui.streamlit_pages:
-            if not isinstance(page, dict):
-                self.errors.append("Streamlit page configuration must be a dictionary")
-                continue
-            
-            required_page_fields = ['name', 'module']
-            for field in required_page_fields:
-                if field not in page or not page[field]:
-                    self.errors.append(f"Streamlit page missing required field: {field}")
-    
+
     def _validate_api_config(self, manifest: ExtensionManifest) -> None:
         """Validate API configuration."""
         for endpoint in manifest.api.endpoints:

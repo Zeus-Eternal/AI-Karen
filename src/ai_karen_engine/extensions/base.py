@@ -207,14 +207,12 @@ class BaseExtension(ABC, HookMixin):
     def create_ui_components(self) -> Dict[str, Any]:
         """
         Create UI components for this extension.
-        Override to define Control Room / Streamlit integrations.
+        Override to define Control Room integrations.
         """
         components: Dict[str, Any] = {}
         ui = getattr(self.manifest, "ui", None)
         if ui and getattr(ui, "control_room_pages", None):
             components["control_room_pages"] = ui.control_room_pages
-        if ui and getattr(ui, "streamlit_pages", None):
-            components["streamlit_pages"] = ui.streamlit_pages
         return components
 
     def is_initialized(self) -> bool:

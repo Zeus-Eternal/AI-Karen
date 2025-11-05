@@ -44,7 +44,7 @@ class CreateConversationRequest(BaseModel):
 
     session_id: str = Field(..., description="Session ID")
     ui_source: UISource = Field(
-        ..., description="Source UI (web, streamlit, desktop, api, ag_ui)"
+        ..., description="Source UI (web, desktop, api, ag_ui)"
     )
     title: Optional[str] = Field(None, description="Conversation title")
     initial_message: Optional[str] = Field(None, description="Initial user message")
@@ -62,7 +62,7 @@ class AddMessageRequest(BaseModel):
     role: MessageRole = Field(..., description="Message role")
     content: str = Field(..., description="Message content")
     ui_source: UISource = Field(
-        ..., description="Source UI (web, streamlit, desktop, api, ag_ui)"
+        ..., description="Source UI (web, desktop, api, ag_ui)"
     )
     metadata: Optional[Dict[str, Any]] = Field(None, description="Message metadata")
     ai_confidence: Optional[float] = Field(

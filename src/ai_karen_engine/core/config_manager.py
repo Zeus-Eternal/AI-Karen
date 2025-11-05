@@ -132,7 +132,7 @@ class WebUIConfig:
     enable_proactive_suggestions: bool = True
     enable_memory_integration: bool = True
     ui_sources: List[str] = field(
-        default_factory=lambda: ["web", "streamlit", "desktop"]
+        default_factory=lambda: ["web", "desktop", "api"]
     )
 
 

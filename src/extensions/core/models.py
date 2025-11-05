@@ -57,17 +57,9 @@ class ExtensionUIPage(BaseModel):
     permissions: List[str] = Field(default_factory=list)
 
 
-class ExtensionStreamlitPage(BaseModel):
-    """Extension Streamlit page definition."""
-    name: str
-    module: str
-    permissions: List[str] = Field(default_factory=list)
-
-
 class ExtensionUI(BaseModel):
     """Extension UI configuration."""
     control_room_pages: List[ExtensionUIPage] = Field(default_factory=list)
-    streamlit_pages: List[ExtensionStreamlitPage] = Field(default_factory=list)
 
 
 class ExtensionAPIEndpoint(BaseModel):

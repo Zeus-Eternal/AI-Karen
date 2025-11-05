@@ -90,7 +90,6 @@ class ExtensionUIConfig(BaseModel):
     """Extension UI configuration."""
 
     control_room_pages: List[Dict[str, Any]] = Field(default_factory=list)
-    streamlit_pages: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class ExtensionAPIConfig(BaseModel):
