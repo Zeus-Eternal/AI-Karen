@@ -353,6 +353,68 @@ class MetricsStorage:
             row = cursor.fetchone()
             return (row[0], row[1]) if row else None
     
+    async def store_alert(self, alert: PerformanceAlert):
+        """Store or update a performance alert."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO alerts
+                (id, name, description, metric_name, threshold, comparison, severity,
+                 service_name, enabled, last_triggered, trigger_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                alert.id,
+                alert.name,
+                alert.description,
+                alert.metric_name,
+                alert.threshold,
+                alert.comparison,
+                alert.severity.value,
+                alert.service_name,
+                1 if alert.enabled else 0,
+                alert.last_triggered.isoformat() if alert.last_triggered else None,
+                alert.trigger_count
+            ))
+            conn.commit()
+
+    async def get_alerts(self, enabled_only: bool = True) -> List[PerformanceAlert]:
+        """Get all configured alerts."""
+        query = "SELECT * FROM alerts"
+        if enabled_only:
+            query += " WHERE enabled = 1"
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(query)
+            rows = cursor.fetchall()
+
+            alerts = []
+            for row in rows:
+                alert = PerformanceAlert(
+                    id=row[0],
+                    name=row[1],
+                    description=row[2],
+                    metric_name=row[3],
+                    threshold=row[4],
+                    comparison=row[5],
+                    severity=AlertSeverity(row[6]),
+                    service_name=row[7],
+                    enabled=bool(row[8]),
+                    last_triggered=datetime.fromisoformat(row[10]) if row[10] else None,
+                    trigger_count=row[11]
+                )
+                alerts.append(alert)
+
+            return alerts
+
+    async def update_alert_trigger(self, alert_id: str, triggered_at: datetime):
+        """Update alert trigger information."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                UPDATE alerts
+                SET last_triggered = ?, trigger_count = trigger_count + 1
+                WHERE id = ?
+            """, (triggered_at.isoformat(), alert_id))
+            conn.commit()
+
     async def cleanup_old_metrics(self, retention_days: int = 30):
         """Clean up old metrics data."""
         cutoff_date = datetime.now() - timedelta(days=retention_days)
@@ -737,9 +799,112 @@ class PerformanceDashboard:
             return "stable"
     
     async def _get_active_alerts(self) -> List[Dict[str, Any]]:
-        """Get active alerts (placeholder - would integrate with alerting system)."""
-        # This would integrate with an actual alerting system
-        return []
+        """
+        Get active alerts by checking current metrics against configured thresholds.
+        Production implementation with real-time alert evaluation.
+        """
+        try:
+            # Get all enabled alerts
+            alerts = await self.storage.get_alerts(enabled_only=True)
+
+            if not alerts:
+                return []
+
+            active_alerts = []
+            current_time = datetime.now()
+
+            # Check each alert
+            for alert in alerts:
+                try:
+                    # Get recent metrics for this alert
+                    recent_metrics = await self.storage.get_metrics(
+                        metric_name=alert.metric_name,
+                        service_name=alert.service_name,
+                        start_time=current_time - timedelta(minutes=5),  # Check last 5 minutes
+                        limit=10
+                    )
+
+                    if not recent_metrics:
+                        continue
+
+                    # Get the most recent metric value
+                    latest_metric = recent_metrics[0]
+                    current_value = latest_metric.value
+
+                    # Check if alert condition is met
+                    is_triggered = self._evaluate_alert_condition(
+                        current_value,
+                        alert.threshold,
+                        alert.comparison
+                    )
+
+                    if is_triggered:
+                        # Build alert info
+                        alert_info = {
+                            'id': alert.id,
+                            'name': alert.name,
+                            'description': alert.description,
+                            'severity': alert.severity.value,
+                            'metric_name': alert.metric_name,
+                            'service_name': alert.service_name or 'system',
+                            'current_value': current_value,
+                            'threshold': alert.threshold,
+                            'comparison': alert.comparison,
+                            'triggered_at': current_time.isoformat(),
+                            'trigger_count': alert.trigger_count + 1,
+                            'last_triggered': alert.last_triggered.isoformat() if alert.last_triggered else None
+                        }
+
+                        active_alerts.append(alert_info)
+
+                        # Update alert trigger information
+                        await self.storage.update_alert_trigger(alert.id, current_time)
+
+                except Exception as e:
+                    logger.error(f"Error evaluating alert {alert.name}: {e}")
+                    continue
+
+            # Sort by severity (critical first)
+            severity_order = {'critical': 0, 'warning': 1, 'info': 2}
+            active_alerts.sort(key=lambda x: severity_order.get(x['severity'], 3))
+
+            return active_alerts
+
+        except Exception as e:
+            logger.error(f"Error getting active alerts: {e}")
+            return []
+
+    def _evaluate_alert_condition(self, value: float, threshold: float, comparison: str) -> bool:
+        """
+        Evaluate if an alert condition is met.
+
+        Args:
+            value: Current metric value
+            threshold: Alert threshold value
+            comparison: Comparison operator (>, <, >=, <=, ==, !=)
+
+        Returns:
+            True if alert condition is met, False otherwise
+        """
+        try:
+            if comparison == '>':
+                return value > threshold
+            elif comparison == '<':
+                return value < threshold
+            elif comparison == '>=':
+                return value >= threshold
+            elif comparison == '<=':
+                return value <= threshold
+            elif comparison == '==':
+                return abs(value - threshold) < 0.001  # Float equality with tolerance
+            elif comparison == '!=':
+                return abs(value - threshold) >= 0.001
+            else:
+                logger.warning(f"Unknown comparison operator: {comparison}")
+                return False
+        except Exception as e:
+            logger.error(f"Error evaluating alert condition: {e}")
+            return False
     
     async def get_dashboard_data(self) -> Dict[str, Any]:
         """Get current dashboard data."""

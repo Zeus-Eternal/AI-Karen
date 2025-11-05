@@ -771,40 +771,280 @@ def matrix_multiply_gpu_optimized(matrices: Tuple[Any, Any]) -> Any:
 
 
 def ml_inference_gpu_optimized(model_data: Dict[str, Any]) -> Any:
-    """GPU-optimized ML model inference"""
-    # Placeholder for GPU-optimized ML inference
-    # In real implementation would use TensorRT, ONNX Runtime, or similar
-    
+    """
+    Production GPU-optimized ML model inference.
+    Supports PyTorch, TensorFlow, and ONNX Runtime with GPU acceleration.
+    """
+    import time
+    start_time = time.time()
+
     model = model_data.get('model')
     input_data = model_data.get('input')
-    
-    if model and input_data:
-        # Simulate inference computation
-        import time
-        time.sleep(0.01)  # Simulate computation time
-        
-        # Return mock prediction
-        return {'prediction': 'gpu_optimized_result', 'confidence': 0.95}
-    
-    return {'error': 'Invalid model data'}
+    model_type = model_data.get('model_type', 'pytorch')  # pytorch, tensorflow, onnx
+
+    if not model or input_data is None:
+        return {'error': 'Invalid model data: model and input required'}
+
+    try:
+        # PyTorch GPU inference
+        if model_type == 'pytorch':
+            try:
+                import torch
+
+                # Ensure model is on GPU if available
+                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+                if hasattr(model, 'to'):
+                    model = model.to(device)
+                    model.eval()
+
+                # Convert input to tensor if needed
+                if not isinstance(input_data, torch.Tensor):
+                    input_tensor = torch.tensor(input_data).to(device)
+                else:
+                    input_tensor = input_data.to(device)
+
+                # Run inference with no gradients
+                with torch.no_grad():
+                    output = model(input_tensor)
+
+                # Convert output to CPU for return
+                if isinstance(output, torch.Tensor):
+                    result = output.cpu().numpy().tolist()
+                else:
+                    result = output
+
+                inference_time = (time.time() - start_time) * 1000
+
+                return {
+                    'prediction': result,
+                    'device': str(device),
+                    'inference_time_ms': round(inference_time, 3),
+                    'model_type': 'pytorch'
+                }
+
+            except ImportError:
+                return {'error': 'PyTorch not available for GPU inference'}
+            except Exception as e:
+                return {'error': f'PyTorch inference failed: {str(e)}'}
+
+        # TensorFlow GPU inference
+        elif model_type == 'tensorflow':
+            try:
+                import tensorflow as tf
+
+                # Run inference
+                predictions = model(input_data)
+
+                # Convert to numpy for serialization
+                if hasattr(predictions, 'numpy'):
+                    result = predictions.numpy().tolist()
+                else:
+                    result = predictions
+
+                inference_time = (time.time() - start_time) * 1000
+
+                return {
+                    'prediction': result,
+                    'device': 'GPU' if tf.config.list_physical_devices('GPU') else 'CPU',
+                    'inference_time_ms': round(inference_time, 3),
+                    'model_type': 'tensorflow'
+                }
+
+            except ImportError:
+                return {'error': 'TensorFlow not available for GPU inference'}
+            except Exception as e:
+                return {'error': f'TensorFlow inference failed: {str(e)}'}
+
+        # ONNX Runtime GPU inference
+        elif model_type == 'onnx':
+            try:
+                import onnxruntime as ort
+                import numpy as np
+
+                # Create inference session with CUDA provider if available
+                providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+                session = ort.InferenceSession(model, providers=providers)
+
+                # Prepare input
+                input_name = session.get_inputs()[0].name
+                if not isinstance(input_data, np.ndarray):
+                    input_data = np.array(input_data)
+
+                # Run inference
+                outputs = session.run(None, {input_name: input_data})
+
+                inference_time = (time.time() - start_time) * 1000
+
+                return {
+                    'prediction': outputs[0].tolist() if hasattr(outputs[0], 'tolist') else outputs[0],
+                    'device': session.get_providers()[0],
+                    'inference_time_ms': round(inference_time, 3),
+                    'model_type': 'onnx'
+                }
+
+            except ImportError:
+                return {'error': 'ONNX Runtime not available for GPU inference'}
+            except Exception as e:
+                return {'error': f'ONNX inference failed: {str(e)}'}
+
+        else:
+            return {'error': f'Unsupported model type: {model_type}'}
+
+    except Exception as e:
+        return {'error': f'ML inference failed: {str(e)}'}
 
 
 def image_processing_gpu_optimized(image_data: Dict[str, Any]) -> Any:
-    """GPU-optimized image processing"""
-    # Placeholder for GPU-optimized image processing
-    # In real implementation would use OpenCV with CUDA, or similar
-    
+    """
+    Production GPU-optimized image processing.
+    Supports OpenCV with CUDA, PyTorch transforms, and PIL operations.
+    """
+    import time
+    start_time = time.time()
+
     image = image_data.get('image')
     operation = image_data.get('operation', 'resize')
-    
-    if image is not None:
-        # Simulate image processing
-        import time
-        time.sleep(0.005)  # Simulate computation time
-        
-        return {
-            'processed_image': f'gpu_processed_{operation}',
-            'processing_time_ms': 5
-        }
-    
-    return {'error': 'Invalid image data'}
+    params = image_data.get('params', {})
+
+    if image is None:
+        return {'error': 'Invalid image data: image required'}
+
+    try:
+        # Try OpenCV with CUDA support first
+        try:
+            import cv2
+            import numpy as np
+
+            # Convert image to numpy array if needed
+            if not isinstance(image, np.ndarray):
+                if hasattr(image, 'numpy'):
+                    image_np = image.numpy()
+                else:
+                    image_np = np.array(image)
+            else:
+                image_np = image
+
+            # Check if CUDA is available
+            cuda_available = cv2.cuda.getCudaEnabledDeviceCount() > 0
+
+            if cuda_available:
+                # Upload to GPU
+                gpu_image = cv2.cuda_GpuMat()
+                gpu_image.upload(image_np)
+
+                # Perform operations on GPU
+                if operation == 'resize':
+                    width = params.get('width', 224)
+                    height = params.get('height', 224)
+                    gpu_result = cv2.cuda.resize(gpu_image, (width, height))
+                elif operation == 'blur':
+                    kernel_size = params.get('kernel_size', (5, 5))
+                    gpu_result = cv2.cuda.createGaussianFilter(
+                        gpu_image.type(), -1, kernel_size, 1.5
+                    ).apply(gpu_image)
+                elif operation == 'grayscale':
+                    gpu_result = cv2.cuda.cvtColor(gpu_image, cv2.COLOR_BGR2GRAY)
+                else:
+                    # Fallback for unsupported operations
+                    gpu_result = gpu_image
+
+                # Download from GPU
+                result_image = gpu_result.download()
+                device = 'GPU (CUDA)'
+            else:
+                # Fallback to CPU operations
+                if operation == 'resize':
+                    width = params.get('width', 224)
+                    height = params.get('height', 224)
+                    result_image = cv2.resize(image_np, (width, height))
+                elif operation == 'blur':
+                    kernel_size = params.get('kernel_size', (5, 5))
+                    result_image = cv2.GaussianBlur(image_np, kernel_size, 1.5)
+                elif operation == 'grayscale':
+                    result_image = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
+                else:
+                    result_image = image_np
+
+                device = 'CPU'
+
+            processing_time = (time.time() - start_time) * 1000
+
+            return {
+                'processed_image': result_image.tolist() if isinstance(result_image, np.ndarray) else result_image,
+                'operation': operation,
+                'device': device,
+                'processing_time_ms': round(processing_time, 3),
+                'shape': result_image.shape if hasattr(result_image, 'shape') else None
+            }
+
+        except ImportError:
+            # Try PyTorch transforms as fallback
+            try:
+                import torch
+                import torchvision.transforms as transforms
+
+                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+                # Convert to tensor if needed
+                if not isinstance(image, torch.Tensor):
+                    to_tensor = transforms.ToTensor()
+                    image_tensor = to_tensor(image).to(device)
+                else:
+                    image_tensor = image.to(device)
+
+                # Apply transforms
+                if operation == 'resize':
+                    width = params.get('width', 224)
+                    height = params.get('height', 224)
+                    transform = transforms.Resize((height, width))
+                    result_tensor = transform(image_tensor)
+                elif operation == 'normalize':
+                    mean = params.get('mean', [0.485, 0.456, 0.406])
+                    std = params.get('std', [0.229, 0.224, 0.225])
+                    transform = transforms.Normalize(mean, std)
+                    result_tensor = transform(image_tensor)
+                else:
+                    result_tensor = image_tensor
+
+                # Convert back to CPU for return
+                result_image = result_tensor.cpu().numpy().tolist()
+
+                processing_time = (time.time() - start_time) * 1000
+
+                return {
+                    'processed_image': result_image,
+                    'operation': operation,
+                    'device': str(device),
+                    'processing_time_ms': round(processing_time, 3),
+                    'backend': 'pytorch'
+                }
+
+            except ImportError:
+                # Final fallback to PIL
+                from PIL import Image as PILImage
+
+                if not isinstance(image, PILImage.Image):
+                    image = PILImage.fromarray(image)
+
+                if operation == 'resize':
+                    width = params.get('width', 224)
+                    height = params.get('height', 224)
+                    result_image = image.resize((width, height))
+                elif operation == 'grayscale':
+                    result_image = image.convert('L')
+                else:
+                    result_image = image
+
+                processing_time = (time.time() - start_time) * 1000
+
+                return {
+                    'processed_image': 'PIL_Image_Object',  # Can't serialize PIL images directly
+                    'operation': operation,
+                    'device': 'CPU',
+                    'processing_time_ms': round(processing_time, 3),
+                    'backend': 'PIL'
+                }
+
+    except Exception as e:
+        return {'error': f'Image processing failed: {str(e)}'}
