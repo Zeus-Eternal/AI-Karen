@@ -16,6 +16,14 @@ from ai_karen_engine.echocore.echo_components import (
     EchoSynthesizer,
     EchoPipeline
 )
+from ai_karen_engine.echocore.memory_tiers import (
+    ShortTermMemory,
+    LongTermMemory,
+    PersistentMemory
+)
+from ai_karen_engine.echocore.memory_manager import MemoryManager
+from ai_karen_engine.echocore.metadata_collector import MetadataCollector
+from ai_karen_engine.echocore.telemetry_manager import TelemetryManager
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +53,13 @@ class EchoCoreConfig:
         # Pipeline settings
         enable_auto_fine_tuning: bool = False,
         auto_fine_tuning_threshold: int = 1000,  # Events before triggering
+        # Memory tier settings
+        enable_memory_tiers: bool = True,
+        decay_half_life_hours: float = 24.0,
+        max_short_term_memories: int = 10000,
+        # Telemetry settings
+        enable_telemetry: bool = True,
+        enable_prometheus: bool = True,
     ):
         self.base_dir = Path(base_dir)
 
@@ -70,6 +85,15 @@ class EchoCoreConfig:
         # Pipeline
         self.enable_auto_fine_tuning = enable_auto_fine_tuning
         self.auto_fine_tuning_threshold = auto_fine_tuning_threshold
+
+        # Memory tiers
+        self.enable_memory_tiers = enable_memory_tiers
+        self.decay_half_life_hours = decay_half_life_hours
+        self.max_short_term_memories = max_short_term_memories
+
+        # Telemetry
+        self.enable_telemetry = enable_telemetry
+        self.enable_prometheus = enable_prometheus
 
 
 class EchoCoreFactory:
@@ -223,23 +247,159 @@ class EchoCoreFactory:
 
         return self._components[user_id]["pipeline"]
 
-    def create_all_for_user(self, user_id: str) -> Dict[str, Any]:
+    def create_memory_manager(
+        self,
+        user_id: str,
+        milvus_client: Optional[Any] = None,
+        duckdb_client: Optional[Any] = None,
+        postgres_client: Optional[Any] = None
+    ) -> MemoryManager:
         """
-        Create all EchoCore components for a user.
+        Create a MemoryManager for a user.
+
+        Args:
+            user_id: User identifier
+            milvus_client: Optional MilvusClient instance
+            duckdb_client: Optional DuckDBClient instance
+            postgres_client: Optional PostgresClient instance
+
+        Returns:
+            MemoryManager instance
+        """
+        if user_id not in self._components:
+            self._components[user_id] = {}
+
+        if "memory_manager" not in self._components[user_id]:
+            # Create memory tiers if enabled
+            short_term = None
+            long_term = None
+            persistent = None
+
+            if self.config.enable_memory_tiers:
+                # Short-term memory
+                short_term = ShortTermMemory(
+                    user_id=user_id,
+                    milvus_client=milvus_client,
+                    decay_half_life_hours=self.config.decay_half_life_hours,
+                    max_memories=self.config.max_short_term_memories
+                )
+
+                # Long-term memory
+                long_term = LongTermMemory(
+                    user_id=user_id,
+                    duckdb_client=duckdb_client
+                )
+
+                # Persistent memory
+                persistent = PersistentMemory(
+                    user_id=user_id,
+                    postgres_client=postgres_client
+                )
+
+            memory_manager = MemoryManager(
+                user_id=user_id,
+                short_term=short_term,
+                long_term=long_term,
+                persistent=persistent
+            )
+
+            self._components[user_id]["memory_manager"] = memory_manager
+            logger.info(f"Created memory manager for user {user_id}")
+
+        return self._components[user_id]["memory_manager"]
+
+    def create_metadata_collector(
+        self,
+        user_id: str,
+        persistent_memory: Optional[Any] = None
+    ) -> MetadataCollector:
+        """
+        Create a MetadataCollector for a user.
+
+        Args:
+            user_id: User identifier
+            persistent_memory: Optional PersistentMemory instance
+
+        Returns:
+            MetadataCollector instance
+        """
+        if user_id not in self._components:
+            self._components[user_id] = {}
+
+        if "metadata_collector" not in self._components[user_id]:
+            collector = MetadataCollector(
+                user_id=user_id,
+                persistent_memory=persistent_memory
+            )
+
+            self._components[user_id]["metadata_collector"] = collector
+            logger.info(f"Created metadata collector for user {user_id}")
+
+        return self._components[user_id]["metadata_collector"]
+
+    def create_telemetry_manager(self, user_id: str) -> TelemetryManager:
+        """
+        Create a TelemetryManager for a user.
 
         Args:
             user_id: User identifier
 
         Returns:
+            TelemetryManager instance
+        """
+        if user_id not in self._components:
+            self._components[user_id] = {}
+
+        if "telemetry_manager" not in self._components[user_id]:
+            telemetry = TelemetryManager(
+                user_id=user_id,
+                enable_prometheus=self.config.enable_prometheus if self.config.enable_telemetry else False
+            )
+
+            self._components[user_id]["telemetry_manager"] = telemetry
+            logger.info(f"Created telemetry manager for user {user_id}")
+
+        return self._components[user_id]["telemetry_manager"]
+
+    def create_all_for_user(self, user_id: str, **db_clients) -> Dict[str, Any]:
+        """
+        Create all EchoCore components for a user.
+
+        Args:
+            user_id: User identifier
+            **db_clients: Optional database clients (milvus_client, duckdb_client, postgres_client)
+
+        Returns:
             Dictionary of all components
         """
+        # Extract database clients
+        milvus_client = db_clients.get("milvus_client")
+        duckdb_client = db_clients.get("duckdb_client")
+        postgres_client = db_clients.get("postgres_client")
+
+        # Create memory manager (which creates memory tiers)
+        memory_manager = self.create_memory_manager(
+            user_id,
+            milvus_client=milvus_client,
+            duckdb_client=duckdb_client,
+            postgres_client=postgres_client
+        )
+
+        # Get persistent memory from memory manager for metadata collector
+        persistent_memory = memory_manager.persistent if memory_manager else None
+
         return {
+            # Original components
             "vault": self.create_vault(user_id),
             "tracker": self.create_tracker(user_id),
             "fine_tuner": self.create_fine_tuner(user_id),
             "pipeline": self.create_pipeline(user_id),
             "analyzer": self.create_analyzer(),
-            "synthesizer": self.create_synthesizer()
+            "synthesizer": self.create_synthesizer(),
+            # New memory components
+            "memory_manager": memory_manager,
+            "metadata_collector": self.create_metadata_collector(user_id, persistent_memory),
+            "telemetry_manager": self.create_telemetry_manager(user_id)
         }
 
     def get_components(self, user_id: str) -> Optional[Dict[str, Any]]:
@@ -261,9 +421,11 @@ class EchoCoreFactory:
         Returns:
             List of user IDs
         """
+        # Shared components (not per-user)
+        shared_components = ["analyzer", "synthesizer"]
         return [
             user_id for user_id in self._components.keys()
-            if user_id not in ["analyzer", "synthesizer"]
+            if user_id not in shared_components
         ]
 
     async def health_check(self) -> Dict[str, Any]:
@@ -302,6 +464,18 @@ class EchoCoreFactory:
                     "current_log_exists": tracker_stats["current_log_exists"],
                     "archive_count": tracker_stats["archive_count"]
                 }
+
+            # Check memory manager
+            if "memory_manager" in self._components[user_id]:
+                memory_manager = self._components[user_id]["memory_manager"]
+                memory_health = await memory_manager.health_check()
+                user_health["memory_manager"] = memory_health
+
+            # Check telemetry manager
+            if "telemetry_manager" in self._components[user_id]:
+                telemetry = self._components[user_id]["telemetry_manager"]
+                diagnosis = telemetry.self_diagnose()
+                user_health["telemetry"] = diagnosis
 
             health["components"][user_id] = user_health
 

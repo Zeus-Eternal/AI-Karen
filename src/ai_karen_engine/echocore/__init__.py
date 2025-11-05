@@ -96,6 +96,36 @@ from ai_karen_engine.echocore.factory import (
     initialize_echocore_for_user
 )
 
+# Memory tier components
+from ai_karen_engine.echocore.memory_tiers import (
+    ShortTermMemory,
+    MemoryVector,
+    SearchResult,
+    LongTermMemory,
+    AnalyticsQuery,
+    TrendAnalysis,
+    PersistentMemory,
+    UserData,
+    InteractionRecord
+)
+
+# Memory management
+from ai_karen_engine.echocore.memory_manager import (
+    MemoryManager,
+    MemoryTier,
+    QueryType
+)
+
+# Metadata collection
+from ai_karen_engine.echocore.metadata_collector import (
+    MetadataCollector,
+    UserMetadata,
+    ConsentLevel
+)
+
+# Telemetry
+from ai_karen_engine.echocore.telemetry_manager import TelemetryManager
+
 __all__ = [
     # Legacy compatibility (simple, synchronous)
     "LegacyEchoVault",
@@ -130,4 +160,24 @@ __all__ = [
     "EchoCoreFactory",
     "get_echocore_factory",
     "initialize_echocore_for_user",
+    # Memory tiers
+    "ShortTermMemory",
+    "MemoryVector",
+    "SearchResult",
+    "LongTermMemory",
+    "AnalyticsQuery",
+    "TrendAnalysis",
+    "PersistentMemory",
+    "UserData",
+    "InteractionRecord",
+    # Memory management
+    "MemoryManager",
+    "MemoryTier",
+    "QueryType",
+    # Metadata collection
+    "MetadataCollector",
+    "UserMetadata",
+    "ConsentLevel",
+    # Telemetry
+    "TelemetryManager",
 ]
