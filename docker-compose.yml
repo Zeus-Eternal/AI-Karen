@@ -158,12 +158,15 @@ services:
       - ai-karen-net
 
   # ──────────────────────────────────────────────────────────────────────────────
-  # Local LLM Server
+  # Local LLM Server (OPTIONAL - only starts with --profile local-llm)
+  # Download model first: see models/llama-cpp/README.md
   # ──────────────────────────────────────────────────────────────────────────────
   local-llm:
     container_name: ai-karen-local-llm
     image: ghcr.io/ggerganov/llama.cpp:server
     restart: unless-stopped
+    profiles:
+      - local-llm
     ports:
       - "8080:8080"
     volumes:

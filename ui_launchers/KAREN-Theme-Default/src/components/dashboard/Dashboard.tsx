@@ -8,7 +8,6 @@ import AuditLogTable from '../analytics/AuditLogTable';
 import { GridContainer } from '@/components/ui/layout/grid-container';
 import { FlexContainer } from '@/components/ui/layout/flex-container';
 import { Card } from '@/components/ui/compound/card';
-import { TextSelectionDemo } from '@/components/ui/text-selection-demo';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -63,15 +62,6 @@ export default function Dashboard() {
             </Card.Content>
           </Card.Root>
         )}
-        
-        <Card.Root className="modern-card col-span-full">
-          <Card.Header>
-            <Card.Title>Text Selection Test</Card.Title>
-          </Card.Header>
-          <Card.Content>
-            <TextSelectionDemo />
-          </Card.Content>
-        </Card.Root>
       </GridContainer>
     </FlexContainer>
   );

@@ -9,7 +9,8 @@ export { default as ModelSelector } from "./ModelSelector";
 export { default as EnhancedModelSelector } from "./EnhancedModelSelector";
 
 // Export adaptive chat components
-export { default as AdaptiveChatInterface } from "./AdaptiveChatInterface";
+// NOTE: AdaptiveChatInterface is currently disabled (.broken file)
+// export { default as AdaptiveChatInterface } from "./AdaptiveChatInterface";
 export { default as ImageGenerationControls } from "./ImageGenerationControls";
 export { default as ChatModeSelector } from "./ChatModeSelector";
 export type { ChatMode, ChatContext } from "./ChatModeSelector";

@@ -11,7 +11,7 @@ interface InputBoxProps {
   placeholder?: string;
 }
 
-export const InputBox: React.FC<inputBoxProps aria-label="Input"> = ({ onSend, isLoading, placeholder }) => {
+export const InputBox: React.FC<InputBoxProps> = ({ onSend, isLoading, placeholder }) => {
   const [value, setValue] = useState('');
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

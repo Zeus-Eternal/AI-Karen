@@ -61,6 +61,8 @@ server.pid
 .kiro/specs/web-ui-karen-integration/biome
 /ui_launchers/web_ui/.next
 /ui_launchers/web_ui/node_modules
+/ui_launchers/KAREN-Theme-Default/.next
+/ui_launchers/KAREN-Theme-Default/node_modules
 /.kiro
 /.github
 /data/default_classifier

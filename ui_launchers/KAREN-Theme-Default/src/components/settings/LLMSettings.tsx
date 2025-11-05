@@ -22,8 +22,9 @@ import ProviderManagement from "./ProviderManagement";
 import ModelBrowser from "./ModelBrowser";
 import ProfileManager from "./ProfileManager";
 import ModelProviderIntegration from "./ModelProviderIntegration";
-import ModelWorkflowTest from "./ModelWorkflowTest";
-import ModelLibraryIntegrationTest from "./ModelLibraryIntegrationTest";
+// NOTE: Test components removed for production readiness
+// import ModelWorkflowTest from "./ModelWorkflowTest";
+// import ModelLibraryIntegrationTest from "./ModelLibraryIntegrationTest";
 import { HelpTooltip, QuickHelp } from "@/components/ui/help-tooltip";
 import ProviderNotificationSystem from "./ProviderNotificationSystem";
 import { useProviderNotifications } from "@/hooks/useProviderNotifications";
@@ -715,22 +716,6 @@ export default function LLMSettings() {
                 )}
               </CardContent>
             </Card>
-
-            {/* Integration Workflow Test */}
-            <ModelWorkflowTest
-              onNavigateToModelLibrary={() => {
-                window.dispatchEvent(new CustomEvent("navigate-to-model-library"));
-              }}
-              onNavigateToProviders={() => setActiveTab("providers")}
-            />
-
-            {/* Comprehensive Integration Test */}
-            <ModelLibraryIntegrationTest
-              onNavigateToModelLibrary={() => {
-                window.dispatchEvent(new CustomEvent("navigate-to-model-library"));
-              }}
-              onNavigateToLLMSettings={() => setActiveTab("providers")}
-            />
 
             {/* Model-Provider Integration */}
             <ModelProviderIntegration

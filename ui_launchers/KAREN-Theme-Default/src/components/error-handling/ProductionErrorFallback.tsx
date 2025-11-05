@@ -43,7 +43,7 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
             return null;
           }
           return prev - 1;
-
+        });
       }, 1000);
       return () => clearInterval(interval);
     }
