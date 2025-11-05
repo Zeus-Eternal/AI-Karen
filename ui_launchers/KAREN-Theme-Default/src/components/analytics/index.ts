@@ -1,4 +1,9 @@
 // Enhanced Analytics Components with AG-UI Integration
+
+// Main Dashboard
+export { AnalyticsDashboard } from './AnalyticsDashboard';
+
+// Individual Components
 export { EnhancedAnalyticsChart } from './EnhancedAnalyticsChart';
 export type { EnhancedAnalyticsData, AnalyticsStats } from './EnhancedAnalyticsChart';
 
@@ -12,7 +17,7 @@ export { AuditLogTable } from './AuditLogTable';
 
 export { AnalyticsChart } from './AnalyticsChart';
 
-export { UsageAnalyticsCharts } from './UsageAnalyticsCharts';
+export { default as UsageAnalyticsCharts } from './UsageAnalyticsCharts';
 
 // Note: ChatAnalyticsChart uses default export
 // If needed, import it directly: import ChatAnalyticsChart from '../chat/ChatAnalyticsChart'
