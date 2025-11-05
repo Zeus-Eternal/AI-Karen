@@ -431,6 +431,229 @@ export class MemoryService {
   }
 
   /**
+   * Get search history for a user
+   */
+  async getSearchHistory(userId: string, limit: number = 20): Promise<Array<{
+    id: string;
+    query: string;
+    timestamp: Date;
+    resultCount: number;
+    filters?: any;
+    userId: string;
+  }>> {
+    try {
+      const response = await fetch(
+        `${this.backend['config'].baseUrl}/api/memory/search-history?user_id=${encodeURIComponent(userId)}&limit=${limit}`,
+        {
+          headers: {
+            ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        return (data.history || []).map((item: any) => ({
+          ...item,
+          timestamp: new Date(item.timestamp),
+        }));
+      }
+
+      return [];
+    } catch (error) {
+      safeError('MemoryService: Failed to get search history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get saved searches for a user
+   */
+  async getSavedSearches(userId: string): Promise<Array<{
+    id: string;
+    name: string;
+    query: string;
+    filters?: any;
+    userId: string;
+    createdAt: Date;
+    lastUsed?: Date;
+    useCount?: number;
+  }>> {
+    try {
+      const response = await fetch(
+        `${this.backend['config'].baseUrl}/api/memory/saved-searches?user_id=${encodeURIComponent(userId)}`,
+        {
+          headers: {
+            ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        return (data.searches || []).map((item: any) => ({
+          ...item,
+          createdAt: new Date(item.createdAt),
+          lastUsed: item.lastUsed ? new Date(item.lastUsed) : undefined,
+        }));
+      }
+
+      return [];
+    } catch (error) {
+      safeError('MemoryService: Failed to get saved searches:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Save a search for future use
+   */
+  async saveSearch(params: {
+    userId: string;
+    name: string;
+    query: string;
+    filters?: any;
+  }): Promise<{ id: string } | null> {
+    try {
+      const response = await fetch(
+        `${this.backend['config'].baseUrl}/api/memory/saved-searches`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
+          },
+          body: JSON.stringify(params),
+        }
+      );
+
+      if (response.ok) {
+        return await response.json();
+      }
+
+      return null;
+    } catch (error) {
+      safeError('MemoryService: Failed to save search:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete a saved search
+   */
+  async deleteSavedSearch(userId: string, searchId: string): Promise<boolean> {
+    try {
+      const response = await fetch(
+        `${this.backend['config'].baseUrl}/api/memory/saved-searches/${searchId}?user_id=${encodeURIComponent(userId)}`,
+        {
+          method: 'DELETE',
+          headers: {
+            ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
+          },
+        }
+      );
+
+      return response.ok;
+    } catch (error) {
+      safeError('MemoryService: Failed to delete saved search:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get memory backups for a user
+   */
+  async getMemoryBackups(userId: string): Promise<Array<{
+    id: string;
+    name: string;
+    timestamp: Date;
+    memoryCount: number;
+    size: number;
+  }>> {
+    try {
+      const response = await fetch(
+        `${this.backend['config'].baseUrl}/api/memory/backups?user_id=${encodeURIComponent(userId)}`,
+        {
+          headers: {
+            ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        return (data.backups || []).map((item: any) => ({
+          ...item,
+          timestamp: new Date(item.timestamp),
+        }));
+      }
+
+      return [];
+    } catch (error) {
+      safeError('MemoryService: Failed to get backups:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Create a memory backup
+   */
+  async createBackup(userId: string, name: string): Promise<{ id: string } | null> {
+    try {
+      const response = await fetch(
+        `${this.backend['config'].baseUrl}/api/memory/backups`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
+          },
+          body: JSON.stringify({ user_id: userId, name }),
+        }
+      );
+
+      if (response.ok) {
+        return await response.json();
+      }
+
+      return null;
+    } catch (error) {
+      safeError('MemoryService: Failed to create backup:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Restore from a memory backup
+   */
+  async restoreBackup(userId: string, backupId: string): Promise<boolean> {
+    try {
+      const response = await fetch(
+        `${this.backend['config'].baseUrl}/api/memory/backups/${backupId}/restore`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
+          },
+          body: JSON.stringify({ user_id: userId }),
+        }
+      );
+
+      if (response.ok) {
+        // Clear caches after restore
+        this.clearCacheForUser(userId);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      safeError('MemoryService: Failed to restore backup:', error);
+      return false;
+    }
+  }
+
+  /**
    * Clear all caches
    */
   clearCache(): void {

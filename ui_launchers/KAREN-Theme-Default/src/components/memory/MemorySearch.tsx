@@ -111,49 +111,23 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
 
   const loadSearchHistory = useCallback(async () => {
     try {
-      // Replace with backend in prod
-      const mockHistory: MemorySearchHistory[] = [
-        {
-          id: "1",
-          query: "javascript functions",
-          timestamp: new Date(Date.now() - 3600000),
-          resultCount: 25,
-          filters: { topK: 10 },
-          userId,
-        },
-        {
-          id: "2",
-          query: "react hooks",
-          timestamp: new Date(Date.now() - 7200000),
-          resultCount: 18,
-          filters: { topK: 10 },
-          userId,
-        },
-      ];
-      setSearchHistory(mockHistory);
-    } catch {
-      /* silent */
+      const memoryService = getMemoryService();
+      const history = await memoryService.getSearchHistory(userId, 20);
+      setSearchHistory(history);
+    } catch (error) {
+      console.error('Failed to load search history:', error);
+      // Gracefully fail - search history is a nice-to-have feature
     }
   }, [userId]);
 
   const loadSavedSearches = useCallback(async () => {
     try {
-      // Replace with backend in prod
-      const mockSaved: SavedSearch[] = [
-        {
-          id: "1",
-          name: "Technical Documentation",
-          query: "documentation OR tutorial OR guide",
-          filters: { tags: ["technical"], topK: 20 },
-          userId,
-          createdAt: new Date(Date.now() - 86400000),
-          lastUsed: new Date(Date.now() - 3600000),
-          useCount: 5,
-        },
-      ];
-      setSavedSearches(mockSaved);
-    } catch {
-      /* silent */
+      const memoryService = getMemoryService();
+      const searches = await memoryService.getSavedSearches(userId);
+      setSavedSearches(searches);
+    } catch (error) {
+      console.error('Failed to load saved searches:', error);
+      // Gracefully fail - saved searches are a nice-to-have feature
     }
   }, [userId]);
 
