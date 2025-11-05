@@ -1,5 +1,19 @@
+"""
+NeuroVault - Comprehensive Tri-Partite Memory System
+
+This module provides the production-ready memory system for Kari with:
+- Episodic, Semantic, and Procedural memory types
+- Intelligent hybrid retrieval (semantic + temporal + importance)
+- Memory consolidation and reflection
+- Decay and lifecycle management
+- RBAC and tenant isolation
+- PII scrubbing and privacy controls
+- Comprehensive observability
+"""
+
 from __future__ import annotations
 
+# Legacy compatibility - keep simple implementation
 import hashlib
 import time
 from typing import Any, Dict, List, Optional
@@ -15,6 +29,7 @@ except Exception:  # pragma: no cover - optional dependency
     faiss = None
 
 
+# Legacy classes for backward compatibility
 class MPNetEmbedder:
     """Lightweight MPNet-style embedder using hashing fallback."""
 
@@ -42,57 +57,48 @@ class BERTReRanker:
         return scores
 
 
-class NeuroVault:
-    """Vector index with FAISS or Milvus backend."""
+# Import new comprehensive NeuroVault system
+from ai_karen_engine.core.neuro_vault.neuro_vault_core import (
+    DecayFunction,
+    EmbeddingManager,
+    ImportanceLevel,
+    MemoryEntry,
+    MemoryIndex,
+    MemoryMetadata,
+    MemoryStatus,
+    MemoryType,
+    RetrievalRequest,
+    RetrievalResult,
+    create_memory_entry,
+)
+from ai_karen_engine.core.neuro_vault.neuro_vault import (
+    NeuroVault,
+    MemoryRBAC,
+    PIIScrubber,
+    MemoryMetrics,
+    get_neurovault,
+)
 
-    def __init__(self, embedder: Optional[MPNetEmbedder] = None) -> None:
-        self.embedder = embedder or MPNetEmbedder()
-        self.reranker = BERTReRanker()
-        if faiss is not None:
-            self.index: Any = faiss.IndexFlatIP(self.embedder.dim)
-            self._metas: Dict[int, Dict[str, Any]] = {}
-            self._ids: List[int] = []
-        else:
-            self.index = MilvusClient(dim=self.embedder.dim)
-
-    def index_text(self, user_id: str, text: str, metadata: Dict[str, Any]) -> int:
-        vec = self.embedder.embed(text)
-        if faiss is not None:
-            idx = len(self._ids)
-            self.index.add(np.array([vec]))
-            self._ids.append(idx)
-            self._metas[idx] = {"user_id": user_id, "text": text, **metadata}
-            return idx
-        payload = {"user_id": user_id, "text": text, **metadata}
-        return self.index.upsert(vec.tolist(), payload)
-
-    def query(self, user_id: str, text: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        start = time.time()
-        vec = self.embedder.embed(text)
-        if faiss is not None:
-            distances, indices = self.index.search(np.array([vec]), top_k)
-            metas = [
-                self._metas.get(i)
-                for i in indices[0]
-                if self._metas.get(i) and self._metas[i]["user_id"] == user_id
-            ]
-            recall_time = time.time() - start
-        else:
-            results = self.index.search(vec.tolist(), top_k=top_k, metadata_filter={"user_id": user_id})
-            metas = [r["payload"] for r in results]
-            recall_time = time.time() - start
-        record_metric("memory_recall_latency", recall_time)
-        hit = 1.0 if metas else 0.0
-        record_metric("recall_hit_rate", hit)
-        if not metas:
-            return []
-        docs = [m["text"] for m in metas]
-        rerank_start = time.time()
-        scores = self.reranker.score(text, docs)
-        rerank_time = time.time() - rerank_start
-        record_metric("rerank_time", rerank_time)
-        ranked = sorted(zip(scores, metas), key=lambda p: p[0], reverse=True)[:top_k]
-        return [{"score": s, "metadata": m} for s, m in ranked]
-
-
-__all__ = ["NeuroVault", "MPNetEmbedder", "BERTReRanker"]
+# Export all public APIs
+__all__ = [
+    # New comprehensive system
+    "NeuroVault",
+    "MemoryType",
+    "MemoryStatus",
+    "MemoryEntry",
+    "MemoryMetadata",
+    "RetrievalRequest",
+    "RetrievalResult",
+    "ImportanceLevel",
+    "DecayFunction",
+    "EmbeddingManager",
+    "MemoryIndex",
+    "MemoryRBAC",
+    "PIIScrubber",
+    "MemoryMetrics",
+    "create_memory_entry",
+    "get_neurovault",
+    # Legacy compatibility
+    "MPNetEmbedder",
+    "BERTReRanker",
+]
