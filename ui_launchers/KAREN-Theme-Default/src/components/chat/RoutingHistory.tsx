@@ -37,7 +37,7 @@ export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit =
       const res = await backend.makeRequestPublic<{ status: string; output: any }>("/api/copilot/start", {
         method: "POST",
         body: JSON.stringify({ action: "routing.audit", payload: { limit } }),
-
+      });
       const out = (res as any)?.output || {};
       setEvents(out.events || []);
     } catch (e) {

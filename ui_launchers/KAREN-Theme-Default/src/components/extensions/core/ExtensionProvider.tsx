@@ -1,1 +1,1 @@
-import { export { ExtensionProvider } from '../../extensions';
+export { ExtensionProvider } from '../../extensions';

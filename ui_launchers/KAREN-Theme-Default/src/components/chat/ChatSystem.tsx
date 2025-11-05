@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-import { } from 'lucide-react';
+// lucide-react imports removed - not needed
 import { ChatBubble } from './ChatBubble';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -82,16 +82,16 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
             variant: 'destructive',
             title: 'Chat Initialization Failed',
             description: 'Unable to start chat session. Please refresh and try again.'
-
-        }
+          });
       }
     };
 
     if (isAuthenticated) {
       initializeChat();
     }
-  }, [user, isAuthenticated, sessionId, conversationId, chatService, toast]); 
- // Auto-scroll to bottom when new messages arrive
+  }, [user, isAuthenticated, sessionId, conversationId, chatService, toast]);
+
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -168,7 +168,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
         variant: 'destructive',
         title: 'Message Failed',
         description: 'Unable to process your message. Please try again.'
-
+      });
     } finally {
       setIsLoading(false);
     }

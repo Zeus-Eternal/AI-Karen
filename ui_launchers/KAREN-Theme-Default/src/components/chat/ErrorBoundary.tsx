@@ -34,10 +34,11 @@ export class ChatErrorBoundary extends Component<Props, State> {
   }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     safeError('ChatErrorBoundary caught an error:', error);
-    safe);
+    safeDebug('Error info:', errorInfo);
     this.setState({
       error,
       errorInfo,
+    });
 
     // Call optional error handler
     if (this.props.onError) {
@@ -83,7 +84,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
       error: undefined,
       errorInfo: undefined,
       errorId: '',
-
+    });
   };
   private handleGoHome = () => {
     window.location.href = '/';
