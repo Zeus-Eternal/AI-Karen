@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { MotionConfig } from 'framer-motion';
+import { MotionConfig, type Variants, type Transition } from 'framer-motion';
 import { useUIStore, selectAnimationState } from '../store';
 
 interface MotionContextValue {
@@ -97,27 +97,27 @@ export function useMotion() {
 // Convenience hook for getting animation variants based on preferences
 export function useAnimationVariants() {
   const { reducedMotion, animationsEnabled } = useMotion();
-  
-  const getVariants = (variants: Record<string, any>) => {
+
+  const getVariants = (variants: Variants): Variants => {
     if (reducedMotion || !animationsEnabled) {
       // Return variants with no animation
-      const staticVariants: Record<string, any> = {};
+      const staticVariants: Variants = {};
       Object.keys(variants).forEach(key => {
         staticVariants[key] = {
           ...variants[key],
           transition: { duration: 0 },
         };
-
+      });
       return staticVariants;
     }
     return variants;
   };
 
-  const getTransition = (transition: any = {}) => {
+  const getTransition = (transition?: Transition): Transition => {
     if (reducedMotion || !animationsEnabled) {
       return { duration: 0 };
     }
-    return transition;
+    return transition || {};
   };
 
   return {
