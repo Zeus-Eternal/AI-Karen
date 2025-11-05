@@ -370,5 +370,5 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     reportInterval: 30000, // 30 seconds in dev
     enableConsoleReports: true,
     enableRemoteReporting: false
-
+  });
 }
