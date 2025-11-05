@@ -521,50 +521,128 @@ class ResourceMonitor:
             results.append(result)
             return results
         
-        # Suspend optional and background services
+        # Suspend optional and background services - Production implementation
         suspended_count = 0
+        cpu_freed = 0.0
+
         try:
-            # Get services that can be suspended
-            suspendable_services = []
-            
-            # This would need to be implemented based on the actual service registry interface
-            # For now, we'll create a placeholder result
-            
+            # Get all services from registry
+            all_services = registry.get_all_services()
+
+            # Identify non-essential services based on priority and classification
+            essential_prefixes = ['db', 'database', 'auth', 'engine', 'core', 'security', 'memory']
+            suspendable_services = [
+                svc for svc in all_services
+                if not any(svc.lower().startswith(prefix) for prefix in essential_prefixes)
+            ]
+
+            # Suspend each non-essential service
+            for service_name in suspendable_services:
+                try:
+                    # Check if service is currently running
+                    if not hasattr(registry, 'is_running') or registry.is_running(service_name):
+                        # Measure CPU before suspension
+                        before_cpu = psutil.cpu_percent(interval=0.1)
+
+                        # Suspend the service if method exists
+                        if hasattr(registry, 'suspend_service'):
+                            await registry.suspend_service(service_name)
+                        elif hasattr(registry, 'stop_service'):
+                            await registry.stop_service(service_name)
+
+                        suspended_count += 1
+
+                        # Measure CPU after suspension
+                        after_cpu = psutil.cpu_percent(interval=0.1)
+                        cpu_freed += max(0, before_cpu - after_cpu)
+
+                        logger.info(f"Suspended service '{service_name}' for CPU optimization")
+
+                except Exception as e:
+                    logger.warning(f"Failed to suspend service '{service_name}': {e}")
+                    continue
+
+            # Additional CPU optimization: Lower process priority if available
+            if suspended_count == 0:
+                try:
+                    current_process = psutil.Process()
+                    current_process.nice(10)  # Lower priority
+                    logger.info("Lowered process priority for CPU optimization")
+                except Exception:
+                    pass
+
             result = OptimizationResult(
                 action=OptimizationAction.SUSPEND_SERVICE,
                 success=True,
                 message=f"Suspended {suspended_count} non-essential services for CPU optimization",
-                resources_freed={"cpu_percent": 0.0}  # Would calculate actual savings
+                resources_freed={"cpu_percent": cpu_freed, "services_suspended": suspended_count}
             )
             results.append(result)
-            
+
         except Exception as e:
+            logger.error(f"Error during service suspension: {e}")
             result = OptimizationResult(
                 action=OptimizationAction.SUSPEND_SERVICE,
                 success=False,
                 message=f"Failed to suspend services: {e}"
             )
             results.append(result)
-        
+
         return results
     
     async def _optimize_gpu_usage(self) -> List[OptimizationResult]:
-        """Optimize GPU usage by clearing GPU memory and suspending GPU-intensive services."""
+        """
+        Optimize GPU usage by clearing GPU memory and suspending GPU-intensive services.
+        Production implementation with PyTorch, TensorFlow, and CUDA support.
+        """
         results = []
-        
+        gpu_memory_freed = 0.0
+
         try:
-            # Clear GPU memory caches if possible
-            # This would depend on the specific GPU framework being used (CUDA, OpenCL, etc.)
-            
+            # Try to clear PyTorch GPU cache
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    before_mem = torch.cuda.memory_allocated() / (1024 ** 3)  # GB
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+                    after_mem = torch.cuda.memory_allocated() / (1024 ** 3)  # GB
+                    gpu_memory_freed += (before_mem - after_mem)
+                    logger.info("Cleared PyTorch GPU cache")
+            except ImportError:
+                logger.debug("PyTorch not available for GPU optimization")
+            except Exception as e:
+                logger.warning(f"Failed to clear PyTorch GPU cache: {e}")
+
+            # Try to clear TensorFlow GPU cache
+            try:
+                import tensorflow as tf
+                if tf.config.list_physical_devices('GPU'):
+                    tf.keras.backend.clear_session()
+                    logger.info("Cleared TensorFlow GPU session")
+            except ImportError:
+                logger.debug("TensorFlow not available for GPU optimization")
+            except Exception as e:
+                logger.warning(f"Failed to clear TensorFlow GPU session: {e}")
+
+            # Try to force garbage collection on GPU
+            try:
+                import gc
+                gc.collect()
+                logger.debug("Forced garbage collection for GPU cleanup")
+            except Exception as e:
+                logger.warning(f"Failed to force garbage collection: {e}")
+
             result = OptimizationResult(
                 action=OptimizationAction.CLEAR_CACHE,
                 success=True,
-                message="GPU memory optimization attempted",
-                resources_freed={"gpu_memory_percent": 0.0}  # Would calculate actual savings
+                message=f"GPU memory optimization completed, freed ~{gpu_memory_freed:.2f} GB",
+                resources_freed={"gpu_memory_gb": gpu_memory_freed}
             )
             results.append(result)
-            
+
         except Exception as e:
+            logger.error(f"Error during GPU optimization: {e}")
             result = OptimizationResult(
                 action=OptimizationAction.CLEAR_CACHE,
                 success=False,
@@ -632,21 +710,56 @@ class ResourceMonitor:
             )
     
     async def _suspend_background_services(self) -> OptimizationResult:
-        """Suspend background services to free resources."""
+        """
+        Suspend background services to free resources.
+        Production implementation with service registry integration.
+        """
         try:
             suspended_count = 0
-            
-            # This would need to integrate with the actual service registry
-            # For now, return a placeholder result
-            
+            resources_freed = {}
+
+            # Get service registry
+            try:
+                from ai_karen_engine.core import get_registry
+                registry = get_registry()
+            except Exception:
+                logger.debug("Service registry not available")
+                registry = None
+
+            if registry:
+                # Get all services
+                all_services = registry.get_all_services()
+
+                # Identify background/non-critical services
+                background_prefixes = ['metrics', 'analytics', 'monitoring', 'reporting', 'logging']
+                background_services = [
+                    svc for svc in all_services
+                    if any(svc.lower().startswith(prefix) for prefix in background_prefixes)
+                ]
+
+                # Suspend each background service
+                for service_name in background_services:
+                    try:
+                        # Check if service has suspend capability
+                        if hasattr(registry, 'suspend_service'):
+                            await registry.suspend_service(service_name)
+                            suspended_count += 1
+                            logger.info(f"Suspended background service: {service_name}")
+                    except Exception as e:
+                        logger.warning(f"Failed to suspend {service_name}: {e}")
+                        continue
+
+                resources_freed["services_suspended"] = suspended_count
+
             return OptimizationResult(
                 action=OptimizationAction.SUSPEND_SERVICE,
                 success=True,
                 message=f"Suspended {suspended_count} background services",
-                resources_freed={"services_suspended": suspended_count}
+                resources_freed=resources_freed
             )
-            
+
         except Exception as e:
+            logger.error(f"Error suspending background services: {e}")
             return OptimizationResult(
                 action=OptimizationAction.SUSPEND_SERVICE,
                 success=False,

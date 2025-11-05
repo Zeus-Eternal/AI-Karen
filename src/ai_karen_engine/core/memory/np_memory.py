@@ -1,10 +1,13 @@
 import argparse, json, sys
+import logging
 from typing import List, Tuple
 from tqdm import tqdm
 
 import torch
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModel
+
+logger = logging.getLogger(__name__)
 
 
 def load_jsonl(path: str) -> List[dict]:
@@ -18,7 +21,7 @@ def load_jsonl(path: str) -> List[dict]:
                 obj = json.loads(line)
                 items.append(obj)
             except Exception as e:
-                print(f"[WARN] Failed to parse line {ln}, skipped: {e}", file=sys.stderr)
+                logger.warning(f"Failed to parse line {ln} in {path}, skipped: {e}")
     return items
 
 
