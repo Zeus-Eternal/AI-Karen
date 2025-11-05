@@ -149,10 +149,13 @@ export class TemplateEngine {
  */
 export class EmailTemplateManager {
   /**
-   * Get template by ID (production placeholder - replace with DB fetch)
+   * Get template by ID
+   *
+   * PRODUCTION NOTE: Currently loads from in-memory defaults.
+   * Database persistence layer pending. Templates reset on server restart.
+   * Integrate with DB: await db.emailTemplates.findUnique({ where: { id: templateId } })
    */
   static async getById(templateId: string): Promise<EmailTemplate | null> {
-    // TODO: Replace with actual database fetch
     const defaults = await this.createDefaultTemplates('system');
     return defaults.find((t) => t.id === templateId) || null;
   }

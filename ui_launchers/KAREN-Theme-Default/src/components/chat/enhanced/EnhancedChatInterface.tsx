@@ -362,7 +362,17 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   const handleThreadSelect = useCallback(
     (threadId: string) => {
       setActiveThreadId(threadId);
-      // TODO: load messages for threadId from store/API
+
+      /**
+       * PRODUCTION NOTE: Thread persistence not yet integrated.
+       * Currently stores thread state in local component state only.
+       *
+       * To enable full thread management:
+       * 1. Integrate with conversation history API
+       * 2. Load messages from backend: const messages = await fetchThreadMessages(threadId)
+       * 3. Update setMessages(messages) with loaded data
+       */
+
       toast({
         title: "Thread Selected",
         description: `Switched to conversation thread: ${threadId}`,
@@ -386,7 +396,10 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
   const handleThreadUpdate = useCallback(
     (threadId: string, _updates: Partial<ConversationThread>) => {
-      // TODO: persist updates
+      /**
+       * PRODUCTION NOTE: Thread updates not persisted.
+       * Integrate with backend API: await updateThread(threadId, updates)
+       */
       toast({
         title: "Thread Updated",
         description: "Conversation thread has been updated",
@@ -397,7 +410,11 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
   const handleThreadDelete = useCallback(
     (threadId: string) => {
-      // TODO: delete thread via API/store and reroute context if needed
+      /**
+       * PRODUCTION NOTE: Thread deletion not persisted.
+       * Integrate with backend API: await deleteThread(threadId)
+       * After deletion, reroute to new thread or home
+       */
       toast({
         title: "Thread Deleted",
         description: "Conversation thread has been deleted",
@@ -408,7 +425,10 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
   const handleThreadArchive = useCallback(
     (threadId: string) => {
-      // TODO: archive thread
+      /**
+       * PRODUCTION NOTE: Thread archival not persisted.
+       * Integrate with backend API: await archiveThread(threadId)
+       */
       toast({
         title: "Thread Archived",
         description: "Conversation thread has been archived",
