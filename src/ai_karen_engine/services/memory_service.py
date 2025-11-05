@@ -38,7 +38,6 @@ class UISource(str, Enum):
     """Source UI types for tracking memory origin."""
 
     WEB = "web"
-    STREAMLIT = "streamlit"
     DESKTOP = "desktop"
     API = "api"
     AG_UI = "ag_ui"

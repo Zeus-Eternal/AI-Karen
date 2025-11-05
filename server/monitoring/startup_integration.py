@@ -11,7 +11,7 @@ from typing import Dict, Any
 from fastapi import FastAPI
 
 from .integration import monitoring_integration
-from .config_example import get_config_for_environment, validate_config
+from .environment_config import get_config_for_environment, validate_config
 from .dashboard_api import monitoring_router, MonitoringMiddleware
 
 logger = logging.getLogger(__name__)
@@ -228,7 +228,7 @@ async def example_startup_integration():
 # Configuration helpers
 def print_config_documentation():
     """Print configuration documentation."""
-    from .config_example import ENV_VARS_DOCUMENTATION
+    from .environment_config import ENV_VARS_DOCUMENTATION
     print(ENV_VARS_DOCUMENTATION)
 
 
