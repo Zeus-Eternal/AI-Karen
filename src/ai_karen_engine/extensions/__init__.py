@@ -4,16 +4,14 @@ Kari AI Extensions System
 The Extensions system provides a higher-level architecture above Kari's plugin system,
 enabling developers to build substantial, feature-rich modules that can compose multiple
 plugins, provide rich UIs, manage their own data, and be distributed through a marketplace.
+
+Production-ready with:
+- Comprehensive factory for centralized initialization
+- Resource monitoring and health checks
+- Marketplace integration
+- Dependency resolution
+- Workflow orchestration
 """
-
-# Avoid circular import - import manager functions lazily
-def get_extension_manager():
-    from ai_karen_engine.extensions.manager import get_extension_manager as _get_manager
-    return _get_manager()
-
-def initialize_extension_manager():
-    from ai_karen_engine.extensions.manager import initialize_extension_manager as _init_manager
-    return _init_manager()
 
 # Import ExtensionManager class directly
 from ai_karen_engine.extensions.manager import ExtensionManager
@@ -28,13 +26,28 @@ from ai_karen_engine.extensions.resource_monitor import ResourceMonitor, Extensi
 from ai_karen_engine.extensions.marketplace_client import MarketplaceClient
 from ai_karen_engine.extensions.metrics_dashboard import MetricsDashboard
 
+# Import factory for centralized initialization
+from ai_karen_engine.extensions.factory import (
+    ExtensionServiceConfig,
+    ExtensionServiceFactory,
+    get_extension_service_factory,
+    get_extension_manager,
+    get_extension_registry,
+    get_marketplace_client,
+    initialize_extensions_for_production,
+)
+
+# Legacy compatibility functions (now use factory)
+def initialize_extension_manager():
+    """Legacy function - now uses factory."""
+    return initialize_extensions_for_production()
+
 __all__ = [
+    # Core classes
     "ExtensionManager",
-    "get_extension_manager",
-    "initialize_extension_manager",
     "BaseExtension",
     "ExtensionManifest",
-    "ExtensionRecord", 
+    "ExtensionRecord",
     "ExtensionStatus",
     "ExtensionRegistry",
     "PluginOrchestrator",
@@ -47,4 +60,14 @@ __all__ = [
     "HealthStatus",
     "MarketplaceClient",
     "MetricsDashboard",
+    # Factory
+    "ExtensionServiceConfig",
+    "ExtensionServiceFactory",
+    "get_extension_service_factory",
+    # Factory convenience functions
+    "get_extension_manager",
+    "get_extension_registry",
+    "get_marketplace_client",
+    "initialize_extension_manager",
+    "initialize_extensions_for_production",
 ]
