@@ -149,6 +149,15 @@ export class TemplateEngine {
  */
 export class EmailTemplateManager {
   /**
+   * Get template by ID (production placeholder - replace with DB fetch)
+   */
+  static async getById(templateId: string): Promise<EmailTemplate | null> {
+    // TODO: Replace with actual database fetch
+    const defaults = await this.createDefaultTemplates('system');
+    return defaults.find((t) => t.id === templateId) || null;
+  }
+
+  /**
    * Create default templates
    */
   static async createDefaultTemplates(createdBy: string): Promise<EmailTemplate[]> {

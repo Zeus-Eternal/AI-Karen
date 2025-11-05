@@ -319,6 +319,7 @@ export class AuditLogExporter {
         content += `${label}: ${value}\n`;
       });
       content += '\n';
+    });
 
     return content;
   }
@@ -436,7 +437,7 @@ export class AuditLogExporter {
       format,
       filter: combinedFilter,
       filename: `audit-logs-${startDate.toISOString().split('T')[0]}-to-${endDate.toISOString().split('T')[0]}`
-
+    });
   }
 
   /**
@@ -457,7 +458,7 @@ export class AuditLogExporter {
       format,
       filter: filterBuilder.build(),
       filename: `user-activity-${userId.substring(0, 8)}-${new Date().toISOString().split('T')[0]}`
-
+    });
   }
 
   /**
@@ -478,7 +479,7 @@ export class AuditLogExporter {
       filter: filterBuilder.build(),
       fields: ['timestamp', 'user_email', 'action', 'ip_address', 'details'],
       filename: `security-events-${new Date().toISOString().split('T')[0]}`
-
+    });
   }
 }
 
