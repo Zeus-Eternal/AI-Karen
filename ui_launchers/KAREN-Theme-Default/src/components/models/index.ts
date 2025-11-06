@@ -1,22 +1,176 @@
-import { lazy } from 'react';
-import { useEffect } from 'react';
-// Model Organization and Management Components
-// Comprehensive UI components for model discovery, organization, and management
+/**
+ * Model Organization and Management Components - Production Grade
+ * Comprehensive UI components for model discovery, organization, and management
+ */
 
+// ============================================================================
+// Component Exports
+// ============================================================================
 
+// Intelligent Selection & Recommendations
+export { default as IntelligentModelSelector } from './IntelligentModelSelector';
+export type {
+  ModelOption,
+  ContextAnalysis,
+  UserPreferences,
+  ModelRecommendation,
+  IntelligentModelSelectorProps,
+} from './IntelligentModelSelector';
 
+export { default as EnhancedModelSelector } from './EnhancedModelSelector';
+export type {
+  SelectorModel,
+  EnhancedModelSelectorProps,
+} from './EnhancedModelSelector';
 
+// Cost Management & Tracking
+export { default as CostTrackingSystem } from './CostTrackingSystem';
+export type {
+  CostEntry,
+  BudgetConfig,
+  CostSummary,
+  CostTrackingSystemProps,
+} from './CostTrackingSystem';
 
+export { default as ModelUsageAnalytics } from './ModelUsageAnalytics';
+export type {
+  UsageData,
+  ModelUsageAnalyticsProps,
+} from './ModelUsageAnalytics';
 
+// Metrics & Performance Monitoring
+export { default as ModelMetricsDashboard } from './ModelMetricsDashboard';
+export type {
+  ModelMetric,
+  ModelMetricsDashboardProps,
+} from './ModelMetricsDashboard';
 
-export { default as ModelComparisonInterface } from './ModelComparisonInterface';
+export { default as ModelStatusMonitor } from './ModelStatusMonitor';
+export type {
+  ModelStatus,
+  ModelStatusMonitorProps,
+} from './ModelStatusMonitor';
 
+export { default as ModelPerformanceComparison } from './ModelPerformanceComparison';
+export type {
+  PerformanceMetric,
+  ModelPerformanceComparisonProps,
+} from './ModelPerformanceComparison';
+
+export { default as IntegratedModelDisplay } from './IntegratedModelDisplay';
+export type {
+  DisplayModel,
+  IntegratedModelDisplayProps,
+} from './IntegratedModelDisplay';
+
+// Provider Management
 export { default as ModelProviderManagementHub } from './ModelProviderManagementHub';
-// Re-export existing model components for compatibility
+export type {
+  Provider,
+  ModelProviderManagementHubProps,
+} from './ModelProviderManagementHub';
+
+// Model Discovery & Browsing
+export { default as ModelBrowser } from './ModelBrowser';
+export type {
+  Model,
+  ModelBrowserProps,
+} from './ModelBrowser';
+
+export { default as ModelGrid } from './ModelGrid';
+export type {
+  GridModel,
+  ModelGridProps,
+} from './ModelGrid';
+
+export { default as ModelsModelCard } from './ModelCard';
+export type {
+  CardModel,
+  ModelCardProps,
+} from './ModelCard';
+
+export { default as ModelFilters } from './ModelFilters';
+export type {
+  FilterState,
+  ModelFiltersProps,
+} from './ModelFilters';
+
+// Configuration & Settings
+export { default as ModelConfigurationPanel } from './ModelConfigurationPanel';
+export type {
+  ModelConfig,
+  ModelConfigurationPanelProps,
+} from './ModelConfigurationPanel';
+
+// Dialogs & Modals
+export { default as ModelDetailModal } from './ModelDetailModal';
+export type {
+  DetailModel,
+  ModelDetailModalProps,
+} from './ModelDetailModal';
+
+export { default as ModelDownloadDialog } from './ModelDownloadDialog';
+export type {
+  DownloadState,
+  ModelDownloadDialogProps,
+} from './ModelDownloadDialog';
+
+export { default as LicenseDialog } from './LicenseDialog';
+export type {
+  License,
+  LicenseDialogProps,
+} from './LicenseDialog';
+
+// Comparison & Analysis
+export { default as ModelComparisonInterface } from './ModelComparisonInterface';
+export type {
+  ComparisonModel,
+  ModelComparisonInterfaceProps,
+} from './ModelComparisonInterface';
+
+// License & Compliance
+export { default as LicenseCompliancePanel } from './LicenseCompliancePanel';
+export type {
+  LicenseInfo,
+  LicenseCompliancePanelProps,
+} from './LicenseCompliancePanel';
+
+export { default as ModelCompatibilityBadge } from './ModelCompatibilityBadge';
+export type {
+  CompatibilityStatus,
+  ModelCompatibilityBadgeProps,
+} from './ModelCompatibilityBadge';
+
+// Migration & Operations
+export { default as ModelMigrationWizard } from './ModelMigrationWizard';
+export type {
+  MigrationStep,
+  ModelMigrationWizardProps,
+} from './ModelMigrationWizard';
+
+export { default as OperationProgress } from './OperationProgress';
+export type {
+  Operation,
+  OperationProgressProps,
+} from './OperationProgress';
+
+// Management Pages
+export { default as ModelManagementPage } from './ModelManagementPage';
+export type {
+  ModelManagementPageProps,
+} from './ModelManagementPage';
+
+// ============================================================================
+// Re-exports from other directories (for backward compatibility)
+// ============================================================================
 export { default as ModelCard } from '../settings/ModelCard';
 export { default as ModelDetailsDialog } from '../settings/ModelDetailsDialog';
 export { default as ModelSelector } from '../chat/ModelSelector';
-// Types and interfaces
+
+// ============================================================================
+// Shared Types and Interfaces
+// ============================================================================
+
 export interface ModelInfo {
   id: string;
   name: string;
@@ -62,6 +216,7 @@ export interface ModelInfo {
     use_cases: string[];
   };
 }
+
 export interface ModelDiscoveryResponse {
   models: ModelInfo[];
   total_count: number;
@@ -73,6 +228,7 @@ export interface ModelDiscoveryResponse {
   discovery_status: string;
   last_updated: number;
 }
+
 export interface ModelStatusInfo {
   model_id: string;
   model_name: string;
@@ -96,6 +252,7 @@ export interface ModelStatusInfo {
   }>;
   performance_trend: 'up' | 'down' | 'stable';
 }
+
 export interface ModelPerformanceMetrics {
   model_id: string;
   model_name: string;
@@ -120,6 +277,7 @@ export interface ModelPerformanceMetrics {
     use_cases: string[];
   };
 }
+
 export interface OptimizationSettings {
   // Response Optimization
   enable_content_optimization: boolean;
@@ -146,13 +304,18 @@ export interface OptimizationSettings {
   enable_ab_testing: boolean;
   log_level: '' | 'warning' | 'error';
 }
-// Utility functions
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
 export const formatFileSize = (bytes: number): string => {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   if (bytes === 0) return '0 B';
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
 };
+
 export const getStatusBadgeVariant = (status: string) => {
   switch (status) {
     case 'local':
@@ -167,6 +330,7 @@ export const getStatusBadgeVariant = (status: string) => {
       return 'outline';
   }
 };
+
 export const getProviderIcon = (provider: string) => {
   switch (provider.toLowerCase()) {
     case 'llama-cpp':
@@ -181,6 +345,7 @@ export const getProviderIcon = (provider: string) => {
       return 'Cpu';
   }
 };
+
 export const getModalityIcon = (modality: string) => {
   switch (modality.toLowerCase()) {
     case 'text':
@@ -195,6 +360,7 @@ export const getModalityIcon = (modality: string) => {
       return 'Eye';
   }
 };
+
 export const getCapabilityIcon = (capability: string) => {
   const cap = capability.toLowerCase();
   if (cap.includes('chat') || cap.includes('conversation')) {
@@ -207,12 +373,3 @@ export const getCapabilityIcon = (capability: string) => {
     return 'Brain';
   }
 };
-
-export const ModelBrowser = lazy(() => import('./ModelBrowser'));
-export const ModelPerformanceComparison = lazy(() => import('./ModelPerformanceComparison'));
-export const ModelStatusMonitor = lazy(() => import('./ModelStatusMonitor'));
-export const ModelConfigurationPanel = lazy(() => import('./ModelConfigurationPanel'));
-export const EnhancedModelSelector = lazy(() => import('./EnhancedModelSelector'));
-export const ModelMetricsDashboard = lazy(() => import('./ModelMetricsDashboard'));
-export const CostTrackingSystem = lazy(() => import('./CostTrackingSystem'));
-export const IntelligentModelSelector = lazy(() => import('./IntelligentModelSelector'));
