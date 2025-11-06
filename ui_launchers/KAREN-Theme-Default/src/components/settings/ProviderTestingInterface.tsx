@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 
-interface TestResult {
+export interface TestResult {
   test_type: string;
   success: boolean;
   duration_ms: number;
@@ -37,7 +37,7 @@ interface TestResult {
   timestamp: string;
 }
 
-interface ValidationResult {
+export interface ValidationResult {
   connectivity: TestResult;
   authentication: TestResult;
   model_discovery: TestResult;
@@ -47,7 +47,7 @@ interface ValidationResult {
   recommendations: string[];
 }
 
-interface ProviderTestingInterfaceProps {
+export interface ProviderTestingInterfaceProps {
   providerName: string;
   providerType: 'remote' | 'local' | 'hybrid';
   requiresApiKey: boolean;

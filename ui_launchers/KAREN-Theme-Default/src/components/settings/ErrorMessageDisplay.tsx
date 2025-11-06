@@ -22,7 +22,7 @@ import {
   Wrench,
 } from "lucide-react";
 
-interface ErrorContext {
+export interface ErrorContext {
   provider: string;
   model?: string;
   request_type?: string;
@@ -31,7 +31,7 @@ interface ErrorContext {
   system_state?: Record<string, any>;
 }
 
-interface ErrorSolution {
+export interface ErrorSolution {
   id: string;
   title: string;
   description: string;
@@ -54,7 +54,7 @@ interface ErrorSolution {
   prerequisites?: string[];
 }
 
-interface ErrorInfo {
+export interface ErrorInfo {
   error_type: string;
   error_code?: string;
   message?: string;
@@ -67,7 +67,7 @@ interface ErrorInfo {
   prevention_tips: string[];
 }
 
-interface ErrorMessageDisplayProps {
+export interface ErrorMessageDisplayProps {
   error: Error | string;
   context?: Partial<ErrorContext>;
   onRetry?: () => void;

@@ -27,7 +27,7 @@ import {
   X,
 } from "lucide-react";
 
-interface DiagnosticInfo {
+export interface DiagnosticInfo {
   provider_name: string;
   status: "healthy" | "unhealthy" | "degraded" | "unknown";
   health_score: number;
@@ -100,7 +100,7 @@ interface DiagnosticInfo {
   }>;
 }
 
-interface RepairAction {
+export interface RepairAction {
   id: string;
   title: string;
   description: string;
@@ -111,7 +111,7 @@ interface RepairAction {
   prerequisites: string[];
 }
 
-interface ProviderDiagnosticsPageProps {
+export interface ProviderDiagnosticsPageProps {
   providerName: string;
   onClose?: () => void;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-interface SearchHighlightProps {
+export interface SearchHighlightProps {
   text: string;
   searchQuery: string;
   className?: string;

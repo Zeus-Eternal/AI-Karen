@@ -42,7 +42,7 @@ import {
 import { getKarenBackend } from "@/lib/karen-backend";
 import { handleApiError } from "@/lib/error-handler";
 
-interface Job {
+export interface Job {
   id: string;
   kind: string;
   status: string;
@@ -59,7 +59,7 @@ interface Job {
   parameters?: Record<string, any>;
 }
 
-interface JobCenterProps {
+export interface JobCenterProps {
   refreshInterval?: number;
   maxLogLines?: number;
   showCompletedJobs?: boolean;

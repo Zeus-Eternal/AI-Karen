@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getKarenBackend } from "@/lib/karen-backend";
 import { useToast } from "@/hooks/use-toast";
 
-interface ModelInfo {
+export interface ModelInfo {
   id: string;
   name: string;
   provider: string;
@@ -17,12 +17,12 @@ interface ModelInfo {
   format?: string;
 }
 
-interface LLMProvider {
+export interface LLMProvider {
   name: string;
   description: string;
 }
 
-interface ModelBrowserProps {
+export interface ModelBrowserProps {
   models: ModelInfo[];
   setModels: (models: ModelInfo[]) => void;
   providers: LLMProvider[];

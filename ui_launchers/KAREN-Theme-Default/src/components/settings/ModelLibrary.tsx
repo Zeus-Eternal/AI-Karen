@@ -43,7 +43,7 @@ import { useDownloadStatus } from '@/hooks/use-download-status';
 import ConfirmationDialog from '@/components/ui/confirmation-dialog';
 import ModelCard from './ModelCard';
 import DownloadManager from './DownloadManager';
-interface ModelInfo {
+export interface ModelInfo {
   id: string;
   name: string;
   provider: string;
@@ -57,7 +57,7 @@ interface ModelInfo {
   lastUsed?: number;
   downloadDate?: number;
 }
-interface ModelMetadata {
+export interface ModelMetadata {
   parameters: string;
   quantization: string;
   memoryRequirement: string;
@@ -65,7 +65,7 @@ interface ModelMetadata {
   license: string;
   tags: string[];
 }
-interface ModelLibraryStats {
+export interface ModelLibraryStats {
   totalModels: number;
   localModels: number;
   cloudModels: number;
@@ -81,8 +81,8 @@ const LOCAL_STORAGE_KEYS = {
   sortBy: 'model_library_sort_by',
   sortOrder: 'model_library_sort_order',
 };
-type SortOption = 'name' | 'size' | 'parameters' | 'provider' | 'status';
-type SortOrder = 'asc' | 'desc';
+export type SortOption = 'name' | 'size' | 'parameters' | 'provider' | 'status';
+export type SortOrder = 'asc' | 'desc';
 // Debounce hook for search
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);

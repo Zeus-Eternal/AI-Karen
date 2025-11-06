@@ -15,7 +15,7 @@ import { getKarenBackend } from '@/lib/karen-backend';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 
-interface SystemModelConfig {
+export interface SystemModelConfig {
   defaultModel?: string;
   fallbackModel?: string;
   autoSelectEnabled?: boolean;
@@ -27,7 +27,7 @@ interface SystemModelConfig {
   cacheExpirationTime?: number;
 }
 
-interface SystemModelSummary {
+export interface SystemModelSummary {
   id: string;
   name: string;
   family?: string;
@@ -42,7 +42,7 @@ interface SystemModelSummary {
   size?: number;
 }
 
-interface ModelConfigurationProps {
+export interface ModelConfigurationProps {
   modelId?: string;
   onModelChange?: (modelId: string) => void;
 }

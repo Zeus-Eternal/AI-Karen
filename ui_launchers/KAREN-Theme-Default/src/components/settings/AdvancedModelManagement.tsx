@@ -14,7 +14,7 @@ import ModelUploadInterface from './ModelUploadInterface';
 import JobCenter from './JobCenter';
 import ModelConfiguration from './ModelConfiguration';
 
-interface StorageInfo {
+export interface StorageInfo {
   total_space_gb: number;
   used_space_gb: number;
   available_space_gb: number;
@@ -29,7 +29,7 @@ interface StorageInfo {
   }>;
 }
 
-interface SystemHealth {
+export interface SystemHealth {
   llama_cpp_available: boolean;
   gpu_available: boolean;
   gpu_memory_gb?: number;

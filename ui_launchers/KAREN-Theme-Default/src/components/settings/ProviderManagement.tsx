@@ -41,7 +41,7 @@ import ErrorMessageDisplay from './ErrorMessageDisplay';
 import { useProviderNotifications } from '@/hooks/useProviderNotifications';
 
 // Model Recommendations Component
-interface ModelRecommendationsProps {
+export interface ModelRecommendationsProps {
   provider: LLMProvider;
 }
 
@@ -210,7 +210,7 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
   );
 }
 
-interface LLMProvider {
+export interface LLMProvider {
   name: string;
   description: string;
   category: string;
@@ -233,7 +233,7 @@ interface LLMProvider {
   };
 }
 
-interface ProviderStats {
+export interface ProviderStats {
   total_models: number;
   healthy_providers: number;
   total_providers: number;
@@ -241,7 +241,7 @@ interface ProviderStats {
   degraded_mode: boolean;
 }
 
-interface ApiKeyValidationResult {
+export interface ApiKeyValidationResult {
   valid: boolean;
   message: string;
   provider: string;
@@ -249,7 +249,7 @@ interface ApiKeyValidationResult {
   capabilities_detected?: string[];
 }
 
-interface ProviderManagementProps {
+export interface ProviderManagementProps {
   providers: LLMProvider[];
   setProviders: (providers: LLMProvider[]) => void;
   providerStats: ProviderStats | null;
