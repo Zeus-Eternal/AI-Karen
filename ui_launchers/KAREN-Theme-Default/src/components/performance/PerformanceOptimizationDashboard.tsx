@@ -14,7 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { performanceOptimizer } from "@/services/performance-optimizer"; // Ensure this service exists
 import { AlertTriangle, CheckCircle, Info, Lightbulb, Play, Package, Image, Database, MemoryStick, Zap } from "lucide-react";
 
-interface PerformanceOptimizationDashboardProps {
+export interface PerformanceOptimizationDashboardProps {
   autoApply?: boolean;
   showAdvancedSettings?: boolean;
 }

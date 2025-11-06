@@ -16,14 +16,14 @@ import { resourceMonitor } from "@/services/resource-monitor";
 import { Cpu, MemoryStick, Network, HardDrive, AlertTriangle, Activity, CheckCircle, Zap, TrendingUp, TrendingDown } from "lucide-react";
 
 // --- Types for reference
-interface ResourceMetrics {
+export interface ResourceMetrics {
   cpu: { usage: number; cores: number };
   memory: { percentage: number; used: number; total: number };
   network: { latency: number; bandwidth: number; connectionType: string; bytesReceived: number };
   storage: { percentage: number; used: number; total: number };
 }
 
-interface ResourceAlert {
+export interface ResourceAlert {
   id: string;
   type: string;
   severity: string;
@@ -32,7 +32,7 @@ interface ResourceAlert {
   resolved: boolean;
 }
 
-interface ScalingRecommendation {
+export interface ScalingRecommendation {
   id: string;
   type: string;
   resource: string;
@@ -46,7 +46,7 @@ interface ScalingRecommendation {
   confidence: number;
 }
 
-interface CapacityPlan {
+export interface CapacityPlan {
   resource: string;
   currentUsage: number;
   projectedUsage: number;
@@ -55,7 +55,7 @@ interface CapacityPlan {
   timeframe: string;
 }
 
-interface ResourceMonitoringDashboardProps {
+export interface ResourceMonitoringDashboardProps {
   refreshInterval?: number;
   showCapacityPlanning?: boolean;
 }

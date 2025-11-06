@@ -75,7 +75,7 @@ import {
  * Comprehensive performance analysis with bottleneck identification and optimization recommendations
  */
 
-interface PerformanceAnalyticsDashboardProps {
+export interface PerformanceAnalyticsDashboardProps {
   refreshInterval?: number;
   showAdvancedFeatures?: boolean;
 }
