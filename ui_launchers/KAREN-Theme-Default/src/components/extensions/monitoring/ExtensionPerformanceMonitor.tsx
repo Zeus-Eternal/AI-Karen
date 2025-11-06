@@ -11,6 +11,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 
 import {
   useExtensionStatuses,
@@ -39,7 +40,7 @@ import {
   Target,
 } from "lucide-react";
 
-interface PerformanceMetric {
+export interface PerformanceMetric {
   name: string;
   value: number;
   unit: string;
@@ -51,7 +52,7 @@ interface PerformanceMetric {
   };
 }
 
-interface ResourceAlert {
+export interface ResourceAlert {
   id: string;
   type: "cpu" | "memory" | "network" | "storage";
   severity: "warning" | "critical";
@@ -63,7 +64,7 @@ interface ResourceAlert {
   threshold: number;
 }
 
-interface ExtensionPerformanceMonitorProps {
+export interface ExtensionPerformanceMonitorProps {
   className?: string;
   extensionId?: string; // If provided, show metrics for specific extension
 }
@@ -256,16 +257,17 @@ export function ExtensionPerformanceMonitor({
           </p>
         </div>
         <div className="flex gap-2">
-          <select
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="1h">Last Hour</option>
-            <option value="6h">Last 6 Hours</option>
-            <option value="24h">Last 24 Hours</option>
-            <option value="7d">Last 7 Days</option>
-          </select>
+          <Select value={timeRange} onValueChange={(value) => setTimeRange(value as any)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Time range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1h">Last Hour</SelectItem>
+              <SelectItem value="6h">Last 6 Hours</SelectItem>
+              <SelectItem value="24h">Last 24 Hours</SelectItem>
+              <SelectItem value="7d">Last 7 Days</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             variant="outline"
             onClick={() => setAutoRefresh((v) => !v)}
@@ -377,7 +379,7 @@ export function ExtensionPerformanceMonitor({
 
 /* ===== Subcomponents ===== */
 
-interface MetricCardProps {
+export interface MetricCardProps {
   metric: PerformanceMetric;
 }
 function MetricCard({ metric }: MetricCardProps) {
