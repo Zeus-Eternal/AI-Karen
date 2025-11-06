@@ -115,9 +115,11 @@ describe('Backend Utilities', () => {
 
     (getEnvironmentConfigManager as Mock).mockReturnValue(mockConfigManager);
     (getConnectionManager as Mock).mockReturnValue(mockConnectionManager);
+  });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
 
   describe('getBackendBaseUrl', () => {
     it('should return primary URL from config manager', () => {

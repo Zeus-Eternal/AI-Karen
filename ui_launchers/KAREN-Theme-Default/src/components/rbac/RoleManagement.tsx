@@ -16,14 +16,23 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
-import { } from '@/components/ui/dialog';
-import { } from '@/components/ui/select';
-
-
-
-
-import { } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Shield, Edit, Trash2, UserPlus, AlertTriangle
+} from 'lucide-react';
 
 interface RoleManagementProps {
   className?: string;
@@ -337,6 +346,7 @@ function RoleHierarchyView() {
   const { data: hierarchy = [] } = useQuery({
     queryKey: ['rbac', 'role-hierarchy'],
     queryFn: () => enhancedApiClient.get('/api/rbac/role-hierarchy'),
+  });
 
   return (
     <div className="space-y-4">
@@ -402,17 +412,19 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
     description: '',
     permissions: [] as Permission[],
     parentRoles: [] as string[]
+  });
 
   const queryClient = useQueryClient();
 
   const createRoleMutation = useMutation({
-    mutationFn: (roleData: typeof formData) => 
+    mutationFn: (roleData: typeof formData) =>
       enhancedApiClient.post('/api/rbac/roles', roleData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] });
       onOpenChange(false);
       setFormData({ name: '', description: '', permissions: [], parentRoles: [] });
     }
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -431,7 +443,7 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Role Name</Label>
-            <input
+            <Input
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -441,7 +453,7 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
 
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <textarea
+            <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -480,6 +492,7 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
     description: '',
     permissions: [] as Permission[],
     parentRoles: [] as string[]
+  });
 
   React.useEffect(() => {
     if (role) {
@@ -488,19 +501,20 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
         description: role.description,
         permissions: role.permissions,
         parentRoles: role.parentRoles || []
-
+      });
     }
   }, [role]);
 
   const queryClient = useQueryClient();
 
   const updateRoleMutation = useMutation({
-    mutationFn: (roleData: typeof formData) => 
+    mutationFn: (roleData: typeof formData) =>
       enhancedApiClient.put(`/api/rbac/roles/${role?.id}`, roleData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] });
       onOpenChange(false);
     }
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -521,7 +535,7 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Role Name</Label>
-            <input
+            <Input
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -532,7 +546,7 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
 
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <textarea
+            <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}

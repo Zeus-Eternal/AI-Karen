@@ -540,6 +540,5 @@ export function QualityAssuranceDashboard() {
         </Alert>
       )}
     </div>
-    </ErrorBoundary>
   );
 }
