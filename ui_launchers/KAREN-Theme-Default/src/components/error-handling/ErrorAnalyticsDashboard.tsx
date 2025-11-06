@@ -53,7 +53,7 @@ import type {
   ErrorAnalyticsReport,
 } from "@/lib/error-handling/error-analytics";
 
-interface ErrorAnalyticsDashboardProps {
+export interface ErrorAnalyticsDashboardProps {
   analytics: ErrorAnalytics;
   refreshInterval?: number;
   enableRealTimeUpdates?: boolean;
