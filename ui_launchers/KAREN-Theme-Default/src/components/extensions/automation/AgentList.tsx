@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-interface AgentInfo {
+export interface AgentInfo {
   id: string;
   name: string;
   status: "running" | "stopped" | "error";
