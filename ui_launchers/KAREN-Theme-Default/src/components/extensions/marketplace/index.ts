@@ -1,2 +1,14 @@
 // Extension marketplace components
-export { default as ExtensionMarketplace } from './ExtensionMarketplace';
+export { ExtensionMarketplace } from './ExtensionMarketplace';
+export type {
+  ExtensionMarketplaceProps,
+  MarketplaceExtension,
+  ExtensionCardProps
+} from './ExtensionMarketplace';
+
+export { default as MarketplaceReviews } from './MarketplaceReviews';
+export type {
+  MarketplaceReviewsProps,
+  ExtensionReview,
+  ReviewStats
+} from './MarketplaceReviews';

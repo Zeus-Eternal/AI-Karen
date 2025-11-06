@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
+import { Input } from '../../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 
 import { 
   Search, 
@@ -26,7 +28,7 @@ import {
   Info, 
   ExternalLink 
 } from 'lucide-react';
-interface MarketplaceExtension {
+export interface MarketplaceExtension {
   id: string;
   name: string;
   display_name: string;
@@ -58,7 +60,7 @@ interface MarketplaceExtension {
   installed?: boolean;
   installing?: boolean;
 }
-interface ExtensionMarketplaceProps {
+export interface ExtensionMarketplaceProps {
   className?: string;
   onInstall?: (extensionId: string) => Promise<void>;
   onUninstall?: (extensionId: string) => Promise<void>;
@@ -309,25 +311,26 @@ export function ExtensionMarketplace({
       <div className="space-y-4">
         <div className="flex gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <input
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
+            <Input
               type="text"
               placeholder="Search extensions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="pl-10"
             />
           </div>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="popular">Most Popular</option>
-            <option value="recent">Recently Updated</option>
-            <option value="rating">Highest Rated</option>
-            <option value="name">Name (A-Z)</option>
-          </select>
+          <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="popular">Most Popular</SelectItem>
+              <SelectItem value="recent">Recently Updated</SelectItem>
+              <SelectItem value="rating">Highest Rated</SelectItem>
+              <SelectItem value="name">Name (A-Z)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         {showFilters && (
           <Card>
@@ -388,7 +391,7 @@ export function ExtensionMarketplace({
     </div>
   );
 }
-interface ExtensionCardProps {
+export interface ExtensionCardProps {
   extension: MarketplaceExtension;
   installing: boolean;
   onInstall: () => void;
