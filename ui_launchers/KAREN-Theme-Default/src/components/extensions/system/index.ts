@@ -12,5 +12,5 @@ export type {
   SystemDetails
 } from './SystemInfo';
 
-// TODO: Add category components when implemented
-// export * from './categories';
+// Category components
+export * from './categories';
