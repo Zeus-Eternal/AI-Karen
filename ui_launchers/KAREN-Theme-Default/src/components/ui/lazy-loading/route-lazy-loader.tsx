@@ -4,7 +4,7 @@ import React, { Suspense, ComponentType } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { ErrorBoundary } from 'react-error-boundary';
-interface RouteLazyLoaderProps {
+export interface RouteLazyLoaderProps {
   children: React.ReactNode;
   fallback?: React.ComponentType;
   errorFallback?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>;

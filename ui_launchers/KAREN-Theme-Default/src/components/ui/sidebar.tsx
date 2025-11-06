@@ -5,7 +5,7 @@ import { Slot } from '@radix-ui/react-slot';
 
 import { cn } from '@/lib/utils';
 
-type SidebarContextValue = {
+export type SidebarContextValue = {
   isOpen: boolean;
   open: () => void;
   close: () => void;
@@ -22,7 +22,7 @@ function useSidebar() {
   return context;
 }
 
-interface SidebarProviderProps {
+export interface SidebarProviderProps {
   defaultOpen?: boolean;
   children: React.ReactNode;
 }
@@ -47,7 +47,7 @@ function SidebarProvider({ defaultOpen = true, children }: SidebarProviderProps)
   return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
 }
 
-type SidebarProps = React.ComponentPropsWithoutRef<'aside'> & {
+export type SidebarProps = React.ComponentPropsWithoutRef<'aside'> & {
   variant?: 'sidebar' | 'floating';
   collapsible?: 'icon' | 'none' | 'offcanvas';
   side?: 'left' | 'right';
@@ -89,7 +89,7 @@ const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
 );
 Sidebar.displayName = 'Sidebar';
 
-type SidebarTriggerProps = React.ComponentPropsWithoutRef<'button'> & {
+export type SidebarTriggerProps = React.ComponentPropsWithoutRef<'button'> & {
   asChild?: boolean;
 };
 
@@ -207,7 +207,7 @@ const SidebarMenuItem = React.forwardRef<HTMLLIElement, React.ComponentPropsWith
 );
 SidebarMenuItem.displayName = 'SidebarMenuItem';
 
-type SidebarMenuButtonProps = React.ComponentPropsWithoutRef<'button'> & {
+export type SidebarMenuButtonProps = React.ComponentPropsWithoutRef<'button'> & {
   asChild?: boolean;
   isActive?: boolean;
   variant?: 'default' | 'outline';

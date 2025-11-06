@@ -26,7 +26,7 @@ import { AriaLiveRegion, AriaStatus } from "./aria-live-region";
 // Re-export the base Form provider
 const AriaEnhancedForm = FormProvider;
 
-type FormFieldContextValue<
+export type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
 > = {
@@ -98,7 +98,7 @@ const useAriaFormField = () => {
   };
 };
 
-type FormItemContextValue = {
+export type FormItemContextValue = {
   id: string;
 }
 

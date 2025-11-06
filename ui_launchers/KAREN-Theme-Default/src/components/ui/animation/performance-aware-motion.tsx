@@ -10,7 +10,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion';
   useWillChange
 import { } from '@/utils/animation-performance';
 
-interface PerformanceAwareMotionProps extends Omit<MotionProps, 'variants'> {
+export interface PerformanceAwareMotionProps extends Omit<MotionProps, 'variants'> {
   variant?: keyof typeof performanceAnimationVariants;
   children: React.ReactNode;
   enableGPU?: boolean;
@@ -18,8 +18,8 @@ interface PerformanceAwareMotionProps extends Omit<MotionProps, 'variants'> {
   className?: string;
 }
 
-type AnimationStartHandler = NonNullable<MotionProps['onAnimationStart']>;
-type AnimationCompleteHandler = NonNullable<MotionProps['onAnimationComplete']>;
+export type AnimationStartHandler = NonNullable<MotionProps['onAnimationStart']>;
+export type AnimationCompleteHandler = NonNullable<MotionProps['onAnimationComplete']>;
 
 export const PerformanceAwareMotion: React.FC<PerformanceAwareMotionProps> = ({
   variant = 'fade',
@@ -110,7 +110,7 @@ export const SpringMotion: React.FC<Omit<PerformanceAwareMotionProps, 'variant'>
 );
 
 // Staggered animation container
-interface StaggeredMotionProps {
+export interface StaggeredMotionProps {
   children: React.ReactNode;
   staggerDelay?: number;
   className?: string;
@@ -204,7 +204,7 @@ export const StaggeredItem: React.FC<{
 };
 
 // Performance-aware AnimatePresence wrapper
-interface PerformanceAnimatePresenceProps {
+export interface PerformanceAnimatePresenceProps {
   children: React.ReactNode;
   mode?: 'wait' | 'sync' | 'popLayout';
   optimizeForPerformance?: boolean;

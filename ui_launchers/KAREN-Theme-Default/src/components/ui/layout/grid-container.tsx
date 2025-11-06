@@ -222,7 +222,7 @@ function processGridAreas(areas: GridAreas): string {
 /**
  * Style-related properties for grid container
  */
-interface GridStyleProps {
+export interface GridStyleProps {
   columns?: string | number | ResponsiveValue<string | number>;
   rows?: string | number | ResponsiveValue<string | number>;
   gap?: string | ResponsiveValue<string>;

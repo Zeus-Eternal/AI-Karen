@@ -16,7 +16,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, PanInfo, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-interface TouchButtonProps {
+export interface TouchButtonProps {
   children: React.ReactNode;
   onClick?: () => void;
   onLongPress?: () => void;
@@ -139,7 +139,7 @@ const TouchButton: React.FC<TouchButtonProps> = ({
   );
 };
 
-interface SwipeableCardProps {
+export interface SwipeableCardProps {
   children: React.ReactNode;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
@@ -188,7 +188,7 @@ const SwipeableCard: React.FC<SwipeableCardProps> = ({
   );
 };
 
-interface PullToRefreshProps {
+export interface PullToRefreshProps {
   children: React.ReactNode;
   onRefresh: () => Promise<void>;
   refreshThreshold?: number;
@@ -265,7 +265,7 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
   );
 };
 
-interface FloatingActionButtonProps {
+export interface FloatingActionButtonProps {
   onClick: () => void;
   icon: React.ReactNode;
   label?: string;
@@ -338,7 +338,7 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   );
 };
 
-interface TouchSliderProps {
+export interface TouchSliderProps {
   value: number;
   onChange: (value: number) => void;
   min?: number;
@@ -428,7 +428,7 @@ const TouchSlider: React.FC<TouchSliderProps> = ({
   );
 };
 
-interface TouchMenuProps {
+export interface TouchMenuProps {
   trigger: React.ReactNode;
   items: Array<{
     label: string;

@@ -20,7 +20,7 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+export type Story = StoryObj<typeof meta>;
 
 // Sample content component
 const SampleCard = ({ 

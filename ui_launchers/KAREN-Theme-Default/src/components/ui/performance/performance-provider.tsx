@@ -5,7 +5,7 @@ import { performanceMonitor } from '@/utils/performance-monitor';
 import { useToast } from "@/hooks/use-toast";
 
 // Context for performance monitoring
-interface PerformanceContextValue {
+export interface PerformanceContextValue {
   recordMetric: (metric: {
     name: string;
     value: number;
@@ -22,7 +22,7 @@ interface PerformanceContextValue {
 const PerformanceContext = createContext<PerformanceContextValue | null>(null);
 
 // PerformanceProvider props
-interface PerformanceProviderProps {
+export interface PerformanceProviderProps {
   children: React.ReactNode;
   enableReporting?: boolean;
 }

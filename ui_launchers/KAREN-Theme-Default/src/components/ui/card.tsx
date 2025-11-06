@@ -7,7 +7,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-interface CardProps {
+export interface CardProps {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
@@ -17,27 +17,27 @@ interface CardProps {
   onClick?: () => void;
 }
 
-interface CardHeaderProps {
+export interface CardHeaderProps {
   children: React.ReactNode;
   className?: string;
 }
 
-interface CardTitleProps {
+export interface CardTitleProps {
   children: React.ReactNode;
   className?: string;
 }
 
-interface CardContentProps {
+export interface CardContentProps {
   children: React.ReactNode;
   className?: string;
 }
 
-interface CardDescriptionProps {
+export interface CardDescriptionProps {
   children: React.ReactNode;
   className?: string;
 }
 
-interface CardFooterProps {
+export interface CardFooterProps {
   children: React.ReactNode;
   className?: string;
 }

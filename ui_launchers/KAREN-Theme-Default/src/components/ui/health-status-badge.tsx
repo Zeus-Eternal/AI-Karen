@@ -4,7 +4,7 @@ import React from 'react';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 
-type HealthStatus = 'healthy' | 'degraded' | 'error' | 'unknown';
+export type HealthStatus = 'healthy' | 'degraded' | 'error' | 'unknown';
 
 export function HealthStatusBadge() {
   const [status, setStatus] = useState<HealthStatus>('unknown');

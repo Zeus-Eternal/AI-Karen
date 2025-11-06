@@ -11,7 +11,7 @@ const ANIMATION_PERFORMANCE_THRESHOLDS = {
   POOR_FPS: 30,
 };
 
-interface AnimationMetrics {
+export interface AnimationMetrics {
   fps: number;
   averageFrameTime: number;
   maxFrameTime: number;
@@ -20,7 +20,7 @@ interface AnimationMetrics {
   frameCount: number;
 }
 
-interface AnimationMonitorProps {
+export interface AnimationMonitorProps {
   className?: string;
   showDetails?: boolean;
   autoStart?: boolean;

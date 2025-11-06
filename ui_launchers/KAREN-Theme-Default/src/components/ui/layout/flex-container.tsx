@@ -188,7 +188,7 @@ function processResponsiveValue<T>(
 /**
  * Style-related properties for flex container
  */
-interface FlexStyleProps {
+export interface FlexStyleProps {
   gap?: string | ResponsiveValue<string>;
   rowGap?: string | ResponsiveValue<string>;
   columnGap?: string | ResponsiveValue<string>;
@@ -283,7 +283,7 @@ function generateFlexStyles(props: FlexStyleProps): React.CSSProperties {
 /**
  * Responsive properties for flex container
  */
-interface FlexResponsiveProps {
+export interface FlexResponsiveProps {
   direction?: 'row' | 'column' | 'row-reverse' | 'column-reverse' | ResponsiveValue<'row' | 'column' | 'row-reverse' | 'column-reverse'>;
   align?: 'start' | 'center' | 'end' | 'stretch' | 'baseline' | ResponsiveValue<'start' | 'center' | 'end' | 'stretch' | 'baseline'>;
   justify?: 'start' | 'center' | 'end' | 'between' | 'around' | 'evenly' | ResponsiveValue<'start' | 'center' | 'end' | 'between' | 'around' | 'evenly'>;
