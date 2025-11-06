@@ -10,6 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
+import { Checkbox } from "../../ui/checkbox";
 
 /**
  * Extension Manager Component
@@ -46,7 +47,7 @@ import {
   Globe,
   Shield,
 } from "lucide-react";
-interface ExtensionManagerProps {
+export interface ExtensionManagerProps {
   className?: string;
   onInstallFromFile?: (file: File) => Promise<void>;
   onUninstall?: (extensionId: string) => Promise<void>;
@@ -426,7 +427,7 @@ export function ExtensionManager({
     </div>
   );
 }
-interface ExtensionListProps {
+export interface ExtensionListProps {
   extensions: any[];
   selectedExtensions: Set<string>;
   actionInProgress: Set<string>;
@@ -488,7 +489,7 @@ function ExtensionList({
     </div>
   );
 }
-interface ExtensionCardProps {
+export interface ExtensionCardProps {
   extension: any;
   selected: boolean;
   actionInProgress: boolean;
@@ -547,11 +548,9 @@ function ExtensionCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={selected}
-              onChange={onToggleSelection}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded "
+              onCheckedChange={onToggleSelection}
             />
             <div className="flex items-center space-x-3">
               {getStatusIcon(extension.status)}
