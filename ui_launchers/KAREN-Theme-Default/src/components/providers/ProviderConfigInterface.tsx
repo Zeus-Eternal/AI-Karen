@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 // Enhanced Type Definitions
-interface ProviderConfig {
+export interface ProviderConfig {
   id: string;
   name: string;
   type: string;
@@ -31,7 +31,7 @@ interface ProviderConfig {
   updatedAt: Date;
 }
 
-interface ProviderType {
+export interface ProviderType {
   id: string;
   name: string;
   category: 'cloud' | 'local' | 'custom' | 'enterprise';
@@ -44,13 +44,13 @@ interface ProviderType {
   rateLimits?: RateLimitConfig;
 }
 
-interface ProviderConfigSchema {
+export interface ProviderConfigSchema {
   fields: ProviderConfigField[];
   validation: ValidationRule[];
   advanced?: AdvancedConfigSection[];
 }
 
-interface ProviderConfigField {
+export interface ProviderConfigField {
   name: string;
   type: 'string' | 'password' | 'number' | 'boolean' | 'select' | 'textarea' | 'url';
   label: string;
@@ -65,14 +65,14 @@ interface ProviderConfigField {
   condition?: (data: FormData) => boolean;
 }
 
-interface ValidationRule {
+export interface ValidationRule {
   field: string;
   rule: 'required' | 'pattern' | 'custom';
   message: string;
   validator?: (value: any, formData: FormData) => boolean;
 }
 
-interface ProviderHealth {
+export interface ProviderHealth {
   status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
   responseTime: number;
   uptime: number;
@@ -82,7 +82,7 @@ interface ProviderHealth {
   issues: HealthIssue[];
 }
 
-interface HealthMetrics {
+export interface HealthMetrics {
   requestCount: number;
   successRate: number;
   averageLatency: number;
@@ -90,7 +90,7 @@ interface HealthMetrics {
   cacheHitRate?: number;
 }
 
-interface HealthIssue {
+export interface HealthIssue {
   id: string;
   message: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
@@ -98,13 +98,13 @@ interface HealthIssue {
   timestamp: Date;
 }
 
-interface RateLimitConfig {
+export interface RateLimitConfig {
   requestsPerMinute: number;
   requestsPerHour: number;
   tokensPerMinute: number;
 }
 
-interface ProviderMetadata {
+export interface ProviderMetadata {
   version: string;
   description: string;
   tags: string[];
@@ -113,14 +113,14 @@ interface ProviderMetadata {
   compliance?: ComplianceInfo;
 }
 
-interface ComplianceInfo {
+export interface ComplianceInfo {
   gdpr: boolean;
   hipaa: boolean;
   soc2: boolean;
   dataRetention: number; // days
 }
 
-interface AdvancedConfigSection {
+export interface AdvancedConfigSection {
   name: string;
   title: string;
   description: string;
@@ -128,17 +128,17 @@ interface AdvancedConfigSection {
   condition?: (data: FormData) => boolean;
 }
 
-interface FormData {
+export interface FormData {
   [key: string]: any;
 }
 
-interface ValidationError {
+export interface ValidationError {
   field: string;
   message: string;
   severity: 'error' | 'warning';
 }
 
-interface ProviderConfigInterfaceProps {
+export interface ProviderConfigInterfaceProps {
   onProviderSaved?: (provider: ProviderConfig) => void;
   onProviderDeleted?: (providerId: string) => void;
   onProviderTested?: (providerId: string, success: boolean) => void;
