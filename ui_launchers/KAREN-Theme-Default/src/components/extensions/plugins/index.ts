@@ -14,8 +14,8 @@ export type { VideoProvider } from './VideoProviderList';
 export { default as PluginRegistry } from './PluginRegistry';
 export type { PluginRegistryProps, Plugin, PluginStats } from './PluginRegistry';
 
-// Provider components - TODO: Add when implemented
-// export * from './providers';
+// Provider components
+export * from './providers';
 
-// Model components - TODO: Add when implemented
-// export * from './models';
+// Model components
+export * from './models';
