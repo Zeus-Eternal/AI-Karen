@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { getKarenBackend } from '@/lib/karen-backend';
-interface ProviderNotification {
+export interface ProviderNotification {
   id: string;
   type: 'status_change' | 'fallback' | 'recovery' | 'system_health' | 'performance' | 'error' | 'maintenance';
   priority: 'low' | 'medium' | 'high' | 'critical';
@@ -20,7 +20,7 @@ interface ProviderNotification {
   }>;
   metadata?: Record<string, any>;
 }
-interface NotificationSettings {
+export interface NotificationSettings {
   provider_status_changes: boolean;
   fallback_notifications: boolean;
   recovery_notifications: boolean;
@@ -29,7 +29,7 @@ interface NotificationSettings {
   error_notifications: boolean;
   maintenance_notifications: boolean;
 }
-interface UseProviderNotificationsOptions {
+export interface UseProviderNotificationsOptions {
   realTimeUpdates?: boolean;
   autoToast?: boolean;
   maxNotifications?: number;

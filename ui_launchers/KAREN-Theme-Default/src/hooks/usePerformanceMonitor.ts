@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 
-interface PerformanceMetrics {
+export interface PerformanceMetrics {
   name: string;
   duration: number;
   startTime: number;

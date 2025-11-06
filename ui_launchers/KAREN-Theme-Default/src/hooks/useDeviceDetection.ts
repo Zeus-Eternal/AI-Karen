@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-interface DeviceInfo {
+export interface DeviceInfo {
   isMobile: boolean;
   isTablet: boolean;
   isDesktop: boolean;

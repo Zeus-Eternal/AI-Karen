@@ -11,7 +11,7 @@ import { FormValidator, createFormValidator, type FieldValidationResult, type Fo
 /**
  * Field validation state
  */
-interface FieldValidationState {
+export interface FieldValidationState {
   error: string | null;
   isValidating: boolean;
   touched: boolean;
@@ -21,7 +21,7 @@ interface FieldValidationState {
 /**
  * Form validation state
  */
-interface FormValidationState {
+export interface FormValidationState {
   fields: Record<FormFieldType, FieldValidationState>;
   isValid: boolean;
   hasErrors: boolean;
@@ -31,7 +31,7 @@ interface FormValidationState {
 /**
  * Form validation configuration
  */
-interface UseFormValidationConfig {
+export interface UseFormValidationConfig {
   validateOnChange?: boolean;
   validateOnBlur?: boolean;
   debounceDelay?: number;
@@ -41,7 +41,7 @@ interface UseFormValidationConfig {
 /**
  * Form validation hook return type
  */
-interface UseFormValidationReturn {
+export interface UseFormValidationReturn {
   // State
   validationState: FormValidationState;
   errors: ValidationErrors;

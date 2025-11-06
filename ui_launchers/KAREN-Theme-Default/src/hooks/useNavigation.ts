@@ -3,7 +3,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCallback, useMemo } from 'react';
 
-interface NavigationOptions {
+export interface NavigationOptions {
   replace?: boolean;
   preserveQuery?: boolean;
 }
