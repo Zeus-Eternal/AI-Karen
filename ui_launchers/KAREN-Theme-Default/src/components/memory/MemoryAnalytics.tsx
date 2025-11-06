@@ -17,7 +17,7 @@ import type {  MemoryAnalytics as MemoryAnalyticsData, MemoryAnalyticsProps, Vec
 const AgCharts = dynamic(() => import('ag-charts-react').then(m => m.AgCharts), { ssr: false });
 import type { AgChartOptions } from 'ag-charts-community';
 
-interface MetricCardProps {
+export interface MetricCardProps {
   title: string;
   value: string | number;
   change?: number;

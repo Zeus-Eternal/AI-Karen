@@ -41,7 +41,7 @@ import type {
   SearchFacets,
 } from "@/types/memory";
 
-interface SearchFilters {
+export interface SearchFilters {
   tags: string[];
   contentTypes: string[];
   clusters: string[];
@@ -51,7 +51,7 @@ interface SearchFilters {
   sortOrder: "asc" | "desc";
 }
 
-interface SearchSuggestion {
+export interface SearchSuggestion {
   query: string;
   type: "history" | "popular" | "related";
   count?: number;
