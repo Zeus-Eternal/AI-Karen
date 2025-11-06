@@ -10,9 +10,12 @@ export { default as SidebarNavigation } from './SidebarNavigation';
 
 // New extension components
 export { default as ExtensionDashboard, CompactExtensionDashboard } from './ExtensionDashboard';
+export type { ExtensionDashboardProps } from './ExtensionDashboard';
 export { ExtensionNavigation, ExtensionNavigationBreadcrumbs } from './ExtensionNavigation';
 export { BackgroundTaskMonitor } from './BackgroundTaskMonitor';
 export { ExtensionPageFallback } from './ExtensionPageFallback';
+export { default as ExtensionHealthMonitor } from './ExtensionHealthMonitor';
+export type { ExtensionHealthMonitorProps } from './ExtensionHealthMonitor';
 
 // Core components
 export * from './core';
