@@ -35,7 +35,7 @@ export interface PolyfillLoadResult {
   skipped: string[];
 }
 
-type KnownPolyfill =
+export type KnownPolyfill =
   | 'intersectionObserver'
   | 'resizeObserver'
   | 'requestIdleCallback'
