@@ -15,7 +15,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { PerformanceUtils } from '../../lib/performance';
 
-interface PerformanceMetrics {
+export interface PerformanceMetrics {
   connectionPool: {
     totalConnections: number;
     activeConnections: number;

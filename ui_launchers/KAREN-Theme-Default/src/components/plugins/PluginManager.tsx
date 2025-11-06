@@ -109,7 +109,7 @@ const statusConfig = {
   },
 };
 
-interface PluginCardProps {
+export interface PluginCardProps {
   plugin: PluginInfo;
   onSelect: (plugin: PluginInfo | null) => void;
   onEnable: (id: string) => void;

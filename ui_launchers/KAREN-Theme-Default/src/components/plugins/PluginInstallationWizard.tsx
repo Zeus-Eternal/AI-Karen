@@ -54,7 +54,7 @@ import { usePluginStore } from "@/store/plugin-store";
 
 /* ========= Local Types (kept minimal so this file compiles standalone) ========= */
 
-type InstallationStep =
+export type InstallationStep =
   | "source"
   | "selection"
   | "validation"
@@ -65,10 +65,10 @@ type InstallationStep =
   | "installation"
   | "complete";
 
-type PermissionLevel = "read" | "write" | "admin";
-type PermissionCategory = "network" | "data" | "filesystem" | "other";
+export type PermissionLevel = "read" | "write" | "admin";
+export type PermissionCategory = "network" | "data" | "filesystem" | "other";
 
-interface Permission {
+export interface Permission {
   id: string;
   name: string;
   description: string;
@@ -77,7 +77,7 @@ interface Permission {
   required: boolean;
 }
 
-interface PluginDependency {
+export interface PluginDependency {
   id: string;
   name: string;
   version: string;
@@ -87,9 +87,9 @@ interface PluginDependency {
   compatible?: boolean;
 }
 
-type ConfigFieldType = "string" | "password" | "number" | "boolean" | "select" | "json";
+export type ConfigFieldType = "string" | "password" | "number" | "boolean" | "select" | "json";
 
-interface PluginConfigField {
+export interface PluginConfigField {
   key: string;
   type: ConfigFieldType;
   label: string;
@@ -100,7 +100,7 @@ interface PluginConfigField {
   validation?: { pattern?: string; min?: number; max?: number };
 }
 
-interface PluginManifest {
+export interface PluginManifest {
   id: string;
   name: string;
   version: string;
@@ -130,7 +130,7 @@ interface PluginManifest {
   apiVersion?: string;
 }
 
-interface PluginMarketplaceEntry {
+export interface PluginMarketplaceEntry {
   id: string;
   name: string;
   description: string;
@@ -150,9 +150,9 @@ interface PluginMarketplaceEntry {
   manifest: PluginManifest;
 }
 
-type PluginConfig = Record<string, any>;
+export type PluginConfig = Record<string, any>;
 
-interface PluginInstallationRequest {
+export interface PluginInstallationRequest {
   source: "marketplace" | "file" | "url" | "git";
   identifier: string;
   version?: string;
@@ -161,13 +161,13 @@ interface PluginInstallationRequest {
   autoStart: boolean;
 }
 
-interface PluginInstallationWizardProps {
+export interface PluginInstallationWizardProps {
   onClose: () => void;
   onComplete: () => void;
   preselectedPlugin?: PluginMarketplaceEntry;
 }
 
-interface InstallationState {
+export interface InstallationState {
   step: InstallationStep;
   source: "marketplace" | "file" | "url" | "git";
   selectedPlugin: PluginMarketplaceEntry | null;

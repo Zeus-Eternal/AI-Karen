@@ -34,7 +34,7 @@ import {
   Clock,
 } from "lucide-react";
 
-interface AuthMetrics {
+export interface AuthMetrics {
   total_requests: number;
   success_count: number;
   failure_count: number;
@@ -44,14 +44,14 @@ interface AuthMetrics {
   last_updated: string; // iso
 }
 
-interface ServiceHealthItem {
+export interface ServiceHealthItem {
   status: "healthy" | "degraded" | "down" | string;
   error_count: number;
   average_response_time: number; // seconds
   last_check: string; // iso
 }
 
-interface ServiceHealthMetrics {
+export interface ServiceHealthMetrics {
   healthy_services: number;
   total_services: number;
   health_percentage: number; // percent
@@ -59,7 +59,7 @@ interface ServiceHealthMetrics {
   last_updated: string;
 }
 
-interface EndpointPerfItem {
+export interface EndpointPerfItem {
   request_count: number;
   error_count: number;
   error_rate: number; // percent
@@ -67,7 +67,7 @@ interface EndpointPerfItem {
   last_request: string | null;
 }
 
-interface ApiPerformanceMetrics {
+export interface ApiPerformanceMetrics {
   total_requests: number;
   error_count: number;
   error_rate: number; // percent
@@ -77,9 +77,9 @@ interface ApiPerformanceMetrics {
   last_updated: string;
 }
 
-type Severity = "info" | "warning" | "error" | "critical";
+export type Severity = "info" | "warning" | "error" | "critical";
 
-interface ActiveAlert {
+export interface ActiveAlert {
   id: string;
   name: string;
   description: string;
@@ -88,7 +88,7 @@ interface ActiveAlert {
   trigger_count: number;
 }
 
-interface DashboardData {
+export interface DashboardData {
   timestamp: string;
   monitoring_active: boolean;
   authentication: AuthMetrics;

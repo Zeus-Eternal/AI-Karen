@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getKarenBackend } from '@/lib/karen-backend';
 import {  handleApiError, handleDownloadError, showSuccess, showInfo, showWarning } from '@/lib/error-handler';
 
-interface DownloadTask {
+export interface DownloadTask {
   id: string;
   modelId: string;
   modelName: string;
@@ -21,7 +21,7 @@ interface DownloadTask {
   lastUpdateTime: number;
 }
 
-interface DownloadStatusHookReturn {
+export interface DownloadStatusHookReturn {
   downloadTasks: DownloadTask[];
   activeDownloads: DownloadTask[];
   completedDownloads: DownloadTask[];

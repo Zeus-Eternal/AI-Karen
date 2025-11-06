@@ -10,7 +10,7 @@ import { } from 'lucide-react';
   checkPerformanceBudget,
 import { } from '@/utils/performance-monitor';
 
-interface PerformanceDashboardProps {
+export interface PerformanceDashboardProps {
   className?: string;
   showDetails?: boolean;
   autoRefresh?: boolean;

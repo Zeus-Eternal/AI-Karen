@@ -11,7 +11,7 @@ import { getHelpContent, type HelpContent } from '@/lib/help-content';
 import { } from '@/components/ui/tooltip';
 
 import { } from '@/components/ui/dialog';
-interface HelpTooltipProps {
+export interface HelpTooltipProps {
   helpKey: string;
   category?: 'modelLibrary' | 'llmSettings';
   variant?: 'icon' | 'text' | 'inline';
@@ -144,7 +144,7 @@ export function HelpTooltip({
   );
 }
 
-interface HelpSectionProps {
+export interface HelpSectionProps {
   title: string;
   helpKey: string;
   category?: 'modelLibrary' | 'llmSettings';
@@ -173,7 +173,7 @@ export function HelpSection({
   );
 }
 
-interface QuickHelpProps {
+export interface QuickHelpProps {
   helpKeys: string[];
   category?: 'modelLibrary' | 'llmSettings';
   title?: string;

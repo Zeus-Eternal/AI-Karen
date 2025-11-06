@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { useActionRegistry } from '@/hooks/use-action-registry';
 import type { SuggestedAction, ActionResult } from '@/services/actionMapper';
 
-interface SuggestedActionsProps {
+export interface SuggestedActionsProps {
   actions: SuggestedAction[];
   onActionComplete?: (action: SuggestedAction, result: ActionResult) => void;
   onDismiss?: () => void;

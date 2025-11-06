@@ -64,7 +64,7 @@ export interface HookContextType {
 
 const HookContext = createContext<HookContextType | undefined>(undefined);
 
-interface HookProviderProps {
+export interface HookProviderProps {
   children: ReactNode;
 }
 

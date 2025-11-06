@@ -34,7 +34,7 @@ import {
   X,
 } from "lucide-react";
 
-interface DownloadTask {
+export interface DownloadTask {
   id: string;
   modelId: string;
   modelName: string;
@@ -55,7 +55,7 @@ interface DownloadTask {
   lastUpdateTime: number;
 }
 
-interface ModelDownloadProgressProps {
+export interface ModelDownloadProgressProps {
   task: DownloadTask;
   onCancel: (taskId: string) => Promise<void>;
   onPause?: (taskId: string) => Promise<void>;

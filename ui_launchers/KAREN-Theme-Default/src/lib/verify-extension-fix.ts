@@ -8,15 +8,15 @@
  * - Minimal dev logging
  */
 
-type Status = 'not_browser' | 'active' | 'inactive' | 'success' | 'error';
+export type Status = 'not_browser' | 'active' | 'inactive' | 'success' | 'error';
 
-interface VerifyChecks {
+export interface VerifyChecks {
   fetchPatched: boolean;
   immediateFixApplied: boolean;
   errorRecoveryLoaded: boolean;
 }
 
-interface VerifyResult {
+export interface VerifyResult {
   status: 'not_browser' | 'active' | 'inactive';
   checks: VerifyChecks;
   message: string;
@@ -26,14 +26,14 @@ interface VerifyResult {
   };
 }
 
-interface TestResultSuccess {
+export interface TestResultSuccess {
   status: 'success';
   usingFallback: boolean;
   data: unknown;
   message: string;
 }
 
-interface TestResultError {
+export interface TestResultError {
   status: 'error' | 'not_browser';
   error?: string;
   message: string;

@@ -40,7 +40,7 @@ export interface BulkOperationProgress {
   canCancel: boolean;
 }
 
-interface ProgressIndicatorProps {
+export interface ProgressIndicatorProps {
   progress: BulkOperationProgress;
   onCancel?: () => void;
   onClose?: () => void;
@@ -297,7 +297,7 @@ export function ProgressIndicator({
   );
 }
 
-interface SimpleProgressBarProps {
+export interface SimpleProgressBarProps {
   progress: number;
   label?: string;
   size?: 'sm' | 'md' | 'lg';

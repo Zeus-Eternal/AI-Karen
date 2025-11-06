@@ -41,7 +41,7 @@ import {
 import { getKarenBackend } from "@/lib/karen-backend";
 import { handleApiError } from "@/lib/error-handler";
 
-interface Job {
+export interface Job {
   id: string;
   kind: "convert" | "quantize" | "lora_merge" | "download" | "upload";
   status: "queued" | "running" | "paused" | "completed" | "error" | "cancelled";
@@ -65,7 +65,7 @@ interface Job {
   };
 }
 
-interface JobStats {
+export interface JobStats {
   total: number;
   queued: number;
   running: number;
@@ -74,7 +74,7 @@ interface JobStats {
   active_jobs: Job[];
 }
 
-interface StorageInfo {
+export interface StorageInfo {
   total_space_gb: number;
   used_space_gb: number;
   available_space_gb: number;
@@ -88,7 +88,7 @@ interface StorageInfo {
   }>;
 }
 
-interface JobManagerProps {
+export interface JobManagerProps {
   onJobUpdate?: (job: Job) => void;
 }
 

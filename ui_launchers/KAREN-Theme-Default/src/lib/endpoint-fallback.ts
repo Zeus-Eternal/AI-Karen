@@ -46,7 +46,7 @@ export interface FallbackResult {
   timestamp: string;
 }
 
-type TimerHandle = ReturnType<typeof setInterval>;
+export type TimerHandle = ReturnType<typeof setInterval>;
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));

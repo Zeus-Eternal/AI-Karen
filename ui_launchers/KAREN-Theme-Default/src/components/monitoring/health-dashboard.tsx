@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Activity, AlertTriangle, CheckCircle, XCircle, Clock, RefreshCw, Bell, BellOff, TrendingUp, Zap, Server } from 'lucide-react';
 import { getHealthMonitor, type HealthMetrics, type Alert as HealthAlert } from '@/lib/health-monitor';
 
-interface HealthDashboardProps {
+export interface HealthDashboardProps {
   className?: string;
 }
 

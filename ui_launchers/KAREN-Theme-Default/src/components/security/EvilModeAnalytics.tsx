@@ -63,11 +63,11 @@ import {
   Shield,
 } from "lucide-react";
 
-interface EvilModeAnalyticsProps {
+export interface EvilModeAnalyticsProps {
   className?: string;
 }
 
-interface EvilModeStats {
+export interface EvilModeStats {
   totalSessions: number;
   activeSessions: number;
   totalActions: number;
@@ -197,7 +197,7 @@ export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
   );
 }
 
-interface OverviewDashboardProps {
+export interface OverviewDashboardProps {
   stats: EvilModeStats | undefined;
 }
 
@@ -317,7 +317,7 @@ function OverviewDashboard({ stats }: OverviewDashboardProps) {
   );
 }
 
-interface SessionAnalysisProps {
+export interface SessionAnalysisProps {
   stats: EvilModeStats | undefined;
   sessions: EvilModeSession[] | undefined;
 }
@@ -461,7 +461,7 @@ function SessionAnalysis({ stats, sessions }: SessionAnalysisProps) {
   );
 }
 
-interface ActionAnalysisProps {
+export interface ActionAnalysisProps {
   stats: EvilModeStats | undefined;
   sessions: EvilModeSession[] | undefined;
 }
@@ -594,7 +594,7 @@ function ActionAnalysis({ stats, sessions }: ActionAnalysisProps) {
   );
 }
 
-interface ComplianceAnalysisProps {
+export interface ComplianceAnalysisProps {
   stats: EvilModeStats | undefined;
 }
 
@@ -705,7 +705,7 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
   );
 }
 
-interface RiskAssessmentProps {
+export interface RiskAssessmentProps {
   stats: EvilModeStats | undefined;
 }
 

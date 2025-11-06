@@ -14,18 +14,18 @@ const ALERT_METRICS_KEY = 'karen-alert-metrics';
 /**
  * Event types for the alert system
  */
-type AlertEventType = 'alert-shown' | 'alert-dismissed' | 'alert-action-clicked' | 'settings-updated';
+export type AlertEventType = 'alert-shown' | 'alert-dismissed' | 'alert-action-clicked' | 'settings-updated';
 /**
  * Event listener interface
  */
-interface AlertEventListener {
+export interface AlertEventListener {
   type: AlertEventType;
   callback: (data: any) => void;
 }
 /**
  * Rate limiting tracker
  */
-interface RateLimitTracker {
+export interface RateLimitTracker {
   [key: string]: {
     count: number;
     lastReset: number;

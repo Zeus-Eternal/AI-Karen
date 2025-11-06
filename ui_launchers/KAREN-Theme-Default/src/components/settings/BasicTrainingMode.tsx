@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 
-interface BasicTrainingPreset {
+export interface BasicTrainingPreset {
   name: string;
   description: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
@@ -26,7 +26,7 @@ interface BasicTrainingPreset {
   memory_requirements_gb: number;
 }
 
-interface TrainingProgress {
+export interface TrainingProgress {
   job_id: string;
   model_name: string;
   status: string;
@@ -47,7 +47,7 @@ interface TrainingProgress {
   recommendations: string[];
 }
 
-interface TrainingResult {
+export interface TrainingResult {
   job_id: string;
   model_name: string;
   success: boolean;
@@ -61,7 +61,7 @@ interface TrainingResult {
   next_steps: string[];
 }
 
-interface SystemBackup {
+export interface SystemBackup {
   backup_id: string;
   created_at: string;
   description: string;

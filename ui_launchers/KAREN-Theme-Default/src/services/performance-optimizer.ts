@@ -11,7 +11,7 @@
  * - All DOM/Window access is guarded for SSR safety.
  */
 
-type Priority = 'low' | 'medium' | 'high' | 'critical';
+export type Priority = 'low' | 'medium' | 'high' | 'critical';
 
 export interface OptimizationConfig {
   bundleSplitting: {
@@ -78,7 +78,7 @@ export interface OptimizationRecommendation {
   estimatedGain: number; // percentage improvement
 }
 
-type Listener<T> = (payload: T) => void;
+export type Listener<T> = (payload: T) => void;
 
 const isBrowser =
   typeof window !== 'undefined' &&

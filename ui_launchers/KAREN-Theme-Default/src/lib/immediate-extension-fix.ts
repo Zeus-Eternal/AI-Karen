@@ -16,7 +16,7 @@ declare global {
   }
 }
 
-type FallbackList = {
+export type FallbackList = {
   extensions: Record<string, any>;
   total: number;
   message: string;

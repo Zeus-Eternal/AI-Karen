@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { Permission, PluginInfo } from "@/types/plugins";
 
-type IsolationLevel = "none" | "basic" | "strict" | "maximum";
+export type IsolationLevel = "none" | "basic" | "strict" | "maximum";
 
 export interface SecurityPolicy {
   allowNetworkAccess: boolean;
@@ -519,7 +519,7 @@ export const PluginSecurityManager: React.FC<PluginSecurityManagerProps> = ({
   );
 };
 
-interface PolicyToggleProps {
+export interface PolicyToggleProps {
   label: string;
   description: string;
   checked: boolean;
@@ -548,7 +548,7 @@ const PolicyToggle: React.FC<PolicyToggleProps> = ({
   </div>
 );
 
-interface NumberFieldProps {
+export interface NumberFieldProps {
   label: string;
   value: number;
   disabled?: boolean;

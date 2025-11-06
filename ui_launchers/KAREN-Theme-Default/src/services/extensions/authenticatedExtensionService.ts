@@ -58,7 +58,7 @@ export interface ExtensionEvent {
 }
 
 // Service state interface
-interface ServiceState {
+export interface ServiceState {
   isOnline: boolean;
   lastError: ErrorClassification | null;
   fallbackMode: boolean;

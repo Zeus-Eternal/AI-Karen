@@ -11,7 +11,7 @@ import { } from 'lucide-react';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { getHelpContent } from '@/lib/help-content';
 
-interface ContextualHelpProps {
+export interface ContextualHelpProps {
   section: string;
   helpKeys: string[];
   category?: 'modelLibrary' | 'llmSettings';
@@ -84,7 +84,7 @@ export function ContextualHelp({
   );
 }
 
-interface HelpCalloutProps {
+export interface HelpCalloutProps {
   type: 'tip' | 'warning' | 'info' | 'success';
   title: string;
   children: React.ReactNode;
@@ -160,7 +160,7 @@ export function HelpCallout({
   );
 }
 
-interface QuickStartHelpProps {
+export interface QuickStartHelpProps {
   steps: Array<{
     title: string;
     description: string;

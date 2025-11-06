@@ -6,14 +6,14 @@
  */
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { agUIErrorHandler, AGUIErrorType, FallbackStrategy } from '../../lib/ag-ui-error-handler';
-interface Props {
+export interface Props {
   children: ReactNode;
   fallbackComponent?: React.ComponentType<any>;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
   componentName?: string;
   enableRetry?: boolean;
 }
-interface State {
+export interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;

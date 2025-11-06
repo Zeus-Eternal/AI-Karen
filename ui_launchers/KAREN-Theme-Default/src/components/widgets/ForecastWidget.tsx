@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { getPluginService } from '@/services/pluginService';
 
-interface WeatherData {
+export interface WeatherData {
   summary: string;
 }
 

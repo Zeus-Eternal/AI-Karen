@@ -64,7 +64,7 @@ export interface PerformanceThresholds {
   memoryUsage: { warning: number; critical: number };
 }
 
-type AlertListener = (alert: PerformanceAlert) => void;
+export type AlertListener = (alert: PerformanceAlert) => void;
 
 export class PerformanceMonitor {
   private metrics: PerformanceMetric[] = [];

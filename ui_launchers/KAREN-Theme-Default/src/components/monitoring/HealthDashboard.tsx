@@ -32,20 +32,20 @@ import {
   Clock,
 } from "lucide-react";
 
-interface HealthDashboardProps {
+export interface HealthDashboardProps {
   className?: string;
   autoRefresh?: boolean;
   refreshInterval?: number;
 }
 
-interface ServiceHealth {
+export interface ServiceHealth {
   status: "healthy" | "degraded" | "unhealthy" | "unknown" | string;
   response_time_ms: number;
   last_check: string;
   error?: string;
 }
 
-interface BackendHealthData {
+export interface BackendHealthData {
   status: "healthy" | "degraded" | "unhealthy" | "unknown" | string;
   timestamp: string;
   response_time_ms: number;

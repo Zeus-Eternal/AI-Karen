@@ -34,7 +34,7 @@ import {
 } from "./PluginSecurityManager";
 import { DynamicPluginConfigForm } from "./DynamicPluginConfigForm";
 
-interface ValidationError {
+export interface ValidationError {
   field: string;
   message: string;
   severity: "error" | "warning";
@@ -306,7 +306,7 @@ const PluginConfigurationSecurityIntegration: React.FC<
   );
 };
 
-interface InfoItemProps {
+export interface InfoItemProps {
   label: string;
   value: string;
 }

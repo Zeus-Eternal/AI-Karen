@@ -13,7 +13,7 @@ import { logger } from '@/lib/logger';
 import { getDevelopmentAuthManager, isDevelopmentFeaturesEnabled } from './development-auth';
 
 // Hot reload state interface
-interface HotReloadAuthState {
+export interface HotReloadAuthState {
   tokens: Record<string, string>;
   currentUser: string;
   timestamp: number;
@@ -21,7 +21,7 @@ interface HotReloadAuthState {
 }
 
 // Hot reload event interface
-interface HotReloadEvent {
+export interface HotReloadEvent {
   type: 'webpack' | 'vite' | 'manual';
   timestamp: number;
   source: string;

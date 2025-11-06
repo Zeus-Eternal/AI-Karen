@@ -12,7 +12,7 @@ import { extensionIntegration, ExtensionRoute } from './extension-integration';
 import { useExtensionRoutes } from './hooks';
 import { safeError, safeLog } from '../safe-console';
 
-interface DynamicExtensionRouterProps {
+export interface DynamicExtensionRouterProps {
   children?: React.ReactNode;
   fallback?: React.ComponentType;
 }

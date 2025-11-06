@@ -15,15 +15,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import type { User, UpdateUserRequest, AdminApiResponse } from "@/types/admin";
 
-interface UserEditModalProps {
+export interface UserEditModalProps {
   user: User;
   onClose: () => void;
   onUserUpdated: () => void;
 }
 
-type Role = "super_admin" | "admin" | "user";
+export type Role = "super_admin" | "admin" | "user";
 
-interface FormData {
+export interface FormData {
   full_name: string;
   role: Role;
   is_active: boolean;
@@ -31,7 +31,7 @@ interface FormData {
   two_factor_enabled: boolean;
 }
 
-interface FormErrors {
+export interface FormErrors {
   full_name?: string;
   role?: string;
   general?: string;

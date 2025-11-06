@@ -11,39 +11,39 @@ import { } from "react-hook-form"
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 // Base types for form compound components
-interface BaseFormProps extends React.HTMLAttributes<HTMLDivElement> {}
+export interface BaseFormProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-interface FormFieldProps<
+export interface FormFieldProps<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
 > extends ControllerProps<TFieldValues, TName> {}
 
-interface FormLabelProps extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> {
+export interface FormLabelProps extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> {
   required?: boolean
 }
 
-interface FormErrorProps extends React.HTMLAttributes<HTMLParagraphElement> {
+export interface FormErrorProps extends React.HTMLAttributes<HTMLParagraphElement> {
   error?: string | string[]
 }
 
-interface FormGroupProps extends BaseFormProps {
+export interface FormGroupProps extends BaseFormProps {
   orientation?: "vertical" | "horizontal"
 }
 
-interface FormActionsProps extends BaseFormProps {
+export interface FormActionsProps extends BaseFormProps {
   justify?: "start" | "center" | "end" | "between"
   sticky?: boolean
 }
 
 // Form context types
-type FormFieldContextValue<
+export type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
 > = {
   name: TName
 }
 
-type FormItemContextValue = {
+export type FormItemContextValue = {
   id: string
 }
 

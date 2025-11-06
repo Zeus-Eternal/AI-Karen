@@ -12,7 +12,7 @@ import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
 import { Calendar, Zap, Globe, FileText, Settings, Play, Pause, RotateCcw, Trash2, Edit3 } from 'lucide-react';
 
-interface WorkflowSchedulerProps {
+export interface WorkflowSchedulerProps {
   triggers: WorkflowTrigger[];
   queues: WorkflowQueue[];
   analytics: WorkflowAutomationAnalytics;

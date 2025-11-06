@@ -52,7 +52,7 @@ export interface ProviderStatus {
   configuration_issues: string[];
 }
 
-interface ProviderStatusIndicatorProps {
+export interface ProviderStatusIndicatorProps {
   provider: ProviderStatus;
   onTest?: (providerName: string) => Promise<void>;
   onRefresh?: (providerName: string) => Promise<void>;

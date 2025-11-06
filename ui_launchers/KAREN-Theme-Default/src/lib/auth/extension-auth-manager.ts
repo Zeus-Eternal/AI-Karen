@@ -19,7 +19,7 @@ import { getDevelopmentAuthManager, isDevelopmentFeaturesEnabled } from './devel
 import { getHotReloadAuthManager } from './hot-reload-auth';
 
 // Token storage interface for secure token management
-interface TokenStorage {
+export interface TokenStorage {
   getAccessToken(): string | null;
   getRefreshToken(): string | null;
   setTokens(accessToken: string, refreshToken?: string): void;
@@ -28,7 +28,7 @@ interface TokenStorage {
 }
 
 // Authentication state interface
-interface AuthState {
+export interface AuthState {
   isAuthenticated: boolean;
   isRefreshing: boolean;
   lastRefresh: Date | null;
@@ -37,7 +37,7 @@ interface AuthState {
 }
 
 // Token refresh response interface
-interface TokenRefreshResponse {
+export interface TokenRefreshResponse {
   access_token: string;
   refresh_token?: string;
   expires_in?: number;

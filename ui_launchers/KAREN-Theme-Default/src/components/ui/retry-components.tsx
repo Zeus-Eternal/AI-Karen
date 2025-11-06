@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useRetry, RetryConfig } from '@/utils/retry-mechanisms';
 
-interface RetryButtonProps {
+export interface RetryButtonProps {
   onRetry: () => void;
   isRetrying?: boolean;
   disabled?: boolean;
@@ -45,7 +45,7 @@ function RetryButton({
   );
 }
 
-interface RetryCardProps {
+export interface RetryCardProps {
   title?: string;
   description?: string;
   error?: Error | null;
@@ -185,7 +185,7 @@ function RetryCard({
   );
 }
 
-interface RetryWrapperProps<T> {
+export interface RetryWrapperProps<T> {
   operation: () => Promise<T>;
   config?: Partial<RetryConfig>;
   children: (state: {
@@ -230,7 +230,7 @@ function RetryWrapper<T>({
   return <>{children(retryState)}</>;
 }
 
-interface InlineRetryProps {
+export interface InlineRetryProps {
   onRetry: () => void;
   error?: Error | null;
   isRetrying?: boolean;
@@ -267,7 +267,7 @@ function InlineRetry({
   );
 }
 
-interface RetryBannerProps {
+export interface RetryBannerProps {
   message?: string;
   onRetry: () => void;
   onDismiss?: () => void;
@@ -338,7 +338,7 @@ function RetryBanner({
   );
 }
 
-interface LoadingRetryProps {
+export interface LoadingRetryProps {
   isLoading: boolean;
   isRetrying: boolean;
   error?: Error | null;

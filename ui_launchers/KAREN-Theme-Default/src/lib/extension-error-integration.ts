@@ -7,7 +7,7 @@
 
 import { logger } from './logger';
 
-interface ExtensionErrorResponse {
+export interface ExtensionErrorResponse {
   fallback_data?: any;
   retry?: boolean;
   delay?: number;

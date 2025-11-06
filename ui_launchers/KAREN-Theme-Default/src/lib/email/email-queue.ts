@@ -11,7 +11,7 @@ import { emailService } from './email-service';
 /**
  * Email Queue Item
  */
-interface QueueItem {
+export interface QueueItem {
   id: string;
   message: EmailMessage;
   priority: number; // Higher number = higher priority

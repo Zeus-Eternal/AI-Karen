@@ -57,7 +57,7 @@ export const useSession = () => {
   return context;
 };
 
-interface SessionProviderProps {
+export interface SessionProviderProps {
   children: ReactNode;
   onSessionChange?: (isAuthenticated: boolean, user: SessionUser | null) => void;
   onSessionError?: (error: Error) => void;

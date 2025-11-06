@@ -4,7 +4,7 @@ import React, { ReactNode } from 'react';
 import { ProtectedRoute } from './ProtectedRoute';
 import { NavigationLayout } from '@/components/navigation/NavigationLayout';
 
-interface SuperAdminRouteProps {
+export interface SuperAdminRouteProps {
   children: ReactNode;
   requiredPermission?: string;
   fallback?: ReactNode;

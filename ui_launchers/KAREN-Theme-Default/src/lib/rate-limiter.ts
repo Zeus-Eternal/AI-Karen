@@ -11,7 +11,7 @@
  * - Helper: wrapFetch() for API calls
  */
 
-type Millis = number;
+export type Millis = number;
 
 export interface RateLimitConfig {
   /** Max requests allowed within the window */
@@ -55,7 +55,7 @@ export interface ExecuteOptions {
   label?: string;
 }
 
-interface QueuedRequest<T = any> {
+export interface QueuedRequest<T = any> {
   resolve: (value: T) => void;
   reject: (error: any) => void;
   request: () => Promise<T>;

@@ -25,9 +25,9 @@ import {
   Home,
 } from "lucide-react";
 
-type Role = "super_admin" | "admin" | "user";
+export type Role = "super_admin" | "admin" | "user";
 
-interface NavigationItem {
+export interface NavigationItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -39,7 +39,7 @@ interface NavigationItem {
   featureFlag?: string;
 }
 
-interface RoleBasedNavigationProps {
+export interface RoleBasedNavigationProps {
   className?: string;
   variant?: "sidebar" | "header" | "mobile";
 }

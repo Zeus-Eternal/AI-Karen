@@ -67,7 +67,7 @@ export interface CacheStats {
   topKeys: Array<{ key: string; accessCount: number; size: number }>;
 }
 
-type MaybeWorker = (typeof globalThis extends any ? Worker : any) | null;
+export type MaybeWorker = (typeof globalThis extends any ? Worker : any) | null;
 
 export class CacheManager {
   private cache: Map<string, CacheEntry> = new Map();

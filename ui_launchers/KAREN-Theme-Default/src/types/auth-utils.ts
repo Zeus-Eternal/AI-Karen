@@ -415,7 +415,7 @@ export function canRetryAfter(
 /**
  * Common error shape from backend or fetch API
  */
-interface BackendError {
+export interface BackendError {
   name?: string;
   message?: string;
   code?: string;

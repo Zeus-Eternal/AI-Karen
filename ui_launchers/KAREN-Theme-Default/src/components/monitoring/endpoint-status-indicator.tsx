@@ -37,7 +37,7 @@ import {
 import { getHealthMonitor, type HealthMetrics } from "@/lib/health-monitor";
 import { getDiagnosticLogger } from "@/lib/diagnostics";
 
-interface EndpointStatusIndicatorProps {
+export interface EndpointStatusIndicatorProps {
   className?: string;
   showDetails?: boolean;
   compact?: boolean;

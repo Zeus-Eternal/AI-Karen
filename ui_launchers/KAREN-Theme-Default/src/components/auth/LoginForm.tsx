@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, LogIn, Eye, EyeOff, AlertTriangle, Shield } from 'lucide-react';
 
-interface LoginFormProps {
+export interface LoginFormProps {
   onSuccess?: () => void;
   redirectTo?: string;
   showRegisterLink?: boolean;

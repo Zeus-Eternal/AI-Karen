@@ -16,7 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 
-interface MonitoringStatusProps {
+export interface MonitoringStatusProps {
   className?: string;
   /** When false, shows only the compact pill (no popover) */
   showDetails?: boolean;

@@ -343,8 +343,8 @@ KarenToastViewport.displayName = "KarenToastViewport";
 // Re-export the provider from the original toast
 const KarenToastProvider = ToastPrimitives.Provider;
 
-type KarenToastProps = React.ComponentPropsWithoutRef<typeof KarenToast>;
-type KarenToastActionElement = React.ReactElement<typeof KarenToastAction>;
+export type KarenToastProps = React.ComponentPropsWithoutRef<typeof KarenToast>;
+export type KarenToastActionElement = React.ReactElement<typeof KarenToastAction>;
 
 export {
   type KarenToastProps,

@@ -39,7 +39,7 @@ export const SECURITY_CONFIG = {
 } as const;
 
 // -------- In-memory stores for security tracking (use Redis in production) --------
-type AttemptRec = { count: number; lastAttempt: number; delays: number[] };
+export type AttemptRec = { count: number; lastAttempt: number; delays: number[] };
 const loginAttempts = new Map<string, AttemptRec>();
 const activeSessions = new Map<string, AdminSession[]>();
 const securityEvents = new Map<string, SecurityEvent[]>();

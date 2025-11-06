@@ -40,9 +40,9 @@ import type {
 } from "@/types/memory";
 
 // Extend the base node type to be compatible with D3 simulation
-type MemoryNetworkNode = BaseMemoryNetworkNode & d3.SimulationNodeDatum;
+export type MemoryNetworkNode = BaseMemoryNetworkNode & d3.SimulationNodeDatum;
 
-interface NetworkConfig {
+export interface NetworkConfig {
   nodeSize: [number, number]; // [min, max]
   linkDistance: number;
   linkStrength: number;
@@ -54,13 +54,13 @@ interface NetworkConfig {
   colorScheme: "default" | "confidence" | "type" | "cluster";
 }
 
-interface TooltipData {
+export interface TooltipData {
   node: MemoryNetworkNode;
   x: number;
   y: number;
 }
 
-interface FilterOptions {
+export interface FilterOptions {
   minConfidence: number;
   maxConfidence: number;
   selectedTypes: string[];

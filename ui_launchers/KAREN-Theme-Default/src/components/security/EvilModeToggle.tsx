@@ -45,7 +45,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-interface EvilModeToggleProps {
+export interface EvilModeToggleProps {
   className?: string;
 }
 
@@ -326,7 +326,7 @@ export function EvilModeToggle({ className }: EvilModeToggleProps) {
   );
 }
 
-interface EvilModeStatusProps {
+export interface EvilModeStatusProps {
   session: EvilModeSession | null;
   config: any;
 }
@@ -418,7 +418,7 @@ function SecurityWarnings() {
   );
 }
 
-interface EvilModeActivityLogProps {
+export interface EvilModeActivityLogProps {
   session: EvilModeSession | null;
 }
 

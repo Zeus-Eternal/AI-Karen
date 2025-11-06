@@ -7,7 +7,7 @@ import { } from '@/types/rbac';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { useAppStore } from '@/store/app-store';
 
-interface RBACContextValue {
+export interface RBACContextValue {
   // Current user and permissions
   currentUser: User | null;
   userRoles: Role[];
@@ -43,7 +43,7 @@ interface RBACContextValue {
 
 const RBACContext = createContext<RBACContextValue | null>(null);
 
-interface RBACProviderProps {
+export interface RBACProviderProps {
   children: React.ReactNode;
   config?: Partial<RBACConfig>;
 }

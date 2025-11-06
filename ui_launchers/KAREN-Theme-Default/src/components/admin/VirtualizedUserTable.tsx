@@ -35,7 +35,7 @@ import type {
 
 /* --------------------------------- Types --------------------------------- */
 
-interface VirtualizedUserTableProps {
+export interface VirtualizedUserTableProps {
   selectedUsers: string[];
   onSelectionChange: (userIds: string[]) => void;
   onUserUpdated: () => void;
@@ -45,7 +45,7 @@ interface VirtualizedUserTableProps {
   overscan?: number;
 }
 
-interface TableColumn {
+export interface TableColumn {
   key: keyof User | "actions" | "select";
   label: string;
   sortable: boolean;
@@ -216,7 +216,7 @@ const buildColumns = (): TableColumn[] => [
 
 /* -------------------------------- Row Cell -------------------------------- */
 
-interface RowProps {
+export interface RowProps {
   index: number;
   style: React.CSSProperties;
   data: {

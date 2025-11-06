@@ -28,9 +28,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type ViewMode = "summary" | "audit-logs" | "security-events" | "login-activity";
+export type ViewMode = "summary" | "audit-logs" | "security-events" | "login-activity";
 
-interface UserActivityMonitorProps {
+export interface UserActivityMonitorProps {
   className?: string;
 }
 

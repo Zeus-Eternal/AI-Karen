@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 
-interface IntersectionObserverOptions {
+export interface IntersectionObserverOptions {
   threshold?: number | number[];
   rootMargin?: string;
   root?: Element | null;
@@ -10,7 +10,7 @@ interface IntersectionObserverOptions {
   skip?: boolean;
 }
 
-interface UseIntersectionObserverReturn {
+export interface UseIntersectionObserverReturn {
   ref: React.RefObject<HTMLElement>;
   isIntersecting: boolean;
   entry: IntersectionObserverEntry | null;
@@ -77,7 +77,7 @@ export function useIntersectionObserver(
 }
 
 // Component wrapper for intersection observer
-interface IntersectionObserverWrapperProps {
+export interface IntersectionObserverWrapperProps {
   children: (isIntersecting: boolean, entry: IntersectionObserverEntry | null) => React.ReactNode;
   options?: IntersectionObserverOptions;
   as?: React.ElementType;
@@ -100,7 +100,7 @@ export const IntersectionObserverWrapper: React.FC<IntersectionObserverWrapperPr
 };
 
 // Lazy content component that renders children only when in view
-interface LazyContentProps {
+export interface LazyContentProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
   options?: IntersectionObserverOptions;
@@ -182,7 +182,7 @@ export function useMultipleIntersectionObserver(
 }
 
 // Virtualized list component using intersection observer
-interface VirtualizedListProps<T> {
+export interface VirtualizedListProps<T> {
   items: T[];
   renderItem: (item: T, index: number, isVisible: boolean) => React.ReactNode;
   itemHeight?: number;

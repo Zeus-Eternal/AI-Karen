@@ -1,6 +1,6 @@
 // Haptic feedback utility functions
 export type HapticPattern = 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error';
-interface HapticConfig {
+export interface HapticConfig {
   pattern: number | number[];
   duration?: number;
 }

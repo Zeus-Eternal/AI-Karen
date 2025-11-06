@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
  * Types
  * ====================== */
 
-type LayoutGap = "none" | "sm" | "md" | "lg" | "xl";
-type LayoutColumns =
+export type LayoutGap = "none" | "sm" | "md" | "lg" | "xl";
+export type LayoutColumns =
   | "auto"
   | "1"
   | "2"
@@ -19,15 +19,15 @@ type LayoutColumns =
   | "auto-fit"
   | "auto-fill";
 
-type Breakpoint = "sm" | "md" | "lg" | "xl";
-type ResponsiveColumnCount = "1" | "2" | "3" | "4" | "5" | "6";
+export type Breakpoint = "sm" | "md" | "lg" | "xl";
+export type ResponsiveColumnCount = "1" | "2" | "3" | "4" | "5" | "6";
 
-interface BaseLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface BaseLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
 }
 
-interface LayoutGridProps extends BaseLayoutProps {
+export interface LayoutGridProps extends BaseLayoutProps {
   columns?: LayoutColumns;
   gap?: LayoutGap;
   responsive?: boolean;
@@ -38,7 +38,7 @@ interface LayoutGridProps extends BaseLayoutProps {
   style?: React.CSSProperties;
 }
 
-interface LayoutFlexProps extends BaseLayoutProps {
+export interface LayoutFlexProps extends BaseLayoutProps {
   direction?: "row" | "row-reverse" | "col" | "col-reverse";
   align?: "start" | "center" | "end" | "stretch" | "baseline";
   justify?: "start" | "center" | "end" | "between" | "around" | "evenly";
@@ -46,7 +46,7 @@ interface LayoutFlexProps extends BaseLayoutProps {
   gap?: LayoutGap;
 }
 
-interface LayoutSectionProps
+export interface LayoutSectionProps
   extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
   className?: string;
@@ -54,7 +54,7 @@ interface LayoutSectionProps
   padding?: LayoutGap;
 }
 
-interface LayoutHeaderProps extends React.HTMLAttributes<HTMLElement> {
+export interface LayoutHeaderProps extends React.HTMLAttributes<HTMLElement> {
   children?: React.ReactNode;
   className?: string;
   title?: string;
@@ -62,7 +62,7 @@ interface LayoutHeaderProps extends React.HTMLAttributes<HTMLElement> {
   actions?: React.ReactNode;
 }
 
-interface LayoutContainerProps extends BaseLayoutProps {
+export interface LayoutContainerProps extends BaseLayoutProps {
   size?: "sm" | "md" | "lg" | "xl" | "full";
   centered?: boolean;
   className?: string;

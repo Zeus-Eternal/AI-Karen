@@ -46,7 +46,7 @@ export interface StreamMetrics {
   throughput: number; // tokens per second
 }
 
-interface StreamState {
+export interface StreamState {
   isStreaming: boolean;
   isAborted: boolean;
   error: Error | null;

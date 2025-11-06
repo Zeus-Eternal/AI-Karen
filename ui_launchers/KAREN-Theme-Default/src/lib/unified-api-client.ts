@@ -111,9 +111,9 @@ export interface MemoryCommitResponse {
   correlation_id: string;
 }
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
-type EndpointKey = keyof ConsolidatedEndpoints;
+export type EndpointKey = keyof ConsolidatedEndpoints;
 
 /**
  * Unified API Client

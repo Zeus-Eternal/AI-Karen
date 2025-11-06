@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 
 import { connectivityLogger, performanceTracker } from "@/lib/logging";
 
-interface RealTimeMonitoringDashboardProps {
+export interface RealTimeMonitoringDashboardProps {
   config?: Partial<MonitoringConfig>;
   className?: string;
   onHealthChange?: (health: SystemHealth) => void;

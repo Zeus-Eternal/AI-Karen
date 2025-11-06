@@ -61,7 +61,7 @@ export interface FeatureSupport {
   forcedColors: boolean;
 }
 
-type Callback = (features: FeatureSupport) => void;
+export type Callback = (features: FeatureSupport) => void;
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof document !== 'undefined';

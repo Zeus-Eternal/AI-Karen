@@ -3,14 +3,14 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 // Base types for compound components
-interface BaseCardProps extends React.HTMLAttributes<HTMLDivElement> {}
+export interface BaseCardProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-interface CardRootProps extends BaseCardProps {
+export interface CardRootProps extends BaseCardProps {
   interactive?: boolean
   variant?: "default" | "elevated" | "outlined" | "glass"
 }
 
-interface CardActionsProps extends BaseCardProps {
+export interface CardActionsProps extends BaseCardProps {
   justify?: "start" | "center" | "end" | "between"
 }
 

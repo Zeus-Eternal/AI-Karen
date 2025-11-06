@@ -106,7 +106,7 @@ export interface KarenPromptEnhancement {
 }
 
 // Optional telemetry hooks (no-op friendly)
-type Telemetry = {
+export type Telemetry = {
   track?: (event: string, payload?: Record<string, any>) => void;
 };
 

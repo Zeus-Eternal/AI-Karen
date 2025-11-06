@@ -7,7 +7,7 @@ import { ConnectionStatus } from './types';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
-interface ConnectionStatusIndicatorProps {
+export interface ConnectionStatusIndicatorProps {
   status: ConnectionStatus;
   title: string;
   showDetails?: boolean;

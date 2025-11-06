@@ -24,7 +24,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-interface IntegrationStatus {
+export interface IntegrationStatus {
   initialized: boolean;
   initialization_error?: string;
   component_status: Record<
@@ -47,7 +47,7 @@ interface IntegrationStatus {
   };
 }
 
-interface HealthStatus {
+export interface HealthStatus {
   overall_health: "healthy" | "degraded" | "unhealthy" | "unknown";
   timestamp: string;
   components: Record<
@@ -60,7 +60,7 @@ interface HealthStatus {
   >;
 }
 
-interface PerformanceDashboard {
+export interface PerformanceDashboard {
   timestamp: string;
   metrics_count: number;
   aggregated_stats: Record<string, Record<string, number>>;

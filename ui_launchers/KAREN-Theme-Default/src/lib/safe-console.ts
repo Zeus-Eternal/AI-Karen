@@ -2,7 +2,7 @@
  * Safe console utilities to prevent Next.js console interceptor issues
  */
 
-interface SafeConsoleOptions {
+export interface SafeConsoleOptions {
   skipInProduction?: boolean;
   useStructuredLogging?: boolean;
 }

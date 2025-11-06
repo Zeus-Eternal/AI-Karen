@@ -5,20 +5,20 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 // Base types for modal compound components
-interface BaseModalProps extends React.HTMLAttributes<HTMLDivElement> {}
+export interface BaseModalProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-interface ModalRootProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root> {}
+export interface ModalRootProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root> {}
 
-interface ModalTriggerProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Trigger> {
+export interface ModalTriggerProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Trigger> {
   asChild?: boolean
 }
 
-interface ModalContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+export interface ModalContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   size?: "sm" | "md" | "lg" | "xl" | "full"
   showCloseButton?: boolean
 }
 
-interface ModalActionsProps extends BaseModalProps {
+export interface ModalActionsProps extends BaseModalProps {
   justify?: "start" | "center" | "end" | "between"
 }
 

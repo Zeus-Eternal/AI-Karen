@@ -60,7 +60,7 @@ import type { PluginInfo, PluginAuditEntry, PluginLogEntry } from "@/types/plugi
  * Production-ready, shadcn-correct, and type-safe.
  */
 
-interface AuditSummary {
+export interface AuditSummary {
   totalEvents: number;
   criticalEvents: number;
   securityEvents: number;
@@ -72,7 +72,7 @@ interface AuditSummary {
   eventsByDay: Array<{ date: string; count: number }>;
 }
 
-interface ComplianceReport {
+export interface ComplianceReport {
   id: string;
   name: string;
   description: string;
@@ -86,7 +86,7 @@ interface ComplianceReport {
   }>;
 }
 
-interface PluginAuditLoggerProps {
+export interface PluginAuditLoggerProps {
   plugin: PluginInfo;
   onExportAuditLog?: (format: "csv" | "json" | "pdf") => void;
   onGenerateReport?: (type: "compliance" | "security" | "activity") => void;

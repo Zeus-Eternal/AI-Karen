@@ -11,7 +11,7 @@ import { getEmailServiceConfig, testEmailService, getSystemName } from './config
 /**
  * Email Service Provider Interface
  */
-interface EmailProvider {
+export interface EmailProvider {
   send(message: EmailMessage): Promise<SendEmailResponse>;
   testConnection(): Promise<boolean>;
 }

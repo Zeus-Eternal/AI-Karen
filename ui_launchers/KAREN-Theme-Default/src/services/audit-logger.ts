@@ -28,7 +28,7 @@ import {
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { useAppStore } from '@/store/app-store';
 
-type Timer = ReturnType<typeof setInterval>;
+export type Timer = ReturnType<typeof setInterval>;
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 

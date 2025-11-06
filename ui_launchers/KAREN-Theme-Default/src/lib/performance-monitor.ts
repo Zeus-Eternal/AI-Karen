@@ -60,8 +60,8 @@ export interface PerformanceAlert {
   metrics: RequestMetrics | PerformanceStats;
 }
 
-type MetricsListener = (metrics: RequestMetrics) => void;
-type AlertListener = (alert: PerformanceAlert) => void;
+export type MetricsListener = (metrics: RequestMetrics) => void;
+export type AlertListener = (alert: PerformanceAlert) => void;
 
 const isBrowser =
   typeof window !== 'undefined' && typeof document !== 'undefined';

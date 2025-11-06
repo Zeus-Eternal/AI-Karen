@@ -26,7 +26,7 @@ export interface IntegratedApiClientOptions {
   treatNetworkErrorsAs401?: boolean; // optional: treat 0/undefined status as auth-loss (off)
 }
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
 function isFormLike(body: unknown): body is FormData | Blob | ArrayBuffer | ReadableStream {
   return (

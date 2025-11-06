@@ -2,17 +2,17 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-interface ResizablePanelGroupProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ResizablePanelGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   direction?: "horizontal" | "vertical"
 }
 
-interface ResizablePanelProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ResizablePanelProps extends React.HTMLAttributes<HTMLDivElement> {
   defaultSize?: number
   minSize?: number
   maxSize?: number
 }
 
-interface ResizableHandleProps extends React.HTMLAttributes<HTMLDivElement> {}
+export interface ResizableHandleProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 const ResizablePanelGroup = React.forwardRef<
 >(({ className, direction = "horizontal", ...props }, ref) => (
