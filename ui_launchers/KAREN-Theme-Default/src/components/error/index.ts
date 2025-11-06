@@ -6,6 +6,7 @@ export { ChatErrorBoundary } from './ChatErrorBoundary';
 export { GlobalErrorBoundary, withGlobalErrorBoundary } from './GlobalErrorBoundary';
 export { ApiErrorBoundary, withApiErrorBoundary } from './ApiErrorBoundary';
 export { StreamingErrorBoundary } from './StreamingErrorBoundary';
+export { ErrorBoundary } from './ErrorBoundary';
 
 // Intelligent error UX
 export { IntelligentErrorPanel } from './IntelligentErrorPanel';
@@ -29,6 +30,12 @@ export { ModernErrorBoundary } from './modern-error-boundary';
 // Section-scoped boundaries & fallbacks
 export * from './section-error-boundaries';
 export * from './error-fallbacks';
+export { SimpleErrorFallback } from './SimpleErrorFallback';
+
+// Error tracking and analytics
+export { default as ErrorAnalyticsDashboard } from './ErrorAnalyticsDashboard';
+export { ErrorTracker } from './ErrorTracker';
+export type { ErrorTrackerProps, TrackedError } from './ErrorTracker';
 
 // UI retry helpers
 export * from '../ui/retry-components';
