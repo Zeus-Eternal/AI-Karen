@@ -25,6 +25,7 @@ export type {
   AppShellHeaderProps,
   AppShellMainProps,
   AppShellFooterProps,
+  AppShellContextType,
 } from "./AppShell";
 
 // Headers
@@ -62,4 +63,6 @@ export type {
   LayoutContainerProps,
   LayoutGap,
   LayoutColumns,
+  Breakpoint,
+  ResponsiveColumnCount,
 } from "./ModernLayout";

@@ -19,8 +19,8 @@ export type LayoutColumns =
   | "auto-fit"
   | "auto-fill";
 
-type Breakpoint = "sm" | "md" | "lg" | "xl";
-type ResponsiveColumnCount = "1" | "2" | "3" | "4" | "5" | "6";
+export type Breakpoint = "sm" | "md" | "lg" | "xl";
+export type ResponsiveColumnCount = "1" | "2" | "3" | "4" | "5" | "6";
 
 export interface BaseLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
