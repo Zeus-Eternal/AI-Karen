@@ -29,7 +29,7 @@ export interface Bottleneck {
   detectedAt: number;
 }
 
-interface PerformanceMetrics {
+export interface PerformanceMetrics {
   duration: number;
   memoryUsage: number;
   cpuUsage: number;
@@ -72,7 +72,7 @@ export interface RegressionTest {
   history: Array<{ timestamp: number; value: number }>;
 }
 
-type Listener<T> = (payload: T) => void;
+export type Listener<T> = (payload: T) => void;
 
 const isBrowser =
   typeof window !== 'undefined' &&

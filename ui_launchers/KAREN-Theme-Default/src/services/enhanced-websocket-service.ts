@@ -72,14 +72,14 @@ export interface ConnectionMetrics {
   backpressure: number; // ws.bufferedAmount
 }
 
-interface QueuedMessage {
+export interface QueuedMessage {
   message: WebSocketMessage;
   enqueuedAt: number;
   attempts: number;
   maxAttempts: number;
 }
 
-interface Subscription {
+export interface Subscription {
   id: string;
   eventType: string; // allow wildcards if needed
   callback: (data: any, raw: WebSocketMessage) => void;
@@ -87,8 +87,8 @@ interface Subscription {
   once?: boolean;
 }
 
-type Timer = ReturnType<typeof setTimeout>;
-type Interval = ReturnType<typeof setInterval>;
+export type Timer = ReturnType<typeof setTimeout>;
+export type Interval = ReturnType<typeof setInterval>;
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
