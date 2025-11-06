@@ -6,7 +6,7 @@ import { PreferencesProvider } from './preferences-provider';
 import { MotionProvider } from './motion-provider';
 import { AccessibilityProvider } from './accessibility-provider';
 
-interface CombinedProviderProps {
+export interface CombinedProviderProps {
   children: React.ReactNode;
   themeProps?: {
     defaultTheme?: 'light' | 'dark' | 'system';

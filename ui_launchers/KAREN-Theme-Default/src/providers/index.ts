@@ -1,33 +1,27 @@
-// Theme Provider
-export { ThemeProvider, useTheme } from './theme-provider';
+/**
+ * Providers Index - Production Grade
+ *
+ * Centralized export hub for all context providers and hooks.
+ */
 
-// Preferences Provider
-export {
-  usePreferences,
-  useThemePreference,
-  useAnimationPreference,
-  useAccessibilityPreference,
-} from './preferences-provider';
+export { useAccessibilitySettings, useAnnounce, useAccessibility, AccessibilityProvider, useScreenReader } from './accessibility-provider';
+export type { AccessibilityProviderProps, AccessibilityContextValue, AccessibilitySettings } from './accessibility-provider';
 
-// Motion Provider
-export {
-  useMotion,
-  useAnimationVariants,
-} from './motion-provider';
-
-// Accessibility Provider
-export {
-  useAccessibility,
-  useAnnounce,
-  useScreenReader,
-  useAccessibilitySettings,
-} from './accessibility-provider';
-
-// i18n Provider
-export { useI18n, useTranslation, useLocale, useFormatting } from './i18n-provider';
-
-// RBAC Provider
-export { useRBAC } from './rbac-provider';
-
-// Combined Provider
 export { CombinedProvider } from './combined-provider';
+export type { CombinedProviderProps } from './combined-provider';
+
+export { I18nProvider, useFormatting, useTranslation, useLocale, useI18n } from './i18n-provider';
+export type { I18nContextValue, I18nProviderProps } from './i18n-provider';
+
+export { useMotion, useAnimationVariants, MotionProvider } from './motion-provider';
+export type { MotionProviderProps, MotionContextValue } from './motion-provider';
+
+export { useThemePreference, useAnimationPreference, useAccessibilityPreference, PreferencesProvider, usePreferences } from './preferences-provider';
+export type { UserPreferences, PreferencesProviderProps, PreferencesContextValue } from './preferences-provider';
+
+export { useRBAC, RBACProvider } from './rbac-provider';
+export type { RBACProviderProps, RBACContextValue } from './rbac-provider';
+
+export { ThemeProvider, useTheme } from './theme-provider';
+export type { Theme, ThemeProviderProps, ThemeContextValue, Density } from './theme-provider';
+
