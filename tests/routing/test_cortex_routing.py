@@ -6,6 +6,7 @@ Tests for intent resolution, task classification, and routing decisions.
 
 import pytest
 import json
+import warnings
 from pathlib import Path
 from typing import Dict, Any
 
@@ -135,7 +136,7 @@ class TestTaskClassification:
         ]
 
         for query in queries:
-            analysis = task_analyzer.analyze_query(query, {})
+            analysis = task_analyzer.analyze(query, {})
             assert analysis.task_type == "code", f"Failed to detect code task: {query}"
 
     def test_chat_task_detection(self, task_analyzer):
@@ -147,7 +148,7 @@ class TestTaskClassification:
         ]
 
         for query in queries:
-            analysis = task_analyzer.analyze_query(query, {})
+            analysis = task_analyzer.analyze(query, {})
             assert analysis.task_type == "chat", f"Failed to detect chat task: {query}"
 
     def test_reasoning_task_detection(self, task_analyzer):
@@ -159,12 +160,12 @@ class TestTaskClassification:
         ]
 
         for query in queries:
-            analysis = task_analyzer.analyze_query(query, {})
+            analysis = task_analyzer.analyze(query, {})
             assert analysis.task_type == "reasoning", f"Failed to detect reasoning task: {query}"
 
     def test_capability_mapping(self, task_analyzer):
         """Test that capabilities are correctly mapped."""
-        analysis = task_analyzer.analyze_query("Write Python code", {})
+        analysis = task_analyzer.analyze("Write Python code", {})
 
         assert "code" in analysis.required_capabilities or \
                "text" in analysis.required_capabilities, \
@@ -467,7 +468,7 @@ class TestAccuracyTargets:
 
         # Warn if below target, but don't fail (allows incremental improvement)
         if accuracy < 92.0:
-            pytest.warn(UserWarning(f"Intent accuracy {accuracy:.2f}% below 92% target"))
+            warnings.warn(f"Intent accuracy {accuracy:.2f}% below 92% target", UserWarning)
 
     def test_task_accuracy_target(self, task_analyzer, gold_test_cases):
         """Test that task classification is reasonable."""
@@ -475,7 +476,7 @@ class TestAccuracyTargets:
         total = len(gold_test_cases)
 
         for tc in gold_test_cases:
-            analysis = task_analyzer.analyze_query(tc["query"], {})
+            analysis = task_analyzer.analyze(tc["query"], {})
             expected = tc["expected_task_type"]
 
             if analysis.task_type == expected:
@@ -486,7 +487,7 @@ class TestAccuracyTargets:
 
         # Warn if below 80%
         if accuracy < 80.0:
-            pytest.warn(UserWarning(f"Task accuracy {accuracy:.2f}% below 80% target"))
+            warnings.warn(f"Task accuracy {accuracy:.2f}% below 80% target", UserWarning)
 
 
 # Integration marker for tests that require full system
