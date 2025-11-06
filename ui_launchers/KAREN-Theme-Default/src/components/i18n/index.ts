@@ -16,8 +16,29 @@ export {
 
 // Components
 export { default as LanguageSelector } from "./LanguageSelector";
+export type { LanguageSelectorProps } from "./LanguageSelector";
+
 export { default as LocalizedText, T, Plural } from "./LocalizedText";
-export { default as FormattedText } from "./FormattedText";
+export type { LocalizedTextProps } from "./LocalizedText";
+
+export {
+  FormattedNumber,
+  FormattedDate,
+  FormattedRelativeTime,
+  TimeAgo,
+  FormattedCurrency,
+  FormattedPercent,
+  FormattedFileSize,
+} from "./FormattedText";
+export type {
+  FormattedNumberProps,
+  FormattedDateProps,
+  FormattedRelativeTimeProps,
+  TimeAgoProps,
+  FormattedCurrencyProps,
+  FormattedPercentProps,
+  FormattedFileSizeProps,
+} from "./FormattedText";
 
 // Core i18n
 export {

@@ -4,25 +4,25 @@ import React from 'react';
 import { useI18n } from '../../providers/i18n-provider';
 import type { InterpolationOptions, PluralOptions } from '../../lib/i18n';
 
-interface LocalizedTextProps {
+export interface LocalizedTextProps {
   /** Translation key */
   i18nKey: string;
-  
+
   /** Namespace for the translation */
   ns?: string;
-  
+
   /** Interpolation values */
   values?: InterpolationOptions;
-  
+
   /** Plural count */
   count?: number;
-  
+
   /** Fallback text if translation is missing */
   fallback?: string;
-  
+
   /** HTML element to render */
   as?: keyof JSX.IntrinsicElements;
-  
+
   /** Additional props to pass to the element */
   [key: string]: any;
 }
