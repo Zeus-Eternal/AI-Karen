@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 
 import { } from 'lucide-react';
 
-interface WorkflowNodeData {
+export interface WorkflowNodeData {
   label: string;
   description?: string;
   nodeType: string;
