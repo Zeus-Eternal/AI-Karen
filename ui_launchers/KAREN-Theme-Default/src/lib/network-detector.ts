@@ -42,10 +42,10 @@ export interface NetworkEnvironmentInfo {
   referrer: string;
 }
 
-type DockerDetection = { isDocker: boolean; confidence: number; indicators: string[] };
-type FlagDetection = { isExternal: boolean; confidence: number; indicators: string[] };
-type LocalhostDetection = { isLocalhost: boolean; confidence: number; indicators: string[] };
-type EndpointTests = { availableEndpoints: string[]; workingEndpoints: string[]; bestEndpoint: string | null };
+export type DockerDetection = { isDocker: boolean; confidence: number; indicators: string[] };
+export type FlagDetection = { isExternal: boolean; confidence: number; indicators: string[] };
+export type LocalhostDetection = { isLocalhost: boolean; confidence: number; indicators: string[] };
+export type EndpointTests = { availableEndpoints: string[]; workingEndpoints: string[]; bestEndpoint: string | null };
 
 /**
  * Service for detecting network environment and configuration

@@ -12,7 +12,7 @@ import { RequestResponseCache, getRequestResponseCache, CacheConfig } from './re
 import { DatabaseQueryOptimizer, getDatabaseQueryOptimizer, QueryOptimizationConfig } from './database-query-optimizer';
 import { getConnectionManager } from '../connection/connection-manager';
 
-type HeaderLike = HeadersInit | undefined;
+export type HeaderLike = HeadersInit | undefined;
 
 export interface PerformanceConfig {
   connectionPool: Partial<ConnectionPoolConfig>;

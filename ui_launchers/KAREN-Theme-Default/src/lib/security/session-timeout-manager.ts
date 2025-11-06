@@ -41,7 +41,7 @@ export interface SessionStatus {
   maxExtensions: number;
 }
 
-type RoleKey = 'super_admin' | 'admin' | 'user';
+export type RoleKey = 'super_admin' | 'admin' | 'user';
 
 export class SessionTimeoutManager {
   private adminUtils = getAdminDatabaseUtils();

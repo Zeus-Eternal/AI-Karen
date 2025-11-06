@@ -22,7 +22,7 @@ export interface CacheOptions {
   metadata?: Record<string, any>;
 }
 
-type Stats = {
+export type Stats = {
   totalEntries: number;
   expiredEntries: number;
   totalSize: number;         // approximate bytes (UTF-8)

@@ -58,8 +58,8 @@ export interface NetworkInfo {
   tcpConnection?: boolean;
 }
 
-type LogLevel = DiagnosticInfo['level'];
-type LogCategory = DiagnosticInfo['category'];
+export type LogLevel = DiagnosticInfo['level'];
+export type LogCategory = DiagnosticInfo['category'];
 
 const LEVEL_PRIORITY: Record<LogLevel, number> = {
   debug: 0,

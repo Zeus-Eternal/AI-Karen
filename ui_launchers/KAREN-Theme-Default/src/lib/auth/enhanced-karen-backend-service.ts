@@ -18,7 +18,7 @@ import { getConnectionManager, ConnectionError, ErrorCategory } from '@/lib/conn
 import { getTimeoutManager, OperationType } from '@/lib/connection/timeout-manager';
 
 // Request configuration interface
-interface RequestConfig {
+export interface RequestConfig {
   timeout?: number;
   retryAttempts?: number;
   exponentialBackoff?: boolean;
@@ -27,7 +27,7 @@ interface RequestConfig {
 }
 
 // Response interface
-interface ApiResponse<T = any> {
+export interface ApiResponse<T = any> {
   data: T;
   status: number;
   statusText: string;

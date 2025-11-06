@@ -3,7 +3,7 @@
  * 
  * Mock implementation for performance metrics and recommendations
  */
-interface PerformanceMetrics {
+export interface PerformanceMetrics {
   connectionPool: {
     totalConnections: number;
     activeConnections: number;

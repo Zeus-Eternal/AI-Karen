@@ -28,7 +28,7 @@ const GLOBAL_DEVELOPMENT_FEATURES_ENABLED = DEV_FEATURE_FLAG === 'true' && NODE_
 export const isDevelopmentFeaturesEnabled = (): boolean => GLOBAL_DEVELOPMENT_FEATURES_ENABLED;
 
 // Development user interface
-interface DevelopmentUser {
+export interface DevelopmentUser {
   user_id: string;
   tenant_id: string;
   roles: string[];
@@ -38,7 +38,7 @@ interface DevelopmentUser {
 }
 
 // Development authentication configuration
-interface DevelopmentAuthConfig {
+export interface DevelopmentAuthConfig {
   enabled: boolean;
   bypassAuth: boolean;
   mockAuthEnabled: boolean;
@@ -50,7 +50,7 @@ interface DevelopmentAuthConfig {
 }
 
 // Mock authentication response
-interface MockAuthResponse {
+export interface MockAuthResponse {
   access_token: string;
   refresh_token?: string;
   expires_in: number;
@@ -59,7 +59,7 @@ interface MockAuthResponse {
 }
 
 // Hot reload detection interface
-interface HotReloadInfo {
+export interface HotReloadInfo {
   isHotReload: boolean;
   reloadSource: string;
   timestamp: number;
