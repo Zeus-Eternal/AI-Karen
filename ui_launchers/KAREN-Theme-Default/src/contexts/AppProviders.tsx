@@ -4,7 +4,7 @@ import React, { ReactNode } from 'react';
 import { AuthProvider } from './AuthContext';
 import { HookProvider } from './HookContext';
 
-interface AppProvidersProps {
+export interface AppProvidersProps {
   children: ReactNode;
 }
 

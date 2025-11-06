@@ -5,7 +5,7 @@ export interface AuthSnapshot {
   user: SessionUser | null;
 }
 
-type Listener = (state: AuthSnapshot) => void;
+export type Listener = (state: AuthSnapshot) => void;
 
 class AuthStateManager {
   private state: AuthSnapshot = { isAuthenticated: false, user: null };
