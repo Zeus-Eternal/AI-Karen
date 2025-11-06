@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 
 import { } from 'lucide-react';
-interface SecuritySettings {
+export interface SecuritySettings {
   mfaEnforcement: {
     requireForAdmins: boolean;
     requireForUsers: boolean;
@@ -47,7 +47,7 @@ interface SecuritySettings {
     logRetentionDays: number;
   };
 }
-interface SecurityAlert {
+export interface SecurityAlert {
   id: string;
   type: 'failed_login' | 'suspicious_activity' | 'admin_action' | 'ip_blocked';
   severity: 'low' | 'medium' | 'high' | 'critical';
@@ -57,7 +57,7 @@ interface SecurityAlert {
   userId?: string;
   resolved: boolean;
 }
-interface BlockedIP {
+export interface BlockedIP {
   id: string;
   ipAddress: string;
   reason: string;
