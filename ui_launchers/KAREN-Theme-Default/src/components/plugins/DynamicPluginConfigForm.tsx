@@ -46,12 +46,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-interface ValidationError {
+export interface ValidationError {
   field: string;
   message: string;
   severity: 'error' | 'warning' | 'info';
 }
-interface FieldGroup {
+export interface FieldGroup {
   id: string;
   name: string;
   description: string;
@@ -60,7 +60,7 @@ interface FieldGroup {
   collapsed?: boolean;
   required?: boolean;
 }
-interface DynamicPluginConfigFormProps {
+export interface DynamicPluginConfigFormProps {
   plugin: PluginInfo;
   initialConfig?: PluginConfig;
   onSave: (config: PluginConfig) => Promise<void>;

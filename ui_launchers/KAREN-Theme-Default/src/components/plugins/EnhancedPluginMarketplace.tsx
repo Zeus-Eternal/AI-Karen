@@ -57,7 +57,7 @@ import {
 
 import type { PluginMarketplaceEntry } from "@/types/plugins";
 
-interface PluginReview {
+export interface PluginReview {
   id: string;
   pluginId: string;
   userId: string;
@@ -72,7 +72,7 @@ interface PluginReview {
   version: string;
 }
 
-interface MarketplaceFilters {
+export interface MarketplaceFilters {
   category: string[];
   pricing: string[];
   rating: number;
@@ -82,7 +82,7 @@ interface MarketplaceFilters {
   tags: string[];
 }
 
-interface EnhancedPluginMarketplaceProps {
+export interface EnhancedPluginMarketplaceProps {
   onClose: () => void;
   onInstall: (plugin: PluginMarketplaceEntry) => void;
   onPurchase?: (plugin: PluginMarketplaceEntry) => void;

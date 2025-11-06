@@ -64,10 +64,10 @@ import type { PluginInfo, PluginLogEntry } from "@/types/plugins";
  * Based on requirements: 5.4, 10.3
  */
 
-type LogLevel = "debug" | "info" | "warn" | "error";
-type Source = "api" | "webhook" | "scheduler" | "auth" | "database";
+export type LogLevel = "debug" | "info" | "warn" | "error";
+export type Source = "api" | "webhook" | "scheduler" | "auth" | "database";
 
-interface LogFilter {
+export interface LogFilter {
   levels: LogLevel[];
   sources: Source[] | [];
   timeRange: "1h" | "24h" | "7d" | "30d" | "custom";
@@ -77,7 +77,7 @@ interface LogFilter {
   userId?: string;
 }
 
-interface LogAnalytics {
+export interface LogAnalytics {
   totalLogs: number;
   logsByLevel: Record<LogLevel, number>;
   logsBySource: Record<Source, number>;

@@ -111,7 +111,7 @@ const MetricCard: React.FC<{
   </Card>
 );
 
-type Permission = {
+export type Permission = {
   id: string;
   name: string;
   description: string;
@@ -140,7 +140,7 @@ const PermissionBadge: React.FC<{ permission: Permission }> = ({ permission }) =
   );
 };
 
-type LogEntryT = {
+export type LogEntryT = {
   id: string;
   timestamp: Date;
   level: "debug" | "info" | "warn" | "error";
@@ -174,7 +174,7 @@ const LogEntry: React.FC<{ entry: LogEntryT }> = ({ entry }) => {
 
 // --- Main Component ----------------------------------------------------------
 
-interface PluginDetailViewProps {
+export interface PluginDetailViewProps {
   plugin: PluginInfo;
   onClose: () => void;
   onEnable: (id: string) => void;
