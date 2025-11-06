@@ -8,7 +8,7 @@ import type { FormatOptions } from "../../lib/i18n";
    Number / Currency / Percent
    =========================== */
 
-interface FormattedNumberProps {
+export interface FormattedNumberProps {
   value: number;
   style?: "decimal" | "currency" | "percent";
   currency?: string;
@@ -50,7 +50,7 @@ export const FormattedNumber: React.FC<FormattedNumberProps> = React.memo(
    Date / Time
    ============== */
 
-interface FormattedDateProps {
+export interface FormattedDateProps {
   value: Date | string | number; // accept common inputs; provider should coerce
   dateStyle?: "full" | "long" | "medium" | "short";
   timeStyle?: "full" | "long" | "medium" | "short";
@@ -77,7 +77,7 @@ export const FormattedDate: React.FC<FormattedDateProps> = React.memo(
    Relative Time / Ago
    ================== */
 
-interface FormattedRelativeTimeProps {
+export interface FormattedRelativeTimeProps {
   value: number;
   unit: Intl.RelativeTimeFormatUnit;
   numeric?: "always" | "auto";
@@ -97,7 +97,7 @@ export const FormattedRelativeTime: React.FC<FormattedRelativeTimeProps> =
     return <span className={className}>{formattedValue}</span>;
   });
 
-interface TimeAgoProps {
+export interface TimeAgoProps {
   date: Date | string | number;
   className?: string;
 }
@@ -140,7 +140,7 @@ export const TimeAgo: React.FC<TimeAgoProps> = React.memo(({ date, className }) 
    Currency / Percentage
    ===================== */
 
-interface FormattedCurrencyProps {
+export interface FormattedCurrencyProps {
   value: number;
   currency: string;
   minimumFractionDigits?: number;
@@ -169,7 +169,7 @@ export const FormattedCurrency: React.FC<FormattedCurrencyProps> = React.memo(
   }
 );
 
-interface FormattedPercentProps {
+export interface FormattedPercentProps {
   value: number; // 0.15 => 15%
   minimumFractionDigits?: number;
   maximumFractionDigits?: number;
@@ -194,7 +194,7 @@ export const FormattedPercent: React.FC<FormattedPercentProps> = React.memo(
    File Size Formatter
    ================== */
 
-interface FormattedFileSizeProps {
+export interface FormattedFileSizeProps {
   bytes: number;
   binary?: boolean; // false => SI (KB=1000), true => IEC (KiB=1024)
   className?: string;

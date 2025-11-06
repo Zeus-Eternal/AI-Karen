@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Activity, Clock, Zap, X } from "lucide-react";
 
-interface PerformanceMetrics {
+export interface PerformanceMetrics {
   // Core Web Vitals / key timings (milliseconds unless noted)
   lcp?: number; // Largest Contentful Paint (ms)
   fid?: number; // First Input Delay (ms)
@@ -22,7 +22,7 @@ interface PerformanceMetrics {
   jsHeapSizeLimit?: number;
 }
 
-interface PerformanceMonitorProps {
+export interface PerformanceMonitorProps {
   /** Whether to show the performance overlay in development */
   showOverlay?: boolean;
   /** Whether to log metrics to console */

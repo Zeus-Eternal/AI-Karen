@@ -402,7 +402,7 @@ SidebarNavigation.displayName = "SidebarNavigation";
 
 /* ------------------------- Navigation Item Component ---------------------- */
 
-interface NavigationItemComponentProps {
+export interface NavigationItemComponentProps {
   item: NavigationItem;
   isExpanded: boolean;
   isActive: boolean;

@@ -62,7 +62,7 @@ export interface PerformanceAlert {
   timestamp: number;
 }
 
-type AlertCallback = (alert: PerformanceAlert) => void;
+export type AlertCallback = (alert: PerformanceAlert) => void;
 
 const isNode = typeof process !== 'undefined' && !!(process as any).versions?.node;
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';

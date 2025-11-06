@@ -9,7 +9,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDashboardStore, type TimeRange } from '@/store/dashboard-store';
 import type { DashboardFilter } from '@/types/dashboard';
 
-interface DashboardUrlState {
+export interface DashboardUrlState {
   dashboardId?: string;
   timeRange?: {
     start: string;

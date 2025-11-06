@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { usePerformanceMonitor } from './usePerformanceMonitor';
 
-interface ChatPerformanceMetrics {
+export interface ChatPerformanceMetrics {
   messageRenderTime: number;
   totalMessages: number;
   memoryUsage: number;

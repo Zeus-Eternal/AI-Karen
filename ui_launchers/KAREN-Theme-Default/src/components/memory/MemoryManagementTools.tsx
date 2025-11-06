@@ -57,13 +57,13 @@ function assertNonEmpty(text: string, message: string) {
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 
-interface BatchOperationConfig {
+export interface BatchOperationConfig {
   type: "delete" | "update" | "merge" | "tag" | "cluster";
   parameters: Record<string, any>;
   confirmationRequired: boolean;
 }
 
-interface ValidationConfig {
+export interface ValidationConfig {
   checkDuplicates: boolean;
   checkInconsistencies: boolean;
   checkCorruption: boolean;

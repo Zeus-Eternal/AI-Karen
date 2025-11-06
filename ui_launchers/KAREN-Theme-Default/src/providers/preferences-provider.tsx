@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useUIStore, selectPreferencesState } from '../store';
-interface UserPreferences {
+export interface UserPreferences {
   // Theme preferences
   theme: 'light' | 'dark' | 'system';
   // Animation preferences
@@ -27,7 +27,7 @@ interface UserPreferences {
   autoSave: boolean;
   autoSaveInterval: number; // in seconds
 }
-interface PreferencesContextValue {
+export interface PreferencesContextValue {
   preferences: UserPreferences;
   updatePreference: <K extends keyof UserPreferences>(
     key: K,
@@ -56,7 +56,7 @@ const defaultPreferences: UserPreferences = {
   autoSave: true,
   autoSaveInterval: 30,
 };
-interface PreferencesProviderProps {
+export interface PreferencesProviderProps {
   children: React.ReactNode;
   storageKey?: string;
 }

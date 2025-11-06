@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 
-interface TransformerConfig {
+export interface TransformerConfig {
   // Precision settings
   precision: string;
   torch_dtype: string;
@@ -67,7 +67,7 @@ interface TransformerConfig {
   enable_xformers: boolean;
 }
 
-interface SystemModelInfo {
+export interface SystemModelInfo {
   id: string;
   name: string;
   family: string;
@@ -87,7 +87,7 @@ interface SystemModelInfo {
   is_system_model: boolean;
 }
 
-interface HardwareRecommendations {
+export interface HardwareRecommendations {
   system_info: {
     memory_gb: number;
     cpu_count: number;
@@ -97,7 +97,7 @@ interface HardwareRecommendations {
   [key: string]: any;
 }
 
-interface PerformanceMetrics {
+export interface PerformanceMetrics {
   model_id: string;
   last_inference_time: number;
   average_inference_time: number;
@@ -107,7 +107,7 @@ interface PerformanceMetrics {
   last_updated: number;
 }
 
-interface SystemModelConfigProps {
+export interface SystemModelConfigProps {
   selectedModel: SystemModelInfo | null;
   onClose: () => void;
 }

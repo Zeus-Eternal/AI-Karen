@@ -22,7 +22,7 @@ import { CheckCircle, Award, Star, Heart, Share, ExternalLink, Eye, Download, So
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 
-interface PluginMarketplaceProps {
+export interface PluginMarketplaceProps {
   onClose: () => void;
   onInstall: (plugin: PluginMarketplaceEntry) => void;
 }

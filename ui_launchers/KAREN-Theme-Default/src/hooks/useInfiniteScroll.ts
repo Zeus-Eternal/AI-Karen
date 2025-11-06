@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 
-interface UseInfiniteScrollOptions {
+export interface UseInfiniteScrollOptions {
   hasNextPage: boolean;
   isLoading: boolean;
   onLoadMore: () => void;

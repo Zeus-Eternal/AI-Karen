@@ -18,23 +18,23 @@ import { PluginMarketplaceEntry } from '@/types/plugins';
  */
 
 
-import { } from 'lucide-react';
+import { Search, Download, Eye, Star } from 'lucide-react';
 
 
 
 
 
 
-import { } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 
 
 
-import { } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
-import { } from '@/components/ui/dialog';
-interface PluginMarketplaceProps {
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+export interface PluginMarketplaceProps {
   onClose: () => void;
   onInstall: (plugin: PluginMarketplaceEntry) => void;
 }
@@ -395,7 +395,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={(e) = > {
+              onClick={(e) => {
                 e.stopPropagation();
                 setSelectedPlugin(plugin);
               }}
@@ -405,7 +405,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
             <Button
               variant="default"
               size="sm"
-              onClick={(e) = > {
+              onClick={(e) => {
                 e.stopPropagation();
                 handleInstall(plugin);
               }}
@@ -526,28 +526,28 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
             </div>
             
             <div className="flex items-center gap-2">
-              <select value={selectedCategory} onValueChange={setSelectedCategory} aria-label="Select option">
-                <selectTrigger className="w-32 " aria-label="Select option">
-                  <selectValue />
+              <Select value={selectedCategory} onValueChange={setSelectedCategory} aria-label="Select option">
+                <SelectTrigger className="w-32 " aria-label="Select option">
+                  <SelectValue />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
+                <SelectContent aria-label="Select option">
                   {categories.map((category) => (
-                    <selectItem key={category} value={category} aria-label="Select option">
+                    <SelectItem key={category} value={category} aria-label="Select option">
                       {category === 'all' ? 'All Categories' : category.charAt(0).toUpperCase() + category.slice(1)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               
-              <select value={sortBy} onValueChange={(value: any) = aria-label="Select option"> setSortBy(value)}>
-                <selectTrigger className="w-32 " aria-label="Select option">
-                  <selectValue />
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                <SelectTrigger className="w-32 " aria-label="Select option">
+                  <SelectValue />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
-                  <selectItem value="popular" aria-label="Select option">Popular</SelectItem>
-                  <selectItem value="rating" aria-label="Select option">Rating</SelectItem>
-                  <selectItem value="recent" aria-label="Select option">Recent</SelectItem>
-                  <selectItem value="name" aria-label="Select option">Name</SelectItem>
+                <SelectContent aria-label="Select option">
+                  <SelectItem value="popular" aria-label="Select option">Popular</SelectItem>
+                  <SelectItem value="rating" aria-label="Select option">Rating</SelectItem>
+                  <SelectItem value="recent" aria-label="Select option">Recent</SelectItem>
+                  <SelectItem value="name" aria-label="Select option">Name</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -738,3 +738,4 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
     </div>
   );
 };
+export default PluginMarketplace;

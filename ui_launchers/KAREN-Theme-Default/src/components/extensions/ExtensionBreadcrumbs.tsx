@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { useExtensionContext } from "@/extensions";
 
-type Crumb = {
+export type Crumb = {
   id: string | number;
   name: string;
 };

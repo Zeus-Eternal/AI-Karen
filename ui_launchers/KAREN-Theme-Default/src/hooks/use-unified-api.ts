@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUnifiedApiClient, type CopilotAssistRequest, type CopilotAssistResponse, type MemorySearchRequest, type MemorySearchResponse, type MemoryCommitRequest, type MemoryCommitResponse } from '@/lib/unified-api-client';
 
-interface UseUnifiedApiOptions {
+export interface UseUnifiedApiOptions {
   autoToast?: boolean;
   enableCaching?: boolean;
   cacheTimeout?: number;
@@ -14,7 +14,7 @@ interface UseUnifiedApiOptions {
   onSuccess?: (data: any, operation: string) => void;
 }
 
-interface UseUnifiedApiReturn {
+export interface UseUnifiedApiReturn {
   // Copilot operations
   copilotAssist: (request: Omit<CopilotAssistRequest, 'user_id'>) => Promise<CopilotAssistResponse>;
   
@@ -40,7 +40,7 @@ interface UseUnifiedApiReturn {
   getCacheStats: () => any;
 }
 
-interface CacheEntry {
+export interface CacheEntry {
   data: any;
   timestamp: number;
   key: string;

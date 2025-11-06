@@ -274,7 +274,7 @@ function matchesIpOrCidr(needle: string, ip: string): boolean {
 /* =========================
  * Token-bucket-ish throttle
  * ========================= */
-interface Bucket {
+export interface Bucket {
   ts: number[];
   lastCleanup: number;
 }

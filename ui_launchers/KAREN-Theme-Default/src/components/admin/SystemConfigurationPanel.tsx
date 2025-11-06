@@ -74,7 +74,7 @@ const SystemConfigSchema = z.object({
   enablePasswordReset: z.boolean(),
 });
 
-type SystemConfig = z.infer<typeof SystemConfigSchema>;
+export type SystemConfig = z.infer<typeof SystemConfigSchema>;
 
 /** ----- Defaults ----- */
 

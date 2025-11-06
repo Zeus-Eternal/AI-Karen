@@ -19,8 +19,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Clock, Shield, RefreshCw, CheckCircle, AlertTriangle } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth/session";
 
-type SessionMode = "cookie" | "token" | "hybrid";
-interface SessionInfo {
+export type SessionMode = "cookie" | "token" | "hybrid";
+export interface SessionInfo {
   mode: SessionMode;
   issuedAt?: string;     // ISO
   expiresAt?: string;    // ISO

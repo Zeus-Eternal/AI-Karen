@@ -36,7 +36,7 @@ export interface Span {
   addTag: (key: string, value: any) => void;
 }
 
-type Timer = ReturnType<typeof setInterval>;
+export type Timer = ReturnType<typeof setInterval>;
 
 class TelemetryService {
   private config: TelemetryConfig;

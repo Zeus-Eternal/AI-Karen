@@ -19,16 +19,16 @@ import {
   FolderTree,
 } from "lucide-react";
 
-type IconType = React.ComponentType<{ className?: string }>;
+export type IconType = React.ComponentType<{ className?: string }>;
 
-interface BreadcrumbItem {
+export interface BreadcrumbItem {
   label: string;
   href?: string;
   icon?: IconType;
   isActive?: boolean;
 }
 
-interface AdminBreadcrumbsProps {
+export interface AdminBreadcrumbsProps {
   className?: string;
   /** Provide explicit crumbs to override route-based generation */
   customItems?: BreadcrumbItem[];

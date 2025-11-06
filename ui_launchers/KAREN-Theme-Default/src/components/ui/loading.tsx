@@ -18,7 +18,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-interface LoadingProps {
+export interface LoadingProps {
   size?: 'sm' | 'md' | 'lg';
   variant?: 'spinner' | 'dots' | 'pulse' | 'skeleton';
   message?: string;

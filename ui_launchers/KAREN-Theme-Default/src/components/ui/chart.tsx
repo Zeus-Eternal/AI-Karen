@@ -25,7 +25,7 @@ export type ChartConfig = {
   )
 }
 
-type ChartContextProps = {
+export type ChartContextProps = {
   config: ChartConfig
 }
 

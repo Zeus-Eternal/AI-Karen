@@ -32,7 +32,7 @@ export interface ReasoningResponse {
   };
 }
 
-type FetchOptions = {
+export type FetchOptions = {
   timeoutMs?: number;
   retries?: number;
   retryBackoffMs?: number;

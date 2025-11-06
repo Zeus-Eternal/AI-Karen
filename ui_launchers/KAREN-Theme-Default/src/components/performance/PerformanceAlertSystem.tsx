@@ -37,9 +37,9 @@ import {
 
 // ---- Domain Types ----------------------------------------------------------
 
-type AlertLevel = "warning" | "critical";
+export type AlertLevel = "warning" | "critical";
 
-interface PerformanceAlert {
+export interface PerformanceAlert {
   id: string;
   metric: string; // e.g. 'lcp','fid','cls','fcp','ttfb','page-load','memory-usage','api-call'
   value: number; // numeric value to compare to threshold
@@ -48,7 +48,7 @@ interface PerformanceAlert {
   timestamp: number; // epoch ms
 }
 
-interface AlertRule {
+export interface AlertRule {
   id: string;
   name: string;
   metric: string;
@@ -67,7 +67,7 @@ interface AlertRule {
   };
 }
 
-interface PerformanceAlertSystemProps {
+export interface PerformanceAlertSystemProps {
   onAlert?: (alert: PerformanceAlert) => void;
 }
 

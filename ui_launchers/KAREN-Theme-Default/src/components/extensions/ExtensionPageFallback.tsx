@@ -11,7 +11,7 @@ import { useExtensionRoutes } from '@/lib/extensions/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { ArrowLeft, Puzzle, Search } from 'lucide-react';
-interface ExtensionPageFallbackProps {
+export interface ExtensionPageFallbackProps {
   extensionPath?: string;
 }
 export function ExtensionPageFallback({ extensionPath }: ExtensionPageFallbackProps) {

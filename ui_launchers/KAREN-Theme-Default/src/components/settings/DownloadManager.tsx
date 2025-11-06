@@ -19,7 +19,7 @@ import {
 import { useDownloadStatus, DownloadTask } from "@/hooks/use-download-status";
 import ModelDownloadProgress from "./ModelDownloadProgress";
 
-interface DownloadManagerProps {
+export interface DownloadManagerProps {
   onDownloadComplete?: (modelId: string) => void;
   compact?: boolean;
 }

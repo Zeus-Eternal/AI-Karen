@@ -3,12 +3,12 @@
 import React, { Suspense, ComponentType, LazyExoticComponent } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
-interface LazyComponentProps {
+export interface LazyComponentProps {
   fallback?: React.ComponentType;
   errorFallback?: React.ComponentType<{ error: Error; retry: () => void }>;
   children: React.ReactNode;
 }
-interface LazyLoadOptions {
+export interface LazyLoadOptions {
   fallback?: React.ComponentType;
   errorFallback?: React.ComponentType<{ error: Error; retry: () => void }>;
   delay?: number;

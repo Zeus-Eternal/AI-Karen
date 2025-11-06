@@ -89,7 +89,7 @@ export interface BusinessMetrics {
   };
 }
 
-type Histogram = {
+export type Histogram = {
   buckets: Record<number, number>;
   sum: number;
   count: number;

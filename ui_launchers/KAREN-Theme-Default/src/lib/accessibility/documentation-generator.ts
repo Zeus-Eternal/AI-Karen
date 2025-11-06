@@ -11,7 +11,7 @@ import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import * as t from '@babel/types';
 // Types for documentation generation
-interface ComponentAccessibilityInfo {
+export interface ComponentAccessibilityInfo {
   name: string;
   filePath: string;
   description: string;
@@ -24,51 +24,51 @@ interface ComponentAccessibilityInfo {
   commonIssues: AccessibilityIssue[];
   testingInstructions: TestingInstruction[];
 }
-interface AccessibilityFeature {
+export interface AccessibilityFeature {
   feature: string;
   description: string;
   implementation: string;
   wcagCriteria: string[];
 }
-interface AriaAttribute {
+export interface AriaAttribute {
   attribute: string;
   purpose: string;
   usage: string;
   required: boolean;
   example: string;
 }
-interface KeyboardSupport {
+export interface KeyboardSupport {
   key: string;
   action: string;
   context: string;
   required: boolean;
 }
-interface ScreenReaderFeature {
+export interface ScreenReaderFeature {
   feature: string;
   announcement: string;
   context: string;
   implementation: string;
 }
-interface AccessibilityExample {
+export interface AccessibilityExample {
   title: string;
   description: string;
   code: string;
   doExample: boolean; // true for "do", false for "don't"
   explanation: string;
 }
-interface AccessibilityIssue {
+export interface AccessibilityIssue {
   issue: string;
   description: string;
   solution: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
-interface TestingInstruction {
+export interface TestingInstruction {
   method: 'keyboard' | 'screen-reader' | 'automated' | 'manual';
   instruction: string;
   expectedResult: string;
   tools?: string[];
 }
-interface DocumentationConfig {
+export interface DocumentationConfig {
   sourceDir: string;
   outputDir: string;
   componentPatterns: string[];

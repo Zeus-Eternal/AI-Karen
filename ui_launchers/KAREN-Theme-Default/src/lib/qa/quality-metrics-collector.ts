@@ -67,7 +67,7 @@ export interface QualityGate {
   description: string;
 }
 
-type CacheEntry<T> = { data: T; timestamp: number };
+export type CacheEntry<T> = { data: T; timestamp: number };
 
 export interface MetricsCollectorConfig {
   projectRoot?: string;

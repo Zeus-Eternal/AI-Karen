@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 const Form = FormProvider
 
-type FormFieldContextValue<
+export type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
 > = {
@@ -60,7 +60,7 @@ const useFormField = () => {
   }
 }
 
-type FormItemContextValue = {
+export type FormItemContextValue = {
   id: string
 }
 

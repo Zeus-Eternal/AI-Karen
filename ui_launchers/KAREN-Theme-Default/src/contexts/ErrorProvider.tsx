@@ -56,7 +56,7 @@ export const useError = () => {
   return context;
 };
 
-interface ErrorProviderProps {
+export interface ErrorProviderProps {
   children: ReactNode;
   options?: UseIntelligentErrorOptions;
   onErrorAnalyzed?: (analysis: ErrorAnalysisResponse) => void;

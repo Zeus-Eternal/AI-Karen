@@ -26,7 +26,7 @@ import {
   Info
 } from 'lucide-react';
 
-interface NotificationSettings {
+export interface NotificationSettings {
   provider_status_changes: boolean;
   fallback_notifications: boolean;
   recovery_notifications: boolean;
@@ -36,7 +36,7 @@ interface NotificationSettings {
   maintenance_notifications: boolean;
 }
 
-interface ProviderNotification {
+export interface ProviderNotification {
   id: string;
   type: 'status_change' | 'fallback' | 'recovery' | 'system_health' | 'performance' | 'error' | 'maintenance';
   priority: 'low' | 'medium' | 'high' | 'critical';
@@ -55,7 +55,7 @@ interface ProviderNotification {
   metadata?: Record<string, any>;
 }
 
-interface ProviderNotificationSystemProps {
+export interface ProviderNotificationSystemProps {
   onNotificationAction?: (notificationId: string, actionId: string) => void;
   realTimeUpdates?: boolean;
 }

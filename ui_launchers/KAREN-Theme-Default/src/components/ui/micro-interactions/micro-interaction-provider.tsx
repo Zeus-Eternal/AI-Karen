@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { MicroInteractionConfig } from './types';
 
-interface MicroInteractionContextType extends MicroInteractionConfig {
+export interface MicroInteractionContextType extends MicroInteractionConfig {
   updateConfig: (config: Partial<MicroInteractionConfig>) => void;
 }
 
@@ -17,7 +17,7 @@ export function useMicroInteractions() {
   return context;
 }
 
-interface MicroInteractionProviderProps {
+export interface MicroInteractionProviderProps {
   children: React.ReactNode;
   defaultConfig?: Partial<MicroInteractionConfig>;
 }

@@ -1,8 +1,8 @@
 // Frontend UI Diagnostics and Performance Monitoring (production-grade)
 // Validates rendering performance, accessibility, compatibility, and security
 
-type Category = 'performance' | 'accessibility' | 'compatibility' | 'security';
-type Level = 'critical' | 'warning' | 'info';
+export type Category = 'performance' | 'accessibility' | 'compatibility' | 'security';
+export type Level = 'critical' | 'warning' | 'info';
 
 export interface DiagnosticResult {
   category: Category;
@@ -12,7 +12,7 @@ export interface DiagnosticResult {
   suggestion?: string;
 }
 
-interface ContrastIssue {
+export interface ContrastIssue {
   node: Element;
   fg: string;
   bg: string;

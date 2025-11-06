@@ -15,7 +15,7 @@ import { handleExtensionError } from "./extension-error-integration";
 import "./extension-403-fix"; // keep the hotfix loaded early
 
 // ---------- Types ----------
-interface RecoveryResult {
+export interface RecoveryResult {
   success: boolean;
   strategy: string;
   message: string;
@@ -25,7 +25,7 @@ interface RecoveryResult {
   escalated: boolean;
 }
 
-interface ErrorRecoveryRequest {
+export interface ErrorRecoveryRequest {
   type: "http" | "network" | "service" | "auth";
   status_code?: number;
   endpoint: string;

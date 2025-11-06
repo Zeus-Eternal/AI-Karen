@@ -17,13 +17,13 @@ import { } from 'lucide-react';
 
 import { } from '@/types/workflows';
 
-interface WorkflowTesterProps {
+export interface WorkflowTesterProps {
   workflow: WorkflowDefinition;
   onTest?: (workflow: WorkflowDefinition, testData: Record<string, any>) => Promise<WorkflowTestResult>;
   className?: string;
 }
 
-interface TestInput {
+export interface TestInput {
   nodeId: string;
   inputId: string;
   name: string;

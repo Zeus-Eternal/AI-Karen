@@ -37,7 +37,7 @@ declare global {
   }
 }
 
-type InitResult =
+export type InitResult =
   | {
       success: true;
       message: string;
@@ -49,7 +49,7 @@ type InitResult =
       error: string;
     };
 
-type StatusResult = {
+export type StatusResult = {
   status: 'active' | 'partial';
   checks: {
     fetchPatched: boolean;

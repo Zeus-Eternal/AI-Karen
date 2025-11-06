@@ -24,7 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { RefreshCcw, SlidersHorizontal, Search, X } from "lucide-react";
 
-interface UserSearchFiltersProps {
+export interface UserSearchFiltersProps {
   filters: UserListFilter;
   onFiltersChange: (filters: UserListFilter) => void;
   onRefresh: () => void;

@@ -42,7 +42,7 @@ export interface ErrorReportingConfig {
   beforeSend?: (report: ErrorReport) => ErrorReport | null;
 }
 
-type ReactErrorInfoLike = { componentStack?: string };
+export type ReactErrorInfoLike = { componentStack?: string };
 
 function safeNowISO() {
   try {

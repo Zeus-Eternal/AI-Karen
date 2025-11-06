@@ -24,7 +24,7 @@ export interface PerformanceAlertConfig {
   suppressEndpoints?: string[]; // optional endpoint patterns to ignore
 }
 
-type AlertType = PerformanceAlert['type'];
+export type AlertType = PerformanceAlert['type'];
 
 class PerformanceAlertService {
   private config: PerformanceAlertConfig = {

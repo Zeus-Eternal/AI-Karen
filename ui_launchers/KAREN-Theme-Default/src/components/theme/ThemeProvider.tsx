@@ -1,8 +1,13 @@
 "use client";
 
 export {
+  ThemeProvider,
   useTheme,
-import { } from '@/providers/theme-provider';
+} from '@/providers/theme-provider';
 
 export type {
-import { } from '@/providers/theme-provider';
+  ThemeProviderProps,
+  Theme,
+  Density,
+  ThemeContextValue,
+} from '@/providers/theme-provider';

@@ -2,7 +2,7 @@
  * Performance metrics collection for response times and system performance
  */
 import { PerformanceMetrics } from './types';
-interface PerformanceEntry {
+export interface PerformanceEntry {
   operation: string;
   startTime: number;
   endTime?: number;

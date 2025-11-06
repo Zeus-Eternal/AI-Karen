@@ -312,7 +312,7 @@ ValidatedFormField.displayName = 'ValidatedFormField';
 /**
  * Password strength indicator component
  */
-interface PasswordStrengthProps {
+export interface PasswordStrengthProps {
   password: string;
   show?: boolean;
   className?: string;

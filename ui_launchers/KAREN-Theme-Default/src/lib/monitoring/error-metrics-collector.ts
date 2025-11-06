@@ -49,7 +49,7 @@ export interface ErrorEvent {
   context?: Record<string, any>;
 }
 
-type TrendTimer = ReturnType<typeof setInterval> | null;
+export type TrendTimer = ReturnType<typeof setInterval> | null;
 
 function now(): number {
   return Date.now();

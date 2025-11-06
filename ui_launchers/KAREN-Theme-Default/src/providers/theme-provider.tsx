@@ -7,7 +7,7 @@ import { generateCompleteCSS } from '../design-tokens/css-tokens';
 export type Theme = 'light' | 'dark' | 'system';
 export type Density = 'compact' | 'comfortable' | 'spacious';
 
-interface ThemeContextValue {
+export interface ThemeContextValue {
   theme: Theme;
   resolvedTheme: 'light' | 'dark';
   setTheme: (theme: Theme) => void;

@@ -7,11 +7,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search } from 'lucide-react';
 
-interface NodeLibraryProps {
+export interface NodeLibraryProps {
   readOnly?: boolean;
 }
 
-interface NodeTemplate {
+export interface NodeTemplate {
   id: string;
   name: string;
   description: string;

@@ -17,7 +17,7 @@ const alertVariants = cva(
   }
 )
 
-type AlertProps = React.ComponentPropsWithoutRef<"div"> & VariantProps<typeof alertVariants>
+export type AlertProps = React.ComponentPropsWithoutRef<"div"> & VariantProps<typeof alertVariants>
 
 const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
   ({ className, variant, children, ...props }, ref) => (

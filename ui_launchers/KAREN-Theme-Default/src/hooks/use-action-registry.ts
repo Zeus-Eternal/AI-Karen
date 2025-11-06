@@ -12,13 +12,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { getActionRegistry, type SuggestedAction, type ActionResult, type ActionHandler } from '@/services/actionMapper';
 
-interface UseActionRegistryOptions {
+export interface UseActionRegistryOptions {
   autoToast?: boolean;
   onActionComplete?: (action: string, result: ActionResult) => void;
   onActionError?: (action: string, error: string) => void;
 }
 
-interface UseActionRegistryReturn {
+export interface UseActionRegistryReturn {
   // Action execution
   performAction: (type: string, params?: Record<string, any>) => Promise<ActionResult>;
   performActions: (actions: SuggestedAction[]) => Promise<ActionResult[]>;

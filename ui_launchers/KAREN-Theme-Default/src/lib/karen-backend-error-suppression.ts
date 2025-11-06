@@ -8,9 +8,9 @@
  * - Provides consistent fallback payloads
  */
 
-type MaybePromise<T> = T | Promise<T>;
+export type MaybePromise<T> = T | Promise<T>;
 
-type MinimalKarenBackend = {
+export type MinimalKarenBackend = {
   makeRequest?: (endpoint: string, ...args: any[]) => MaybePromise<any>;
   makeRequestPublic?: (endpoint: string, opts?: any) => MaybePromise<any>;
   isExtensionEndpoint?: (endpoint: string) => boolean;

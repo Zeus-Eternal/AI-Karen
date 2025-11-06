@@ -3,7 +3,7 @@
 import React, { ReactNode, CSSProperties } from 'react';
 import { useProgressiveEnhancement } from '@/utils/progressive-enhancement';
 
-interface AnimationFallbackProps {
+export interface AnimationFallbackProps {
   children: ReactNode;
   fallback?: ReactNode;
   className?: string;
@@ -31,7 +31,7 @@ export function AnimationFallback({
 /**
  * Fade animation with fallback
  */
-interface FadeProps extends AnimationFallbackProps {
+export interface FadeProps extends AnimationFallbackProps {
   show: boolean;
   duration?: number;
 }
@@ -67,7 +67,7 @@ export function FadeAnimation({
 /**
  * Slide animation with fallback
  */
-interface SlideProps extends AnimationFallbackProps {
+export interface SlideProps extends AnimationFallbackProps {
   show: boolean;
   direction: 'up' | 'down' | 'left' | 'right';
   distance?: number;
@@ -121,7 +121,7 @@ export function SlideAnimation({
 /**
  * Scale animation with fallback
  */
-interface ScaleProps extends AnimationFallbackProps {
+export interface ScaleProps extends AnimationFallbackProps {
   show: boolean;
   scale?: number;
   duration?: number;
@@ -161,7 +161,7 @@ export function ScaleAnimation({
 /**
  * Collapse animation with fallback
  */
-interface CollapseProps extends AnimationFallbackProps {
+export interface CollapseProps extends AnimationFallbackProps {
   show: boolean;
   duration?: number;
 }
@@ -228,7 +228,7 @@ export function CollapseAnimation({
 /**
  * Loading spinner with fallback
  */
-interface SpinnerProps {
+export interface SpinnerProps {
   size?: number;
   className?: string;
   style?: CSSProperties;
@@ -292,7 +292,7 @@ export function SpinnerAnimation({
 /**
  * Pulse animation with fallback
  */
-interface PulseProps extends AnimationFallbackProps {
+export interface PulseProps extends AnimationFallbackProps {
   duration?: number;
   intensity?: number;
 }
@@ -340,7 +340,7 @@ export function PulseAnimation({
 /**
  * Bounce animation with fallback
  */
-interface BounceProps extends AnimationFallbackProps {
+export interface BounceProps extends AnimationFallbackProps {
   trigger: boolean;
   duration?: number;
 }

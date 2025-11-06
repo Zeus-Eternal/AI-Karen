@@ -63,12 +63,12 @@ import type { PluginInfo, PluginConfig, PluginConfigField } from "@/types/plugin
  * Production-ready: shadcn-correct, typed validation, JSON import/export, collapsible sections.
  */
 
-interface ValidationError {
+export interface ValidationError {
   field: string;
   message: string;
 }
 
-interface ConfigurationSection {
+export interface ConfigurationSection {
   id: string;
   name: string;
   description: string;
@@ -76,7 +76,7 @@ interface ConfigurationSection {
   collapsed?: boolean;
 }
 
-interface PluginConfigurationManagerProps {
+export interface PluginConfigurationManagerProps {
   plugin: PluginInfo;
   onSave: (config: PluginConfig) => Promise<void>;
   onReset: () => Promise<void>;

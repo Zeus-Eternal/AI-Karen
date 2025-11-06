@@ -26,18 +26,18 @@ import { useToast } from "@/hooks/use-toast";
 import type { AdminApiResponse, BulkUserOperation } from "@/types/admin";
 import { Download, UploadCloud, AlertTriangle } from "lucide-react";
 
-interface BulkUserOperationsProps {
+export interface BulkUserOperationsProps {
   selectedUserIds: string[];
   onOperationComplete: () => void;
   onCancel: () => void;
   className?: string;
 }
 
-type OperationType = "activate" | "deactivate" | "delete" | "export" | "import" | "role_change";
-type RoleTarget = "admin" | "user";
-type ExportFormat = "csv" | "json" | "xlsx";
+export type OperationType = "activate" | "deactivate" | "delete" | "export" | "import" | "role_change";
+export type RoleTarget = "admin" | "user";
+export type ExportFormat = "csv" | "json" | "xlsx";
 
-interface OperationProgress {
+export interface OperationProgress {
   total: number;
   completed: number;
   failed: number;

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 
-interface AuthenticationMetricsDisplayProps {
+export interface AuthenticationMetricsDisplayProps {
   metrics: AuthenticationMetrics;
   className?: string;
   showRecentFailures?: boolean;

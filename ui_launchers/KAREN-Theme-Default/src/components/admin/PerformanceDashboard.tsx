@@ -26,11 +26,11 @@ import {
 
 import type { PerformanceReport, CacheStats } from "@/types/admin";
 
-interface PerformanceDashboardProps {
+export interface PerformanceDashboardProps {
   className?: string;
 }
 
-type ExportFormat = "json" | "csv";
+export type ExportFormat = "json" | "csv";
 
 function Skeleton({ className = "" }: { className?: string }) {
   return (

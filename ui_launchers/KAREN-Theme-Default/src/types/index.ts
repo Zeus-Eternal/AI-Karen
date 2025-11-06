@@ -32,3 +32,21 @@ export * from './dashboard';
 
 // --- Memory System Types ---
 export * from './memory';
+
+// --- Audit & Logging Types ---
+export * from './audit';
+
+// --- Enhanced Chat Types ---
+export * from './enhanced-chat';
+
+// --- Plugin System Types ---
+export * from './plugins';
+
+// --- Provider Types ---
+export * from './providers';
+
+// --- RBAC (Role-Based Access Control) Types ---
+export * from './rbac';
+
+// --- Workflow System Types ---
+export * from './workflows';

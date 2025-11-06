@@ -3,7 +3,7 @@
 import React, { createContext, useContext } from 'react';
 import { TransitionConfig, TransitionProviderProps } from './types';
 
-interface TransitionContextType {
+export interface TransitionContextType {
   config: TransitionConfig;
   updateConfig: (newConfig: Partial<TransitionConfig>) => void;
 }

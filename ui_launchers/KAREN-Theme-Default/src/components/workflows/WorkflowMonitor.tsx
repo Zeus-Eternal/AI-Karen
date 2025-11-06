@@ -12,7 +12,7 @@ import { } from 'lucide-react';
 
 import { } from '@/types/workflows';
 
-interface WorkflowMonitorProps {
+export interface WorkflowMonitorProps {
   executions: WorkflowExecution[];
   workflows: WorkflowDefinition[];
   onPauseExecution?: (executionId: string) => Promise<void>;
@@ -400,7 +400,7 @@ export function WorkflowMonitor({
   );
 }
 
-interface ExecutionDetailsPanelProps {
+export interface ExecutionDetailsPanelProps {
   execution: WorkflowExecution;
   workflow?: WorkflowDefinition;
   logLevelFilter: string;
