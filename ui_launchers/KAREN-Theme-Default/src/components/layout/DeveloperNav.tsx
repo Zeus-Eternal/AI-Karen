@@ -18,7 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-interface DeveloperNavProps {
+export interface DeveloperNavProps {
   className?: string;
 }
 
