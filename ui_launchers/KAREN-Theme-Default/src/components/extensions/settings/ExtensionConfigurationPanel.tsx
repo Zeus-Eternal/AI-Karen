@@ -11,17 +11,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
+import { Input } from '../../ui/input';
+import { Checkbox } from '../../ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 
 import { Settings, Shield, Eye, EyeOff, Info, Database, Globe, Key, RefreshCw, RotateCcw, Save, AlertTriangle, Copy, FileText, Code, Zap } from 'lucide-react';
 
-interface SettingFieldProps {
+export interface SettingFieldProps {
   setting: ExtensionSetting;
   showSensitive: boolean;
   onChange: (value: any) => void;
   onToggleSensitive: () => void;
 }
 
-interface ExtensionSetting {
+export interface ExtensionSetting {
   key: string;
   label: string;
   description?: string;
@@ -40,7 +43,7 @@ interface ExtensionSetting {
   sensitive?: boolean;
   readonly?: boolean;
 }
-interface ExtensionPermission {
+export interface ExtensionPermission {
   key: string;
   label: string;
   description: string;
@@ -48,7 +51,7 @@ interface ExtensionPermission {
   required: boolean;
   category: 'filesystem' | 'network' | 'system' | 'data' | 'api';
 }
-interface ExtensionConfigurationPanelProps {
+export interface ExtensionConfigurationPanelProps {
   extensionId: string;
   extensionName: string;
   className?: string;
@@ -65,12 +68,11 @@ function SettingField({ setting, showSensitive, onChange, onToggleSensitive }: S
       case 'password':
         return (
           <div className="relative">
-            <input
+            <Input
               type={setting.type === 'password' && !showSensitive ? 'password' : 'text'}
               value={setting.value || ''}
               onChange={(e) => onChange(e.target.value)}
               disabled={setting.readonly}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
               placeholder={setting.defaultValue}
             />
             {setting.sensitive && (
@@ -88,7 +90,7 @@ function SettingField({ setting, showSensitive, onChange, onToggleSensitive }: S
         );
       case 'number':
         return (
-          <input
+          <Input
             type="number"
             value={setting.value || ''}
             onChange={(e) => onChange(Number(e.target.value))}
@@ -96,38 +98,43 @@ function SettingField({ setting, showSensitive, onChange, onToggleSensitive }: S
             min={setting.validation?.min}
             max={setting.validation?.max}
             step={setting.validation?.step}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
           />
         );
       case 'boolean':
         return (
-          <label className="flex items-center">
-            <input
-              type="checkbox"
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={`setting-${setting.key}`}
               checked={setting.value || false}
-              onChange={(e) => onChange(e.target.checked)}
+              onCheckedChange={(checked) => onChange(checked)}
               disabled={setting.readonly}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
-            <span className="ml-2 text-sm text-gray-700 md:text-base lg:text-lg">
+            <label
+              htmlFor={`setting-${setting.key}`}
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
               {setting.value ? 'Enabled' : 'Disabled'}
-            </span>
-          </label>
+            </label>
+          </div>
         );
       case 'select':
         return (
-          <select
+          <Select
             value={setting.value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onValueChange={(value) => onChange(value)}
             disabled={setting.readonly}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
           >
-            {setting.validation?.options?.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select an option" />
+            </SelectTrigger>
+            <SelectContent>
+              {setting.validation?.options?.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         );
       default:
         return null;
@@ -164,7 +171,7 @@ function SettingField({ setting, showSensitive, onChange, onToggleSensitive }: S
   );
 }
 
-interface PermissionFieldProps {
+export interface PermissionFieldProps {
   permission: ExtensionPermission;
   onChange: (granted: boolean) => void;
 }
@@ -182,18 +189,20 @@ function PermissionField({ permission, onChange }: PermissionFieldProps) {
         <p className="text-sm text-gray-600 mt-1 md:text-base lg:text-lg">{permission.description}</p>
       </div>
       <div className="flex items-center gap-3">
-        <label className="flex items-center">
-          <input
-            type="checkbox"
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id={`permission-${permission.key}`}
             checked={permission.granted}
-            onChange={(e) => onChange(e.target.checked)}
+            onCheckedChange={(checked) => onChange(checked as boolean)}
             disabled={permission.required}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
-          <span className="ml-2 text-sm text-gray-700 md:text-base lg:text-lg">
+          <label
+            htmlFor={`permission-${permission.key}`}
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
             {permission.granted ? 'Granted' : 'Denied'}
-          </span>
-        </label>
+          </label>
+        </div>
       </div>
     </div>
   );
@@ -616,14 +625,17 @@ export function ExtensionConfigurationPanel({
               <div className="pt-4 border-t border-gray-200">
                 <h4 className="font-medium mb-3">Debug Actions</h4>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" >
-                    <FileText className="h-3 w-3 mr-1 " />
+                  <Button variant="outline" size="sm">
+                    <FileText className="h-3 w-3 mr-1" />
+                    View Logs
                   </Button>
-                  <Button variant="outline" size="sm" >
-                    <Code className="h-3 w-3 mr-1 " />
+                  <Button variant="outline" size="sm">
+                    <Code className="h-3 w-3 mr-1" />
+                    Inspect Config
                   </Button>
-                  <Button variant="outline" size="sm" >
-                    <Zap className="h-3 w-3 mr-1 " />
+                  <Button variant="outline" size="sm">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Test Extension
                   </Button>
                 </div>
               </div>

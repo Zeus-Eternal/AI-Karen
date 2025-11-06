@@ -36,11 +36,20 @@ const DegradedService: React.FC<{ flagName: keyof ExtensionFeatureFlags }> = ({ 
 };
 
 export const GlobalDegradationBanner: React.FC = () => {
-  const flags = flagNames.map(flagName => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { isEnabled } = useFeatureFlag(flagName);
-    return { flagName, isEnabled };
-  });
+  // Call hooks at the top level, not conditionally or in a loop
+  const extensionSystemFlag = useFeatureFlag("extensionSystem");
+  const backgroundTasksFlag = useFeatureFlag("backgroundTasks");
+  const modelProviderIntegrationFlag = useFeatureFlag("modelProviderIntegration");
+  const extensionHealthFlag = useFeatureFlag("extensionHealth");
+  const extensionAuthFlag = useFeatureFlag("extensionAuth");
+
+  const flags = [
+    { flagName: "extensionSystem", isEnabled: extensionSystemFlag.isEnabled },
+    { flagName: "backgroundTasks", isEnabled: backgroundTasksFlag.isEnabled },
+    { flagName: "modelProviderIntegration", isEnabled: modelProviderIntegrationFlag.isEnabled },
+    { flagName: "extensionHealth", isEnabled: extensionHealthFlag.isEnabled },
+    { flagName: "extensionAuth", isEnabled: extensionAuthFlag.isEnabled },
+  ];
 
   const unhealthyServices = flags.filter(f => !f.isEnabled);
 

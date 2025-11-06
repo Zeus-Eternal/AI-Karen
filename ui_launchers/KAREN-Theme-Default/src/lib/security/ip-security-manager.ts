@@ -886,3 +886,6 @@ export function getIPSecurityManager(): IPSecurityManager {
 }
 
 let ipSecurityManagerInstance: IPSecurityManager | null = null;
+
+// Export singleton instance for direct use
+export const ipSecurityManager = getIPSecurityManager();

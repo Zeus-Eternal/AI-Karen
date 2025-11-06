@@ -4,13 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-
-  listLlamaModels, 
-  listTransformersModels, 
+import {
+  listLlamaModels,
+  listTransformersModels,
   listOpenaiModels,
   listAllAvailableModels,
-  getProvidersWithModels 
-import { } from '@/lib/providers-api';
+  getProvidersWithModels
+} from '@/lib/providers-api';
 
 interface ModelInfo {
   id: string;
@@ -70,7 +70,8 @@ export default function ModelAvailabilityCheck() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <Button onClick={checkAvailability} disabled={loading} >
+            <span>Model Availability Check</span>
+            <Button onClick={checkAvailability} disabled={loading} size="sm">
               {loading ? 'Checking...' : 'Refresh'}
             </Button>
           </CardTitle>

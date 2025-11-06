@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plug } from "lucide-react";
 
-interface ProviderInfo {
+export interface ProviderInfo {
   id: string;
   name: string;
   status: "healthy" | "error" | "unknown";

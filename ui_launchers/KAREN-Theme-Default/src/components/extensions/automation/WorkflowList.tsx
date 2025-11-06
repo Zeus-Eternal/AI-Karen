@@ -9,12 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
-interface WorkflowStep {
+export interface WorkflowStep {
   name: string;
   action: string;
 }
 
-interface WorkflowInfo {
+export interface WorkflowInfo {
   id: string;
   name: string;
   status: "idle" | "running" | "failed" | "completed";
@@ -63,12 +63,12 @@ export default function WorkflowList() {
             {wf.steps.map((step, idx) => (
               <div key={idx} className="flex items-center justify-between">
                 <span>{step.name}</span>
-                <input className="w-40 " value={step.action} readOnly />
+                <Input className="w-40" value={step.action} readOnly />
               </div>
             ))}
           </CardContent>
-          <CardFooter className="flex items-center justify-between">
-            <textarea className="w-full" placeholder="Variables (JSON)" />
+          <CardFooter className="flex items-center justify-between gap-2">
+            <Textarea className="flex-1" placeholder="Variables (JSON)" />
             <Button size="sm" onClick={() => executeWorkflow(wf.id)}>Execute</Button>
           </CardFooter>
         </Card>

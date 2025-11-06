@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Video } from "lucide-react";
 
-interface VideoProvider {
+export interface VideoProvider {
   id: string;
   name: string;
   status: "ready" | "unavailable";

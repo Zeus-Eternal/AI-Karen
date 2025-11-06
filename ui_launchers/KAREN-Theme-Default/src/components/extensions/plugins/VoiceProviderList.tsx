@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Volume2 } from "lucide-react";
 
-interface VoiceProvider {
+export interface VoiceProvider {
   id: string;
   name: string;
   previewText?: string;
@@ -41,6 +41,8 @@ export default function VoiceProviderList() {
           {p.previewText && (
             <CardContent>
               <Button size="sm" variant="outline" onClick={() => p.previewText && handlePreview(p.previewText)}>
+                <Volume2 className="h-4 w-4 mr-2" />
+                Preview Voice
               </Button>
             </CardContent>
           )}
