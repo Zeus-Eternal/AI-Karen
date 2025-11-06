@@ -6,7 +6,7 @@ import { useRBAC } from '@/providers/rbac-provider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ShieldX, Lock, AlertTriangle } from 'lucide-react';
 
-interface PermissionGateProps {
+export interface PermissionGateProps {
   permission: Permission | Permission[];
   requireAll?: boolean; // If true, requires all permissions; if false, requires any
   context?: Partial<AccessContext>;
@@ -66,7 +66,7 @@ export function PermissionGate({
   return null;
 }
 
-interface PermissionDeniedFallbackProps {
+export interface PermissionDeniedFallbackProps {
   permissionResult: any;
 }
 

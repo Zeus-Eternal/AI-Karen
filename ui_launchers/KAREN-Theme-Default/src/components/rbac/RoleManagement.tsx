@@ -25,7 +25,7 @@ import { } from '@/components/ui/select';
 
 import { } from 'lucide-react';
 
-interface RoleManagementProps {
+export interface RoleManagementProps {
   className?: string;
 }
 
@@ -94,7 +94,7 @@ export function RoleManagement({ className }: RoleManagementProps) {
   );
 }
 
-interface RolesListProps {
+export interface RolesListProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
   onRoleSelect: (role: Role) => void;
@@ -147,7 +147,7 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={(e) = > {
+                    onClick={(e) => {
                       e.stopPropagation();
                       onEditRole(role);
                     }}
@@ -158,7 +158,7 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) = > {
+                      onClick={(e) => {
                         e.stopPropagation();
                         deleteRoleMutation.mutate(role.id);
                       }}
@@ -231,13 +231,13 @@ function UserRoleAssignments() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="user-select">Select User</Label>
-              <select value={selectedUser} onValueChange={setSelectedUser} aria-label="Select option">
-                <selectTrigger aria-label="Select option">
-                  <selectValue placeholder="Choose a user" />
+              <Select value={selectedUser} onValueChange={setSelectedUser} aria-label="Select option">
+                <SelectTrigger aria-label="Select option">
+                  <SelectValue placeholder="Choose a user" />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
+                <SelectContent aria-label="Select option">
                   {(Array.isArray(users) ? users : users?.data || []).map((user) => (
-                    <selectItem key={user.id} value={user.id} aria-label="Select option">
+                    <SelectItem key={user.id} value={user.id} aria-label="Select option">
                       {user.username} ({user.email})
                     </SelectItem>
                   ))}
@@ -246,13 +246,13 @@ function UserRoleAssignments() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="role-select">Select Role</Label>
-              <select value={selectedRole} onValueChange={setSelectedRole} aria-label="Select option">
-                <selectTrigger aria-label="Select option">
-                  <selectValue placeholder="Choose a role" />
+              <Select value={selectedRole} onValueChange={setSelectedRole} aria-label="Select option">
+                <SelectTrigger aria-label="Select option">
+                  <SelectValue placeholder="Choose a role" />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
+                <SelectContent aria-label="Select option">
                   {(Array.isArray(roles) ? roles : roles?.data || []).map((role) => (
-                    <selectItem key={role.id} value={role.id} aria-label="Select option">
+                    <SelectItem key={role.id} value={role.id} aria-label="Select option">
                       {role.name}
                     </SelectItem>
                   ))}
@@ -281,7 +281,7 @@ function UserRoleAssignments() {
   );
 }
 
-interface UserRoleTableProps {
+export interface UserRoleTableProps {
   users: User[];
   roles: Role[];
 }
@@ -387,7 +387,7 @@ function RoleHierarchyView() {
   );
 }
 
-interface CreateRoleDialogProps {
+export interface CreateRoleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -464,7 +464,7 @@ function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
   );
 }
 
-interface EditRoleDialogProps {
+export interface EditRoleDialogProps {
   role: Role | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -556,7 +556,7 @@ function EditRoleDialog({ role, open, onOpenChange }: EditRoleDialogProps) {
   );
 }
 
-interface PermissionSelectorProps {
+export interface PermissionSelectorProps {
   selectedPermissions: Permission[];
   onPermissionsChange: (permissions: Permission[]) => void;
   disabled?: boolean;
