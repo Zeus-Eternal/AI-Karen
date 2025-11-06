@@ -58,11 +58,11 @@ import {
 } from "lucide-react";
 
 /* ====================== Types ====================== */
-interface SecurityDashboardProps {
+export interface SecurityDashboardProps {
   className?: string;
 }
 
-interface SecurityMetrics {
+export interface SecurityMetrics {
   overallSecurityScore: number;
   threatLevel: "low" | "medium" | "high" | "critical";
   activeThreats: number;
@@ -87,7 +87,7 @@ interface SecurityMetrics {
   };
 }
 
-interface SecurityAlert {
+export interface SecurityAlert {
   id: string;
   type: "threat" | "vulnerability" | "policy_violation" | "anomaly";
   severity: "low" | "medium" | "high" | "critical";
@@ -100,7 +100,7 @@ interface SecurityAlert {
   assignedTo?: string;
 }
 
-interface ThreatIntelligence {
+export interface ThreatIntelligence {
   id: string;
   source: string;
   threatType: string;
@@ -231,7 +231,7 @@ export function SecurityDashboard({ className }: SecurityDashboardProps) {
 }
 
 /* ====================== Overview ====================== */
-interface SecurityOverviewProps {
+export interface SecurityOverviewProps {
   metrics: SecurityMetrics | undefined;
   alerts: SecurityAlert[] | undefined;
 }
@@ -509,7 +509,7 @@ function SecurityOverview({ metrics, alerts }: SecurityOverviewProps) {
 }
 
 /* ====================== Threats ====================== */
-interface ThreatMonitoringProps {
+export interface ThreatMonitoringProps {
   alerts: SecurityAlert[] | undefined;
   threats: ThreatIntelligence[] | undefined;
 }
@@ -628,7 +628,7 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
 }
 
 /* ====================== Vulnerabilities ====================== */
-interface VulnerabilityManagementProps {
+export interface VulnerabilityManagementProps {
   metrics: SecurityMetrics | undefined;
 }
 
@@ -752,7 +752,7 @@ function VulnerabilityManagement({ metrics }: VulnerabilityManagementProps) {
 }
 
 /* ====================== Compliance ====================== */
-interface ComplianceMonitoringProps {
+export interface ComplianceMonitoringProps {
   metrics: SecurityMetrics | undefined;
 }
 
@@ -835,7 +835,7 @@ function ComplianceMonitoring({ metrics }: ComplianceMonitoringProps) {
 }
 
 /* ====================== Incidents ====================== */
-interface IncidentResponseProps {
+export interface IncidentResponseProps {
   metrics: SecurityMetrics | undefined;
   alerts: SecurityAlert[] | undefined;
 }

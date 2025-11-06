@@ -21,7 +21,7 @@ export type Permission =
   | "developer.debug"
   | "moderator.content";
 
-interface RBACGuardProps {
+export interface RBACGuardProps {
   children: React.ReactNode;
   requiredRole?: UserRole;
   requiredPermission?: Permission;

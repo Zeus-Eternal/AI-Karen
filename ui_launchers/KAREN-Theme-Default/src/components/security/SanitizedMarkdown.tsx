@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { useTelemetry } from '@/hooks/use-telemetry';
-interface SanitizedMarkdownProps {
+export interface SanitizedMarkdownProps {
   content: string;
   allowedTags?: string[];
   allowedAttributes?: Record<string, string[]>;
