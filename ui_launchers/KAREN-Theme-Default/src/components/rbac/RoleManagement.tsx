@@ -107,12 +107,14 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
   const { data: roles = [], isLoading } = useQuery({
     queryKey: ['rbac', 'roles'],
     queryFn: () => enhancedApiClient.get<Role[]>('/api/rbac/roles'),
+  });
 
   const deleteRoleMutation = useMutation({
     mutationFn: (roleId: string) => enhancedApiClient.delete(`/api/rbac/roles/${roleId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] });
     }
+  });
 
   const filteredRoles = (Array.isArray(roles) ? roles : roles?.data || []).filter(role =>
     role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -126,7 +128,7 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-2">
-        <input
+        <Input
           placeholder="Search roles..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -147,7 +149,7 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={(e) = > {
+                    onClick={(e) => {
                       e.stopPropagation();
                       onEditRole(role);
                     }}
@@ -158,7 +160,7 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) = > {
+                      onClick={(e) => {
                         e.stopPropagation();
                         deleteRoleMutation.mutate(role.id);
                       }}
@@ -204,10 +206,12 @@ function UserRoleAssignments() {
   const { data: users = [] } = useQuery({
     queryKey: ['rbac', 'users'],
     queryFn: () => enhancedApiClient.get<User[]>('/api/rbac/users'),
+  });
 
   const { data: roles = [] } = useQuery({
     queryKey: ['rbac', 'roles'],
     queryFn: () => enhancedApiClient.get<Role[]>('/api/rbac/roles'),
+  });
 
   const { assignRole, removeRole } = useRBAC();
 
@@ -231,13 +235,13 @@ function UserRoleAssignments() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="user-select">Select User</Label>
-              <select value={selectedUser} onValueChange={setSelectedUser} aria-label="Select option">
-                <selectTrigger aria-label="Select option">
-                  <selectValue placeholder="Choose a user" />
+              <Select value={selectedUser} onValueChange={setSelectedUser}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a user" />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
+                <SelectContent>
                   {(Array.isArray(users) ? users : users?.data || []).map((user) => (
-                    <selectItem key={user.id} value={user.id} aria-label="Select option">
+                    <SelectItem key={user.id} value={user.id}>
                       {user.username} ({user.email})
                     </SelectItem>
                   ))}
@@ -246,13 +250,13 @@ function UserRoleAssignments() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="role-select">Select Role</Label>
-              <select value={selectedRole} onValueChange={setSelectedRole} aria-label="Select option">
-                <selectTrigger aria-label="Select option">
-                  <selectValue placeholder="Choose a role" />
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a role" />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
+                <SelectContent>
                   {(Array.isArray(roles) ? roles : roles?.data || []).map((role) => (
-                    <selectItem key={role.id} value={role.id} aria-label="Select option">
+                    <SelectItem key={role.id} value={role.id}>
                       {role.name}
                     </SelectItem>
                   ))}

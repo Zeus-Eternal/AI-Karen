@@ -131,6 +131,7 @@ export function QualityAssuranceDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ format: 'pdf', includeCharts: true })
+      });
 
       if (response.ok) {
         const blob = await response.blob();
@@ -144,6 +145,7 @@ export function QualityAssuranceDashboard() {
         document.body.removeChild(a);
       }
     } catch (error) {
+      console.error('Failed to export report:', error);
     }
   };
   if (loading || !metrics) {
@@ -153,6 +155,7 @@ export function QualityAssuranceDashboard() {
         <RefreshCw className="h-8 w-8 animate-spin " />
         <span className="ml-2">Loading quality metrics...</span>
       </div>
+    </ErrorBoundary>
     );
   }
   const overallQualityScore = Math.round(

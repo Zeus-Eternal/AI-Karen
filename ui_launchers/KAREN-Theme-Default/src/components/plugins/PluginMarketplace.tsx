@@ -18,22 +18,39 @@ import { PluginMarketplaceEntry } from '@/types/plugins';
  */
 
 
-import { } from 'lucide-react';
+import {
+  Search, Download, Eye, RefreshCw, SortAsc, SortDesc, Grid, List, Package,
+  Star, Award, CheckCircle, ArrowLeft, Heart, Share, ExternalLink
+} from 'lucide-react';
+
+
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 
 
 
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
-import { } from '@/components/ui/select';
-
-
-
-
-
-import { } from '@/components/ui/tooltip';
-
-import { } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 interface PluginMarketplaceProps {
   onClose: () => void;
   onInstall: (plugin: PluginMarketplaceEntry) => void;
@@ -298,6 +315,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
       } else {
         return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
       }
+    });
 
     return filtered;
   }, [plugins, searchQuery, selectedCategory, sortBy, sortOrder, showOnlyFree, showOnlyVerified]);
@@ -395,7 +413,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={(e) = > {
+              onClick={(e) => {
                 e.stopPropagation();
                 setSelectedPlugin(plugin);
               }}
@@ -405,7 +423,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
             <Button
               variant="default"
               size="sm"
-              onClick={(e) = > {
+              onClick={(e) => {
                 e.stopPropagation();
                 handleInstall(plugin);
               }}
@@ -516,7 +534,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
             <div className="flex-1 max-w-md">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground " />
-                <input
+                <Input
                   placeholder="Search plugins..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -526,28 +544,28 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
             </div>
             
             <div className="flex items-center gap-2">
-              <select value={selectedCategory} onValueChange={setSelectedCategory} aria-label="Select option">
-                <selectTrigger className="w-32 " aria-label="Select option">
-                  <selectValue />
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
+                <SelectContent>
                   {categories.map((category) => (
-                    <selectItem key={category} value={category} aria-label="Select option">
+                    <SelectItem key={category} value={category}>
                       {category === 'all' ? 'All Categories' : category.charAt(0).toUpperCase() + category.slice(1)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               
-              <select value={sortBy} onValueChange={(value: any) = aria-label="Select option"> setSortBy(value)}>
-                <selectTrigger className="w-32 " aria-label="Select option">
-                  <selectValue />
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
-                  <selectItem value="popular" aria-label="Select option">Popular</SelectItem>
-                  <selectItem value="rating" aria-label="Select option">Rating</SelectItem>
-                  <selectItem value="recent" aria-label="Select option">Recent</SelectItem>
-                  <selectItem value="name" aria-label="Select option">Name</SelectItem>
+                <SelectContent>
+                  <SelectItem value="popular">Popular</SelectItem>
+                  <SelectItem value="rating">Rating</SelectItem>
+                  <SelectItem value="recent">Recent</SelectItem>
+                  <SelectItem value="name">Name</SelectItem>
                 </SelectContent>
               </Select>
               
