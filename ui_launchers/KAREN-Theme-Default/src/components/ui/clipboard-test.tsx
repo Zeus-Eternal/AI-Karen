@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { testClipboardWithUserInteraction } from '@/utils/text-selection-test';
 
-interface ClipboardTestProps {
+export interface ClipboardTestProps {
   className?: string;
 }
 

@@ -11,7 +11,7 @@ import { useState, useCallback, useRef } from 'react';
 import AdminErrorHandler, { type AdminError, type ErrorContext } from '@/lib/errors/admin-error-handler';
 import { useAriaLiveRegion } from '@/lib/accessibility/aria-helpers';
 
-interface UseAdminErrorHandlerOptions {
+export interface UseAdminErrorHandlerOptions {
   maxRetries?: number;
   retryDelay?: number;
   announceErrors?: boolean;
@@ -19,14 +19,14 @@ interface UseAdminErrorHandlerOptions {
   context?: Partial<ErrorContext>;
 }
 
-interface ErrorState {
+export interface ErrorState {
   error: AdminError | null;
   isRetrying: boolean;
   retryCount: number;
   lastRetryAt: Date | null;
 }
 
-interface UseAdminErrorHandlerReturn {
+export interface UseAdminErrorHandlerReturn {
   error: AdminError | null;
   isRetrying: boolean;
   retryCount: number;

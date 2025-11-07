@@ -35,7 +35,7 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Area, AreaChart } from 'recharts';
 
 // Enhanced Type Definitions
-interface HyperparameterRange {
+export interface HyperparameterRange {
   min_value: number;
   max_value: number;
   step?: number;
@@ -46,7 +46,7 @@ interface HyperparameterRange {
   sigma?: number;
 }
 
-interface TrainingLogicConfig {
+export interface TrainingLogicConfig {
   custom_loss_function?: string;
   gradient_accumulation_steps: number;
   gradient_clipping?: number;
@@ -61,7 +61,7 @@ interface TrainingLogicConfig {
   ema_decay: number;
 }
 
-interface OptimizationConfig {
+export interface OptimizationConfig {
   algorithm: string;
   learning_rate: number;
   weight_decay: number;
@@ -76,7 +76,7 @@ interface OptimizationConfig {
   lookahead_k: number;
 }
 
-interface MonitoringConfig {
+export interface MonitoringConfig {
   track_gradients: boolean;
   track_weights: boolean;
   track_activations: boolean;
@@ -91,14 +91,14 @@ interface MonitoringConfig {
   alert_thresholds: AlertThreshold[];
 }
 
-interface AlertThreshold {
+export interface AlertThreshold {
   metric: string;
   threshold: number;
   condition: 'above' | 'below' | 'equal';
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
-interface HyperparameterSweepConfig {
+export interface HyperparameterSweepConfig {
   parameters: Record<string, HyperparameterRange>;
   search_strategy: string;
   max_trials: number;
@@ -113,13 +113,13 @@ interface HyperparameterSweepConfig {
   parallel_strategy: 'async' | 'sync' | 'adaptive';
 }
 
-interface OptimizationConstraint {
+export interface OptimizationConstraint {
   metric: string;
   threshold: number;
   condition: 'less' | 'greater' | 'equal';
 }
 
-interface ABTestConfig {
+export interface ABTestConfig {
   test_name: string;
   control_config: Record<string, any>;
   treatment_configs: Record<string, any>[];
@@ -132,7 +132,7 @@ interface ABTestConfig {
   bandit_strategy: 'epsilon_greedy' | 'ucb1' | 'thompson_sampling';
 }
 
-interface FederatedLearningConfig {
+export interface FederatedLearningConfig {
   enabled: boolean;
   strategy: 'fedavg' | 'fedprox' | 'fedyogi';
   num_clients: number;
@@ -146,7 +146,7 @@ interface FederatedLearningConfig {
   secure_aggregation: boolean;
 }
 
-interface TransferLearningConfig {
+export interface TransferLearningConfig {
   enabled: boolean;
   base_model: string;
   fine_tune_layers: string[];
@@ -156,7 +156,7 @@ interface TransferLearningConfig {
   unfreeze_schedule: string;
 }
 
-interface ModelCompressionConfig {
+export interface ModelCompressionConfig {
   enabled: boolean;
   technique: 'pruning' | 'quantization' | 'distillation' | 'low_rank';
   target_sparsity: number;
@@ -166,7 +166,7 @@ interface ModelCompressionConfig {
   compression_schedule: string;
 }
 
-interface XAIConfig {
+export interface XAIConfig {
   enabled: boolean;
   methods: string[];
   feature_importance: boolean;
@@ -176,7 +176,7 @@ interface XAIConfig {
   explanation_frequency: number;
 }
 
-interface SecurityConfig {
+export interface SecurityConfig {
   model_encryption: boolean;
   secure_training: boolean;
   homomorphic_encryption: boolean;
@@ -186,7 +186,7 @@ interface SecurityConfig {
   compliance_framework: 'gdpr' | 'hipaa' | 'soc2' | 'none';
 }
 
-interface AdvancedTrainingConfig {
+export interface AdvancedTrainingConfig {
   model_id: string;
   dataset_id: string;
   training_logic: TrainingLogicConfig;
@@ -211,7 +211,7 @@ interface AdvancedTrainingConfig {
   tags: string[];
 }
 
-interface TrainingMetrics {
+export interface TrainingMetrics {
   training_id: string;
   loss_curves: {
     epochs: number[];
@@ -245,7 +245,7 @@ interface TrainingMetrics {
   };
 }
 
-interface AIAssistanceResponse {
+export interface AIAssistanceResponse {
   suggestions: {
     optimization_config: Record<string, any>;
     training_logic: Record<string, any>;
@@ -268,7 +268,7 @@ interface AIAssistanceResponse {
   };
 }
 
-interface RealTimeMetrics {
+export interface RealTimeMetrics {
   timestamp: number;
   loss: number;
   accuracy: number;

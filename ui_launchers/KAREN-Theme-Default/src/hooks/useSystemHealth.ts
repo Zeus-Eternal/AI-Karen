@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { SystemHealth, MonitoringConfig } from '../components/monitoring/types';
 import { connectivityLogger, performanceTracker } from '../lib/logging';
 
-interface UseSystemHealthOptions {
+export interface UseSystemHealthOptions {
   config?: Partial<MonitoringConfig>;
   onHealthChange?: (health: SystemHealth) => void;
   onAlert?: (alert: { type: string; message: string; severity: 'low' | 'medium' | 'high' }) => void;

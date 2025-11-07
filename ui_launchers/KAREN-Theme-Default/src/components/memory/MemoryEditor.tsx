@@ -16,9 +16,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
-type MemoryType = "fact" | "preference" | "context";
+export type MemoryType = "fact" | "preference" | "context";
 
-interface MemoryGridRow {
+export interface MemoryGridRow {
   id: string;
   content: string;
   type: MemoryType;
@@ -33,7 +33,7 @@ interface MemoryGridRow {
   tenant_id?: string;
 }
 
-interface MemoryEditorProps {
+export interface MemoryEditorProps {
   memory: MemoryGridRow | null;
   onSave: (updatedMemory: Partial<MemoryGridRow>) => Promise<void>;
   onCancel: () => void;
@@ -43,9 +43,9 @@ interface MemoryEditorProps {
   tenantId?: string;
 }
 
-type AISuggestionType = "enhancement" | "categorization" | "relationship" | "correction";
+export type AISuggestionType = "enhancement" | "categorization" | "relationship" | "correction";
 
-interface AISuggestion {
+export interface AISuggestion {
   type: AISuggestionType;
   content: string;
   confidence: number;

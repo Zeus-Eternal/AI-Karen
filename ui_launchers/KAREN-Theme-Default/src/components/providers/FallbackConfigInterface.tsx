@@ -20,11 +20,11 @@ import { Shield, Plus, Trash2, ArrowUp, ArrowDown, Edit, Activity, CheckCircle, 
  * Configure provider and model fallback chains with health checks and recovery
  */
 
-interface FallbackConfigInterfaceProps {
+export interface FallbackConfigInterfaceProps {
   className?: string;
 }
 
-interface TestResult {
+export interface TestResult {
   chainId: string;
   success: boolean;
   failoverTime: number;

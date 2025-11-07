@@ -18,12 +18,12 @@ import type { CreateUserRequest, AdminApiResponse, User } from "@/types/admin";
 
 /* ----------------------------- Types & Shapes ---------------------------- */
 
-interface UserCreationFormProps {
+export interface UserCreationFormProps {
   onUserCreated: () => void;
   className?: string;
 }
 
-interface FormData {
+export interface FormData {
   email: string;
   full_name: string;
   password: string;
@@ -33,7 +33,7 @@ interface FormData {
   tenant_id: string;
 }
 
-interface FormErrors {
+export interface FormErrors {
   email?: string;
   full_name?: string;
   password?: string;

@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 
-interface MemoryNetworkNode {
+export interface MemoryNetworkNode {
   id: string;
   label: string;
   type: string;
@@ -18,7 +18,7 @@ interface MemoryNetworkNode {
   color: string; // fallback color for node
 }
 
-interface MemoryNetworkEdge {
+export interface MemoryNetworkEdge {
   source: string;
   target: string;
   weight: number; // 0..1 preferred
@@ -26,12 +26,12 @@ interface MemoryNetworkEdge {
   label: string;
 }
 
-interface MemoryNetworkData {
+export interface MemoryNetworkData {
   nodes: MemoryNetworkNode[];
   edges: MemoryNetworkEdge[];
 }
 
-interface MemoryNetworkVisualizationProps {
+export interface MemoryNetworkVisualizationProps {
   userId: string;
   tenantId?: string;
   maxNodes?: number;
@@ -43,7 +43,7 @@ interface MemoryNetworkVisualizationProps {
 
 /** -------------------- Canvas Network -------------------- */
 
-type XY = { x: number; y: number };
+export type XY = { x: number; y: number };
 
 const NetworkChart: React.FC<{
   data: MemoryNetworkData;

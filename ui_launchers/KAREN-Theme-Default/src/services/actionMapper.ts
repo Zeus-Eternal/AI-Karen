@@ -42,7 +42,7 @@ export interface ActionHandler {
   optionalParams?: string[];
 }
 
-type EventListenerFn = (event: CustomEvent) => void;
+export type EventListenerFn = (event: CustomEvent) => void;
 
 const isBrowser = typeof window !== 'undefined';
 

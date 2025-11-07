@@ -14,7 +14,7 @@ import { AlertCircle, RefreshCw, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { clearSession } from "@/lib/auth/session";
 
-interface SessionErrorBoundaryProps {
+export interface SessionErrorBoundaryProps {
   children: ReactNode;
   /** Optional custom fallback renderer (non-auth errors only) */
   fallback?: (error: Error, retry: () => void) => ReactNode;
@@ -28,7 +28,7 @@ interface SessionErrorBoundaryProps {
   minRedirectIntervalMs?: number;
 }
 
-interface SessionErrorBoundaryState {
+export interface SessionErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
 }

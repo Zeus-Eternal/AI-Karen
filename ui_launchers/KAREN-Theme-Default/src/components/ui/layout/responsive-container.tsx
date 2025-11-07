@@ -208,7 +208,7 @@ function processResponsiveValue<T>(
 /**
  * Style-related properties for responsive container
  */
-interface ContainerStyleProps {
+export interface ContainerStyleProps {
   padding?: string | ResponsiveValue<string>;
   margin?: string | ResponsiveValue<string>;
   minHeight?: string;

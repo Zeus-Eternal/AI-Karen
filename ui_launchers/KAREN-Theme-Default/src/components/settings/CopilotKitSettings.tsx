@@ -18,7 +18,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-interface CopilotKitConfig {
+export interface CopilotKitConfig {
   enabled: boolean;
   apiEndpoint: string;
   features: {

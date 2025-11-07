@@ -29,7 +29,7 @@ import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
 
 // Enhanced Type Definitions
-interface ModelConfig {
+export interface ModelConfig {
   model_id: string;
   model_name: string;
   runtime: string;
@@ -142,7 +142,7 @@ interface ModelConfig {
   };
 }
 
-interface BenchmarkResult {
+export interface BenchmarkResult {
   model_id: string;
   test_type: 'throughput' | 'latency' | 'memory' | 'quality' | 'stress' | 'accuracy';
   timestamp: number;
@@ -173,7 +173,7 @@ interface BenchmarkResult {
   recommendations: string[];
 }
 
-interface ModelStats {
+export interface ModelStats {
   model_id: string;
   total_requests: number;
   total_tokens_generated: number;
@@ -197,7 +197,7 @@ interface ModelStats {
   }[];
 }
 
-interface AdvancedModelConfigProps {
+export interface AdvancedModelConfigProps {
   modelId: string;
   modelName: string;
   runtime: string;

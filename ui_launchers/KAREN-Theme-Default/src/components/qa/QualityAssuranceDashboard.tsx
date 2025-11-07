@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import { } from 'lucide-react';
-interface QualityMetrics {
+export interface QualityMetrics {
   testCoverage: {
     unit: number;
     integration: number;
@@ -53,7 +53,7 @@ interface QualityMetrics {
     complexity: number;
   };
 }
-interface QualityTrend {
+export interface QualityTrend {
   date: string;
   coverage: number;
   passRate: number;
@@ -61,7 +61,7 @@ interface QualityTrend {
   accessibility: number;
   security: number;
 }
-interface QualityGate {
+export interface QualityGate {
   id: string;
   name: string;
   status: 'passed' | 'failed' | 'warning';

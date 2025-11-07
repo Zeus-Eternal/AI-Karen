@@ -18,11 +18,11 @@ import { BulkUserOperations } from "./BulkUserOperations";
 import { Button } from "@/components/ui/button";
 import type { UserStatistics, ActivitySummary } from "@/types/admin";
 
-interface AdminDashboardProps {
+export interface AdminDashboardProps {
   className?: string;
 }
 
-type DashboardView = "overview" | "users" | "create-user" | "activity" | "bulk-operations";
+export type DashboardView = "overview" | "users" | "create-user" | "activity" | "bulk-operations";
 
 export function AdminDashboard({ className = "" }: AdminDashboardProps) {
   const { hasRole } = useRole();

@@ -99,10 +99,13 @@ function extractClientInfo(request?: NextRequest): {
  * Main audit logger class
  */
 export class AuditLogger {
-  private dbUtils: ReturnType<typeof getAdminDatabaseUtils>;
+  private _dbUtils: ReturnType<typeof getAdminDatabaseUtils> | null = null;
 
-  constructor() {
-    this.dbUtils = getAdminDatabaseUtils();
+  private get dbUtils() {
+    if (!this._dbUtils) {
+      this._dbUtils = getAdminDatabaseUtils();
+    }
+    return this._dbUtils;
   }
 
   /**

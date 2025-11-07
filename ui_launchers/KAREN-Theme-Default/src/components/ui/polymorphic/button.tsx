@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils";
 import { ImageIcon, AlertCircle } from 'lucide-react';
 
 // Button component variants and sizes
-type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-type ButtonSize = "xs" | "sm" | "md" | "lg" | "xl";
+export type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+export type ButtonSize = "xs" | "sm" | "md" | "lg" | "xl";
 
-interface ButtonProps {
+export interface ButtonProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;

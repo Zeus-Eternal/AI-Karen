@@ -29,7 +29,7 @@ import {
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
 
-interface UploadFile {
+export interface UploadFile {
   file: File;
   id: string;
   status: 'pending' | 'uploading' | 'uploaded' | 'error';
@@ -37,7 +37,7 @@ interface UploadFile {
   error?: string;
 }
 
-interface ConversionJob {
+export interface ConversionJob {
   id: string;
   type: 'convert' | 'quantize' | 'lora_merge';
   status: 'pending' | 'running' | 'completed' | 'error';
@@ -50,7 +50,7 @@ interface ConversionJob {
   updated_at: number;
 }
 
-interface ModelUploadManagerProps {
+export interface ModelUploadManagerProps {
   onModelUploaded?: (modelPath: string) => void;
   onJobCreated?: (job: ConversionJob) => void;
 }

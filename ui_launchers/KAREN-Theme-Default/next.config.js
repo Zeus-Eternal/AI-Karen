@@ -132,6 +132,9 @@ const nextConfig = {
       ...config.resolve.alias,
       'lodash/debounce': require.resolve('lodash.debounce'),
       'lodash/throttle': require.resolve('lodash.throttle'),
+      // Fix refractor/core module resolution for older react-syntax-highlighter versions
+      'refractor/core': require.resolve('refractor'),
+      'refractor/core.js': require.resolve('refractor'),
     };
     
     // Fix module resolution for CommonJS/ESM hybrid packages

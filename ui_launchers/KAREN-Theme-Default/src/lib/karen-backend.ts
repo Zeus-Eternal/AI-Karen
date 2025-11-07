@@ -21,7 +21,7 @@ export function initializeSessionId(): string {
   return sessionId;
 }
 // Error handling types
-interface WebUIErrorResponse {
+export interface WebUIErrorResponse {
   error: string;
   message: string;
   type: string;
@@ -61,12 +61,12 @@ class APIError extends Error {
   }
 }
 // Backend service configuration
-interface BackendConfig {
+export interface BackendConfig {
   baseUrl: string;
   apiKey?: string;
   timeout: number;
 }
-interface OfflineRequest {
+export interface OfflineRequest {
   endpoint: string;
   options: RequestInit;
   useCache: boolean;
@@ -75,7 +75,7 @@ interface OfflineRequest {
   retryDelay: number;
 }
 // Memory service types
-interface MemoryEntry {
+export interface MemoryEntry {
   id: string;
   content: string;
   metadata: Record<string, any>;
@@ -85,7 +85,7 @@ interface MemoryEntry {
   user_id?: string;
   session_id?: string;
 }
-interface MemoryQuery {
+export interface MemoryQuery {
   text: string;
   user_id?: string;
   session_id?: string;
@@ -96,7 +96,7 @@ interface MemoryQuery {
   similarity_threshold?: number;
 }
 // Plugin service types
-interface PluginInfo {
+export interface PluginInfo {
   name: string;
   description: string;
   category: string;
@@ -104,7 +104,7 @@ interface PluginInfo {
   version: string;
   parameters?: Record<string, any>;
 }
-interface PluginExecutionResult {
+export interface PluginExecutionResult {
   success: boolean;
   result?: any;
   stdout?: string;
@@ -114,7 +114,7 @@ interface PluginExecutionResult {
   timestamp: string;
 }
 // Analytics service types
-interface SystemMetrics {
+export interface SystemMetrics {
   cpu_usage: number;
   memory_usage: number;
   disk_usage: number;
@@ -125,7 +125,7 @@ interface SystemMetrics {
   uptime_hours: number;
   timestamp: string;
 }
-interface UsageAnalytics {
+export interface UsageAnalytics {
   total_interactions: number;
   unique_users: number;
   popular_features: Array<{

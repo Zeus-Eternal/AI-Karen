@@ -16,7 +16,7 @@ import { motion } from 'framer-motion';
 import { Loader2, Bot, Sparkles, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface LoadingSpinnerProps {
+export interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
@@ -42,7 +42,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   );
 };
 
-interface SkeletonProps {
+export interface SkeletonProps {
   className?: string;
   animate?: boolean;
 }
@@ -118,7 +118,7 @@ const ChatLoadingSkeleton: React.FC = () => {
   );
 };
 
-interface PulseLoaderProps {
+export interface PulseLoaderProps {
   size?: 'sm' | 'md' | 'lg';
   color?: 'blue' | 'green' | 'purple' | 'gray';
   className?: string;
@@ -165,7 +165,7 @@ const PulseLoader: React.FC<PulseLoaderProps> = ({
   );
 };
 
-interface ShimmerProps {
+export interface ShimmerProps {
   className?: string;
   children?: React.ReactNode;
 }
@@ -188,7 +188,7 @@ const Shimmer: React.FC<ShimmerProps> = ({ className, children }) => {
   );
 };
 
-interface LoadingCardProps {
+export interface LoadingCardProps {
   title?: string;
   description?: string;
   icon?: React.ReactNode;
@@ -233,7 +233,7 @@ const LoadingCard: React.FC<LoadingCardProps> = ({
   );
 };
 
-interface ProgressBarProps {
+export interface ProgressBarProps {
   progress: number;
   className?: string;
   showPercentage?: boolean;
@@ -277,7 +277,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   );
 };
 
-interface FloatingDotsProps {
+export interface FloatingDotsProps {
   className?: string;
   color?: 'blue' | 'green' | 'purple' | 'gray';
 }
@@ -318,7 +318,7 @@ const FloatingDots: React.FC<FloatingDotsProps> = ({
   );
 };
 
-interface LoadingOverlayProps {
+export interface LoadingOverlayProps {
   isVisible: boolean;
   message?: string;
   className?: string;

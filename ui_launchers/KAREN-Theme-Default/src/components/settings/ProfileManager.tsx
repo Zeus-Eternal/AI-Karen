@@ -6,18 +6,18 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
-interface LLMProvider {
+export interface LLMProvider {
   name: string;
   description: string;
 }
 
-interface LLMProfile {
+export interface LLMProfile {
   id: string;
   name: string;
   description: string;
 }
 
-interface ProfileManagerProps {
+export interface ProfileManagerProps {
   profiles: LLMProfile[];
   setProfiles: (profiles: LLMProfile[]) => void;
   activeProfile: LLMProfile | null;

@@ -25,7 +25,7 @@ export interface ApiResponse<T = any> {
     code?: string;
   }>;
 }
-interface ApiErrorInterface extends Error {
+export interface ApiErrorInterface extends Error {
   code?: string;
   status?: number;
   details?: any;
@@ -59,7 +59,7 @@ export type ErrorInterceptor = (
   config: EnhancedRequestConfig
 ) => ApiError | Promise<ApiError>;
 // Request/Response logging
-interface RequestLog {
+export interface RequestLog {
   id: string;
   method: string;
   url: string;

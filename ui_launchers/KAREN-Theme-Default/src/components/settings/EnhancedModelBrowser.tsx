@@ -37,7 +37,7 @@ import {
 import { getKarenBackend } from "@/lib/karen-backend";
 
 // ---------- Types ----------
-interface TrainableModel {
+export interface TrainableModel {
   id: string;
   name: string;
   author?: string;
@@ -60,7 +60,7 @@ interface TrainableModel {
   huggingface_id?: string;
 }
 
-interface CompatibilityReport {
+export interface CompatibilityReport {
   is_compatible: boolean;
   compatibility_score: number; // 0..1
   supported_operations: string[];
@@ -70,7 +70,7 @@ interface CompatibilityReport {
   recommendations: string[];
 }
 
-interface EnhancedDownloadJob {
+export interface EnhancedDownloadJob {
   id: string;
   model_id: string;
   status: "queued" | "downloading" | "paused" | "completed" | "failed";
@@ -85,7 +85,7 @@ interface EnhancedDownloadJob {
   completed_at?: number;
 }
 
-interface TrainingFilters {
+export interface TrainingFilters {
   supports_fine_tuning: boolean;
   supports_lora: boolean;
   supports_full_training: boolean;
@@ -96,9 +96,9 @@ interface TrainingFilters {
   memory_requirements?: number;
 }
 
-type TabKey = "browse" | "categories" | "downloads" | "compatibility";
+export type TabKey = "browse" | "categories" | "downloads" | "compatibility";
 
-type CategoryItem = {
+export type CategoryItem = {
   title: string;
   description?: string;
   model_count?: number;

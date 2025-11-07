@@ -21,7 +21,7 @@ import { Globe, Check } from "lucide-react";
 import { useLocale, useI18n } from "../../providers/i18n-provider";
 import { cn } from "../../lib/utils";
 
-interface LanguageSelectorProps {
+export interface LanguageSelectorProps {
   variant?: "select" | "dropdown" | "inline";
   showFlag?: boolean;
   showNativeName?: boolean;

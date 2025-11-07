@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-interface ProtectedRouteProps {
+export interface ProtectedRouteProps {
   children: ReactNode;
   requiredRole?: 'super_admin' | 'admin' | 'user';
   requiredPermission?: string;

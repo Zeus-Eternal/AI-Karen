@@ -23,14 +23,14 @@ import type {
   AdminApiResponse,
 } from "@/types/admin";
 
-interface UserManagementTableProps {
+export interface UserManagementTableProps {
   selectedUsers: string[];
   onSelectionChange: (userIds: string[]) => void;
   onUserUpdated: () => void;
   className?: string;
 }
 
-interface TableColumn {
+export interface TableColumn {
   key: keyof User | "actions";
   label: string;
   sortable: boolean;

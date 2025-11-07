@@ -30,7 +30,7 @@ import {
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
 
-interface UploadJob {
+export interface UploadJob {
   id: string;
   filename: string;
   size: number;
@@ -39,7 +39,7 @@ interface UploadJob {
   error?: string;
 }
 
-interface ConversionJob {
+export interface ConversionJob {
   id: string;
   kind: string;
   title: string;
@@ -52,7 +52,7 @@ interface ConversionJob {
   parameters?: Record<string, any>;
 }
 
-interface ModelUploadInterfaceProps {
+export interface ModelUploadInterfaceProps {
   onModelUploaded?: (modelId: string) => void;
   onJobCreated?: (jobId: string) => void;
 }

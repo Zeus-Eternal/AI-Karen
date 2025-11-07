@@ -18,7 +18,7 @@ import { getConnectionManager, ConnectionError, ErrorCategory } from '@/lib/conn
 import { getTimeoutManager, OperationType } from '@/lib/connection/timeout-manager';
 
 // Request configuration interface
-interface RequestConfig {
+export interface RequestConfig {
   timeout?: number;
   retryAttempts?: number;
   exponentialBackoff?: boolean;
@@ -27,7 +27,7 @@ interface RequestConfig {
 }
 
 // Response interface
-interface ApiResponse<T = any> {
+export interface ApiResponse<T = any> {
   data: T;
   status: number;
   statusText: string;
@@ -161,6 +161,7 @@ export class EnhancedKarenBackendService {
           status: result.status,
           attempt,
           duration: result.duration,
+        });
 
         return result.data as T;
       } catch (error) {
@@ -403,7 +404,7 @@ export class EnhancedKarenBackendService {
       return await this.makeAuthenticatedRequest('/api/extensions/health', {}, {
         requireAuth: false, // Health checks might not require auth
         retryAttempts: 1, // Fewer retries for health checks
-
+      });
     } catch (error) {
       logger.warn('Extension health check failed:', error);
       return {

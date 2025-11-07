@@ -54,7 +54,7 @@ import {
   Users,
 } from "lucide-react";
 
-interface LLMProvider {
+export interface LLMProvider {
   name: string;
   description: string;
   category: string;
@@ -77,7 +77,7 @@ interface LLMProvider {
   };
 }
 
-interface ModelInfo {
+export interface ModelInfo {
   id: string;
   name: string;
   family: string;
@@ -100,7 +100,7 @@ interface ModelInfo {
   updated_at?: string;
 }
 
-interface LLMProfile {
+export interface LLMProfile {
   id: string;
   name: string;
   description: string;
@@ -131,7 +131,7 @@ interface LLMProfile {
   };
 }
 
-interface ProviderStats {
+export interface ProviderStats {
   total_models: number;
   healthy_providers: number;
   total_providers: number;

@@ -11,7 +11,7 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw, X, Info, AlertCircle, XCircle } from 'lucide-react';
 import type { AdminError } from '@/lib/errors/admin-error-handler';
-interface ErrorDisplayProps {
+export interface ErrorDisplayProps {
   error: AdminError;
   onRetry?: () => void;
   onDismiss?: () => void;
@@ -137,11 +137,11 @@ export function ErrorDisplay({
     </div>
   );
 }
-interface ErrorBoundaryState {
+export interface ErrorBoundaryState {
   hasError: boolean;
   error?: AdminError;
 }
-interface ErrorBoundaryProps {
+export interface ErrorBoundaryProps {
   children: React.ReactNode;
   fallback?: React.ComponentType<{ error: AdminError; retry: () => void }>;
   onError?: (error: AdminError) => void;
@@ -195,7 +195,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return this.props.children;
   }
 }
-interface ErrorToastProps {
+export interface ErrorToastProps {
   error: AdminError;
   onDismiss: () => void;
   autoHide?: boolean;

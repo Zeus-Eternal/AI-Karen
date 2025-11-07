@@ -266,7 +266,7 @@ export function useAsyncRetry<T>(
  * Component that wraps children with automatic retry on error boundaries.
  * Useful for rendering-time crashes that hooks can't intercept.
  */
-interface RetryBoundaryProps {
+export interface RetryBoundaryProps {
   children: ReactNode;
   fallback?: (error: Error, retry: () => void) => ReactNode;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
@@ -275,7 +275,7 @@ interface RetryBoundaryProps {
   className?: string;
 }
 
-interface RetryBoundaryState {
+export interface RetryBoundaryState {
   hasError: boolean;
   error: Error | null;
   retryCount: number;

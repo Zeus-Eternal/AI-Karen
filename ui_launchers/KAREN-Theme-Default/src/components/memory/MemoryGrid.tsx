@@ -30,7 +30,7 @@ import "ag-grid-community/styles/ag-theme-alpine.css";
 import { Button } from "@/components/ui/button"; // swap if needed
 import { cn } from "@/lib/utils";
 
-type MemoryType = "fact" | "preference" | "context";
+export type MemoryType = "fact" | "preference" | "context";
 
 export interface MemoryGridRow {
   id: string;
@@ -47,7 +47,7 @@ export interface MemoryGridRow {
   tenant_id?: string;
 }
 
-interface MemoryGridProps {
+export interface MemoryGridProps {
   userId: string;
   tenantId?: string;
   onMemorySelect?: (memory: MemoryGridRow) => void;

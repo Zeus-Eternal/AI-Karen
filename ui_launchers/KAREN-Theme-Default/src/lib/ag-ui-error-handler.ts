@@ -52,7 +52,7 @@ export interface CircuitBreakerState {
   halfOpenAttempts: number;
 }
 
-type CacheEntry<T> = {
+export type CacheEntry<T> = {
   payload: T;
   timestamp: string; // ISO
 };

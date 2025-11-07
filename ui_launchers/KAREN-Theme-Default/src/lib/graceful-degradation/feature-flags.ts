@@ -26,9 +26,9 @@ export interface ExtensionFeatureFlags {
   extensionAuth: FeatureFlag;
 }
 
-type Listener = (flag: FeatureFlag) => void;
+export type Listener = (flag: FeatureFlag) => void;
 
-interface PersistedSchemaV1 {
+export interface PersistedSchemaV1 {
   __version: 1;
   flags: Record<string, FeatureFlag>;
 }

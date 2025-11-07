@@ -18,7 +18,7 @@ import { authService } from '@/services/authService';
 // Safe array helper to prevent .map() on undefined
 const toArray = <T,>(v: T[] | null | undefined): T[] => (Array.isArray(v) ? v : []);
 
-interface UserProfileProps {
+export interface UserProfileProps {
   onClose?: () => void;
 }
 

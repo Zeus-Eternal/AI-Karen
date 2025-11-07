@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useUIStore, selectAnimationState } from '../store';
-interface AccessibilitySettings {
+export interface AccessibilitySettings {
   // Visual accessibility
   highContrast: boolean;
   fontSize: 'small' | 'medium' | 'large' | 'extra-large';
@@ -18,7 +18,7 @@ interface AccessibilitySettings {
   // Color accessibility
   colorBlindnessSupport: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia';
 }
-interface AccessibilityContextValue {
+export interface AccessibilityContextValue {
   settings: AccessibilitySettings;
   updateSetting: <K extends keyof AccessibilitySettings>(
     key: K,
@@ -40,7 +40,7 @@ const defaultSettings: AccessibilitySettings = {
   verboseDescriptions: false,
   colorBlindnessSupport: 'none',
 };
-interface AccessibilityProviderProps {
+export interface AccessibilityProviderProps {
   children: React.ReactNode;
   storageKey?: string;
 }

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import { TransitionVariant } from './types';
 
-interface UsePageTransitionOptions {
+export interface UsePageTransitionOptions {
   variant?: TransitionVariant;
   duration?: number;
   onTransitionStart?: () => void;

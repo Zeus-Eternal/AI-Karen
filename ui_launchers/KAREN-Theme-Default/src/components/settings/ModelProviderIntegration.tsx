@@ -31,7 +31,7 @@ const getKarenBackend = () => ({
   }
 });
 
-interface ProviderModelSuggestions {
+export interface ProviderModelSuggestions {
   provider: string;
   provider_capabilities: {
     supported_formats: string[];
@@ -56,7 +56,7 @@ interface ProviderModelSuggestions {
   >;
 }
 
-interface ModelProviderIntegrationProps {
+export interface ModelProviderIntegrationProps {
   providers: Array<{
     name: string;
     description: string;

@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 // -------------------- Context --------------------
 
-interface AppShellContextType {
+export interface AppShellContextType {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   sidebarCollapsed: boolean;

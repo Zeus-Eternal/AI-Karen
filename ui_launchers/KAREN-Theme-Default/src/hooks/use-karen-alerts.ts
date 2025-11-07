@@ -9,7 +9,7 @@ import type { KarenAlert, AlertSettings, AlertHistory, AlertMetrics, AlertResult
 /**
  * Hook state interface
  */
-interface UseKarenAlertsState {
+export interface UseKarenAlertsState {
   activeAlerts: KarenAlert[];
   queuedAlerts: KarenAlert[];
   settings: AlertSettings;
@@ -21,7 +21,7 @@ interface UseKarenAlertsState {
 /**
  * Hook return interface
  */
-interface UseKarenAlertsReturn extends UseKarenAlertsState {
+export interface UseKarenAlertsReturn extends UseKarenAlertsState {
   // Alert methods
   showAlert: (alertData: Omit<KarenAlert, 'id' | 'timestamp'>) => Promise<AlertResult>;
   showSuccess: (title: string, message: string, options?: Partial<KarenAlert>) => Promise<AlertResult>;

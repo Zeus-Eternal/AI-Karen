@@ -3,12 +3,12 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 // Text component variants and sizes
-type TextVariant = "default" | "muted" | "accent" | "destructive" | "success" | "warning"
-type TextSize = "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl" | "4xl"
-type TextWeight = "normal" | "medium" | "semibold" | "bold"
-type TextAlign = "left" | "center" | "right" | "justify"
+export type TextVariant = "default" | "muted" | "accent" | "destructive" | "success" | "warning"
+export type TextSize = "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl" | "4xl"
+export type TextWeight = "normal" | "medium" | "semibold" | "bold"
+export type TextAlign = "left" | "center" | "right" | "justify"
 
-interface TextProps {
+export interface TextProps {
   variant?: TextVariant
   size?: TextSize
   weight?: TextWeight

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { i18n, type I18nManager, type FormatOptions, type InterpolationOptions, type PluralOptions } from '../lib/i18n';
 import { defaultResources } from '../lib/i18n/resources';
-interface I18nContextValue {
+export interface I18nContextValue {
   // Current locale
   locale: string;
   // Available locales
@@ -27,7 +27,7 @@ interface I18nContextValue {
   isLoading: boolean;
 }
 const I18nContext = createContext<I18nContextValue | undefined>(undefined);
-interface I18nProviderProps {
+export interface I18nProviderProps {
   children: React.ReactNode;
   defaultLocale?: string;
   locales?: string[];

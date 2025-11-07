@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { safeWarn } from '@/lib/safe-console';
 
-interface InputPreservationHook {
+export interface InputPreservationHook {
   preserveInput: (value: string) => void;
   restoreInput: () => string | null;
   clearPreservedInput: () => void;

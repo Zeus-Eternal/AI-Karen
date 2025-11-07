@@ -44,17 +44,17 @@ import type { PluginInfo } from "@/types/plugins";
  * Based on requirements: 5.4, 10.3
  */
 
-type HealthStatus = "passing" | "warning" | "failing" | "unknown";
-type EventType =
+export type HealthStatus = "passing" | "warning" | "failing" | "unknown";
+export type EventType =
   | "check_passed"
   | "check_failed"
   | "recovery_attempted"
   | "recovery_succeeded"
   | "recovery_failed"
   | "alert_triggered";
-type Severity = "info" | "warning" | "error" | "critical";
+export type Severity = "info" | "warning" | "error" | "critical";
 
-interface HealthCheck {
+export interface HealthCheck {
   id: string;
   name: string;
   description: string;
@@ -71,7 +71,7 @@ interface HealthCheck {
   };
 }
 
-interface HealthEvent {
+export interface HealthEvent {
   id: string;
   timestamp: Date;
   type: EventType;
@@ -81,9 +81,9 @@ interface HealthEvent {
   metadata?: Record<string, any>;
 }
 
-type RecoveryType = "restart" | "reset_config" | "clear_cache" | "reconnect" | "custom";
+export type RecoveryType = "restart" | "reset_config" | "clear_cache" | "reconnect" | "custom";
 
-interface RecoveryAction {
+export interface RecoveryAction {
   id: string;
   name: string;
   description: string;
@@ -95,7 +95,7 @@ interface RecoveryAction {
   successRate: number; // 0-100
 }
 
-interface PluginHealthMonitorProps {
+export interface PluginHealthMonitorProps {
   plugin: PluginInfo;
   onRestart?: () => Promise<void>;
   onReconfigure?: () => Promise<void>;

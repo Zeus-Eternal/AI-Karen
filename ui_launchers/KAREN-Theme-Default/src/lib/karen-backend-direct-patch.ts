@@ -10,7 +10,7 @@
  * No diffs, no TODOs, no placeholders. Dragon-mode engaged.
  */
 
-type AnyFn = (...args: any[]) => any;
+export type AnyFn = (...args: any[]) => any;
 
 declare global {
   interface Window {

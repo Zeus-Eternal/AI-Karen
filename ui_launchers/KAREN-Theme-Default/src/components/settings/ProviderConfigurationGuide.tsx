@@ -26,7 +26,7 @@ import {
   Globe,
 } from "lucide-react";
 
-interface ConfigurationStep {
+export interface ConfigurationStep {
   id: string;
   title: string;
   description: string;
@@ -39,7 +39,7 @@ interface ConfigurationStep {
   troubleshooting?: string[];
 }
 
-interface ProviderGuide {
+export interface ProviderGuide {
   provider_name: string;
   provider_type: "remote" | "local" | "hybrid";
   description: string;
@@ -53,7 +53,7 @@ interface ProviderGuide {
   }[];
 }
 
-interface ProviderConfigurationGuideProps {
+export interface ProviderConfigurationGuideProps {
   providerName: string;
   onStepComplete?: (stepId: string) => void;
   onConfigurationComplete?: () => void;

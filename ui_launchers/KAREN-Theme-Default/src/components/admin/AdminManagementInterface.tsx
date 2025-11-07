@@ -52,15 +52,15 @@ import {
   UserCheck
 } from "lucide-react";
 
-type AdminStatusFilter = "all" | "active" | "inactive";
+export type AdminStatusFilter = "all" | "active" | "inactive";
 
-interface AdminUser extends User {
+export interface AdminUser extends User {
   lastLogin?: Date;
   invitedAt?: Date;
   invitedBy?: string;
 }
 
-interface InviteAdminForm {
+export interface InviteAdminForm {
   email: string;
   message: string;
 }

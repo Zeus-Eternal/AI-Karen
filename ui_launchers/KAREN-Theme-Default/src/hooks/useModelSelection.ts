@@ -5,14 +5,14 @@ import { modelSelectionService, ModelSelectionResult } from '@/lib/model-selecti
 import { getKarenBackend } from '@/lib/karen-backend';
 import { safeError, safeLog } from '@/lib/safe-console';
 
-interface UseModelSelectionOptions {
+export interface UseModelSelectionOptions {
   autoSelect?: boolean;
   preferLocal?: boolean;
   filterByCapability?: string;
   onModelSelected?: (model: Model | null, reason: string) => void;
 }
 
-interface UseModelSelectionReturn {
+export interface UseModelSelectionReturn {
   models: Model[];
   selectedModel: string | null;
   selectedModelInfo: Model | null;

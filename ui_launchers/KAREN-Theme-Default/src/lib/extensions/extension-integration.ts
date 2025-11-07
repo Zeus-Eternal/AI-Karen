@@ -78,8 +78,8 @@ export interface ExtensionStatus {
 }
 
 /** ---------- Service Singleton ---------- */
-type Listener = (payload: any) => void;
-type TimerRef = ReturnType<typeof setInterval>;
+export type Listener = (payload: any) => void;
+export type TimerRef = ReturnType<typeof setInterval>;
 
 export class ExtensionIntegrationService {
   private static instance: ExtensionIntegrationService;

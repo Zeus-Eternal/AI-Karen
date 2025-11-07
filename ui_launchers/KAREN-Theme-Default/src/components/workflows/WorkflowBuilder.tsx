@@ -19,7 +19,7 @@ import { NodeLibrary } from './NodeLibrary';
 import { WorkflowValidator } from './WorkflowValidator';
 import { WorkflowTester } from './WorkflowTester';
 
-interface WorkflowBuilderProps {
+export interface WorkflowBuilderProps {
   workflow?: WorkflowDefinition;
   onSave?: (workflow: WorkflowDefinition) => void;
   onTest?: (workflow: WorkflowDefinition) => Promise<any>;

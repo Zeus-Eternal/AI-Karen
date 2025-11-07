@@ -39,7 +39,7 @@ export const SECURITY_CONFIG = {
 } as const;
 
 // -------- In-memory stores for security tracking (use Redis in production) --------
-type AttemptRec = { count: number; lastAttempt: number; delays: number[] };
+export type AttemptRec = { count: number; lastAttempt: number; delays: number[] };
 const loginAttempts = new Map<string, AttemptRec>();
 const activeSessions = new Map<string, AdminSession[]>();
 const securityEvents = new Map<string, SecurityEvent[]>();
@@ -68,7 +68,14 @@ function secureRandomId(prefix: string): string {
 }
 
 export class SecurityManager {
-  private adminUtils = getAdminDatabaseUtils();
+  private _adminUtils: ReturnType<typeof getAdminDatabaseUtils> | null = null;
+
+  private get adminUtils() {
+    if (!this._adminUtils) {
+      this._adminUtils = getAdminDatabaseUtils();
+    }
+    return this._adminUtils;
+  }
 
   /**
    * Check if user account is currently locked

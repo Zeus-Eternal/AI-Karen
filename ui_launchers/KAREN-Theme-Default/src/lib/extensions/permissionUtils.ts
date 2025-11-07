@@ -34,7 +34,7 @@ export const PERMISSION_CATEGORIES = {
   },
 } as const;
 
-type PermissionCategoryKey = keyof typeof PERMISSION_CATEGORIES;
+export type PermissionCategoryKey = keyof typeof PERMISSION_CATEGORIES;
 
 /** ---------- Specific permission definitions ---------- */
 export const PERMISSION_DEFINITIONS = {
@@ -127,7 +127,7 @@ export const PERMISSION_DEFINITIONS = {
   },
 } as const;
 
-type KnownPermissionKey = keyof typeof PERMISSION_DEFINITIONS;
+export type KnownPermissionKey = keyof typeof PERMISSION_DEFINITIONS;
 
 /** ---------- Helpers ---------- */
 const safeArr = (v: unknown): string[] => (Array.isArray(v) ? (v as string[]) : []);

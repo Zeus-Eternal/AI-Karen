@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 // Enhanced type definitions
-type ContainerVariant = 
+export type ContainerVariant = 
   | "default" 
   | "fluid" 
   | "constrained" 
@@ -16,7 +16,7 @@ type ContainerVariant =
   | "sidebar" 
   | "modal";
 
-type ContainerSize = 
+export type ContainerSize = 
   | "xs" 
   | "sm" 
   | "md" 
@@ -32,7 +32,7 @@ type ContainerSize =
   | "screen" 
   | "custom";
 
-type ContainerDisplay = 
+export type ContainerDisplay = 
   | "block" 
   | "flex" 
   | "grid" 
@@ -41,21 +41,21 @@ type ContainerDisplay =
   | "inline-grid" 
   | "none";
 
-type ContainerPosition = 
+export type ContainerPosition = 
   | "static" 
   | "relative" 
   | "absolute" 
   | "fixed" 
   | "sticky";
 
-type ContainerOverflow = 
+export type ContainerOverflow = 
   | "auto" 
   | "hidden" 
   | "visible" 
   | "scroll" 
   | "clip";
 
-type ContainerShadow = 
+export type ContainerShadow = 
   | "none" 
   | "sm" 
   | "md" 
@@ -65,14 +65,14 @@ type ContainerShadow =
   | "inner" 
   | "outline";
 
-type ContainerBorder = 
+export type ContainerBorder = 
   | "none" 
   | "thin" 
   | "medium" 
   | "thick" 
   | "custom";
 
-type ContainerBackground = 
+export type ContainerBackground = 
   | "transparent" 
   | "default" 
   | "muted" 
@@ -84,7 +84,7 @@ type ContainerBackground =
   | "success" 
   | "custom";
 
-interface ContainerProps extends React.HTMLAttributes<HTMLElement> {
+export interface ContainerProps extends React.HTMLAttributes<HTMLElement> {
   as?: React.ElementType;
   variant?: ContainerVariant;
   size?: ContainerSize;

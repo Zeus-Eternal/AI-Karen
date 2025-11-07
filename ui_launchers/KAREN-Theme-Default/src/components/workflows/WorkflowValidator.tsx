@@ -229,7 +229,7 @@ export class WorkflowValidator {
 }
 
 // React component for displaying validation results
-interface WorkflowValidationDisplayProps {
+export interface WorkflowValidationDisplayProps {
   validationResult: WorkflowValidationResult;
   onFixError?: (errorId: string) => void;
 }

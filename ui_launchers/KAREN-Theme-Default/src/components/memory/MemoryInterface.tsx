@@ -35,9 +35,9 @@ const AgCharts = dynamic(() => import("ag-charts-react").then((m) => m.AgCharts)
 /* ============================
  * Types
  * ========================== */
-type MemoryType = "fact" | "preference" | "context";
+export type MemoryType = "fact" | "preference" | "context";
 
-interface MemoryGridRow {
+export interface MemoryGridRow {
   id: string;
   content: string;
   type: MemoryType;
@@ -52,7 +52,7 @@ interface MemoryGridRow {
   tenant_id?: string;
 }
 
-interface MemoryNetworkNode {
+export interface MemoryNetworkNode {
   id: string;
   label: string;
   type: string;
@@ -62,7 +62,7 @@ interface MemoryNetworkNode {
   color: string;
 }
 
-interface MemoryAnalytics {
+export interface MemoryAnalytics {
   total_memories: number;
   memories_by_type: Record<string, number>;
   memories_by_cluster: Record<string, number>;
@@ -71,14 +71,14 @@ interface MemoryAnalytics {
   relationship_stats: Record<string, number>;
 }
 
-interface MemoryInterfaceProps {
+export interface MemoryInterfaceProps {
   userId: string;
   tenantId?: string;
   copilotApiKey?: string;
   height?: number;
 }
 
-type ViewMode = "grid" | "network" | "analytics";
+export type ViewMode = "grid" | "network" | "analytics";
 
 /* ============================
  * Utils

@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { MotionConfig, type Variants, type Transition } from 'framer-motion';
 import { useUIStore, selectAnimationState } from '../store';
 
-interface MotionContextValue {
+export interface MotionContextValue {
   reducedMotion: boolean;
   animationsEnabled: boolean;
   setReducedMotion: (reduced: boolean) => void;
@@ -17,7 +17,7 @@ interface MotionContextValue {
 
 const MotionContext = createContext<MotionContextValue | undefined>(undefined);
 
-interface MotionProviderProps {
+export interface MotionProviderProps {
   children: React.ReactNode;
   defaultReducedMotion?: boolean;
   defaultAnimationsEnabled?: boolean;

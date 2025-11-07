@@ -50,7 +50,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-interface EndpointStatusDashboardProps {
+export interface EndpointStatusDashboardProps {
   className?: string;
 }
 

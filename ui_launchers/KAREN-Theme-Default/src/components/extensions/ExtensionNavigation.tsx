@@ -25,7 +25,7 @@ import {
   Beaker,
 } from "lucide-react";
 
-interface ExtensionNavigationProps {
+export interface ExtensionNavigationProps {
   className?: string;
   compact?: boolean;
 }
@@ -94,7 +94,7 @@ export function ExtensionNavigation({
   );
 }
 
-interface ExtensionNavGroupProps {
+export interface ExtensionNavGroupProps {
   extensionId: string;
   items: Array<{
     id: string;
@@ -142,7 +142,7 @@ function ExtensionNavGroup({
   );
 }
 
-interface ExtensionNavItemProps {
+export interface ExtensionNavItemProps {
   item: {
     id: string;
     extensionId: string;

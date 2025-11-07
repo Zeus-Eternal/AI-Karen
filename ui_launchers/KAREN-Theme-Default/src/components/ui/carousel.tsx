@@ -4,21 +4,21 @@ import * as React from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-type CarouselApi = {
+export type CarouselApi = {
   scrollPrev: () => void
   scrollNext: () => void
   canScrollPrev: boolean
   canScrollNext: boolean
 }
 
-type CarouselProps = {
+export type CarouselProps = {
   opts?: any
   plugins?: any[]
   orientation?: "horizontal" | "vertical"
   setApi?: (api: CarouselApi) => void
 }
 
-type CarouselContextProps = {
+export type CarouselContextProps = {
   carouselRef: React.RefObject<HTMLDivElement>
   api: CarouselApi | undefined
   scrollPrev: () => void

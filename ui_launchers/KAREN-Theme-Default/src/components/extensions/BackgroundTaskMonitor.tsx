@@ -24,7 +24,7 @@ import {
   AlertCircle 
 } from 'lucide-react';
 
-interface BackgroundTaskMonitorProps {
+export interface BackgroundTaskMonitorProps {
   extensionId?: string;
   className?: string;
 }

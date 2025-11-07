@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
-import { } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, Brain, Wifi, WifiOff, Cpu, Database, RefreshCw } from 'lucide-react';
 import { useReasoning } from '@/hooks/useReasoning';
 
 export function SystemStatus() {

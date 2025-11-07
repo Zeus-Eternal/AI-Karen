@@ -1,4 +1,4 @@
-ui_launchers/KAREN-Theme-Default/src/lib/security/ip-security-manager.ts
+// ui_launchers/KAREN-Theme-Default/src/lib/security/ip-security-manager.ts
 /**
  * IP Security Manager for Admin Management System
  *
@@ -274,7 +274,7 @@ function matchesIpOrCidr(needle: string, ip: string): boolean {
 /* =========================
  * Token-bucket-ish throttle
  * ========================= */
-interface Bucket {
+export interface Bucket {
   ts: number[];
   lastCleanup: number;
 }
@@ -365,7 +365,14 @@ class SimpleThrottle {
  * ========================= */
 
 export class IpSecurityManager {
-  private adminUtils = getAdminDatabaseUtils();
+  private _adminUtils: ReturnType<typeof getAdminDatabaseUtils> | null = null;
+
+  private get adminUtils() {
+    if (!this._adminUtils) {
+      this._adminUtils = getAdminDatabaseUtils();
+    }
+    return this._adminUtils;
+  }
 
   // In-memory stores — swap for Redis in prod
   private ipAccessRecords = new Map<string, IpAccessRecord>(); // key: `${ip}:${user_id}`
@@ -886,3 +893,5 @@ export function getIPSecurityManager(): IPSecurityManager {
 }
 
 let ipSecurityManagerInstance: IPSecurityManager | null = null;
+
+export const ipSecurityManager = new IpSecurityManager();
