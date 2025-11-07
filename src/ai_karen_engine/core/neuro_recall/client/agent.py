@@ -24,8 +24,8 @@ except Exception:
     logger = logging.getLogger("neuro_recall.agent")
 
 # ---- MCP (Model Context Protocol) tools ----
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp import ClientSession, StdioServerParameters  # type: ignore[import-untyped]
+from mcp.client.stdio import stdio_client  # type: ignore[import-untyped]
 
 # ---- Kari SR / ICE / LLM (local-first) ----
 from ai_karen_engine.core.reasoning.soft_reasoning_engine import (
@@ -115,7 +115,7 @@ class KariLLMBackend:
     def __init__(self, model_alias: str, role: str):
         self.model_alias = model_alias
         self.role = role
-        self.kari_llm: LLMUtils = llm_registry.get_active() or LLMUtils()
+        self.kari_llm: LLMUtils = llm_registry.get_active() or LLMUtils()  # type: ignore[assignment,attr-defined]
         self.direct_client: Optional[AsyncOpenAI] = None
         if ENABLE_EXTERNAL_WORKFLOWS:
             self.direct_client = AsyncOpenAI(base_url=DIRECT_BASE_URL, api_key=DIRECT_API_KEY)
@@ -324,6 +324,7 @@ class HierarchicalClient:
         planner_msgs = [{"role": "system", "content": META_SYSTEM_PROMPT}] + self.shared_history
 
         final = ""
+        plan_text = ""
         for _ in range(self.MAX_CYCLES):
             plan_text = await self._plan_once(planner_msgs)
             self.shared_history.append({"role": "assistant", "content": plan_text})
