@@ -4,7 +4,7 @@
  * resource usage, long tasks, alerts, and exposes a clean subscription API.
  */
 
-import { onCLS, onFCP, onLCP, onTTFB, onINP, onFID } from 'web-vitals';
+import { onCLS, onFCP, onLCP, onTTFB, onINP } from 'web-vitals';
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 const hasPO = typeof PerformanceObserver !== 'undefined';
@@ -124,7 +124,7 @@ export class PerformanceMonitor {
       });
     } catch {}
 
-    // INP primary
+    // INP primary (replaces FID in web-vitals v4+)
     try {
       onINP((m: any) => {
         // web-vitals returns INP with .value
@@ -133,14 +133,7 @@ export class PerformanceMonitor {
         this.checkThreshold('inp', m.value);
       });
     } catch {
-      // FID fallback for older browsers
-      try {
-        onFID((m: any) => {
-          this.vitalsCache.fid = m.value;
-          this.recordMetric('fid', m.value, { id: m.id });
-          this.checkThreshold('fid', m.value);
-        });
-      } catch {}
+      // INP not available in older browsers - silently continue
     }
   }
 
