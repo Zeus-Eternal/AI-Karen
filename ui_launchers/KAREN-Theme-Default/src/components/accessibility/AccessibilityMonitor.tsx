@@ -8,7 +8,15 @@ import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import { Alert, AlertDescription } from '../ui/alert';
 
-import { } from 'lucide-react';
+import {
+  Monitor,
+  AlertTriangle,
+  CheckCircle,
+  Bell,
+  BellOff,
+  Settings,
+  Eye
+} from 'lucide-react';
 import { useAccessibilityMonitor } from '../../hooks/use-accessibility-testing';
 import { cn } from '../../lib/utils';
 

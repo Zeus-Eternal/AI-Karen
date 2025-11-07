@@ -70,7 +70,7 @@ export default function AuditLogTable() {
                 <TableHead>User</TableHead>
                 <TableHead>Action</TableHead>
                 <TableHead>Resource</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Resource ID</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -86,19 +86,7 @@ export default function AuditLogTable() {
                   </TableCell>
                   <TableCell>{log.action}</TableCell>
                   <TableCell>{log.resource_type || "—"}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        log.status === "success"
-                          ? "default"
-                          : log.status === "warning"
-                          ? "secondary"
-                          : "destructive"
-                      }
-                    >
-                      {log.status || "unknown"}
-                    </Badge>
-                  </TableCell>
+                  <TableCell>{log.resource_id || "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
