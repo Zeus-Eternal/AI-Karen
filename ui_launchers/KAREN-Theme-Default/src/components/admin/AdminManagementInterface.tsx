@@ -329,7 +329,7 @@ export default function AdminManagementInterface() {
   /* -------------------------------- Render -------------------------------- */
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in AdminManagementInterface</div>}>
+    <ErrorBoundary>
       <div className="space-y-6">
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-between">

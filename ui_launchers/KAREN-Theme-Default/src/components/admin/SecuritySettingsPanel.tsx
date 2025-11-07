@@ -17,7 +17,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 
-import { } from 'lucide-react';
+import {
+  Download,
+  Shield,
+  Clock,
+  Globe,
+  AlertTriangle,
+  EyeOff,
+  RefreshCw,
+  Ban,
+  Trash2,
+  ShieldCheck,
+  ShieldAlert,
+  Eye
+} from 'lucide-react';
 export interface SecuritySettings {
   mfaEnforcement: {
     requireForAdmins: boolean;
@@ -312,6 +325,7 @@ export default function SecuritySettingsPanel() {
               Multi-Factor Authentication
             </CardTitle>
             <CardDescription>
+              Configure multi-factor authentication requirements for users
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -351,8 +365,10 @@ export default function SecuritySettingsPanel() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 " />
+              Session Security
             </CardTitle>
             <CardDescription>
+              Manage session timeouts and concurrent session limits
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -457,8 +473,10 @@ export default function SecuritySettingsPanel() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 " />
+              Security Monitoring
             </CardTitle>
             <CardDescription>
+              Configure security alerts and monitoring thresholds
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

@@ -156,7 +156,7 @@ export function PerformanceDashboard({ className = "" }: PerformanceDashboardPro
   // RBAC Gate (render a friendly block but keep component stable)
   if (!hasPermission("system.config.read")) {
     return (
-      <ErrorBoundary fallback={<div>Something went wrong in PerformanceDashboard</div>}>
+      <ErrorBoundary>
         <div className={cn("bg-red-50 border border-red-200 rounded-lg p-6", className)}>
           <p className="text-red-800">
             You don&apos;t have permission to view performance data.
@@ -167,7 +167,7 @@ export function PerformanceDashboard({ className = "" }: PerformanceDashboardPro
   }
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in PerformanceDashboard</div>}>
+    <ErrorBoundary>
       <div className={cn("bg-white shadow rounded-lg", className)}>
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200">
