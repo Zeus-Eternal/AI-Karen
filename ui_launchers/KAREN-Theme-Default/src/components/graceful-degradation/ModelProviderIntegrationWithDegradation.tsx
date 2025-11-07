@@ -1,8 +1,9 @@
+// apps/web/src/lib/graceful/model-provider-integration.tsx
 "use client";
 
 import React from "react";
-import { DegradedModeBanner, ServiceUnavailable } from "@/lib/graceful-degradation/fallback-ui";
-import { useModelProviders, useGracefulDegradation } from "@/lib/graceful-degradation/use-graceful-backend";
+import { DegradedModeBanner, ServiceUnavailable } from "./fallback-ui";
+import { useModelProviders, useGracefulDegradation } from "./use-graceful-backend";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -223,7 +224,7 @@ export function useModelProviderSuggestions() {
  * App-level initializer (lazy) — safe dynamic import
  */
 export async function initializeGracefulDegradationInApp() {
-  const { initGracefulDegradation } = await import("@/lib/graceful-degradation/init");
+  const { initGracefulDegradation } = await import("./init-graceful-degradation");
   initGracefulDegradation({
     enableCaching: true,
     enableGlobalErrorHandling: true,

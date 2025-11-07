@@ -1,9 +1,4 @@
 // Enhanced Analytics Components with AG-UI Integration
-
-// Main Dashboard
-export { AnalyticsDashboard } from './AnalyticsDashboard';
-
-// Individual Components
 export { EnhancedAnalyticsChart } from './EnhancedAnalyticsChart';
 export type { EnhancedAnalyticsData, AnalyticsStats } from './EnhancedAnalyticsChart';
 
@@ -13,11 +8,9 @@ export type { MemoryNode, MemoryEdge, MemoryNetworkData } from './MemoryNetworkV
 export { UserEngagementGrid } from './UserEngagementGrid';
 export type { UserEngagementRow } from './UserEngagementGrid';
 
-export { AuditLogTable } from './AuditLogTable';
+// Re-export existing chat analytics for backward compatibility
+export { ChatAnalyticsChart } from '../chat/ChatAnalyticsChart';
+export type { ChatAnalyticsData } from '../chat/ChatAnalyticsChart';
 
-export { AnalyticsChart } from './AnalyticsChart';
-
-export { default as UsageAnalyticsCharts } from './UsageAnalyticsCharts';
-
-// Note: ChatAnalyticsChart uses default export
-// If needed, import it directly: import ChatAnalyticsChart from '../chat/ChatAnalyticsChart'
+export { MemoryGrid } from '../chat/MemoryGrid';
+export type { MemoryRow } from '../chat/MemoryGrid';

@@ -36,14 +36,12 @@ import {
 interface LogEntry {
   id: string;
   timestamp: string;
-  level: 'info' | 'debug' | 'warning' | 'error';
+  level: '' | 'warning' | 'error';
   message: string;
   source: string;
   metadata?: Record<string, any>;
   stackTrace?: string;
 }
-
-export type { LogEntry, MetricData, PerformanceProfile, ExtensionDebuggerProps };
 interface MetricData {
   timestamp: string;
   cpu: number;

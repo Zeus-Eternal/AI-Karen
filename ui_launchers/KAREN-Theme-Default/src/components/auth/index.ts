@@ -2,12 +2,10 @@
  * Authentication Component Exports
  *
  * Central barrel export for authentication-related components, route guards,
- * session boundaries, and user/auth UI elements.
+ * and error boundary utilities.
  */
 
-// -------------------------------------
 // Route Guards
-// -------------------------------------
 export { ProtectedRoute } from './ProtectedRoute';
 export type { ProtectedRouteProps } from './ProtectedRoute';
 
@@ -17,9 +15,7 @@ export type { AdminRouteProps } from './AdminRoute';
 export { SuperAdminRoute } from './SuperAdminRoute';
 export type { SuperAdminRouteProps } from './SuperAdminRoute';
 
-// -------------------------------------
 // Session Management
-// -------------------------------------
 export { SessionErrorBoundary, withSessionErrorBoundary } from './SessionErrorBoundary';
 export type {
   SessionErrorBoundaryProps,
@@ -29,9 +25,7 @@ export type {
 export { TokenStatus } from './TokenStatus';
 export type { SessionMode, SessionInfo } from './TokenStatus';
 
-// -------------------------------------
 // User Components
-// -------------------------------------
 export { default as LoginForm } from './LoginForm';
 export type { LoginFormProps } from './LoginForm';
 
@@ -40,7 +34,5 @@ export type { UserProfileProps } from './UserProfile';
 
 export { default as AuthHeader } from './AuthHeader';
 
-// -------------------------------------
-// Setup (optional subdirectory)
-// -------------------------------------
+// Setup Subdirectory
 // export * from './setup';

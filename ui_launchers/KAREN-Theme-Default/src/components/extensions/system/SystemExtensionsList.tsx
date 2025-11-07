@@ -22,9 +22,9 @@ import type {
   ExtensionRegistryEntry,
 } from '@/services/extensions/types';
 
-export type ExtensionHealthState = 'green' | 'yellow' | 'red' | 'unknown';
+type ExtensionHealthState = 'green' | 'yellow' | 'red' | 'unknown';
 
-export interface SystemExtensionCardData {
+interface SystemExtensionCardData {
   id: string;
   internalName: string;
   displayName: string;

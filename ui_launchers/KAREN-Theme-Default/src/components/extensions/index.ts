@@ -1,14 +1,4 @@
-/**
- * Extension Management Component Exports
- *
- * Central barrel export for all extension management components, including
- * dashboards, navigation, monitoring, system extensions, marketplace,
- * and debugging utilities.
- */
-
-// -------------------------------------
-// Main Extension Management Components
-// -------------------------------------
+// Main extension management components
 export { default as ExtensionBreadcrumbs } from './ExtensionBreadcrumbs';
 export type { Crumb } from './ExtensionBreadcrumbs';
 
@@ -21,13 +11,10 @@ export { default as ExtensionSettingsPanel } from './ExtensionSettingsPanel';
 export { default as ExtensionControls } from './ExtensionControls';
 export { default as SidebarNavigation } from './SidebarNavigation';
 
-// -------------------------------------
-// New Extension Components
-// -------------------------------------
-export { default as ExtensionDashboard, CompactExtensionDashboard } from './ExtensionDashboard';
-export type { ExtensionDashboardProps } from './ExtensionDashboard';
+// New extension components
+export { default as ExtensionDashboard } from './ExtensionDashboard';
 
-export { ExtensionNavigation, ExtensionNavigationBreadcrumbs } from './ExtensionNavigation';
+export { ExtensionNavigation } from './ExtensionNavigation';
 export type {
   ExtensionNavigationProps,
   ExtensionNavGroupProps,
@@ -40,55 +27,34 @@ export type { BackgroundTaskMonitorProps } from './BackgroundTaskMonitor';
 export { ExtensionPageFallback } from './ExtensionPageFallback';
 export type { ExtensionPageFallbackProps } from './ExtensionPageFallback';
 
-export { default as ExtensionHealthMonitor } from './ExtensionHealthMonitor';
-export type { ExtensionHealthMonitorProps } from './ExtensionHealthMonitor';
-
-// -------------------------------------
-// Core Components
-// -------------------------------------
+// Core components
 export * from './core';
 
-// -------------------------------------
-// Plugin Components
-// -------------------------------------
+// Plugin components
 export * from './plugins';
 
-// -------------------------------------
-// System Extension Components
-// -------------------------------------
+// System extension components
 export { default as AgentList } from './automation/AgentList';
 export { default as WorkflowList } from './automation/WorkflowList';
 export { default as SystemExtensionsList } from './system/SystemExtensionsList';
-// TODO: Re-enable once all subcomponents are fully implemented
+// TODO: Re-enable when all components are implemented
 // export * from './system';
 // export * from './automation';
 
-// -------------------------------------
-// Shared Components
-// -------------------------------------
+// Shared components
 export * from './shared';
 
-// -------------------------------------
-// Marketplace Components
-// -------------------------------------
+// Marketplace components
 export * from './marketplace';
 
-// -------------------------------------
-// Management Components
-// -------------------------------------
+// Management components
 export * from './management';
 
-// -------------------------------------
-// Settings Components
-// -------------------------------------
+// Settings components
 export * from './settings';
 
-// -------------------------------------
-// Debugging Components
-// -------------------------------------
+// Debugging components
 export * from './debugging';
 
-// -------------------------------------
-// Monitoring Components
-// -------------------------------------
+// Monitoring components
 export * from './monitoring';

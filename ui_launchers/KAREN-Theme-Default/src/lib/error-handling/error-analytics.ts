@@ -45,46 +45,6 @@ export interface ErrorBreadcrumb {
   data?: Record<string, any>;
 }
 
-export interface ErrorTrend {
-  period: string;
-  errorCount: number;
-  uniqueErrors: number;
-  resolutionRate: number;
-  averageResolutionTime: number;
-  topErrors: Array<{
-    message: string;
-    count: number;
-    severity: string;
-  }>;
-}
-
-export interface ErrorAnalyticsReport {
-  summary: {
-    totalErrors: number;
-    uniqueErrors: number;
-    resolutionRate: number;
-    averageResolutionTime: number;
-    criticalErrors: number;
-  };
-  trends: ErrorTrend[];
-  topErrors: Array<{
-    message: string;
-    count: number;
-    lastOccurrence: number;
-    severity: string;
-    category: string;
-  }>;
-  sectionBreakdown: Record<string, {
-    count: number;
-    resolutionRate: number;
-  }>;
-  performanceImpact: {
-    averageMemoryIncrease: number;
-    averageRenderDelay: number;
-    networkErrorRate: number;
-  };
-}
-
 export class ErrorAnalytics {
   private config: ErrorAnalyticsConfig;
   private errorMetrics: Map<string, ErrorMetrics> = new Map();

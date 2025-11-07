@@ -83,7 +83,6 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
             title: 'Chat Initialization Failed',
             description: 'Unable to start chat session. Please refresh and try again.'
           });
-        }
       }
     };
 
