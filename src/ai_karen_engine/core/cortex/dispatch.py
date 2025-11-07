@@ -4,6 +4,10 @@ Kari CORTEX Dispatch Core
 - Local-first, plugin/routing/intent aware
 - Handles: prediction, memory, action, plugins, error capture
 - 100% backend: no UI, no Streamlit, no mercy
+
+ARCHITECTURAL COMPLIANCE:
+- RBAC validation before plugin execution (Phase 2)
+- Plugin permissions checked against Postgres (cached in Redis)
 """
 
 import logging
@@ -21,6 +25,18 @@ from ai_karen_engine.core.plugin_metrics import (
 from ai_karen_engine.core.cortex.errors import CortexDispatchError, UnsupportedIntentError
 from ai_karen_engine.core.predictors import predictor_registry, run_predictor
 from ai_karen_engine.plugins.manager import get_plugin_manager
+
+# Import RBAC validator (Phase 2 - architectural compliance)
+try:
+    from ai_karen_engine.core.cortex.rbac_validator import (
+        validate_plugin_permission,
+        PermissionDeniedError,
+        RBACValidationError
+    )
+    RBAC_AVAILABLE = True
+except ImportError:
+    RBAC_AVAILABLE = False
+    logger.warning("[CORTEX] RBAC validator not available, plugin execution will not be validated")
 
 async def dispatch(
     user_ctx: Dict[str, Any],
@@ -76,6 +92,38 @@ async def dispatch(
                 raise UnsupportedIntentError(
                     f"No plugin registered for intent '{intent}'"
                 )
+
+            # PHASE 2: RBAC validation before plugin execution
+            if RBAC_AVAILABLE:
+                try:
+                    await validate_plugin_permission(user_ctx, intent)
+                    trace.append({"stage": "rbac_validated", "plugin": intent, "result": "permitted"})
+                except PermissionDeniedError as pde:
+                    logger.warning(f"[CORTEX] Permission denied for plugin '{intent}': {pde}")
+                    result = {"error": f"Permission denied: {str(pde)}", "error_type": "permission_denied"}
+                    trace.append({"stage": "rbac_denied", "plugin": intent, "error": str(pde)})
+                    record_plugin_call(intent, success=False)
+                    return {
+                        "result": result,
+                        "intent": intent,
+                        "intent_meta": intent_meta,
+                        "trace": trace,
+                    }
+                except RBACValidationError as rve:
+                    logger.error(f"[CORTEX] RBAC validation failed for plugin '{intent}': {rve}")
+                    result = {"error": f"RBAC validation failed: {str(rve)}", "error_type": "rbac_error"}
+                    trace.append({"stage": "rbac_error", "plugin": intent, "error": str(rve)})
+                    record_plugin_call(intent, success=False)
+                    return {
+                        "result": result,
+                        "intent": intent,
+                        "intent_meta": intent_meta,
+                        "trace": trace,
+                    }
+            else:
+                logger.warning(f"[CORTEX] RBAC validation not available, executing plugin '{intent}' without permission check")
+                trace.append({"stage": "rbac_skipped", "plugin": intent, "reason": "rbac_not_available"})
+
             try:
                 plugin_result, out, err = await get_plugin_manager().run_plugin(
                     intent,
