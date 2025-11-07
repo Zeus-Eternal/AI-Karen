@@ -1,10 +1,12 @@
-f"""
+"""
 Planner Hooks for Case-Memory Learning Integration
 Provides hooks for injecting prior episodes and admitting new cases
 """
 
 import asyncio
 import logging
+import uuid
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 from .case_types import Case, StepTrace, ToolIO, Reward
 from .retriever import CaseRetriever
