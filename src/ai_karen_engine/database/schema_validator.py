@@ -224,9 +224,88 @@ async def validate_schema_version_async(db_engine: AsyncEngine) -> Dict[str, Any
         raise SchemaVersionError(error_msg) from ex
 
 
+async def validate_and_migrate_schema(session: Any) -> Optional[Any]:
+    """
+    Validate schema and return error response if validation fails.
+
+    This is a compatibility wrapper for web API routes that expect
+    error response objects instead of exceptions.
+
+    Args:
+        session: Database session (AsyncSession or similar)
+
+    Returns:
+        None if validation succeeds, error response object if fails
+    """
+    try:
+        # Get the engine from the session
+        from sqlalchemy.ext.asyncio import AsyncSession
+
+        if isinstance(session, AsyncSession):
+            engine = session.get_bind()
+        else:
+            # Fallback - try to get bind attribute
+            engine = getattr(session, 'bind', None) or getattr(session, 'get_bind', lambda: None)()
+
+        if engine is None:
+            # If we can't get engine, just return None (skip validation)
+            logger.warning("Could not get database engine from session, skipping validation")
+            return None
+
+        # Run validation
+        await validate_schema_version_async(engine)
+        return None  # Success
+
+    except SchemaVersionError as e:
+        # Import error response creator
+        try:
+            from ai_karen_engine.models.web_api_error_responses import create_database_error_response
+
+            return create_database_error_response(
+                error=e,
+                operation="schema_validation",
+                user_message=str(e),
+                request_id=None
+            )
+        except ImportError:
+            # If error response module not available, create simple error object
+            class SimpleError:
+                def __init__(self, message: str):
+                    self.message = message
+                    self.type = "DATABASE_ERROR"
+
+                def dict(self):
+                    return {"message": self.message, "type": self.type}
+
+            return SimpleError(str(e))
+    except Exception as e:
+        # Unexpected error
+        logger.error(f"Unexpected error during schema validation: {e}")
+        try:
+            from ai_karen_engine.models.web_api_error_responses import create_database_error_response
+
+            return create_database_error_response(
+                error=e,
+                operation="schema_validation",
+                user_message="Schema validation failed unexpectedly",
+                request_id=None
+            )
+        except ImportError:
+            class SimpleError:
+                def __init__(self, message: str):
+                    self.message = message
+                    self.type = "DATABASE_ERROR"
+
+                def dict(self):
+                    return {"message": self.message, "type": self.type}
+
+            return SimpleError(str(e))
+
+
 __all__ = [
     "validate_schema_version_sync",
     "validate_schema_version_async",
+    "validate_and_migrate_schema",
     "SchemaVersionError",
     "EXPECTED_MIGRATION_VERSION",
     "EXPECTED_MIGRATION_SERVICE"

@@ -19,9 +19,9 @@ from typing import Any, Dict, List, Optional, Tuple, Literal, Callable
 from enum import Enum
 from contextlib import contextmanager
 
-from ai_karen_engine.core.reasoning.sr_adapters import SRRetriever
-from ai_karen_engine.core.reasoning.ice_subengines import SynthesisSubEngine
-from ai_karen_engine.core.reasoning.soft_reasoning_engine import SoftReasoningEngine
+from ai_karen_engine.core.reasoning.retrieval.adapters import SRRetriever
+from ai_karen_engine.core.reasoning.synthesis.subengines import SynthesisSubEngine
+from ai_karen_engine.core.reasoning.soft_reasoning.engine import SoftReasoningEngine
 from ai_karen_engine.integrations.llm_utils import LLMUtils
 from ai_karen_engine.integrations.llm_registry import registry as llm_registry
 

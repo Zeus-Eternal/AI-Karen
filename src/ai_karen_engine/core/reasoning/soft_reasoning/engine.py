@@ -22,7 +22,7 @@ except Exception:  # pragma: no cover
 
 from ai_karen_engine.core.embedding_manager import EmbeddingManager
 from ai_karen_engine.core.milvus_client import MilvusClient
-from ai_karen_engine.core.reasoning.sr_vector_adapters import VectorStore, MilvusClientAdapter, Result
+from ai_karen_engine.core.reasoning.retrieval.vector_stores import VectorStore, MilvusClientAdapter, Result
 
 
 logger = logging.getLogger("ai_karen.reasoning.sr")

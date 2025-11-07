@@ -3,17 +3,17 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from ai_karen_engine.core.reasoning.ice_integration import (
+from ai_karen_engine.core.reasoning.synthesis.ice_wrapper import (
     PremiumICEWrapper,
     ICEWritebackPolicy,
     ReasoningTrace,
 )
-from ai_karen_engine.core.reasoning.soft_reasoning_engine import (
+from ai_karen_engine.core.reasoning.soft_reasoning.engine import (
     SoftReasoningEngine,
     RecallConfig,
     WritebackConfig,
 )
-from ai_karen_engine.core.reasoning.graph_core import CapsuleGraph
+from ai_karen_engine.core.reasoning.graph.capsule import CapsuleGraph
 from ai_karen_engine.integrations.llm_utils import LLMUtils
 from ai_karen_engine.integrations.llm_registry import registry as llm_registry
 

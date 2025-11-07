@@ -28,10 +28,10 @@ from mcp import ClientSession, StdioServerParameters  # type: ignore[import-unty
 from mcp.client.stdio import stdio_client  # type: ignore[import-untyped]
 
 # ---- Kari SR / ICE / LLM (local-first) ----
-from ai_karen_engine.core.reasoning.soft_reasoning_engine import (
+from ai_karen_engine.core.reasoning.soft_reasoning.engine import (
     SoftReasoningEngine, RecallConfig, WritebackConfig
 )
-from ai_karen_engine.core.reasoning.ice_integration import (
+from ai_karen_engine.core.reasoning.synthesis.ice_wrapper import (
     PremiumICEWrapper, ICEWritebackPolicy
 )
 from ai_karen_engine.integrations.llm_registry import registry as llm_registry
