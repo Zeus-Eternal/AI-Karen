@@ -297,7 +297,6 @@ export class DatabaseQueryOptimizer {
     this.queryPlans.clear();
   }
 }
-}
 
 // Singleton instance
 let instance: DatabaseQueryOptimizer | null = null;
