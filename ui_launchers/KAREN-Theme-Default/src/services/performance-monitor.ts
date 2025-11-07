@@ -4,7 +4,7 @@
  * resource usage, long tasks, alerts, and exposes a clean subscription API.
  */
 
-import { getCLS, getFCP, getLCP, getTTFB, getINP, onFID } from 'web-vitals';
+import { onCLS, onFCP, onLCP, onTTFB, onINP, onFID } from 'web-vitals';
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 const hasPO = typeof PerformanceObserver !== 'undefined';
@@ -102,22 +102,22 @@ export class PerformanceMonitor {
   private initializeWebVitalsTracking(): void {
     // CLS/FCP/LCP/TTFB always available
     try {
-      getCLS((m) => {
+      onCLS((m) => {
         this.vitalsCache.cls = m.value;
         this.recordMetric('cls', m.value, { id: m.id });
         this.checkThreshold('cls', m.value);
       });
-      getFCP((m) => {
+      onFCP((m) => {
         this.vitalsCache.fcp = m.value;
         this.recordMetric('fcp', m.value, { id: m.id });
         this.checkThreshold('fcp', m.value);
       });
-      getLCP((m) => {
+      onLCP((m) => {
         this.vitalsCache.lcp = m.value;
         this.recordMetric('lcp', m.value, { id: m.id });
         this.checkThreshold('lcp', m.value);
       });
-      getTTFB((m) => {
+      onTTFB((m) => {
         this.vitalsCache.ttfb = m.value;
         this.recordMetric('ttfb', m.value, { id: m.id });
         this.checkThreshold('ttfb', m.value);
@@ -126,7 +126,7 @@ export class PerformanceMonitor {
 
     // INP primary
     try {
-      getINP((m: any) => {
+      onINP((m: any) => {
         // web-vitals returns INP with .value
         this.vitalsCache.inp = m.value;
         this.recordMetric('inp', m.value, { id: m.id });
