@@ -1,2 +1,2 @@
 // Extension marketplace components
-export { default as ExtensionMarketplace } from './ExtensionMarketplace';
+export { ExtensionMarketplace } from './ExtensionMarketplace';

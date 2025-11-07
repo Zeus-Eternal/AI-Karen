@@ -129,7 +129,18 @@ const Card = {
 }
 
 export {
+  Card,
+  CardRoot,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  CardActions,
 }
 
 export type {
+  BaseCardProps,
+  CardRootProps,
+  CardActionsProps,
 }
