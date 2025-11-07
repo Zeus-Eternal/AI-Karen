@@ -281,6 +281,8 @@ services:
       MILVUS_PORT: "19530"
       VECTOR_DB_HOST: "milvus"
       VECTOR_DB_PORT: "19530"
+      # Enable/disable Milvus vector DB (set to false for pure auth/API development)
+      KARI_ENABLE_VECTOR_DB: "true"
       # Wait for Milvus to report healthy before enabling vector features (seconds)
       MILVUS_HEALTH_WAIT_SECONDS: "180"
       MILVUS_HEALTH_HOST: "milvus"
