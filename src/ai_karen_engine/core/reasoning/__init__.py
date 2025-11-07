@@ -96,6 +96,15 @@ from ai_karen_engine.core.reasoning.causal import (
     CausalExplanation,
     CausalRelationType,
     get_causal_engine,
+    # Cognitive causal reasoning (NEW)
+    CognitiveCausalReasoner,
+    CausalReasoningMode,
+    EvidenceQuality,
+    CausalHypothesis,
+    CausalReasoningState,
+    EnhancedCausalExplanation,
+    CounterfactualComparison,
+    create_cognitive_causal_reasoner,
 )
 
 __all__ = [
@@ -174,4 +183,14 @@ __all__ = [
     "CausalExplanation",
     "CausalRelationType",
     "get_causal_engine",
+
+    # Cognitive Causal Reasoning (NEW)
+    "CognitiveCausalReasoner",
+    "CausalReasoningMode",
+    "EvidenceQuality",
+    "CausalHypothesis",
+    "CausalReasoningState",
+    "EnhancedCausalExplanation",
+    "CounterfactualComparison",
+    "create_cognitive_causal_reasoner",
 ]

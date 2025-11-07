@@ -203,6 +203,191 @@ scenario = engine.generate_counterfactual(
 )
 ```
 
+### 11. Cognitive Causal Reasoning (`causal/cognitive_causal.py`)
+
+Enhanced causal reasoning with human-like cognitive capabilities:
+
+**Key Features**:
+- **Uncertainty Quantification**: Confidence and certainty for all causal claims
+- **Evidence Quality Assessment**: Automatic evaluation of evidence strength
+- **Multiple Hypotheses**: Consider alternative causal explanations
+- **Causal Refinement**: Update hypotheses as new evidence arrives
+- **Counterfactual Comparison**: Compare factual vs counterfactual outcomes
+- **Assumption Tracking**: Explicit listing of assumptions made
+
+**Evidence Quality Levels**:
+- **Strong**: Experimental/RCT data with high confidence
+- **Moderate**: Observational data with controls
+- **Weak**: Correlational data only
+- **Speculative**: Theoretical/hypothetical
+
+```python
+from ai_karen_engine.core.reasoning import (
+    create_cognitive_causal_reasoner,
+    EvidenceQuality
+)
+
+# Create cognitive causal reasoner
+reasoner = create_cognitive_causal_reasoner(
+    enable_metacognition=True,
+    enable_refinement=True
+)
+
+# Generate enhanced causal explanation
+explanation = reasoner.explain_outcome(
+    outcome_variable="project_success",
+    outcome_value=True,
+    context={
+        "team_size": 8,
+        "budget": 100000,
+        "timeline_months": 6,
+        "experience_years": 5,
+        "n_observations": 50  # Sample size
+    },
+    evidence_quality=EvidenceQuality.MODERATE,
+    consider_alternatives=True
+)
+
+print(f"Primary Explanation: {explanation.primary_explanation}")
+print(f"Confidence: {explanation.confidence:.2%}")
+print(f"Evidence Quality: {explanation.evidence_quality.value}")
+
+print("\nActual Causes (with confidence):")
+for cause, contribution, confidence in explanation.actual_causes:
+    print(f"  {cause}: contribution={contribution:.2f}, confidence={confidence:.2f}")
+
+print("\nNecessary Causes:")
+for cause, confidence in explanation.necessary_causes:
+    print(f"  {cause} (confidence={confidence:.2f})")
+
+print("\nAlternative Explanations:")
+for alt, plausibility in explanation.alternative_explanations:
+    print(f"  {alt} (plausibility={plausibility:.2f})")
+
+print("\nIdentified Gaps:")
+for gap in explanation.identified_gaps:
+    print(f"  - {gap}")
+
+print("\nAssumptions:")
+for assumption in explanation.assumptions:
+    print(f"  - {assumption}")
+
+print("\nReasoning Trace:")
+for step in explanation.reasoning_trace:
+    print(f"  {step}")
+```
+
+**Counterfactual Comparison**:
+
+```python
+# Compare factual and counterfactual scenarios
+comparison = reasoner.compare_counterfactuals(
+    factual={
+        "training_hours": 100,
+        "model_accuracy": 0.85,
+        "data_size": 1000,
+    },
+    interventions=[
+        ("training_hours", 200),  # Double training
+    ],
+    variables_of_interest=["model_accuracy", "data_size"]
+)
+
+print("Factual vs Counterfactual Comparison:")
+print(f"Confidence: {comparison.confidence:.2%}")
+print(f"Plausibility: {comparison.plausibility:.2%}")
+
+print("\nDifferences:")
+for var, (factual_val, counter_val) in comparison.differences.items():
+    attribution = comparison.causal_attribution.get(var, 0.0)
+    print(f"  {var}: {factual_val} → {counter_val}")
+    print(f"    Causal attribution: {attribution:.2f}")
+```
+
+**Hypothesis Refinement**:
+
+```python
+from ai_karen_engine.core.reasoning import CausalHypothesis, EvidenceQuality
+
+# Initial hypothesis
+hypothesis = CausalHypothesis(
+    cause="increased_training",
+    effect="better_performance",
+    strength_estimate=0.7,
+    confidence=0.6,
+    evidence_quality=EvidenceQuality.WEAK,
+    supporting_evidence=["Initial observations"],
+    alternative_explanations=["Larger dataset", "Better architecture"],
+    confounders_identified=[],
+)
+
+# Refine with new evidence
+new_evidence = {
+    "controlled_experiment": True,
+    "n_observations": 200,
+    "confounders_controlled": ["dataset_size", "architecture"],
+}
+
+refined = reasoner.refine_causal_hypothesis(hypothesis, new_evidence)
+
+print(f"Original confidence: {hypothesis.confidence:.2f}")
+print(f"Refined confidence: {refined.confidence:.2f}")
+print(f"Updated evidence quality: {refined.evidence_quality.value}")
+print(f"New confounders identified: {refined.confounders_identified}")
+```
+
+**Integration with Cognitive Orchestrator**:
+
+```python
+from ai_karen_engine.core.reasoning import (
+    create_cognitive_orchestrator,
+    CognitiveTask,
+    CognitiveMode,
+)
+
+# Create orchestrator with causal reasoning enabled
+orchestrator = create_cognitive_orchestrator(
+    enable_causal_reasoning=True,
+    enable_metacognition=True,
+)
+
+# Causal question triggers causal reasoning
+task = CognitiveTask(
+    query="Why did the deployment fail, and what would have prevented it?",
+    context=[
+        "Deployed at 2 AM Friday",
+        "Database migration included",
+        "Load balancer configuration changed",
+        "Previous 10 deployments succeeded",
+    ],
+    requires_certainty=True,
+    requires_explanation=True,
+)
+
+response = orchestrator.process(task, mode=CognitiveMode.DELIBERATE)
+
+# The orchestrator automatically:
+# 1. Detects causal question ("why")
+# 2. Uses cognitive causal reasoner
+# 3. Provides explanation with confidence
+# 4. Identifies alternative explanations
+# 5. Suggests counterfactual (prevention)
+
+print(f"Causal Explanation: {response.output}")
+print(f"Confidence: {response.confidence:.2%}")
+print(f"Evidence gaps: {response.knowledge_gaps}")
+```
+
+**Benefits of Cognitive Causal Reasoning**:
+
+1. **Transparent Uncertainty**: Every causal claim includes confidence
+2. **Evidence-Based**: Adapts reasoning based on evidence quality
+3. **Multiple Perspectives**: Considers alternative explanations
+4. **Refinable**: Updates beliefs with new evidence
+5. **Assumption-Aware**: Explicitly states assumptions
+6. **Human-Like**: Mirrors how humans reason about causality
+7. **Integrated**: Works seamlessly with cognitive orchestrator
+
 ## Research Paper Alignment
 
 ### Paper Concepts → Implementation Mapping
