@@ -1,28 +1,32 @@
 
 "use client";
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 /**
  * Extension Integration Test Page
- * 
+ *
  * Test page to verify extension integration is working
  */
 
-
-  useExtensionStatuses, 
-  useExtensionRoutes, 
+import {
+  useExtensionStatuses,
+  useExtensionRoutes,
   useExtensionNavigation,
   useExtensionHealth,
   useExtensionPerformance,
   useExtensionTaskMonitoring
-import { } from '@/lib/extensions/hooks';
+} from '@/lib/extensions/hooks';
 
-
-
-
-import { } from '@/components/extensions';
+// Dynamically import extension components to avoid SSR issues with WebSocket
+const ExtensionMarketplace = dynamic(() => import('@/components/extensions').then(mod => ({ default: mod.ExtensionMarketplace })), { ssr: false });
+const ExtensionManager = dynamic(() => import('@/components/extensions').then(mod => ({ default: mod.ExtensionManager })), { ssr: false });
+const ExtensionConfigurationPanel = dynamic(() => import('@/components/extensions').then(mod => ({ default: mod.ExtensionConfigurationPanel })), { ssr: false });
+const ExtensionDebugger = dynamic(() => import('@/components/extensions').then(mod => ({ default: mod.ExtensionDebugger })), { ssr: false });
+const ExtensionPerformanceMonitor = dynamic(() => import('@/components/extensions').then(mod => ({ default: mod.ExtensionPerformanceMonitor })), { ssr: false });
 
 export default function ExtensionTestPage() {
   const [activeTab, setActiveTab] = useState('statuses');
