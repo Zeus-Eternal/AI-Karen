@@ -44,9 +44,16 @@ export interface SessionStatus {
 export type RoleKey = 'super_admin' | 'admin' | 'user';
 
 export class SessionTimeoutManager {
-  private adminUtils = getAdminDatabaseUtils();
+  private _adminUtils: ReturnType<typeof getAdminDatabaseUtils> | null = null;
   private cleanupInterval: NodeJS.Timeout | null = null;
   private sessionWarnings = new Map<string, NodeJS.Timeout>();
+
+  private get adminUtils() {
+    if (!this._adminUtils) {
+      this._adminUtils = getAdminDatabaseUtils();
+    }
+    return this._adminUtils;
+  }
 
   // Role-based timeout configurations (in seconds)
   private readonly TIMEOUT_CONFIG: Record<RoleKey, { timeout: number } & SessionTimeoutConfig> = {

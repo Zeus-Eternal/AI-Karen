@@ -104,9 +104,16 @@ function randomBytesHex(len: number): string {
 /* ------------------------------------------------------------------ */
 
 export class MfaManager {
-  private adminUtils = getAdminDatabaseUtils();
+  private _adminUtils: ReturnType<typeof getAdminDatabaseUtils> | null = null;
   private readonly APP_NAME = 'AI Karen Admin';
   private readonly ISSUER = 'AI Karen';
+
+  private get adminUtils() {
+    if (!this._adminUtils) {
+      this._adminUtils = getAdminDatabaseUtils();
+    }
+    return this._adminUtils;
+  }
 
   /**
    * Generate MFA setup data for a user
