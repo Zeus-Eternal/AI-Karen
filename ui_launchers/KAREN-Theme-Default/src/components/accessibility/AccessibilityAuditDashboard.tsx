@@ -16,7 +16,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-import { } from 'lucide-react';
+import {
+  RefreshCw,
+  AlertTriangle,
+  Download,
+  CheckCircle,
+  FileText,
+  XCircle,
+  Info,
+  Eye,
+  Keyboard,
+  Volume2,
+  TrendingUp
+} from 'lucide-react';
 // Types for accessibility audit data
 interface AccessibilityViolation {
   id: string;
@@ -206,7 +218,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
   };
   if (isLoading) {
     return (
-    <ErrorBoundary fallback={<div>Something went wrong in AccessibilityAuditDashboard</div>}>
+    <ErrorBoundary>
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="h-8 w-8 animate-spin " />
         <span className="ml-2">Loading accessibility audit data...</span>
@@ -322,6 +334,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
               <CardHeader>
                 <CardTitle>WCAG Compliance Scores</CardTitle>
                 <CardDescription>
+                  Compliance percentages for Web Content Accessibility Guidelines
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -360,6 +373,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
               <CardHeader>
                 <CardTitle>Accessibility Categories</CardTitle>
                 <CardDescription>
+                  Performance metrics across different accessibility areas
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -412,6 +426,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
             <CardHeader>
               <CardTitle>Top Violations</CardTitle>
               <CardDescription>
+                Most critical accessibility issues found in the application
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -449,6 +464,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
             <CardHeader>
               <CardTitle>Violation Trends</CardTitle>
               <CardDescription>
+                Historical tracking of accessibility violations over time
               </CardDescription>
             </CardHeader>
             <CardContent>

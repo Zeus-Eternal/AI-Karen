@@ -2,6 +2,11 @@
 
 import React from 'react';
 
+// Type stub for MemoryRow
+export interface MemoryRow {
+  [key: string]: any;
+}
+
 export default function MemoryGrid() {
   return (
     <div>

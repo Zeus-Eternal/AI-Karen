@@ -290,7 +290,7 @@ export function AdminDashboard({ className = "" }: AdminDashboardProps) {
   // RBAC gate (outside of fetch flow so we don't leak UI)
   if (!hasRole("admin")) {
     return (
-      <ErrorBoundary fallback={<div>Something went wrong in AdminDashboard</div>}>
+      <ErrorBoundary>
         <div className="flex items-center justify-center min-h-screen bg-gray-50">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
@@ -303,7 +303,7 @@ export function AdminDashboard({ className = "" }: AdminDashboardProps) {
 
   if (loading) {
     return (
-      <ErrorBoundary fallback={<div>Something went wrong in AdminDashboard</div>}>
+      <ErrorBoundary>
         <div className="flex items-center justify-center min-h-screen bg-gray-50">
           <div
             className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"
@@ -316,7 +316,7 @@ export function AdminDashboard({ className = "" }: AdminDashboardProps) {
   }
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in AdminDashboard</div>}>
+    <ErrorBoundary>
       <div className={`min-h-screen bg-gray-50 ${className}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}

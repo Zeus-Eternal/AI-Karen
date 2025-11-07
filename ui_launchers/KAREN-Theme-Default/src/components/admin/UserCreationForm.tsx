@@ -69,7 +69,7 @@ function safeTrim(v: string) {
 
 /* --------------------------------- View ---------------------------------- */
 
-export default function UserCreationForm({
+function UserCreationForm({
   onUserCreated,
   className = "",
 }: UserCreationFormProps) {
@@ -655,3 +655,6 @@ export default function UserCreationForm({
     </div>
   );
 }
+
+export { UserCreationForm };
+export default UserCreationForm;
