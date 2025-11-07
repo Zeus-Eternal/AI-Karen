@@ -4,7 +4,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-import { } from 'lucide-react';
+import { BarChart3, MessageSquare, Clock, Target, Activity, Brain, TrendingUp, Code } from 'lucide-react';
 
 import type { ChatMessage } from '@/components/ChatInterface';
 

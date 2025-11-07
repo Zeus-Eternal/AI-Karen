@@ -11,7 +11,7 @@ export interface Model {
   size: number;
   description: string;
   capabilities: string[];
-  status: 'local' | 'available' | 'downloading';
+  status: 'local' | 'available' | 'downloading' | 'incompatible' | 'error';
   download_progress?: number;
   metadata: Record<string, any>;
   local_path?: string;

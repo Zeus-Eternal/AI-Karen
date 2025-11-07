@@ -8,4 +8,3 @@ export { ChatInterface } from '@/components/ChatInterface';
 
 // Types
 export type { CopilotKitConfig, CopilotContextType } from './CopilotKitProvider';
-export type { AISuggestion, CopilotTextareaProps } from './CopilotTextarea';

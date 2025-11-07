@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import type { SetupStepProps } from '../SetupWizard';
 
-type SetupCompleteStepProps = SetupStepProps & {
+export type SetupCompleteStepProps = SetupStepProps & {
   onComplete: () => void | Promise<void>;
 };
 

@@ -59,7 +59,7 @@ import {
   doesModelMatchValue,
 } from "@/lib/model-utils";
 
-import type { Model } from "@/types/models";
+import type { Model } from "@/lib/model-utils";
 
 /* ------------------------------------------------------------------ */
 /* Types & Config                                                     */

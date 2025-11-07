@@ -546,9 +546,12 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
   // -----------------------------
   // JSX
+  // Error Fallback Component
+  const ErrorFallback = () => <div>Something went wrong in EnhancedChatInterface</div>;
+
   // -----------------------------
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in EnhancedChatInterface</div>}>
+    <ErrorBoundary fallback={ErrorFallback}>
       <div className={`flex flex-col h-full ${className}`} data-theme={theme} style={{ height }}>
         <ResizablePanelGroup direction="horizontal" className="flex-1">
           {/* Main Chat Area */}

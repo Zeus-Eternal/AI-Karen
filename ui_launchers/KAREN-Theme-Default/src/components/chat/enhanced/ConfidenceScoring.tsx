@@ -6,9 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
 
-import { } from 'lucide-react';
-
-import { } from '@/components/ui/tooltip';
+import { AlertTriangle, CheckCircle, Info, Minus, TrendingUp, TrendingDown, Target, Brain, Zap } from 'lucide-react';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 interface ConfidenceMetrics {
   overall: number;

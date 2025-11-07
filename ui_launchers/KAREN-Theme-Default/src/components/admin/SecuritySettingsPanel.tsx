@@ -557,6 +557,7 @@ export default function SecuritySettingsPanel() {
             </div>
           </CardTitle>
           <CardDescription>
+            Security settings and configuration
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -619,6 +620,7 @@ export default function SecuritySettingsPanel() {
             <Ban className="h-5 w-5 " />
           </CardTitle>
           <CardDescription>
+            Security settings and configuration
           </CardDescription>
         </CardHeader>
         <CardContent>
