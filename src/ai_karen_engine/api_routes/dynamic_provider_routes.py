@@ -14,7 +14,10 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from pydantic import BaseModel, ConfigDict, Field
+try:
+    from pydantic import BaseModel, ConfigDict, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
 from ai_karen_engine.integrations.dynamic_provider_system import get_dynamic_provider_manager
 from ai_karen_engine.integrations.llm_profile_system import (

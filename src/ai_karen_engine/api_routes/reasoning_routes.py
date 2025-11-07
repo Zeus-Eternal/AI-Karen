@@ -12,7 +12,10 @@ Production-ready with full observability and confidence scoring.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 from typing import Optional, Dict, Any, List, Literal
 from datetime import datetime
 from enum import Enum

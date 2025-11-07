@@ -11,7 +11,10 @@ from typing import Dict, Any, Optional
 from fastapi import APIRouter, Request, HTTPException, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr, Field
+try:
+    from pydantic import BaseModel, EmailStr, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, EmailStr, Field
 
 from ..services.production_auth_service import ProductionAuthService
 from ..core.services.base import ServiceConfig

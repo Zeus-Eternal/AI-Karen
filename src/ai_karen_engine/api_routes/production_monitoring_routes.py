@@ -10,7 +10,10 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Depends
-from pydantic import BaseModel
+try:
+    from pydantic import BaseModel
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel
 
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.services.production_monitoring_service import (

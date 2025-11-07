@@ -5,7 +5,10 @@ API routes for advanced formatting and structure optimization system.
 import logging
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
 from ..services.advanced_formatting_engine import (
     AdvancedFormattingEngine,

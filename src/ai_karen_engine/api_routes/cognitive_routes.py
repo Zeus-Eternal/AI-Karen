@@ -16,7 +16,10 @@ Production-ready with full RBAC, tenant isolation, and audit logging.
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 from typing import Optional, Dict, Any, List, Literal
 from datetime import datetime
 from enum import Enum

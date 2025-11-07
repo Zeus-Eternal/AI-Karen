@@ -9,7 +9,10 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import Field
+try:
+    from pydantic import Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import Field
 
 from ai_karen_engine.api_routes.unified_schemas import (
     ErrorHandler,

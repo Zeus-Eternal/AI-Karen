@@ -5,7 +5,10 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
 from ai_karen_engine.core.dependencies import AnalyticsService_Dep
 from ai_karen_engine.services.analytics_service import AnalyticsService

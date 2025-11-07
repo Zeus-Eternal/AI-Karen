@@ -11,7 +11,10 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-from pydantic import Field
+try:
+    from pydantic import Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import Field
 
 from ai_karen_engine.core.embedding_manager import EmbeddingManager
 from ai_karen_engine.core.milvus_client import MilvusClient

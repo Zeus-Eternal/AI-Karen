@@ -14,7 +14,10 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
-from pydantic import BaseModel, ConfigDict, Field
+try:
+    from pydantic import BaseModel, ConfigDict, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
 from ai_karen_engine.models.web_api_error_responses import WebAPIErrorCode
 from ai_karen_engine.services.llm_router import ProviderHealth

@@ -10,7 +10,10 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Body
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
 from ai_karen_engine.services.production_cache_service import get_cache_service
 from ai_karen_engine.services.model_library_cache_service import get_model_cache_service

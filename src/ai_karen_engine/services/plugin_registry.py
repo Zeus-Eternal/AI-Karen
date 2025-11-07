@@ -19,7 +19,10 @@ import uuid
 import importlib.util
 import hashlib
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+try:
+    from pydantic import BaseModel, ConfigDict, Field, field_validator
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field, field_validator
 
 logger = logging.getLogger(__name__)
 

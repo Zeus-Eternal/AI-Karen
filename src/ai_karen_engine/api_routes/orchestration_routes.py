@@ -17,7 +17,10 @@ from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+try:
+    from pydantic import BaseModel, ConfigDict, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 try:  # Python 3.11+

@@ -31,7 +31,10 @@ from concurrent.futures import (
     TimeoutError,
 )
 
-from pydantic import BaseModel, ConfigDict, Field, validator
+try:
+    from pydantic import BaseModel, ConfigDict, Field, validator
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field, validator
 
 from ai_karen_engine.services.plugin_registry import (
     PluginManifest,

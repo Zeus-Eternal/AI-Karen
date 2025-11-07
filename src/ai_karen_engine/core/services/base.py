@@ -5,7 +5,10 @@ Base service classes and interfaces for the AI Karen engine.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, List
 from enum import Enum
-from pydantic import BaseModel, ConfigDict
+try:
+    from pydantic import BaseModel, ConfigDict
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict
 import logging
 import asyncio
 from datetime import datetime

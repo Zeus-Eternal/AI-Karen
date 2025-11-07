@@ -14,7 +14,10 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query, Depends
 from fastapi.responses import Response, StreamingResponse
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 import io
 
 from ai_karen_engine.core.response.training_data_manager import (

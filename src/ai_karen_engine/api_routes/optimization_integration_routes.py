@@ -11,7 +11,10 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
 from ai_karen_engine.services.optimization_integration_orchestrator import (
     get_optimization_integration_orchestrator,
