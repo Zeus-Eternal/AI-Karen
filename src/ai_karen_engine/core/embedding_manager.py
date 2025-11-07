@@ -475,6 +475,29 @@ class EmbeddingManager:
             "lru_max_size": cache_info.maxsize
         }
     
+    def embed(self, text: str) -> List[float]:
+        """Synchronous wrapper for get_embedding (for compatibility with SR engine)."""
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is already running, use fallback sync methods
+                if self.model_loaded and self.model is not None:
+                    return self._compute_embedding(text)
+                else:
+                    return self._simple_embedding_fallback(text)
+            else:
+                return loop.run_until_complete(self.get_embedding(text))
+        except Exception:
+            # Fallback to sync methods if async fails
+            if self.model_loaded and self.model is not None:
+                try:
+                    return self._compute_embedding(text)
+                except Exception:
+                    return self._simple_embedding_fallback(text)
+            else:
+                return self._simple_embedding_fallback(text)
+
     def get_model_info(self) -> Dict[str, Any]:
         """Get information about the loaded model."""
         return {

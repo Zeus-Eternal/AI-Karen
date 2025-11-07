@@ -59,8 +59,8 @@ except Exception:  # pragma: no cover
     M_LAT = M_TASK = M_TOOL = _Noop()
 
 # ----- MCP client (tools) -----
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp import ClientSession, StdioServerParameters  # type: ignore[import-untyped]
+from mcp.client.stdio import stdio_client  # type: ignore[import-untyped]
 
 # ----- Kari: SR / ICE / LLM -----
 from ai_karen_engine.core.reasoning.soft_reasoning_engine import (
@@ -151,7 +151,7 @@ class KariLLMBackend:
         self.role = role
         self.model_alias = model_alias
         # Try Kari registry first
-        self.kari_llm: Optional[LLMUtils] = llm_registry.get_active() or LLMUtils()
+        self.kari_llm: Optional[LLMUtils] = llm_registry.get_active() or LLMUtils()  # type: ignore[assignment,attr-defined]
         self.direct_client: Optional[AsyncOpenAI] = None
 
         if ENABLE_EXTERNAL_WORKFLOWS:

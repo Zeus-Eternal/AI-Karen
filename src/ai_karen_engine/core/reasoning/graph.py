@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from ai_karen_engine.core.reasoning.ice_integration import (
-    KariICEWrapper,
+    PremiumICEWrapper,
     ICEWritebackPolicy,
     ReasoningTrace,
 )
@@ -48,9 +48,9 @@ class ReasoningGraph:
                 max_len_chars=5000,
             ),
         )
-        self.llm = llm or (llm_registry.get_active() or LLMUtils())
+        self.llm = llm or (llm_registry.get_active() or LLMUtils())  # type: ignore[attr-defined]
         self.policy = policy or ICEWritebackPolicy()
-        self._ice = KariICEWrapper(engine=self.engine, llm=self.llm, policy=self.policy)
+        self._ice = PremiumICEWrapper(sr=None, subengine=None, llm=self.llm, policy=self.policy)
 
         self._capsule_graph = CapsuleGraph() if enable_graph_mirroring else None
 

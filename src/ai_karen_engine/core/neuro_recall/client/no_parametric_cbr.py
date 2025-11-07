@@ -36,8 +36,8 @@ except Exception:
 
 # ---- MCP (Model Context Protocol) tools ----
 from contextlib import AsyncExitStack
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp import ClientSession, StdioServerParameters  # type: ignore[import-untyped]
+from mcp.client.stdio import stdio_client  # type: ignore[import-untyped]
 
 # ---- Local-first Kari engines (SR + ICE + LLM) ----
 from ai_karen_engine.core.reasoning.soft_reasoning_engine import (
@@ -181,7 +181,7 @@ class KariLLMBackend:
     def __init__(self, model_alias: str, role: str):
         self.model_alias = model_alias
         self.role = role
-        self.kari_llm: LLMUtils = llm_registry.get_active() or LLMUtils()
+        self.kari_llm: LLMUtils = llm_registry.get_active() or LLMUtils()  # type: ignore[assignment,attr-defined]
         self.direct: Optional[AsyncOpenAI] = None
         if ENABLE_EXTERNAL_WORKFLOWS:
             self.direct = AsyncOpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)
@@ -459,6 +459,7 @@ class HierarchicalClient:
         final_answer: str = ""
         latest_plan_json: str = ""
 
+        meta_content = ""
         for cycle in range(self.MAX_CYCLES):
             meta_reply = await self.meta_llm.chat(planner_msgs)
             meta_content = meta_reply["content"] or ""
@@ -519,7 +520,7 @@ class HierarchicalClient:
 class Judge:
     def __init__(self, model_alias: str):
         self.alias = model_alias
-        self.kari_llm: LLMUtils = llm_registry.get_active() or LLMUtils()
+        self.kari_llm: LLMUtils = llm_registry.get_active() or LLMUtils()  # type: ignore[assignment,attr-defined]
         self.direct: Optional[AsyncOpenAI] = None
         if ENABLE_EXTERNAL_WORKFLOWS:
             self.direct = AsyncOpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)

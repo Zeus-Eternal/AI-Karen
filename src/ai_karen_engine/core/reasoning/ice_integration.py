@@ -213,7 +213,7 @@ class PremiumICEWrapper:
         self._engine = SoftReasoningEngine()
         self.sr = sr or _SoftEngineAdapter(self._engine)
         self.subengine = subengine  # optional
-        self.llm = llm or (llm_registry.get_active() or LLMUtils())
+        self.llm = llm or (llm_registry.get_active() or LLMUtils())  # type: ignore[attr-defined]
         self.policy = policy or ICEWritebackPolicy()
         self.recall_strategy = recall_strategy
 
