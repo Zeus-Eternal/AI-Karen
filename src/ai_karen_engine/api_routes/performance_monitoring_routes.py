@@ -11,7 +11,10 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, HTTPException, Query, Body, Depends
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
 from ..services.response_performance_metrics import (
     performance_collector, 

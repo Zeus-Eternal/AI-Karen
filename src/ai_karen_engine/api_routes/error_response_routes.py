@@ -13,7 +13,10 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, ConfigDict
+try:
+    from pydantic import BaseModel, Field, ConfigDict
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field, ConfigDict
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded

@@ -11,7 +11,10 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from pydantic import BaseModel, Field, validator
+try:
+    from pydantic import BaseModel, Field, validator
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field, validator
 
 from ai_karen_engine.core.response.scheduler_manager import (
     SchedulerManager, AutonomousConfig, NotificationConfig, SafetyControls,

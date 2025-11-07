@@ -9,7 +9,10 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Depends
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
 from ..core.performance_metrics import (
     get_performance_monitoring_system,

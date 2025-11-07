@@ -24,7 +24,10 @@ except ImportError:
     YAML_AVAILABLE = False
     yaml = None
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+try:
+    from pydantic import BaseModel, ConfigDict, Field, ValidationError
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field, ValidationError
 
 from ai_karen_engine.utils.pydantic_migration import PydanticMigrationUtility
 
