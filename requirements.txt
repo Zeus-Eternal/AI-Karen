@@ -33,6 +33,7 @@ matplotlib
 neo4j
 PyJWT
 markdown
+pymilvus
 pytesseract
 fitz
 bs4
