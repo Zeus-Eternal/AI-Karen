@@ -350,6 +350,261 @@ When Prometheus is available, the module exports metrics:
 - `kari_ice_writebacks_total`: Writeback operations
 - `kari_ice_token_usage_total`: Approximate token usage
 
+## Human-Like Cognition
+
+The reasoning module now includes advanced human-like cognitive capabilities inspired by cognitive psychology and the Self-Refine paper (arXiv:2303.17651).
+
+### 8. Self-Refinement (`synthesis/self_refine.py`)
+
+Implements iterative refinement with self-feedback, mimicking how humans revise their work:
+
+**Key Features**:
+- **Iterative improvement**: Generate → Feedback → Refine → Repeat
+- **Self-critique**: Model evaluates its own output
+- **Multi-criteria evaluation**: Assess correctness, coherence, completeness, relevance
+- **Convergence detection**: Stop when quality threshold met or diminishing returns
+- **No additional training**: Works with existing LLMs
+
+```python
+from ai_karen_engine.core.reasoning import create_self_refiner
+
+refiner = create_self_refiner(max_iterations=5, min_quality_score=0.8)
+
+# Refine an output iteratively
+result = refiner.refine(
+    query="Explain quantum entanglement",
+    initial_output="Quantum entanglement is...",
+    criteria=["accuracy", "completeness", "clarity"]
+)
+
+print(f"Refined in {result.total_iterations} iterations")
+print(f"Quality improved from {result.initial_quality:.2f} to {result.final_quality:.2f}")
+print(f"Final output: {result.final_output}")
+```
+
+**Refinement Process**:
+1. Generate initial output (or use provided)
+2. Self-critique: Identify issues and generate feedback
+3. Apply refinement: Improve based on feedback
+4. Verify quality: Check if improvements meet threshold
+5. Repeat until convergence or max iterations
+
+### 9. Metacognition (`synthesis/metacognition.py`)
+
+Implements metacognitive monitoring for self-awareness of reasoning processes:
+
+**Cognitive States**:
+- **Confident**: High certainty in reasoning
+- **Uncertain**: Low certainty, need more information
+- **Confused**: Contradictory or unclear situation
+- **Exploring**: Actively seeking information
+- **Consolidating**: Integrating information
+- **Stuck**: Unable to progress
+
+**Reasoning Strategies**:
+- Analytical (step-by-step logic)
+- Intuitive (pattern-based)
+- Exploratory (broad search)
+- Focused (deep dive)
+- Comparative (compare alternatives)
+- Causal (causal chains)
+
+```python
+from ai_karen_engine.core.reasoning import MetacognitiveMonitor
+
+monitor = MetacognitiveMonitor()
+
+# Monitor reasoning process
+state = monitor.monitor_reasoning_process(
+    query="What causes inflation?",
+    current_output="Inflation is caused by...",
+    context=["Economic data from 2020-2024"]
+)
+
+print(f"Cognitive state: {state.cognitive_state}")
+print(f"Confidence: {state.confidence:.2f}")
+print(f"Certainty: {state.certainty:.2f}")
+print(f"Knowledge gaps: {state.knowledge_gaps}")
+
+# Select appropriate strategy
+strategy = monitor.select_strategy(query, current_state=state)
+print(f"Recommended strategy: {strategy.value}")
+
+# Check if more information needed
+should_seek, what = monitor.should_seek_more_information()
+if should_seek:
+    print(f"Should seek: {what}")
+
+# Check if self-correction needed
+should_correct, reason = monitor.should_self_correct(current_output, quality_score=0.65)
+if should_correct:
+    print(f"Should self-correct: {reason}")
+
+# Get performance reflection
+reflection = monitor.get_reflection()
+print(f"Success rate: {reflection['success_rate']:.2%}")
+print(f"Best strategy: {reflection['best_strategy']}")
+```
+
+**Capabilities**:
+- Self-monitoring of confidence and certainty
+- Knowledge gap identification
+- Strategy selection based on task and state
+- Performance tracking and adaptation
+- Self-correction triggers
+
+### 10. Cognitive Orchestrator (`synthesis/cognitive_orchestrator.py`)
+
+High-level orchestrator that integrates all cognitive subsystems into a human-like reasoning flow:
+
+**Cognitive Modes**:
+- **Fast**: Quick, intuitive processing
+- **Deliberate**: Slow, analytical processing
+- **Adaptive**: Switch between fast and deliberate
+- **Reflective**: Include self-reflection
+- **Exploratory**: Broad information gathering
+
+**Cognitive Flow**:
+1. **Task Understanding**: Analyze query and select strategy
+2. **Information Gathering**: Retrieve relevant context
+3. **Initial Generation**: Generate first response
+4. **Metacognitive Monitoring**: Assess cognitive state
+5. **Self-Refinement**: Iteratively improve if needed
+6. **Quality Verification**: Verify final output quality
+7. **Learning**: Update performance metrics
+
+```python
+from ai_karen_engine.core.reasoning import (
+    create_cognitive_orchestrator,
+    CognitiveTask,
+    CognitiveMode
+)
+
+# Create orchestrator (auto-initializes all subsystems)
+orchestrator = create_cognitive_orchestrator(
+    enable_self_refine=True,
+    enable_metacognition=True,
+    enable_soft_reasoning=True,
+    max_refinement_iterations=3,
+    quality_threshold=0.75
+)
+
+# Process a complex task
+task = CognitiveTask(
+    query="Analyze the long-term economic impacts of AI automation",
+    task_type="analytical",
+    requires_certainty=True,
+    requires_explanation=True,
+    priority=8
+)
+
+response = orchestrator.process(task, mode=CognitiveMode.REFLECTIVE)
+
+print(f"Output: {response.output}")
+print(f"Confidence: {response.confidence:.2%}")
+print(f"Quality: {response.quality_score:.2f}")
+print(f"Strategy: {response.strategy_used}")
+print(f"Refinement iterations: {response.refinement_iterations}")
+print(f"Reasoning trace: {response.reasoning_trace}")
+print(f"Knowledge gaps: {response.knowledge_gaps}")
+
+# Simplified interface
+answer = orchestrator.process_simple(
+    "What is the capital of France?",
+    requires_certainty=True
+)
+
+# Get reflection on performance
+reflection = orchestrator.reflect()
+print(f"Recent performance: {reflection}")
+```
+
+**Integration Example - Full Human-Like Reasoning Pipeline**:
+
+```python
+from ai_karen_engine.core.reasoning import (
+    create_cognitive_orchestrator,
+    CognitiveTask,
+    CognitiveMode,
+)
+
+# Initialize with all capabilities
+orchestrator = create_cognitive_orchestrator(
+    enable_self_refine=True,
+    enable_metacognition=True,
+    enable_soft_reasoning=True,
+    enable_causal_reasoning=True,
+    enable_learning=True,
+)
+
+# Process complex reasoning task
+task = CognitiveTask(
+    query="Why did the software deployment fail, and how can we prevent it?",
+    context=[
+        "Deployment at 2 AM on Friday",
+        "Load balancer config changed",
+        "Database migration included",
+    ],
+    requires_certainty=True,
+    requires_explanation=True,
+)
+
+# Adaptive mode: automatically chooses fast or deliberate processing
+response = orchestrator.process(task, mode=CognitiveMode.ADAPTIVE)
+
+# The orchestrator:
+# 1. Selected "causal" strategy (detected "why" question)
+# 2. Gathered relevant information from soft reasoning engine
+# 3. Generated initial causal analysis
+# 4. Monitored confidence → low confidence detected
+# 5. Triggered self-refinement (3 iterations)
+# 6. Verified quality → passed threshold
+# 7. Updated performance metrics for learning
+
+print("=" * 60)
+print("COGNITIVE RESPONSE")
+print("=" * 60)
+print(f"\nAnswer:\n{response.output}\n")
+print(f"Confidence: {response.confidence:.2%}")
+print(f"Certainty: {response.certainty:.2%}")
+print(f"Quality Score: {response.quality_score:.2f}")
+print(f"Processing Time: {response.processing_time:.2f}s")
+print(f"\nMetacognitive State: {response.metacognitive_state}")
+print(f"Strategy Used: {response.strategy_used}")
+print(f"Refinement Iterations: {response.refinement_iterations}")
+print(f"\nReasoning Trace:")
+for step in response.reasoning_trace:
+    print(f"  • {step}")
+
+if response.knowledge_gaps:
+    print(f"\nIdentified Knowledge Gaps:")
+    for gap in response.knowledge_gaps:
+        print(f"  - {gap}")
+```
+
+### Human-Like Cognition Research Alignment
+
+| Human Cognitive Process | Implementation | Module |
+|------------------------|----------------|---------|
+| **Iterative Revision** | Self-Refine iterative loop | `synthesis/self_refine.py` |
+| **Self-Awareness** | Metacognitive monitoring | `synthesis/metacognition.py` |
+| **Strategy Selection** | Adaptive strategy choice | `synthesis/metacognition.py` |
+| **Self-Critique** | Feedback generation | `synthesis/self_refine.py` |
+| **Uncertainty Recognition** | Confidence/certainty assessment | `synthesis/metacognition.py` |
+| **Learning from Experience** | Performance tracking & adaptation | `synthesis/metacognition.py` |
+| **Executive Function** | Cognitive orchestration | `synthesis/cognitive_orchestrator.py` |
+| **Dual Process (System 1/2)** | Fast vs Deliberate modes | `synthesis/cognitive_orchestrator.py` |
+
+### Benefits of Human-Like Cognition
+
+1. **Improved Quality**: Iterative refinement produces higher-quality outputs
+2. **Adaptive Processing**: Chooses appropriate depth based on task complexity
+3. **Self-Awareness**: Recognizes limitations and seeks additional information
+4. **Efficient Resource Use**: Fast mode for simple tasks, deliberate for complex ones
+5. **Continuous Learning**: Adapts strategies based on performance history
+6. **Transparency**: Provides reasoning traces and identifies knowledge gaps
+7. **Robustness**: Self-correction mechanisms catch and fix errors
+
 ## Testing
 
 ```bash
@@ -360,6 +615,9 @@ pytest tests/core/reasoning/
 pytest tests/core/reasoning/test_perturbation.py
 pytest tests/core/reasoning/test_optimization.py
 pytest tests/core/reasoning/test_verifier.py
+pytest tests/core/reasoning/test_self_refine.py
+pytest tests/core/reasoning/test_metacognition.py
+pytest tests/core/reasoning/test_cognitive_orchestrator.py
 ```
 
 ## References
@@ -367,9 +625,15 @@ pytest tests/core/reasoning/test_verifier.py
 1. **Soft Reasoning Paper**: [OpenReview](https://openreview.net/forum?id=4gWE7CMOlH)
    - "Soft Reasoning: Navigating Solution Spaces in Large Language Models through Controlled Embedding Exploration"
 
-2. **Bayesian Optimization**: Shahriari et al., "Taking the Human Out of the Loop: A Review of Bayesian Optimization"
+2. **Self-Refine Paper**: [arXiv:2303.17651](https://arxiv.org/abs/2303.17651)
+   - Madaan et al., "Self-Refine: Iterative Refinement with Self-Feedback"
+   - Implements iterative refinement mimicking human revision processes
 
-3. **Causal Inference**: Pearl, "Causality: Models, Reasoning, and Inference"
+3. **Bayesian Optimization**: Shahriari et al., "Taking the Human Out of the Loop: A Review of Bayesian Optimization"
+
+4. **Causal Inference**: Pearl, "Causality: Models, Reasoning, and Inference"
+
+5. **Metacognition Research**: Flavell, "Metacognition and Cognitive Monitoring: A New Area of Cognitive-Developmental Inquiry"
 
 ## License
 

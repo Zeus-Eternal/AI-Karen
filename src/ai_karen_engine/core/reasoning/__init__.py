@@ -55,6 +55,25 @@ from ai_karen_engine.core.reasoning.synthesis import (
     SynthesisSubEngine,
     LangGraphSubEngine,
     DSPySubEngine,
+    # Human-Like Cognition
+    SelfRefiner,
+    RefinementConfig,
+    RefinementResult,
+    FeedbackPoint,
+    RefinementStage,
+    create_self_refiner,
+    MetacognitiveMonitor,
+    MetacognitiveState,
+    MetacognitiveConfig,
+    CognitiveState,
+    ReasoningStrategy,
+    PerformanceMetrics,
+    CognitiveOrchestrator,
+    CognitiveConfig,
+    CognitiveTask,
+    CognitiveResponse,
+    CognitiveMode,
+    create_cognitive_orchestrator,
 )
 
 # Retrieval adapters
@@ -117,6 +136,26 @@ __all__ = [
     "SynthesisSubEngine",
     "LangGraphSubEngine",
     "DSPySubEngine",
+
+    # Human-Like Cognition
+    "SelfRefiner",
+    "RefinementConfig",
+    "RefinementResult",
+    "FeedbackPoint",
+    "RefinementStage",
+    "create_self_refiner",
+    "MetacognitiveMonitor",
+    "MetacognitiveState",
+    "MetacognitiveConfig",
+    "CognitiveState",
+    "ReasoningStrategy",
+    "PerformanceMetrics",
+    "CognitiveOrchestrator",
+    "CognitiveConfig",
+    "CognitiveTask",
+    "CognitiveResponse",
+    "CognitiveMode",
+    "create_cognitive_orchestrator",
 
     # Retrieval
     "SRRetriever",
