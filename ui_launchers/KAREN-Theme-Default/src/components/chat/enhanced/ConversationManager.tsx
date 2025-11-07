@@ -490,8 +490,11 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
     );
   };
 
+  // Error Fallback Component
+  const ErrorFallback = () => <div className="p-4 text-sm">Something went wrong in ConversationManager</div>;
+
   return (
-    <ErrorBoundary fallback={<div className="p-4 text-sm">Something went wrong in ConversationManager</div>}>
+    <ErrorBoundary fallback={ErrorFallback}>
       <Card className={`h-full flex flex-col ${className}`}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">

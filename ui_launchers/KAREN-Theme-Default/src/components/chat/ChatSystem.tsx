@@ -11,8 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-// lucide-react imports removed - not needed
+import { MessageSquare, Grid3X3, BarChart3, Sparkles, Brain, Bot, Zap, Database } from 'lucide-react';
 import { ChatBubble } from './ChatBubble';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';

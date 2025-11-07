@@ -42,23 +42,23 @@ interface SpeechRecognitionAlternative {
   confidence: number;
 }
 
-interface SpeechRecognition extends EventTarget {
+interface ISpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
   start(): void;
   stop(): void;
   abort(): void;
-  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onerror: ((this: SpeechRecognition, ev: any) => any) | null;
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  onstart: ((this: ISpeechRecognition, ev: Event) => any) | null;
+  onend: ((this: ISpeechRecognition, ev: Event) => any) | null;
+  onerror: ((this: ISpeechRecognition, ev: any) => any) | null;
+  onresult: ((this: ISpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
 }
 
 declare global {
   interface Window {
-    SpeechRecognition?: new () => SpeechRecognition;
-    webkitSpeechRecognition?: new () => SpeechRecognition;
+    SpeechRecognition?: new () => ISpeechRecognition;
+    webkitSpeechRecognition?: new () => ISpeechRecognition;
   }
 }
 
@@ -80,7 +80,7 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   const [confidence, setConfidence] = useState(0);
   const [permissionDenied, setPermissionDenied] = useState(false);
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<ISpeechRecognition | null>(null);
 
   // SSR guard
   const getSR = useCallback(() => {

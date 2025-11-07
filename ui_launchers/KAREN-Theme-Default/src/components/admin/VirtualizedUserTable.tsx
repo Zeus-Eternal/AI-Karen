@@ -18,7 +18,9 @@ import React, {
   useState,
 } from "react";
 import { FixedSizeList as List, ListOnScrollProps } from "react-window";
-import AutoSizer from "react-virtualized-auto-sizer";
+// TODO: Install react-virtualized-auto-sizer package
+// import AutoSizer from "react-virtualized-auto-sizer";
+const AutoSizer: any = ({ children }: any) => children({ height: 600, width: 800 });
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/hooks/useRole";
 import {

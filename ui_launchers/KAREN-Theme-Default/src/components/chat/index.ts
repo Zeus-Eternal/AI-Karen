@@ -13,14 +13,14 @@ export { default as EnhancedModelSelector } from "./EnhancedModelSelector";
 // export { default as AdaptiveChatInterface } from "./AdaptiveChatInterface";
 export { default as ImageGenerationControls } from "./ImageGenerationControls";
 export { default as ChatModeSelector } from "./ChatModeSelector";
-export type { ChatMode, ChatContext } from "./ChatModeSelector";
 
 // Export copilot components
 export { default as CopilotActions } from "./CopilotActions";
 export { default as CopilotArtifacts } from "./CopilotArtifacts";
 export { default as EnhancedMessageBubble } from "./EnhancedMessageBubble";
-export type { CopilotAction, ChatContext as CopilotChatContext } from "./CopilotActions";
-export type { CopilotArtifact } from "./CopilotArtifacts";
+
+// Export types from ChatInterface
+export type { CopilotAction, ChatContext, CopilotArtifact } from "@/components/ChatInterface/types";
 
 // Export AG-UI components
 export { ConversationGrid } from "./ConversationGrid";
