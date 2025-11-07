@@ -20,15 +20,23 @@ BaseModel = import_pydantic("BaseModel")
 
 router = APIRouter()
 
-# Shared DuckDB client instance for dependency injection (for backward compatibility)
-_db_client = DuckDBClient()
+# Shared DuckDB client instance for dependency injection (lazy loaded)
+_db_client: Optional[DuckDBClient] = None
 
 # Global auth service instance (will be initialized lazily)
 auth_service_instance: AuthService = None
 
 
 def get_db() -> DuckDBClient:
-    """Dependency that provides a DuckDB client instance."""
+    """
+    Dependency that provides a DuckDB client instance (lazy loaded).
+
+    Client is only instantiated on first request, not at module import time.
+    This prevents unnecessary database initialization at server startup.
+    """
+    global _db_client
+    if _db_client is None:
+        _db_client = DuckDBClient()
     return _db_client
 
 

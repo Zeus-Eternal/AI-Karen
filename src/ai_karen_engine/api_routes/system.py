@@ -12,7 +12,21 @@ BaseModel = import_pydantic("BaseModel")
 
 router = APIRouter()
 
-db = DuckDBClient()
+# Lazy-loaded DuckDB client (not instantiated at module import)
+_db_client: Optional[DuckDBClient] = None
+
+def _get_db() -> DuckDBClient:
+    """
+    Get or create DuckDB client (lazy loaded).
+
+    Client is only instantiated on first request, not at module import time.
+    This prevents unnecessary database initialization at server startup.
+    """
+    global _db_client
+    if _db_client is None:
+        _db_client = DuckDBClient()
+    return _db_client
+
 ANNOUNCE_PATH = Path(__file__).resolve().parents[3] / "data" / "announcements.json"
 
 
@@ -46,6 +60,7 @@ def list_announcements(limit: int = 10) -> List[Announcement]:
 
 @router.get("/users/{user_id}/profile", response_model=UserProfile)
 def get_profile(user_id: str) -> UserProfile:
+    db = _get_db()  # Lazy load on first use
     profile = db.get_profile(user_id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
