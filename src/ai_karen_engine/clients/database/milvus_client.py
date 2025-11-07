@@ -1,11 +1,14 @@
 """
 MilvusClient: Handles all vector memory for Kari via Milvus 2.x (pymilvus).
 Persona embeddings, upserts, deletes, recall, cosine similarity.
-Updated with async contract compatibility methods.
+Updated with async contract compatibility methods and lazy loading for performance.
 """
 
 import queue
+import os
+import logging
 from contextlib import contextmanager
+from typing import Optional
 
 import numpy as np
 from pymilvus import (
@@ -18,6 +21,8 @@ from pymilvus import (
 )
 
 from ai_karen_engine.core.embedding_manager import record_metric
+
+logger = logging.getLogger(__name__)
 
 
 class MilvusClient:
@@ -34,11 +39,33 @@ class MilvusClient:
         self._host = host
         self._port = port
         self.pool_size = pool_size
-        self._pool: queue.Queue[str] = queue.Queue(maxsize=pool_size)
-        self._connect()
-        self._ensure_collection()
+        self._pool: Optional[queue.Queue[str]] = None
+        self._connected = False
+
+        # Check if vector DB is disabled via environment variable
+        self._enabled = os.getenv("KARI_ENABLE_VECTOR_DB", "true").lower() not in ("false", "0", "no")
+        if not self._enabled:
+            logger.info("Milvus Vector DB disabled via KARI_ENABLE_VECTOR_DB environment variable")
+
+        # Lazy loading: DO NOT connect in __init__
+        # Connections will be established on first use via _ensure_connected()
+
+    def _ensure_connected(self) -> None:
+        """Lazy connection - only connect when first used"""
+        if not self._enabled:
+            raise RuntimeError("Milvus Vector DB is disabled. Set KARI_ENABLE_VECTOR_DB=true to enable.")
+
+        if not self._connected:
+            logger.info(f"Initializing Milvus connection pool to {self._host}:{self._port}")
+            self._connect()
+            self._ensure_collection()
+            self._connected = True
+            logger.info(f"Milvus client connected successfully with {self.pool_size} connections")
 
     def _connect(self) -> None:
+        if self._pool is None:
+            self._pool = queue.Queue(maxsize=self.pool_size)
+
         for i in range(self.pool_size):
             alias = f"{self.collection_name}_conn_{i}"
             connections.connect(alias=alias, host=self._host, port=self._port)
@@ -46,6 +73,7 @@ class MilvusClient:
 
     @contextmanager
     def _using(self):
+        self._ensure_connected()  # Lazy connect on first use
         alias = self._pool.get()
         try:
             yield alias
@@ -189,11 +217,28 @@ class MilvusClient:
 
     # Health check
     def health(self):
+        """
+        Check Milvus health status.
+        Returns True if healthy or if not yet connected (lazy mode).
+        Only returns False if connection exists but is unhealthy.
+        """
         try:
+            # If disabled, return False to indicate it's not available
+            if not self._enabled:
+                return False
+
+            # If not yet connected, return True (healthy = not yet needed)
+            # This prevents health checks from triggering lazy connection
+            if not self._connected:
+                logger.debug("Milvus client not yet connected (lazy mode) - reporting as healthy")
+                return True
+
+            # If connected, perform actual health check
             with self._using() as alias:
                 col = Collection(self.collection_name, using=alias)
                 col.load()
                 record_metric("milvus_pool_utilization", self.pool_utilization())
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Milvus health check failed: {e}")
             return False

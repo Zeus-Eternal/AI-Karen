@@ -25,6 +25,12 @@ from ai_karen_engine.core.reasoning.soft_reasoning_engine import SoftReasoningEn
 from ai_karen_engine.integrations.llm_utils import LLMUtils
 from ai_karen_engine.integrations.llm_registry import registry as llm_registry
 
+# Optional memory_hub for cross-modal retrieval
+try:
+    from ai_karen_engine.core import memory_hub
+except ImportError:
+    memory_hub = None  # type: ignore
+
 logger = logging.getLogger("ai_karen.reasoning.ice_premium")
 
 # ---- Prometheus (graceful if not installed) ----
@@ -334,10 +340,9 @@ class PremiumICEWrapper:
     # ---------- Cross-modal (optional hook) ----------
 
     def _cross_modal(self, text: str) -> List[Dict[str, Any]]:
-        if not self.policy.enable_cross_modal:
+        if not self.policy.enable_cross_modal or memory_hub is None:
             return []
         try:
-            from ai_karen_engine.core import memory_hub  # optional local adapter
             matches = memory_hub.get_cross_modal(text) or []
             thr = float(self.policy.cross_modal_confidence_threshold)
             return [m for m in matches if float(m.get("confidence", 1.0)) >= thr]

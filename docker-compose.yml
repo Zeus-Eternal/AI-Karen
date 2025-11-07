@@ -281,6 +281,10 @@ services:
       MILVUS_PORT: "19530"
       VECTOR_DB_HOST: "milvus"
       VECTOR_DB_PORT: "19530"
+      # Enable/disable database services (set to false for faster development)
+      KARI_ENABLE_VECTOR_DB: "true"  # Milvus vector database
+      KARI_ENABLE_ELASTICSEARCH: "true"  # Elasticsearch for document search
+      KARI_ENABLE_DUCKDB: "true"  # DuckDB for local analytics
       # Wait for Milvus to report healthy before enabling vector features (seconds)
       MILVUS_HEALTH_WAIT_SECONDS: "180"
       MILVUS_HEALTH_HOST: "milvus"

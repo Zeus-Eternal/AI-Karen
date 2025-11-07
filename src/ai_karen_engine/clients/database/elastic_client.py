@@ -1,8 +1,12 @@
-"""Lightweight ElasticSearch client with optional in-memory fallback."""
+"""Lightweight ElasticSearch client with optional in-memory fallback and lazy loading."""
 
 from __future__ import annotations
 
+import os
+import logging
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 _METRICS: Dict[str, int] = {
     "document_index_total": 0,
@@ -37,7 +41,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 class ElasticClient:
-    """Simple helper for indexing and searching text documents."""
+    """Simple helper for indexing and searching text documents with lazy loading."""
 
     def __init__(
         self,
@@ -54,14 +58,47 @@ class ElasticClient:
         self.user = user
         self.password = password
         self.use_memory = use_memory or Elasticsearch is None
-        if not self.use_memory:
-            auth = (user, password) if user else None
-            self.es = Elasticsearch(
-                [{"host": host, "port": port, "scheme": "http"}],
+        self._es: Optional[Any] = None  # Lazy loaded
+        self._docs: List[Dict[str, Any]] = []
+        self._connected = False
+
+        # Check if Elasticsearch is disabled via environment variable
+        self._enabled = os.getenv("KARI_ENABLE_ELASTICSEARCH", "true").lower() not in ("false", "0", "no")
+        if not self._enabled:
+            logger.info("Elasticsearch disabled via KARI_ENABLE_ELASTICSEARCH environment variable")
+            self.use_memory = True  # Fall back to in-memory mode
+
+        # Lazy loading: DO NOT connect in __init__
+        # Connection will be established on first use via _ensure_connected()
+
+    def _ensure_connected(self) -> None:
+        """Lazy connection - only connect when first used"""
+        if self.use_memory or self._connected:
+            return
+
+        if not self._enabled:
+            logger.warning("Elasticsearch is disabled. Using in-memory fallback.")
+            self.use_memory = True
+            return
+
+        try:
+            logger.info(f"Initializing Elasticsearch connection to {self.host}:{self.port}")
+            auth = (self.user, self.password) if self.user else None
+            self._es = Elasticsearch(
+                [{"host": self.host, "port": self.port, "scheme": "http"}],
                 basic_auth=auth,
             )
-        else:
-            self._docs: List[Dict[str, Any]] = []
+            self._connected = True
+            logger.info("Elasticsearch client connected successfully")
+        except Exception as e:
+            logger.error(f"Failed to connect to Elasticsearch: {e}. Falling back to in-memory mode.")
+            self.use_memory = True
+
+    @property
+    def es(self) -> Any:
+        """Get Elasticsearch client, connecting lazily if needed"""
+        self._ensure_connected()
+        return self._es
 
     # ------------------------------------------------------------------
     def ensure_index(self) -> None:
