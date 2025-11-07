@@ -297,3 +297,16 @@ export class DatabaseQueryOptimizer {
     this.queryPlans.clear();
   }
 }
+
+// Singleton instance
+let instance: DatabaseQueryOptimizer | null = null;
+
+/**
+ * Get or create the singleton DatabaseQueryOptimizer instance
+ */
+export function getDatabaseQueryOptimizer(config?: QueryOptimizationConfig): DatabaseQueryOptimizer {
+  if (!instance) {
+    instance = new DatabaseQueryOptimizer(config);
+  }
+  return instance;
+}

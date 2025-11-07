@@ -1,2 +1,2 @@
 // Extension debugging components
-export { default as ExtensionDebugger } from './ExtensionDebugger';
+export { ExtensionDebugger } from './ExtensionDebugger';

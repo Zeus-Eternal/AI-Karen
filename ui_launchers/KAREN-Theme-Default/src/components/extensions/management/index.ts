@@ -1,2 +1,2 @@
 // Extension management components
-export { default as ExtensionManager } from './ExtensionManager';
+export { ExtensionManager } from './ExtensionManager';

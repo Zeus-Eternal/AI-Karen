@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { CopilotKit } from '@copilotkit/react-core';
-import { CopilotSidebar } from '@copilotkit/react-ui';
+// import { CopilotSidebar } from '@copilotkit/react-ui'; // Not available in current version
 import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -359,9 +359,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
     return (
       <CopilotContext.Provider value={contextValue}>
         <CopilotKit {...copilotKitProps}>
-          <CopilotSidebar>
-            {children}
-          </CopilotSidebar>
+          {children}
         </CopilotKit>
       </CopilotContext.Provider>
     );
