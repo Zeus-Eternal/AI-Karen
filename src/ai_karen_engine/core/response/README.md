@@ -366,6 +366,259 @@ from ai_karen_engine.core.response import (
 )
 ```
 
+## Iterative Refinement Pipeline
+
+**New in v1.0**: Self-refinement for higher quality responses based on research papers (Self-Refine, ARIES, Thinking LLMs).
+
+### Overview
+
+The iterative refinement pipeline implements a 5-stage process:
+
+1. **Initial Generation**: Generate base response
+2. **Coherence Check**: Verify logical flow and relevance
+3. **Persona Alignment**: Match tone and style to persona
+4. **Memory Consistency**: Ensure alignment with context
+5. **Quality Verification**: Final quality assessment
+
+```python
+from ai_karen_engine.core.response import (
+    IterativeRefinementPipeline,
+    create_refinement_pipeline,
+    RefinementConfig,
+)
+
+# Create pipeline
+pipeline = create_refinement_pipeline(
+    generator=my_llm_client,
+    memory_manager=my_memory,
+    max_iterations=5,
+    convergence_threshold=0.85
+)
+
+# Refine response
+result = await pipeline.refine(
+    request=response_request,
+    initial_response="Initial draft...",
+    memory_context=retrieved_memories
+)
+
+# Check results
+print(f"Iterations: {result.total_iterations}")
+print(f"Quality improved: {result.quality_improvement:.2f}")
+print(f"Converged: {result.converged}")
+print(f"Final: {result.final_response}")
+```
+
+### Refinement Stages
+
+Each stage can be enabled/disabled:
+
+```python
+config = RefinementConfig(
+    max_iterations=5,
+    convergence_threshold=0.85,
+
+    # Enable/disable stages
+    enable_coherence_check=True,
+    enable_persona_alignment=True,
+    enable_memory_consistency=True,
+    enable_quality_verification=True,
+
+    # Stage weights
+    coherence_weight=0.35,
+    persona_weight=0.25,
+    memory_weight=0.25,
+    verification_weight=0.15,
+)
+```
+
+### Convergence Detection
+
+The pipeline automatically stops when:
+
+1. **Quality threshold met**: Overall quality > convergence_threshold
+2. **Minimal improvement**: Quality improvement < min_improvement
+3. **Max iterations**: Reached maximum iterations
+4. **Timeout**: Exceeded total_timeout_ms
+
+### Integration with Reasoning
+
+The refinement pipeline integrates with the reasoning module:
+
+```python
+# Uses SelfRefiner from reasoning module
+from ai_karen_engine.core.reasoning import SelfRefiner
+
+# Uses MetacognitiveMonitor for cognitive state tracking
+from ai_karen_engine.core.reasoning import MetacognitiveMonitor
+
+# Automatically integrated in IterativeRefinementPipeline
+```
+
+## Autonomous Learning Loop
+
+**New in v1.0**: Continuous learning from feedback to improve response quality over time.
+
+### Overview
+
+The autonomous learner:
+
+1. **Collects Feedback**: Explicit and implicit signals
+2. **Detects Patterns**: Analyzes successful/failed responses
+3. **Makes Decisions**: Determines adaptations
+4. **Applies Changes**: Updates strategies and models
+
+```python
+from ai_karen_engine.core.response import (
+    AutonomousLearner,
+    create_autonomous_learner,
+    FeedbackType,
+)
+
+# Create learner
+learner = create_autonomous_learner(
+    memory_manager=my_memory,
+    enable_auto_adaptation=True
+)
+
+# Record feedback
+await learner.record_feedback(
+    response=formatted_response,
+    feedback_type=FeedbackType.EXPLICIT_POSITIVE,
+    user_satisfaction=0.9,
+    conversation_continued=True,
+    task_completed=True
+)
+
+# Trigger analysis and adaptation
+adaptations = await learner.analyze_and_adapt()
+
+# Check statistics
+stats = learner.get_statistics()
+print(f"Total feedback: {stats['total_feedback']}")
+print(f"Patterns learned: {stats['patterns_learned']}")
+print(f"Adaptations made: {stats['adaptations_made']}")
+```
+
+### Feedback Types
+
+```python
+class FeedbackType(str, Enum):
+    EXPLICIT_POSITIVE = "explicit_positive"      # User liked it
+    EXPLICIT_NEGATIVE = "explicit_negative"      # User disliked it
+    IMPLICIT_POSITIVE = "implicit_positive"      # Continued conversation
+    IMPLICIT_NEGATIVE = "implicit_negative"      # Rephrased question
+    CORRECTION = "correction"                    # User corrected response
+    CLARIFICATION_REQUEST = "clarification_request"
+    ACCEPTANCE = "acceptance"                    # User acted on response
+```
+
+### Learning Patterns
+
+The learner automatically detects patterns:
+
+```python
+# Example detected pattern
+{
+    "pattern_id": "pattern_optimize_code_technical_1234",
+    "pattern_type": "intent_persona",
+    "conditions": {
+        "intent": "optimize_code",
+        "persona": "technical"
+    },
+    "successful_features": [
+        "high_quality",
+        "high_relevance",
+        "engaging"
+    ],
+    "success_rate": 0.87,
+    "confidence": 0.92
+}
+```
+
+### Adaptation Strategies
+
+```python
+class AdaptationStrategy(str, Enum):
+    REINFORCE_SUCCESS = "reinforce_success"          # Amplify successful patterns
+    AVOID_FAILURE = "avoid_failure"                  # Reduce failed patterns
+    EXPLORE_ALTERNATIVE = "explore_alternative"      # Try new approaches
+    REFINE_EXISTING = "refine_existing"              # Fine-tune current approach
+    MAINTAIN = "maintain"                            # Keep current strategy
+```
+
+### Integration with Memory
+
+Feedback and patterns are stored in the unified memory system:
+
+```python
+# Feedback stored as episodic memories
+# Patterns stored as semantic memories
+# Automatically persisted if memory_manager provided
+
+config = LearningConfig(
+    store_feedback_in_memory=True,
+    feedback_memory_ttl_days=90,
+    store_patterns_in_memory=True
+)
+```
+
+## Complete Pipeline with Refinement and Learning
+
+```python
+from ai_karen_engine.core.response import (
+    ResponseOrchestrator,
+    create_refinement_pipeline,
+    create_autonomous_learner,
+    ResponseRequest,
+    create_request,
+    FeedbackType,
+)
+
+# Initialize components
+orchestrator = create_response_orchestrator(...)
+refinement_pipeline = create_refinement_pipeline(...)
+learner = create_autonomous_learner(...)
+
+# 1. Generate initial response
+request = create_request(
+    user_text="How do I optimize this code?",
+    persona=PersonaType.TECHNICAL
+)
+
+initial_response = orchestrator.respond(request.user_text)
+
+# 2. Refine response
+refined_result = await refinement_pipeline.refine(
+    request=request,
+    initial_response=initial_response["text"],
+    memory_context=initial_response.get("memory_context")
+)
+
+# 3. Create final formatted response
+final_response = FormattedResponse(
+    response_id=make_response_id(),
+    request_id=request.request_id,
+    text=refined_result.final_response,
+    intent=initial_response["intent"],
+    sentiment=initial_response["sentiment"],
+    persona=request.persona,
+    # ... other fields
+)
+
+# 4. Collect user feedback (later)
+await learner.record_feedback(
+    response=final_response,
+    feedback_type=FeedbackType.IMPLICIT_POSITIVE,
+    conversation_continued=True
+)
+
+# 5. Periodic analysis and adaptation
+if learner.total_feedback_count >= 50:
+    adaptations = await learner.analyze_and_adapt()
+    print(f"Made {len(adaptations)} adaptations")
+```
+
 ## Future Enhancements
 
 1. **Streaming Responses**
@@ -373,20 +626,20 @@ from ai_karen_engine.core.response import (
    - Progressive token delivery
    - Real-time metrics
 
-2. **Advanced Reasoning Integration**
-   - Self-refine for response quality
-   - Causal reasoning for explanations
-   - Metacognition for strategy selection
-
-3. **Multi-turn Conversations**
+2. **Multi-turn Conversations**
    - Conversation state management
    - Context window optimization
    - Turn-level memory integration
 
-4. **A/B Testing**
+3. **A/B Testing**
    - Model comparison
    - Persona testing
    - Strategy evaluation
+
+4. **Advanced Adaptation**
+   - Model fine-tuning from feedback
+   - Prompt template optimization
+   - Dynamic persona adjustment
 
 ## See Also
 

@@ -75,6 +75,40 @@ from .types import (
     COMPLEXITY_THRESHOLD_MEDIUM,
 )
 
+# Iterative refinement pipeline
+from .iterative_refiner import (
+    # Enums
+    RefinementStage,
+    RefinementStatus,
+    # Data structures
+    RefinementIteration,
+    RefinementPipelineResult,
+    RefinementConfig,
+    # Protocol
+    ResponseGenerator,
+    # Main class
+    IterativeRefinementPipeline,
+    # Factory
+    create_refinement_pipeline,
+)
+
+# Autonomous learning loop
+from .autonomous_learner import (
+    # Enums
+    FeedbackType,
+    LearningSignal,
+    AdaptationStrategy,
+    # Data structures
+    ResponseFeedback,
+    LearningPattern,
+    AdaptationDecision,
+    LearningConfig,
+    # Main class
+    AutonomousLearner,
+    # Factory
+    create_autonomous_learner,
+)
+
 
 __all__ = [
     # ===================================
@@ -162,4 +196,40 @@ __all__ = [
     "DEFAULT_MAX_TOTAL_TOKENS",
     "COMPLEXITY_THRESHOLD_SMALL",
     "COMPLEXITY_THRESHOLD_MEDIUM",
+
+    # ===================================
+    # ITERATIVE REFINEMENT PIPELINE
+    # ===================================
+
+    # Enums
+    "RefinementStage",
+    "RefinementStatus",
+    # Data structures
+    "RefinementIteration",
+    "RefinementPipelineResult",
+    "RefinementConfig",
+    # Protocol
+    "ResponseGenerator",
+    # Main class
+    "IterativeRefinementPipeline",
+    # Factory
+    "create_refinement_pipeline",
+
+    # ===================================
+    # AUTONOMOUS LEARNING LOOP
+    # ===================================
+
+    # Enums
+    "FeedbackType",
+    "LearningSignal",
+    "AdaptationStrategy",
+    # Data structures
+    "ResponseFeedback",
+    "LearningPattern",
+    "AdaptationDecision",
+    "LearningConfig",
+    # Main class
+    "AutonomousLearner",
+    # Factory
+    "create_autonomous_learner",
 ]
