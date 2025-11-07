@@ -6,7 +6,7 @@ export interface LoginFormProps {
   onSuccess?: () => void;
 }
 
-export default function LoginForm({ onSuccess }: LoginFormProps) {
+function LoginForm({ onSuccess }: LoginFormProps) {
   return (
     <div>
       <h1>Login Form</h1>
@@ -14,3 +14,6 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     </div>
   );
 }
+
+export { LoginForm };
+export default LoginForm;
