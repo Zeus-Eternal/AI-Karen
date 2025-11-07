@@ -16,16 +16,14 @@ from ai_karen_engine.core.memory.manager import (
 )
 from ai_karen_engine.core.neuro_vault import NeuroVault
 
-# Import spaCy service for NLP processing
+# Import NLP services - unified manager provides both spaCy and DistilBERT
 try:
-    from ai_karen_engine.services.nlp_service_manager import spacy_service_manager
+    from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
+    # Access spaCy and DistilBERT services from unified manager
+    spacy_service_manager = nlp_service_manager.spacy_service if hasattr(nlp_service_manager, 'spacy_service') else None
+    distilbert_service_manager = nlp_service_manager.distilbert_service if hasattr(nlp_service_manager, 'distilbert_service') else None
 except ImportError:
     spacy_service_manager = None
-
-# Import DistilBERT service for embeddings
-try:
-    from ai_karen_engine.services.nlp_service_manager import distilbert_service_manager
-except ImportError:
     distilbert_service_manager = None
 
 logger = logging.getLogger("kari.memory.ag_ui_manager")

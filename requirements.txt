@@ -84,3 +84,4 @@ docx2markdown
 chunkr_ai
 xmltodict
 croniter
+mcp
