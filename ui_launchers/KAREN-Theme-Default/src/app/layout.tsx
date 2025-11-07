@@ -72,7 +72,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${inter.variable} font-sans antialiased scroll-smooth`}>
+      <body className="font-sans antialiased scroll-smooth">
         {/* Console error fix script - load early to prevent interceptor issues */}
         <Script
           id="console-error-fix"
