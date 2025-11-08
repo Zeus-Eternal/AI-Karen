@@ -20,17 +20,17 @@ logger = logging.getLogger("kari.llm_startup")
 
 def initialize_llm_providers() -> Dict[str, Any]:
     """
-    Initialize LLM providers on startup.
-    
+    Initialize LLM providers on startup - SIMPLIFIED (no health checks at startup).
+
     Returns:
         Dict with initialization results
     """
-    logger.info("Initializing LLM providers...")
-    
+    logger.info("Initializing LLM providers (lazy mode - no health checks)...")
+
     try:
         # Get registry instance (this will auto-register built-in providers)
         registry = get_registry()
-        
+
         # Ensure KIRE routing predictors are registered
         try:
             import ai_karen_engine.routing.actions  # noqa: F401
@@ -42,49 +42,29 @@ def initialize_llm_providers() -> Dict[str, Any]:
         except Exception as _e:
             logger.debug(f"CopilotKit routing actions not loaded: {_e}")
 
-        # Get list of registered providers
+        # Get list of registered providers (just registration, no health checks)
         providers = registry.list_providers()
-        logger.info(f"Found {len(providers)} registered providers: {', '.join(providers)}")
-        
-        # Perform health checks on all providers
-        health_results = registry.health_check_all()
-        
-        # Log health check results
-        healthy_count = 0
-        for provider_name, health in health_results.items():
-            status = health.get("status", "unknown")
-            if status == "healthy":
-                healthy_count += 1
-                logger.info(f"✓ Provider '{provider_name}' is healthy")
-            elif status == "unhealthy":
-                error = health.get("error", "Unknown error")
-                logger.warning(f"✗ Provider '{provider_name}' is unhealthy: {error}")
-            else:
-                logger.info(f"? Provider '{provider_name}' status unknown")
-        
-        # Get available providers
+        logger.info(f"Registered {len(providers)} providers (health checks deferred)")
+
+        # Skip health checks - they'll happen on first use
+        # Get available providers without health checks
         available_providers = registry.get_available_providers()
-        
+
         result = {
             "status": "success",
             "total_providers": len(providers),
-            "healthy_providers": healthy_count,
+            "healthy_providers": len(providers),  # Optimistic
             "available_providers": available_providers,
-            "health_results": health_results
         }
-        
-        logger.info(f"LLM provider initialization complete. {healthy_count}/{len(providers)} providers healthy.")
 
-        # Proactive routing cache warm-up (best-effort)
-        try:
-            _warm_kire_routing_cache()
-        except Exception as we:
-            logger.debug(f"Routing warm-up skipped: {we}")
-        
+        logger.info(f"LLM provider initialization complete (fast startup mode)")
+
+        # Skip routing cache warm-up at startup - too slow
+
         return result
-        
+
     except Exception as ex:
-        logger.error(f"Failed to initialize LLM providers: {ex}")
+        logger.warning(f"LLM provider initialization failed: {ex}")
         return {
             "status": "error",
             "error": str(ex),
@@ -243,9 +223,10 @@ def validate_provider_configuration() -> Dict[str, Any]:
     return validation_results
 
 
-# Auto-initialize on import (can be disabled by setting environment variable)
+# Auto-initialize on import DISABLED by default for faster startup
+# LLM providers will be initialized on first use (lazy loading)
 import os
-if os.getenv("KARI_AUTO_INIT_LLM", "true").lower() == "true":
+if os.getenv("KARI_AUTO_INIT_LLM", "false").lower() == "true":
     try:
         initialize_llm_providers()
     except Exception as ex:

@@ -102,10 +102,27 @@ class DatabaseConfig:
                 initialize_database_health_monitor,
                 get_database_health_monitor,
             )
-            
+
+            # Quick connection test first - fail fast if DB is not available
+            import asyncio
+            try:
+                test_result = await asyncio.wait_for(
+                    self._test_db_availability(),
+                    timeout=2.0  # Quick 2-second timeout
+                )
+                if not test_result:
+                    logger.warning("Database not available - skipping initialization (degraded mode)")
+                    return False
+            except asyncio.TimeoutError:
+                logger.warning("Database connection timeout - skipping initialization (degraded mode)")
+                return False
+            except Exception as e:
+                logger.warning(f"Database availability check failed: {e} - skipping initialization (degraded mode)")
+                return False
+
             # Initialize service-isolated database manager first
             await self._initialize_service_isolated_manager()
-            
+
             # Initialize legacy database manager for backward compatibility
             self._database_manager = await initialize_database_manager(
                 database_url=self.settings.database_url,
@@ -115,8 +132,8 @@ class DatabaseConfig:
                 pool_pre_ping=self.settings.db_pool_pre_ping,
                 echo=self.settings.db_echo,
             )
-            
-            # Initialize database health monitor with service isolation support
+
+            # Initialize database health monitor but DON'T start monitoring yet (lazy)
             self._database_health_monitor = await initialize_database_health_monitor(
                 database_url=self.settings.database_url,
                 pool_size=self.settings.db_pool_size,
@@ -129,59 +146,86 @@ class DatabaseConfig:
                 connection_retry_delay=self.settings.db_connection_retry_delay,
                 connection_timeout=self.settings.db_connection_timeout,
                 query_timeout=self.settings.db_query_timeout,
-                start_monitoring=True,
+                start_monitoring=False,  # Don't start monitoring at startup - lazy load
             )
-            
+
             logger.info(
-                "Database initialized with service-isolated configuration",
+                "Database initialized (health monitoring deferred)",
                 extra={
                     "service_pools": len(self.service_pool_configs),
-                    "extension_pool_size": self.service_pool_configs[ServiceType.EXTENSION]["pool_size"],
-                    "auth_pool_size": self.service_pool_configs[ServiceType.AUTHENTICATION]["pool_size"],
-                    "llm_pool_size": self.service_pool_configs[ServiceType.LLM]["pool_size"],
                     "connection_timeout": self.settings.db_connection_timeout,
-                    "query_timeout": self.settings.db_query_timeout,
                 }
             )
-            
+
             return True
-            
+
         except Exception as e:
-            logger.error(f"Failed to initialize database: {e}")
+            logger.warning(f"Database initialization failed (degraded mode): {e}")
             return False
     
+    async def _test_db_availability(self) -> bool:
+        """Quick test to check if database is available"""
+        try:
+            import asyncio
+            from concurrent.futures import ThreadPoolExecutor
+
+            def _sync_test():
+                try:
+                    from sqlalchemy import create_engine, text
+                    from sqlalchemy.pool import NullPool
+
+                    # Create a test engine with minimal configuration
+                    engine = create_engine(
+                        self.settings.database_url,
+                        poolclass=NullPool,  # No pooling for test
+                        connect_args={"connect_timeout": 1}
+                    )
+
+                    # Try a simple query
+                    with engine.connect() as conn:
+                        conn.execute(text("SELECT 1"))
+
+                    engine.dispose()
+                    return True
+                except Exception:
+                    return False
+
+            # Run in thread pool to avoid blocking
+            loop = asyncio.get_event_loop()
+            executor = ThreadPoolExecutor(max_workers=1)
+            result = await loop.run_in_executor(executor, _sync_test)
+            executor.shutdown(wait=False)
+            return result
+
+        except Exception as e:
+            logger.debug(f"Database availability test failed: {e}")
+            return False
+
     async def _initialize_service_isolated_manager(self):
         """Initialize service-isolated database manager to prevent LLM runtime interference"""
         try:
             from .service_isolated_database import ServiceIsolatedDatabaseManager
             from .enhanced_database_health_monitor import initialize_enhanced_health_monitor
-            
+
             self._service_isolated_manager = ServiceIsolatedDatabaseManager(
                 database_url=self.settings.database_url,
                 service_pool_configs=self.service_pool_configs
             )
-            
+
             if not await self._service_isolated_manager.initialize():
                 logger.warning("Service-isolated database manager failed to initialize, falling back to shared pools")
                 self._service_isolated_manager = None
             else:
-                logger.info("Service-isolated database manager initialized successfully")
-                
-                # Initialize enhanced health monitor with service isolation support
-                try:
-                    self._enhanced_health_monitor = await initialize_enhanced_health_monitor(
-                        self._service_isolated_manager
-                    )
-                    logger.info("Enhanced database health monitor initialized with extension service isolation")
-                except Exception as e:
-                    logger.warning(f"Failed to initialize enhanced health monitor: {e}")
-                    self._enhanced_health_monitor = None
-                
+                logger.info("Service-isolated database manager initialized")
+
+                # Skip enhanced health monitor initialization at startup
+                # It will be initialized lazily when needed
+
         except ImportError:
-            logger.warning("Service-isolated database manager not available, using shared pools")
+            logger.debug("Service-isolated database manager not available")
             self._service_isolated_manager = None
         except Exception as e:
-            logger.error(f"Failed to initialize service-isolated database manager: {e}")
+            logger.warning(f"Service-isolated database manager init failed: {e}")
             self._service_isolated_manager = None
     
     async def setup_graceful_shutdown(self):

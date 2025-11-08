@@ -109,10 +109,15 @@ def create_app() -> FastAPI:
     # Developer API removed for production readiness
     logger.info("Developer API has been removed for production deployment")
     
-    # Initialize extension system
+    # Initialize extension system (only if database is available)
     if EXTENSIONS_AVAILABLE:
         async def initialize_extension_system() -> None:
             """Initialize the production extension system and monitoring."""
+            # Skip if database is not available
+            if not getattr(app.state, 'database_available', False):
+                logger.info("Skipping extension system initialization (database not available)")
+                return
+
             try:
                 success = await initialize_extensions(
                     app=app,
@@ -121,7 +126,7 @@ def create_app() -> FastAPI:
                     plugin_router=None
                 )
                 if not success:
-                    logger.warning("Extension system reported unsuccessful initialization")
+                    logger.warning("Extension system initialization unsuccessful")
                     return
 
                 # Initialize extension health monitoring once the manager is available
@@ -138,15 +143,15 @@ def create_app() -> FastAPI:
                         await initialize_extension_health_monitor(extension_manager)
                         logger.info("Extension health monitoring initialized")
                     else:
-                        logger.warning("Extension manager unavailable after initialization")
+                        logger.warning("Extension manager unavailable")
                 except Exception as monitor_error:
-                    logger.warning(f"Extension health monitoring initialization failed: {monitor_error}")
+                    logger.warning(f"Extension health monitoring failed: {monitor_error}")
             except Exception as exc:
-                logger.error(f"Extension system initialization error: {exc}")
+                logger.warning(f"Extension system initialization error: {exc}")
 
         app.add_event_handler("startup", initialize_extension_system)
     else:
-        logger.info("Extension system disabled - integration module not available")
+        logger.info("Extension system disabled")
     
     # Add extension system shutdown handler
     @app.on_event("shutdown")
@@ -191,28 +196,8 @@ def create_app() -> FastAPI:
     except Exception:
         pass
     
-    # Add LLM warmup startup task
-    @app.on_event("startup")
-    async def _warmup_llm_provider() -> None:
-        """Warm up the default LLM provider to reduce first-request latency."""
-        import os as _os
-        if _os.getenv("WARMUP_LLM", "true").lower() not in ("1", "true", "yes"):
-            logger.info("LLM warmup disabled via WARMUP_LLM env")
-            return
-        try:
-            from ai_karen_engine.integrations.llm_registry import LLMRegistry  # type: ignore
-            reg = LLMRegistry()
-            prov = reg.get_provider("llamacpp")
-            if prov is not None:
-                try:
-                    _ = prov.get_provider_info()  # type: ignore[attr-defined]
-                except Exception:
-                    pass
-                logger.info("LLM warmup completed (llamacpp)")
-            else:
-                logger.warning("LLM warmup: llamacpp provider not available")
-        except Exception as e:
-            logger.warning(f"LLM warmup skipped due to error: {e}")
+    # Skip LLM warmup at startup - it's too slow and not necessary
+    # LLM providers will be initialized on first use (lazy loading)
     
     # Add comprehensive health check endpoint
     @app.get("/health", tags=["system"])
