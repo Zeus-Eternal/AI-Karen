@@ -38,15 +38,17 @@ Tuning env:
 ## Overview
 
 **Core Platform Features:**
+* **KIRE-KRO Intelligence** - Production LLM routing with intent classification, dynamic suggestions, and graceful degradation
+* **NeuroVault Memory** - Tri-partite memory system with biological decay functions and hybrid retrieval (R = S × I × D + A)
 * **FastAPI Backend** - Production-grade REST API with comprehensive endpoint coverage (106+ endpoints)
 * **Multi-Database Architecture** - PostgreSQL, Redis, DuckDB, Milvus, and Elasticsearch integration
 * **Performance Optimization** - Dual startup modes with lazy loading, 99%+ faster startup, and 50%+ memory reduction
 * **Plugin Ecosystem** - 24+ plugins with hot-reload capability and marketplace integration
 * **Extension System** - Modular extensions for analytics, automation, and workflow building
 * **Multiple UI Interfaces** - Web (Next.js) is the default interface, with Desktop (Tauri) and Streamlit options
-* **AI/ML Integration** - HuggingFace Transformers, OpenAI API, local LLM support via llama-cpp-python
-* **Production Monitoring** - Prometheus metrics, health checks, and comprehensive logging
-* **Authentication & Security** - JWT-based auth, role-based access control, tenant isolation
+* **AI/ML Integration** - HuggingFace Transformers, OpenAI API, local LLM support, CUDA acceleration, helper models
+* **Production Monitoring** - Prometheus metrics, OSIRIS logging, health checks, and comprehensive observability
+* **Authentication & Security** - JWT-based auth, role-based access control, tenant isolation, PII protection
 * **Container Orchestration** - Docker Compose setup with service discovery and health monitoring
 
 **Technology Stack:**
@@ -57,6 +59,82 @@ Tuning env:
 * **Infrastructure**: Docker, Prometheus, nginx (optional), Kubernetes support
 
 **🚀 Quick Note on Performance**: AI-Karen includes two startup modes - standard (`start.py`) for development with all features, and optimized (`start_optimized.py`) for production with 99%+ faster startup and 50%+ memory reduction. See the Launch Services section below for details.
+
+---
+
+## 🎯 Recent Updates
+
+### v2.0.0 - Production AI Intelligence & Memory Systems (Latest)
+
+AI-Karen has been significantly enhanced with production-grade intelligent routing and neuroscience-inspired memory architecture:
+
+#### **KIRE-KRO System** - Intelligent LLM Routing & Orchestration
+The new KIRE-KRO system provides enterprise-grade AI request processing:
+
+- **KIRE Router** - Intelligent LLM selection based on user profiles, task complexity, and provider health
+- **KRO Orchestrator** - Prompt-first controller with intent classification, planning, and graceful degradation
+- **Helper Models** - TinyLlama scaffolding, DistilBERT classification, spaCy NLP integration
+- **Dynamic Suggestions** - Context-aware prompt suggestions for novice/intermediate/expert users
+- **Graceful Degradation** - Multi-tier fallback with hardcoded responses when all LLMs fail
+- **CUDA Acceleration** - GPU offloading for supported operations (3-5x speedup)
+- **OSIRIS Logging** - Comprehensive observability with structured telemetry
+- **RBAC & Rate Limiting** - Enterprise security and quota enforcement
+
+**Initialize the KIRE-KRO system:**
+```bash
+python -m ai_karen_engine.initialize_kire_kro
+```
+
+**API Usage:**
+```python
+from ai_karen_engine.core import process_request
+
+response = await process_request(
+    user_input="Explain quantum computing",
+    user_id="user123",
+)
+print(response["message"])
+print(response["suggestions"])
+```
+
+#### **NeuroVault** - Tri-Partite Memory System
+Neuroscience-inspired memory architecture with biological decay functions:
+
+- **Episodic Memory** - Recent experiences (λ=0.12/hour, half-life 5.8h)
+- **Semantic Memory** - Long-term facts (λ=0.04/hour, half-life 17.3h)
+- **Procedural Memory** - Tool usage patterns (λ=0.02/hour, half-life 34.7h)
+- **Hybrid Retrieval** - R = (S × I × D) + A formula with semantic similarity, importance, decay, and access frequency
+- **Memory Consolidation** - Automatic episodic → semantic reflection after 24h
+- **RBAC & Tenant Isolation** - Multi-tenant memory segregation
+- **PII Protection** - Automatic scrubbing of email, phone, SSN, credit cards
+- **Background Tasks** - Automated consolidation (6h) and decay (12h) cycles
+
+**API Usage:**
+```python
+from ai_karen_engine.core.neuro_vault import NeuroVault, MemoryType
+
+vault = NeuroVault()
+await vault.store_memory(
+    memory_type=MemoryType.EPISODIC,
+    content="User asked about quantum computing",
+    importance_score=7,
+)
+
+memories = await vault.retrieve_memories(query="quantum", k=5)
+```
+
+#### **Critical Fixes** - Memory & LLM Integration Stability
+Enhanced error handling and diagnostics throughout the AI stack:
+
+- **Enhanced Error Logging** - Registry status, model availability, and detailed failure context
+- **Graceful Degradation** - Chat continues even when LLM providers or memory systems fail
+- **Contextual Troubleshooting** - Actionable guidance in fallback responses
+- **Memory System Robustness** - Proper error handling in extraction, storage, and retrieval
+- **Model Registry Validation** - Initialization checks ensure at least one working LLM
+
+**Documentation:**
+- [KIRE-KRO System Guide](docs/KIRE_KRO_SYSTEM.md)
+- [NeuroVault Memory Architecture](docs/NEUROVAULT_MEMORY_SYSTEM.md)
 
 ---
 
