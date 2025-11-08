@@ -106,3 +106,4 @@ htmlcov/
 
 ui_launchers/KAREN-Theme-Default/.gitattributes
 ui_launchers/KAREN-Theme-Default/.gitignore
+/.env_kari

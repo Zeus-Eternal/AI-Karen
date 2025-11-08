@@ -7,7 +7,7 @@ into the main FastAPI application and server startup process.
 
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 from fastapi import FastAPI
 
